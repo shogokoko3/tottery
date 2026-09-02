@@ -2022,3 +2022,78 @@ h3 {
     animation: none;
   }
 }
+
+/* =========================================================================
+   駒の動きと、取った/取られたの演出
+   ========================================================================= */
+
+/* 駒の入れ物をマス全体に広げる。
+   こうすると「1マスぶん」を translate(100%) で表せる */
+.piece-slot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 出発点から、1マスずつ跳んで到着点まで進む。
+   steps(..., jump-none) で、途中のマスにも必ず一度立つ */
+.piece-stepping {
+  animation: piece-step var(--ms) steps(var(--stops), jump-none) both;
+  z-index: 4;
+}
+@keyframes piece-step {
+  from {
+    transform: translate(calc(var(--sx) * 100%), calc(var(--sy) * 100%));
+  }
+  to {
+    transform: translate(0, 0);
+  }
+}
+
+/* 何体もまとめて取るときは、手前から順に1体ずつ光らせる */
+.fx-defeat {
+  animation-delay: calc(var(--i, 0) * 320ms);
+}
+.fx-defeat::before {
+  animation-delay: calc(var(--i, 0) * 320ms);
+}
+
+/* 取った/取られたを、色と広がり方で見分けられるようにする */
+.fx-defeat::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid currentColor;
+  opacity: 0;
+  animation: fx-ring 720ms ease-out both;
+  animation-delay: calc(var(--i, 0) * 320ms);
+}
+.fx-defeat-foe {
+  color: #f0d98a;
+}
+.fx-defeat-mine {
+  color: #ef8a76;
+}
+.fx-defeat-surround {
+  color: #cbb6ff;
+}
+@keyframes fx-ring {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piece-stepping,
+  .fx-defeat::after {
+    animation: none;
+  }
+}

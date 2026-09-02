@@ -618,7 +618,8 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   (0, useEffect)(() => {
     if (!a.lastDefeat) return;
     setHoldFx(!0);
-    let id = setTimeout(() => setHoldFx(!1), 900);
+    let n = a.lastDefeat.cells.length;
+    let id = setTimeout(() => setHoldFx(!1), 900 + (n - 1) * 320);
     return () => clearTimeout(id);
   }, [a.lastDefeat ? a.lastDefeat.seq : 0]);
 
@@ -1398,11 +1399,34 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                     Lo =
                       Oi &&
                       Oi.cells.some((wl) => wl.row === ne && wl.col === Me),
-                    fx =
-                      a.lastDefeat &&
-                      a.lastDefeat.cells.find(
-                        (wl) => wl.row === ne && wl.col === Me,
-                      ),
+                    fxIdx = a.lastDefeat
+                      ? a.lastDefeat.cells.findIndex(
+                          (wl) => wl.row === ne && wl.col === Me,
+                        )
+                      : -1,
+                    fx = fxIdx >= 0 ? a.lastDefeat.cells[fxIdx] : null,
+                    // 直前に動いた駒。1マスずつ進んで見えるようにする
+                    stepIn =
+                      Go && Vt && ze && Vt.from
+                        ? (() => {
+                            const dc = Vt.from.col - Vt.to.col;
+                            const dr = Vt.from.row - Vt.to.row;
+                            const knight =
+                              (Math.abs(dr) === 1 && Math.abs(dc) === 2) ||
+                              (Math.abs(dr) === 2 && Math.abs(dc) === 1);
+                            const n = knight
+                              ? 1
+                              : Math.max(Math.abs(dr), Math.abs(dc));
+                            if (!n) return null;
+                            return {
+                              sx: Jl ? -dc : dc,
+                              sy: Jl ? -dr : dr,
+                              stops: n + 1,
+                              ms: n * 120,
+                              seq: Vt.seq || 0,
+                            };
+                          })()
+                        : null,
                     S0 = Vo
                       ? "cell-from"
                       : Go
@@ -1438,6 +1462,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                       {fx && (
                         <span
                           key={`fx${a.lastDefeat.seq}`}
+                          style={{ "--i": fxIdx }}
                           className={`fx-defeat ${
                             fx.owner === P ? "fx-defeat-mine" : "fx-defeat-foe"
                           } ${
@@ -1449,6 +1474,18 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                       )}
                       {ze && (
                         <div
+                          className={`piece-slot ${stepIn ? "piece-stepping" : ""}`}
+                          key={stepIn ? `mv${stepIn.seq}` : "piece"}
+                          style={
+                            stepIn
+                              ? {
+                                  "--sx": stepIn.sx,
+                                  "--sy": stepIn.sy,
+                                  "--stops": stepIn.stops,
+                                  "--ms": `${stepIn.ms}ms`,
+                                }
+                              : void 0
+                          }
                           onClick={(wl) => {
                             if ((wl.stopPropagation(), Pl)) {
                               y({

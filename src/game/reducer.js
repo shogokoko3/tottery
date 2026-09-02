@@ -981,6 +981,8 @@ function coreReducer(state, action) {
           to: { row: action.row, col: action.col },
           owner: state.currentTurn,
           captured: defeated.length > 0,
+          // 演出をやり直させるための通し番号
+          seq: (state.lastMove ? state.lastMove.seq || 0 : 0) + 1,
         },
       };
       return endAction(next, mover.id);
