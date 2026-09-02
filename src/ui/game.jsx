@@ -63,6 +63,7 @@ import {
   currentStepIndex,
   foeAction,
   matchesNeed,
+  upcomingNeedStep,
 } from "../game/tutorial.js";
 import { isTestPlay, recordGame } from "../game/profile.js";
 
@@ -457,6 +458,9 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (tutorial && !E.__foe) {
       let step = tutorial.steps[tutIdx];
       if (step && step.at && !step.at(a)) step = null;
+      // 説明だけの札を見ているあいだも、この先の操作は受け付ける。
+      // 「次へ」を押さずに指しても案内が追いつくが、台本にない手は通さない
+      if (step && !step.need) step = upcomingNeedStep(tutorial, tutIdx, a);
       if (
         step &&
         step.need &&

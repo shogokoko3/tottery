@@ -17,6 +17,7 @@ import {
   currentStepIndex,
   foeAction,
   matchesNeed,
+  upcomingNeedStep,
 } from "../src/game/tutorial.js";
 
 let fail = 0;
@@ -116,6 +117,7 @@ for (const tut of TUTORIALS) {
   let wentBack = null;
   let lastIdx = -1;
   let usedCpu = 0;
+  let skipped = 0;
 
   while (guard++ < 400) {
     // 画面と同じく、盤面から案内の位置を引き直す
@@ -128,6 +130,26 @@ for (const tut of TUTORIALS) {
       break;
     }
     const cur = tut.steps[idx];
+    // 説明だけの札のときは「次へ」を押さず、先の操作をそのまま指してみる。
+    // これで案内が追いつかなければ、画面でも取り残される
+    if (!cur.need && (!cur.at || cur.at(s))) {
+      const ahead = upcomingNeedStep(tut, idx, s);
+      if (ahead) {
+        const act = actionFor(ahead.need, s, tut);
+        if (act) {
+          const before = idx;
+          s = reducer(s, act);
+          const after = currentStepIndex(tut, s, watermark);
+          if (after <= before) {
+            stuck = `${idx + 1}枚目の説明中に指しても案内が進まない`;
+            break;
+          }
+          skipped++;
+          watermark = after;
+          continue;
+        }
+      }
+    }
     if (process.env.TRACE)
       console.log(
         `    [${idx + 1}] phase=${s.phase} turn=${s.currentTurn} kPl=${!!s.kPlacement} rev=${!!s.captureReveal} at=${cur.at ? cur.at(s) : "-"} | ${cur.text.slice(0, 18)}`,
@@ -188,6 +210,12 @@ for (const tut of TUTORIALS) {
   const step = watermark;
 
   ok("案内が前に戻らない", !wentBack, wentBack);
+  ok(
+    "説明中に指しても案内が追いつく",
+    stuck === null || !stuck.includes("説明中"),
+    stuck,
+  );
+  console.log(`  説明を読まずに指した回数: ${skipped}`);
   ok(
     "相手の手が台本だけで足りる",
     usedCpu === 0,

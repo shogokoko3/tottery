@@ -177,6 +177,7 @@ const EP1 = {
     {
       at: myTurnOrEnd,
       text: "あなたの 4♠ も一緒に倒れました。相手の王が4のとき、4を取ると道連れにされます。",
+      focus: { pieces: ["t0"], cells: [{ row: 2, col: 2 }] },
     },
     {
       at: myTurn,
@@ -320,6 +321,8 @@ const EP2 = {
     {
       at: myTurn,
       text: "6〜9は進路を塞がれます。味方が前にいると止まり、相手なら取って止まります。",
+      // 読まずにそのまま指しても進めるよう、次に触る場所を光らせておく
+      focus: { pieces: ["t2"], cells: [{ row: 1, col: 1 }] },
     },
     {
       at: myTurn,
@@ -667,6 +670,23 @@ export function matchesNeed(need, action) {
     if (action[key] !== need[key]) return false;
   }
   return true;
+}
+
+/**
+ * 説明だけの札を見ているとき、この先に控えている操作を返す。
+ *
+ * 説明中でも、指示された手をそのまま指せば案内は先へ進む。
+ * ただし台本にない手まで通してしまうと盤面がずれるので、
+ * 「次にやること」だけを通す関門として使う。
+ */
+export function upcomingNeedStep(tut, from, state) {
+  for (let i = from; i < tut.steps.length; i++) {
+    const step = tut.steps[i];
+    if (!step.need) continue;
+    if (step.at && !step.at(state)) return null;
+    return step;
+  }
+  return null;
 }
 
 /** 台本が止まらないよう、いつでも通す操作 */
