@@ -27,7 +27,12 @@ import {
   RotateCcw,
   Shuffle,
 } from "../icons.jsx";
-import { makeClientId, pushAct, readActs } from "../net/firebase.js";
+import {
+  deleteRoom,
+  makeClientId,
+  pushAct,
+  readActs,
+} from "../net/firebase.js";
 import { LOCAL_ONLY_ACTIONS, withLocalContext } from "../net/sync.js";
 import { CardFace, Piece } from "./cards.jsx";
 import { DiceStage, DiceStep, Die } from "./dice.jsx";
@@ -702,6 +707,19 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     });
   }, [clockRunning, nowMs, a.currentTurn]);
 
+  /**
+   * 対局を抜ける。決着がついていれば、使い終わった部屋を消しておく。
+   *
+   * 消すのはホストだけ。「もう一度遊ぶ」を選べるのはホストなので、
+   * ゲストが先に抜けて部屋を消すと、ホストの再戦が壊れる。
+   */
+  function leaveGame() {
+    let finished =
+      a.phase === "gameover" || (a.winner !== null && a.winner !== undefined);
+    if (network && p === 0 && finished) deleteRoom(network.code);
+    onExit();
+  }
+
   // 取る手は必ず一度確認する
   function tryMove(row, col, mv) {
     if (mv.capture) {
@@ -850,7 +868,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
           network={network}
           onCancel={() => r(!1)}
           onQuit={() => {
-            (r(!1), onExit());
+            (r(!1), leaveGame());
           }}
         />
       </GameShell>
@@ -1577,7 +1595,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             size={R}
             viewer={P}
             dispatch={y}
-            onExit={onExit}
+            onExit={leaveGame}
           />
         )}
       </div>

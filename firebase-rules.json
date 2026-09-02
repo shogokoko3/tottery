@@ -6,16 +6,7 @@
     "rooms": {
       "$code": {
         ".read": true,
-        ".write": true,
-        ".validate": "$code.matches(/^[A-HJ-NP-Z2-9]{4,8}$/)",
-
-        "guestPresent": { ".validate": "newData.isBoolean()" },
-
-        "acts": {
-          "$actId": {
-            ".validate": "newData.hasChild('type') && newData.child('type').isString() && newData.child('type').val().length <= 40"
-          }
-        }
+        ".write": true
       }
     },
 
@@ -23,13 +14,7 @@
       ".read": true,
 
       "$code": {
-        ".write": true,
-        ".validate": "$code.matches(/^[A-HJ-NP-Z2-9]{4,8}$/)",
-
-        "host": { ".validate": "newData.isString() && newData.val().length <= 64" },
-        "guest": { ".validate": "newData.isString() && newData.val().length <= 64" },
-        "createdAt": { ".validate": "newData.isNumber()" },
-        "$other": { ".validate": false }
+        ".write": true
       }
     }
   }
