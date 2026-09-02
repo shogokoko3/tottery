@@ -100,7 +100,19 @@ export function ClockBar({ clocks, currentTurn, viewer }) {
 
 export function TurnBar({ state, viewer }) {
   let l = PLAYER_META[state.currentTurn],
-    n = state.currentTurn === viewer;
+    n = state.currentTurn === viewer,
+    // 撃破の札を開くまでは、勝敗を先に漏らさない
+    hold = !!state.captureReveal,
+    log = hold
+      ? [...state.log]
+          .reverse()
+          .find(
+            (line) =>
+              !line.includes("勝利") &&
+              !line.includes("王が倒された") &&
+              !line.includes("新しい王"),
+          )
+      : state.log[state.log.length - 1];
   return (
     <div className="turn-bar">
       <span
@@ -117,7 +129,7 @@ export function TurnBar({ state, viewer }) {
       >
         {n ? `あなた(${l.name})の番です` : `相手(${l.name})の番です`}
       </span>
-      <span className="turn-log">{state.log[state.log.length - 1]}</span>
+      <span className="turn-log">{log}</span>
     </div>
   );
 }
@@ -1638,7 +1650,8 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             }
           />
         )}
-        {a.phase === "gameover" && (
+        {/* 撃破の札を閉じるまでは、勝敗の画面を出さない */}
+        {a.phase === "gameover" && !a.captureReveal && (
           <GameView
             state={a}
             network={network}
