@@ -61,6 +61,15 @@ function actionFor(need, s, tut) {
     act.value = tut.dice[s.diceIdx] || 1;
   if (act.type === "CONFIRM_MULLIGAN" && !act.reserveOrder)
     act.reserveOrder = [...tut.reserveOrder];
+  if (act.type === "CONFIRM_SHUFFLE" && !act.order && tut.shuffleOrder)
+    act.order = [...tut.shuffleOrder];
+  // 画面では、まず A をタップして入れ替えを始める
+  if (act.type === "TOGGLE_SHUFFLE_PICK" && !s.shuffleMode) {
+    const ace = Object.values(s.pieces).find(
+      (p) => p.owner === 0 && p.alive && p.rank === "A",
+    );
+    return ace ? { type: "SELECT_PIECE", id: ace.id } : null;
+  }
   if (act.type === "MOVE_PIECE") {
     const piece = s.pieces[act.pieceId];
     if (!piece || !piece.alive) return null;
@@ -119,6 +128,10 @@ for (const tut of TUTORIALS) {
       break;
     }
     const cur = tut.steps[idx];
+    if (process.env.TRACE)
+      console.log(
+        `    [${idx + 1}] phase=${s.phase} turn=${s.currentTurn} kPl=${!!s.kPlacement} rev=${!!s.captureReveal} at=${cur.at ? cur.at(s) : "-"} | ${cur.text.slice(0, 18)}`,
+      );
     if (!cur.at || cur.at(s)) {
       if (!cur.need) {
         // 「次へ」を押したのと同じ

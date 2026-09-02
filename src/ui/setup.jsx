@@ -745,7 +745,7 @@ export function KingStep({
   );
 }
 
-export function ReservePlacer({ state, dispatch, size }) {
+export function ReservePlacer({ state, dispatch, size, focus }) {
   let n = state.kPlacement.owner,
     [a, u] = territoryRows(size, n),
     i = n === 1;
@@ -778,7 +778,13 @@ export function ReservePlacer({ state, dispatch, size }) {
                 p = state.board[m][s];
               return (
                 <div
-                  className={`mini-cell ${v && !p ? "mini-cell-zone mini-cell-open" : ""}`}
+                  className={`mini-cell ${v && !p ? "mini-cell-zone mini-cell-open" : ""} ${
+                    focus &&
+                    focus.cells &&
+                    focus.cells.some((c) => c.row === m && c.col === s)
+                      ? "guide-target"
+                      : ""
+                  }`}
                   onClick={() => {
                     v &&
                       !p &&

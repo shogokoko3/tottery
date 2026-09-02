@@ -483,6 +483,9 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
           E = { ...E, value: tutorial.dice[U.diceIdx] || 1 };
         if (E.type === "CONFIRM_MULLIGAN" && !E.reserveOrder)
           E = { ...E, reserveOrder: [...tutorial.reserveOrder] };
+        // 入れ替えの並び順も固定する。乱数のままだと毎回ちがう配置になる
+        if (E.type === "CONFIRM_SHUFFLE" && !E.order && tutorial.shuffleOrder)
+          E = { ...E, order: [...tutorial.shuffleOrder] };
       }
       if (network && LOCAL_ONLY_ACTIONS.has(E.type)) return reducer(U, E);
       let be = network ? enrichAction(withLocalContext(E, U), U) : E;
@@ -1567,7 +1570,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             );
           })()}
         {a.kPlacement && a.kPlacement.owner === P && (
-          <ReservePlacer state={a} dispatch={y} size={R} />
+          <ReservePlacer state={a} dispatch={y} size={R} focus={tutFocus} />
         )}
         <CapturedRow players={a.players} dispatch={y} viewer={P} />
         <div className="resign-row">
