@@ -17,6 +17,7 @@ import {
 export function isNotableLog(line) {
   return (
     line.includes("撃破") ||
+    line.includes("回目に移動") ||
     line.includes("王が倒された") ||
     line.includes("道連れ") ||
     line.includes("新しい王") ||
@@ -1076,6 +1077,10 @@ function coreReducer(state, action) {
       if (state.winner) return state;
       const mover = state.pieces[action.pieceId || state.selectedId];
       if (!mover || !mover.alive) return state;
+      // 王の10は1ターンに2回動ける。どちらの手かを記録に添える
+      const secondAction = state.extraMoveFor === mover.id;
+      const twiceKing = mover.isKing && mover.rank === "10";
+      const nth = secondAction ? "2回目" : "1回目";
 
       const board = state.board.map((r) => [...r]);
       let next = {
@@ -1105,7 +1110,7 @@ function coreReducer(state, action) {
         });
         next.log = [
           ...next.log,
-          `${PLAYER_META[state.currentTurn].name}が${PLAYER_META[victim.owner].name}の${victim.rank}${SUIT_SYMBOL[victim.suit]}を撃破!`,
+          `${PLAYER_META[state.currentTurn].name}が${PLAYER_META[victim.owner].name}の${victim.rank}${SUIT_SYMBOL[victim.suit]}を撃破!${twiceKing ? `(${nth})` : ""}`,
         ];
         next = removePiece(next, victim.id, {
           by: mover.id,
@@ -1125,9 +1130,6 @@ function coreReducer(state, action) {
       const moved = next.pieces[mover.id];
       const nextBoard = next.board.map((r) => [...r]);
       const nextPieces = { ...next.pieces };
-      // 王の10とAは1ターンに2回動ける。行動ログにも2行残し、
-      // 2回目だと分かるようにしておく
-      const secondAction = state.extraMoveFor === mover.id;
       if (moved && moved.alive) {
         nextBoard[mover.row][mover.col] = null;
         const updated = {
@@ -1143,10 +1145,22 @@ function coreReducer(state, action) {
         nextBoard[action.row][action.col] = updated;
       }
 
+      // 1ターンに2回動ける王が取らずに動いただけだと、対局の記録に
+      // 何も残らず、盤の駒が動いた理由が読み取れなくなる。
+      // 普通の駒の移動は記録に残さないが、この場合だけは残す
+      const moveLog =
+        twiceKing && defeated.length === 0 && moved && moved.alive
+          ? [
+              ...next.log,
+              `${PLAYER_META[state.currentTurn].name}の王が${nth}に移動 (${squareName(mover.row, mover.col, state.boardSize)} → ${squareName(action.row, action.col, state.boardSize)})`,
+            ]
+          : next.log;
+
       next = {
         ...next,
         board: nextBoard,
         pieces: nextPieces,
+        log: moveLog,
         lastSwap: null,
         lastMove: {
           from: { row: mover.row, col: mover.col },

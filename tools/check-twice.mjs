@@ -39,7 +39,8 @@ function drive(forceRank) {
           if (i === 0) {
             // 先手の王を必ず 10 か A にして、2回行動を起こす
             const want = Object.keys(placement).find(
-              (id) => s.players[0].hand.find((c) => c.id === id).rank === forceRank,
+              (id) =>
+                s.players[0].hand.find((c) => c.id === id).rank === forceRank,
             );
             if (want) {
               king = want;
@@ -75,21 +76,43 @@ function drive(forceRank) {
         else break;
       }
       const isSecond = kingId && s.extraMoveFor === kingId;
-      const before = kingId && s.pieces[kingId] ? s.pieces[kingId].history.length : 0;
+      const before =
+        kingId && s.pieces[kingId] ? s.pieces[kingId].history.length : 0;
+      const logBefore = s.log.length;
+      const movingKing =
+        kingId &&
+        act.type === "MOVE_PIECE" &&
+        (act.pieceId || s.selectedId) === kingId;
 
       if (act.type === "__CPU_SHUFFLE") {
         s = reducer(s, { type: "SELECT_PIECE", id: act.aceId });
         s = reducer(s, { type: "TOGGLE_SHUFFLE_PICK", id: act.pickIds[0] });
         s = reducer(s, { type: "TOGGLE_SHUFFLE_PICK", id: act.pickIds[1] });
-        s = reducer(s, { type: "CONFIRM_SHUFFLE", order: [0, 1, 2], elapsedMs: 9000 });
+        s = reducer(s, {
+          type: "CONFIRM_SHUFFLE",
+          order: [0, 1, 2],
+          elapsedMs: 9000,
+        });
       } else s = reducer(s, { ...act, elapsedMs: 9000 });
+
+      // 取らずに動いただけでも、対局の記録に何か残っていないと、
+      // 盤の駒が動いた理由をあとから読み取れない
+      if (movingKing && forceRank === "10" && s.pieces[kingId]) {
+        const added = s.log.slice(logBefore);
+        if (!added.length)
+          problems.push("王の10が動いたのに対局の記録に何も残らない");
+        else if (!added.some((l) => l.includes("1回目") || l.includes("2回目")))
+          problems.push(`王の10の記録に何回目か書かれていない「${added[0]}」`);
+      }
 
       if (!isSecond || !kingId || !s.pieces[kingId]) continue;
       const history = s.pieces[kingId].history;
       const added = history.length - before;
       seen[forceRank]++;
       if (added !== 1)
-        problems.push(`王の${forceRank}: 2回目で行動ログが${added}行しか増えない`);
+        problems.push(
+          `王の${forceRank}: 2回目で行動ログが${added}行しか増えない`,
+        );
       else if (!history[history.length - 1].includes("(2回目)"))
         problems.push(
           `王の${forceRank}: 2回目だと分からない「${history[history.length - 1]}」`,
