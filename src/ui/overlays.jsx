@@ -1,9 +1,18 @@
 import { useEffect, useState } from "react";
 import { sanitizeHistory } from "../game/board.js";
-import { PLAYER_META, SUIT_SYMBOL, VERSION } from "../game/constants.js";
+import {
+  PLAYER_META,
+  SUIT_SYMBOL,
+  VERSION,
+  nameOf,
+  playerLabel,
+} from "../game/constants.js";
 import { ArrowLeft, Check, Close, Crown, Flag, Sparkle } from "../icons.jsx";
 import { CardBack, CardFace, Piece } from "./cards.jsx";
 import { CardGuide } from "./guides.jsx";
+import { useNames } from "./names.jsx";
+import { AccountRows, NameEditModal } from "./account.jsx";
+import { loadProfile } from "../game/profile.js";
 
 export function Interstitial({ forPlayer, kind, onReady }) {
   let n = PLAYER_META[forPlayer],
@@ -341,6 +350,15 @@ export function LogViewer({ piece, viewer, onClose, revealAll }) {
   );
 }
 export function SettingsModal({ onClose }) {
+  const [profile, setProfile] = useState(() => loadProfile());
+  const [editing, setEditing] = useState(false);
+  if (editing)
+    return (
+      <NameEditModal
+        onClose={() => setEditing(false)}
+        onSaved={(next) => setProfile(next)}
+      />
+    );
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel" onClick={(t) => t.stopPropagation()}>
@@ -350,6 +368,16 @@ export function SettingsModal({ onClose }) {
             <Close size={18} />
           </button>
         </div>
+        <div className="settings-list">
+          <AccountRows profile={profile} />
+        </div>
+        <button
+          className="btn btn-ghost btn-wide"
+          style={{ margin: "10px 0 14px" }}
+          onClick={() => setEditing(true)}
+        >
+          名前を変える
+        </button>
         <div className="settings-list">
           <div className="settings-row">
             <span>ゲームの版</span>
@@ -386,7 +414,8 @@ export function SettingsModal({ onClose }) {
   );
 }
 export function ResignConfirm({ onCancel, onResign, viewer }) {
-  let n = PLAYER_META[viewer];
+  let names = useNames(),
+    n = PLAYER_META[viewer];
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div
@@ -412,7 +441,7 @@ export function ResignConfirm({ onCancel, onResign, viewer }) {
               color: n.color,
             }}
           >
-            あなた({n.name})
+            {playerLabel(viewer, viewer, names)}
           </b>
           の負けとして、この対局が終わります。
         </p>
@@ -481,9 +510,10 @@ export function QuitConfirm({ onCancel, onQuit, network }) {
  * どちらの布陣が揃ったかは、両者に伝える。
  */
 export function SetupEffectsModal({ effects, viewer, onClose }) {
+  const names = useNames();
   const me = viewer === void 0 || viewer === null ? null : viewer;
   const side = (i) =>
-    me === null ? PLAYER_META[i].name : i === me ? "あなた" : "相手";
+    me === null ? nameOf(i, names) : i === me ? "あなた" : "相手";
   const shown = effects.revealed || [];
   const myShown = me === null ? [] : shown.filter((c) => c.owner === me);
   const foeShown = me === null ? shown : shown.filter((c) => c.owner !== me);
@@ -545,7 +575,7 @@ export function SetupEffectsModal({ effects, viewer, onClose }) {
                     className="bonus-card-who"
                     style={{ color: PLAYER_META[c.owner].color }}
                   >
-                    {PLAYER_META[c.owner].name}
+                    {nameOf(c.owner, names)}
                   </span>
                 </div>
               ))}

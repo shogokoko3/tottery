@@ -4,6 +4,7 @@ import { enrichAction } from "../game/actions.js";
 import { getLegalMoves, squareName } from "../game/board.js";
 import {
   PLAYER_META,
+  nameOf,
   playerLabel,
   shortPlayerLabel,
 } from "../game/constants.js";
@@ -37,6 +38,7 @@ import {
 } from "../net/firebase.js";
 import { LOCAL_ONLY_ACTIONS, withLocalContext } from "../net/sync.js";
 import { CardFace, Piece } from "./cards.jsx";
+import { useNames } from "./names.jsx";
 import { DiceStage, DiceStep, Die } from "./dice.jsx";
 import {
   CaptureRevealModal,
@@ -72,6 +74,7 @@ import { isTestPlay, recordGame } from "../game/profile.js";
 
 /** 持ち時間の表示。自分の時計は下、相手の時計は上に置く */
 export function ClockBar({ clocks, currentTurn, viewer }) {
+  const names = useNames();
   const fmt = (ms) => {
     const total = Math.max(0, Math.ceil(ms / 1000));
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
@@ -91,7 +94,7 @@ export function ClockBar({ clocks, currentTurn, viewer }) {
             key={idx}
           >
             <span className="clock-who">
-              {shortPlayerLabel(idx, viewer)}({PLAYER_META[idx].name})
+              {shortPlayerLabel(idx, viewer, names)}({PLAYER_META[idx].name})
             </span>
             <strong className="clock-time">{fmt(ms)}</strong>
           </div>
@@ -106,11 +109,25 @@ export function ClockBar({ clocks, currentTurn, viewer }) {
  * 「青が赤のA♦を撃破!」のように色名が2つ出るので、
  * それぞれその色で書いて、どちらが何をしたのか読み取れるようにする。
  */
+/** 記録の中の色名(赤/青)を、分かっていればプレイヤー名に置き換える */
+export function withNames(text, names) {
+  if (!text || !names) return text;
+  return PLAYER_META.reduce(
+    (out, meta, idx) =>
+      names[idx] ? out.split(meta.name).join(names[idx]) : out,
+    text,
+  );
+}
+
 export function LogLine({ text, index, active, onPick }) {
-  const names = PLAYER_META.map((p) => p.name);
-  const parts = text.split(new RegExp(`(${names.join("|")})`));
-  const first = parts.find((p) => names.includes(p));
-  const actor = first ? PLAYER_META[names.indexOf(first)] : null;
+  // 記録は色(赤/青)で書かれている。名前が分かっている対局では、
+  // 書き換えずに表示のときだけ名前へ置き換える。
+  // 記録そのものを名前で作ると、オンラインで再生がずれてしまう
+  const names = useNames();
+  const colors = PLAYER_META.map((p) => p.name);
+  const parts = text.split(new RegExp(`(${colors.join("|")})`));
+  const first = parts.find((p) => colors.includes(p));
+  const actor = first ? PLAYER_META[colors.indexOf(first)] : null;
   return (
     <li
       className={`log-row ${onPick ? "log-row-tap" : ""} ${active ? "log-row-active" : ""}`}
@@ -118,14 +135,14 @@ export function LogLine({ text, index, active, onPick }) {
       onClick={onPick ? () => onPick(index) : void 0}
     >
       {parts.map((part, i) => {
-        const idx = names.indexOf(part);
+        const idx = colors.indexOf(part);
         return idx >= 0 ? (
           <b
             className="log-who"
             style={{ color: PLAYER_META[idx].soft }}
             key={i}
           >
-            {part}
+            {nameOf(idx, names)}
           </b>
         ) : (
           <span key={i}>{part}</span>
@@ -137,6 +154,7 @@ export function LogLine({ text, index, active, onPick }) {
 }
 
 export function TurnBar({ state, viewer }) {
+  const names = useNames();
   let l = PLAYER_META[state.currentTurn],
     n = state.currentTurn === viewer,
     // 撃破の札を開くまでは、勝敗を先に漏らさない
@@ -165,13 +183,14 @@ export function TurnBar({ state, viewer }) {
           fontWeight: 700,
         }}
       >
-        {n ? `あなた(${l.name})の番です` : `相手(${l.name})の番です`}
+        {playerLabel(state.currentTurn, viewer, names)}の番です
       </span>
-      <span className="turn-log">{log}</span>
+      <span className="turn-log">{withNames(log, names)}</span>
     </div>
   );
 }
 export function CapturedRow({ players, dispatch, viewer }) {
+  const names = useNames();
   let [n, a] = (0, useState)(!1),
     u = players.some((i) => i.discard && i.discard.length > 0);
   return (
@@ -185,7 +204,8 @@ export function CapturedRow({ players, dispatch, viewer }) {
                 color: PLAYER_META[f].color,
               }}
             >
-              {shortPlayerLabel(f, viewer)}({PLAYER_META[f].name})が失った駒
+              {shortPlayerLabel(f, viewer, names)}({PLAYER_META[f].name}
+              )が失った駒
             </div>
             <div className="captured-cards">
               {i.capturedOwn
@@ -218,7 +238,7 @@ export function CapturedRow({ players, dispatch, viewer }) {
               {players.map((i, f) => (
                 <DiscardPanel
                   cards={i.discard}
-                  label={`${shortPlayerLabel(f, viewer)}(${PLAYER_META[f].name})が捨てたカード`}
+                  label={`${shortPlayerLabel(f, viewer, names)}(${PLAYER_META[f].name})が捨てたカード`}
                   color={PLAYER_META[f].color}
                   key={f}
                 />
@@ -241,6 +261,7 @@ export function GameView({
   tutorial,
   youAre,
 }) {
+  const names = useNames();
   let [f, o] = (0, useState)(!1),
     // 記録のどの行を選んでいるか。null なら最終盤面
     [at, setAt] = (0, useState)(null),
@@ -357,7 +378,7 @@ export function GameView({
                 color: "var(--gold-soft)",
               }}
             >
-              {PLAYER_META[state.resignedBy].name}の降参により決着しました。
+              {nameOf(state.resignedBy, names)}の降参により決着しました。
             </p>
           )}
           <p className="hint">
@@ -372,7 +393,7 @@ export function GameView({
                 style={{ "--who": PLAYER_META[v].color }}
                 key={v}
               >
-                {PLAYER_META[v].name}
+                {nameOf(v, names)}
                 {youAre === v ? "(あなた)" : ""}
               </span>
             ))}
@@ -514,7 +535,8 @@ export function GameView({
                     color: PLAYER_META[v].color,
                   }}
                 >
-                  {shortPlayerLabel(v, viewer)}({PLAYER_META[v].name})が失った駒
+                  {shortPlayerLabel(v, viewer, names)}({PLAYER_META[v].name}
+                  )が失った駒
                 </div>
                 <div className="captured-cards">
                   {s.capturedOwn
@@ -604,7 +626,7 @@ export function GameView({
               marginTop: -6,
             }}
           >
-            {PLAYER_META[state.resignedBy].name}が降参しました
+            {nameOf(state.resignedBy, names)}が降参しました
           </p>
         )}
         <div className={`king-card ${lost ? "lose-card" : "win-card"}`}>
@@ -652,6 +674,7 @@ export function GameView({
   );
 }
 export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
+  const names = useNames();
   let [a, u] = (0, useState)(initialState),
     [i, f] = (0, useState)(!1),
     [o, r] = (0, useState)(!1),
@@ -1267,7 +1290,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                       color: PLAYER_META[U].color,
                     }}
                   >
-                    {shortPlayerLabel(U, P)}({PLAYER_META[U].name})
+                    {shortPlayerLabel(U, P, names)}({PLAYER_META[U].name})
                   </span>
                   <Die value={a.dice[U]} color={PLAYER_META[U].color} />
                 </div>
@@ -1365,7 +1388,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                     color: PLAYER_META[U].color,
                   }}
                 >
-                  {shortPlayerLabel(U, P)}({PLAYER_META[U].name})
+                  {shortPlayerLabel(U, P, names)}({PLAYER_META[U].name})
                 </span>
                 <Die value={a.dice[U]} color={PLAYER_META[U].color} />
               </div>
@@ -1377,8 +1400,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
               fontWeight: 700,
             }}
           >
-            {a.firstPlayer === P ? "あなた" : "相手"}(
-            {PLAYER_META[a.firstPlayer].name})が先手です
+            {playerLabel(a.firstPlayer, P, names)}が先手です
           </p>
           {!network || p === 0 ? (
             <button
@@ -1457,7 +1479,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
               color: PLAYER_META[E].color,
             }}
           >
-            {playerLabel(E, P)}: 交換するカードを選んでね
+            {playerLabel(E, P, names)}: 交換するカードを選んでね
           </h2>
           {!tutorial && (
             <p className="hint">
@@ -1477,7 +1499,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
           />
           <DiscardPanel
             cards={a.players[1 - E].discard}
-            label={`${shortPlayerLabel(1 - E, P)}(${PLAYER_META[1 - E].name})が捨てたカード`}
+            label={`${shortPlayerLabel(1 - E, P, names)}(${PLAYER_META[1 - E].name})が捨てたカード`}
             color={PLAYER_META[1 - E].color}
           />
           <button

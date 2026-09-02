@@ -57,15 +57,27 @@ export const PLAYER_META = [
   { name: "青", color: "#3e8e90", soft: "#7ec4c6" },
 ];
 
-/** 視点つきのプレイヤー名。viewer が null なら色名だけ */
-export function playerLabel(idx, viewer) {
-  if (viewer == null) return `${PLAYER_META[idx].name}`;
-  return idx === viewer
-    ? `あなた(${PLAYER_META[idx].name})`
-    : `相手(${PLAYER_META[idx].name})`;
+/**
+ * その席の呼び名。名前が分かっていればそれを、無ければ色名を返す。
+ * names は [先手の名前, 後手の名前]。1台で交互に指すときは誰の名前も無い。
+ */
+export function nameOf(idx, names) {
+  const given = names && names[idx];
+  return given || PLAYER_META[idx].name;
 }
 
-export function shortPlayerLabel(idx, viewer) {
+/** 視点つきのプレイヤー名。viewer が null なら名前(または色名)だけ */
+export function playerLabel(idx, viewer, names) {
+  const who = nameOf(idx, names);
+  if (viewer == null) return who;
+  if (names && names[idx]) {
+    return idx === viewer ? `${who}(あなた)` : who;
+  }
+  return idx === viewer ? `あなた(${who})` : `相手(${who})`;
+}
+
+export function shortPlayerLabel(idx, viewer, names) {
+  if (names && names[idx]) return names[idx];
   if (viewer == null) return PLAYER_META[idx].name;
   return idx === viewer ? "あなた" : "相手";
 }

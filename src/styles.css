@@ -2468,3 +2468,50 @@ h3 {
 .trace-pin {
   z-index: 6;
 }
+
+/* =========================================================================
+   プレイヤーの名前
+   ========================================================================= */
+
+.name-stage {
+  padding: 20px 16px;
+}
+.name-card {
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+.name-eyebrow {
+  color: var(--gold);
+  letter-spacing: 0.18em;
+  font-size: 12px;
+  margin: 0 0 6px;
+}
+.name-input {
+  width: 100%;
+  margin: 16px 0 6px;
+  padding: 14px 12px;
+  font-size: 18px;
+  text-align: center;
+  color: var(--ink);
+  background: rgba(9, 20, 38, 0.9);
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  /* 16px 未満だと iOS が勝手に拡大する */
+  -webkit-appearance: none;
+}
+.name-input:focus {
+  outline: none;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.5);
+}
+.name-input-bad {
+  border-color: #d63c46;
+}
+.name-note {
+  font-size: 12px;
+  color: var(--gold-soft);
+  margin: 0 0 16px;
+}
+.name-note-bad {
+  color: #ffb3b7;
+}

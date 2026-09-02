@@ -32,8 +32,15 @@ import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
-import { isTestPlay } from "../game/profile.js";
+import { hasName, isTestPlay, loadProfile } from "../game/profile.js";
+import { NameEditModal, NameSetupScreen } from "./account.jsx";
+import { NamesProvider } from "./names.jsx";
 import STYLES from "../styles.css";
+
+/** いま端末に登録されている自分の名前。まだ決めていなければ null */
+function myName() {
+  return loadProfile().name || null;
+}
 
 export function GameShell({
   children,
@@ -159,11 +166,15 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
         let m = await readLobbyPath(`/${d}/guest`);
         if (!o.current && m.ok && m.data) {
           clearInterval(r);
-          let s = f.current;
+          let s = f.current,
+            // 相手の名前は、参加時に部屋へ書き込まれている
+            g = await readRoom(s);
+          if (o.current) return;
           (deleteLobbyPath(`/${d}`),
             onRoomReady({
               code: s,
               myPlayerIndex: 0,
+              names: [myName(), (g.data && g.data.guestName) || null],
             }));
         }
       }, 1500);
@@ -211,6 +222,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               (await writeRoom(z, {
                 ...(b.data || {}),
                 guestPresent: !0,
+                guestName: myName(),
               }),
               o.current)
             )
@@ -218,6 +230,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
             onRoomReady({
               code: z,
               myPlayerIndex: 1,
+              names: [(b.data && b.data.hostName) || null, myName()],
             });
             return;
           }
@@ -226,6 +239,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           p = await writeRoom(v, {
             guestPresent: !1,
             gameState: null,
+            hostName: myName(),
           });
         if (o.current) return;
         if (!p.ok) {
@@ -408,6 +422,7 @@ export function RoomScreen({
               onRoomReady({
                 code: f,
                 myPlayerIndex: 0,
+                names: [myName(), N.data.guestName || null],
               }));
           }
         }, 1200);
@@ -421,6 +436,7 @@ export function RoomScreen({
       x = await writeRoom(P, {
         guestPresent: !1,
         gameState: null,
+        hostName: myName(),
       });
     if ((p(!1), !x.ok)) {
       s(x.error);
@@ -451,6 +467,7 @@ export function RoomScreen({
     let N = await writeRoom(P, {
       ...x.data,
       guestPresent: !0,
+      guestName: myName(),
     });
     if ((p(!1), !N.ok)) {
       s(N.error);
@@ -458,6 +475,7 @@ export function RoomScreen({
     }
     onRoomReady({
       code: P,
+      names: [x.data.hostName || null, myName()],
       myPlayerIndex: 1,
     });
   }
@@ -620,7 +638,9 @@ export function RoomScreen({
   );
 }
 export function TotteryApp() {
-  let [e, t] = (0, useState)("home"),
+  // はじめて遊ぶときは、まず名前を決めてもらう
+  let [named, setNamed] = (0, useState)(() => hasName()),
+    [e, t] = (0, useState)("home"),
     [l, n] = (0, useState)(!1),
     [a, u] = (0, useState)(null),
     [i, f] = (0, useState)(5),
@@ -637,16 +657,33 @@ export function TotteryApp() {
   function z(b) {
     (f(b), o === "room" && w(!0), t(o));
   }
-  if (e === "game")
+  // 画面の枠(背景や上のバー)は GameShell が出すので、その中に入れる
+  if (!named)
     return (
-      <GameCore
-        network={a}
-        boardSize={tut ? tut.boardSize : i}
-        cpu={d}
-        tutorial={tut}
-        onExit={s}
-      />
+      <GameShell showRules={l} setShowRules={n}>
+        <NameSetupScreen onDone={() => setNamed(!0)} />
+      </GameShell>
     );
+  if (e === "game") {
+    // 対局中に出す名前。相手の名前が分からない席は色名のまま
+    let me = loadProfile().name || null,
+      seats = a
+        ? a.names || [null, null]
+        : d
+          ? [me, tut ? null : "CPU"]
+          : [null, null];
+    return (
+      <NamesProvider value={seats}>
+        <GameCore
+          network={a}
+          boardSize={tut ? tut.boardSize : i}
+          cpu={d}
+          tutorial={tut}
+          onExit={s}
+        />
+      </NamesProvider>
+    );
+  }
   let g = o === "online" || o === "room" ? "matching" : "room";
   return (
     <GameShell showRules={l} setShowRules={n}>

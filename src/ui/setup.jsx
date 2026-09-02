@@ -6,11 +6,12 @@ import {
   totalSlots,
 } from "../game/board.js";
 
-import { PLAYER_META, RANKS, SUITS } from "../game/constants.js";
+import { PLAYER_META, RANKS, SUITS, nameOf } from "../game/constants.js";
 import { useWindowWidth } from "../hooks.js";
 import { ArrowLeft, Crown, Dice, Grid } from "../icons.jsx";
 import { CardBack, CardFace } from "./cards.jsx";
 import { CardGuide } from "./guides.jsx";
+import { useNames } from "./names.jsx";
 
 export function DiscardPanel({ cards, label, color }) {
   if (!cards || cards.length === 0) return null;
@@ -384,6 +385,7 @@ export function PlaceStep({
   focus,
   terse,
 }) {
+  const names = useNames();
   const [picked, setPicked] = useState(null);
   const guideCard = (id) =>
     !!(focus && focus.cards && focus.cards.includes(id));
@@ -529,7 +531,7 @@ export function PlaceStep({
   return (
     <div className="setup-wrap">
       <h2 style={{ color: PLAYER_META[pIdx].color }}>
-        {PLAYER_META[pIdx].name}: カードを盤面に配置してね
+        {nameOf(pIdx, names)}: カードを盤面に配置してね
       </h2>
       <SetupTimer
         remainingMs={remainingMs}
@@ -675,6 +677,7 @@ export function KingStep({
   focus,
   terse,
 }) {
+  const names = useNames();
   const placement = state.setupPlacements[pIdx];
   const pickedKing = state.setupPickKings[pIdx];
   const [lo, hi] = territoryRows(size, pIdx);
@@ -693,7 +696,7 @@ export function KingStep({
   return (
     <div className="setup-wrap">
       <h2 style={{ color: PLAYER_META[pIdx].color }}>
-        {PLAYER_META[pIdx].name}: どのカードを王にするか決めてね
+        {nameOf(pIdx, names)}: どのカードを王にするか決めてね
       </h2>
       <SetupTimer
         remainingMs={remainingMs}

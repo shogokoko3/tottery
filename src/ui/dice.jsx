@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { dieImg } from "../assets.js";
-import { PLAYER_META } from "../game/constants.js";
+import { PLAYER_META, playerLabel } from "../game/constants.js";
 import { ArrowRight } from "../icons.jsx";
+import { useNames } from "./names.jsx";
 
 export const DIE_PIPS = {
   1: [[1, 1]],
@@ -80,7 +81,8 @@ export function Die({ value, rolling, color, big }) {
   );
 }
 export function DiceStage({ playerIdx, value }) {
-  let l = PLAYER_META[playerIdx],
+  let names = useNames(),
+    l = PLAYER_META[playerIdx],
     [n, a] = (0, useState)(1),
     u = value != null;
   return (
@@ -99,7 +101,7 @@ export function DiceStage({ playerIdx, value }) {
             color: l.color,
           }}
         >
-          相手({l.name})のサイコロ
+          {playerLabel(playerIdx, 1 - playerIdx, names)}のサイコロ
         </h2>
         <div className="die-stage">
           <Die value={n} rolling={!u} color={l.color} big={!0} />
@@ -124,6 +126,7 @@ export function DiceStage({ playerIdx, value }) {
   );
 }
 export function DiceStep({ playerIdx, value, onRoll, onNext }) {
+  let names = useNames();
   let [a, u] = (0, useState)(!1),
     [i, f] = (0, useState)(1),
     o = PLAYER_META[playerIdx];
@@ -148,7 +151,7 @@ export function DiceStep({ playerIdx, value, onRoll, onNext }) {
           color: o.color,
         }}
       >
-        あなた({o.name})のサイコロ
+        {playerLabel(playerIdx, playerIdx, names)}のサイコロ
       </h2>
       <div className="die-stage">
         <Die value={i} rolling={a} color={o.color} big={!0} />
