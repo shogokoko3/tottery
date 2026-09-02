@@ -319,13 +319,13 @@ const EP2 = {
     },
     {
       at: myTurn,
-      text: "b1 の 8♠ で、b4 の相手を取ります。b列は空いているので届きます。",
-      need: { type: "MOVE_PIECE", pieceId: "t2", row: 1, col: 1 },
-      focus: { pieces: ["t2"], cells: [{ row: 1, col: 1 }] },
+      text: "6〜9は進路を塞がれます。味方が前にいると止まり、相手なら取って止まります。",
     },
     {
-      at: myTurnOrEnd,
-      text: "6〜9は進路を塞がれます。味方が前にいると止まり、相手なら取って止まります。",
+      at: myTurn,
+      text: "b列は空いています。b1 の 8♠ で、b4 の相手を取ります。",
+      need: { type: "MOVE_PIECE", pieceId: "t2", row: 1, col: 1 },
+      focus: { pieces: ["t2"], cells: [{ row: 1, col: 1 }] },
     },
     {
       at: myTurn,

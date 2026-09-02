@@ -437,27 +437,51 @@ export function PlaceStep({
     return row >= lo && row <= hi ? { row, col } : null;
   }
 
+  /**
+   * 指を置いたところから始める。
+   * 動かさずに離したら「タップ」、動かして離したら「ドラッグ」として扱う。
+   * pointerdown で既定動作を止めているので click は飛んでこない。ここで両方さばく。
+   */
   function startDrag(e, cardId, from) {
     if (e.button != null && e.button !== 0) return;
     e.preventDefault();
-    setPicked(cardId);
-    setDrag({ cardId, from, x: e.clientX, y: e.clientY });
-    setHover(cellUnder(e.clientX, e.clientY));
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let moved = false;
+    setDrag({ cardId, from, x: startX, y: startY });
+    setHover(null);
+
     const move = (ev) => {
+      if (
+        Math.abs(ev.clientX - startX) > 8 ||
+        Math.abs(ev.clientY - startY) > 8
+      )
+        moved = true;
       setDrag((d) => (d ? { ...d, x: ev.clientX, y: ev.clientY } : d));
-      setHover(cellUnder(ev.clientX, ev.clientY));
+      setHover(moved ? cellUnder(ev.clientX, ev.clientY) : null);
     };
     const up = (ev) => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
-      const at = cellUnder(ev.clientX, ev.clientY);
-      if (at) {
-        place(cardId, at.row, at.col);
-        setPicked(null);
-      }
       setDrag(null);
       setHover(null);
+      if (moved) {
+        const at = cellUnder(ev.clientX, ev.clientY);
+        if (at) {
+          place(cardId, at.row, at.col);
+          setPicked(null);
+        }
+        return;
+      }
+      // 指を動かさなかった＝タップ
+      if (from && picked && picked !== cardId) {
+        // 手札を選んだ状態で盤上の駒をタップ＝そこへ置く(入れ替え)
+        place(picked, from.row, from.col);
+        setPicked(null);
+        return;
+      }
+      setPicked(picked === cardId ? null : cardId);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -584,7 +608,6 @@ export function PlaceStep({
                 guideCard(card.id) ? "guide-target" : ""
               }`}
               onPointerDown={(e) => startDrag(e, card.id, null)}
-              onClick={() => setPicked(picked === card.id ? null : card.id)}
               key={card.id}
             >
               <CardFace rank={card.rank} suit={card.suit} />

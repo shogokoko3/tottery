@@ -187,6 +187,7 @@ export function GameView({
   viewer,
   dispatch,
   onExit,
+  tutorial,
 }) {
   let [f, o] = (0, useState)(!1),
     r = PLAYER_META[state.winner];
@@ -391,7 +392,8 @@ export function GameView({
             marginTop: 10,
           }}
         >
-          {!network || myIdx === 0 ? (
+          {/* チュートリアルは同じ台本をなぞるだけなので、もう一度は出さない */}
+          {tutorial ? null : !network || myIdx === 0 ? (
             <button
               className="btn btn-ghost"
               onClick={() =>
@@ -1599,6 +1601,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             viewer={P}
             dispatch={y}
             onExit={leaveGame}
+            tutorial={tutorial}
           />
         )}
       </div>
