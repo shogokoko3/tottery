@@ -266,7 +266,12 @@ const EP2 = {
     },
     {
       at: atMulligan,
-      text: "今回は引き直しません。「引き直して確定」を押します。",
+      text: "いらない札は捨てて引き直せます。光った 2♠ をタップ。",
+      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t5" },
+      focus: { cards: ["t5"] },
+    },
+    {
+      text: "捨てた札は相手に見えます。「引き直して確定」を押します。",
       need: { type: "CONFIRM_MULLIGAN" },
       focus: { button: true },
     },
@@ -282,9 +287,9 @@ const EP2 = {
       focus: { cards: ["t2"], cells: [{ row: 4, col: 1 }] },
     },
     {
-      text: "9♠ を b2 へ。8♠ の真上に置きます。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t8", row: 3, col: 1 },
-      focus: { cards: ["t8"], cells: [{ row: 3, col: 1 }] },
+      text: "9♠ は a2 へ。8♠ の前を塞ぐと進めなくなるので、避けて置きます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t8", row: 3, col: 0 },
+      focus: { cards: ["t8"], cells: [{ row: 3, col: 0 }] },
     },
     {
       text: "10♠ を d2 へ。10は将棋の桂馬と同じ跳び方をします。",
@@ -314,13 +319,13 @@ const EP2 = {
     },
     {
       at: myTurn,
-      text: "b1 の 8♠ で、b4 の相手を取ります。味方の 9♠ は飛び越えます。",
+      text: "b1 の 8♠ で、b4 の相手を取ります。b列は空いているので届きます。",
       need: { type: "MOVE_PIECE", pieceId: "t2", row: 1, col: 1 },
       focus: { pieces: ["t2"], cells: [{ row: 1, col: 1 }] },
     },
     {
       at: myTurnOrEnd,
-      text: "6〜9は、途中の駒を敵味方を問わず飛び越えられます。塞がれません。",
+      text: "6〜9は進路を塞がれます。味方が前にいると止まり、相手なら取って止まります。",
     },
     {
       at: myTurn,
@@ -330,7 +335,7 @@ const EP2 = {
     },
     {
       at: myTurn,
-      text: "相手が c3 に出ました。王の 6♠ で、c3 と c5 をまとめて取ります。",
+      text: "c列が空きました。王の 6♠ で、c3 と c5 をまとめて取ります。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
       focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
     },
@@ -591,9 +596,9 @@ const EP4 = {
       focus: { cards: ["t12"], cells: [{ row: 4, col: 1 }] },
     },
     {
-      text: "6♠ を d1 へ。これで5枚そろいます。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t9", row: 4, col: 3 },
-      focus: { cards: ["t9"], cells: [{ row: 4, col: 3 }] },
+      text: "6♠ を e1 へ。これで5枚そろいます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t9", row: 4, col: 4 },
+      focus: { cards: ["t9"], cells: [{ row: 4, col: 4 }] },
     },
     {
       text: "「王を選ぶ」を押します。",
@@ -613,9 +618,9 @@ const EP4 = {
     },
     {
       at: myTurn,
-      text: "Aは動けないので、他の駒を動かします。d1 の 6♠ を d3 へ。",
-      need: { type: "MOVE_PIECE", pieceId: "t9", row: 2, col: 3 },
-      focus: { pieces: ["t9"], cells: [{ row: 2, col: 3 }] },
+      text: "Aは動けないので、他の駒を動かします。e1 の 6♠ を e3 へ。",
+      need: { type: "MOVE_PIECE", pieceId: "t9", row: 2, col: 4 },
+      focus: { pieces: ["t9"], cells: [{ row: 2, col: 4 }] },
     },
     {
       at: myTurn,

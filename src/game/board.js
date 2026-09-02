@@ -74,12 +74,15 @@ export function pointInTriangle(p, a, b, c) {
 /* ---------------------------- 移動生成 ---------------------------- */
 
 /**
- * 6〜9用。途中の駒を敵味方問わず飛び越えながら、偶数マス/奇数マスだけに着地する。
+ * 6〜9用。決まった偶奇のマスにだけ着地する。
  *
- * multiCapture(=王のとき)は挙動が変わり、同じ線上に並ぶ相手を手前から順に
- * まとめて取る手だけを返す。静かな移動は生成されない。
+ * 進路は塞がれる。味方の駒に当たったらそこで止まり、越えられない。
+ * 相手の駒に当たったら、着地できる偶奇なら取って止まる。
+ *
+ * multiCapture(=王のとき)だけは、相手の駒を取りながら進み続けられる。
+ * 同じ線に並んだ相手を手前からまとめて取る手を返す。ただし味方には止められる。
  */
-export function jumpMoves(piece, dirs, board, size, parity, multiCapture) {
+export function parityMoves(piece, dirs, board, size, parity, multiCapture) {
   const moves = [];
   for (const [dr, dc] of dirs) {
     let dist = 0;
@@ -93,21 +96,23 @@ export function jumpMoves(piece, dirs, board, size, parity, multiCapture) {
       if (!inBounds(row, col, size)) break;
       const target = board[row][col];
       const okParity = parity === "even" ? dist % 2 === 0 : dist % 2 === 1;
+
+      // 味方は越えられない
+      if (target && target.owner === piece.owner) break;
+
       if (multiCapture) {
-        if (okParity && target && target.owner !== piece.owner) {
+        if (target && okParity) {
           chain.push({ row, col });
           moves.push({ row, col, capture: true, captures: [...chain] });
         }
         continue;
       }
-      if (okParity) {
-        if (target) {
-          if (target.owner !== piece.owner)
-            moves.push({ row, col, capture: true });
-        } else {
-          moves.push({ row, col, capture: false });
-        }
+
+      if (target) {
+        if (okParity) moves.push({ row, col, capture: true });
+        break;
       }
+      if (okParity) moves.push({ row, col, capture: false });
     }
   }
   return moves;
@@ -180,13 +185,13 @@ export function getLegalMoves(piece, board, size, armyRankCounts) {
     case "5":
       return slideMoves(piece, DIAG, board, size, 1, 2 + bonus, null);
     case "6":
-      return jumpMoves(piece, ORTH, board, size, "even", piece.isKing);
+      return parityMoves(piece, ORTH, board, size, "even", piece.isKing);
     case "7":
-      return jumpMoves(piece, DIAG, board, size, "even", piece.isKing);
+      return parityMoves(piece, DIAG, board, size, "even", piece.isKing);
     case "8":
-      return jumpMoves(piece, ORTH, board, size, "odd", piece.isKing);
+      return parityMoves(piece, ORTH, board, size, "odd", piece.isKing);
     case "9":
-      return jumpMoves(piece, DIAG, board, size, "odd", piece.isKing);
+      return parityMoves(piece, DIAG, board, size, "odd", piece.isKing);
     case "10":
       return knightMoves(piece, board, size);
     case "J": {
