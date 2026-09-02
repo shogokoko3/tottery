@@ -143,6 +143,41 @@ export function KingChoiceInterstitial({ state, size, dispatch }) {
     </div>
   );
 }
+/**
+ * 取る手の確認。相手の駒は伏せたままなので、何が取れるかは出さず数だけ伝える。
+ */
+export function CaptureConfirm({ count, squares, onCancel, onConfirm }) {
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div
+        className="modal-panel capture-confirm"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3>
+          {count > 1 ? `${count}体をまとめて取ります` : "この駒を取ります"}
+        </h3>
+        <p className="hint">
+          {squares && squares.length > 0 && (
+            <>
+              対象のマス: <strong>{squares.join(" / ")}</strong>
+              <br />
+            </>
+          )}
+          取った駒の正体は、取ったあとに公開されます。
+        </p>
+        <div className="setup-actions">
+          <button className="btn btn-ghost" onClick={onCancel}>
+            やめる
+          </button>
+          <button className="btn btn-danger" onClick={onConfirm}>
+            取る
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CaptureRevealModal({ reveal, onClose, viewer }) {
   let n = reveal.defeated || [],
     a =

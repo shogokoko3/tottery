@@ -18,9 +18,9 @@ const RANK_VALUE = {
 };
 
 /** 布陣済みのカードから王を選ぶ。Kがあれば必ずK */
-export function pickKing(state) {
-  const me = state.players[state.setupIdx];
-  const placed = Object.keys(state.setupPlacement)
+export function pickKing(state, player = state.setupIdx) {
+  const me = state.players[player];
+  const placed = Object.keys(state.setupPlacements[player])
     .map((id) => me.hand.find((c) => c.id === id))
     .filter(Boolean);
 
@@ -186,16 +186,20 @@ export function cpuAction(state, player) {
   }
 
   if (state.phase === "setup") {
-    if (state.setupIdx !== player) return null;
-    if (state.setupStep === "place") {
-      return Object.keys(state.setupPlacement).length <
+    // 同時配置では自分の番を待たない。順番モードでは今の番だけ動く
+    if (state.setupMode !== "simultaneous" && state.setupIdx !== player)
+      return null;
+    if (!state.setupPlacements) return null;
+    if (state.setupDone[player]) return null;
+    if (state.setupSteps[player] === "place") {
+      return Object.keys(state.setupPlacements[player]).length <
         totalSlots(state.boardSize)
-        ? { type: "SETUP_AUTO_ARRANGE" }
-        : { type: "SETUP_GOTO_KING_STEP" };
+        ? { type: "SETUP_AUTO_ARRANGE", player }
+        : { type: "SETUP_GOTO_KING_STEP", player };
     }
-    return state.setupPickKing
-      ? { type: "SETUP_CONFIRM" }
-      : { type: "SETUP_PICK_KING", cardId: pickKing(state) };
+    return state.setupPickKings[player]
+      ? { type: "SETUP_CONFIRM", player }
+      : { type: "SETUP_PICK_KING", player, cardId: pickKing(state, player) };
   }
 
   if (state.phase === "play") {

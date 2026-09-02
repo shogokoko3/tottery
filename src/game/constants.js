@@ -1,4 +1,4 @@
-export const VERSION = "v47 (CPU対戦を追加)";
+export const VERSION = "v48 (同時配置・持ち時間・チュートリアル)";
 
 export const RANKS = [
   "A",
@@ -16,6 +16,14 @@ export const RANKS = [
   "K",
 ];
 export const SUITS = ["spade", "heart", "diamond", "club"];
+
+/** チュートリアルで段階的に開けていくカードプール */
+export const CARD_POOLS = {
+  basic: ["2", "3", "4", "5"],
+  numbers: ["2", "3", "4", "5", "6", "7", "8", "9", "10"],
+  court: ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"],
+  full: RANKS,
+};
 export const SUIT_SYMBOL = { spade: "♠", heart: "♥", diamond: "♦", club: "♣" };
 
 /** 縦横4方向 */

@@ -4,6 +4,7 @@ import { VERSION } from "../game/constants.js";
 import {
   ArrowLeft,
   ArrowRight,
+  Book,
   Check,
   Crown,
   Dice,
@@ -30,6 +31,8 @@ import {
 import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
+import { TutorialSelect } from "./tutorial.jsx";
+import { isTestPlay } from "../game/profile.js";
 import STYLES from "../styles.css";
 
 export function GameShell({
@@ -39,10 +42,12 @@ export function GameShell({
   netInfo,
   onBack,
   title,
+  sheet,
+  focusButton,
 }) {
   let [i, f] = (0, useState)(!1);
   return (
-    <div className="tottery-root">
+    <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
       <style>{STYLES}</style>
       <header className="top-bar">
         <div className="top-left">
@@ -78,7 +83,13 @@ export function GameShell({
         </div>
       </header>
       {i && <SettingsModal onClose={() => f(!1)} />}
-      <main className="stage">{children}</main>
+      {isTestPlay() && (
+        <div className="test-badge">テストプレイ中 · 時間制限なし</div>
+      )}
+      <main className={`stage ${sheet ? "stage-with-sheet" : ""}`}>
+        {children}
+      </main>
+      {sheet}
       {showRules && <RulesPanel onClose={() => setShowRules(!1)} />}
       <div className="build-tag">
         {netInfo && <span className="net-tag">{netInfo} · </span>}build:{" "}
@@ -100,7 +111,7 @@ export function HomeScreen({ onStart }) {
     </div>
   );
 }
-export function MatchingScreen({ onOnline, onFriend, onCpu }) {
+export function MatchingScreen({ onOnline, onFriend, onCpu, onTutorial }) {
   return (
     <div className="center-stage">
       <h2>対戦相手を選ぶ</h2>
@@ -121,6 +132,12 @@ export function MatchingScreen({ onOnline, onFriend, onCpu }) {
           <Crown size={30} />
           <span className="choice-label">
             CPUと対戦する<small>ひとりで練習・腕試し</small>
+          </span>
+        </button>
+        <button className="btn btn-scroll btn-choice" onClick={onTutorial}>
+          <Book size={30} />
+          <span className="choice-label">
+            チュートリアル<small>ルールとカードの効果を学ぶ</small>
           </span>
         </button>
       </div>
@@ -608,9 +625,10 @@ export function TotteryApp() {
     [a, u] = (0, useState)(null),
     [i, f] = (0, useState)(5),
     [o, r] = (0, useState)("game"),
-    [d, m] = (0, useState)(!1);
+    [d, m] = (0, useState)(!1),
+    [tut, setTut] = (0, useState)(null);
   function s() {
-    (u(null), m(!1), t("home"));
+    (u(null), m(!1), setTut(null), t("home"));
   }
   function v(b) {
     (u(b), t("game"));
@@ -620,7 +638,15 @@ export function TotteryApp() {
     (f(b), o === "room" && w(!0), t(o));
   }
   if (e === "game")
-    return <GameCore network={a} boardSize={i} cpu={d} onExit={s} />;
+    return (
+      <GameCore
+        network={a}
+        boardSize={tut ? tut.boardSize : i}
+        cpu={d}
+        tutorial={tut}
+        onExit={s}
+      />
+    );
   let g = o === "online" || o === "room" ? "matching" : "room";
   return (
     <GameShell showRules={l} setShowRules={n}>
@@ -636,7 +662,18 @@ export function TotteryApp() {
                 (u(null), m(!1), t("room"));
               }}
               onCpu={() => {
-                (u(null), m(!0), r("game"), t("rules"));
+                (u(null), m(!0), setTut(null), r("game"), t("rules"));
+              }}
+              onTutorial={() => {
+                (u(null), t("tutorial"));
+              }}
+            />
+          ),
+          tutorial: (
+            <TutorialSelect
+              onBack={() => t("matching")}
+              onStart={(chosen) => {
+                (setTut(chosen), m(!0), r("game"), t("game"));
               }}
             />
           ),

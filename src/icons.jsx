@@ -159,3 +159,25 @@ export const Flag = (props) => (
     <path d="M5 4.5h13l-2.5 4 2.5 4H5" />
   </IconBase>
 );
+
+export const Lock = (props) => (
+  <IconBase {...props}>
+    <rect x="4" y="10" width="16" height="10" rx="2" />
+    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+  </IconBase>
+);
+
+export const Book = (props) => (
+  <IconBase {...props}>
+    <path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2z" />
+    <path d="M8 3v18" />
+  </IconBase>
+);
+
+export const Hand = (props) => (
+  <IconBase {...props}>
+    <path d="M9 11V5a1.5 1.5 0 0 1 3 0v6" />
+    <path d="M12 11V4a1.5 1.5 0 0 1 3 0v7" />
+    <path d="M15 11V6a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7l-2.2-3.4a1.5 1.5 0 0 1 2.4-1.8L9 14" />
+  </IconBase>
+);

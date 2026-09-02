@@ -83,12 +83,19 @@ export function CardBack({ colorHex, size = "md" }) {
     </div>
   );
 }
-export function Piece({ piece, viewer, isSelected, isPickable, size = "md" }) {
+export function Piece({
+  piece,
+  viewer,
+  isSelected,
+  isPickable,
+  isGuided,
+  size = "md",
+}) {
   let u = PLAYER_META[piece.owner],
     i = piece.owner === viewer;
   return (
     <div
-      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""}`}
+      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""}`}
     >
       {i ? (
         <CardFace

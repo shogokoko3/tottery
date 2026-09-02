@@ -12,6 +12,13 @@ import {
   makePlayer,
 } from "./board.js";
 
+/** 対局の持ち時間 */
+export const CLOCK_INITIAL_MS = 5 * 60 * 1000;
+/** 自分の手番が始まるたびに加算される時間 */
+export const CLOCK_INCREMENT_MS = 10 * 1000;
+/** 布陣に使える時間 */
+export const SETUP_LIMIT_MS = 30 * 1000;
+
 export function initialState() {
   return {
     phase: "intro",
@@ -22,10 +29,22 @@ export function initialState() {
     dice: [null, null],
     diceIdx: 0,
     mulliganIdx: 0,
+    /** 使っているカードプール(チュートリアル用。null なら全部) */
+    pool: null,
+    /** 同時配置か、1台の端末で順番に置くか */
+    setupMode: "sequential",
+    /** 順番に置くときの、いま置いている側 */
     setupIdx: 0,
-    setupStep: "place",
-    setupPickKing: null,
-    setupPlacement: {},
+    /** プレイヤーごとの布陣の進み具合 */
+    setupSteps: ["place", "place"],
+    setupPickKings: [null, null],
+    setupPlacements: [{}, {}],
+    setupDone: [false, false],
+    /** 持ち時間(ミリ秒)。対局開始時に5分ずつ */
+    clocks: [CLOCK_INITIAL_MS, CLOCK_INITIAL_MS],
+    timeoutBy: null,
+    /** 直前に駒が倒れたマス。演出のためだけに持つ */
+    lastDefeat: null,
     board: [],
     pieces: {},
     currentTurn: 0,
@@ -123,6 +142,18 @@ export function removePiece(state, pieceId, opts) {
     log,
     winner,
     pendingKingChoice,
+    // 演出用。倒れたマスを積み、reducer の後始末で lastDefeat にまとめる
+    _defeats: [
+      ...(state._defeats || []),
+      {
+        row: dead.row,
+        col: dead.col,
+        owner: dead.owner,
+        rank: dead.rank,
+        suit: dead.suit,
+        wasKing: !!dead.isKing,
+      },
+    ],
   };
 
   // 王が4か5のとき、同ランクの手駒が倒されると倒した相手を道連れにする
@@ -199,17 +230,195 @@ export function endTurn(state) {
 }
 
 /* =========================================================================
+   布陣まわりの小道具
+   ========================================================================= */
+
+/** 配列の1要素だけ差し替えた新しい配列 */
+function replaceAt(arr, idx, value) {
+  const next = [...arr];
+  next[idx] = value;
+  return next;
+}
+
+/**
+ * その布陣アクションが誰のものか。名乗りが場に合わなければ null を返す。
+ * 同時配置ならアクションが名乗った側、順番に置くならいま番の側だけ。
+ */
+function setupActor(state, action) {
+  if (!state.setupPlacements) return null;
+  const named =
+    action.player === 0 || action.player === 1 ? action.player : null;
+  if (state.setupMode === "simultaneous")
+    return named === null ? state.setupIdx : named;
+  if (named !== null && named !== state.setupIdx) return null;
+  return state.setupIdx;
+}
+
+function withSetupPlacement(state, idx, placement) {
+  return {
+    ...state,
+    setupPlacements: replaceAt(state.setupPlacements, idx, placement),
+  };
+}
+
+/**
+ * 自陣を自動で埋める。keep を渡すと置いてある駒はそのままにして残りだけ埋める。
+ * cellOrder / handOrder は乱数を外から与えるためのもの(通信時の再現用)。
+ */
+export function autoArrange(state, idx, cellOrder, handOrder, keep) {
+  const me = state.players[idx];
+  const slots = totalSlots(state.boardSize);
+  const [lo, hi] = territoryRows(state.boardSize, idx);
+
+  const cells = [];
+  for (let r = lo; r <= hi; r++)
+    for (let c = 0; c < state.boardSize; c++) cells.push({ row: r, col: c });
+
+  const ordered = cellOrder
+    ? cellOrder.map((i) => cells[i]).filter(Boolean)
+    : shuffle(cells);
+  const hand = handOrder
+    ? handOrder.map((id) => me.hand.find((c) => c.id === id)).filter(Boolean)
+    : shuffle(me.hand);
+
+  const placement = keep ? { ...keep } : {};
+  const counts = placedRankCounts(placement, me.hand);
+  const takenIds = new Set(Object.keys(placement));
+  const takenCells = new Set(
+    Object.values(placement).map((at) => `${at.row}-${at.col}`),
+  );
+  const free = ordered.filter((at) => !takenCells.has(`${at.row}-${at.col}`));
+
+  let cursor = 0;
+  for (const card of hand) {
+    if (Object.keys(placement).length >= slots) break;
+    if (takenIds.has(card.id)) continue;
+    if (card.rank === "K") {
+      if ((counts.K || 0) >= 1 || (counts.J || 0) > 1 || (counts.Q || 0) > 1)
+        continue;
+    } else {
+      const hasK = (counts.K || 0) > 0;
+      const limit = maxAdopt(card.rank, hasK ? "K" : null);
+      if ((counts[card.rank] || 0) >= limit) continue;
+    }
+    const at = free[cursor++];
+    if (!at) break;
+    placement[card.id] = at;
+    counts[card.rank] = (counts[card.rank] || 0) + 1;
+  }
+  return placement;
+}
+
+/**
+ * 布陣が時間切れになったときに使う王。
+ * Kを採用しているならK、いなければ一番強いランク。
+ */
+export function autoPickKing(state, idx, placement) {
+  const me = state.players[idx];
+  const ids = Object.keys(placement);
+  const cards = ids
+    .map((id) => me.hand.find((c) => c.id === id))
+    .filter(Boolean);
+  if (cards.length === 0) return null;
+  const k = cards.find((c) => c.rank === "K");
+  if (k) return k.id;
+  const order = [
+    "A",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "J",
+    "Q",
+    "K",
+  ];
+  return cards.reduce((best, c) =>
+    order.indexOf(c.rank) > order.indexOf(best.rank) ? c : best,
+  ).id;
+}
+
+/* =========================================================================
    reducer
    ========================================================================= */
 
 export function reducer(state, action) {
+  const next = coreReducer(state, action);
+  return afterAction(state, next, action);
+}
+
+/**
+ * 全アクション共通の後始末。
+ * 持ち時間の増減と、演出のための「倒れたマス」の取りまとめをここでやる。
+ */
+function afterAction(prev, next, action) {
+  let out = next;
+
+  if (out._defeats || out._defeatVia) {
+    const cells = out._defeats || [];
+    out = { ...out };
+    delete out._defeats;
+    delete out._defeatVia;
+    if (cells.length)
+      out.lastDefeat = {
+        cells,
+        by: prev.currentTurn,
+        via: next._defeatVia || "capture",
+        seq: (prev.lastDefeat ? prev.lastDefeat.seq : 0) + 1,
+      };
+  }
+
+  // 手番が移ったら、使った分を引いて、始まる側に加算する
+  if (
+    prev.phase === "play" &&
+    out.phase === "play" &&
+    out.clocks &&
+    out.currentTurn !== prev.currentTurn
+  ) {
+    const spent = Math.max(0, action.elapsedMs || 0);
+    const mover = prev.currentTurn;
+    const clocks = [...out.clocks];
+    clocks[mover] = Math.max(0, clocks[mover] - spent);
+    // 考えた時間が持ち時間を超えたら、その場で負け。
+    // 画面側の秒読みに頼らず、ここで決着させておく
+    if (clocks[mover] <= 0) {
+      out = {
+        ...out,
+        clocks,
+        phase: "gameover",
+        winner: 1 - mover,
+        timeoutBy: mover,
+        interstitial: null,
+        log: [
+          ...out.log,
+          `${PLAYER_META[mover].name}の持ち時間が尽きた…${PLAYER_META[1 - mover].name}の勝利!`,
+        ],
+      };
+    } else {
+      clocks[out.currentTurn] = clocks[out.currentTurn] + CLOCK_INCREMENT_MS;
+      out = { ...out, clocks };
+    }
+  }
+
+  return out;
+}
+
+function coreReducer(state, action) {
   switch (action.type) {
     case "START_SETUP": {
       const size = action.size;
-      const deck = action.deck || shuffle(buildDeck());
-      const hand0 = deck.slice(0, 13);
-      const hand1 = deck.slice(13, 26);
-      const reserve = deck.slice(26);
+      const deck = action.deck || shuffle(buildDeck(action.pool));
+      // 小さいカードプールでは手札も減らす。予備札が尽きると引き直せなくなる
+      const handSize =
+        action.handSize ||
+        Math.max(totalSlots(size), Math.min(13, Math.floor(deck.length / 3)));
+      const hand0 = deck.slice(0, handSize);
+      const hand1 = deck.slice(handSize, handSize * 2);
+      const reserve = deck.slice(handSize * 2);
       const players = [makePlayer(0), makePlayer(1)];
       players[0].hand = hand0;
       players[1].hand = hand1;
@@ -218,6 +427,9 @@ export function reducer(state, action) {
         boardSize: size,
         players,
         reserve,
+        setupMode:
+          action.setupMode === "simultaneous" ? "simultaneous" : "sequential",
+        pool: action.pool || null,
         phase: "dice",
         interstitial: { forPlayer: 0, kind: "dice" },
       };
@@ -287,7 +499,7 @@ export function reducer(state, action) {
         if (i !== idx) return p;
         const picked = new Set(p._mulliganSelected || []);
         if (picked.has(action.cardId)) picked.delete(action.cardId);
-        else picked.add(action.cardId);
+        else if (picked.size < state.reserve.length) picked.add(action.cardId);
         return { ...p, _mulliganSelected: [...picked] };
       });
       return { ...state, players };
@@ -339,22 +551,29 @@ export function reducer(state, action) {
         reserve: rest,
         phase: "setup",
         setupIdx: state.firstPlayer,
-        setupStep: "place",
-        setupPickKing: null,
-        setupPlacement: {},
+        setupSteps: ["place", "place"],
+        setupPickKings: [null, null],
+        setupPlacements: [{}, {}],
+        setupDone: [false, false],
         log,
-        interstitial: { forPlayer: state.firstPlayer, kind: "setup" },
+        interstitial:
+          state.setupMode === "simultaneous"
+            ? null
+            : { forPlayer: state.firstPlayer, kind: "setup" },
       };
     }
 
     case "SETUP_PLACE_CARD": {
-      const idx = state.setupIdx;
+      const idx = setupActor(state, action);
+      if (idx === null || state.setupDone[idx]) return state;
       const me = state.players[idx];
       const slots = totalSlots(state.boardSize);
       const card = me.hand.find((c) => c.id === action.cardId);
       if (!card) return state;
+      const [lo, hi] = territoryRows(state.boardSize, idx);
+      if (action.row < lo || action.row > hi) return state;
 
-      const placement = { ...state.setupPlacement };
+      const placement = { ...state.setupPlacements[idx] };
       if (!placement[action.cardId]) {
         if (Object.keys(placement).length >= slots) return state;
         const counts = placedRankCounts(placement, me.hand);
@@ -383,75 +602,60 @@ export function reducer(state, action) {
         else return state;
       }
       placement[action.cardId] = { row: action.row, col: action.col };
-      return { ...state, setupPlacement: placement };
+      return withSetupPlacement(state, idx, placement);
     }
 
     case "SETUP_UNPLACE_CARD": {
-      const placement = { ...state.setupPlacement };
+      const idx = setupActor(state, action);
+      if (idx === null || state.setupDone[idx]) return state;
+      const placement = { ...state.setupPlacements[idx] };
       delete placement[action.cardId];
-      return { ...state, setupPlacement: placement };
+      return withSetupPlacement(state, idx, placement);
     }
 
     case "SETUP_AUTO_ARRANGE": {
-      const idx = state.setupIdx;
-      const me = state.players[idx];
-      const slots = totalSlots(state.boardSize);
-      const [lo, hi] = territoryRows(state.boardSize, idx);
-
-      const cells = [];
-      for (let r = lo; r <= hi; r++)
-        for (let c = 0; c < state.boardSize; c++)
-          cells.push({ row: r, col: c });
-
-      const cellOrder = action.cellOrder
-        ? action.cellOrder.map((i) => cells[i]).filter(Boolean)
-        : shuffle(cells);
-      const handOrder = action.handOrder
-        ? action.handOrder
-            .map((id) => me.hand.find((c) => c.id === id))
-            .filter(Boolean)
-        : shuffle(me.hand);
-
-      const chosen = [];
-      const counts = {};
-      for (const card of handOrder) {
-        if (chosen.length >= slots) break;
-        if (card.rank === "K") {
-          if (
-            (counts.K || 0) >= 1 ||
-            (counts.J || 0) > 1 ||
-            (counts.Q || 0) > 1
-          )
-            continue;
-        } else {
-          const hasK = (counts.K || 0) > 0;
-          const limit = maxAdopt(card.rank, hasK ? "K" : null);
-          if ((counts[card.rank] || 0) >= limit) continue;
-        }
-        chosen.push(card);
-        counts[card.rank] = (counts[card.rank] || 0) + 1;
-      }
-
-      const placement = {};
-      chosen.forEach((card, i) => {
-        placement[card.id] = cellOrder[i];
-      });
-      return { ...state, setupPlacement: placement };
+      const idx = setupActor(state, action);
+      if (idx === null || state.setupDone[idx]) return state;
+      const placement = autoArrange(
+        state,
+        idx,
+        action.cellOrder,
+        action.handOrder,
+        action.keep ? state.setupPlacements[idx] : null,
+      );
+      return withSetupPlacement(state, idx, placement);
     }
 
-    case "SETUP_GOTO_KING_STEP":
+    case "SETUP_GOTO_KING_STEP": {
+      const idx = setupActor(state, action);
+      if (idx === null) return state;
       if (
-        Object.keys(state.setupPlacement).length !== totalSlots(state.boardSize)
+        Object.keys(state.setupPlacements[idx]).length !==
+        totalSlots(state.boardSize)
       )
         return state;
-      return { ...state, setupStep: "king", setupPickKing: null };
+      return {
+        ...state,
+        setupSteps: replaceAt(state.setupSteps, idx, "king"),
+        setupPickKings: replaceAt(state.setupPickKings, idx, null),
+      };
+    }
 
-    case "SETUP_BACK_TO_PLACE":
-      return { ...state, setupStep: "place", setupPickKing: null };
+    case "SETUP_BACK_TO_PLACE": {
+      const idx = setupActor(state, action);
+      if (idx === null) return state;
+      return {
+        ...state,
+        setupSteps: replaceAt(state.setupSteps, idx, "place"),
+        setupPickKings: replaceAt(state.setupPickKings, idx, null),
+      };
+    }
 
     case "SETUP_PICK_KING": {
-      const me = state.players[state.setupIdx];
-      const placement = state.setupPlacement;
+      const idx = setupActor(state, action);
+      if (idx === null) return state;
+      const me = state.players[idx];
+      const placement = state.setupPlacements[idx];
       const card = me.hand.find((c) => c.id === action.cardId);
       if (!card || !placement[action.cardId]) return state;
       // Kを布陣に入れているなら、王はそのKでなければならない
@@ -459,18 +663,25 @@ export function reducer(state, action) {
         (id) => me.hand.find((c) => c.id === id).rank === "K",
       );
       if (hasK && card.rank !== "K") return state;
-      return { ...state, setupPickKing: action.cardId };
+      return {
+        ...state,
+        setupPickKings: replaceAt(state.setupPickKings, idx, action.cardId),
+      };
     }
 
     case "SETUP_CONFIRM": {
-      if (!(action.kingId || state.setupPickKing)) return state;
-      const idx = state.setupIdx;
+      const idx = setupActor(state, action);
+      if (idx === null || state.setupDone[idx]) return state;
+      const placement = action.placement || state.setupPlacements[idx];
+      const kingId = action.kingId || state.setupPickKings[idx];
+      if (!kingId || !placement[kingId]) return state;
+      const ids = Object.keys(placement);
+      if (ids.length !== totalSlots(state.boardSize)) return state;
+
       const players = [...state.players];
       const me = { ...players[idx] };
-      const placement = action.placement || state.setupPlacement;
-      const kingId = action.kingId || state.setupPickKing;
-      const ids = Object.keys(placement);
-
+      // 自分の手札にない札が混じった布陣は受け付けない
+      if (ids.some((id) => !me.hand.some((c) => c.id === id))) return state;
       const rankCounts = {};
       const board = state.board.length
         ? state.board.map((r) => [...r])
@@ -500,37 +711,63 @@ export function reducer(state, action) {
       me.hand = me.hand.filter((c) => !ids.includes(c.id));
       me.armyRankCounts = rankCounts;
       me.kingId = kingId;
+      me.ready = true;
       players[idx] = me;
 
+      const setupDone = replaceAt(state.setupDone, idx, true);
       const log = [...state.log, `${PLAYER_META[idx].name}が布陣を完了`];
-
-      if (idx === state.firstPlayer) {
-        const next = 1 - state.firstPlayer;
-        return {
-          ...state,
-          players,
-          board,
-          pieces,
-          setupIdx: next,
-          setupStep: "place",
-          setupPickKing: null,
-          setupPlacement: {},
-          log,
-          interstitial: { forPlayer: next, kind: "setup" },
-        };
-      }
-      return {
+      const base = {
         ...state,
         players,
         board,
         pieces,
+        setupDone,
+        setupPlacements: replaceAt(state.setupPlacements, idx, placement),
+        setupPickKings: replaceAt(state.setupPickKings, idx, kingId),
+        setupSteps: replaceAt(state.setupSteps, idx, "done"),
+        log,
+      };
+
+      // 相手がまだなら待つ。順番に置くモードでは端末を渡す
+      if (!setupDone[1 - idx]) {
+        const other = 1 - idx;
+        if (state.setupMode === "simultaneous") return base;
+        return {
+          ...base,
+          setupIdx: other,
+          interstitial: { forPlayer: other, kind: "setup" },
+        };
+      }
+
+      const first = state.firstPlayer;
+      return {
+        ...base,
         phase: "play",
-        currentTurn: state.firstPlayer,
+        currentTurn: first,
+        clocks: replaceAt(
+          base.clocks,
+          first,
+          base.clocks[first] + CLOCK_INCREMENT_MS,
+        ),
+        log: [...log, `--- 対局開始:${PLAYER_META[first].name}の番 ---`],
+        interstitial: { forPlayer: first, kind: "turn" },
+      };
+    }
+
+    case "CLOCK_TIMEOUT": {
+      const loser = action.player;
+      if (state.winner !== null && state.winner !== undefined) return state;
+      if (state.phase !== "play") return state;
+      return {
+        ...state,
+        phase: "gameover",
+        winner: 1 - loser,
+        timeoutBy: loser,
+        clocks: replaceAt(state.clocks, loser, 0),
         log: [
-          ...log,
-          `--- 対局開始:${PLAYER_META[state.firstPlayer].name}の番 ---`,
+          ...state.log,
+          `${PLAYER_META[loser].name}の持ち時間が尽きた…${PLAYER_META[1 - loser].name}の勝利!`,
         ],
-        interstitial: { forPlayer: state.firstPlayer, kind: "turn" },
       };
     }
 
@@ -615,6 +852,7 @@ export function reducer(state, action) {
 
       // 3つとも味方なら、三角形の内側にいる相手を包囲で取る
       if (ids.every((id) => pieces[id].owner === state.currentTurn)) {
+        next = { ...next, _defeatVia: "surround" };
         const [a, b, c] = ids.map((id) => ({
           row: pieces[id].row,
           col: pieces[id].col,

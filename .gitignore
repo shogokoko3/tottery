@@ -1,3 +1,5 @@
 node_modules/
 .DS_Store
 .claude/
+# 配信用の書き出し先。ビルドで毎回作られる
+dist/

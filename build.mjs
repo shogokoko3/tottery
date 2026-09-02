@@ -31,5 +31,14 @@ const template = fs.readFileSync("index.template.html", "utf8");
 const html = template.replace("__BUNDLE__", () => js);
 fs.writeFileSync("index.html", html);
 
+// 配信用。ここに置いたものだけが公開される。
+// リポジトリの中身(src や tools)を一緒に配らないための箱
+fs.mkdirSync("dist", { recursive: true });
+fs.writeFileSync("dist/index.html", html);
+for (const name of ["_headers", "_redirects"])
+  if (fs.existsSync(name)) fs.copyFileSync(name, `dist/${name}`);
+
 const kb = (n) => (n / 1024).toFixed(0) + "KB";
-console.log(`\nindex.html を書き出しました: ${kb(Buffer.byteLength(html))} (スクリプト ${kb(Buffer.byteLength(js))})`);
+console.log(
+  `\nindex.html と dist/index.html を書き出しました: ${kb(Buffer.byteLength(html))} (スクリプト ${kb(Buffer.byteLength(js))})`,
+);

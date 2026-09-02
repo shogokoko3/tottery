@@ -2,11 +2,17 @@ import { RANKS, SUITS, ORTH, DIAG, KNIGHT_OFFSETS } from "./constants.js";
 
 /* ---------------------------- デッキ ---------------------------- */
 
-export function buildDeck() {
+/**
+ * デッキを組む。ranks を渡すと、そのランクだけの小さなデッキになる。
+ * チュートリアルでカードプールを絞るために使う。
+ */
+export function buildDeck(ranks) {
+  const use =
+    ranks && ranks.length ? RANKS.filter((r) => ranks.includes(r)) : RANKS;
   const deck = [];
   let n = 0;
   for (const suit of SUITS)
-    for (const rank of RANKS) deck.push({ id: `c${n++}`, rank, suit });
+    for (const rank of use) deck.push({ id: `c${n++}`, rank, suit });
   return deck;
 }
 

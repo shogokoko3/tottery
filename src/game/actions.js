@@ -8,7 +8,10 @@ import { shuffle, buildDeck } from "./board.js";
 export function enrichAction(action, state) {
   switch (action.type) {
     case "START_SETUP":
-      return { ...action, deck: shuffle(buildDeck()).map((c) => ({ ...c })) };
+      return {
+        ...action,
+        deck: shuffle(buildDeck(action.pool)).map((c) => ({ ...c })),
+      };
     case "ROLL_DICE_SINGLE":
       return { ...action, value: 1 + Math.floor(Math.random() * 6) };
     case "CONFIRM_MULLIGAN":

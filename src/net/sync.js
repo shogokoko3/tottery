@@ -36,12 +36,19 @@ export function withLocalContext(action, state) {
           ...(state.players[state.mulliganIdx]._mulliganSelected || []),
         ],
       };
-    case "SETUP_CONFIRM":
+    case "SETUP_CONFIRM": {
+      // 同時配置では相手の布陣を受け取っていないので、自分の分を丸ごと積んで送る
+      const idx =
+        action.player === 1 || action.player === 0
+          ? action.player
+          : state.setupIdx;
       return {
         ...action,
-        placement: state.setupPlacement,
-        kingId: state.setupPickKing,
+        player: idx,
+        placement: action.placement || state.setupPlacements[idx],
+        kingId: action.kingId || state.setupPickKings[idx],
       };
+    }
     case "CONFIRM_SHUFFLE":
       return {
         ...action,

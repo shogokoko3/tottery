@@ -1,0 +1,26 @@
+# Netlify の設定。GitHub に push すると、この通りに組み立てて配信される。
+#
+#   ビルド      : npm ci でパッケージを入れて、node build.mjs で1枚のHTMLを作る
+#   公開する場所: dist/ だけ。src や tools は配らない
+#
+# 単体HTMLなので、これ以外の設定は要らない。
+
+[build]
+  command = "npm ci && node build.mjs"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# 中身が data URI で全部入っている1枚もの。
+# 古いものが残ると更新に気づけないので、毎回取りに行かせる
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
