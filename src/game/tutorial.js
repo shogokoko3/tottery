@@ -176,7 +176,7 @@ const EP1 = {
     },
     {
       at: myTurnOrEnd,
-      text: "あなたの 4♠ も一緒に倒れました。相手の王が4のとき、4を取ると道連れにされます。",
+      text: "あなたの 4♠ も一緒に倒れました。相手の王が4だと、4を取ると道連れにされます。",
       focus: { pieces: ["t0"], cells: [{ row: 2, col: 2 }] },
     },
     {
@@ -191,7 +191,7 @@ const EP1 = {
     },
     {
       at: myTurn,
-      text: "相手の王が c3 に出てきました。5♠ で取れば決着です。",
+      text: "c3 に出てきた駒を、5♠ で取ります。",
       need: { type: "MOVE_PIECE", pieceId: "t4", row: 2, col: 2 },
       focus: { pieces: ["t4"], cells: [{ row: 2, col: 2 }] },
     },
@@ -423,7 +423,13 @@ const EP3 = {
     },
     {
       at: atMulligan,
-      text: "今回は引き直しません。「引き直して確定」を押します。",
+      // Kを王にすると J と Q は1枚ずつ。余った J♥ を捨てさせる
+      text: "Kを王にすると J と Q は1枚ずつしか使えません。余る J♥ をタップ。",
+      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t12" },
+      focus: { cards: ["t12"] },
+    },
+    {
+      text: "捨てた札は相手に見えます。「引き直して確定」を押します。",
       need: { type: "CONFIRM_MULLIGAN" },
       focus: { button: true },
     },
@@ -490,7 +496,7 @@ const EP3 = {
     },
     {
       at: myTurn,
-      text: "相手の王が c5 にいます。K♠ で取って決着です。",
+      text: "c5 の駒を K♠ で取ります。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
       focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
     },
@@ -627,7 +633,7 @@ const EP4 = {
     },
     {
       at: myTurn,
-      text: "相手の王が c2 まで踏み込みました。b2 の A♠ をタップし、c1 の 4♠ をタップ。",
+      text: "相手が c2 まで踏み込みました。b2 の A♠ をタップし、c1 の 4♠ をタップ。",
       need: { type: "TOGGLE_SHUFFLE_PICK", id: "t11" },
       focus: { pieces: ["t0", "t11"] },
     },
