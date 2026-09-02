@@ -98,6 +98,36 @@ export function ClockBar({ clocks, currentTurn, viewer }) {
   );
 }
 
+/**
+ * 対局の記録の1行。
+ * 「青が赤のA♦を撃破!」のように色名が2つ出るので、
+ * それぞれその色で書いて、どちらが何をしたのか読み取れるようにする。
+ */
+export function LogLine({ text }) {
+  const names = PLAYER_META.map((p) => p.name);
+  const parts = text.split(new RegExp(`(${names.join("|")})`));
+  const first = parts.find((p) => names.includes(p));
+  const actor = first ? PLAYER_META[names.indexOf(first)] : null;
+  return (
+    <li className="log-row" style={actor ? { "--who": actor.color } : void 0}>
+      {parts.map((part, i) => {
+        const idx = names.indexOf(part);
+        return idx >= 0 ? (
+          <b
+            className="log-who"
+            style={{ color: PLAYER_META[idx].soft }}
+            key={i}
+          >
+            {part}
+          </b>
+        ) : (
+          <span key={i}>{part}</span>
+        );
+      })}
+    </li>
+  );
+}
+
 export function TurnBar({ state, viewer }) {
   let l = PLAYER_META[state.currentTurn],
     n = state.currentTurn === viewer,
@@ -341,7 +371,7 @@ export function GameView({
             <div className="tray-label">対局の記録</div>
             <ol className="log-list">
               {m.length ? (
-                m.map((s, v) => <li key={v}>{s}</li>)
+                m.map((s, v) => <LogLine text={s} key={v} />)
               ) : (
                 <li>特筆すべき出来事はありませんでした</li>
               )}

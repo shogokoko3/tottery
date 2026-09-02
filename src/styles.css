@@ -2135,3 +2135,23 @@ h3 {
     animation: none;
   }
 }
+
+/* 対局の記録。誰が何をしたのか、色で追えるようにする */
+.log-list {
+  padding-left: 0;
+  list-style: none;
+}
+.log-row {
+  position: relative;
+  padding: 5px 8px 5px 12px;
+  border-left: 3px solid var(--who, transparent);
+  border-radius: 0 5px 5px 0;
+  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 4px;
+}
+.log-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.06);
+}
+.log-who {
+  font-weight: 700;
+}
