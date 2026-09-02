@@ -1152,7 +1152,7 @@ function coreReducer(state, action) {
         twiceKing && defeated.length === 0 && moved && moved.alive
           ? [
               ...next.log,
-              `${PLAYER_META[state.currentTurn].name}の王が${nth}に移動 (${squareName(mover.row, mover.col, state.boardSize)} → ${squareName(action.row, action.col, state.boardSize)})`,
+              `${PLAYER_META[state.currentTurn].name}が${nth}に移動 (${squareName(mover.row, mover.col, state.boardSize)} → ${squareName(action.row, action.col, state.boardSize)})`,
             ]
           : next.log;
 
