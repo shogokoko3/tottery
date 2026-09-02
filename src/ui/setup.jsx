@@ -438,6 +438,11 @@ export function PlaceStep({
     dispatch({ type: "SETUP_PLACE_CARD", player: pIdx, cardId, row, col });
   }
 
+  function unplace(cardId) {
+    dispatch({ type: "SETUP_UNPLACE_CARD", player: pIdx, cardId });
+    setPicked((p) => (p === cardId ? null : p));
+  }
+
   /** ポインタ位置の下にある自陣マスを拾う */
   function cellUnder(x, y) {
     const el = document.elementFromPoint(x, y);
@@ -479,10 +484,20 @@ export function PlaceStep({
       setHover(null);
       if (moved) {
         const at = cellUnder(ev.clientX, ev.clientY);
-        if (at) {
-          place(cardId, at.row, at.col);
-          setPicked(null);
+        // 盤の外へ運んだら手札に戻す。9×9のマスは小さいので、
+        // 指がわずかに動いただけでも「運んだ」ことになる。
+        // 出発したマスに戻ってきただけなら、タップと同じに扱う
+        if (from && !at) {
+          unplace(cardId);
+          return;
         }
+        if (!at) return;
+        if (from && at.row === from.row && at.col === from.col) {
+          setPicked(picked === cardId ? null : cardId);
+          return;
+        }
+        place(cardId, at.row, at.col);
+        setPicked(null);
         return;
       }
       // 指を動かさなかった＝タップ
@@ -533,6 +548,7 @@ export function PlaceStep({
       ) : (
         <p className="hint">
           手札を自陣へドラッグ。タップで選んでからマスをタップでも置けます。
+          盤の外へドラッグすると手札に戻せます。
           <span className="legend-dot" />
           はその駒が動ける先です。
           <strong className="hint-count">
@@ -594,14 +610,7 @@ export function PlaceStep({
         <button
           className="btn btn-ghost"
           style={{ marginBottom: 12 }}
-          onClick={() => {
-            dispatch({
-              type: "SETUP_UNPLACE_CARD",
-              player: pIdx,
-              cardId: picked,
-            });
-            setPicked(null);
-          }}
+          onClick={() => unplace(picked)}
         >
           この駒を手札に戻す
         </button>

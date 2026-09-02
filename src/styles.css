@@ -2245,3 +2245,135 @@ h3 {
   opacity: 1;
   background: rgba(212, 175, 55, 0.2);
 }
+
+/* =========================================================================
+   対局の記録から盤面を見るとき
+   ========================================================================= */
+
+/* どちらの軍の駒かを、枠の色で見分けられるようにする */
+.side-ring::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--who);
+  border-radius: 7px;
+  box-shadow: 0 0 7px color-mix(in srgb, var(--who) 55%, transparent);
+  pointer-events: none;
+}
+.side-legend {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.side-key {
+  color: var(--who);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.side-key::before {
+  content: "";
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  border: 2px solid var(--who);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--who) 55%, transparent);
+}
+
+/* その手で駒がどこからどこへ動き、どこが倒れたか。
+   駒とマスはほぼ同じ大きさなので、枠で示すと持ち主の色枠と重なって濁る。
+   出発点(空きマス)だけ枠で示し、駒がいるマスは角のしるしで示す */
+.cell.trace-from::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 5px;
+  border: 2px dashed var(--gold-soft);
+  background: rgba(212, 175, 55, 0.16);
+  pointer-events: none;
+  z-index: 1;
+}
+.cell.trace-to {
+  background: rgba(212, 175, 55, 0.22);
+}
+.cell.trace-taken {
+  background: rgba(214, 60, 70, 0.4);
+}
+/* 跡の枠は駒の下に敷く。駒の持ち主を示す色枠を隠さないため */
+.review-panel .piece-wrap {
+  z-index: 2;
+}
+.trace-pin {
+  position: absolute;
+  top: -3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  z-index: 4;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+.trace-pin-to {
+  left: -3px;
+  background: var(--gold);
+  color: #1b1405;
+}
+.trace-pin-taken {
+  right: -3px;
+  background: #d63c46;
+  color: #fff;
+}
+.trace-legend {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 11px;
+}
+.trace-key {
+  padding: 3px 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.trace-key-from {
+  border: 1px dashed var(--gold-soft);
+  color: var(--gold-soft);
+  background: rgba(212, 175, 55, 0.16);
+}
+.trace-key-to {
+  border: 1px solid transparent;
+  color: var(--gold);
+  background: rgba(212, 175, 55, 0.22);
+}
+.trace-key-to::before {
+  content: "着";
+  background: var(--gold);
+  color: #1b1405;
+  border-radius: 999px;
+  padding: 0 4px;
+  font-weight: 700;
+}
+.trace-key-taken {
+  border: 1px solid transparent;
+  background: rgba(214, 60, 70, 0.4);
+  color: #ffc2c5;
+}
+.trace-key-taken::before {
+  content: "\00d7";
+  background: #d63c46;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0 5px;
+  font-weight: 700;
+}

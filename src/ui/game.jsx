@@ -250,6 +250,24 @@ export function GameView({
     let d = viewer === 1,
       replay = state.replay || [],
       shownBoard = at !== null && replay[at] ? replay[at].board : state.board,
+      // 選んだ記録の「どこから・どこへ・どこが倒れたか」
+      mark = at !== null && replay[at] ? replay[at].mark : null,
+      hit = (list, row, col) =>
+        !!(
+          list &&
+          list.some &&
+          list.some((c) => c.row === row && c.col === col)
+        ),
+      traceOf = (row, col) => {
+        if (!mark) return "";
+        let out = "";
+        if (mark.from && mark.from.row === row && mark.from.col === col)
+          out += " trace-from";
+        if (mark.to && mark.to.row === row && mark.to.col === col)
+          out += " trace-to";
+        if (hit(mark.taken, row, col)) out += " trace-taken";
+        return out;
+      },
       m = state.log.filter(
         (s) =>
           s.includes("撃破") ||
@@ -294,6 +312,27 @@ export function GameView({
               ? "最終盤面(すべての駒を公開)。駒をタップすると、その駒の動きを追えます。"
               : `${at + 1}番目の出来事の直後の盤面です。`}
           </p>
+          <div className="side-legend">
+            {state.players.map((s, v) => (
+              <span
+                className="side-key"
+                style={{ "--who": PLAYER_META[v].color }}
+                key={v}
+              >
+                {PLAYER_META[v].name}
+                {youAre === v ? "(あなた)" : ""}
+              </span>
+            ))}
+          </div>
+          {at !== null && mark && (
+            <div className="trace-legend">
+              <span className="trace-key trace-key-from">動く前</span>
+              <span className="trace-key trace-key-to">動いた先</span>
+              {mark.taken && mark.taken.length > 0 && (
+                <span className="trace-key trace-key-taken">取られた駒</span>
+              )}
+            </div>
+          )}
           {at !== null && (
             <button
               className="btn btn-ghost"
@@ -322,7 +361,7 @@ export function GameView({
                     b = territoryOwnerOf(z, g, size);
                   return (
                     <div
-                      className={`cell ${b !== null ? `zone-${b}` : ""}`}
+                      className={`cell ${b !== null ? `zone-${b}` : ""}${traceOf(z, g)}`}
                       onClick={() => {
                         // 過去の盤面には駒の来歴が無いので、最終盤面のときだけ追える
                         A &&
@@ -334,8 +373,20 @@ export function GameView({
                       }}
                       key={`${z}-${g}`}
                     >
+                      {mark &&
+                        mark.to &&
+                        mark.to.row === z &&
+                        mark.to.col === g && (
+                          <span className="trace-pin trace-pin-to">着</span>
+                        )}
+                      {hit(mark && mark.taken, z, g) && (
+                        <span className="trace-pin trace-pin-taken">×</span>
+                      )}
                       {A && (
-                        <div className="piece-wrap">
+                        <div
+                          className="piece-wrap side-ring"
+                          style={{ "--who": PLAYER_META[A.owner].color }}
+                        >
                           <CardFace
                             rank={A.rank}
                             suit={A.suit}

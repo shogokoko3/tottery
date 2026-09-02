@@ -399,11 +399,27 @@ function afterAction(prev, next, action) {
             : null,
         ),
       );
+      // 動いた駒の出発点と着地点、そしてこの手で倒れたマス。
+      // 記録の行を選んだときに、盤の上で色を付けて示すために持っておく
+      const movedNow =
+        out.lastMove &&
+        (!prev.lastMove || prev.lastMove.seq !== out.lastMove.seq)
+          ? out.lastMove
+          : null;
+      const mark = {
+        from: movedNow ? movedNow.from : null,
+        to: movedNow ? movedNow.to : null,
+        taken: (out._defeats || []).map((d) => ({
+          row: d.row,
+          col: d.col,
+          owner: d.owner,
+        })),
+      };
       out = {
         ...out,
         replay: [
           ...(out.replay || []),
-          ...added.map((line) => ({ line, board: snapshot })),
+          ...added.map((line) => ({ line, board: snapshot, mark })),
         ],
       };
     }
