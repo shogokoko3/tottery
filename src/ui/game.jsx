@@ -27,6 +27,7 @@ import {
   Info,
   RotateCcw,
   Shuffle,
+  Sparkle,
 } from "../icons.jsx";
 import {
   deleteRoom,
@@ -243,12 +244,36 @@ export function GameView({
   let [f, o] = (0, useState)(!1),
     // 記録のどの行を選んでいるか。null なら最終盤面
     [at, setAt] = (0, useState)(null),
+    // 動きの再生。押すたびに数が増え、それを鍵に演出をやり直させる
+    [playSeq, setPlaySeq] = (0, useState)(0),
+    [playing, setPlaying] = (0, useState)(!1),
     r = PLAYER_META[state.winner],
     // 1台で交互に指しているときは「あなた」が決まらないので、色名で伝える
     lost = youAre !== null && youAre !== void 0 && state.winner !== youAre,
     won = youAre !== null && youAre !== void 0 && state.winner === youAre;
+  // 記録の行を選んだら、その手の動きを再生する
+  (0, useEffect)(() => {
+    if (!f || at === null) return;
+    setPlaying(!0);
+    const entry = (state.replay || [])[at];
+    const mark = entry && entry.mark;
+    const dist =
+      mark && mark.from && mark.to
+        ? Math.max(
+            Math.abs(mark.from.row - mark.to.row),
+            Math.abs(mark.from.col - mark.to.col),
+          )
+        : 0;
+    const taken = mark && mark.taken ? mark.taken.length : 0;
+    const ms = (dist + 1) * 190 + 1400 + Math.max(0, taken - 1) * 440;
+    const id = setTimeout(() => setPlaying(!1), ms);
+    return () => clearTimeout(id);
+  }, [f, at, playSeq]);
+
   if (f) {
     let d = viewer === 1,
+      // 倒れた駒の演出を、味方と相手で色分けするための基準
+      mySide = youAre !== null && youAre !== void 0 ? youAre : viewer,
       replay = state.replay || [],
       shownBoard = at !== null && replay[at] ? replay[at].board : state.board,
       // 選んだ記録の「どこから・どこへ・どこが倒れたか」
@@ -259,11 +284,38 @@ export function GameView({
           list.some &&
           list.some((c) => c.row === row && c.col === col)
         ),
+      // その手の動きを1マスずつ再生する。live の盤と同じ見せ方
+      stepOf = (row, col) => {
+        if (!playing || !mark || !mark.from || !mark.to) return null;
+        if (mark.to.row !== row || mark.to.col !== col) return null;
+        const dc = mark.from.col - mark.to.col;
+        const dr = mark.from.row - mark.to.row;
+        const knight =
+          (Math.abs(dr) === 1 && Math.abs(dc) === 2) ||
+          (Math.abs(dr) === 2 && Math.abs(dc) === 1);
+        const n = knight ? 1 : Math.max(Math.abs(dr), Math.abs(dc));
+        if (!n) return null;
+        return {
+          sx: d ? -dc : dc,
+          sy: d ? -dr : dr,
+          stops: n + 1,
+          // 立ち寄る場所ごとに 190ms 留まる
+          ms: (n + 1) * 190,
+        };
+      },
+      // 倒れたマスを光らせる。まとめ取りは手前から順に
+      fxAt = (row, col) => {
+        if (!playing || !mark || !mark.taken) return -1;
+        return mark.taken.findIndex((c) => c.row === row && c.col === col);
+      },
       traceOf = (row, col) => {
         if (!mark) return "";
         let out = "";
         if (mark.from && mark.from.row === row && mark.from.col === col)
           out += " trace-from";
+        // 動いている間は着地のしるしを伏せる。先に動きを見せ、
+        // 止まってから「ここへ動いて、ここを取った」と示す
+        if (playing) return out;
         if (mark.to && mark.to.row === row && mark.to.col === col)
           out += " trace-to";
         if (hit(mark.taken, row, col)) out += " trace-taken";
@@ -335,13 +387,19 @@ export function GameView({
             </div>
           )}
           {at !== null && (
-            <button
-              className="btn btn-ghost"
-              style={{ marginBottom: 10 }}
-              onClick={() => setAt(null)}
-            >
-              最終盤面に戻る
-            </button>
+            <div className="review-controls">
+              {mark && mark.from && mark.to && (
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setPlaySeq((n) => n + 1)}
+                >
+                  <Sparkle size={14} /> もう一度見る
+                </button>
+              )}
+              <button className="btn btn-ghost" onClick={() => setAt(null)}>
+                最終盤面に戻る
+              </button>
+            </div>
           )}
           <div className="board-outer">
             <div
@@ -374,37 +432,73 @@ export function GameView({
                       }}
                       key={`${z}-${g}`}
                     >
-                      {mark &&
+                      {!playing &&
+                        mark &&
                         mark.to &&
                         mark.to.row === z &&
                         mark.to.col === g && (
                           <span className="trace-pin trace-pin-to">着</span>
                         )}
-                      {hit(mark && mark.taken, z, g) && (
+                      {!playing && hit(mark && mark.taken, z, g) && (
                         <span className="trace-pin trace-pin-taken">×</span>
                       )}
-                      {A && (
-                        <div
-                          className="piece-wrap side-ring"
-                          style={{ "--who": PLAYER_META[A.owner].color }}
-                        >
-                          <CardFace
-                            rank={A.rank}
-                            suit={A.suit}
-                            size={size >= 9 ? "xs" : "md"}
-                            isKing={A.isKing}
+                      {(() => {
+                        const gone = fxAt(z, g);
+                        if (gone < 0) return null;
+                        const c = mark.taken[gone];
+                        return (
+                          <span
+                            key={`fx${playSeq}-${gone}`}
+                            style={{ "--i": gone }}
+                            className={`fx-defeat ${
+                              c.owner === mySide
+                                ? "fx-defeat-mine"
+                                : "fx-defeat-foe"
+                            }`}
                           />
-                          {A.isKing && (
-                            <Crown
-                              size={size >= 9 ? 10 : 16}
-                              className="king-badge"
-                              style={{
-                                color: PLAYER_META[A.owner].color,
-                              }}
-                            />
-                          )}
-                        </div>
-                      )}
+                        );
+                      })()}
+                      {A &&
+                        (() => {
+                          const step = stepOf(z, g);
+                          return (
+                            <div
+                              className={`piece-slot ${step ? "piece-stepping" : ""}`}
+                              key={step ? `mv${playSeq}` : "piece"}
+                              style={
+                                step
+                                  ? {
+                                      "--sx": step.sx,
+                                      "--sy": step.sy,
+                                      "--stops": step.stops,
+                                      "--ms": `${step.ms}ms`,
+                                    }
+                                  : void 0
+                              }
+                            >
+                              <div
+                                className="piece-wrap side-ring"
+                                style={{ "--who": PLAYER_META[A.owner].color }}
+                              >
+                                <CardFace
+                                  rank={A.rank}
+                                  suit={A.suit}
+                                  size={size >= 9 ? "xs" : "md"}
+                                  isKing={A.isKing}
+                                />
+                                {A.isKing && (
+                                  <Crown
+                                    size={size >= 9 ? 10 : 16}
+                                    className="king-badge"
+                                    style={{
+                                      color: PLAYER_META[A.owner].color,
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
                     </div>
                   );
                 }),

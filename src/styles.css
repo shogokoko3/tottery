@@ -2307,7 +2307,7 @@ h3 {
 }
 .trace-pin {
   position: absolute;
-  top: -3px;
+  top: 1px;
   min-width: 16px;
   height: 16px;
   padding: 0 3px;
@@ -2321,12 +2321,12 @@ h3 {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 .trace-pin-to {
-  left: -3px;
+  left: 1px;
   background: var(--gold);
   color: #1b1405;
 }
 .trace-pin-taken {
-  right: -3px;
+  right: 1px;
   background: #d63c46;
   color: #fff;
 }
@@ -2454,4 +2454,17 @@ h3 {
   border-radius: 999px;
   pointer-events: none;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+/* 記録から動きを見るときの操作 */
+.review-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+/* 動いている駒より、しるしを上に出す */
+.trace-pin {
+  z-index: 6;
 }
