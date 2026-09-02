@@ -440,7 +440,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     [tutStep, setTutStep] = (0, useState)(0),
     foeIdxRef = (0, useRef)(0),
     recordedRef = (0, useRef)(!1),
-    // テストプレイ中は、布陣の30秒も対局の持ち時間も止める
+    // テストプレイ中は、布陣の1分も対局の持ち時間も止める
     testPlay = (0, useRef)(isTestPlay()).current;
   // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない
   let noLimit = !!tutorial || testPlay;

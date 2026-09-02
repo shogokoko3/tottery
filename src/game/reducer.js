@@ -17,7 +17,7 @@ export const CLOCK_INITIAL_MS = 5 * 60 * 1000;
 /** 自分の手番が始まるたびに加算される時間 */
 export const CLOCK_INCREMENT_MS = 10 * 1000;
 /** 布陣に使える時間 */
-export const SETUP_LIMIT_MS = 30 * 1000;
+export const SETUP_LIMIT_MS = 60 * 1000;
 
 export function initialState() {
   return {
