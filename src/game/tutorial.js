@@ -579,7 +579,13 @@ const EP4 = {
     },
     {
       at: atMulligan,
-      text: "今回は引き直しません。「引き直して確定」を押します。",
+      // K を布陣に入れると王が K に固定される。3 を王にしたいので捨てさせる
+      text: "Kを置くと王はKに決まってしまいます。今回は3を王にするので、K♠ をタップ。",
+      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t2" },
+      focus: { cards: ["t2"] },
+    },
+    {
+      text: "捨てた札は相手に見えます。「引き直して確定」を押します。",
       need: { type: "CONFIRM_MULLIGAN" },
       focus: { button: true },
     },
