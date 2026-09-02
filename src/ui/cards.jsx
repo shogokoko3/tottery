@@ -92,7 +92,8 @@ export function Piece({
   size = "md",
 }) {
   let u = PLAYER_META[piece.owner],
-    i = piece.owner === viewer;
+    // フラッシュで公開された駒は、持ち主でなくても表向きに見える
+    i = piece.owner === viewer || !!piece.revealed;
   return (
     <div
       className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""}`}
@@ -107,6 +108,7 @@ export function Piece({
       ) : (
         <CardBack colorHex={u.color} size={size} />
       )}
+      {piece.revealed && <span className="revealed-badge">公開</span>}
       {piece.isKing && i && (
         <Crown
           size={size === "xs" ? 10 : size === "sm" ? 12 : 16}

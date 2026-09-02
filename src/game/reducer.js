@@ -1,3 +1,4 @@
+import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, SUIT_SYMBOL } from "./constants.js";
 import {
   buildDeck,
@@ -67,6 +68,10 @@ export function initialState() {
     lastDefeat: null,
     /** 記録に残す出来事ごとの、その時点の盤面 */
     replay: [],
+    /** 布陣ボーナス(ストレート・フラッシュ)の結果。知らせ終えたら消す */
+    setupEffects: null,
+    /** 台本どおりに進める場面(チュートリアル)かどうか */
+    scripted: false,
     board: [],
     pieces: {},
     currentTurn: 0,
@@ -364,6 +369,105 @@ export function autoPickKing(state, idx, placement) {
   ).id;
 }
 
+/**
+ * 両者の布陣がそろったので対局を始める。
+ * ここで布陣ボーナス(ストレート・フラッシュ)を確かめて効果を出す。
+ */
+function startPlay(base, log) {
+  if (base.scripted)
+    return {
+      ...base,
+      phase: "play",
+      currentTurn: base.firstPlayer,
+      clocks: replaceAt(
+        base.clocks,
+        base.firstPlayer,
+        base.clocks[base.firstPlayer] + CLOCK_INCREMENT_MS,
+      ),
+      log: [
+        ...log,
+        `--- 対局開始:${PLAYER_META[base.firstPlayer].name}の番 ---`,
+      ],
+      interstitial: { forPlayer: base.firstPlayer, kind: "turn" },
+    };
+
+  const army = (i) =>
+    Object.values(base.pieces).filter((p) => p.owner === i && p.alive);
+  const straights = [0, 1].map((i) => isStraight(army(i)));
+  const flushes = [0, 1].map((i) => isFlush(army(i)));
+
+  // ストレートは先手と後手を入れ替える。両者そろえば元に戻る
+  let first = base.firstPlayer;
+  if (straights[0] !== straights[1]) first = 1 - first;
+
+  let pieces = base.pieces;
+  let board = base.board;
+  const revealed = [];
+  let nextLog = [...log];
+
+  // 記録には効果だけを残す。どちらの布陣が揃っていたかは伏せる。
+  // 「ストレートだった」と分かると、その軍が数字の並びだと知れてしまう
+  if (straights[0] !== straights[1])
+    nextLog.push("布陣ボーナス: 先手と後手が入れ替わった");
+
+  // フラッシュは相手の駒を公開させる。王は選ばれない
+  const seed = Object.keys(base.pieces).sort().join(",");
+  for (const i of [0, 1]) {
+    if (!flushes[i]) continue;
+    const foes = army(1 - i)
+      .filter((p) => !p.isKing)
+      .map((p) => p.id);
+    const count = revealCount(base.boardSize);
+    const picked = pickRevealed(foes, count, `${seed}|${i}`);
+    if (!picked.length) continue;
+    pieces = { ...pieces };
+    board = board.map((r) => [...r]);
+    for (const id of picked) {
+      const shown = { ...pieces[id], revealed: true };
+      pieces[id] = shown;
+      board[shown.row][shown.col] = shown;
+      revealed.push({
+        id,
+        owner: shown.owner,
+        rank: shown.rank,
+        suit: shown.suit,
+        by: i,
+      });
+    }
+    nextLog.push(
+      `布陣ボーナス: ${PLAYER_META[1 - i].name}の駒が${picked.length}枚公開された`,
+    );
+  }
+
+  const effects =
+    straights.some(Boolean) || flushes.some(Boolean)
+      ? {
+          straights,
+          flushes,
+          revealed,
+          swapped: straights[0] !== straights[1],
+          first,
+        }
+      : null;
+
+  return {
+    ...base,
+    pieces,
+    board,
+    phase: "play",
+    currentTurn: first,
+    firstPlayer: first,
+    clocks: replaceAt(
+      base.clocks,
+      first,
+      base.clocks[first] + CLOCK_INCREMENT_MS,
+    ),
+    log: [...nextLog, `--- 対局開始:${PLAYER_META[first].name}の番 ---`],
+    setupEffects: effects,
+    interstitial: { forPlayer: first, kind: "turn" },
+  };
+}
+
 /* =========================================================================
    reducer
    ========================================================================= */
@@ -406,9 +510,15 @@ function afterAction(prev, next, action) {
         (!prev.lastMove || prev.lastMove.seq !== out.lastMove.seq)
           ? out.lastMove
           : null;
+      // 道連れで動いた駒がその場で倒れると、着地点には誰も立たない。
+      // その時は着地点のしるしを出さない。倒れたマスの×が代わりに語る
+      const landed =
+        movedNow && out.board[movedNow.to.row][movedNow.to.col]
+          ? movedNow.to
+          : null;
       const mark = {
         from: movedNow ? movedNow.from : null,
-        to: movedNow ? movedNow.to : null,
+        to: landed,
         taken: (out._defeats || []).map((d) => ({
           row: d.row,
           col: d.col,
@@ -497,6 +607,9 @@ function coreReducer(state, action) {
         setupMode:
           action.setupMode === "simultaneous" ? "simultaneous" : "sequential",
         pool: action.pool || null,
+        // 台本どおりに進めるチュートリアルでは布陣ボーナスを出さない。
+        // 先手が入れ替わったり駒が公開されたりすると、案内と噛み合わなくなる
+        scripted: !!action.scripted,
         phase: "dice",
         interstitial: { forPlayer: 0, kind: "dice" },
       };
@@ -806,20 +919,11 @@ function coreReducer(state, action) {
         };
       }
 
-      const first = state.firstPlayer;
-      return {
-        ...base,
-        phase: "play",
-        currentTurn: first,
-        clocks: replaceAt(
-          base.clocks,
-          first,
-          base.clocks[first] + CLOCK_INCREMENT_MS,
-        ),
-        log: [...log, `--- 対局開始:${PLAYER_META[first].name}の番 ---`],
-        interstitial: { forPlayer: first, kind: "turn" },
-      };
+      return startPlay(base, log);
     }
+
+    case "DISMISS_SETUP_EFFECTS":
+      return { ...state, setupEffects: null };
 
     case "CLOCK_TIMEOUT": {
       const loser = action.player;
@@ -892,20 +996,25 @@ function coreReducer(state, action) {
       ids.forEach((id) => {
         board[pieces[id].row][pieces[id].col] = null;
       });
+      // 王のAは1ターンに2回入れ替えられる。2回目だと分かるように残す
+      const secondSwap = state.extraMoveFor === aId;
       ids.forEach((id, i) => {
         const at = shuffled[i];
         pieces[id] = {
           ...pieces[id],
           row: at.row,
           col: at.col,
-          history: [...pieces[id].history, "周囲の駒と位置を入れ替えた"],
+          history: [
+            ...pieces[id].history,
+            `周囲の駒と位置を入れ替えた${secondSwap && id === aId ? "(2回目)" : ""}`,
+          ],
         };
         board[at.row][at.col] = pieces[id];
       });
 
       const log = [
         ...state.log,
-        `${PLAYER_META[state.currentTurn].name}が3つの駒の位置を入れ替えた`,
+        `${PLAYER_META[state.currentTurn].name}が3つの駒の位置を入れ替えた${secondSwap ? "(2回目)" : ""}`,
       ];
       let next = {
         ...state,
@@ -1015,6 +1124,9 @@ function coreReducer(state, action) {
       const moved = next.pieces[mover.id];
       const nextBoard = next.board.map((r) => [...r]);
       const nextPieces = { ...next.pieces };
+      // 王の10とAは1ターンに2回動ける。行動ログにも2行残し、
+      // 2回目だと分かるようにしておく
+      const secondAction = state.extraMoveFor === mover.id;
       if (moved && moved.alive) {
         nextBoard[mover.row][mover.col] = null;
         const updated = {
@@ -1023,7 +1135,7 @@ function coreReducer(state, action) {
           col: action.col,
           history: [
             ...moved.history,
-            `${squareName(mover.row, mover.col, state.boardSize)} → ${squareName(action.row, action.col, state.boardSize)} へ移動`,
+            `${squareName(mover.row, mover.col, state.boardSize)} → ${squareName(action.row, action.col, state.boardSize)} へ移動${secondAction ? "(2回目)" : ""}`,
           ],
         };
         nextPieces[mover.id] = updated;

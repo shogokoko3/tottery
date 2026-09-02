@@ -92,7 +92,9 @@ for (let g = 0; g < GAMES; g++) {
   const lines = s.log.filter(isNotableLog);
   const replay = s.replay || [];
   if (lines.length !== replay.length) {
-    problems.push(`局${g}: 記録${lines.length}行に対し控えが${replay.length}件`);
+    problems.push(
+      `局${g}: 記録${lines.length}行に対し控えが${replay.length}件`,
+    );
     continue;
   }
   for (const [i, entry] of replay.entries()) {
@@ -114,12 +116,18 @@ for (let g = 0; g < GAMES; g++) {
       problems.push(`局${g} ${i}: 出発点が盤の外`);
     if (m.to && !inBoard(m.to, size))
       problems.push(`局${g} ${i}: 着地点が盤の外`);
-    if (m.from && m.to) {
-      if (entry.board[m.from.row][m.from.col])
-        problems.push(`局${g} ${i}: 出発したマスに駒が残っている`);
-      if (!entry.board[m.to.row][m.to.col])
-        problems.push(`局${g} ${i}: 着地点に駒がいない`);
-    }
+    if (m.from && entry.board[m.from.row][m.from.col])
+      problems.push(`局${g} ${i}: 出発したマスに駒が残っている`);
+    // 着地点のしるしを出すのは、動いた駒がそこに立っている時だけ。
+    // 道連れでその場で倒れた手には着地点を出さない
+    if (m.to && !entry.board[m.to.row][m.to.col])
+      problems.push(`局${g} ${i}: 着地点に駒がいない`);
+    if (
+      m.from &&
+      !m.to &&
+      !(m.taken || []).some((c) => c.row === m.from.row && c.col === m.from.col)
+    )
+      problems.push(`局${g} ${i}: 着地点も倒れたマスも無い動き`);
     for (const c of m.taken || [])
       if (!inBoard(c, size)) problems.push(`局${g} ${i}: 倒れたマスが盤の外`);
     if (entry.line.includes("撃破") && (m.taken || []).length === 0)

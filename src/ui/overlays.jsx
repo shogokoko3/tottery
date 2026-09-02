@@ -475,3 +475,99 @@ export function QuitConfirm({ onCancel, onQuit, network }) {
     </div>
   );
 }
+
+/**
+ * 布陣ボーナスの知らせ。対局が始まる前に一度だけ出す。
+ *
+ * 自分の布陣が揃ったことは自分にだけ伝え、相手の布陣については
+ * 起きたことしか伝えない。「相手はフラッシュだった」と分かると、
+ * 相手の軍が全部同じマークだと知れてしまうため。
+ */
+export function SetupEffectsModal({ effects, viewer, onClose }) {
+  const me = viewer === void 0 || viewer === null ? null : viewer;
+  const mineStraight = me !== null && effects.straights[me];
+  const mineFlush = me !== null && effects.flushes[me];
+  const shown = effects.revealed || [];
+  const myShown = me === null ? [] : shown.filter((c) => c.owner === me);
+  const foeShown = me === null ? shown : shown.filter((c) => c.owner !== me);
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-panel bonus-panel">
+        <p className="bonus-eyebrow">布陣ボーナス</p>
+
+        {(mineStraight || mineFlush) && (
+          <ul className="bonus-list">
+            {mineStraight && (
+              <li className="bonus-row">
+                <span
+                  className="bonus-tag"
+                  style={{ "--who": PLAYER_META[me].color }}
+                >
+                  ストレート
+                </span>
+                <span>あなたの布陣が数字で並んだ</span>
+              </li>
+            )}
+            {mineFlush && (
+              <li className="bonus-row">
+                <span
+                  className="bonus-tag"
+                  style={{ "--who": PLAYER_META[me].color }}
+                >
+                  フラッシュ
+                </span>
+                <span>あなたの布陣がマークでそろった</span>
+              </li>
+            )}
+          </ul>
+        )}
+
+        {effects.swapped && (
+          <p className="bonus-note">
+            先手と後手が入れ替わりました。
+            {me === null
+              ? `${PLAYER_META[effects.first].name}から始まります。`
+              : effects.first === me
+                ? "あなたから始まります。"
+                : "相手から始まります。"}
+          </p>
+        )}
+
+        {foeShown.length > 0 && (
+          <>
+            <p className="bonus-note">
+              {me === null
+                ? `${foeShown.length}枚の駒が公開されました。`
+                : `相手の駒が${foeShown.length}枚めくれました。`}
+            </p>
+            <div className="bonus-cards">
+              {foeShown.map((c) => (
+                <div className="bonus-card" key={c.id}>
+                  <CardFace rank={c.rank} suit={c.suit} size="sm" />
+                  <span
+                    className="bonus-card-who"
+                    style={{ color: PLAYER_META[c.owner].color }}
+                  >
+                    {PLAYER_META[c.owner].name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {myShown.length > 0 && (
+          <p className="bonus-note">
+            あなたの駒が{myShown.length}枚、相手に見えてしまいました。
+            盤の「公開」の印が目印です。
+          </p>
+        )}
+
+        <button className="btn btn-primary" onClick={onClose}>
+          対局を始める <Check size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}

@@ -44,6 +44,7 @@ import {
   LogViewer,
   QuitConfirm,
   ResignConfirm,
+  SetupEffectsModal,
 } from "./overlays.jsx";
 import { GameShell } from "./screens.jsx";
 import {
@@ -669,6 +670,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                 deck: tutorial.deck.map((c) => ({ ...c })),
                 pool: tutorial.pool,
                 handSize: tutorial.handSize,
+                scripted: !0,
               }
             : null),
         }));
@@ -1105,6 +1107,28 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         onBack={() => r(!0)}
       >
         <KingChoiceInterstitial state={a} size={R} dispatch={y} />
+      </GameShell>
+    );
+  // 布陣ボーナスは対局が始まる前に、どのモードでも必ず知らせる
+  if (a.setupEffects)
+    return (
+      <GameShell
+        sheet={tutSheet}
+        focusButton={tutButton}
+        showRules={i}
+        setShowRules={f}
+        netInfo={N}
+        onBack={() => r(!0)}
+      >
+        <SetupEffectsModal
+          effects={a.setupEffects}
+          viewer={network || cpu ? P : void 0}
+          onClose={() =>
+            y({
+              type: "DISMISS_SETUP_EFFECTS",
+            })
+          }
+        />
       </GameShell>
     );
   if (a.interstitial && !network && !cpu)

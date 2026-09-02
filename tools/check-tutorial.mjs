@@ -102,6 +102,7 @@ for (const tut of TUTORIALS) {
       deck: tut.deck.map((c) => ({ ...c })),
       pool: tut.pool,
       handSize: tut.handSize,
+      scripted: true,
     },
   );
   ok("手札が配れる", s.players[0].hand.length === tut.handSize);
