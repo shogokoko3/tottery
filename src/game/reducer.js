@@ -16,8 +16,15 @@ import {
 export const CLOCK_INITIAL_MS = 5 * 60 * 1000;
 /** 自分の手番が始まるたびに加算される時間 */
 export const CLOCK_INCREMENT_MS = 10 * 1000;
-/** 布陣に使える時間 */
-export const SETUP_LIMIT_MS = 60 * 1000;
+/**
+ * 駒を並べるのに使える時間。9×9 は置く枚数が多いので長くとる。
+ * 王を選ぶ時間は別に数える。
+ */
+export function setupLimitMs(size) {
+  return size >= 9 ? 90 * 1000 : 60 * 1000;
+}
+/** 王を選ぶのに使える時間 */
+export const KING_LIMIT_MS = 15 * 1000;
 
 export function initialState() {
   return {

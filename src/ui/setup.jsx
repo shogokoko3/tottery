@@ -5,7 +5,7 @@ import {
   territoryRows,
   totalSlots,
 } from "../game/board.js";
-import { SETUP_LIMIT_MS } from "../game/reducer.js";
+
 import { PLAYER_META, RANKS, SUITS } from "../game/constants.js";
 import { useWindowWidth } from "../hooks.js";
 import { ArrowLeft, Crown, Dice, Grid } from "../icons.jsx";
@@ -224,7 +224,7 @@ export function territoryOwnerOf(e, t, l) {
   return e >= n[0] && e <= n[1] ? 0 : e >= a[0] && e <= a[1] ? 1 : null;
 }
 /** 残り時間の帯。10秒を切ったら赤くする */
-export function SetupTimer({ remainingMs, label, paused }) {
+export function SetupTimer({ remainingMs, label, paused, limitMs }) {
   if (remainingMs == null)
     return paused ? (
       <div className="setup-timer">
@@ -237,10 +237,13 @@ export function SetupTimer({ remainingMs, label, paused }) {
         </div>
       </div>
     ) : null;
+  const limit = limitMs || 60 * 1000;
   const sec = Math.max(0, Math.ceil(remainingMs / 1000));
-  const ratio = Math.max(0, Math.min(1, remainingMs / SETUP_LIMIT_MS));
+  const ratio = Math.max(0, Math.min(1, remainingMs / limit));
+  // 15秒しかない場面で「残り10秒」から赤くしても意味がないので、割合でも見る
+  const urgent = remainingMs <= Math.min(10000, limit * 0.3);
   return (
-    <div className={`setup-timer ${sec <= 10 ? "setup-timer-urgent" : ""}`}>
+    <div className={`setup-timer ${urgent ? "setup-timer-urgent" : ""}`}>
       <div className="setup-timer-head">
         <span>{label}</span>
         <strong>{sec}秒</strong>
@@ -282,7 +285,14 @@ function previewMoves(state, pIdx, size, placement, card, at) {
   return getLegalMoves(piece, board, size, {});
 }
 
-export function SetupWaiting({ state, pIdx, size, remainingMs, text }) {
+export function SetupWaiting({
+  state,
+  pIdx,
+  size,
+  remainingMs,
+  limitMs,
+  text,
+}) {
   const sec =
     remainingMs == null ? null : Math.max(0, Math.ceil(remainingMs / 1000));
   const flipped = pIdx === 1;
@@ -307,7 +317,7 @@ export function SetupWaiting({ state, pIdx, size, remainingMs, text }) {
             <div
               className="setup-timer-fill"
               style={{
-                width: `${Math.max(0, Math.min(1, remainingMs / SETUP_LIMIT_MS)) * 100}%`,
+                width: `${Math.max(0, Math.min(1, remainingMs / (limitMs || 60 * 1000))) * 100}%`,
               }}
             />
           </div>
@@ -369,6 +379,7 @@ export function PlaceStep({
   size,
   dispatch,
   remainingMs,
+  limitMs,
   paused,
   focus,
   terse,
@@ -509,6 +520,7 @@ export function PlaceStep({
         remainingMs={remainingMs}
         label="布陣の残り時間"
         paused={paused}
+        limitMs={limitMs}
       />
       {terse ? (
         <p className="hint">
@@ -648,6 +660,7 @@ export function KingStep({
   size,
   dispatch,
   remainingMs,
+  limitMs,
   forceRank,
   paused,
   focus,
@@ -675,8 +688,9 @@ export function KingStep({
       </h2>
       <SetupTimer
         remainingMs={remainingMs}
-        label="布陣の残り時間"
+        label="王を選ぶ残り時間"
         paused={paused}
+        limitMs={limitMs}
       />
       {!terse && (
         <p className="hint">

@@ -14,7 +14,8 @@ import {
   initialState,
   reducer,
   CLOCK_INITIAL_MS,
-  SETUP_LIMIT_MS,
+  KING_LIMIT_MS,
+  setupLimitMs,
 } from "../game/reducer.js";
 import {
   ArrowRight,
@@ -676,10 +677,21 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   let handoff = !!a.interstitial && !network && !cpu,
     // 布陣中に操作している側
     setupSide = network ? p : cpu ? 0 : a.setupIdx,
+    // 駒を並べる時間と、王を選ぶ時間は別に数える
+    setupStep = a.setupSteps ? a.setupSteps[setupSide] : "place",
+    setupLimit =
+      setupStep === "king" ? KING_LIMIT_MS : setupLimitMs(a.boardSize),
     setupRunning = a.phase === "setup" && !handoff && !a.setupDone[setupSide],
+    // その時計が「いまの段階のために始めた」ものかを見る。
+    // 段階が変わった直後に、前の時計で判定してしまうのを防ぐ
+    setupClock = setupStartRef.current,
     setupRemaining =
-      setupRunning && !noLimit && setupStartRef.current !== null
-        ? SETUP_LIMIT_MS - (nowMs - setupStartRef.current)
+      setupRunning &&
+      !noLimit &&
+      setupClock &&
+      setupClock.step === setupStep &&
+      setupClock.side === setupSide
+        ? setupLimit - (nowMs - setupClock.at)
         : null;
 
   ((0, useEffect)(() => {
@@ -687,21 +699,26 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
       setupStartRef.current = null;
       return;
     }
-    setupStartRef.current = Date.now();
+    setupStartRef.current = {
+      at: Date.now(),
+      step: setupStep,
+      side: setupSide,
+    };
     setNowMs(Date.now());
-  }, [setupRunning, setupSide]),
-    // 時間切れ。置いた分は残し、残りを自動配置して確定する
+  }, [setupRunning, setupSide, setupStep]),
+    // 時間切れ。置く段階なら残りを自動で埋めて王選びへ、
+    // 王を選ぶ段階なら自動で選んで確定する
     (0, useEffect)(() => {
       if (!setupRunning || setupRemaining === null || setupRemaining > 0)
         return;
-      let placement = autoArrange(
-          a,
-          setupSide,
-          null,
-          null,
-          a.setupPlacements[setupSide],
-        ),
-        kingId = autoPickKing(a, setupSide, placement);
+      if (setupStep === "place") {
+        y({ type: "SETUP_AUTO_ARRANGE", player: setupSide, keep: !0 });
+        y({ type: "SETUP_GOTO_KING_STEP", player: setupSide });
+        return;
+      }
+      let placement = a.setupPlacements[setupSide],
+        kingId =
+          a.setupPickKings[setupSide] || autoPickKing(a, setupSide, placement);
       if (kingId)
         y({
           type: "SETUP_CONFIRM",
@@ -709,7 +726,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
           placement,
           kingId,
         });
-    }, [setupRunning, setupRemaining]));
+    }, [setupRunning, setupRemaining, setupStep]));
 
   // 同時配置では両者いっせいに始まるので、相手の残りも同じ時計で測れる
   (0, useEffect)(() => {
@@ -725,7 +742,9 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     !noLimit &&
     a.setupMode === "simultaneous" &&
     setupPhaseStartRef.current !== null
-      ? SETUP_LIMIT_MS - (nowMs - setupPhaseStartRef.current)
+      ? setupLimitMs(a.boardSize) +
+        KING_LIMIT_MS -
+        (nowMs - setupPhaseStartRef.current)
       : null;
 
   // 手番が始まった時刻。端末の受け渡し画面を閉じた時点から計る。
@@ -1285,6 +1304,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             pIdx={me}
             size={R}
             remainingMs={opponentSetupRemaining}
+            limitMs={setupLimitMs(a.boardSize) + KING_LIMIT_MS}
             text={
               cpu && !tutorial
                 ? "CPUが布陣を決めています…"
@@ -1310,6 +1330,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             size={R}
             dispatch={y}
             remainingMs={setupRemaining}
+            limitMs={setupLimit}
             paused={testPlay && !tutorial}
             focus={tutFocus}
             terse={!!tutorial}
@@ -1322,6 +1343,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             size={R}
             dispatch={y}
             remainingMs={setupRemaining}
+            limitMs={setupLimit}
             forceRank={tutorial ? tutorial.forceKingRank : null}
             paused={testPlay && !tutorial}
             focus={tutFocus}
