@@ -834,11 +834,22 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
                   key={`${m}-${s}`}
                 >
                   {p && (
+                    // 自分の駒は表で見せる。どこに空きがあるか、
+                    // 何を置き足すかを判断できないと配置場所を選べない
                     <div className="mini-piece">
-                      <CardBack
-                        colorHex={PLAYER_META[p.owner].color}
-                        size="sm"
-                      />
+                      {p.owner === n ? (
+                        <>
+                          <CardFace rank={p.rank} suit={p.suit} size="sm" />
+                          {p.isKing && (
+                            <Crown size={12} className="king-badge" />
+                          )}
+                        </>
+                      ) : (
+                        <CardBack
+                          colorHex={PLAYER_META[p.owner].color}
+                          size="sm"
+                        />
+                      )}
                     </div>
                   )}
                 </div>

@@ -1691,7 +1691,9 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
               </div>
             );
           })()}
-        {a.kPlacement && a.kPlacement.owner === P && (
+        {/* 何がどこで取られたか分かってから、予備札を置かせる。
+            撃破の札より先に出てしまうと、状況が分からないまま置くことになる */}
+        {a.kPlacement && a.kPlacement.owner === P && !a.captureReveal && (
           <ReservePlacer state={a} dispatch={y} size={R} focus={tutFocus} />
         )}
         <CapturedRow players={a.players} dispatch={y} viewer={P} />
