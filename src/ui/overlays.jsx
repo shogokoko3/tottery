@@ -1,6 +1,7 @@
+import { useEffect, useState } from "react";
 import { sanitizeHistory } from "../game/board.js";
 import { PLAYER_META, SUIT_SYMBOL, VERSION } from "../game/constants.js";
-import { ArrowLeft, Check, Close, Flag, Sparkle } from "../icons.jsx";
+import { ArrowLeft, Check, Close, Crown, Flag, Sparkle } from "../icons.jsx";
 import { CardFace, Piece } from "./cards.jsx";
 import { CardGuide } from "./guides.jsx";
 
@@ -178,70 +179,105 @@ export function CaptureConfirm({ count, squares, onCancel, onConfirm }) {
   );
 }
 
-export function CaptureRevealModal({ reveal, onClose, viewer }) {
-  let n = reveal.defeated || [],
-    a =
-      reveal.capturedBy === void 0 ||
-      viewer === void 0 ||
-      reveal.capturedBy === viewer;
+/**
+ * 取った駒を見せる札。
+ *
+ * まず「相手の駒を取りました」と出し、少し置いてから
+ * 王だったことが分かる。決着はそのあと。取るまで正体が分からない
+ * という遊び方に合わせて、順を追って見せる。
+ */
+export function CaptureRevealModal({ reveal, onClose, viewer, final }) {
+  const defeated = reveal.defeated || [];
+  const mine =
+    reveal.capturedBy === void 0 ||
+    viewer === void 0 ||
+    reveal.capturedBy === viewer;
+  const kingIdx = defeated.findIndex((c) => c.isKing);
+  const hasKing = kingIdx >= 0;
+  const [shown, setShown] = useState(!hasKing);
+
+  useEffect(() => {
+    if (!hasKing) return;
+    const id = setTimeout(() => setShown(!0), 1100);
+    return () => clearTimeout(id);
+  }, [hasKing]);
+
+  const eyebrow = mine
+    ? reveal.surround
+      ? "包囲成功!"
+      : "撃破!"
+    : reveal.surround
+      ? "包囲された!"
+      : "駒を取られた!";
+
+  const plain = mine
+    ? reveal.surround
+      ? defeated.length > 1
+        ? `包囲して${defeated.length}枚を取りました`
+        : "包囲して相手の駒を取りました"
+      : defeated.length > 1
+        ? `${defeated.length}枚の駒を取りました`
+        : "相手の駒を取りました"
+    : defeated.length > 1
+      ? `あなたの駒が${defeated.length}枚取られました`
+      : "あなたの駒が取られました";
+
   return (
     <div className="modal-overlay">
       <div className="modal-panel gameover-panel">
         <div
-          className="capture-eyebrow"
-          style={
-            a
-              ? void 0
-              : {
-                  color: "#e08b7a",
-                }
-          }
+          className={`capture-eyebrow ${shown && hasKing ? "capture-eyebrow-king" : ""}`}
+          style={mine ? void 0 : { color: "#e08b7a" }}
         >
-          {a
-            ? reveal.surround
-              ? "包囲成功!"
-              : "撃破!"
-            : reveal.surround
-              ? "包囲された!"
-              : "駒を取られた!"}
+          {shown && hasKing
+            ? mine
+              ? "王を討った!"
+              : "王が討たれた…"
+            : eyebrow}
         </div>
-        <h3
-          style={{
-            margin: "0 0 14px",
-          }}
-        >
-          {a
-            ? reveal.surround
-              ? n.length > 1
-                ? `包囲して${n.length}枚を取りました`
-                : "包囲して相手の駒を取りました"
-              : n.length > 1
-                ? `${n.length}枚の駒を取りました`
-                : "相手の駒を取りました"
-            : n.length > 1
-              ? `あなたの駒が${n.length}枚取られました`
-              : "あなたの駒が取られました"}
+        <h3 style={{ margin: "0 0 14px" }}>
+          {shown && hasKing
+            ? mine
+              ? "取ったのは相手の王でした"
+              : "取られたのはあなたの王でした"
+            : plain}
         </h3>
         <div className="capture-cards">
-          {n.map((u, i) => (
-            <div className="capture-card" key={i}>
-              <CardFace rank={u.rank} suit={u.suit} />
+          {defeated.map((card, i) => (
+            <div
+              className={`capture-card ${shown && card.isKing ? "capture-card-king" : ""}`}
+              key={i}
+            >
+              <CardFace
+                rank={card.rank}
+                suit={card.suit}
+                isKing={shown && card.isKing}
+              />
+              {shown && card.isKing && (
+                <Crown size={18} className="capture-crown" />
+              )}
             </div>
           ))}
         </div>
         <button
           className="btn btn-primary"
-          style={{
-            marginTop: 18,
-          }}
+          style={{ marginTop: 18 }}
+          disabled={hasKing && !shown}
           onClick={onClose}
         >
-          確認した <Check size={16} />
+          {/* 王を取っても、継ぐ駒がいれば対局は続く */}
+          {hasKing && final
+            ? mine
+              ? "勝利を見る"
+              : "結果を見る"
+            : "確認した"}{" "}
+          <Check size={16} />
         </button>
       </div>
     </div>
   );
 }
+
 export function LogViewer({ piece, viewer, onClose, revealAll }) {
   let a = PLAYER_META[piece.owner],
     u = piece.owner === viewer || !piece.alive || revealAll,

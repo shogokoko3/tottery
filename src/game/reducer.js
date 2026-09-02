@@ -871,6 +871,8 @@ function coreReducer(state, action) {
             rank: piece.rank,
             suit: piece.suit,
             owner: piece.owner,
+            // 取ってはじめて、それが王だったと分かる
+            isKing: !!piece.isKing,
           });
           next.log = [
             ...next.log,
@@ -931,6 +933,7 @@ function coreReducer(state, action) {
           rank: victim.rank,
           suit: victim.suit,
           owner: victim.owner,
+          isKing: !!victim.isKing,
         });
         next.log = [
           ...next.log,

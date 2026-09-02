@@ -2097,3 +2097,41 @@ h3 {
     animation: none;
   }
 }
+
+/* 取った駒が王だったと分かる瞬間 */
+.capture-eyebrow-king {
+  animation: king-reveal 500ms ease-out both;
+}
+.capture-card-king {
+  position: relative;
+  animation: king-reveal 500ms ease-out both;
+  filter: drop-shadow(0 0 12px rgba(240, 217, 138, 0.9));
+}
+.capture-crown {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--gold-soft);
+  filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.9));
+}
+@keyframes king-reveal {
+  0% {
+    transform: scale(0.86);
+    opacity: 0.2;
+  }
+  60% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .capture-eyebrow-king,
+  .capture-card-king {
+    animation: none;
+  }
+}

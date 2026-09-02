@@ -919,6 +919,10 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         <CaptureRevealModal
           reveal={a.captureReveal}
           viewer={P}
+          final={
+            a.phase === "gameover" ||
+            (a.winner !== null && a.winner !== undefined)
+          }
           onClose={() =>
             y({
               type: "DISMISS_CAPTURE",
