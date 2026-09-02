@@ -104,13 +104,17 @@ export function ClockBar({ clocks, currentTurn, viewer }) {
  * 「青が赤のA♦を撃破!」のように色名が2つ出るので、
  * それぞれその色で書いて、どちらが何をしたのか読み取れるようにする。
  */
-export function LogLine({ text }) {
+export function LogLine({ text, index, active, onPick }) {
   const names = PLAYER_META.map((p) => p.name);
   const parts = text.split(new RegExp(`(${names.join("|")})`));
   const first = parts.find((p) => names.includes(p));
   const actor = first ? PLAYER_META[names.indexOf(first)] : null;
   return (
-    <li className="log-row" style={actor ? { "--who": actor.color } : void 0}>
+    <li
+      className={`log-row ${onPick ? "log-row-tap" : ""} ${active ? "log-row-active" : ""}`}
+      style={actor ? { "--who": actor.color } : void 0}
+      onClick={onPick ? () => onPick(index) : void 0}
+    >
       {parts.map((part, i) => {
         const idx = names.indexOf(part);
         return idx >= 0 ? (
@@ -125,6 +129,7 @@ export function LogLine({ text }) {
           <span key={i}>{part}</span>
         );
       })}
+      {onPick && <span className="log-peek">盤面</span>}
     </li>
   );
 }
@@ -235,12 +240,16 @@ export function GameView({
   youAre,
 }) {
   let [f, o] = (0, useState)(!1),
+    // 記録のどの行を選んでいるか。null なら最終盤面
+    [at, setAt] = (0, useState)(null),
     r = PLAYER_META[state.winner],
     // 1台で交互に指しているときは「あなた」が決まらないので、色名で伝える
     lost = youAre !== null && youAre !== void 0 && state.winner !== youAre,
     won = youAre !== null && youAre !== void 0 && state.winner === youAre;
   if (f) {
     let d = viewer === 1,
+      replay = state.replay || [],
+      shownBoard = at !== null && replay[at] ? replay[at].board : state.board,
       m = state.log.filter(
         (s) =>
           s.includes("撃破") ||
@@ -281,8 +290,19 @@ export function GameView({
             </p>
           )}
           <p className="hint">
-            最終盤面(すべての駒を公開)。駒をタップすると、その駒の動きを追えます。
+            {at === null
+              ? "最終盤面(すべての駒を公開)。駒をタップすると、その駒の動きを追えます。"
+              : `${at + 1}番目の出来事の直後の盤面です。`}
           </p>
+          {at !== null && (
+            <button
+              className="btn btn-ghost"
+              style={{ marginBottom: 10 }}
+              onClick={() => setAt(null)}
+            >
+              最終盤面に戻る
+            </button>
+          )}
           <div className="board-outer">
             <div
               className="board-grid"
@@ -298,13 +318,15 @@ export function GameView({
                 }).map((p, w) => {
                   let z = d ? size - 1 - v : v,
                     g = d ? size - 1 - w : w,
-                    A = state.board[z][g],
+                    A = shownBoard[z][g],
                     b = territoryOwnerOf(z, g, size);
                   return (
                     <div
                       className={`cell ${b !== null ? `zone-${b}` : ""}`}
                       onClick={() => {
+                        // 過去の盤面には駒の来歴が無いので、最終盤面のときだけ追える
                         A &&
+                          A.id &&
                           dispatch({
                             type: "VIEW_LOG",
                             id: A.id,
@@ -376,7 +398,15 @@ export function GameView({
             <div className="tray-label">対局の記録</div>
             <ol className="log-list">
               {m.length ? (
-                m.map((s, v) => <LogLine text={s} key={v} />)
+                m.map((s, v) => (
+                  <LogLine
+                    text={s}
+                    index={v}
+                    active={at === v}
+                    onPick={replay[v] ? setAt : void 0}
+                    key={v}
+                  />
+                ))
               ) : (
                 <li>特筆すべき出来事はありませんでした</li>
               )}

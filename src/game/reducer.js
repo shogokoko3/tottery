@@ -12,6 +12,19 @@ import {
   makePlayer,
 } from "./board.js";
 
+/** 対局の記録に残す出来事かどうか */
+export function isNotableLog(line) {
+  return (
+    line.includes("撃破") ||
+    line.includes("王が倒された") ||
+    line.includes("道連れ") ||
+    line.includes("新しい王") ||
+    line.includes("入れ替えた") ||
+    line.includes("投入") ||
+    line.includes("降参")
+  );
+}
+
 /** 対局の持ち時間 */
 export const CLOCK_INITIAL_MS = 5 * 60 * 1000;
 /** 自分の手番が始まるたびに加算される時間 */
@@ -52,6 +65,8 @@ export function initialState() {
     timeoutBy: null,
     /** 直前に駒が倒れたマス。演出のためだけに持つ */
     lastDefeat: null,
+    /** 記録に残す出来事ごとの、その時点の盤面 */
+    replay: [],
     board: [],
     pieces: {},
     currentTurn: 0,
@@ -364,6 +379,35 @@ export function reducer(state, action) {
  */
 function afterAction(prev, next, action) {
   let out = next;
+
+  // 記録に残る出来事があったら、その時点の盤面を控えておく。
+  // あとから「この時どうなっていたか」を見られるようにするため
+  // 対局を組み立てる前は log が無いこともある
+  const hadLogs = prev.log ? prev.log.length : 0;
+  if (out.log && out.log.length > hadLogs && out.board && out.board.length) {
+    const added = out.log.slice(hadLogs).filter(isNotableLog);
+    if (added.length) {
+      const snapshot = out.board.map((row) =>
+        row.map((piece) =>
+          piece
+            ? {
+                rank: piece.rank,
+                suit: piece.suit,
+                owner: piece.owner,
+                isKing: !!piece.isKing,
+              }
+            : null,
+        ),
+      );
+      out = {
+        ...out,
+        replay: [
+          ...(out.replay || []),
+          ...added.map((line) => ({ line, board: snapshot })),
+        ],
+      };
+    }
+  }
 
   if (out._defeats || out._defeatVia) {
     const cells = out._defeats || [];
