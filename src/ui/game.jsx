@@ -232,9 +232,13 @@ export function GameView({
   dispatch,
   onExit,
   tutorial,
+  youAre,
 }) {
   let [f, o] = (0, useState)(!1),
-    r = PLAYER_META[state.winner];
+    r = PLAYER_META[state.winner],
+    // 1台で交互に指しているときは「あなた」が決まらないので、色名で伝える
+    lost = youAre !== null && youAre !== void 0 && state.winner !== youAre,
+    won = youAre !== null && youAre !== void 0 && state.winner === youAre;
   if (f) {
     let d = viewer === 1,
       m = state.log.filter(
@@ -389,24 +393,34 @@ export function GameView({
   }
   return (
     <div className="modal-overlay">
-      <div className="modal-panel gameover-panel">
-        <Crown
-          size={34}
-          style={{
-            color: "var(--gold)",
-          }}
-        />
+      <div
+        className={`modal-panel gameover-panel ${lost ? "defeat-panel" : ""}`}
+      >
+        {lost ? (
+          <Flag size={34} className="defeat-mark" />
+        ) : (
+          <Crown
+            size={34}
+            style={{
+              color: "var(--gold)",
+            }}
+          />
+        )}
         <h2
-          style={{
-            color: r.color,
-          }}
+          className={lost ? "defeat-title" : ""}
+          style={lost ? void 0 : { color: r.color }}
         >
-          {network
-            ? state.winner === myIdx
-              ? "あなたの勝ち!"
-              : "あなたの負け…"
-            : `${r.name}の勝利!`}
+          {won ? "あなたの勝ち!" : lost ? "敗北" : `${r.name}の勝利!`}
         </h2>
+        {lost && (
+          <p className="defeat-lead">
+            {state.timeoutBy === youAre
+              ? "持ち時間を使い切りました"
+              : state.resignedBy === youAre
+                ? "降参しました"
+                : "王を討たれました"}
+          </p>
+        )}
         {state.resignedBy !== null && state.resignedBy !== void 0 && (
           <p
             className="hint"
@@ -417,7 +431,7 @@ export function GameView({
             {PLAYER_META[state.resignedBy].name}が降参しました
           </p>
         )}
-        <div className="king-card win-card">
+        <div className={`king-card ${lost ? "lose-card" : "win-card"}`}>
           <img src={winKingCardImg} alt="" />
         </div>
         <div
@@ -963,11 +977,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         />
       </GameShell>
     );
-  if (
-    a.captureReveal &&
-    !holdFx &&
-    (!network || a.captureReveal.capturedBy === p)
-  )
+  if (a.captureReveal && !holdFx)
     return (
       <GameShell
         sheet={tutSheet}
@@ -1713,6 +1723,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             dispatch={y}
             onExit={leaveGame}
             tutorial={tutorial}
+            youAre={network ? p : cpu ? 0 : null}
           />
         )}
       </div>

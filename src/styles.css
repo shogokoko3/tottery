@@ -2155,3 +2155,44 @@ h3 {
 .log-who {
   font-weight: 700;
 }
+
+/* 敗北の画面。勝利とは別の見え方にする */
+.defeat-panel {
+  border-color: rgba(208, 72, 58, 0.45);
+  box-shadow: 0 0 34px rgba(120, 30, 24, 0.4);
+}
+.defeat-mark {
+  color: #c9544a;
+  filter: drop-shadow(0 0 8px rgba(208, 72, 58, 0.5));
+}
+.defeat-title {
+  color: #e08b7a;
+  letter-spacing: 0.16em;
+}
+.defeat-lead {
+  margin: -4px 0 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+/* 王の絵は、勝ったときは輝き、負けたときは色を失う */
+.lose-card img {
+  filter: grayscale(0.85) brightness(0.5) contrast(0.9);
+}
+.lose-card {
+  animation: lose-fade 900ms ease-out both;
+}
+@keyframes lose-fade {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lose-card {
+    animation: none;
+  }
+}
