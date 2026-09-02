@@ -478,15 +478,12 @@ export function QuitConfirm({ onCancel, onQuit, network }) {
 
 /**
  * 布陣ボーナスの知らせ。対局が始まる前に一度だけ出す。
- *
- * 自分の布陣が揃ったことは自分にだけ伝え、相手の布陣については
- * 起きたことしか伝えない。「相手はフラッシュだった」と分かると、
- * 相手の軍が全部同じマークだと知れてしまうため。
+ * どちらの布陣が揃ったかは、両者に伝える。
  */
 export function SetupEffectsModal({ effects, viewer, onClose }) {
   const me = viewer === void 0 || viewer === null ? null : viewer;
-  const mineStraight = me !== null && effects.straights[me];
-  const mineFlush = me !== null && effects.flushes[me];
+  const side = (i) =>
+    me === null ? PLAYER_META[i].name : i === me ? "あなた" : "相手";
   const shown = effects.revealed || [];
   const myShown = me === null ? [] : shown.filter((c) => c.owner === me);
   const foeShown = me === null ? shown : shown.filter((c) => c.owner !== me);
@@ -496,41 +493,40 @@ export function SetupEffectsModal({ effects, viewer, onClose }) {
       <div className="modal-panel bonus-panel">
         <p className="bonus-eyebrow">布陣ボーナス</p>
 
-        {(mineStraight || mineFlush) && (
-          <ul className="bonus-list">
-            {mineStraight && (
-              <li className="bonus-row">
+        <ul className="bonus-list">
+          {[0, 1].map((i) =>
+            effects.straights[i] ? (
+              <li className="bonus-row" key={`s${i}`}>
                 <span
                   className="bonus-tag"
-                  style={{ "--who": PLAYER_META[me].color }}
+                  style={{ "--who": PLAYER_META[i].color }}
                 >
                   ストレート
                 </span>
-                <span>あなたの布陣が数字で並んだ</span>
+                <span>{side(i)}の布陣が数字で並んだ</span>
               </li>
-            )}
-            {mineFlush && (
-              <li className="bonus-row">
+            ) : null,
+          )}
+          {[0, 1].map((i) =>
+            effects.flushes[i] ? (
+              <li className="bonus-row" key={`f${i}`}>
                 <span
                   className="bonus-tag"
-                  style={{ "--who": PLAYER_META[me].color }}
+                  style={{ "--who": PLAYER_META[i].color }}
                 >
                   フラッシュ
                 </span>
-                <span>あなたの布陣がマークでそろった</span>
+                <span>{side(i)}の布陣がマークでそろった</span>
               </li>
-            )}
-          </ul>
-        )}
+            ) : null,
+          )}
+        </ul>
 
-        {effects.swapped && (
+        {effects.straights.some(Boolean) && (
           <p className="bonus-note">
-            先手と後手が入れ替わりました。
-            {me === null
-              ? `${PLAYER_META[effects.first].name}から始まります。`
-              : effects.first === me
-                ? "あなたから始まります。"
-                : "相手から始まります。"}
+            {effects.swapped
+              ? `先手と後手が入れ替わり、${side(effects.first)}から始まります。`
+              : "両者ストレートのため、先手はそのままです。"}
           </p>
         )}
 

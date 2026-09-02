@@ -120,12 +120,13 @@ console.log("ストレート");
   is("入れ替えたと記録している", s.setupEffects.swapped, true);
   is("先手と後手が入れ替わる", s.currentTurn, 1 - plain.currentTurn);
   is(
-    "記録には効果だけが残り、ストレートとは書かない",
+    "誰の布陣が揃ったかと、効果の両方を記録に残す",
     [
+      s.log.some((l) => l.includes("赤の布陣はストレート!")),
       s.log.some((l) => l.includes("先手と後手が入れ替わった")),
-      s.log.some((l) => l.includes("ストレート")),
+      s.log.some((l) => l.includes("青の布陣はストレート!")),
     ],
-    [true, false],
+    [true, true, false],
   );
 }
 {
@@ -133,9 +134,12 @@ console.log("ストレート");
   is("両者ストレート", s.setupEffects.straights, [true, true]);
   is("両者ストレートなら入れ替えない", s.setupEffects.swapped, false);
   is(
-    "両者ストレートなら記録にも残さない",
-    s.log.some((l) => l.includes("入れ替わった")),
-    false,
+    "両者ストレートなら、そのままだと伝える",
+    [
+      s.log.some((l) => l.includes("入れ替わった")),
+      s.log.some((l) => l.includes("両者ストレートのため、先手はそのまま")),
+    ],
+    [false, true],
   );
 }
 
@@ -161,12 +165,11 @@ console.log("フラッシュ");
     true,
   );
   is(
-    "記録には効果だけが残り、フラッシュとは書かない",
-    [
-      s.log.some((l) => l.includes("駒が1枚公開された")),
-      s.log.some((l) => l.includes("フラッシュ")),
-    ],
-    [true, false],
+    "誰の布陣がフラッシュかと、公開枚数を記録に残す",
+    s.log.some((l) =>
+      l.includes("赤の布陣はフラッシュ! 青の駒が1枚公開された"),
+    ),
+    true,
   );
 }
 {

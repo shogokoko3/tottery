@@ -405,10 +405,11 @@ function startPlay(base, log) {
   const revealed = [];
   let nextLog = [...log];
 
-  // 記録には効果だけを残す。どちらの布陣が揃っていたかは伏せる。
-  // 「ストレートだった」と分かると、その軍が数字の並びだと知れてしまう
+  for (const i of [0, 1])
+    if (straights[i]) nextLog.push(`${PLAYER_META[i].name}の布陣はストレート!`);
   if (straights[0] !== straights[1])
     nextLog.push("布陣ボーナス: 先手と後手が入れ替わった");
+  else if (straights[0]) nextLog.push("両者ストレートのため、先手はそのまま");
 
   // フラッシュは相手の駒を公開させる。王は選ばれない
   const seed = Object.keys(base.pieces).sort().join(",");
@@ -435,7 +436,7 @@ function startPlay(base, log) {
       });
     }
     nextLog.push(
-      `布陣ボーナス: ${PLAYER_META[1 - i].name}の駒が${picked.length}枚公開された`,
+      `${PLAYER_META[i].name}の布陣はフラッシュ! ${PLAYER_META[1 - i].name}の駒が${picked.length}枚公開された`,
     );
   }
 
