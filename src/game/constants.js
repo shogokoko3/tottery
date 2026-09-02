@@ -66,13 +66,14 @@ export function nameOf(idx, names) {
   return given || PLAYER_META[idx].name;
 }
 
-/** 視点つきのプレイヤー名。viewer が null なら名前(または色名)だけ */
+/**
+ * 視点つきのプレイヤー名。
+ * 名前が分かっていれば名前だけを返す。自分の名前は自分で分かるので、
+ * わざわざ「(あなた)」と添えない。
+ */
 export function playerLabel(idx, viewer, names) {
   const who = nameOf(idx, names);
-  if (viewer == null) return who;
-  if (names && names[idx]) {
-    return idx === viewer ? `${who}(あなた)` : who;
-  }
+  if (viewer == null || (names && names[idx])) return who;
   return idx === viewer ? `あなた(${who})` : `相手(${who})`;
 }
 

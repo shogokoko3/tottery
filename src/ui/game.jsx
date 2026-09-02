@@ -393,8 +393,7 @@ export function GameView({
                 style={{ "--who": PLAYER_META[v].color }}
                 key={v}
               >
-                {nameOf(v, names)}
-                {youAre === v ? "(あなた)" : ""}
+                {playerLabel(v, youAre, names)}
               </span>
             ))}
           </div>

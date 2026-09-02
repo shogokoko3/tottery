@@ -25,9 +25,8 @@ const {
   recordGame,
   saveName,
 } = await import("../src/game/profile.js");
-const { nameOf, playerLabel, shortPlayerLabel } = await import(
-  "../src/game/constants.js"
-);
+const { nameOf, playerLabel, shortPlayerLabel } =
+  await import("../src/game/constants.js");
 
 let ok = 0;
 const fails = [];
@@ -90,10 +89,18 @@ console.log("保存と引き継ぎ");
 console.log("画面に出す呼び名");
 is("名前が無ければ色名", nameOf(0, null), "赤");
 is("名前があれば名前", nameOf(1, [null, "たろう"]), "たろう");
-is("名前つきの自分", playerLabel(0, 0, ["しょうご", "たろう"]), "しょうご(あなた)");
+is(
+  "名前つきの自分は名前だけ",
+  playerLabel(0, 0, ["しょうご", "たろう"]),
+  "しょうご",
+);
 is("名前つきの相手", playerLabel(1, 0, ["しょうご", "たろう"]), "たろう");
 is("名前が無ければ今までどおり", playerLabel(0, 0, null), "あなた(赤)");
-is("短い呼び名も名前を使う", shortPlayerLabel(1, 0, [null, "たろう"]), "たろう");
+is(
+  "短い呼び名も名前を使う",
+  shortPlayerLabel(1, 0, [null, "たろう"]),
+  "たろう",
+);
 is("名前が無ければ相手", shortPlayerLabel(1, 0, null), "相手");
 
 console.log(`\n${ok} ok / ${fails.length} fail`);
