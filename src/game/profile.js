@@ -21,6 +21,9 @@ export const MAX_NAME_LEN = 10;
 /** 最高レベル */
 export const MAX_LEVEL = 10;
 
+/** レベルが1つ上がるのに要るポイント */
+export const LEVEL_STEP = 3;
+
 /**
  * テストプレイ環境では全プレイヤーをレベル10として扱う。
  * 配信時に false へ戻すと、実際のプレイ数でレベルが上がるようになる。
@@ -133,11 +136,11 @@ export function pointsOf(profile) {
 /** レベル。3ポイントごとに1つ上がる */
 export function levelOf(profile) {
   if (TEST_BUILD) return MAX_LEVEL;
-  return Math.min(MAX_LEVEL, 1 + Math.floor(pointsOf(profile) / 3));
+  return Math.min(MAX_LEVEL, 1 + Math.floor(pointsOf(profile) / LEVEL_STEP));
 }
 
 /** 次のレベルまでに必要なポイント。最高レベルなら null */
 export function toNextLevel(profile) {
   if (TEST_BUILD || levelOf(profile) >= MAX_LEVEL) return null;
-  return 3 - (pointsOf(profile) % 3);
+  return LEVEL_STEP - (pointsOf(profile) % LEVEL_STEP);
 }

@@ -4,6 +4,7 @@ import {
   PLAYER_META,
   SUIT_SYMBOL,
   VERSION,
+  VERSION_NOTE,
   nameOf,
   playerLabel,
 } from "../game/constants.js";
@@ -11,7 +12,7 @@ import { ArrowLeft, Check, Close, Crown, Flag, Sparkle } from "../icons.jsx";
 import { CardBack, CardFace, Piece } from "./cards.jsx";
 import { CardGuide } from "./guides.jsx";
 import { useNames } from "./names.jsx";
-import { AccountRows, NameEditModal } from "./account.jsx";
+import { AccountCard, NameEditModal } from "./account.jsx";
 import { loadProfile } from "../game/profile.js";
 
 export function Interstitial({ forPlayer, kind, onReady }) {
@@ -361,52 +362,44 @@ export function SettingsModal({ onClose }) {
     );
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-panel" onClick={(t) => t.stopPropagation()}>
+      <div
+        className="modal-panel settings-panel"
+        onClick={(t) => t.stopPropagation()}
+      >
         <div className="modal-head">
           <h3>設定</h3>
           <button className="icon-btn" onClick={onClose}>
             <Close size={18} />
           </button>
         </div>
-        <div className="settings-list">
-          <AccountRows profile={profile} />
-        </div>
-        <button
-          className="btn btn-ghost btn-wide"
-          style={{ margin: "10px 0 14px" }}
-          onClick={() => setEditing(true)}
-        >
-          名前を変える
-        </button>
+
+        <p className="settings-head">あなたのアカウント</p>
+        <AccountCard profile={profile} onEdit={() => setEditing(true)} />
+
+        <p className="settings-head">このアプリについて</p>
         <div className="settings-list">
           <div className="settings-row">
             <span>ゲームの版</span>
             <b>{VERSION}</b>
           </div>
           <div className="settings-row">
+            <span>この版の内容</span>
+            <b>{VERSION_NOTE}</b>
+          </div>
+          <div className="settings-row">
             <span>ルールの確認</span>
-            <b>右上の「i」から見られます</b>
+            <b>右上の「i」から</b>
           </div>
           <div className="settings-row">
             <span>通信</span>
             <b>オンライン対戦に対応</b>
           </div>
         </div>
-        <p
-          className="hint"
-          style={{
-            marginTop: 14,
-          }}
-        >
-          音量や表示の調整は今後追加する予定です。
+
+        <p className="settings-note">
+          レーティングとランキング、音量や表示の調整は今後追加する予定です。
         </p>
-        <button
-          className="btn btn-primary"
-          style={{
-            marginTop: 10,
-          }}
-          onClick={onClose}
-        >
+        <button className="btn btn-primary btn-wide" onClick={onClose}>
           閉じる
         </button>
       </div>

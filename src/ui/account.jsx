@@ -6,6 +6,8 @@
  */
 import { useState } from "react";
 import {
+  LEVEL_STEP,
+  MAX_LEVEL,
   MAX_NAME_LEN,
   levelOf,
   loadProfile,
@@ -126,28 +128,62 @@ export function NameEditModal({ onClose, onSaved }) {
   );
 }
 
-/** 設定に出す、いまのアカウントの中身 */
-export function AccountRows({ profile }) {
+/**
+ * 設定に出すアカウントの札。
+ *
+ * 名前・レベル・戦績を1枚にまとめる。項目名と値を並べただけの表よりも、
+ * 「いまの自分」がひと目で分かる形にした。
+ */
+export function AccountCard({ profile, onEdit }) {
+  const level = levelOf(profile);
   const next = toNextLevel(profile);
+  const rate = profile.plays
+    ? Math.round((profile.wins / profile.plays) * 100)
+    : null;
+  // 次のレベルまでの進み具合。最高レベルなら満杯にする
+  const step = next === null ? 1 : (LEVEL_STEP - next) / LEVEL_STEP;
+
   return (
-    <>
-      <div className="settings-row">
-        <span>名前</span>
-        <b>{profile.name || "(未設定)"}</b>
+    <div className="account-card">
+      <div className="account-head">
+        <span className="account-mark">
+          {(profile.name || "?").slice(0, 1)}
+        </span>
+        <div className="account-id">
+          <b className="account-name">{profile.name || "(未設定)"}</b>
+          <span className="account-sub">
+            レベル {level}
+            {level >= MAX_LEVEL ? "(最高)" : ""}
+          </span>
+        </div>
+        <button className="btn btn-ghost btn-small" onClick={onEdit}>
+          名前を変える
+        </button>
       </div>
-      <div className="settings-row">
-        <span>レベル</span>
-        <b>
-          {levelOf(profile)}
-          {next === null ? "" : `(あと${next})`}
-        </b>
+
+      <div className="level-bar">
+        <span className="level-fill" style={{ width: `${step * 100}%` }} />
       </div>
-      <div className="settings-row">
-        <span>戦績</span>
-        <b>
-          {profile.plays}戦 {profile.wins}勝
-        </b>
+      <p className="level-note">
+        {next === null
+          ? "これ以上は上がりません"
+          : `次のレベルまであと${next}(1局で1、勝つと2)`}
+      </p>
+
+      <div className="stat-row">
+        <div className="stat">
+          <b>{profile.plays}</b>
+          <span>対局</span>
+        </div>
+        <div className="stat">
+          <b>{profile.wins}</b>
+          <span>勝ち</span>
+        </div>
+        <div className="stat">
+          <b>{rate === null ? "—" : `${rate}%`}</b>
+          <span>勝率</span>
+        </div>
       </div>
-    </>
+    </div>
   );
 }

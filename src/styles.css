@@ -2515,3 +2515,118 @@ h3 {
 .name-note-bad {
   color: #ffb3b7;
 }
+
+/* =========================================================================
+   設定画面
+   ========================================================================= */
+
+.settings-panel {
+  text-align: left;
+  /* 中身が縦に長いので、画面をもう少し使う */
+  max-height: 88vh;
+}
+.settings-head {
+  margin: 18px 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+}
+.settings-head:first-of-type {
+  margin-top: 4px;
+}
+.settings-note {
+  margin: 16px 0 14px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+
+/* アカウントの札 */
+.account-card {
+  background: rgba(9, 20, 38, 0.66);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+}
+.account-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+/* 名前の1文字目を印にする */
+.account-mark {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  background: linear-gradient(160deg, #1b3559, #0d1c33);
+  color: var(--gold-soft);
+  font-size: 20px;
+  font-weight: 700;
+}
+.account-id {
+  flex: 1;
+  min-width: 0;
+}
+.account-name {
+  display: block;
+  font-size: 17px;
+  color: var(--ink);
+  /* 長い名前でも札を壊さない */
+  overflow-wrap: anywhere;
+}
+.account-sub {
+  font-size: 12px;
+  color: var(--gold-soft);
+}
+.btn-small {
+  flex: none;
+  padding: 7px 10px;
+  font-size: 11px;
+  min-height: 0;
+}
+
+/* 次のレベルまでの進み具合 */
+.level-bar {
+  height: 6px;
+  margin: 14px 0 6px;
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.16);
+  overflow: hidden;
+}
+.level-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold-soft), var(--gold));
+}
+.level-note {
+  margin: 0 0 14px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* 対局数・勝ち・勝率 */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.stat {
+  text-align: center;
+}
+.stat b {
+  display: block;
+  font-size: 20px;
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+.stat span {
+  font-size: 11px;
+  color: var(--text-dim);
+}
