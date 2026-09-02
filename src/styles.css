@@ -1626,14 +1626,14 @@ h3 {
   border-radius: 50%;
   pointer-events: none;
   z-index: 3;
-  animation: fx-burst 720ms ease-out forwards;
+  animation: fx-burst 1100ms ease-out forwards;
 }
 .fx-defeat::before {
   content: "";
   position: absolute;
   inset: 26%;
   border-radius: 50%;
-  animation: fx-core 720ms ease-out forwards;
+  animation: fx-core 1100ms ease-out forwards;
 }
 /* 相手を倒した */
 .fx-defeat-foe {
@@ -1669,7 +1669,7 @@ h3 {
     rgba(143, 111, 214, 0.5) 45%,
     transparent 72%
   );
-  animation: fx-close 780ms ease-out forwards;
+  animation: fx-close 1200ms ease-out forwards;
 }
 .fx-defeat-surround::before {
   background: #efe6ff;
@@ -1677,10 +1677,10 @@ h3 {
 }
 /* 王が倒れたときは長めに、強く光らせる */
 .fx-defeat-king {
-  animation-duration: 1200ms;
+  animation-duration: 1700ms;
 }
 .fx-defeat-king::before {
-  animation-duration: 1200ms;
+  animation-duration: 1700ms;
 }
 @keyframes fx-burst {
   0% {
@@ -2054,10 +2054,10 @@ h3 {
 
 /* 何体もまとめて取るときは、手前から順に1体ずつ光らせる */
 .fx-defeat {
-  animation-delay: calc(var(--i, 0) * 320ms);
+  animation-delay: calc(260ms + var(--i, 0) * 440ms);
 }
 .fx-defeat::before {
-  animation-delay: calc(var(--i, 0) * 320ms);
+  animation-delay: calc(260ms + var(--i, 0) * 440ms);
 }
 
 /* 取った/取られたを、色と広がり方で見分けられるようにする */
@@ -2068,8 +2068,8 @@ h3 {
   border-radius: 50%;
   border: 3px solid currentColor;
   opacity: 0;
-  animation: fx-ring 720ms ease-out both;
-  animation-delay: calc(var(--i, 0) * 320ms);
+  animation: fx-ring 1100ms ease-out both;
+  animation-delay: calc(260ms + var(--i, 0) * 440ms);
 }
 .fx-defeat-foe {
   color: #f0d98a;

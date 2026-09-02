@@ -560,7 +560,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         }
         y({ ...act, __foe: !0 });
       },
-      a.phase === "play" ? 900 : 420,
+      a.phase === "play" ? 1200 : 420,
     );
     return () => clearTimeout(id);
   }, [a, tutorial, network]);
@@ -570,7 +570,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (!cpu || network || tutorial) return;
     let E = cpuAction(a, T);
     if (!E) return;
-    let U = a.phase === "play" ? 700 : 380,
+    let U = a.phase === "play" ? 1000 : 380,
       be = setTimeout(() => {
         E.type === "__CPU_SHUFFLE"
           ? (y({
@@ -619,7 +619,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (!a.lastDefeat) return;
     setHoldFx(!0);
     let n = a.lastDefeat.cells.length;
-    let id = setTimeout(() => setHoldFx(!1), 900 + (n - 1) * 320);
+    let id = setTimeout(() => setHoldFx(!1), 1500 + (n - 1) * 440);
     return () => clearTimeout(id);
   }, [a.lastDefeat ? a.lastDefeat.seq : 0]);
 
@@ -1422,7 +1422,8 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                               sx: Jl ? -dc : dc,
                               sy: Jl ? -dr : dr,
                               stops: n + 1,
-                              ms: n * 120,
+                              // 立ち寄る場所ごとに 190ms 留まる
+                              ms: (n + 1) * 190,
                               seq: Vt.seq || 0,
                             };
                           })()
