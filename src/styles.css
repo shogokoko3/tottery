@@ -1,0 +1,1444 @@
+@import url("https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+.tottery-root {
+  /* 深い紺と金を基調にした、重厚な意匠 */
+  --bg: #081120;
+  --panel: #10203a;
+  --panel-2: #16294a;
+  --line: rgba(212, 175, 55, 0.22);
+  --gold: #d4af37;
+  --gold-soft: #f0d98a;
+  --gold-deep: #8a6d1f;
+  --card-face: #f7f3e8;
+  --card-ink: #1a1a1a;
+  --card-red: #b0202f;
+  --text: #f2ead9;
+  --text-dim: #a9b4cc;
+  --p0: #c0392b;
+  --p1: #2a6f9e;
+  --btn-face: #1b3050;
+  --btn-face-hi: #24406a;
+  --btn-edge: rgba(212, 175, 55, 0.45);
+  background: radial-gradient(
+    120% 90% at 50% 0%,
+    #16294a 0%,
+    #0c1a30 55%,
+    #071120 100%
+  );
+  color: var(--text);
+  min-height: 100%;
+  font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  overflow: hidden;
+  position: relative;
+  min-height: 100vh;
+}
+.tottery-root * {
+  box-sizing: border-box;
+}
+.title-font {
+  font-family: "Shippori Mincho", serif;
+  font-weight: 800;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(
+    180deg,
+    rgba(8, 17, 32, 0.9),
+    rgba(8, 17, 32, 0.4)
+  );
+}
+.brand {
+  font-family: "Shippori Mincho", serif;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--gold-soft);
+  font-size: 17px;
+  text-shadow: 0 0 12px rgba(212, 175, 55, 0.35);
+}
+.brand::before,
+.brand::after {
+  content: "◆";
+  font-size: 8px;
+  color: var(--gold);
+  vertical-align: middle;
+  margin: 0 10px;
+  opacity: 0.8;
+}
+.icon-btn {
+  background: var(--btn-face);
+  border: 1px solid var(--btn-edge);
+  color: var(--gold-soft);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+}
+.icon-btn:hover {
+  color: var(--gold-soft);
+  border-color: var(--gold);
+  background: var(--btn-face-hi);
+}
+.icon-btn:active {
+  transform: translateY(1px);
+}
+.stage {
+  padding: 20px;
+  min-height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+/* 見出しは中央に飾り罫を添える */
+h2 {
+  font-family: "Shippori Mincho", serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gold-soft);
+  text-shadow: 0 0 14px rgba(212, 175, 55, 0.25);
+}
+h3 {
+  font-family: "Shippori Mincho", serif;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.setup-wrap h2,
+.center-stage h2 {
+  position: relative;
+  padding-bottom: 14px;
+  margin-bottom: 10px;
+}
+.setup-wrap h2::after,
+.center-stage h2::after {
+  content: "❖";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--gold);
+  opacity: 0.85;
+}
+
+.intro {
+  text-align: center;
+  max-width: 420px;
+}
+.intro-emblem {
+  font-family: "Shippori Mincho", serif;
+  font-size: 34px;
+  color: var(--gold);
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  background: radial-gradient(
+    circle,
+    rgba(212, 175, 55, 0.14),
+    transparent 70%
+  );
+  box-shadow:
+    0 0 26px rgba(212, 175, 55, 0.3),
+    inset 0 0 20px rgba(212, 175, 55, 0.12);
+}
+.king-card {
+  margin: 6px auto 26px;
+  width: min(52vw, 210px);
+  position: relative;
+}
+.king-card img {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+  box-shadow:
+    0 0 34px rgba(212, 175, 55, 0.45),
+    0 14px 30px rgba(0, 0, 0, 0.6);
+}
+.king-card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -16px;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    rgba(212, 175, 55, 0.35),
+    transparent 70%
+  );
+}
+.intro-start {
+  width: min(72vw, 300px);
+  justify-content: center;
+}
+.win-card {
+  width: min(40vw, 140px);
+  margin: 10px auto 4px;
+}
+.gameover-panel .setup-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+.intro h1 {
+  font-size: 42px;
+  margin: 0 0 10px;
+  letter-spacing: 0.16em;
+  font-weight: 800;
+  color: var(--gold-soft);
+  text-shadow:
+    0 0 24px rgba(212, 175, 55, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.6);
+}
+.subtitle {
+  color: var(--gold);
+  margin-bottom: 30px;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+}
+.intro-choice-label {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--gold-soft);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.intro-boards {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+.board-choice {
+  background: linear-gradient(170deg, #152b49, #0d1c33);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--text);
+}
+.board-choice.active {
+  border-color: var(--gold);
+  border-width: 2px;
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.25);
+}
+.board-choice:hover {
+  border-color: var(--gold);
+}
+.board-choice-grid {
+  display: grid;
+  gap: 2px;
+  width: 70px;
+  height: 70px;
+}
+.board-choice-grid span {
+  background: var(--card-face);
+  opacity: 0.75;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.3);
+}
+
+.center-stage {
+  text-align: center;
+}
+.dim-icon {
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.dice-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin: 18px 0;
+}
+.dice-item {
+  border: 1px solid;
+  border-radius: 10px;
+  padding: 10px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel);
+}
+.dice-item strong {
+  font-size: 26px;
+  font-family: "Shippori Mincho", serif;
+}
+
+.btn {
+  font-family: "Shippori Mincho", serif;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 12px 20px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  font-size: 15px;
+  position: relative;
+}
+.btn-primary {
+  background: linear-gradient(180deg, #f0d98a 0%, #d4af37 45%, #a8842a 100%);
+  color: #2a1e05;
+  border-color: #f0d98a;
+  box-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.btn-primary:hover {
+  filter: brightness(1.07);
+}
+.btn-primary:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+.btn-ghost {
+  background: linear-gradient(180deg, var(--btn-face-hi), var(--btn-face));
+  border: 1px solid var(--btn-edge);
+  color: var(--gold-soft);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+.btn-ghost:hover {
+  border-color: var(--gold);
+  background: var(--btn-face-hi);
+}
+.btn-ghost:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+.btn-ghost:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.btn-large {
+  padding: 15px 30px;
+  font-size: 17px;
+}
+/* 対戦相手の選択。2つを対等な選択肢として、色で役割を分ける */
+.btn-friend {
+  background: linear-gradient(180deg, #2e6f8e, #1a4661);
+  color: #e8f4fb;
+  border-color: rgba(212, 175, 55, 0.35);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+.btn-friend:hover {
+  filter: brightness(1.08);
+}
+.btn-friend:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+.btn-choice {
+  padding: 16px 20px;
+  justify-content: flex-start;
+  gap: 14px;
+  text-align: left;
+}
+.choice-label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.4;
+}
+.choice-label small {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+  margin-top: 3px;
+  font-family: "Shippori Mincho", serif;
+}
+.nav-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
+  min-width: 250px;
+  margin-top: 6px;
+}
+.spin-icon {
+  animation: tottery-spin 1.1s linear infinite;
+}
+@keyframes tottery-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.room-code {
+  font-family: "Shippori Mincho", serif;
+  font-size: 44px;
+  letter-spacing: 0.2em;
+  color: var(--gold-soft);
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+  padding: 16px 30px;
+  margin: 16px 0;
+  background: rgba(212, 175, 55, 0.07);
+  text-shadow: 0 0 18px rgba(212, 175, 55, 0.4);
+}
+.room-join-row {
+  display: flex;
+  gap: 10px;
+}
+.room-input {
+  flex: 1;
+  background: var(--card-face);
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  color: #1a1a1a;
+  padding: 12px;
+  font-size: 20px;
+  font-family: "Shippori Mincho", serif;
+  letter-spacing: 0.25em;
+  text-align: center;
+  text-transform: uppercase;
+  min-width: 0;
+  font-weight: 700;
+}
+.room-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--gold-soft);
+}
+.diag-line {
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.diag-checking {
+  color: var(--text-dim);
+}
+.diag-ok {
+  color: #7fd4a8;
+}
+.diag-fail {
+  color: #e08b7a;
+}
+
+.interstitial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.interstitial-card {
+  text-align: center;
+  background: linear-gradient(170deg, #132844, #0b1729);
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  padding: 36px 30px;
+  position: relative;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 10px 34px rgba(0, 0, 0, 0.5);
+}
+.interstitial-card::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 6px;
+  pointer-events: none;
+}
+.interstitial-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 4px;
+}
+.interstitial-card h2 {
+  font-family: "Shippori Mincho", serif;
+  margin: 0 0 14px;
+  font-size: 30px;
+  letter-spacing: 0.1em;
+}
+.interstitial-card p {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 20px;
+  max-width: 300px;
+}
+
+.setup-wrap {
+  width: 100%;
+  max-width: 620px;
+  text-align: center;
+}
+.setup-wrap h2 {
+  font-family: "Shippori Mincho", serif;
+  margin-bottom: 6px;
+}
+.hint {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.hand-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.hand-split {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.hand-split .hand-row {
+  margin-bottom: 0;
+}
+/* 狭い端末向け。カードを詰めて折り返し、はみ出さないようにする */
+.hand-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  justify-items: center;
+  margin-bottom: 18px;
+}
+@media (max-width: 330px) {
+  .hand-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.hand-card {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 2px;
+  border: 2px solid transparent;
+  transition: transform 0.1s;
+  position: relative;
+}
+.hand-card:hover {
+  transform: translateY(-3px);
+}
+.hand-card-selected {
+  border-color: var(--gold);
+  transform: translateY(3px);
+  opacity: 0.75;
+}
+.discard-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #d0483a;
+  color: #fff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+.card-face {
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.card-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+}
+/* 王(隊長)は縁を金色に光らせる */
+.card-captain {
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.7);
+}
+/* 絵柄は共通なので、赤スートだけ色味を重ねて区別する */
+.card-tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(176, 32, 47, 0.13);
+  mix-blend-mode: multiply;
+}
+.card-back {
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px var(--pc);
+}
+.card-back img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+}
+
+.arrange-layout {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.mini-board {
+  display: grid;
+  gap: 0;
+  width: min(78vw, 320px);
+  aspect-ratio: 1;
+  background: linear-gradient(160deg, #0d1c33, #091426);
+  padding: 5px;
+  border-radius: 8px;
+  border: 2px solid var(--gold);
+  grid-auto-rows: minmax(0, 1fr);
+}
+.mini-cell {
+  background: transparent;
+  position: relative;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+}
+.mini-cell-zone {
+  background: rgba(45, 105, 165, 0.5);
+  cursor: pointer;
+}
+.mini-cell-open {
+  background: rgba(80, 200, 140, 0.18);
+}
+.mini-piece {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mini-piece-disabled {
+  opacity: 0.3;
+  filter: grayscale(0.6);
+}
+.tray {
+  margin-bottom: 14px;
+}
+.tray-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.tray-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.setup-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.play-wrap {
+  width: 100%;
+  max-width: 560px;
+}
+.turn-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.turn-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.turn-log {
+  color: var(--text-dim);
+  margin-left: auto;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+}
+.board-outer {
+  display: flex;
+  justify-content: center;
+}
+/* 盤の左と下に座標の目盛りを置く。盤を反転しても正しい座標が並ぶ */
+.board-frame {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: 1fr auto;
+  gap: 4px;
+  width: min(94vw, 500px);
+}
+.rank-labels {
+  display: grid;
+  grid-template-rows: repeat(var(--n), 1fr);
+  align-items: center;
+  font-size: 13px;
+  color: var(--gold-soft);
+  font-family: "Shippori Mincho", serif;
+  padding: 6px 5px;
+  text-align: center;
+  font-weight: 600;
+}
+.file-labels {
+  display: grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  justify-items: center;
+  grid-column: 2;
+  font-size: 13px;
+  color: var(--gold-soft);
+  font-family: "Shippori Mincho", serif;
+  padding: 4px 6px 0;
+  font-weight: 600;
+}
+.board-frame .board-grid {
+  width: 100%;
+}
+.board-grid {
+  display: grid;
+  gap: 0;
+  width: min(90vw, 480px);
+  aspect-ratio: 1;
+  background: linear-gradient(160deg, #0d1c33, #091426);
+  padding: 5px;
+  border-radius: 8px;
+  border: 2px solid var(--gold);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 6px 20px rgba(0, 0, 0, 0.5);
+  grid-auto-rows: minmax(0, 1fr);
+}
+/* セル内の駒はマス目に収める。はみ出して隣のマスに重なるのを防ぐ */
+.cell > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+/* マス目からはみ出さないよう、カードの表示サイズを内側に収める */
+.cell .card-face,
+.cell .card-back {
+  max-width: 86%;
+  max-height: 86%;
+}
+.cell .card-face img,
+.cell .card-back img {
+  width: 100%;
+  height: 100%;
+}
+.cell {
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+}
+.cell.zone-0 {
+  background: rgba(160, 45, 38, 0.42);
+}
+.cell.zone-1 {
+  background: rgba(45, 105, 165, 0.5);
+}
+.cell-move::after {
+  content: "";
+  position: absolute;
+  width: 26%;
+  height: 26%;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  opacity: 0.85;
+  box-shadow: 0 0 8px var(--gold);
+}
+.cell-capture {
+  box-shadow:
+    inset 0 0 0 3px #d0483a,
+    0 0 12px rgba(208, 72, 58, 0.5);
+}
+/* 直前の手。移動元は控えめに、移動先ははっきり示す */
+.cell-from {
+  box-shadow: inset 0 0 0 2px var(--lm);
+  opacity: 0.95;
+}
+.cell-from::after {
+  content: "";
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  border: 2px dashed var(--lm);
+  opacity: 0.55;
+}
+.cell-to {
+  box-shadow: inset 0 0 0 3px var(--lm);
+}
+.cell-to::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--lm);
+  opacity: 0.16;
+  pointer-events: none;
+}
+/* 入れ替えが起きたマス。どの駒がどこへ移ったかは示さない */
+.cell-swap {
+  box-shadow: inset 0 0 0 2px var(--lm);
+}
+.cell-swap::after {
+  content: "⇄";
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 10px;
+  color: var(--lm);
+  opacity: 0.85;
+}
+.piece-wrap {
+  position: relative;
+}
+.piece-selected {
+  outline: 2px solid var(--gold-soft);
+  border-radius: 4px;
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.6);
+}
+.piece-pickable {
+  filter: drop-shadow(0 0 5px var(--gold-soft));
+}
+.king-badge {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, #1a2b4a 60%, transparent 70%);
+  border-radius: 50%;
+}
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+}
+.captured-row {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.captured-col {
+  text-align: center;
+}
+.captured-label {
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+.captured-cards {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  max-width: 220px;
+  justify-content: center;
+}
+.captured-card {
+  cursor: pointer;
+}
+.discard-panel {
+  margin: 14px 0;
+}
+.discard-label {
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.discard-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.discard-card {
+  opacity: 0.85;
+}
+.discard-toggle-wrap {
+  margin-top: 14px;
+  text-align: center;
+}
+.resign-row {
+  margin-top: 18px;
+  text-align: center;
+}
+.btn-resign {
+  font-size: 13px;
+  padding: 9px 18px;
+  opacity: 0.8;
+}
+.btn-resign:hover {
+  opacity: 1;
+  border-color: #e08b7a;
+  color: #e8a08f;
+}
+.discard-both {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.log-list {
+  text-align: left;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.8;
+  margin: 0;
+}
+.log-list li {
+  margin-bottom: 2px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 22, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+.modal-panel {
+  background: linear-gradient(170deg, #132844, #0b1729);
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 80vh;
+  overflow: auto;
+  text-align: center;
+}
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  text-align: left;
+}
+.gameover-panel {
+  text-align: center;
+}
+.review-panel {
+  max-width: 520px;
+  text-align: center;
+}
+.review-panel .board-grid {
+  width: min(78vw, 380px);
+}
+.review-lost {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.review-log {
+  margin-top: 16px;
+  text-align: left;
+  max-height: 190px;
+  overflow: auto;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.waiting-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.rule-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+.rule-row {
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+  align-items: flex-start;
+}
+.rule-rank {
+  font-family: "Shippori Mincho", serif;
+  font-weight: 700;
+  color: var(--gold-soft);
+  font-size: 15px;
+  text-align: center;
+}
+.rule-diagram {
+  flex-shrink: 0;
+  width: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.rule-toggle {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.rule-section {
+  margin-bottom: 20px;
+}
+.rule-section-label {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--gold-soft);
+  text-transform: uppercase;
+  margin-bottom: 9px;
+  text-align: left;
+}
+.size-choices {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.size-choices .board-choice {
+  flex: 1;
+  max-width: 150px;
+}
+.size-choices .board-choice small {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.rule-toggle .btn {
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+/* --- 動きの図解 --- */
+.move-diagram {
+  display: grid;
+  gap: 1px;
+  width: 70px;
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 1px;
+  border-radius: 4px;
+}
+.md-cell {
+  background: rgba(12, 15, 30, 0.85);
+  border-radius: 1px;
+}
+.md-reach {
+  background: var(--gold);
+  opacity: 0.85;
+}
+.md-me {
+  background: var(--text);
+  box-shadow: 0 0 0 1px var(--gold-soft);
+}
+.card-guide {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.card-guide-compact {
+  margin: 8px 0 12px;
+  padding: 10px;
+}
+.cg-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.cg-rank {
+  font-family: "Shippori Mincho", serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--gold-soft);
+}
+.cg-text {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin: 0;
+  text-align: left;
+}
+.cg-king {
+  font-size: 11px;
+  color: var(--gold-soft);
+  margin: 6px 0 0;
+  text-align: left;
+}
+.rule-desc {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.net-tag {
+  color: rgba(126, 201, 154, 0.75);
+}
+/* ヘッダーを3分割にして、戻る・題名・設定を配置する */
+.top-left,
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 72px;
+}
+.top-right {
+  justify-content: flex-end;
+}
+.icon-btn.plain {
+  background: transparent;
+  border-color: transparent;
+  color: var(--gold);
+}
+.icon-btn.plain:hover {
+  background: transparent;
+  border-color: transparent;
+}
+.settings-list {
+  text-align: left;
+}
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.settings-row span {
+  color: var(--text-dim);
+}
+.settings-row b {
+  color: var(--gold-soft);
+  font-weight: 600;
+  font-size: 12px;
+  text-align: right;
+}
+
+/* フレンド対戦 */
+.friend-wrap {
+  max-width: 420px;
+}
+.friend-head {
+  margin-bottom: 18px;
+}
+.conn-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 20px;
+  border-radius: 999px;
+  font-size: 13px;
+  margin-bottom: 20px;
+  background: rgba(45, 105, 165, 0.18);
+  border: 1px solid rgba(45, 105, 165, 0.4);
+}
+.conn-badge .conn-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+.conn-ok {
+  color: #6fd6ae;
+}
+.conn-ok .conn-dot {
+  background: #6fd6ae;
+  box-shadow: 0 0 8px #6fd6ae;
+}
+.conn-checking {
+  color: var(--text-dim);
+}
+.conn-fail {
+  color: #e08b7a;
+  border-color: rgba(224, 139, 122, 0.4);
+  background: rgba(224, 139, 122, 0.12);
+}
+.conn-fail .conn-dot {
+  background: #e08b7a;
+}
+.btn-wide {
+  width: 100%;
+  justify-content: center;
+  font-size: 17px;
+  padding: 16px;
+}
+.btn-teal {
+  background: linear-gradient(180deg, #1c5b56, #123f3c);
+  color: #a9ead9;
+  border: 1px solid rgba(111, 214, 174, 0.4);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+.btn-teal:hover {
+  filter: brightness(1.1);
+}
+.btn-teal:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+.code-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  margin: 16px 0 8px;
+}
+.code-boxes {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  position: relative;
+  cursor: text;
+}
+.code-box {
+  flex: 1;
+  aspect-ratio: 0.85;
+  background: var(--card-face);
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 700;
+  color: #1a1a1a;
+  font-family: "Shippori Mincho", serif;
+}
+.code-box-active {
+  box-shadow: 0 0 0 2px var(--gold-soft);
+}
+.code-placeholder {
+  color: #b3ada0;
+  font-size: 20px;
+}
+.code-hidden {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  font-size: 16px;
+  cursor: text;
+}
+.code-join {
+  white-space: nowrap;
+  padding: 12px 16px;
+}
+.code-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  justify-content: center;
+  font-size: 12px;
+  color: #6fd6ae;
+  margin: 0 0 20px;
+}
+
+.build-tag {
+  position: absolute;
+  bottom: 4px;
+  right: 8px;
+  font-size: 9px;
+  color: rgba(154, 162, 200, 0.35);
+  font-family: "IBM Plex Mono", monospace;
+  pointer-events: none;
+}
+
+/* --- サイコロ --- */
+.die3d {
+  width: 150px;
+  height: 150px;
+}
+.die3d img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.6));
+}
+.title-hero {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+.title-bg {
+  width: 100%;
+  max-width: 430px;
+  display: block;
+  border-radius: 10px;
+}
+.title-hero .intro-start {
+  position: absolute;
+  bottom: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(66%, 290px);
+}
+.die-stage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 150px;
+  margin: 10px 0 6px;
+  perspective: 700px;
+}
+.die {
+  width: 96px;
+  height: 96px;
+  border-radius: 18px;
+  padding: 12px;
+  background: linear-gradient(145deg, #fffdf7 0%, #f2ece0 45%, #ddd3bd 100%);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.55),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.16),
+    inset 0 3px 5px rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+}
+.die-grid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 3px;
+}
+.pip {
+  border-radius: 50%;
+}
+.pip-on {
+  background: radial-gradient(circle at 35% 30%, #3a3228, #131009 70%);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.3),
+    0 1px 1px rgba(255, 255, 255, 0.15);
+}
+.die-rolling {
+  animation: die-tumble 0.5s linear infinite;
+}
+@keyframes die-tumble {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg) translateY(0);
+  }
+  25% {
+    transform: rotateX(180deg) rotateY(90deg) translateY(-22px);
+  }
+  50% {
+    transform: rotateX(360deg) rotateY(180deg) translateY(0);
+  }
+  75% {
+    transform: rotateX(180deg) rotateY(270deg) translateY(-14px);
+  }
+  100% {
+    transform: rotateX(0deg) rotateY(360deg) translateY(0);
+  }
+}
+.die-result {
+  font-family: "Shippori Mincho", serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 4px 0 18px;
+  text-shadow: 0 0 14px currentColor;
+}
+.dice-result-row {
+  display: flex;
+  gap: 22px;
+  justify-content: center;
+  margin: 16px 0 10px;
+}
+.dice-result-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+.dice-winner {
+  border-color: var(--gold);
+  background: rgba(201, 162, 39, 0.1);
+}
+.capture-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: #e0715c;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.capture-cards {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.capture-card {
+  animation: capture-pop 0.28s ease-out both;
+}
+.capture-card:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.capture-card:nth-child(3) {
+  animation-delay: 0.16s;
+}
+.capture-card:nth-child(4) {
+  animation-delay: 0.24s;
+}
+@keyframes capture-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.cell-heir {
+  box-shadow: inset 0 0 0 2px var(--gold-soft);
+  cursor: pointer;
+}
+.piece-dim {
+  opacity: 0.35;
+}

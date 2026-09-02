@@ -1,0 +1,386 @@
+import { sanitizeHistory } from "../game/board.js";
+import { PLAYER_META, SUIT_SYMBOL, VERSION } from "../game/constants.js";
+import { ArrowLeft, Check, Close, Flag, Sparkle } from "../icons.jsx";
+import { CardFace, Piece } from "./cards.jsx";
+import { CardGuide } from "./guides.jsx";
+
+export function Interstitial({ forPlayer, kind, onReady }) {
+  let n = PLAYER_META[forPlayer],
+    a = PLAYER_META[1 - forPlayer],
+    u = {
+      dice: "サイコロフェーズ",
+      mulligan: "引き直しフェーズ",
+      setup: "布陣フェーズ",
+      turn: "手番交代",
+    };
+  return (
+    <div className="interstitial">
+      <div className="interstitial-card">
+        <div className="interstitial-eyebrow">PASS THE DEVICE</div>
+        <h2
+          style={{
+            color: n.color,
+          }}
+        >
+          {n.name}の番です
+        </h2>
+        <p>
+          {u[kind] || ""} —{" "}
+          <b
+            style={{
+              color: n.color,
+            }}
+          >
+            {n.name}
+          </b>
+          の担当者に画面を渡してください。
+          <br />
+          <b
+            style={{
+              color: a.color,
+            }}
+          >
+            {a.name}
+          </b>
+          には見えないようにしてください。
+        </p>
+        <button className="btn btn-primary" onClick={onReady}>
+          <Sparkle size={16} /> 準備ができた
+        </button>
+      </div>
+    </div>
+  );
+}
+export function KingChoiceInterstitial({ state, size, dispatch }) {
+  let n = state.pendingKingChoice,
+    a = PLAYER_META[n.owner];
+  if (!n.acknowledged)
+    return (
+      <div className="interstitial">
+        <div className="interstitial-card">
+          <div className="interstitial-eyebrow">PASS THE DEVICE</div>
+          <h2
+            style={{
+              color: a.color,
+            }}
+          >
+            {a.name}の王が倒れました
+          </h2>
+          <p>
+            残っている{n.rank}
+            の中から、新しい王を選びます。画面を渡してください。
+          </p>
+          <button
+            className="btn btn-primary"
+            onClick={() =>
+              dispatch({
+                type: "ACK_KING_CHOICE",
+              })
+            }
+          >
+            <Sparkle size={16} /> 準備ができた
+          </button>
+        </div>
+      </div>
+    );
+  let u = n.owner === 1;
+  return (
+    <div className="setup-wrap">
+      <h2
+        style={{
+          color: a.color,
+        }}
+      >
+        新しい王を選んでください
+      </h2>
+      <p className="hint">
+        光っている{n.rank}のうち、どれを王にするか選びます。
+      </p>
+      <div className="board-outer">
+        <div
+          className="board-grid"
+          style={{
+            gridTemplateColumns: `repeat(${size},1fr)`,
+          }}
+        >
+          {Array.from({
+            length: size,
+          }).map((i, f) =>
+            Array.from({
+              length: size,
+            }).map((o, r) => {
+              let d = u ? size - 1 - f : f,
+                m = u ? size - 1 - r : r,
+                s = state.board[d][m],
+                v = s && n.candidateIds.includes(s.id);
+              return (
+                <div
+                  className={`cell ${v ? "cell-heir" : ""}`}
+                  onClick={() => {
+                    v &&
+                      dispatch({
+                        type: "CHOOSE_HEIR",
+                        id: s.id,
+                      });
+                  }}
+                  key={`${d}-${m}`}
+                >
+                  {s && (
+                    <div className={v ? "" : "piece-dim"}>
+                      <Piece
+                        piece={s}
+                        viewer={n.owner}
+                        size={size >= 9 ? "xs" : "md"}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            }),
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+export function CaptureRevealModal({ reveal, onClose, viewer }) {
+  let n = reveal.defeated || [],
+    a =
+      reveal.capturedBy === void 0 ||
+      viewer === void 0 ||
+      reveal.capturedBy === viewer;
+  return (
+    <div className="modal-overlay">
+      <div className="modal-panel gameover-panel">
+        <div
+          className="capture-eyebrow"
+          style={
+            a
+              ? void 0
+              : {
+                  color: "#e08b7a",
+                }
+          }
+        >
+          {a
+            ? reveal.surround
+              ? "包囲成功!"
+              : "撃破!"
+            : reveal.surround
+              ? "包囲された!"
+              : "駒を取られた!"}
+        </div>
+        <h3
+          style={{
+            margin: "0 0 14px",
+          }}
+        >
+          {a
+            ? reveal.surround
+              ? n.length > 1
+                ? `包囲して${n.length}枚を取りました`
+                : "包囲して相手の駒を取りました"
+              : n.length > 1
+                ? `${n.length}枚の駒を取りました`
+                : "相手の駒を取りました"
+            : n.length > 1
+              ? `あなたの駒が${n.length}枚取られました`
+              : "あなたの駒が取られました"}
+        </h3>
+        <div className="capture-cards">
+          {n.map((u, i) => (
+            <div className="capture-card" key={i}>
+              <CardFace rank={u.rank} suit={u.suit} />
+            </div>
+          ))}
+        </div>
+        <button
+          className="btn btn-primary"
+          style={{
+            marginTop: 18,
+          }}
+          onClick={onClose}
+        >
+          確認した <Check size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+export function LogViewer({ piece, viewer, onClose, revealAll }) {
+  let a = PLAYER_META[piece.owner],
+    u = piece.owner === viewer || !piece.alive || revealAll,
+    i = sanitizeHistory(piece, viewer, revealAll);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-panel" onClick={(f) => f.stopPropagation()}>
+        <div className="modal-head">
+          <h3
+            style={{
+              color: a.color,
+            }}
+          >
+            {u ? `${piece.rank}${SUIT_SYMBOL[piece.suit]}` : "???"} の行動ログ
+          </h3>
+          <button className="icon-btn" onClick={onClose}>
+            <Close size={18} />
+          </button>
+        </div>
+        {u && (
+          <CardGuide
+            rank={piece.rank}
+            suit={piece.suit}
+            isKing={piece.isKing}
+            compact={!0}
+          />
+        )}
+        {i.length === 0 ? (
+          <p className="hint">まだ行動していません。</p>
+        ) : (
+          <ol className="log-list">
+            {i.map((f, o) => (
+              <li key={o}>
+                {o + 1}. {f}
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </div>
+  );
+}
+export function SettingsModal({ onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-panel" onClick={(t) => t.stopPropagation()}>
+        <div className="modal-head">
+          <h3>設定</h3>
+          <button className="icon-btn" onClick={onClose}>
+            <Close size={18} />
+          </button>
+        </div>
+        <div className="settings-list">
+          <div className="settings-row">
+            <span>ゲームの版</span>
+            <b>{VERSION}</b>
+          </div>
+          <div className="settings-row">
+            <span>ルールの確認</span>
+            <b>右上の「i」から見られます</b>
+          </div>
+          <div className="settings-row">
+            <span>通信</span>
+            <b>オンライン対戦に対応</b>
+          </div>
+        </div>
+        <p
+          className="hint"
+          style={{
+            marginTop: 14,
+          }}
+        >
+          音量や表示の調整は今後追加する予定です。
+        </p>
+        <button
+          className="btn btn-primary"
+          style={{
+            marginTop: 10,
+          }}
+          onClick={onClose}
+        >
+          閉じる
+        </button>
+      </div>
+    </div>
+  );
+}
+export function ResignConfirm({ onCancel, onResign, viewer }) {
+  let n = PLAYER_META[viewer];
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div
+        className="modal-panel gameover-panel"
+        onClick={(a) => a.stopPropagation()}
+      >
+        <Flag
+          size={30}
+          style={{
+            color: "var(--gold)",
+          }}
+        />
+        <h3
+          style={{
+            margin: "8px 0 10px",
+          }}
+        >
+          降参しますか?
+        </h3>
+        <p className="hint">
+          <b
+            style={{
+              color: n.color,
+            }}
+          >
+            あなた({n.name})
+          </b>
+          の負けとして、この対局が終わります。
+        </p>
+        <div
+          className="setup-actions"
+          style={{
+            marginTop: 16,
+            flexDirection: "column",
+          }}
+        >
+          <button className="btn btn-primary" onClick={onCancel}>
+            対局を続ける
+          </button>
+          <button className="btn btn-ghost" onClick={onResign}>
+            <Flag size={16} /> 降参する
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+export function QuitConfirm({ onCancel, onQuit, network }) {
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div
+        className="modal-panel gameover-panel"
+        onClick={(n) => n.stopPropagation()}
+      >
+        <h3
+          style={{
+            margin: "0 0 10px",
+          }}
+        >
+          対局をやめますか?
+        </h3>
+        <p className="hint">
+          今の対局は最初からやり直しになります。
+          {network && (
+            <>
+              <br />
+              オンライン対戦の場合、相手の画面はそのまま残ります。
+            </>
+          )}
+        </p>
+        <div
+          className="setup-actions"
+          style={{
+            marginTop: 16,
+            flexDirection: "column",
+          }}
+        >
+          <button className="btn btn-primary" onClick={onCancel}>
+            対局を続ける
+          </button>
+          <button className="btn btn-ghost" onClick={onQuit}>
+            <ArrowLeft size={16} /> やめてタイトルに戻る
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

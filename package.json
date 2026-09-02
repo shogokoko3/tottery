@@ -1,0 +1,23 @@
+{
+  "name": "tottery",
+  "version": "47.0.0",
+  "private": true,
+  "type": "module",
+  "description": "トッタリー — カード×陣取りバトル",
+  "scripts": {
+    "build": "node build.mjs",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\""
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@babel/generator": "^7.24.7",
+    "@babel/parser": "^7.24.7",
+    "@babel/traverse": "^7.24.7",
+    "@babel/types": "^7.24.7",
+    "esbuild": "0.21.5",
+    "prettier": "^3.3.3"
+  }
+}
