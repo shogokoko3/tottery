@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { sanitizeHistory } from "../game/board.js";
 import { PLAYER_META, SUIT_SYMBOL, VERSION } from "../game/constants.js";
 import { ArrowLeft, Check, Close, Crown, Flag, Sparkle } from "../icons.jsx";
-import { CardFace, Piece } from "./cards.jsx";
+import { CardBack, CardFace, Piece } from "./cards.jsx";
 import { CardGuide } from "./guides.jsx";
 
 export function Interstitial({ forPlayer, kind, onReady }) {
@@ -186,21 +186,34 @@ export function CaptureConfirm({ count, squares, onCancel, onConfirm }) {
  * 王だったことが分かる。決着はそのあと。取るまで正体が分からない
  * という遊び方に合わせて、順を追って見せる。
  */
+/**
+ * 取った駒を見せる札。
+ *
+ * 伏せた状態から1枚ずつめくる。王は最後に回してあるので、
+ * 最後の1枚をめくった瞬間に、王だったかどうかが分かる。
+ * 取るまで正体が分からない、という遊び方をそのまま演出にしている。
+ */
 export function CaptureRevealModal({ reveal, onClose, viewer, final }) {
   const defeated = reveal.defeated || [];
   const mine =
     reveal.capturedBy === void 0 ||
     viewer === void 0 ||
     reveal.capturedBy === viewer;
-  const kingIdx = defeated.findIndex((c) => c.isKing);
-  const hasKing = kingIdx >= 0;
-  const [shown, setShown] = useState(!hasKing);
+  const hasKing = defeated.some((c) => c.isKing);
+  const [flipped, setFlipped] = useState(0);
+  const allShown = flipped >= defeated.length;
 
   useEffect(() => {
-    if (!hasKing) return;
-    const id = setTimeout(() => setShown(!0), 1100);
+    if (flipped >= defeated.length) return;
+    const id = setTimeout(
+      () => setFlipped((n) => n + 1),
+      flipped === 0 ? 450 : 420,
+    );
     return () => clearTimeout(id);
-  }, [hasKing]);
+  }, [flipped, defeated.length]);
+
+  // すべてめくり終えてから、王がいたことを告げる
+  const told = allShown && hasKing;
 
   const eyebrow = mine
     ? reveal.surround
@@ -226,47 +239,54 @@ export function CaptureRevealModal({ reveal, onClose, viewer, final }) {
     <div className="modal-overlay">
       <div className="modal-panel gameover-panel">
         <div
-          className={`capture-eyebrow ${shown && hasKing ? "capture-eyebrow-king" : ""}`}
+          className={`capture-eyebrow ${told ? "capture-eyebrow-king" : ""}`}
           style={mine ? void 0 : { color: "#e08b7a" }}
         >
-          {shown && hasKing
-            ? mine
-              ? "王を討った!"
-              : "王が討たれた…"
-            : eyebrow}
+          {told ? (mine ? "王を討った!" : "王が討たれた…") : eyebrow}
         </div>
         <h3 style={{ margin: "0 0 14px" }}>
-          {shown && hasKing
+          {told
             ? mine
               ? "取ったのは相手の王でした"
               : "取られたのはあなたの王でした"
             : plain}
         </h3>
         <div className="capture-cards">
-          {defeated.map((card, i) => (
-            <div
-              className={`capture-card ${shown && card.isKing ? "capture-card-king" : ""}`}
-              key={i}
-            >
-              <CardFace
-                rank={card.rank}
-                suit={card.suit}
-                isKing={shown && card.isKing}
-              />
-              {shown && card.isKing && (
-                <Crown size={18} className="capture-crown" />
-              )}
-            </div>
-          ))}
+          {defeated.map((card, i) => {
+            const open = i < flipped;
+            return (
+              <div
+                className={`capture-card ${open ? "capture-card-open" : ""} ${
+                  open && card.isKing ? "capture-card-king" : ""
+                }`}
+                key={i}
+              >
+                {open ? (
+                  <>
+                    <CardFace
+                      rank={card.rank}
+                      suit={card.suit}
+                      isKing={card.isKing}
+                    />
+                    {card.isKing && (
+                      <Crown size={18} className="capture-crown" />
+                    )}
+                  </>
+                ) : (
+                  <CardBack colorHex={PLAYER_META[card.owner].color} />
+                )}
+              </div>
+            );
+          })}
         </div>
         <button
           className="btn btn-primary"
           style={{ marginTop: 18 }}
-          disabled={hasKing && !shown}
+          disabled={!allShown}
           onClick={onClose}
         >
           {/* 王を取っても、継ぐ駒がいれば対局は続く */}
-          {hasKing && final
+          {told && final
             ? mine
               ? "勝利を見る"
               : "結果を見る"

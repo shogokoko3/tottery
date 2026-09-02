@@ -864,12 +864,15 @@ function coreReducer(state, action) {
           row: pieces[id].row,
           col: pieces[id].col,
         }));
-        const trapped = Object.values(pieces).filter(
-          (p) =>
-            p.alive &&
-            p.owner !== state.currentTurn &&
-            pointInTriangle({ row: p.row, col: p.col }, a, b, c),
-        );
+        const trapped = Object.values(pieces)
+          .filter(
+            (p) =>
+              p.alive &&
+              p.owner !== state.currentTurn &&
+              pointInTriangle({ row: p.row, col: p.col }, a, b, c),
+          )
+          // 王は最後に倒す。取ってはじめて正体が分かる見せ方に合わせる
+          .sort((x, y) => (x.isKing ? 1 : 0) - (y.isKing ? 1 : 0));
         const defeated = [];
         for (const victim of trapped) {
           const piece = next.pieces[victim.id];
@@ -886,19 +889,7 @@ function coreReducer(state, action) {
             `${PLAYER_META[state.currentTurn].name}が包囲で${PLAYER_META[piece.owner].name}の${piece.rank}${SUIT_SYMBOL[piece.suit]}を撃破!`,
           ];
           next = removePiece(next, victim.id, { by: null, viaCounter: true });
-          if (next.winner !== null && next.winner !== undefined) {
-            return endAction(
-              {
-                ...next,
-                captureReveal: {
-                  defeated,
-                  capturedBy: state.currentTurn,
-                  surround: true,
-                },
-              },
-              aId,
-            );
-          }
+          // 王を取った時点で止めない。囲んだ駒は全部倒してから決着する
         }
         if (defeated.length) {
           next.captureReveal = {
@@ -950,18 +941,16 @@ function coreReducer(state, action) {
           by: mover.id,
           viaCounter: false,
         });
-        if (next.winner !== null && next.winner !== undefined) {
-          return endAction(
-            {
-              ...next,
-              captureReveal: { defeated, capturedBy: state.currentTurn },
-            },
-            mover.id,
-          );
-        }
+        // 王を取った時点で止めない。まとめ取りは全部取ってから決着する
       }
-      if (defeated.length)
-        next.captureReveal = { defeated, capturedBy: state.currentTurn };
+      if (defeated.length) {
+        // 盤の演出は手前から順に。札をめくる順だけ、王を最後に回す
+        const cards = [
+          ...defeated.filter((c) => !c.isKing),
+          ...defeated.filter((c) => c.isKing),
+        ];
+        next.captureReveal = { defeated: cards, capturedBy: state.currentTurn };
+      }
 
       const moved = next.pieces[mover.id];
       const nextBoard = next.board.map((r) => [...r]);
