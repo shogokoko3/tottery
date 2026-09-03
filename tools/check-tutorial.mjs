@@ -17,7 +17,7 @@ import { SUIT_SYMBOL } from "../src/game/constants.js";
  * どちらの布陣がそろい、誰の駒がめくれ、引き直しで何を引くか。
  */
 const BONUS_EXPECT = {
-  5: {
+  6: {
     straight: 0,
     swapped: true,
     drewRank: "7",
@@ -29,7 +29,7 @@ const BONUS_EXPECT = {
     noReveal: true,
     foeNoBonus: true,
   },
-  6: {
+  7: {
     flush: 0,
     swapped: false,
     revealedOwner: 1,
@@ -251,10 +251,12 @@ for (const tut of TUTORIALS) {
     stuck,
   );
   console.log(`  説明を読まずに指した回数: ${skipped}`);
+  // CPU は1手も指さない。1手でも混ざると毎回ちがう盤面になり、
+  // 決まった盤面を前提に書いた案内と噛み合わなくなる
   ok(
-    "相手の手が台本だけで足りる",
+    "相手の手が台本だけで足りる(CPUは1手も指さない)",
     usedCpu === 0,
-    `台本を使い切って CPU が ${usedCpu} 手 引き継いだ`,
+    `台本が足りず CPU が ${usedCpu} 手 必要だった`,
   );
   ok(
     "台本が最後まで進む",
@@ -293,7 +295,7 @@ for (const tut of TUTORIALS) {
       );
       ok(
         "相手の捨て札にスペードが混ざらない",
-        tut.id !== 6 || !shown.some((c) => c.includes("♠")),
+        tut.id !== 7 || !shown.some((c) => c.includes("♠")),
         shown.join(","),
       );
     }

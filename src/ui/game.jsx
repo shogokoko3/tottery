@@ -818,22 +818,20 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             : null),
         }));
   }, [a.phase, boardSize]);
-  // チュートリアルの相手は考えない。台本の手をそのまま指す。
-  // 台本を使い切ったあとは CPU が引き継ぐので、相手の番で止まることはない
+  // チュートリアルの相手は考えない。台本の手だけをそのまま指す。
+  //
+  // CPU に肩代わりさせない。1手でも CPU が指すと、そこから先は
+  // 毎回ちがう盤面になってしまう。案内は決まった盤面を前提に書いてあるので、
+  // 噛み合わなくなる。台本が足りているかは check-tutorial が見張っている
   (0, useEffect)(() => {
     if (!tutorial || network) return;
-    let scripted = foeAction(a, tutorial, foeIdxRef.current, (piece) =>
-        getLegalMoves(piece, a.board, a.boardSize, a.players[1].armyRankCounts),
-      ),
-      act =
-        scripted ||
-        (a.phase === "play" && a.currentTurn === 1 && !a.captureReveal
-          ? cpuAction(a, 1)
-          : null);
+    let act = foeAction(a, tutorial, foeIdxRef.current, (piece) =>
+      getLegalMoves(piece, a.board, a.boardSize, a.players[1].armyRankCounts),
+    );
     if (!act) return;
     let id = setTimeout(
       () => {
-        if (scripted && act.type === "MOVE_PIECE") foeIdxRef.current += 1;
+        if (act.type === "MOVE_PIECE") foeIdxRef.current += 1;
         if (act.type === "__CPU_SHUFFLE") {
           y({ type: "SELECT_PIECE", id: act.aceId, __foe: !0 });
           y({ type: "TOGGLE_SHUFFLE_PICK", id: act.pickIds[0], __foe: !0 });
