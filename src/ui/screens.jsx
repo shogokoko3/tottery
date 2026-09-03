@@ -60,11 +60,15 @@ export function GameShell({
   setShowRules,
   netInfo,
   onBack,
+  onHome,
   title,
   sheet,
   focusButton,
 }) {
   let [i, f] = (0, useState)(!1);
+  // 上の「トッタリー」を押すとタイトルへ。対局中は onBack と同じ扱いにして、
+  // 「対局をやめますか?」の確認を通す(黙って抜けると対局が飛ぶ)
+  let goHome = onHome || onBack;
   return (
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
       <style>{STYLES}</style>
@@ -87,7 +91,17 @@ export function GameShell({
             />
           )}
         </div>
-        <span className="brand">{title || "トッタリー"}</span>
+        {goHome ? (
+          <button
+            className="brand brand-link"
+            onClick={goHome}
+            aria-label="タイトルへ戻る"
+          >
+            {title || "トッタリー"}
+          </button>
+        ) : (
+          <span className="brand">{title || "トッタリー"}</span>
+        )}
         <div className="top-right">
           <button
             className="icon-btn"
@@ -136,7 +150,6 @@ export function MatchingScreen({
   onCpu,
   onTutorial,
   onRanking,
-  onBack,
 }) {
   return (
     <div className="center-stage">
@@ -173,10 +186,6 @@ export function MatchingScreen({
           </span>
         </button>
       </div>
-      {/* 対局を終えたときの「タイトルに戻る」と同じ行き先なので、同じ呼び名にする */}
-      <button className="btn btn-ghost btn-wide" onClick={onBack}>
-        <ArrowLeft size={18} /> タイトルに戻る
-      </button>
     </div>
   );
 }
@@ -711,6 +720,10 @@ export function TotteryApp() {
   function s() {
     (u(null), m(!1), setTut(null), t("home"));
   }
+  // 上の「トッタリー」から。ルーム作成の予約(p)も引きずらないように
+  function goHome() {
+    (w(!1), s());
+  }
   function v(b) {
     (u(b), t("game"));
   }
@@ -752,13 +765,16 @@ export function TotteryApp() {
     );
   }
   return (
-    <GameShell showRules={l} setShowRules={n}>
+    <GameShell
+      showRules={l}
+      setShowRules={n}
+      onHome={e === "home" ? null : goHome}
+    >
       {
         {
           home: <HomeScreen onStart={() => t("matching")} />,
           matching: (
             <MatchingScreen
-              onBack={() => t("home")}
               onRanking={() => t("ranking")}
               onOnline={() => {
                 (u(null),
