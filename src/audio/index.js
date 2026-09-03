@@ -121,9 +121,14 @@ export function useGameSounds({ state, self, warnMs }) {
     if (placed > before.placed || moves > before.moves) playSound("place");
   }, [placed, moves, dead]);
 
-  const level = warnLevel(warnMs);
+  // 時計が動いていない場面(段の切り替わり・チュートリアル)では null になる。
+  // そのあいだは触らない。0 として扱うと、次に始まった段が
+  // はじめから区切りを下回っていたときに、跨いでもいないのに知らせてしまう
+  // (王を選ぶ15秒は、始まった時点で残り30秒を切っている)
+  const level = warnMs == null ? null : warnLevel(warnMs);
   const warned = (0, useRef)(0);
   (0, useEffect)(() => {
+    if (level == null) return;
     if (level > warned.current) playSound("tick");
     warned.current = level;
   }, [level]);

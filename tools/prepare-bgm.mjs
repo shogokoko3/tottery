@@ -53,6 +53,10 @@ const BITRATE = 80000;
  * 曲によって終わり方が違うので、切りすぎないよう頭打ちにしてある。
  * fade はクロスフェードの秒数。長いほど繋ぎ目は目立たないが、
  * 拍のある曲は輪郭がぼやける。
+ *
+ * end を書くと、終わりを切るのではなく「そこで折り返す」(無音を落としたあとの秒数)。
+ * 曲の終わりが頭と和音の合わない曲は、途中に戻ったほうが繋がる。
+ * 位置は、頭の3秒と候補の3秒でクロマ(12音階に畳んだ音の分布)を比べて探した。
  */
 const PIECES = [
   {
@@ -63,6 +67,9 @@ const PIECES = [
     loop: true,
     cut: 0.15,
     fade: 5,
+    // 終わり際(頭との和音の一致 0.84)より、ここ(0.97)のほうがよく繋がる。
+    // 2分21秒 → 1分29秒と短くなるが、継ぎ目が聞こえないほうを取った
+    end: 89.0,
   },
   {
     out: "waiting.m4a",
@@ -158,6 +165,35 @@ function loopify(ch, rate, fadeSec) {
   return { ch: out, fadeSec: x / rate };
 }
 
+
+/**
+ * 書き出した m4a を置く。ただし、いま置いてあるものと**音の中身が同じなら
+ * 古いほうを残す**。
+ *
+ * m4a の器には符号化した時刻が入るので、同じ音を作り直してもバイトは変わる。
+ * そのまま置き換えると、中身は同じなのに git には差分が出るし、
+ * 配信側の名前(中身のハッシュ)も変わって1年キャッシュを捨てさせてしまう。
+ */
+function keepIfSame(out, fresh) {
+  if (!fs.existsSync(out)) {
+    fs.renameSync(fresh, out);
+    return false;
+  }
+  const wavs = [`${fresh}.old.wav`, `${fresh}.new.wav`];
+  let same = false;
+  try {
+    execFileSync("afconvert", ["-f", "WAVE", "-d", "LEI16@44100", out, wavs[0]]);
+    execFileSync("afconvert", ["-f", "WAVE", "-d", "LEI16@44100", fresh, wavs[1]]);
+    same = fs.readFileSync(wavs[0]).equals(fs.readFileSync(wavs[1]));
+  } catch {
+    // 比べられなければ、新しいほうを置く
+  }
+  for (const w of wavs) fs.rmSync(w, { force: true });
+  if (same) fs.rmSync(fresh, { force: true });
+  else fs.renameSync(fresh, out);
+  return same;
+}
+
 /* ---------- 本体 ---------- */
 
 if (!fs.existsSync(SRC)) {
@@ -189,11 +225,19 @@ for (const piece of PIECES) {
 
   let note = "";
   if (piece.loop) {
-    const cut = cutFadeOut(ch, rate, piece.cut);
-    ch = cut.ch;
+    let cutSec;
+    if (piece.end != null) {
+      const keep = Math.min(ch[0].length, Math.floor(piece.end * rate));
+      cutSec = (ch[0].length - keep) / rate;
+      ch = slice(ch, 0, keep);
+    } else {
+      const cut = cutFadeOut(ch, rate, piece.cut);
+      ch = cut.ch;
+      cutSec = cut.cutSec;
+    }
     const looped = loopify(ch, rate, piece.fade);
     ch = looped.ch;
-    note = `終わりを${cut.cutSec.toFixed(1)}s切って${looped.fadeSec.toFixed(1)}sで繋いだ`;
+    note = `終わりを${cutSec.toFixed(1)}s切って${looped.fadeSec.toFixed(1)}sで繋いだ`;
   } else {
     note = "ジングルなので繋がない";
   }
@@ -202,8 +246,9 @@ for (const piece of PIECES) {
   writeWav(wav, ch, rate);
 
   const out = path.join(OUT, piece.out);
-  fs.rmSync(out, { force: true });
-  execFileSync("afconvert", ["-f", "m4af", "-d", "aac", "-b", String(BITRATE), wav, out]);
+  const fresh = path.join(TMP, piece.out);
+  execFileSync("afconvert", ["-f", "m4af", "-d", "aac", "-b", String(BITRATE), wav, fresh]);
+  const kept = keepIfSame(out, fresh);
   const size = fs.statSync(out).size;
   total += size;
 
@@ -211,7 +256,8 @@ for (const piece of PIECES) {
   console.log(
     `${piece.out.padEnd(12)} ${secs.toFixed(1)}s ${kb(size).padStart(7)}  ` +
       `${piece.title}\n${" ".repeat(13)}${before.toFixed(1)}s → 無音を落として ${trimmed.toFixed(1)}s → ${note}\n` +
-      `${" ".repeat(13)}音量 ${level.rmsBefore.toFixed(1)}dB → ${level.rmsAfter.toFixed(1)}dB (×${level.gain.toFixed(2)})`,
+      `${" ".repeat(13)}音量 ${level.rmsBefore.toFixed(1)}dB → ${level.rmsAfter.toFixed(1)}dB (×${level.gain.toFixed(2)})` +
+      (kept ? `\n${" ".repeat(13)}音は前と同じだったので、置いてあるファイルをそのまま残した` : ""),
   );
 }
 

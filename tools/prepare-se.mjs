@@ -63,6 +63,35 @@ const PIECES = [
   },
 ];
 
+
+/**
+ * 書き出した m4a を置く。ただし、いま置いてあるものと**音の中身が同じなら
+ * 古いほうを残す**。
+ *
+ * m4a の器には符号化した時刻が入るので、同じ音を作り直してもバイトは変わる。
+ * そのまま置き換えると、中身は同じなのに git には差分が出るし、
+ * 配信側の名前(中身のハッシュ)も変わって1年キャッシュを捨てさせてしまう。
+ */
+function keepIfSame(out, fresh) {
+  if (!fs.existsSync(out)) {
+    fs.renameSync(fresh, out);
+    return false;
+  }
+  const wavs = [`${fresh}.old.wav`, `${fresh}.new.wav`];
+  let same = false;
+  try {
+    execFileSync("afconvert", ["-f", "WAVE", "-d", "LEI16@44100", out, wavs[0]]);
+    execFileSync("afconvert", ["-f", "WAVE", "-d", "LEI16@44100", fresh, wavs[1]]);
+    same = fs.readFileSync(wavs[0]).equals(fs.readFileSync(wavs[1]));
+  } catch {
+    // 比べられなければ、新しいほうを置く
+  }
+  for (const w of wavs) fs.rmSync(w, { force: true });
+  if (same) fs.rmSync(fresh, { force: true });
+  else fs.renameSync(fresh, out);
+  return same;
+}
+
 if (!fs.existsSync(SRC)) {
   console.error(`${SRC}/ が無い。表の「出どころ」から原曲を落として置いてください。`);
   process.exit(1);
@@ -104,15 +133,17 @@ for (const piece of PIECES) {
   writeWav(wav, ch, rate);
 
   const out = path.join(OUT, piece.out);
-  fs.rmSync(out, { force: true });
-  execFileSync("afconvert", ["-f", "m4af", "-d", "aac", "-b", String(BITRATE), wav, out]);
+  const fresh = path.join(TMP, piece.out);
+  execFileSync("afconvert", ["-f", "m4af", "-d", "aac", "-b", String(BITRATE), wav, fresh]);
+  const kept = keepIfSame(out, fresh);
   const size = fs.statSync(out).size;
   total += size;
 
   const id = Object.keys(SOUNDS).find((k) => SOUNDS[k].file === piece.out) || "?";
   console.log(
     `${piece.out.padEnd(15)} ${(ch[0].length / rate).toFixed(2)}s ${kb(size).padStart(6)}  ${piece.title}\n` +
-      `${" ".repeat(16)}${before.toFixed(2)}s から切り出し / 音量 ${level.rmsBefore.toFixed(1)}dB → ${level.rmsAfter.toFixed(1)}dB / 用途 ${id}`,
+      `${" ".repeat(16)}${before.toFixed(2)}s から切り出し / 音量 ${level.rmsBefore.toFixed(1)}dB → ${level.rmsAfter.toFixed(1)}dB / 用途 ${id}` +
+      (kept ? `\n${" ".repeat(16)}音は前と同じだったので、置いてあるファイルをそのまま残した` : ""),
   );
 }
 
