@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { audioSettings, setBgmVolume, setMuted } from "../audio/index.js";
 import { sanitizeHistory } from "../game/board.js";
 import {
   PLAYER_META,
@@ -12,7 +13,7 @@ import { ArrowLeft, Check, Close, Crown, Flag, Sparkle } from "../icons.jsx";
 import { CardBack, CardFace, Piece } from "./cards.jsx";
 import { CardGuide } from "./guides.jsx";
 import { useNames } from "./names.jsx";
-import { AccountCard, NameEditModal } from "./account.jsx";
+import { AccountCard, IconPickModal, NameEditModal } from "./account.jsx";
 import { loadProfile } from "../game/profile.js";
 
 export function Interstitial({ forPlayer, kind, onReady }) {
@@ -350,13 +351,59 @@ export function LogViewer({ piece, viewer, onClose, revealAll }) {
     </div>
   );
 }
+/**
+ * 音の設定。
+ *
+ * 触ったその場で鳴っている音に効き、そのまま端末に残る。
+ * いまあるのは BGM だけ。効果音を入れたらここに1行足す。
+ */
+function SoundSettings() {
+  const [audio, setAudio] = useState(() => audioSettings());
+  const percent = Math.round(audio.bgm * 100);
+  return (
+    <div className="settings-list">
+      <div className="settings-row">
+        <span>BGM</span>
+        <button
+          className="btn btn-ghost btn-small"
+          onClick={() => setAudio(setMuted(!audio.muted))}
+        >
+          {audio.muted ? "鳴らす" : "鳴らさない"}
+        </button>
+      </div>
+      <div className="settings-row">
+        <span>音量</span>
+        <input
+          className="settings-slider"
+          type="range"
+          min="0"
+          max="100"
+          step="5"
+          value={percent}
+          disabled={audio.muted}
+          onChange={(e) => setAudio(setBgmVolume(Number(e.target.value) / 100))}
+        />
+        <b>{audio.muted ? "—" : percent}</b>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsModal({ onClose }) {
   const [profile, setProfile] = useState(() => loadProfile());
-  const [editing, setEditing] = useState(false);
-  if (editing)
+  // "name" は名前を変える画面、"icon" はアイコンを選ぶ画面
+  const [editing, setEditing] = useState(null);
+  if (editing === "name")
     return (
       <NameEditModal
-        onClose={() => setEditing(false)}
+        onClose={() => setEditing(null)}
+        onSaved={(next) => setProfile(next)}
+      />
+    );
+  if (editing === "icon")
+    return (
+      <IconPickModal
+        onClose={() => setEditing(null)}
         onSaved={(next) => setProfile(next)}
       />
     );
@@ -374,7 +421,14 @@ export function SettingsModal({ onClose }) {
         </div>
 
         <p className="settings-head">あなたのアカウント</p>
-        <AccountCard profile={profile} onEdit={() => setEditing(true)} />
+        <AccountCard
+          profile={profile}
+          onEditName={() => setEditing("name")}
+          onEditIcon={() => setEditing("icon")}
+        />
+
+        <p className="settings-head">音</p>
+        <SoundSettings />
 
         <p className="settings-head">このアプリについて</p>
         <div className="settings-list">
@@ -397,7 +451,7 @@ export function SettingsModal({ onClose }) {
         </div>
 
         <p className="settings-note">
-          レーティングとランキング、音量や表示の調整は今後追加する予定です。
+          レーティングとランキング、表示の調整は今後追加する予定です。
         </p>
         <button className="btn btn-primary btn-wide" onClick={onClose}>
           閉じる

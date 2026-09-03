@@ -19,6 +19,12 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
+# 曲は差し替えるまで変わらない。毎回取りに行かせる必要はない
+[[headers]]
+  for = "/audio/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
 [[headers]]
   for = "/*"
   [headers.values]

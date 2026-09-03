@@ -3,3 +3,5 @@ node_modules/
 .claude/
 # 配信用の書き出し先。ビルドで毎回作られる
 dist/
+# ビルドが assets/audio/ から写す先。元の音源は assets/audio/ のほう
+/audio/

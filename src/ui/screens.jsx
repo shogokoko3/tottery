@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useScreenBgm } from "../audio/index.js";
 import { titleBgImg } from "../assets.js";
 import { VERSION } from "../game/constants.js";
 import {
@@ -34,12 +35,17 @@ import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
 import { hasName, isTestPlay, loadProfile } from "../game/profile.js";
 import { NameEditModal, NameSetupScreen } from "./account.jsx";
-import { NamesProvider } from "./names.jsx";
+import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
 
 /** いま端末に登録されている自分の名前。まだ決めていなければ null */
 function myName() {
   return loadProfile().name || null;
+}
+
+/** いま選んでいるアイコン。相手にも渡す */
+function myIcon() {
+  return loadProfile().icon || null;
 }
 
 export function GameShell({
@@ -175,6 +181,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               code: s,
               myPlayerIndex: 0,
               names: [myName(), (g.data && g.data.guestName) || null],
+              icons: [myIcon(), (g.data && g.data.guestIcon) || null],
             }));
         }
       }, 1500);
@@ -196,15 +203,25 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           return;
         }
         let m = Date.now(),
-          s = Object.entries(d.data || {})
-            .filter(
-              ([z, g]) =>
-                g &&
-                !g.guest &&
-                g.host !== r &&
-                m - (g.createdAt || 0) < LOBBY_TTL,
-            )
-            .sort((z, g) => (g[1].createdAt || 0) - (z[1].createdAt || 0));
+          all = Object.entries(d.data || {}),
+          // 時間切れの掲載は誰も拾えない。見つけたついでに片付ける。
+          // 部屋には手番の列がまるごと入っているので、残したままにしない
+          stale = all.filter(
+            ([, g]) => !g || m - (g.createdAt || 0) >= LOBBY_TTL,
+          );
+        for (let [z] of stale) {
+          deleteLobbyPath(`/${z}`);
+          deleteRoom(z);
+        }
+        let s = all
+          .filter(
+            ([z, g]) =>
+              g &&
+              !g.guest &&
+              g.host !== r &&
+              m - (g.createdAt || 0) < LOBBY_TTL,
+          )
+          .sort((z, g) => (g[1].createdAt || 0) - (z[1].createdAt || 0));
         for (let [z] of s) {
           let g = await writeLobby(`/${z}/guest`, r);
           if (o.current) return;
@@ -223,6 +240,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
                 ...(b.data || {}),
                 guestPresent: !0,
                 guestName: myName(),
+                guestIcon: myIcon(),
               }),
               o.current)
             )
@@ -231,6 +249,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               code: z,
               myPlayerIndex: 1,
               names: [(b.data && b.data.hostName) || null, myName()],
+              icons: [(b.data && b.data.hostIcon) || null, myIcon()],
             });
             return;
           }
@@ -240,6 +259,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
             guestPresent: !1,
             gameState: null,
             hostName: myName(),
+            hostIcon: myIcon(),
           });
         if (o.current) return;
         if (!p.ok) {
@@ -423,6 +443,7 @@ export function RoomScreen({
                 code: f,
                 myPlayerIndex: 0,
                 names: [myName(), N.data.guestName || null],
+                icons: [myIcon(), N.data.guestIcon || null],
               }));
           }
         }, 1200);
@@ -437,6 +458,7 @@ export function RoomScreen({
         guestPresent: !1,
         gameState: null,
         hostName: myName(),
+        hostIcon: myIcon(),
       });
     if ((p(!1), !x.ok)) {
       s(x.error);
@@ -468,6 +490,7 @@ export function RoomScreen({
       ...x.data,
       guestPresent: !0,
       guestName: myName(),
+      guestIcon: myIcon(),
     });
     if ((p(!1), !N.ok)) {
       s(N.error);
@@ -476,6 +499,7 @@ export function RoomScreen({
     onRoomReady({
       code: P,
       names: [x.data.hostName || null, myName()],
+      icons: [x.data.hostIcon || null, myIcon()],
       myPlayerIndex: 1,
     });
   }
@@ -647,6 +671,8 @@ export function TotteryApp() {
     [o, r] = (0, useState)("game"),
     [d, m] = (0, useState)(!1),
     [tut, setTut] = (0, useState)(null);
+  // 場面に合った曲へ。対局中は GameCore のほうが決めるので、ここは触らない
+  useScreenBgm(e);
   function s() {
     (u(null), m(!1), setTut(null), t("home"));
   }
@@ -666,14 +692,20 @@ export function TotteryApp() {
     );
   if (e === "game") {
     // 対局中に出す名前。相手の名前が分からない席は色名のまま
-    let me = loadProfile().name || null,
-      seats = a
+    let mine = loadProfile(),
+      me = mine.name || null,
+      names = a
         ? a.names || [null, null]
         : d
           ? [me, tut ? null : "CPU"]
+          : [null, null],
+      icons = a
+        ? a.icons || [null, null]
+        : d
+          ? [mine.icon, null]
           : [null, null];
     return (
-      <NamesProvider value={seats}>
+      <SeatsProvider value={{ names, icons }}>
         <GameCore
           network={a}
           boardSize={tut ? tut.boardSize : i}
@@ -681,7 +713,7 @@ export function TotteryApp() {
           tutorial={tut}
           onExit={s}
         />
-      </NamesProvider>
+      </SeatsProvider>
     );
   }
   let g = o === "online" || o === "room" ? "matching" : "room";

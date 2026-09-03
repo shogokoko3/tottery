@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useGameBgm } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
 import { enrichAction } from "../game/actions.js";
 import { getLegalMoves, squareName } from "../game/board.js";
@@ -38,7 +39,8 @@ import {
 } from "../net/firebase.js";
 import { LOCAL_ONLY_ACTIONS, withLocalContext } from "../net/sync.js";
 import { CardFace, Piece } from "./cards.jsx";
-import { useNames } from "./names.jsx";
+import { useNames, useSeats } from "./names.jsx";
+import { PlayerIcon } from "./playericon.jsx";
 import { DiceStage, DiceStep, Die } from "./dice.jsx";
 import {
   CaptureRevealModal,
@@ -74,7 +76,7 @@ import { isTestPlay, recordGame } from "../game/profile.js";
 
 /** 持ち時間の表示。自分の時計は下、相手の時計は上に置く */
 export function ClockBar({ clocks, currentTurn, viewer }) {
-  const names = useNames();
+  const { names, icons } = useSeats();
   const fmt = (ms) => {
     const total = Math.max(0, Math.ceil(ms / 1000));
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
@@ -94,6 +96,12 @@ export function ClockBar({ clocks, currentTurn, viewer }) {
             key={idx}
           >
             <span className="clock-who">
+              <PlayerIcon
+                icon={icons && icons[idx]}
+                name={names && names[idx]}
+                side={idx}
+                size="sm"
+              />
               {shortPlayerLabel(idx, viewer, names)}({PLAYER_META[idx].name})
             </span>
             <strong className="clock-time">{fmt(ms)}</strong>
@@ -992,15 +1000,17 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   }, [clockRunning, nowMs, a.currentTurn]);
 
   /**
-   * 対局を抜ける。決着がついていれば、使い終わった部屋を消しておく。
+   * 対局を抜ける。使い終わった部屋はここで消しておく。
+   *
+   * 部屋には手番の列がまるごと入っている。対局が終わったら要らないので、
+   * 残さない。途中で抜けたときも同じで、ホストが居なくなった部屋は
+   * 誰も使えない。
    *
    * 消すのはホストだけ。「もう一度遊ぶ」を選べるのはホストなので、
    * ゲストが先に抜けて部屋を消すと、ホストの再戦が壊れる。
    */
   function leaveGame() {
-    let finished =
-      a.phase === "gameover" || (a.winner !== null && a.winner !== undefined);
-    if (network && p === 0 && finished) deleteRoom(network.code);
+    if (network && p === 0) deleteRoom(network.code);
     onExit();
   }
 
@@ -1117,6 +1127,16 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     N = network
       ? `${p === 0 ? "host" : "guest"} acts:${g.current.size} d${a.diceIdx}[${(a.dice || []).map((E) => E ?? "-").join(",")}]`
       : null;
+
+  // 場面に合った曲へ。勝敗のジングルは「自分」がいる対局だけ勝ち負けを分ける。
+  // 1台で交互に指す対戦はどちらも自分なので、いつも勝ちの側で鳴らす
+  useGameBgm({
+    state: a,
+    clocks: liveClocks,
+    self: network ? p : cpu ? 0 : null,
+    tutorial,
+  });
+
   if (d)
     return (
       <GameShell

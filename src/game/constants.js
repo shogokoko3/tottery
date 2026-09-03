@@ -1,6 +1,6 @@
-export const VERSION = "v48";
+export const VERSION = "v49";
 /** その版で何が入ったか。設定に添えて出す */
-export const VERSION_NOTE = "同時配置・持ち時間・チュートリアル・アカウント";
+export const VERSION_NOTE = "アカウント・布陣ボーナス・記録の再生・BGM";
 
 export const RANKS = [
   "A",

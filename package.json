@@ -1,12 +1,12 @@
 {
   "name": "tottery",
-  "version": "48.0.0",
+  "version": "49.0.0",
   "private": true,
   "type": "module",
   "description": "トッタリー — カード×陣取りバトル",
   "scripts": {
     "build": "node build.mjs",
-    "check": "node tools/check-mod3.mjs && node tools/check-tutorial.mjs && node tools/check-board.mjs && node tools/check-replay.mjs && node tools/check-bonus.mjs && node tools/check-twice.mjs && node tools/check-account.mjs",
+    "check": "node tools/check-mod3.mjs && node tools/check-tutorial.mjs && node tools/check-board.mjs && node tools/check-replay.mjs && node tools/check-bonus.mjs && node tools/check-twice.mjs && node tools/check-account.mjs && node tools/check-bgm.mjs",
     "parity": "node tools/parity.mjs ./restored-logic.mjs",
     "serve": "node tools/serve.mjs",
     "format": "prettier --write \"src/**/*.{js,jsx,css}\""

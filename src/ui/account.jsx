@@ -10,13 +10,16 @@ import {
   MAX_LEVEL,
   MAX_NAME_LEN,
   levelOf,
+  saveIcon,
   loadProfile,
   nameError,
   normalizeName,
   saveName,
   toNextLevel,
 } from "../game/profile.js";
+import { ICONS, hasIcon } from "../game/icons.js";
 import { Check, Close, Sparkle } from "../icons.jsx";
+import { PlayerIcon } from "./playericon.jsx";
 
 /** 名前を入れてもらう欄。登録画面と変更画面で共通に使う */
 function NameField({ value, onChange, error }) {
@@ -134,7 +137,7 @@ export function NameEditModal({ onClose, onSaved }) {
  * 名前・レベル・戦績を1枚にまとめる。項目名と値を並べただけの表よりも、
  * 「いまの自分」がひと目で分かる形にした。
  */
-export function AccountCard({ profile, onEdit }) {
+export function AccountCard({ profile, onEditName, onEditIcon }) {
   const level = levelOf(profile);
   const next = toNextLevel(profile);
   const rate = profile.plays
@@ -146,9 +149,14 @@ export function AccountCard({ profile, onEdit }) {
   return (
     <div className="account-card">
       <div className="account-head">
-        <span className="account-mark">
-          {(profile.name || "?").slice(0, 1)}
-        </span>
+        <button
+          className="account-mark"
+          onClick={onEditIcon}
+          title="アイコンを選ぶ"
+        >
+          <PlayerIcon icon={profile.icon} name={profile.name} size="lg" />
+          <span className="account-mark-edit">変える</span>
+        </button>
         <div className="account-id">
           <b className="account-name">{profile.name || "(未設定)"}</b>
           <span className="account-sub">
@@ -156,7 +164,7 @@ export function AccountCard({ profile, onEdit }) {
             {level >= MAX_LEVEL ? "(最高)" : ""}
           </span>
         </div>
-        <button className="btn btn-ghost btn-small" onClick={onEdit}>
+        <button className="btn btn-ghost btn-small" onClick={onEditName}>
           名前を変える
         </button>
       </div>
@@ -182,6 +190,66 @@ export function AccountCard({ profile, onEdit }) {
         <div className="stat">
           <b>{rate === null ? "—" : `${rate}%`}</b>
           <span>勝率</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * アイコンを選ぶ画面。
+ *
+ * まだ手に入れていないものも並べて、これから増えることが分かるようにする。
+ * 手に入れ方は今後決めるので、いまは「これから手に入ります」とだけ出す。
+ */
+export function IconPickModal({ onClose, onSaved }) {
+  const profile = loadProfile();
+  const [picked, setPicked] = useState(profile.icon || "initial");
+
+  function submit() {
+    onSaved && onSaved(saveIcon(picked));
+    onClose();
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>アイコンを選ぶ</h3>
+          <button className="icon-btn" onClick={onClose}>
+            <Close size={18} />
+          </button>
+        </div>
+        <p className="hint">対戦相手にも見えます。</p>
+        <div className="icon-grid">
+          {ICONS.map((icon) => {
+            const owned = hasIcon(profile, icon.id);
+            return (
+              <button
+                className={`icon-choice ${picked === icon.id ? "icon-choice-on" : ""} ${
+                  owned ? "" : "icon-choice-locked"
+                }`}
+                disabled={!owned}
+                title={owned ? icon.label : icon.how}
+                onClick={() => owned && setPicked(icon.id)}
+                key={icon.id}
+              >
+                <PlayerIcon icon={icon.id} name={profile.name} />
+                <span className="icon-label">{icon.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="hint">
+          鍵のかかったものは、これから対局で手に入るようになります。
+        </p>
+        <div className="setup-actions">
+          <button className="btn btn-ghost" onClick={onClose}>
+            やめる
+          </button>
+          <button className="btn btn-primary" onClick={submit}>
+            <Check size={16} /> 決定
+          </button>
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ const types = {
   ".webp": "image/webp",
   ".png": "image/png",
   ".json": "application/json",
+  ".m4a": "audio/mp4",
 };
 
 const server = createServer(async (req, res) => {

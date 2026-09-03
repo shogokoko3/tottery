@@ -11,6 +11,8 @@
  * いまの id は端末ごとの目印で、作り直せてしまう。
  */
 
+import { hasIcon } from "./icons.js";
+
 const KEY = "tottery.account.v1";
 /** 名前を持たなかった頃の保存先。1度だけ読み込んで引き継ぐ */
 const OLD_KEY = "tottery.profile.v1";
@@ -44,7 +46,7 @@ export function isTestPlay() {
   }
 }
 
-const EMPTY = { id: null, name: "", plays: 0, wins: 0 };
+const EMPTY = { id: null, name: "", icon: null, icons: [], plays: 0, wins: 0 };
 
 /** 端末ごとの目印。名前が同じ人と区別するために持つ */
 function makeId() {
@@ -67,6 +69,11 @@ export function loadProfile() {
   return {
     id: typeof saved.id === "string" && saved.id ? saved.id : null,
     name: normalizeName(saved.name || ""),
+    // 選んでいるアイコンと、手に入れたアイコン。今後増やしていく
+    icon: typeof saved.icon === "string" ? saved.icon : null,
+    icons: Array.isArray(saved.icons)
+      ? saved.icons.filter((x) => typeof x === "string")
+      : [],
     plays: Number(saved.plays) || 0,
     wins: Number(saved.wins) || 0,
   };
@@ -114,6 +121,24 @@ function saveProfile(profile) {
   } catch {
     // 保存できなくても遊べる方を優先する
   }
+}
+
+/** 使うアイコンを選ぶ。持っていないものは受け付けない */
+export function saveIcon(id) {
+  const profile = loadProfile();
+  if (!hasIcon(profile, id)) return profile;
+  const next = { ...profile, icon: id };
+  saveProfile(next);
+  return next;
+}
+
+/** アイコンを手に入れる。対局の褒美として配る想定 */
+export function grantIcon(id) {
+  const profile = loadProfile();
+  if (profile.icons.includes(id)) return profile;
+  const next = { ...profile, icons: [...profile.icons, id] };
+  saveProfile(next);
+  return next;
 }
 
 /** 1局終えた記録をつけて、更新後のプロフィールを返す */

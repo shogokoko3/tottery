@@ -1160,6 +1160,20 @@ h3 {
   font-size: 12px;
   text-align: right;
 }
+/* 音量。指で掴めるよう、つまみは大きめにとる */
+.settings-slider {
+  flex: 1;
+  min-width: 0;
+  max-width: 180px;
+  accent-color: var(--gold-soft);
+  height: 24px;
+}
+.settings-slider:disabled {
+  opacity: 0.35;
+}
+.settings-row b {
+  min-width: 2.2em;
+}
 
 /* フレンド対戦 */
 .friend-wrap {
@@ -2629,4 +2643,104 @@ h3 {
 .stat span {
   font-size: 11px;
   color: var(--text-dim);
+}
+
+/* =========================================================================
+   プレイヤーのアイコン
+   ========================================================================= */
+
+.player-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid var(--who, var(--gold));
+  background: linear-gradient(160deg, #1b3559, #0d1c33);
+  color: var(--who, var(--gold-soft));
+  line-height: 1;
+  font-weight: 700;
+}
+.player-icon-sm {
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+}
+.player-icon-md {
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+}
+.player-icon-lg {
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
+}
+
+/* 設定の札のアイコン。押すと選び直せる */
+.account-mark {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.account-mark-edit {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  transform: translateX(-50%);
+  background: var(--gold);
+  color: #1b1405;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* アイコンを選ぶ画面 */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+.icon-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(9, 20, 38, 0.6);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.icon-choice-on {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.16);
+  color: var(--gold-soft);
+}
+.icon-choice-locked {
+  opacity: 0.38;
+  cursor: default;
+}
+.icon-label {
+  font-size: 10px;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* 時計の欄。アイコンと名前を並べる。
+   対局中のスタンプは、この欄を起点に出す予定なので位置を決めておく */
+.clock-cell {
+  position: relative;
+}
+.clock-who {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
 }
