@@ -17,7 +17,7 @@ import { SUIT_SYMBOL } from "../src/game/constants.js";
  * どちらの布陣がそろい、誰の駒がめくれ、引き直しで何を引くか。
  */
 const BONUS_EXPECT = {
-  6: {
+  7: {
     straight: 0,
     swapped: true,
     drewRank: "7",
@@ -29,7 +29,7 @@ const BONUS_EXPECT = {
     noReveal: true,
     foeNoBonus: true,
   },
-  7: {
+  8: {
     flush: 0,
     swapped: false,
     revealedOwner: 1,
@@ -273,9 +273,25 @@ for (const tut of TUTORIALS) {
     foeIdx <= tut.foe.moves.length,
     `${foeIdx}/${tut.foe.moves.length}`,
   );
+  // 話ごとに「これが起きるはず／起きないはず」を見る。
+  // 1話でひとつだけ教えるので、隣の話の効果が混ざっていないかも見張る
+  const EVENTS = {
+    1: { none: ["新しい王", "道連れ"] },
+    2: { must: ["に新しい王が立った"], none: ["道連れ"] },
+    3: { must: ["道連れ"], none: ["新しい王"] },
+  };
+  const want = EVENTS[tut.id];
+  if (want) {
+    const log = s.log.join("\n");
+    for (const w of want.must || [])
+      ok(`記録に「${w}」が出る`, log.includes(w), s.log.slice(-6).join(" / "));
+    for (const w of want.none || [])
+      ok(`「${w}」は起きない`, !log.includes(w), s.log.slice(-6).join(" / "));
+  }
   if (tut.bonus) {
     // 布陣ボーナスを教える回。話ごとに、何が起きるはずかを決めてある
     const want = BONUS_EXPECT[tut.id];
+    void 0;
     const army = (i) => Object.values(s.pieces).filter((p) => p.owner === i);
     ok("布陣ボーナスが起きる", !!bonusSeen);
     if (want && want.youAreSecond)
@@ -295,7 +311,7 @@ for (const tut of TUTORIALS) {
       );
       ok(
         "相手の捨て札にスペードが混ざらない",
-        tut.id !== 7 || !shown.some((c) => c.includes("♠")),
+        tut.id !== 8 || !shown.some((c) => c.includes("♠")),
         shown.join(","),
       );
     }
