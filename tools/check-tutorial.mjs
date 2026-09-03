@@ -9,6 +9,7 @@
  * これが通れば、誰が遊んでも同じ盤面・同じ順番になる。
  */
 import { reducer } from "../src/game/reducer.js";
+import { isFlush, isStraight } from "../src/game/bonus.js";
 import { getLegalMoves } from "../src/game/board.js";
 import { cpuAction } from "../src/game/cpu.js";
 import {
@@ -102,10 +103,12 @@ for (const tut of TUTORIALS) {
       deck: tut.deck.map((c) => ({ ...c })),
       pool: tut.pool,
       handSize: tut.handSize,
-      scripted: true,
+      scripted: !tut.bonus,
     },
   );
   ok("手札が配れる", s.players[0].hand.length === tut.handSize);
+  // 布陣ボーナスは知らせ終えると消えるので、出た瞬間に控えておく
+  let bonusSeen = null;
   ok(
     "カードプールが守られている",
     s.players[0].hand.every((c) => tut.pool.includes(c.rank)),
@@ -121,6 +124,7 @@ for (const tut of TUTORIALS) {
   let skipped = 0;
 
   while (guard++ < 400) {
+    if (s.setupEffects && !bonusSeen) bonusSeen = s.setupEffects;
     // 画面と同じく、盤面から案内の位置を引き直す
     const idx = currentStepIndex(tut, s, watermark);
     if (idx > lastIdx) lastIdx = idx;
@@ -237,6 +241,41 @@ for (const tut of TUTORIALS) {
     foeIdx <= tut.foe.moves.length,
     `${foeIdx}/${tut.foe.moves.length}`,
   );
+  if (tut.bonus) {
+    // 布陣ボーナスを教える回。台本どおりに進めば必ず両方が起きるはず
+    const army = (i) => Object.values(s.pieces).filter((p) => p.owner === i);
+    ok(
+      "あなたの布陣がストレートになる",
+      isStraight(army(0)),
+      army(0)
+        .map((p) => p.rank)
+        .join(","),
+    );
+    ok(
+      "相手の布陣がフラッシュになる",
+      isFlush(army(1)),
+      army(1)
+        .map((p) => p.suit[0])
+        .join(","),
+    );
+    ok(
+      "ストレートで先手と後手が入れ替わる",
+      bonusSeen && bonusSeen.swapped === true,
+      JSON.stringify(bonusSeen),
+    );
+    ok(
+      "フラッシュであなたの駒が公開される",
+      !!(bonusSeen && (bonusSeen.revealed || []).some((r) => r.owner === 0)),
+      JSON.stringify(bonusSeen && bonusSeen.revealed),
+    );
+    ok(
+      "引き直しで 7 を引いている",
+      army(0).some((p) => p.rank === "7"),
+      army(0)
+        .map((p) => p.rank)
+        .join(","),
+    );
+  }
   console.log(`  相手が指した手: ${foeIdx} / 用意 ${tut.foe.moves.length}`);
 }
 

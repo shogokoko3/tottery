@@ -812,7 +812,8 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                 deck: tutorial.deck.map((c) => ({ ...c })),
                 pool: tutorial.pool,
                 handSize: tutorial.handSize,
-                scripted: !0,
+                // 布陣ボーナスを教える回だけは、効果を働かせる
+                scripted: !tutorial.bonus,
               }
             : null),
         }));

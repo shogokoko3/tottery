@@ -36,6 +36,15 @@ function fill(codes, pool) {
   return deckOf([...codes, ...rest]);
 }
 
+/** 山札の中から札を探して id を返す。"7H" のような並びで指す */
+function idOf(deck, code) {
+  const rank = code.slice(0, -1);
+  const suit = SUIT_OF[code.slice(-1)];
+  const card = deck.find((c) => c.rank === rank && c.suit === suit);
+  if (!card) throw new Error(`${code} が山札に無い`);
+  return card.id;
+}
+
 /* ---------------- 場面の見分け方 ---------------- */
 
 const atMulligan = (s) => s.phase === "mulligan" && s.mulliganIdx === 0;
@@ -663,7 +672,200 @@ const EP4 = {
   ],
 };
 
-export const TUTORIALS = [EP1, EP2, EP3, EP4];
+/* ---------------- 第5話 ---------------- */
+
+/**
+ * 布陣ボーナスの回。
+ *
+ * 手札は 4・5・6・8 と、7 だけが抜けた並びで配る。引き直しで 7♥ を
+ * 引くとストレートがそろう。「引き直しは要らない札を捨てる場ではなく、
+ * 布陣を組み立てる場だ」と体で分かるようにしてある。
+ *
+ * 相手はハートだけの布陣(フラッシュ)にしてあるので、こちらの駒が1枚
+ * めくられる。両方の効果を1局で受けられる。
+ *
+ * 盤の上では、8 の進路を味方の 6 が塞いでいる。どかしてから進むと
+ * 相手が取れる。駒どうしの噛み合いをそのまま手にしてある。
+ */
+const EP5_DECK = fill(
+  [
+    // あなたの手札6枚。7 が抜けていて、K♦ が余分
+    "4S",
+    "5H",
+    "6D",
+    "8C",
+    "KD",
+    "2C",
+    // 相手の手札6枚。ハートでそろえてフラッシュにする
+    "QH",
+    "JH",
+    "10H",
+    "9H",
+    "3H",
+    "2H",
+  ],
+  CARD_POOLS.court,
+);
+
+const EP5_SEVEN = idOf(EP5_DECK, "7H");
+
+const EP5 = {
+  id: 5,
+  level: 9,
+  title: "第5話 布陣の妙",
+  subtitle: "引き直しで布陣をそろえる",
+  pool: CARD_POOLS.court,
+  poolLabel: "2 〜 K",
+  boardSize: 5,
+  handSize: 6,
+  // 相手が先手。ストレートで入れ替わることを見せたいので、わざとこの目にする
+  dice: [2, 6],
+  deck: EP5_DECK,
+  // 布陣ボーナスを働かせる回。ほかの話では出さない
+  bonus: true,
+  // 引き直しで最初に引くのが 7♥ になるように並べ替える
+  reserveOrder: [
+    EP5_SEVEN,
+    ...EP5_DECK.slice(12)
+      .map((c) => c.id)
+      .filter((id) => id !== EP5_SEVEN),
+  ],
+  foe: {
+    discardIds: [],
+    // 王は c5 の Q♥。その手前 c4 に J♥ を置く
+    placement: {
+      t6: { row: 0, col: 2 },
+      t7: { row: 1, col: 2 },
+      t8: { row: 0, col: 0 },
+      t9: { row: 1, col: 0 },
+      t10: { row: 1, col: 4 },
+    },
+    kingId: "t6",
+    // こちらの筋を塞がない手だけを指す
+    moves: [
+      { pieceId: "t9", row: 2, col: 1 },
+      { pieceId: "t10", row: 2, col: 3 },
+    ],
+  },
+  steps: [
+    {
+      text: "布陣がそろうと、対局前に効果が起きます。まずサイコロを。",
+      need: { type: "ROLL_DICE_SINGLE" },
+      focus: { button: true },
+    },
+    {
+      at: atMulligan,
+      text: "手札は 4・5・6・8。7 があれば数字が並びます。",
+    },
+    {
+      text: "引き直しは、要らない札を捨てる場でもあります。光った K♦ をタップ。",
+      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t4" },
+      focus: { cards: ["t4"] },
+    },
+    {
+      text: "「引き直して確定」を押します。",
+      need: { type: "CONFIRM_MULLIGAN" },
+      focus: { button: true },
+    },
+    {
+      at: atPlace,
+      text: "7♥ が来ました。4・5・6・7・8 で並びます。8♣ を c1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 4, col: 2 },
+      focus: { cards: ["t3"], cells: [{ row: 4, col: 2 }] },
+    },
+    {
+      text: "6♦ を c2 へ。8 のすぐ前です。あとで効いてきます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 3, col: 2 },
+      focus: { cards: ["t2"], cells: [{ row: 3, col: 2 }] },
+    },
+    {
+      text: "4♠ を a1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 0 },
+      focus: { cards: ["t0"], cells: [{ row: 4, col: 0 }] },
+    },
+    {
+      text: "7♥ を a2 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: EP5_SEVEN, row: 3, col: 0 },
+      focus: { cards: [EP5_SEVEN], cells: [{ row: 3, col: 0 }] },
+    },
+    {
+      text: "5♥ を e1 へ。これで 4・5・6・7・8 がそろいました。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 4, col: 4 },
+      focus: { cards: ["t1"], cells: [{ row: 4, col: 4 }] },
+    },
+    {
+      text: "「王を選ぶ」へ進みます。",
+      need: { type: "SETUP_GOTO_KING_STEP" },
+      focus: { button: true },
+    },
+    {
+      at: atKing,
+      text: "e1 の 5♥ を王にします。タップしてください。",
+      need: { type: "SETUP_PICK_KING", cardId: "t1" },
+      focus: { cells: [{ row: 4, col: 4 }] },
+    },
+    {
+      text: "「布陣を確定」を押します。",
+      need: { type: "SETUP_CONFIRM" },
+      focus: { button: true },
+    },
+    {
+      at: (s) => !!s.setupEffects,
+      text: "数字が5枚並ぶとストレート。先手と後手が入れ替わります。",
+    },
+    {
+      text: "相手はマークがそろったフラッシュ。あなたの駒が1枚めくられます。",
+      need: { type: "DISMISS_SETUP_EFFECTS" },
+      focus: { button: true },
+    },
+    {
+      at: myTurn,
+      text: "サイコロでは相手が先手でしたが、ストレートで入れ替わりました。",
+    },
+    {
+      text: "c1 の 8♣ は縦横に奇数マス。でも前に味方の 6♦ がいて進めません。",
+    },
+    {
+      text: "先に 6♦ をどかします。c2 の 6♦ を e2 へ。6 は縦横に偶数マス。",
+      need: { type: "MOVE_PIECE", pieceId: "t2", row: 3, col: 4 },
+      focus: {
+        cells: [
+          { row: 3, col: 2 },
+          { row: 3, col: 4 },
+        ],
+      },
+    },
+    {
+      at: myTurn,
+      text: "道が空きました。8♣ を3マス先の c4 へ。相手なら取れます。",
+      need: { type: "MOVE_PIECE", pieceId: "t3", row: 1, col: 2 },
+      focus: {
+        cells: [
+          { row: 4, col: 2 },
+          { row: 1, col: 2 },
+        ],
+      },
+    },
+    {
+      at: myTurn,
+      text: "もう1マス先が相手の王です。8♣ を c5 へ。",
+      need: { type: "MOVE_PIECE", pieceId: "t3", row: 0, col: 2 },
+      focus: {
+        cells: [
+          { row: 1, col: 2 },
+          { row: 0, col: 2 },
+        ],
+      },
+    },
+    {
+      at: atEnd,
+      text: "布陣は並べる前から始まっています。引き直しで形を作りましょう。",
+      end: true,
+    },
+  ],
+};
+
+export const TUTORIALS = [EP1, EP2, EP3, EP4, EP5];
 
 export function tutorialById(id) {
   return TUTORIALS.find((t) => t.id === id) || null;
@@ -809,6 +1011,7 @@ const NEED_RANK = {
   SETUP_GOTO_KING_STEP: 2,
   SETUP_PICK_KING: 3,
   SETUP_CONFIRM: 3,
+  DISMISS_SETUP_EFFECTS: 4,
   MOVE_PIECE: 4,
   PLACE_RESERVE_CARD: 4,
   TOGGLE_SHUFFLE_PICK: 4,
@@ -856,6 +1059,8 @@ export function needDone(need, s) {
       const here = s.board[need.row] && s.board[need.row][need.col];
       return !!here && here.owner === 0;
     }
+    case "DISMISS_SETUP_EFFECTS":
+      return !s.setupEffects;
     case "MOVE_PIECE": {
       const piece = s.pieces[need.pieceId];
       if (!piece) return false;
