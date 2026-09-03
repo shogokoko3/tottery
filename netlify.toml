@@ -3,11 +3,30 @@
 #   ビルド      : npm ci でパッケージを入れて、node build.mjs で1枚のHTMLを作る
 #   公開する場所: dist/ だけ。src や tools は配らない
 #
-# ヘッダー(キャッシュの期限など)はここではなく _headers に書いてある。
-# build.mjs が dist/ に写し、Netlify も Cloudflare Pages も同じ書き方で読むので、
-# 配信先を替えても設定を二重に持たなくて済む。
-# Node の版は .node-version に書いてある(これも両者が読む)。
+# 単体HTMLなので、これ以外の設定は要らない。
 
 [build]
   command = "npm ci && node build.mjs"
   publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# 中身が data URI で全部入っている1枚もの。
+# 古いものが残ると更新に気づけないので、毎回取りに行かせる
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# 曲は差し替えるまで変わらない。毎回取りに行かせる必要はない
+[[headers]]
+  for = "/audio/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
