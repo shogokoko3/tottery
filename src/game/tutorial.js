@@ -46,6 +46,23 @@ function idOf(deck, code) {
 }
 
 /**
+ * 予備札の山。末尾が「Kの力で最初に出てくる1枚」になる。
+ *
+ * 引き直しは先頭から引き(reducer の CONFIRM_MULLIGAN)、Kの力は末尾から
+ * 引く(removePiece の reserve.pop)。既定の並びだと末尾がクラブのKなので、
+ * 「Kは王にするときだけ1枚」と教えた直後に2枚目のKを渡すことになる。
+ * 採用枚数の判定は布陣のときしか働かないので、盤にKが2枚並んでしまう。
+ */
+function reserveEndingPlain(deck, handSize) {
+  const rest = deck.slice(handSize * 2).map((c) => c.id);
+  const plain = deck.find(
+    (c) => rest.includes(c.id) && !["A", "J", "Q", "K"].includes(c.rank),
+  );
+  if (!plain) return rest;
+  return [...rest.filter((id) => id !== plain.id), plain.id];
+}
+
+/**
  * 引き直しの山の並び。
  *
  * 相手が先に引き直すので、その枚数だけ先に消える。狙いの札は
@@ -124,18 +141,23 @@ const EP1 = {
   foe: {
     discardIds: [],
     // 王は c5 の 2♦
+    //
+    // 4♦ を c4 に置く。ここから c3 へ降りてくるので、王の 4♠ は素の射程
+    // (縦横2マス)だけで討ち取れる。王は必ず「盤に出した同じ数字の枚数」
+    // だけ距離が伸びるが、それを第1話で説明せずに使うと、初めての人は
+    // 「4は3マス動く駒」と覚えてしまう。この配置なら伸びが表に出ない
     placement: {
       t6: { row: 0, col: 2 },
-      t7: { row: 1, col: 2 },
-      t8: { row: 0, col: 0 },
+      t8: { row: 1, col: 2 },
+      t7: { row: 0, col: 0 },
       t9: { row: 1, col: 0 },
       t10: { row: 0, col: 4 },
     },
     kingId: "t6",
-    // こちらに手を出さない駒だけを動かす
+    // こちらの駒を取りには来ない
     moves: [
+      { pieceId: "t8", row: 2, col: 2 },
       { pieceId: "t10", row: 1, col: 3 },
-      { pieceId: "t10", row: 2, col: 4 },
     ],
   },
   steps: [
@@ -157,7 +179,7 @@ const EP1 = {
     },
     {
       at: atPlace,
-      text: "自陣に5枚ならべます。光った 4♠ を、光ったマス c1 へドラッグ。",
+      text: "自陣に5枚ならべます。4♠ は縦横に2マスまで。光ったマス c1 へドラッグ。",
       need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 4, col: 2 },
       focus: { cards: ["t2"], cells: [{ row: 4, col: 2 }] },
     },
@@ -213,25 +235,25 @@ const EP1 = {
     },
     {
       at: myTurn,
-      text: "取る手には必ず確認が出ます。取るまで相手の札は分かりません。",
+      text: "取る手には必ず確認が出ます。相手の札は取るまで分かりません。王がどれかも同じです。",
     },
     {
-      text: "王も動かせます。c1 の 4♠ を c4 へ。相手の駒を取ります。",
-      need: { type: "MOVE_PIECE", pieceId: "t2", row: 1, col: 2 },
+      text: "王も動かせます。c1 の 4♠ を c3 へ。2マス進んで相手を取ります。",
+      need: { type: "MOVE_PIECE", pieceId: "t2", row: 2, col: 2 },
       focus: {
         cells: [
           { row: 4, col: 2 },
-          { row: 1, col: 2 },
+          { row: 2, col: 2 },
         ],
       },
     },
     {
       at: myTurn,
-      text: "1マス先が相手の王です。4♠ を c5 へ。",
+      text: "ここでは教えます。2マス先が相手の王です。4♠ を c5 へ。",
       need: { type: "MOVE_PIECE", pieceId: "t2", row: 0, col: 2 },
       focus: {
         cells: [
-          { row: 1, col: 2 },
+          { row: 2, col: 2 },
           { row: 0, col: 2 },
         ],
       },
@@ -362,7 +384,7 @@ const EP2 = {
       focus: { cells: [{ row: 3, col: 2 }] },
     },
     {
-      text: "2の王は、軍の2の枚数だけ遠くまで動けます。「布陣を確定」を押します。",
+      text: "王は、盤に出した同じ数字の枚数だけ遠くまで動けます。2♠ は2枚なので1+2で3マス。",
       need: { type: "SETUP_CONFIRM" },
       focus: { button: true },
     },
@@ -382,7 +404,7 @@ const EP2 = {
       text: "王を取られました。それでも負けていません。",
     },
     {
-      text: "2か3の王が倒れると、軍の同じ数字が王位を継ぎます。c1 の 2♥ が新しい王です。",
+      text: "2か3の王が倒れると、盤に出した同じ数字が王位を継ぎます。c1 の 2♥ が新しい王です。",
       focus: { cells: [{ row: 4, col: 2 }] },
     },
     {
@@ -408,7 +430,7 @@ const EP2 = {
     },
     {
       at: atEnd,
-      text: "王が2か3なら、同じ数字を軍に残しておくと粘れます。",
+      text: "王が2か3なら、同じ数字を盤に出しておくと粘れます。",
       end: true,
     },
   ],
@@ -450,7 +472,7 @@ const EP3 = {
   id: 3,
   level: 2,
   title: "第3話 道連れ",
-  subtitle: "取られた駒が、相手を道づれにする",
+  subtitle: "取られた駒が、相手を道連れにする",
   pool: CARD_POOLS.basic,
   poolLabel: "2 〜 5",
   boardSize: 5,
@@ -478,7 +500,7 @@ const EP3 = {
   },
   steps: [
     {
-      text: "取られた駒が、相手を道づれにすることがあります。サイコロを。",
+      text: "取られた駒が、相手を道連れにすることがあります。サイコロを。",
       need: { type: "ROLL_DICE_SINGLE" },
       focus: { button: true },
     },
@@ -554,10 +576,16 @@ const EP3 = {
       text: "4♥ を取られましたが、取った相手も一緒に倒れました。",
     },
     {
-      text: "王が4か5のとき、軍の同じ数字が取られると、取った駒を道づれにします。",
+      text: "王が4か5のとき、盤に出した同じ数字が取られると、取った駒を道連れにします。",
     },
     {
-      text: "道が空きました。c1 の 4♠ を c5 へ。相手の王を討ちます。",
+      // 4♥ はもう倒れている。枚数は布陣した時点で数えて固定なので倒れても
+      // 減らない。ここを言わないと「2+1で3マス」と計算が合わなくなる
+      text: "王は、盤に出した同じ数字の枚数だけ遠くまで動けます。4♥ が倒れても枚数は減りません。",
+      focus: { cells: [{ row: 4, col: 2 }] },
+    },
+    {
+      text: "道が空きました。王の 4♠ は2+2で4マス。c1 から c5 へ。相手の王を討ちます。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
       focus: {
         cells: [
@@ -909,7 +937,9 @@ const EP5 = {
 /**
  * 跳ぶ駒。
  *
- * 10 だけを扱う。将棋の桂馬と同じで、間に何がいても関係なく跳ぶ。
+ * 10 だけを扱う。縦に2・横に1(またはその逆)の8方向へ、間に何がいても跳ぶ。
+ * 「桂馬」とは書かない。将棋の桂馬は前の2方向にしか跳べないので、
+ * 知っている人にはかえって間違いを教えることになる。
  * 第4話で「味方に塞がれる」を体で覚えた直後だからこそ、塞がれない駒の
  * ありがたみが出る。だから 10♠ は最初から味方に囲ませてある。
  *
@@ -980,7 +1010,7 @@ const EP6 = {
     },
     {
       at: atPlace,
-      text: "10♠ を c1 へ。10は将棋の桂馬と同じ跳び方をします。",
+      text: "10♠ を c1 へ。10は縦に2・横に1(またはその逆)へ跳びます。",
       need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 2 },
       focus: { cards: ["t0"], cells: [{ row: 4, col: 2 }] },
     },
@@ -1277,7 +1307,8 @@ const EP8 = {
   handSize: 7,
   dice: [6, 2],
   deck: EP8_DECK,
-  reserveOrder: EP8_DECK.slice(14).map((c) => c.id),
+  // Kの力で出てくる1枚が2枚目のKにならないよう、末尾を数字札にする
+  reserveOrder: reserveEndingPlain(EP8_DECK, 7),
   foe: {
     discardIds: [],
     placement: {
@@ -1313,7 +1344,7 @@ const EP8 = {
     },
     {
       at: atPlace,
-      text: "K♠ を c1 へ。Kは縦横も斜めも走り、桂馬にも跳びます。",
+      text: "K♠ を c1 へ。Kは縦横も斜めも走り、10と同じ跳び方もできます。",
       need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 2 },
       focus: { cards: ["t0"], cells: [{ row: 4, col: 2 }] },
     },
@@ -1344,7 +1375,7 @@ const EP8 = {
     },
     {
       at: atKing,
-      text: "Kを置いた軍は、Kが王になります。c1 の K♠ をタップ。",
+      text: "Kを置くと、そのKが王になります。c1 の K♠ をタップ。",
       need: { type: "SETUP_PICK_KING", cardId: "t0" },
       focus: { cells: [{ row: 4, col: 2 }] },
     },
@@ -1389,7 +1420,7 @@ const EP8 = {
     },
     {
       at: atEnd,
-      text: "Kは全方向へ走り、桂馬にも跳ぶ。JかQを失うたび、予備札が来ます。",
+      text: "Kは全方向へ走り、10と同じ跳び方もできる。JかQを失うたび、予備札が来ます。",
       end: true,
     },
   ],
@@ -1521,7 +1552,7 @@ const EP9 = {
     },
     {
       at: myTurn,
-      text: "代わりに A は、盤の駒を3つ選んで位置をぐるりと入れ替えます。相手の駒も選べます。",
+      text: "代わりに A は、自分をふくむ3つの駒の位置をぐるりと入れ替えます。相手の駒も選べます。",
       focus: { pieces: ["t0"] },
     },
     {
@@ -1555,7 +1586,7 @@ const EP9 = {
     },
     {
       at: myTurn,
-      text: "守っていた駒は b1 まで飛ばされ、代わりに 8♠ が c4 に立ちました。",
+      text: "守っていた駒は b1 へ飛び、8♠ が c4 に立ちました。A♠ も d1 へ動いています。",
       focus: { pieces: ["t2"] },
     },
     {
@@ -1566,7 +1597,7 @@ const EP9 = {
     },
     {
       at: atEnd,
-      text: "A は動けませんが、盤ごと組み替えます。相手の守りも剥がせます。",
+      text: "A は自分から歩けないだけで、入れ替えでは動きます。相手の守りも剥がせます。",
       end: true,
     },
   ],
@@ -1725,13 +1756,13 @@ const EP10 = {
     },
     {
       at: myTurn,
-      text: "3つとも味方なので、囲んだ内側の相手が倒れます。確定を押します。",
+      text: "3つとも味方なら、囲んだ内側が倒れます。線の上も内側です。確定を押します。",
       need: { type: "CONFIRM_SHUFFLE" },
       focus: { button: true },
     },
     {
       at: atEnd,
-      text: "囲んだ内側の相手は倒れます。Aを王にすると、入れ替えは1手番に2回。",
+      text: "3点で囲んだ内側(線の上もふくむ)は倒れます。Aを王にすると1手番に2回。",
       end: true,
     },
   ],
@@ -2082,7 +2113,7 @@ const EP12 = {
       text: "めくれた駒だけは正体が分かります。伏せた駒とは違います。",
     },
     {
-      text: "10 は桂馬。跳べるのは2マスだけで、d4 には届きません。",
+      text: "10 は縦2横1へしか跳べません。この位置からでは d4 に届きません。",
       focus: { cells: [{ row: 1, col: 3 }] },
     },
     {
@@ -2344,11 +2375,34 @@ export function needDone(need, s) {
 }
 
 /**
+ * 布陣の途中で札を手札に戻されたら、案内をその札の指示まで戻す。
+ *
+ * 「この駒を手札に戻す」と盤外へのドラッグは FREE_ACTIONS なのでいつでも通る。
+ * ところが案内は先へしか進まないので、戻した札の指示はもう過ぎている。すると
+ * 置き直しが「台本にない操作」として無言で弾かれ、5枚そろわないまま
+ * 「王を選ぶ」も押せず、投げ出す以外に出口が無くなる。
+ *
+ * 済んだかどうかは needDone を通さずに盤から直に見る。王を選ぶ場面まで
+ * 進んでいると needDone は「もう通り過ぎた」と答えてしまい、欠けに気づけない。
+ */
+function rewoundForPlacement(tut, s, from) {
+  if (s.phase !== "setup" || !s.setupPlacements || s.setupDone[0]) return from;
+  const placed = s.setupPlacements[0];
+  for (let i = 0; i < from && i < tut.steps.length; i++) {
+    const need = tut.steps[i].need;
+    if (!need || need.type !== "SETUP_PLACE_CARD") continue;
+    const at = placed[need.cardId];
+    if (!at || at.row !== need.row || at.col !== need.col) return i;
+  }
+  return from;
+}
+
+/**
  * いま出すべき台本の位置。
  * from から始めて、盤面を見て「もう済んだ」ものを飛ばす。
  */
 export function currentStepIndex(tut, s, from) {
-  let i = Math.max(0, Math.min(from, tut.steps.length));
+  let i = Math.max(0, rewoundForPlacement(tut, s, Math.min(from, tut.steps.length)));
   while (i < tut.steps.length) {
     const step = tut.steps[i];
     if (step.need) {

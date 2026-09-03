@@ -124,6 +124,30 @@ function actionFor(need, s, tut) {
 }
 
 /**
+ * 王の距離が伸びたおかげで初めて届く手を指していないか。
+ *
+ * 王は「盤に出した同じ数字の枚数」だけ移動距離が伸びる(必ず1マス以上)。
+ * これを説明していない話でその伸びに頼る手を指させると、読む人は
+ * 「4は3マス動く駒」のように、素の動きを取り違えて覚えてしまう。
+ * 距離が伸びるのは 2・3・4・5 の王だけ(6〜9 の王は距離ではなくまとめ取り)。
+ */
+const STRETCH_RANKS = ["2", "3", "4", "5"];
+let stretched = [];
+function noteKingStretch(s, act) {
+  if (act.type !== "MOVE_PIECE") return;
+  const p = s.pieces[act.pieceId];
+  if (!p || !p.isKing || !STRETCH_RANKS.includes(p.rank)) return;
+  const base = getLegalMoves(
+    { ...p, isKing: false },
+    s.board,
+    s.boardSize,
+    s.players[0].armyRankCounts,
+  );
+  if (!base.some((m) => m.row === act.row && m.col === act.col))
+    stretched.push(`${p.rank} が素の射程を越えて動く`);
+}
+
+/**
  * need を実際に指す。
  *
  * 入れ替えのように、画面で2度触ってはじめて成り立つ操作がある。
@@ -133,6 +157,7 @@ function actionFor(need, s, tut) {
 function applyNeed(s, need, tut) {
   const act = actionFor(need, s, tut);
   if (!act) return null;
+  noteKingStretch(s, act);
   let next = reducer(s, act);
   if (act.type === "SELECT_PIECE" && need.type === "TOGGLE_SHUFFLE_PICK") {
     const then = actionFor(need, next, tut);
@@ -164,6 +189,9 @@ for (const tut of TUTORIALS) {
     s.players[0].hand.every((c) => tut.pool.includes(c.rank)),
   );
 
+  stretched = [];
+  // Kの力で盤に出てくる札。教えたばかりの採用枚数と食い違わないか見る
+  const drawnCards = [];
   let watermark = 0;
   let foeIdx = 0;
   let guard = 0;
@@ -175,6 +203,10 @@ for (const tut of TUTORIALS) {
 
   while (guard++ < 400) {
     if (s.setupEffects && !bonusSeen) bonusSeen = s.setupEffects;
+    if (s.kPlacement && s.kPlacement.owner === 0) {
+      const c = s.kPlacement.card;
+      if (!drawnCards.some((d) => d.id === c.id)) drawnCards.push(c);
+    }
     // 画面と同じく、盤面から案内の位置を引き直す
     const idx = currentStepIndex(tut, s, watermark);
     if (idx > lastIdx) lastIdx = idx;
@@ -220,6 +252,7 @@ for (const tut of TUTORIALS) {
         stuck = `${idx + 1}枚目 ${cur.need.type} が指せない`;
         break;
       }
+      noteKingStretch(s, act);
       s = reducer(s, act);
       watermark = Math.max(watermark, idx);
       continue;
@@ -292,6 +325,25 @@ for (const tut of TUTORIALS) {
     "相手の手をすべて使い切らない(余りがあってもよい)",
     foeIdx <= tut.foe.moves.length,
     `${foeIdx}/${tut.foe.moves.length}`,
+  );
+  // 王がKなら J・Q・K は1枚ずつしか採用できない。ところが予備札は
+  // 枚数を見ずに盤へ出るので、教えたばかりの決まりを破る札が来うる
+  const myKing = s.players[0].kingId && s.pieces[s.players[0].kingId];
+  const bad = myKing && myKing.rank === "K"
+    ? drawnCards.filter((c) => ["J", "Q", "K"].includes(c.rank))
+    : [];
+  ok(
+    "予備札が、教えた採用枚数の決まりを破らない",
+    bad.length === 0,
+    bad.map((c) => `${c.rank}${SUIT_SYMBOL[c.suit]}`).join(","),
+  );
+
+  // 王の距離が伸びる決まりに頼るなら、その話で言葉にしていること
+  const tellsStretch = tut.steps.some((x) => /遠くまで動け|マス伸び/.test(x.text));
+  ok(
+    "説明していない王の距離の伸びに頼らない",
+    stretched.length === 0 || tellsStretch,
+    stretched.join(" / "),
   );
   // 話ごとに「これが起きるはず／起きないはず」を見る。
   // 1話でひとつだけ教えるので、隣の話の効果が混ざっていないかも見張る
@@ -402,6 +454,77 @@ for (const tut of TUTORIALS) {
       );
     }
   }
+}
+
+/**
+ * 布陣の途中で札を手札に戻しても、置き直せるか。
+ *
+ * 「この駒を手札に戻す」はいつでも押せる。案内が先へ進んだままだと、
+ * 置き直しが「台本にない操作」として無言で弾かれ、5枚そろわないので
+ * 「王を選ぶ」も押せず、投げ出す以外に出口が無くなる。
+ */
+console.log("\n布陣のやり直し");
+for (const tut of TUTORIALS) {
+  let s = reducer(
+    { phase: "intro" },
+    {
+      type: "START_SETUP",
+      size: tut.boardSize,
+      setupMode: "simultaneous",
+      deck: tut.deck.map((c) => ({ ...c })),
+      pool: tut.pool,
+      handSize: tut.handSize,
+      scripted: !tut.bonus,
+    },
+  );
+  let mark = 0;
+  // 「王を選ぶ」の直前、5枚を並べ終えたところまで台本どおりに進める
+  for (let g = 0; g < 200; g++) {
+    mark = currentStepIndex(tut, s, mark);
+    const cur = tut.steps[mark];
+    if (!cur) break;
+    if (
+      cur.need &&
+      cur.need.type === "SETUP_GOTO_KING_STEP" &&
+      (!cur.at || cur.at(s))
+    )
+      break;
+    if (!cur.at || cur.at(s)) {
+      if (!cur.need) {
+        mark++;
+        continue;
+      }
+      const act = actionFor(cur.need, s, tut);
+      if (!act) break;
+      s = reducer(s, act);
+      continue;
+    }
+    const f = flowAction(s) || foeAction(s, tut, 0, legalOf(s, 1));
+    if (!f) break;
+    s = reducer(s, f);
+  }
+  const placeSteps = tut.steps.filter(
+    (x) => x.need && x.need.type === "SETUP_PLACE_CARD",
+  );
+  const stuck = [];
+  for (const step of placeSteps) {
+    // 1枚だけ戻して、置き直しが画面の関門を通るかを見る
+    const back = reducer(s, {
+      type: "SETUP_UNPLACE_CARD",
+      player: 0,
+      cardId: step.need.cardId,
+    });
+    const now = tut.steps[currentStepIndex(tut, back, mark)];
+    const retry = { type: "SETUP_PLACE_CARD", player: 0, ...step.need };
+    if (!now || !now.need || !matchesNeed(now.need, retry))
+      stuck.push(step.need.cardId);
+  }
+  ok(
+    `${tut.title} は札を戻しても置き直せる`,
+    Object.keys(s.setupPlacements[0]).length === placeSteps.length &&
+      stuck.length === 0,
+    stuck.length ? `${stuck.join(",")} を戻すと詰む` : "布陣まで進めなかった",
+  );
 }
 
 /**

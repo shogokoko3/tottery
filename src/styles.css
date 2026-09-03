@@ -2029,6 +2029,11 @@ h3 {
   font-size: 13px;
 }
 
+/* 台本にない手を指したときの返事。いつもの案内と見分けがつくように */
+.tutorial-wait.tutorial-nudge {
+  color: var(--card-red);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .guide-target,
   .focus-button .btn-primary:not(.tutorial-next):not(:disabled),

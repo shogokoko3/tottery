@@ -718,6 +718,9 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     [pendingCapture, setPendingCapture] = (0, useState)(null),
     [holdFx, setHoldFx] = (0, useState)(!1),
     [tutStep, setTutStep] = (0, useState)(0),
+    // 台本にない手を指したときに、帯へ返す一言。
+    // 黙って握りつぶすと「押しても何も起きない=壊れている」と読まれる
+    [tutNudge, setTutNudge] = (0, useState)(null),
     foeIdxRef = (0, useRef)(0),
     recordedRef = (0, useRef)(!1),
     [ratingResult, setRatingResult] = (0, useState)(null),
@@ -747,8 +750,14 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         step.need &&
         !FREE_ACTIONS.has(E.type) &&
         !matchesNeed(step.need, E)
-      )
+      ) {
+        // 取る手は確認が先に出てしまうので、ここで閉じる。
+        // 出しっぱなしにすると「取るを押したのに何も起きない」になる
+        setPendingCapture(null);
+        setTutNudge("その手はいまは指せません。光っているところを操作してください。");
         return;
+      }
+      setTutNudge(null);
     }
     let E0 =
       E.elapsedMs == null
@@ -1072,6 +1081,11 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (tutorial && tutIdx > tutStep) setTutStep(tutIdx);
   }, [tutIdx, tutStep, tutorial]);
 
+  // 案内が次へ進んだら、指せない手への一言は用済み
+  (0, useEffect)(() => {
+    setTutNudge(null);
+  }, [tutIdx]);
+
   // 次に触る場所が説明の帯に隠れないよう、画面をそこまで送る
   (0, useEffect)(() => {
     if (!tutorial) return;
@@ -1137,6 +1151,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         step={tutActive}
         index={tutIdx}
         total={tutorial.steps.length}
+        nudge={tutNudge}
         // 読んでから決める回では、説明だけの札を前面に出して先に読ませる
         front={!!tutorial.readFirst && !tutActive.need}
         onNext={tutActive.end ? onExit : () => setTutStep(tutIdx + 1)}

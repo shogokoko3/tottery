@@ -19,7 +19,7 @@ import { ArrowLeft, ArrowRight, Check, Crown, Hand, Lock } from "../icons.jsx";
  * 幕は薄くしてある。捨て札など、説明が指しているものが後ろで見えなくなると
  * かえって分からなくなるため。
  */
-export function TutorialSheet({ step, index, total, onNext, front }) {
+export function TutorialSheet({ step, index, total, onNext, front, nudge }) {
   if (!step) return null;
   return (
     <div
@@ -35,8 +35,8 @@ export function TutorialSheet({ step, index, total, onNext, front }) {
         </div>
         <p className="tutorial-line">{step.text}</p>
         {step.hold ? null : step.need ? (
-          <p className="tutorial-wait">
-            <Hand size={15} /> 光っているところを操作してください
+          <p className={`tutorial-wait ${nudge ? "tutorial-nudge" : ""}`}>
+            <Hand size={15} /> {nudge || "光っているところを操作してください"}
           </p>
         ) : (
           <button className="btn btn-primary tutorial-next" onClick={onNext}>
