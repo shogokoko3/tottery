@@ -168,7 +168,7 @@ const EP1 = {
     },
     {
       at: atMulligan,
-      text: "いらない札は捨てて引き直せます。光った 5♥ をタップ。",
+      text: "いらない札は捨てて引き直せます。5 は 5♠ で足りるので、光った 5♥ をタップ。",
       need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t5" },
       focus: { cards: ["t5"] },
     },
@@ -179,7 +179,7 @@ const EP1 = {
     },
     {
       at: atPlace,
-      text: "自陣に5枚ならべます。4♠ は縦横に2マスまで。光ったマス c1 へドラッグ。",
+      text: "6枚から5枚を自陣にならべます。4♠ は縦横に2マスまで。光ったマス c1 へ。",
       need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 4, col: 2 },
       focus: { cards: ["t2"], cells: [{ row: 4, col: 2 }] },
     },
@@ -337,7 +337,7 @@ const EP2 = {
     },
     {
       at: atMulligan,
-      text: "いらない 5♥ を捨てます。光った札をタップ。",
+      text: "5 は 5♠ で足ります。余る 5♥ をタップ。",
       need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t5" },
       focus: { cards: ["t5"] },
     },
@@ -506,7 +506,7 @@ const EP3 = {
     },
     {
       at: atMulligan,
-      text: "いらない 5♥ を捨てます。光った札をタップ。",
+      text: "5 は 5♠ で足ります。余る 5♥ をタップ。",
       need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t5" },
       focus: { cards: ["t5"] },
     },
@@ -1386,7 +1386,7 @@ const EP8 = {
     },
     {
       at: myTurn,
-      text: "Kの王には力があります。自分の J か Q が倒されるたび、予備札を1枚呼べます。",
+      text: "Kの王には力があります。J か Q が倒されるたび、配られなかった山(予備札)から1枚呼べます。",
       focus: { pieces: ["t1"] },
     },
     {
@@ -1396,7 +1396,12 @@ const EP8 = {
       focus: { pieces: ["t1"], cells: [{ row: 2, col: 2 }] },
     },
     {
-      at: (s) => s.phase === "play" && s.currentTurn === 0 && !!s.kPlacement,
+      // 撃破カードが盤を覆っている間に出すと、光るマスがどこにも無い。閉じてから
+      at: (s) =>
+        s.phase === "play" &&
+        s.currentTurn === 0 &&
+        !!s.kPlacement &&
+        !s.captureReveal,
       text: "取られました。予備札が1枚来ています。光った b2 をタップして出します。",
       need: { type: "PLACE_RESERVE_CARD", row: 3, col: 1 },
       focus: { cells: [{ row: 3, col: 1 }] },
@@ -1859,7 +1864,7 @@ const EP11 = {
       text: "ストレートがそろえば先手と後手が入れ替わります。先手を取りに行けます。",
     },
     {
-      text: "相手が先に引き直しました。捨て札に 7 はありません。まだ残っています。",
+      text: "相手が先に引き直しました。捨て札に 7 はありません。山に残っている見込みがあります。",
     },
     {
       text: "手札は 5・6・8・9。7 を引ければ並びます。光った K♦ をタップ。",
@@ -1960,7 +1965,7 @@ const EP11 = {
     },
     {
       at: atEnd,
-      text: "後手でも、ストレートがそろえば先手を取り返せます。",
+      text: "先に指せたぶん、1手早く王に届きました。ストレートは先手を取り返す手です。",
       end: true,
     },
   ],
@@ -2045,6 +2050,9 @@ const EP12 = {
       text: "また後手。相手の捨て札を先に見られます。",
     },
     {
+      text: "5枚とも同じマークならフラッシュ。対局前に、相手の駒が1枚めくれます。",
+    },
+    {
       text: "捨てられたのは ♣ と ♦。♠ は1枚も出ていません。まだ場に残っています。",
     },
     {
@@ -2104,7 +2112,7 @@ const EP12 = {
     },
     {
       at: (s) => !!s.setupEffects,
-      text: "マークが5枚そろうとフラッシュ。相手の駒が1枚めくれます。",
+      text: "狙いどおりフラッシュ。相手の駒が1枚めくれました。",
       need: { type: "DISMISS_SETUP_EFFECTS" },
       focus: { button: true },
     },
@@ -2113,11 +2121,11 @@ const EP12 = {
       text: "めくれた駒だけは正体が分かります。伏せた駒とは違います。",
     },
     {
-      text: "10 は縦2横1へしか跳べません。この位置からでは d4 に届きません。",
+      text: "めくれたのは 10♦。10 は縦2横1へしか跳べず、d4 には届きません。だから d4 は安全です。",
       focus: { cells: [{ row: 1, col: 3 }] },
     },
     {
-      text: "a1 の Q♠ を d4 へ。斜めに何マスでも進めて、相手を取れます。",
+      text: "安全と分かった d4 へ。a1 の Q♠ を斜めに進めて相手を取ります。",
       need: { type: "MOVE_PIECE", pieceId: "t3", row: 1, col: 3 },
       focus: {
         cells: [

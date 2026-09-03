@@ -197,6 +197,10 @@ for (const tut of TUTORIALS) {
   let guard = 0;
   let stuck = null;
   let wentBack = null;
+  // 撃破カードが盤を覆っている間に、盤のマスや駒を触れと言っていないか。
+  // 画面は captureReveal の間、盤ごとモーダルに差し替える。そこで盤を光らせても
+  // 触れる場所が無く、モーダルのボタンも(盤に印があるせいで)光らない
+  let covered = null;
   let lastIdx = -1;
   let usedCpu = 0;
   let skipped = 0;
@@ -217,6 +221,14 @@ for (const tut of TUTORIALS) {
       break;
     }
     const cur = tut.steps[idx];
+    if (
+      !covered &&
+      s.captureReveal &&
+      (!cur.at || cur.at(s)) &&
+      cur.focus &&
+      (cur.focus.cells || cur.focus.pieces)
+    )
+      covered = `${idx + 1}枚目「${cur.text.slice(0, 20)}」`;
     // 説明だけの札のときは「次へ」を押さず、先の操作をそのまま指してみる。
     // これで案内が追いつかなければ、画面でも取り残される
     if (!cur.need && (!cur.at || cur.at(s))) {
@@ -298,6 +310,7 @@ for (const tut of TUTORIALS) {
   const step = watermark;
 
   ok("案内が前に戻らない", !wentBack, wentBack);
+  ok("撃破カードが盤を覆っている間に、盤を触れと言わない", !covered, covered);
   ok(
     "説明中に指しても案内が追いつく",
     stuck === null || !stuck.includes("説明中"),
