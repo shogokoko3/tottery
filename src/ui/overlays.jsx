@@ -288,6 +288,7 @@ export function CaptureRevealModal({ reveal, onClose, viewer, final }) {
                 {open ? (
                   <>
                     <CardFace
+                      owner={card.owner}
                       rank={card.rank}
                       suit={card.suit}
                       isKing={card.isKing}
@@ -665,7 +666,12 @@ export function SetupEffectsModal({ effects, viewer, onClose }) {
             <div className="bonus-cards">
               {foeShown.map((c) => (
                 <div className="bonus-card" key={c.id}>
-                  <CardFace rank={c.rank} suit={c.suit} size="sm" />
+                  <CardFace
+                    owner={c.owner}
+                    rank={c.rank}
+                    suit={c.suit}
+                    size="sm"
+                  />
                   <span
                     className="bonus-card-who"
                     style={{ color: PLAYER_META[c.owner].color }}

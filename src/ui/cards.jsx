@@ -1,5 +1,7 @@
 import { CAPTAIN_CARD_ART, NORMAL_CARD_ART, cardBackImg } from "../assets.js";
 import { PLAYER_META, SUIT_SYMBOL } from "../game/constants.js";
+import { useSeats } from "./names.jsx";
+import { byId } from "../skins/catalog.js";
 import { Crown } from "../icons.jsx";
 
 export const SUIT_CODE = {
@@ -12,7 +14,17 @@ export function cardArtSrc(e, t, l) {
   let n = e + SUIT_CODE[t];
   return (l && CAPTAIN_CARD_ART[n]) || NORMAL_CARD_ART[n];
 }
-export function CardFace({ rank, suit, size = "md", isKing = !1 }) {
+export function CardFace({
+  rank,
+  suit,
+  size = "md",
+  isKing = !1,
+  owner,
+  skinId,
+}) {
+  const seats = useSeats();
+  const selected = byId(skinId || seats.skins?.[owner]?.[rank]);
+  const skin = selected?.rank === String(rank) ? selected : null;
   let a =
     size === "xs"
       ? {
@@ -35,17 +47,33 @@ export function CardFace({ rank, suit, size = "md", isKing = !1 }) {
             };
   return (
     <div
-      className={`card-face ${isKing ? "card-captain" : ""}`}
+      className={`card-face ${isKing ? "card-captain" : ""} ${skin ? "card-skinned" : ""}`}
+      data-size={size}
+      data-skin={skin?.id}
       style={{
         width: a.w,
         height: a.h,
       }}
     >
       <img
-        src={cardArtSrc(rank, suit, isKing)}
-        alt={`${rank}${SUIT_SYMBOL[suit]}`}
+        src={skin?.card || cardArtSrc(rank, suit, isKing)}
+        alt={`${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}`}
         draggable="false"
       />
+      {skin && (
+        <span
+          aria-hidden="true"
+          className={`skin-card-mark ${suit === "heart" || suit === "diamond" ? "red-suit" : ""}`}
+        >
+          {rank}
+          <small>{SUIT_SYMBOL[suit]}</small>
+        </span>
+      )}
+      {skin && isKing && (
+        <span className="skin-king-mark" aria-label="王">
+          ♛
+        </span>
+      )}
     </div>
   );
 }
@@ -100,6 +128,7 @@ export function Piece({
     >
       {i ? (
         <CardFace
+          owner={piece.owner}
           rank={piece.rank}
           suit={piece.suit}
           size={size}

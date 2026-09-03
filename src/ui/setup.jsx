@@ -13,7 +13,7 @@ import { CardBack, CardFace } from "./cards.jsx";
 import { CardGuide } from "./guides.jsx";
 import { useNames } from "./names.jsx";
 
-export function DiscardPanel({ cards, label, color }) {
+export function DiscardPanel({ cards, label, color, owner }) {
   if (!cards || cards.length === 0) return null;
   let n = [...cards].sort((a, u) => {
     let i = RANKS.indexOf(a.rank) - RANKS.indexOf(u.rank);
@@ -32,14 +32,14 @@ export function DiscardPanel({ cards, label, color }) {
       <div className="discard-row">
         {n.map((a) => (
           <div className="discard-card" key={a.id}>
-            <CardFace rank={a.rank} suit={a.suit} size="sm" />
+            <CardFace owner={owner} rank={a.rank} suit={a.suit} size="sm" />
           </div>
         ))}
       </div>
     </div>
   );
 }
-export function MulliganHand({ hand, selected, onToggle, focus }) {
+export function MulliganHand({ hand, selected, onToggle, focus, owner }) {
   const width = useWindowWidth();
   const wide = width >= 480;
   const size = width < 380 ? "sm" : "md";
@@ -56,7 +56,7 @@ export function MulliganHand({ hand, selected, onToggle, focus }) {
       }`}
       onClick={() => onToggle(card.id)}
     >
-      <CardFace rank={card.rank} suit={card.suit} size={size} />
+      <CardFace owner={owner} rank={card.rank} suit={card.suit} size={size} />
       {selected.has(card.id) && <span className="discard-badge">✕</span>}
     </div>
   );
@@ -133,7 +133,12 @@ export function WaitingWithBoard({
                     {w && (
                       <div className="mini-piece">
                         {z ? (
-                          <CardFace rank={w.rank} suit={w.suit} size="sm" />
+                          <CardFace
+                            owner={w.owner}
+                            rank={w.rank}
+                            suit={w.suit}
+                            size="sm"
+                          />
                         ) : (
                           <CardBack
                             colorHex={PLAYER_META[w.owner].color}
@@ -176,7 +181,12 @@ export function WaitingWithBoard({
                   <div className="mini-cell" key={`${v}-${p}`}>
                     {z && (
                       <div className="mini-piece">
-                        <CardFace rank={z.rank} suit={z.suit} size="sm" />
+                        <CardFace
+                          owner={viewer}
+                          rank={z.rank}
+                          suit={z.suit}
+                          size="sm"
+                        />
                       </div>
                     )}
                   </div>
@@ -199,7 +209,12 @@ export function WaitingWithBoard({
           <div className="hand-grid">
             {f.map((r) => (
               <div className="hand-card" key={r.id}>
-                <CardFace rank={r.rank} suit={r.suit} size="sm" />
+                <CardFace
+                  owner={viewer}
+                  rank={r.rank}
+                  suit={r.suit}
+                  size="sm"
+                />
               </div>
             ))}
           </div>
@@ -347,6 +362,7 @@ export function SetupWaiting({
                       <div className="mini-piece">
                         {mine ? (
                           <CardFace
+                            owner={piece.owner}
                             rank={piece.rank}
                             suit={piece.suit}
                             size="sm"
@@ -596,6 +612,7 @@ export function PlaceStep({
                       onPointerDown={(e) => startDrag(e, here.id, { row, col })}
                     >
                       <CardFace
+                        owner={pIdx}
                         rank={here.card.rank}
                         suit={here.card.suit}
                         size="sm"
@@ -633,7 +650,7 @@ export function PlaceStep({
               onPointerDown={(e) => startDrag(e, card.id, null)}
               key={card.id}
             >
-              <CardFace rank={card.rank} suit={card.suit} />
+              <CardFace owner={pIdx} rank={card.rank} suit={card.suit} />
             </div>
           ))}
         </div>
@@ -657,7 +674,12 @@ export function PlaceStep({
       </div>
       {drag && dragCard && (
         <div className="drag-ghost" style={{ left: drag.x, top: drag.y }}>
-          <CardFace rank={dragCard.rank} suit={dragCard.suit} size="sm" />
+          <CardFace
+            owner={pIdx}
+            rank={dragCard.rank}
+            suit={dragCard.suit}
+            size="sm"
+          />
         </div>
       )}
     </div>
@@ -757,6 +779,7 @@ export function KingStep({
                       } ${selectable ? "" : "mini-piece-disabled"}`}
                     >
                       <CardFace
+                        owner={pIdx}
                         rank={card.rank}
                         suit={card.suit}
                         size="sm"
@@ -851,7 +874,12 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
                     <div className="mini-piece">
                       {p.owner === n ? (
                         <>
-                          <CardFace rank={p.rank} suit={p.suit} size="sm" />
+                          <CardFace
+                            owner={p.owner}
+                            rank={p.rank}
+                            suit={p.suit}
+                            size="sm"
+                          />
                           {p.isKing && (
                             <Crown size={12} className="king-badge" />
                           )}

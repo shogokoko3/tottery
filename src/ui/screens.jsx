@@ -39,6 +39,12 @@ import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { titleOf } from "../game/titles.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
+import SKIN_STYLES from "../skins/styles.css";
+import { SkinsScreen } from "./skins.jsx";
+import { getCollection, useCollection } from "../skins/store.js";
+import { sanitizeLoadout } from "../skins/catalog.js";
+
+const mySkins = () => sanitizeLoadout(getCollection().equipped);
 
 /** いま端末に登録されている自分の名前。まだ決めていなければ null */
 function myName() {
@@ -77,7 +83,7 @@ export function GameShell({
   let goHome = onHome || onBack;
   return (
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
-      <style>{STYLES}</style>
+      <style>{STYLES + SKIN_STYLES}</style>
       <header className="top-bar">
         <div className="top-left">
           {onBack ? (
@@ -137,15 +143,20 @@ export function GameShell({
     </div>
   );
 }
-export function HomeScreen({ onStart }) {
+export function HomeScreen({ onStart, onSkins }) {
   return (
     <div className="intro title-hero">
-      <img className="title-bg" src={titleBgImg} alt="" draggable="false" />
-      <button
-        className="btn btn-primary btn-large intro-start"
-        onClick={onStart}
-      >
-        ゲームスタート <ArrowRight size={18} />
+      <div className="title-hero-visual">
+        <img className="title-bg" src={titleBgImg} alt="" draggable="false" />
+        <button
+          className="btn btn-primary btn-large intro-start"
+          onClick={onStart}
+        >
+          ゲームスタート <ArrowRight size={18} />
+        </button>
+      </div>
+      <button className="btn btn-ghost intro-skins" onClick={onSkins}>
+        スキンガチャ・装備
       </button>
     </div>
   );
@@ -156,6 +167,7 @@ export function MatchingScreen({
   onCpu,
   onTutorial,
   onRanking,
+  onSkins,
 }) {
   return (
     <div className="center-stage">
@@ -185,6 +197,12 @@ export function MatchingScreen({
             チュートリアル<small>ルールとカードの効果を学ぶ</small>
           </span>
         </button>
+        <button className="btn btn-ghost btn-choice" onClick={onSkins}>
+          <Crown size={30} />
+          <span className="choice-label">
+            スキンガチャ・装備<small>無料・回数制限なしのテスト召喚</small>
+          </span>
+        </button>
         <button className="btn btn-ghost btn-choice" onClick={onRanking}>
           <Crown size={30} />
           <span className="choice-label">
@@ -196,6 +214,7 @@ export function MatchingScreen({
   );
 }
 export function RandomMatchScreen({ onBack, onRoomReady }) {
+  const loadout = useRef(mySkins()).current;
   let [l, n] = (0, useState)("searching"),
     [a, u] = (0, useState)(""),
     i = (0, useRef)(makeClientId()),
@@ -222,6 +241,10 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               icons: [myIcon(), (g.data && g.data.guestIcon) || null],
               titles: [myTitle(), (g.data && g.data.guestTitle) || null],
               ratings: [myRating(), (g.data && g.data.guestRating) || null],
+              skins: [
+                sanitizeLoadout(g.data?.hostSkins),
+                sanitizeLoadout(g.data?.guestSkins),
+              ],
             }));
         }
       }, 1500);
@@ -283,6 +306,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
                 guestIcon: myIcon(),
                 guestTitle: myTitle(),
                 guestRating: myRating(),
+                guestSkins: loadout,
               }),
               o.current)
             )
@@ -294,6 +318,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               icons: [(b.data && b.data.hostIcon) || null, myIcon()],
               titles: [(b.data && b.data.hostTitle) || null, myTitle()],
               ratings: [(b.data && b.data.hostRating) || null, myRating()],
+              skins: [sanitizeLoadout(b.data?.hostSkins), loadout],
             });
             return;
           }
@@ -306,6 +331,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
             hostIcon: myIcon(),
             hostTitle: myTitle(),
             hostRating: myRating(),
+            hostSkins: loadout,
           });
         if (o.current) return;
         if (!p.ok) {
@@ -434,6 +460,7 @@ export function RoomScreen({
   onBeforeRoom,
   autoCreate,
 }) {
+  const loadout = useRef(mySkins()).current;
   let [u, i] = (0, useState)(null),
     [f, o] = (0, useState)(""),
     [r, d] = (0, useState)(""),
@@ -492,6 +519,10 @@ export function RoomScreen({
                 icons: [myIcon(), N.data.guestIcon || null],
                 titles: [myTitle(), N.data.guestTitle || null],
                 ratings: [myRating(), N.data.guestRating || null],
+                skins: [
+                  sanitizeLoadout(N.data.hostSkins),
+                  sanitizeLoadout(N.data.guestSkins),
+                ],
               }));
           }
         }, 1200);
@@ -509,6 +540,7 @@ export function RoomScreen({
         hostIcon: myIcon(),
         hostTitle: myTitle(),
         hostRating: myRating(),
+        hostSkins: loadout,
       });
     if ((p(!1), !x.ok)) {
       s(x.error);
@@ -543,6 +575,7 @@ export function RoomScreen({
       guestIcon: myIcon(),
       guestTitle: myTitle(),
       guestRating: myRating(),
+      guestSkins: loadout,
     });
     if ((p(!1), !N.ok)) {
       s(N.error);
@@ -554,6 +587,7 @@ export function RoomScreen({
       icons: [x.data.hostIcon || null, myIcon()],
       titles: [x.data.hostTitle || null, myTitle()],
       ratings: [x.data.hostRating || null, myRating()],
+      skins: [sanitizeLoadout(x.data.hostSkins), loadout],
       myPlayerIndex: 1,
     });
   }
@@ -716,6 +750,7 @@ export function RoomScreen({
   );
 }
 export function TotteryApp() {
+  const collection = useCollection();
   // はじめて遊ぶときは、まず名前を決めてもらう
   let [named, setNamed] = (0, useState)(() => hasName()),
     [e, t] = (0, useState)("home"),
@@ -731,6 +766,9 @@ export function TotteryApp() {
     [rulesFrom, setRulesFrom] = (0, useState)("matching");
   // 場面に合った曲へ。対局中は GameCore のほうが決めるので、ここは触らない
   useScreenBgm(e);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [e]);
   function s() {
     (u(null), m(!1), setTut(null), t("home"));
   }
@@ -767,9 +805,16 @@ export function TotteryApp() {
           ? [mine.icon, null]
           : [null, null],
       // 称号はマッチした相手と交わすもの。CPU戦・同じ端末では渡さない
-      titles = a ? a.titles || [null, null] : [null, null];
+      titles = a ? a.titles || [null, null] : [null, null],
+      skins = a
+        ? (a.skins || [{}, {}]).map(sanitizeLoadout)
+        : tut
+          ? [{}, {}]
+          : d
+            ? [collection.equipped, {}]
+            : [collection.equipped, collection.equipped];
     return (
-      <SeatsProvider value={{ names, icons, titles }}>
+      <SeatsProvider value={{ names, icons, titles, skins }}>
         <GameCore
           network={a}
           boardSize={tut ? tut.boardSize : i}
@@ -785,13 +830,21 @@ export function TotteryApp() {
       showRules={l}
       setShowRules={n}
       onHome={e === "home" ? null : goHome}
+      onBack={e === "skins" ? () => t("matching") : undefined}
     >
       {
         {
-          home: <HomeScreen onStart={() => t("matching")} />,
+          home: (
+            <HomeScreen
+              onStart={() => t("matching")}
+              onSkins={() => t("skins")}
+            />
+          ),
+          skins: <SkinsScreen />,
           matching: (
             <MatchingScreen
               onRanking={() => t("ranking")}
+              onSkins={() => t("skins")}
               onOnline={() => {
                 (u(null),
                   m(!1),

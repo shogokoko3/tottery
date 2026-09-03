@@ -1,3 +1,4 @@
+import { useBattleFilm } from "./skin-film.jsx";
 import { useEffect, useRef, useState } from "react";
 import { useGameBgm, useGameSounds } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
@@ -236,7 +237,12 @@ export function CapturedRow({ players, dispatch, viewer }) {
                     }
                     key={o.id}
                   >
-                    <CardFace rank={o.rank} suit={o.suit} size="sm" />
+                    <CardFace
+                      owner={o.owner}
+                      rank={o.rank}
+                      suit={o.suit}
+                      size="sm"
+                    />
                   </div>
                 ))}
             </div>
@@ -252,6 +258,7 @@ export function CapturedRow({ players, dispatch, viewer }) {
             <div className="discard-both">
               {players.map((i, f) => (
                 <DiscardPanel
+                  owner={f}
                   cards={i.discard}
                   label={`${shortPlayerLabel(f, viewer, names)}(${PLAYER_META[f].name})が捨てたカード`}
                   color={PLAYER_META[f].color}
@@ -517,6 +524,7 @@ export function GameView({
                                 style={{ "--who": PLAYER_META[A.owner].color }}
                               >
                                 <CardFace
+                                  owner={A.owner}
                                   rank={A.rank}
                                   suit={A.suit}
                                   size={size >= 9 ? "xs" : "md"}
@@ -567,7 +575,12 @@ export function GameView({
                         }
                         key={p.id}
                       >
-                        <CardFace rank={p.rank} suit={p.suit} size="sm" />
+                        <CardFace
+                          owner={p.owner}
+                          rank={p.rank}
+                          suit={p.suit}
+                          size="sm"
+                        />
                       </div>
                     ))}
                   {s.capturedOwn.filter((p) => !p.alive).length === 0 && (
@@ -718,6 +731,8 @@ function foeWait(state, act, playMs) {
 
 export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   const names = useNames();
+  const { skins } = useSeats();
+  const pausedAt = useRef(null);
   let [a, u] = (0, useState)(initialState),
     [i, f] = (0, useState)(!1),
     [o, r] = (0, useState)(!1),
@@ -747,10 +762,18 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     testPlay = (0, useRef)(isTestPlay()).current;
   // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない
   let noLimit = !!tutorial || testPlay;
+  const cinematic = useBattleFilm(
+    a,
+    skins,
+    !!tutorial,
+    network ? p : cpu ? 0 : null,
+  );
+  const fxBusy = cinematic.busy;
   // 案内の位置は、押した回数ではなく盤面から引き直す。
   // どんな触り方をされても画面とずれない
   let tutIdx = tutorial ? currentStepIndex(tutorial, a, tutStep) : -1;
   function y(E) {
+    if (fxBusy) return;
     // どの駒を動かすかをアクション自身に持たせる。
     // 台本の照合にも、通信で相手へ送るときにも要る
     if (E.type === "MOVE_PIECE" && !E.pieceId && a.selectedId)
@@ -878,7 +901,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
 
   let T = 1;
   ((0, useEffect)(() => {
-    if (!cpu || network || tutorial) return;
+    if (!cpu || network || tutorial || fxBusy) return;
     let E = cpuAction(a, T);
     if (!E) return;
     let U = foeWait(a, E, 1000),
@@ -902,7 +925,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
           : y(E);
       }, U);
     return () => clearTimeout(be);
-  }, [a, cpu, network]),
+  }, [a, cpu, network, fxBusy]),
     (0, useEffect)(() => {
       if (!network) return;
       let E = !1,
@@ -1021,11 +1044,19 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   if (turnKeyRef.current !== turnKey) {
     turnKeyRef.current = turnKey;
     turnStartRef.current = Date.now();
+    pausedAt.current = null;
+  }
+  // 映像の待ち時間を、その手番の持ち時間から差し引かない。
+  if (fxBusy && pausedAt.current === null) pausedAt.current = Date.now();
+  if (!fxBusy && pausedAt.current !== null) {
+    turnStartRef.current += Date.now() - pausedAt.current;
+    pausedAt.current = null;
   }
 
   let clockRunning =
       a.phase === "play" &&
       !noLimit &&
+      !fxBusy &&
       (a.winner === null || a.winner === undefined) &&
       !handoff,
     clockSpent = clockRunning ? Math.max(0, nowMs - turnStartRef.current) : 0,
@@ -1194,6 +1225,14 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
       />
     ) : null;
 
+  const presentationSheet = cinematic.overlay ? (
+    <>
+      {tutSheet}
+      {cinematic.overlay}
+    </>
+  ) : (
+    tutSheet
+  );
   let R = a.boardSize,
     P = network ? p : cpu ? 0 : a.currentTurn,
     x = network ? a.currentTurn === p : cpu ? a.currentTurn === 0 : !0,
@@ -1204,7 +1243,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   // 場面に合った曲へ。勝敗のジングルは「自分」がいる対局だけ勝ち負けを分ける。
   // 1台で交互に指す対戦はどちらも自分なので、いつも勝ちの側で鳴らす
   useGameBgm({
-    state: a,
+    state: fxBusy && a.phase === "gameover" ? { ...a, phase: "play" } : a,
     clocks: liveClocks,
     self: network ? p : cpu ? 0 : null,
     tutorial,
@@ -1227,7 +1266,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   if (d)
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1249,7 +1288,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   if (o)
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1267,7 +1306,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   if (a.phase === "intro")
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1283,10 +1322,10 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         />
       </GameShell>
     );
-  if (a.captureReveal && !holdFx)
+  if (a.captureReveal && !holdFx && !fxBusy)
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1311,7 +1350,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   if (a.pendingKingChoice)
     return network && a.pendingKingChoice.owner !== p ? (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1322,7 +1361,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
       </GameShell>
     ) : (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1336,7 +1375,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   if (a.setupEffects)
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1357,7 +1396,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   if (a.interstitial && !network && !cpu)
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1379,7 +1418,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (a.diceIdx === 3)
       return (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -1426,7 +1465,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     return E !== null ? (
       cpu && E !== 0 ? (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -1437,7 +1476,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         </GameShell>
       ) : network && E !== p ? (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -1448,7 +1487,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         </GameShell>
       ) : (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -1474,7 +1513,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
       )
     ) : (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1530,7 +1569,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (cpu && a.mulliganIdx !== 0)
       return (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -1552,7 +1591,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (network && a.mulliganIdx !== p)
       return (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -1572,7 +1611,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
       be = new Set(U._mulliganSelected || []);
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1593,6 +1632,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             </p>
           )}
           <MulliganHand
+            owner={E}
             focus={tutFocus}
             hand={U.hand}
             selected={be}
@@ -1604,6 +1644,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             }
           />
           <DiscardPanel
+            owner={1 - E}
             cards={a.players[1 - E].discard}
             label={`${shortPlayerLabel(1 - E, P, names)}(${PLAYER_META[1 - E].name})が捨てたカード`}
             color={PLAYER_META[1 - E].color}
@@ -1629,7 +1670,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (a.setupDone[me])
       return (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -1652,7 +1693,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
       );
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1697,7 +1738,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     Pl = x && a.shuffleMode;
   return (
     <GameShell
-      sheet={tutSheet}
+      sheet={presentationSheet}
       focusButton={tutButton}
       showRules={i}
       setShowRules={f}
