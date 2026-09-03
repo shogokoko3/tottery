@@ -18,6 +18,15 @@ npm run build     # index.html を生成
 `index.html` は React もカード画像96枚も data URI で内包した単一ファイルで、
 これ1つを置けば動く。サーバー側の設定には依存しない。
 
+## 権利まわり
+
+- [法務メモ.md](法務メモ.md) — 商標の調査結果、出願の案、素材の権利、懸念と対策
+- [THIRD-PARTY.md](THIRD-PARTY.md) — 同梱している第三者ソフトウェアの表示
+- [プライバシーポリシー.md](プライバシーポリシー.md) — App Store 提出用の下書き
+
+**未解決: `assets/cards/` の絵柄96枚の出所が分からない。** 配信の前に
+はっきりさせること。詳しくは法務メモの 4-(A)。
+
 ## 配信 (Netlify)
 
 GitHub の `main` へ push すると、Netlify が [netlify.toml](netlify.toml) のとおりに組み立てて配信する。

@@ -65,7 +65,9 @@ export function NameSetupScreen({ onDone }) {
         <p className="hint">
           対戦中の手番や記録に、この名前が出ます。
           <br />
-          対戦相手にも見えます。あとから変えられます。
+          対戦相手と、インターネット上のランキングに出ます。
+          <br />
+          本名は入れないでください。あとから変えられます。
         </p>
         <NameField
           value={value}
@@ -109,7 +111,9 @@ export function NameEditModal({ onClose, onSaved }) {
             <Close size={18} />
           </button>
         </div>
-        <p className="hint">対戦相手にも見える名前です。</p>
+        <p className="hint">
+          対戦相手と、ランキングに出る名前です。本名は入れないでください。
+        </p>
         <NameField
           value={value}
           onChange={(v) => {
