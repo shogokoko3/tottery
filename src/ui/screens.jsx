@@ -136,6 +136,7 @@ export function MatchingScreen({
   onCpu,
   onTutorial,
   onRanking,
+  onBack,
 }) {
   return (
     <div className="center-stage">
@@ -172,6 +173,10 @@ export function MatchingScreen({
           </span>
         </button>
       </div>
+      {/* 対局を終えたときの「タイトルに戻る」と同じ行き先なので、同じ呼び名にする */}
+      <button className="btn btn-ghost btn-wide" onClick={onBack}>
+        <ArrowLeft size={18} /> タイトルに戻る
+      </button>
     </div>
   );
 }
@@ -753,6 +758,7 @@ export function TotteryApp() {
           home: <HomeScreen onStart={() => t("matching")} />,
           matching: (
             <MatchingScreen
+              onBack={() => t("home")}
               onRanking={() => t("ranking")}
               onOnline={() => {
                 (u(null),
