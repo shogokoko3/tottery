@@ -187,8 +187,8 @@ export const SKINS = [
   description,
   image: `skins/portraits/${id}.webp`,
   card: `skins/cards/${id}.webp`,
-  // 撃破の演出動画。男性エルフだけ先に作った完成版の名前で、残りは id.mp4
-  video: `skins/videos/${id === "elf-male" ? "elf-finisher-5s" : id}.mp4`,
+  // 撃破の演出動画。16種とも id.mp4
+  video: `skins/videos/${id}.mp4`,
 }));
 
 export const byId = (id) => SKINS.find((s) => s.id === id);
