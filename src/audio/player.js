@@ -7,15 +7,20 @@
  * 曲の全体を読み終える前に鳴り始める。
  *
  *   曲ごとの gain ──┐
- *   曲ごとの gain ──┼─ master(設定の音量) ─ duck(演出中だけ下げる) ─ 出力
- *   曲ごとの gain ──┘
+ *   曲ごとの gain ──┼─ master(BGMの音量) ─ duck(演出中だけ下げる) ─┐
+ *   曲ごとの gain ──┘                                             ├─ 出力
+ *   効果音 ──────────── seBus(効果音の音量) ─────────────────┘
+ *
+ * 効果音は duck を通さない。撃破の効果音を鳴らすために BGM を下げるのに、
+ * その効果音まで一緒に下がってしまっては意味がない。
  *
  * 最初の1回は利用者が画面に触れるまで鳴らせない決まりがあるので、
  * unlockAudio() を最初のタップから呼ぶ。それまでの再生指示は覚えておいて、
  * 解錠できた時点で流す。
  */
 
-import { AUDIO_DIR, TRACKS } from "./tracks.js";
+import { SOUNDS } from "./sounds.js";
+import { TRACKS, audioUrl } from "./tracks.js";
 import { isTestPlay } from "../game/profile.js";
 import { loadAudioSettings, saveAudioSettings } from "./settings.js";
 
@@ -27,6 +32,13 @@ const DUCK_LEVEL = 0.35;
 let ctx = null;
 let master = null;
 let duck = null;
+/** 効果音の通り道。BGM とは別に出すので duck を通さない */
+let seBus = null;
+/** 効果音id -> AudioBuffer。解錠のときにまとめて読む */
+const buffers = new Map();
+/** テストプレイ中だけ、鳴らした効果音を控えておく。ふだんは null */
+let played = null;
+let soundsLoading = false;
 /** 曲id -> { el, gain, track, stopTimer } */
 const nodes = new Map();
 /** いま鳴らしている曲 */
@@ -36,7 +48,7 @@ let wanted = null;
 let unlocked = false;
 let duckTimer = null;
 
-let settings = { bgm: 0.6, muted: false };
+let settings = { bgm: 0.6, se: 0.75, muted: false };
 let settingsLoaded = false;
 /** 場面ごとの倍率。チュートリアル中だけ一段下げるのに使う */
 let scale = 1;
@@ -49,10 +61,16 @@ function conf() {
   return settings;
 }
 
-/** 設定を踏まえた全体の音量 */
+/** 設定を踏まえた BGM の音量 */
 function masterLevel() {
   const s = conf();
   return s.muted ? 0 : s.bgm * scale;
+}
+
+/** 設定を踏まえた効果音の音量 */
+function seLevel() {
+  const s = conf();
+  return s.muted ? 0 : s.se;
 }
 
 /**
@@ -76,6 +94,9 @@ function ensureGraph() {
   duck.gain.value = 1;
   master.connect(duck);
   duck.connect(ctx.destination);
+  seBus = ctx.createGain();
+  seBus.gain.value = seLevel();
+  seBus.connect(ctx.destination);
   return ctx;
 }
 
@@ -85,7 +106,7 @@ function nodeFor(id) {
   const track = TRACKS[id];
   if (!track) return null;
 
-  const el = new Audio(AUDIO_DIR + track.file);
+  const el = new Audio(audioUrl(track.file));
   el.loop = !!track.loop;
   el.preload = "auto";
   // 全画面の動画扱いにさせない。iOS でこれが無いと再生が乗っ取られる
@@ -135,11 +156,18 @@ function stopNode(id) {
   }, FADE_MS + 80);
 }
 
-/** wanted の曲に合わせる。解錠前は何もしない */
+/**
+ * wanted の曲に合わせる。解錠前は何もしない。
+ *
+ * 消音中は音量を絞るのではなく、そもそも鳴らさない。
+ * 音量0で流し続けると、聞こえない曲を落とし続けることになる。
+ */
 function apply() {
-  if (!unlocked || current === wanted) return;
+  if (!unlocked) return;
+  const target = conf().muted ? null : wanted;
+  if (current === target) return;
   const from = current;
-  current = wanted;
+  current = target;
   if (from) stopNode(from);
   if (!current) return;
 
@@ -157,6 +185,48 @@ function apply() {
   const started = node.el.play();
   if (started && started.catch) started.catch(() => {});
   fade(node, node.track.gain, FADE_MS);
+}
+
+/**
+ * 効果音をまとめて読む。
+ *
+ * 全部で数十KBしかないので、解錠のときに読んでしまう。
+ * 押した瞬間に鳴らせないと効果音の意味がないので、
+ * BGM のように鳴らすときに取りに行く作りにはしていない。
+ */
+function ensureSounds() {
+  if (soundsLoading || conf().muted || !ensureGraph()) return;
+  soundsLoading = true;
+  for (const [id, sound] of Object.entries(SOUNDS)) {
+    if (buffers.has(id)) continue;
+    fetch(audioUrl(sound.file))
+      .then((res) => res.arrayBuffer())
+      .then((raw) => ctx.decodeAudioData(raw))
+      .then((buf) => buffers.set(id, buf))
+      .catch(() => {
+        // 読めなくても、音が出ないだけで遊べる
+      });
+  }
+}
+
+/**
+ * 効果音を鳴らす。
+ *
+ * まだ読み終わっていなければ何もしない。待って鳴らすと、
+ * 操作から遅れて鳴ることになって、かえって気持ちが悪い。
+ */
+export function playSound(id) {
+  const sound = SOUNDS[id];
+  const buf = buffers.get(id);
+  if (!sound || !buf || !ctx || !seBus || conf().muted) return;
+  if (ctx.state === "suspended") return;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const gain = ctx.createGain();
+  gain.gain.value = sound.gain;
+  src.connect(gain).connect(seBus);
+  src.start(0);
+  if (played) played.push(id);
 }
 
 /**
@@ -182,6 +252,7 @@ export function unlockAudio() {
     }
   }
   unlocked = true;
+  ensureSounds();
   apply();
 }
 
@@ -209,13 +280,29 @@ function pushMaster() {
   if (!ctx || !master) {
     // GainNode が無いときは、鳴っている曲の volume を直に動かす
     for (const [id, node] of nodes)
-      if (!node.gain) node.el.volume = id === current ? masterLevel() * node.track.gain : 0;
+      if (!node.gain)
+        node.el.volume = id === current ? masterLevel() * node.track.gain : 0;
     return;
   }
   const now = ctx.currentTime;
   master.gain.cancelScheduledValues(now);
   master.gain.setValueAtTime(master.gain.value, now);
   master.gain.linearRampToValueAtTime(masterLevel(), now + 0.08);
+}
+
+function pushSe() {
+  if (!ctx || !seBus) return;
+  const now = ctx.currentTime;
+  seBus.gain.cancelScheduledValues(now);
+  seBus.gain.setValueAtTime(seBus.gain.value, now);
+  seBus.gain.linearRampToValueAtTime(seLevel(), now + 0.05);
+}
+
+export function setSeVolume(v) {
+  settings = saveAudioSettings({ ...conf(), se: v });
+  settingsLoaded = true;
+  pushSe();
+  return { ...settings };
 }
 
 export function setBgmVolume(v) {
@@ -241,6 +328,10 @@ export function setMuted(muted) {
   settings = saveAudioSettings({ ...conf(), muted });
   settingsLoaded = true;
   pushMaster();
+  pushSe();
+  // 消音を解いたら、いまの場面の曲をあらためて流す
+  ensureSounds();
+  apply();
   return { ...settings };
 }
 
@@ -280,18 +371,33 @@ export function armAudioUnlock() {
 
   // テストプレイ中だけ、いま何が鳴っているかを外から見られるようにする。
   // 配信ビルドでは窓に何も生やさない
-  if (isTestPlay())
+  if (isTestPlay()) {
+    played = [];
     window.__bgm = {
       current: currentTrack,
       settings: audioSettings,
       // 鳴っている曲が1本だけかを見るための覗き窓。
       // 切り替えたあとに前の曲が止まっていないと、ここに2本並ぶ
       sounding: () =>
-        [...nodes].filter(([, n]) => !n.el.paused).map(([id, n]) => ({
-          id,
-          gain: n.gain ? +n.gain.gain.value.toFixed(3) : +n.el.volume.toFixed(3),
-        })),
+        [...nodes]
+          .filter(([, n]) => !n.el.paused)
+          .map(([id, n]) => ({
+            id,
+            gain: n.gain
+              ? +n.gain.gain.value.toFixed(3)
+              : +n.el.volume.toFixed(3),
+          })),
+      // 鳴らした効果音の並びと、読み終わっているもの
+      sounds: () => ({ 鳴らした: [...played], 読めた: [...buffers.keys()] }),
+      // 演出中に BGM が下がっているか。1 なら下がっていない
+      duck: () => (duck ? +duck.gain.value.toFixed(3) : null),
+      // 撃破を待たずに、下がって戻るのを確かめる
+      duckNow: (ms) => duckMusic(ms),
+      clearSounds: () => {
+        played = [];
+      },
     };
+  }
 
   // 裏に回ったら止める。戻ってきたら続きから鳴らす
   document.addEventListener("visibilitychange", () => {

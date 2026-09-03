@@ -5,3 +5,8 @@ node_modules/
 dist/
 # ビルドが assets/audio/ から写す先。元の音源は assets/audio/ のほう
 /audio/
+# BGM の配布元ファイル。重いので追わない。
+# tools/prepare-bgm.mjs の表にある出どころから落とし直せる
+assets/audio/原曲/
+# tools/bgm-seam.mjs が書き出す試聴用の音
+.bgm-seam/

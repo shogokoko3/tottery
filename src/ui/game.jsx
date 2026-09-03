@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useGameBgm } from "../audio/index.js";
+import { useGameBgm, useGameSounds } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
 import { enrichAction } from "../game/actions.js";
 import { getLegalMoves, squareName } from "../game/board.js";
@@ -1208,6 +1208,20 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     clocks: liveClocks,
     self: network ? p : cpu ? 0 : null,
     tutorial,
+  });
+
+  // 効果音。知らせるのは自分に関わる残り時間だけ。
+  // 布陣のあいだは置ける残り、対局中は自分の持ち時間を見る
+  useGameSounds({
+    state: a,
+    self: network ? p : cpu ? 0 : null,
+    warnMs: noLimit
+      ? null
+      : a.phase === "setup"
+        ? setupRemaining
+        : a.phase === "play"
+          ? liveClocks[P]
+          : null,
   });
 
   if (d)

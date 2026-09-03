@@ -1,0 +1,21 @@
+# 配信側のヘッダー。build.mjs が dist/ に写し、Cloudflare Pages と Netlify の
+# どちらもそのまま読む(書き方は両者で同じ)。
+#
+# 上から順に、当てはまるものが全部効く。
+
+# 中身が data URI で全部入っている1枚もの。
+# 古いものが残ると更新に気づけないので、毎回取りに行かせる(変わっていなければ 304 で済む)
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/admin.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# 曲。名前に中身のハッシュが入っているので、同じ名前なら中身も同じ。
+# 1年そのまま使ってよく、差し替えたときは新しい名前で落ちてくる
+/audio/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

@@ -7,6 +7,7 @@
  * 音源が揃っているかも、ここで一緒に数える。
  */
 import fs from "node:fs";
+import { SOUNDS, TICK_AT_MS, warnLevel } from "../src/audio/sounds.js";
 import {
   AUDIO_DIR,
   ENDGAME_CLOCK_MS,
@@ -74,9 +75,45 @@ for (const [id, track] of Object.entries(TRACKS)) {
   failed++;
   console.error(`× ${id} の音源がない: ${file}`);
 }
+for (const [id, sound] of Object.entries(SOUNDS)) {
+  const file = `assets/${AUDIO_DIR}${sound.file}`;
+  if (fs.existsSync(file)) continue;
+  failed++;
+  console.error(`× 効果音 ${id} の音源がない: ${file}`);
+}
+
+// --- 効果音は短いこと。長いと操作から遅れて聞こえる ---
+for (const [id, sound] of Object.entries(SOUNDS)) {
+  const file = `assets/${AUDIO_DIR}${sound.file}`;
+  if (!fs.existsSync(file)) continue;
+  const kb = fs.statSync(file).size / 1024;
+  if (kb <= 60) continue;
+  failed++;
+  console.error(`× 効果音 ${id} が大きすぎる: ${kb.toFixed(0)}KB`);
+}
+
+// --- 残り時間の知らせ ---
+is(warnLevel(null), 0, "時計が無ければ知らせない");
+is(warnLevel(5 * 60 * 1000), 0, "たっぷり残っていれば知らせない");
+is(warnLevel(30 * 1000), 1, "残り30秒でひとつめ");
+is(warnLevel(29 * 1000), 1, "30秒を切ってもひとつめのまま");
+is(warnLevel(10 * 1000), 2, "残り10秒でふたつめ");
+is(warnLevel(0), 2, "使い切っても数は増えない");
+// 手番ごとに10秒足されて時間が戻ったら、また同じ区切りで鳴らせる
+is(warnLevel(31 * 1000), 0, "時間が戻れば元に戻る");
+
+// --- 知らせる区切りは、少ないほうへ向かって並んでいること ---
+for (let i = 1; i < TICK_AT_MS.length; i++)
+  is(
+    TICK_AT_MS[i] < TICK_AT_MS[i - 1],
+    true,
+    "残り時間の区切りは短くなる順に並ぶ",
+  );
 
 if (failed) {
   console.error(`\n${failed}件おかしい`);
   process.exit(1);
 }
-console.log(`場面と曲の対応、音源${Object.keys(TRACKS).length}本、どれも問題なし`);
+console.log(
+  `場面と曲の対応、曲${Object.keys(TRACKS).length}本、効果音${Object.keys(SOUNDS).length}本、どれも問題なし`,
+);

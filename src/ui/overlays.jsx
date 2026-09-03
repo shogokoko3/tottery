@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { audioSettings, setBgmVolume, setMuted } from "../audio/index.js";
+import {
+  MUSIC_CREDIT,
+  SE_CREDIT,
+  audioSettings,
+  playSound,
+  setBgmVolume,
+  setMuted,
+  setSeVolume,
+} from "../audio/index.js";
 import { sanitizeHistory } from "../game/board.js";
 import {
   PLAYER_META,
@@ -356,19 +364,39 @@ export function LogViewer({ piece, viewer, onClose, revealAll }) {
     </div>
   );
 }
+/** 音量のつまみ1本ぶん */
+function VolumeRow({ label, value, muted, onChange }) {
+  const percent = Math.round(value * 100);
+  return (
+    <div className="settings-row">
+      <span>{label}</span>
+      <input
+        className="settings-slider"
+        type="range"
+        min="0"
+        max="100"
+        step="5"
+        value={percent}
+        disabled={muted}
+        onChange={(e) => onChange(Number(e.target.value) / 100)}
+      />
+      <b>{muted ? "—" : percent}</b>
+    </div>
+  );
+}
+
 /**
  * 音の設定。
  *
  * 触ったその場で鳴っている音に効き、そのまま端末に残る。
- * いまあるのは BGM だけ。効果音を入れたらここに1行足す。
+ * 効果音のつまみを動かしたときは、その場で1度鳴らして大きさを確かめられる。
  */
 function SoundSettings() {
   const [audio, setAudio] = useState(() => audioSettings());
-  const percent = Math.round(audio.bgm * 100);
   return (
     <div className="settings-list">
       <div className="settings-row">
-        <span>BGM</span>
+        <span>音</span>
         <button
           className="btn btn-ghost btn-small"
           onClick={() => setAudio(setMuted(!audio.muted))}
@@ -376,19 +404,26 @@ function SoundSettings() {
           {audio.muted ? "鳴らす" : "鳴らさない"}
         </button>
       </div>
+      <VolumeRow
+        label="BGM"
+        value={audio.bgm}
+        muted={audio.muted}
+        onChange={(v) => setAudio(setBgmVolume(v))}
+      />
+      <VolumeRow
+        label="効果音"
+        value={audio.se}
+        muted={audio.muted}
+        onChange={(v) => {
+          setAudio(setSeVolume(v));
+          playSound("place");
+        }}
+      />
       <div className="settings-row">
-        <span>音量</span>
-        <input
-          className="settings-slider"
-          type="range"
-          min="0"
-          max="100"
-          step="5"
-          value={percent}
-          disabled={audio.muted}
-          onChange={(e) => setAudio(setBgmVolume(Number(e.target.value) / 100))}
-        />
-        <b>{audio.muted ? "—" : percent}</b>
+        <span>出どころ</span>
+        <b>
+          {MUSIC_CREDIT} / {SE_CREDIT}
+        </b>
       </div>
     </div>
   );

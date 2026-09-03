@@ -7,11 +7,37 @@
  * 7曲を data URI で入れると HTML が1MB以上太り、1曲も鳴らないうちに
  * 全部を落としてくることになる。置くファイルが増えるだけで、
  * サーバー側の設定に頼らないのは変わらない。
+ *
+ * 写すときは中身のハッシュを名前に埋める(title.m4a → title.a1b2c3d4.m4a)。
+ * 配信側(_headers)は audio/ を1年キャッシュしてよく、曲を差し替えたときだけ
+ * 新しい名前で落ちてくる。元の名前との対応表は __AUDIO_FILES__ として
+ * スクリプトに埋め込み、src/audio/tracks.js の audioUrl() が引く。
  */
 import { build } from "esbuild";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 
 const dev = process.argv.includes("--dev");
+
+// 音。index.html からは audio/ という相対の場所として見えている。
+// 束ねる前に写して、元の名前 → ハッシュ付きの名前 の表を作っておく
+const audioFiles = {};
+let audioKb = 0;
+for (const dir of ["audio", "dist/audio"]) {
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+}
+if (fs.existsSync("assets/audio"))
+  for (const name of fs.readdirSync("assets/audio")) {
+    if (!name.endsWith(".m4a")) continue;
+    const data = fs.readFileSync(`assets/audio/${name}`);
+    audioKb += data.length;
+    const hash = createHash("sha256").update(data).digest("hex").slice(0, 8);
+    const hashed = name.replace(/\.m4a$/, `.${hash}.m4a`);
+    audioFiles[name] = hashed;
+    for (const dir of ["audio", "dist/audio"])
+      fs.writeFileSync(`${dir}/${hashed}`, data);
+  }
 
 /** 束ね方。本体と管理画面で同じ */
 const bundleOptions = {
@@ -29,6 +55,7 @@ const bundleOptions = {
   },
   write: false,
   logLevel: "info",
+  define: { __AUDIO_FILES__: JSON.stringify(audioFiles) },
 };
 
 /** 入口と枠を渡して、1枚の HTML にする */
@@ -53,20 +80,8 @@ const admin = await bundleInto("src/admin/admin.jsx", "admin.template.html");
 fs.writeFileSync("admin.html", admin.html);
 fs.writeFileSync("dist/admin.html", admin.html);
 
-// 音。index.html からは audio/ という相対の場所として見えている
-let audioKb = 0;
-for (const dir of ["audio", "dist/audio"]) {
-  fs.rmSync(dir, { recursive: true, force: true });
-  fs.mkdirSync(dir, { recursive: true });
-}
-if (fs.existsSync("assets/audio"))
-  for (const name of fs.readdirSync("assets/audio")) {
-    if (!name.endsWith(".m4a")) continue;
-    const from = `assets/audio/${name}`;
-    audioKb += fs.statSync(from).size;
-    for (const dir of ["audio", "dist/audio"])
-      fs.copyFileSync(from, `${dir}/${name}`);
-  }
+// 配信側の設定。Cloudflare Pages と Netlify のどちらも、この2ファイルを
+// 公開フォルダに置くだけで読む(キャッシュの期限・セキュリティ用のヘッダー)
 for (const name of ["_headers", "_redirects"])
   if (fs.existsSync(name)) fs.copyFileSync(name, `dist/${name}`);
 
@@ -75,4 +90,6 @@ console.log(
   `\nindex.html と dist/index.html を書き出しました: ${kb(Buffer.byteLength(html))} (スクリプト ${kb(Buffer.byteLength(js))})`,
 );
 console.log(`audio/ と dist/audio/ に曲を写しました: ${kb(audioKb)}`);
-console.log(`admin.html と dist/admin.html を書き出しました: ${kb(Buffer.byteLength(admin.html))}`);
+console.log(
+  `admin.html と dist/admin.html を書き出しました: ${kb(Buffer.byteLength(admin.html))}`,
+);
