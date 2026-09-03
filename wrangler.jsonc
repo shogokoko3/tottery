@@ -1,0 +1,15 @@
+// Cloudflare Workers(静的アセット配信)の設定。
+//
+// Cloudflare のダッシュボードで GitHub を繋ぐと、push のたびに
+//   ビルド   : npm ci && node build.mjs
+//   配信     : npx wrangler deploy
+// が走り、この設定に従って dist/ の中身をそのまま配る。
+// サーバー側のコード(main)は無い。ヘッダーは dist/_headers を読む。
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tottery",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}

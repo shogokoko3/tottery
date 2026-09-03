@@ -24,7 +24,7 @@ npm run build     # index.html を生成
 - [THIRD-PARTY.md](THIRD-PARTY.md) — 同梱している第三者ソフトウェアの表示
 - [プライバシーポリシー.md](プライバシーポリシー.md) — App Store 提出用の下書き
 
-## 配信 (Cloudflare Pages / Netlify)
+## 配信 (Cloudflare / Netlify)
 
 GitHub の `main` へ push すると、配信先が組み立てて配信する。
 設定はどちらの配信先でも同じで、次の3つだけ。
@@ -32,25 +32,32 @@ GitHub の `main` へ push すると、配信先が組み立てて配信する�
 ```
 ビルド      : npm ci && node build.mjs
 公開する場所: dist
-Node の版   : .node-version(20)
+Node の版   : .node-version(22。wrangler が 22 以上を要る)
 ```
 
 `node build.mjs` は `index.html` と `dist/index.html` の両方を書き出す。
 公開されるのは `dist/` だけなので、`src/` や `tools/` は配らない。
 `dist/` は毎回作り直されるので git には入れていない。
 
-### 配信先を Cloudflare Pages にする
+### 配信先を Cloudflare にする
 
 Netlify の無料枠は月の転送量に上限があり(100GB が目安)、初めての人1人に
 約9MB(HTML 1.5MB + 曲 7.5MB)を配るので、人が増えると足りなくなる。
-Cloudflare Pages は無料枠でも転送量に上限がないので、こちらへ移す。
+Cloudflare は無料枠でも転送量に上限がないので、こちらへ移す。
 
-1. Cloudflare のダッシュボードで Workers & Pages → Create → Pages → Connect to Git
-2. このリポジトリを選び、Build command に `npm ci && node build.mjs`、
-   Build output directory に `dist` を入れる。フレームワークの選択は None
-3. Save and Deploy。以後は `main` への push で勝手に配信される
+Cloudflare のダッシュボードで Workers & Pages → Create → Continue with GitHub
+→ このリポジトリを選ぶ。設定は次の2つ。
 
-Node の版は `.node-version` から読むので、環境変数は要らない。
+```
+Build command : npm ci && node build.mjs
+Deploy command: npx wrangler deploy   (最初から入っている)
+```
+
+`npx wrangler deploy` は [wrangler.jsonc](wrangler.jsonc) を読んで `dist/` を
+そのまま配る。サーバー側のコードは無い。以後は `main` への push で勝手に配信される。
+
+Node の版は `.node-version` から読むので、環境変数は要らない
+(wrangler が Node 22 以上を要るので 22 にしてある)。
 ヘッダー(キャッシュの期限、nosniff など)は [_headers](_headers) に書いてあり、
 ビルドが `dist/` に写す。Netlify も同じファイルを読むので、
 [netlify.toml](netlify.toml) にはビルドの指定しか残していない。

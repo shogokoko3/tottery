@@ -6,7 +6,7 @@
 # ヘッダー(キャッシュの期限など)はここではなく _headers に書いてある。
 # build.mjs が dist/ に写し、Netlify も Cloudflare Pages も同じ書き方で読むので、
 # 配信先を替えても設定を二重に持たなくて済む。
-# Node の版は .node-version に書いてある(これも両者が読む)。
+# Node の版は .node-version に書いてある(これも両者が読む)。Cloudflare 側は wrangler.jsonc も見る。
 
 [build]
   command = "npm ci && node build.mjs"
