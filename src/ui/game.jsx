@@ -73,6 +73,7 @@ import {
   upcomingNeedStep,
 } from "../game/tutorial.js";
 import { isTestPlay, recordGame } from "../game/profile.js";
+import { publishRank } from "../net/ranking.js";
 
 /** 持ち時間の表示。自分の時計は下、相手の時計は上に置く */
 export function ClockBar({ clocks, currentTurn, viewer }) {
@@ -268,6 +269,7 @@ export function GameView({
   onExit,
   tutorial,
   youAre,
+  rating,
 }) {
   const names = useNames();
   let [f, o] = (0, useState)(!1),
@@ -639,6 +641,21 @@ export function GameView({
         <div className={`king-card ${lost ? "lose-card" : "win-card"}`}>
           <img src={winKingCardImg} alt="" />
         </div>
+        {rating && (
+          <div className="rating-change">
+            <span className="rating-label">レーティング</span>
+            <span className="rating-nums">
+              {rating.before}
+              <span className="rating-arrow">→</span>
+              <b>{rating.rating}</b>
+              <span
+                className={`rating-delta ${rating.delta >= 0 ? "up" : "down"}`}
+              >
+                {rating.delta >= 0 ? `+${rating.delta}` : rating.delta}
+              </span>
+            </span>
+          </div>
+        )}
         <div
           className="setup-actions"
           style={{
@@ -703,6 +720,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     [tutStep, setTutStep] = (0, useState)(0),
     foeIdxRef = (0, useRef)(0),
     recordedRef = (0, useRef)(!1),
+    [ratingResult, setRatingResult] = (0, useState)(null),
     // テストプレイ中は、布陣の1分も対局の持ち時間も止める
     testPlay = (0, useRef)(isTestPlay()).current;
   // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない
@@ -1033,11 +1051,20 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     });
   }
 
-  // 対局が終わったら1局ぶん記録する。レベルの元になる
+  // 対局が終わったら1局ぶん記録する。レベルの元になる。
+  // オンラインで相手の持ち点が分かっていれば、レーティングもここで動かす
   (0, useEffect)(() => {
     if (a.phase !== "gameover" || recordedRef.current) return;
     recordedRef.current = !0;
-    recordGame(a.winner === (network ? p : 0));
+    const won = a.winner === (network ? p : 0);
+    const foeRating =
+      network && network.ratings ? network.ratings[1 - p] : null;
+    const after = recordGame(
+      won,
+      typeof foeRating === "number" ? { foeRating } : void 0,
+    );
+    setRatingResult(after.delta === null ? null : after);
+    if (after.delta !== null) publishRank(after);
   }, [a.phase, a.winner]);
 
   // 進んだところまでを覚えておく。
@@ -1966,6 +1993,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             onExit={leaveGame}
             tutorial={tutorial}
             youAre={network ? p : cpu ? 0 : null}
+            rating={ratingResult}
           />
         )}
       </div>

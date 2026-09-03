@@ -33,6 +33,7 @@ import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
+import { RankingScreen } from "./ranking.jsx";
 import { hasName, isTestPlay, loadProfile } from "../game/profile.js";
 import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { SeatsProvider } from "./names.jsx";
@@ -46,6 +47,11 @@ function myName() {
 /** いま選んでいるアイコン。相手にも渡す */
 function myIcon() {
   return loadProfile().icon || null;
+}
+
+/** いまの持ち点。相手に渡して、対局後の増減を互いに計算する */
+function myRating() {
+  return loadProfile().rating;
 }
 
 export function GameShell({
@@ -124,7 +130,13 @@ export function HomeScreen({ onStart }) {
     </div>
   );
 }
-export function MatchingScreen({ onOnline, onFriend, onCpu, onTutorial }) {
+export function MatchingScreen({
+  onOnline,
+  onFriend,
+  onCpu,
+  onTutorial,
+  onRanking,
+}) {
   return (
     <div className="center-stage">
       <h2>対戦相手を選ぶ</h2>
@@ -151,6 +163,12 @@ export function MatchingScreen({ onOnline, onFriend, onCpu, onTutorial }) {
           <Book size={30} />
           <span className="choice-label">
             チュートリアル<small>ルールとカードの効果を学ぶ</small>
+          </span>
+        </button>
+        <button className="btn btn-ghost btn-choice" onClick={onRanking}>
+          <Crown size={30} />
+          <span className="choice-label">
+            ランキング<small>オンライン対戦の成績で並びます</small>
           </span>
         </button>
       </div>
@@ -182,6 +200,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               myPlayerIndex: 0,
               names: [myName(), (g.data && g.data.guestName) || null],
               icons: [myIcon(), (g.data && g.data.guestIcon) || null],
+              ratings: [myRating(), (g.data && g.data.guestRating) || null],
             }));
         }
       }, 1500);
@@ -241,6 +260,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
                 guestPresent: !0,
                 guestName: myName(),
                 guestIcon: myIcon(),
+                guestRating: myRating(),
               }),
               o.current)
             )
@@ -250,6 +270,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               myPlayerIndex: 1,
               names: [(b.data && b.data.hostName) || null, myName()],
               icons: [(b.data && b.data.hostIcon) || null, myIcon()],
+              ratings: [(b.data && b.data.hostRating) || null, myRating()],
             });
             return;
           }
@@ -260,6 +281,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
             gameState: null,
             hostName: myName(),
             hostIcon: myIcon(),
+            hostRating: myRating(),
           });
         if (o.current) return;
         if (!p.ok) {
@@ -444,6 +466,7 @@ export function RoomScreen({
                 myPlayerIndex: 0,
                 names: [myName(), N.data.guestName || null],
                 icons: [myIcon(), N.data.guestIcon || null],
+                ratings: [myRating(), N.data.guestRating || null],
               }));
           }
         }, 1200);
@@ -459,6 +482,7 @@ export function RoomScreen({
         gameState: null,
         hostName: myName(),
         hostIcon: myIcon(),
+        hostRating: myRating(),
       });
     if ((p(!1), !x.ok)) {
       s(x.error);
@@ -491,6 +515,7 @@ export function RoomScreen({
       guestPresent: !0,
       guestName: myName(),
       guestIcon: myIcon(),
+      guestRating: myRating(),
     });
     if ((p(!1), !N.ok)) {
       s(N.error);
@@ -500,6 +525,7 @@ export function RoomScreen({
       code: P,
       names: [x.data.hostName || null, myName()],
       icons: [x.data.hostIcon || null, myIcon()],
+      ratings: [x.data.hostRating || null, myRating()],
       myPlayerIndex: 1,
     });
   }
@@ -724,6 +750,7 @@ export function TotteryApp() {
           home: <HomeScreen onStart={() => t("matching")} />,
           matching: (
             <MatchingScreen
+              onRanking={() => t("ranking")}
               onOnline={() => {
                 (u(null), m(!1), r("online"), t("rules"));
               }}
@@ -738,6 +765,7 @@ export function TotteryApp() {
               }}
             />
           ),
+          ranking: <RankingScreen onBack={() => t("matching")} />,
           tutorial: (
             <TutorialSelect
               onBack={() => t("matching")}

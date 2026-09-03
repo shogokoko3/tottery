@@ -2744,3 +2744,140 @@ h3 {
   gap: 5px;
   min-width: 0;
 }
+
+/* 対局後のレーティングの増減 */
+.rating-change {
+  margin: 14px 0 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.rating-label {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+}
+.rating-nums {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 17px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.rating-nums b {
+  font-size: 24px;
+  color: var(--ink);
+}
+.rating-arrow {
+  color: var(--gold-soft);
+}
+.rating-delta {
+  font-size: 15px;
+  font-weight: 700;
+}
+.rating-delta.up {
+  color: #7fd6a0;
+}
+.rating-delta.down {
+  color: #e2896f;
+}
+
+/* =========================================================================
+   ランキング
+   ========================================================================= */
+
+.rank-wrap {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 8px 4px 24px;
+  text-align: center;
+}
+.rank-me {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  margin: 14px 0 18px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+}
+.rank-me-id {
+  flex: 1;
+  min-width: 0;
+}
+.rank-me-id b {
+  display: block;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.rank-me-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.rank-me-score {
+  text-align: right;
+  flex: none;
+}
+.rank-me-score b {
+  display: block;
+  font-size: 22px;
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+.rank-me-score span {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.rank-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  text-align: left;
+}
+.rank-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.rank-row-me {
+  background: rgba(212, 175, 55, 0.12);
+  border-radius: 8px;
+}
+.rank-place {
+  width: 26px;
+  flex: none;
+  text-align: right;
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+.rank-name {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.rank-title {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.rank-score {
+  flex: none;
+  width: 46px;
+  text-align: right;
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+.rank-note {
+  margin-top: 18px;
+  font-size: 11px;
+  line-height: 1.7;
+}

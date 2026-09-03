@@ -12,6 +12,7 @@
  */
 
 import { hasIcon } from "./icons.js";
+import { START_RATING, applyRating } from "./rating.js";
 
 const KEY = "tottery.account.v1";
 /** 名前を持たなかった頃の保存先。1度だけ読み込んで引き継ぐ */
@@ -46,7 +47,17 @@ export function isTestPlay() {
   }
 }
 
-const EMPTY = { id: null, name: "", icon: null, icons: [], plays: 0, wins: 0 };
+const EMPTY = {
+  id: null,
+  name: "",
+  icon: null,
+  icons: [],
+  plays: 0,
+  wins: 0,
+  // レーティングと、その対象になった対局数(オンラインだけ)
+  rating: START_RATING,
+  rated: 0,
+};
 
 /** 端末ごとの目印。名前が同じ人と区別するために持つ */
 function makeId() {
@@ -76,6 +87,8 @@ export function loadProfile() {
       : [],
     plays: Number(saved.plays) || 0,
     wins: Number(saved.wins) || 0,
+    rating: Number(saved.rating) || START_RATING,
+    rated: Number(saved.rated) || 0,
   };
 }
 
@@ -141,16 +154,29 @@ export function grantIcon(id) {
   return next;
 }
 
-/** 1局終えた記録をつけて、更新後のプロフィールを返す */
-export function recordGame(won) {
+/**
+ * 1局終えた記録をつけて、更新後のプロフィールを返す。
+ *
+ * opts.foeRating を渡した対局だけレーティングが動く。オンライン対戦で
+ * 相手の持ち点が分かっているときだけ渡す。増減は戻り値の delta に入る。
+ */
+export function recordGame(won, opts) {
   const profile = loadProfile();
+  const foeRating = opts && opts.foeRating;
+  const rated = typeof foeRating === "number";
+  const before = profile.rating;
+  const after = rated
+    ? applyRating(before, foeRating, won, profile.rated)
+    : before;
   const next = {
     ...profile,
     plays: profile.plays + 1,
     wins: profile.wins + (won ? 1 : 0),
+    rating: after,
+    rated: profile.rated + (rated ? 1 : 0),
   };
   saveProfile(next);
-  return next;
+  return { ...next, delta: rated ? after - before : null, before };
 }
 
 /** 経験の合計。勝った対局は2局ぶんとして数える */
