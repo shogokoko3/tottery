@@ -696,7 +696,11 @@ export function TotteryApp() {
     [i, f] = (0, useState)(5),
     [o, r] = (0, useState)("game"),
     [d, m] = (0, useState)(!1),
-    [tut, setTut] = (0, useState)(null);
+    [tut, setTut] = (0, useState)(null),
+    // ルール設定を開いた元の画面。「戻る」はここへ帰る。
+    // 対戦の種類(o)から推測すると、CPU対戦とルームの「オフラインで対戦」が
+    // どちらも "game" なので見分けられず、CPUの戻り先がフレンド対戦になる
+    [rulesFrom, setRulesFrom] = (0, useState)("matching");
   // 場面に合った曲へ。対局中は GameCore のほうが決めるので、ここは触らない
   useScreenBgm(e);
   function s() {
@@ -742,7 +746,6 @@ export function TotteryApp() {
       </SeatsProvider>
     );
   }
-  let g = o === "online" || o === "room" ? "matching" : "room";
   return (
     <GameShell showRules={l} setShowRules={n}>
       {
@@ -752,13 +755,22 @@ export function TotteryApp() {
             <MatchingScreen
               onRanking={() => t("ranking")}
               onOnline={() => {
-                (u(null), m(!1), r("online"), t("rules"));
+                (u(null),
+                  m(!1),
+                  r("online"),
+                  setRulesFrom("matching"),
+                  t("rules"));
               }}
               onFriend={() => {
                 (u(null), m(!1), t("room"));
               }}
               onCpu={() => {
-                (u(null), m(!0), setTut(null), r("game"), t("rules"));
+                (u(null),
+                  m(!0),
+                  setTut(null),
+                  r("game"),
+                  setRulesFrom("matching"),
+                  t("rules"));
               }}
               onTutorial={() => {
                 (u(null), t("tutorial"));
@@ -781,10 +793,15 @@ export function TotteryApp() {
             <RoomScreen
               autoCreate={p}
               onOfflineLocal={() => {
-                (w(!1), u(null), m(!1), r("game"), t("rules"));
+                (w(!1),
+                  u(null),
+                  m(!1),
+                  r("game"),
+                  setRulesFrom("room"),
+                  t("rules"));
               }}
               onBeforeRoom={() => {
-                (r("room"), t("rules"));
+                (r("room"), setRulesFrom("room"), t("rules"));
               }}
               onRoomReady={v}
               onBackToMatching={() => {
@@ -795,7 +812,7 @@ export function TotteryApp() {
           rules: (
             <RulesSelectScreen
               onStart={z}
-              onBack={() => t(g)}
+              onBack={() => t(rulesFrom)}
               backLabel="戻る"
               note={
                 o === "online"
