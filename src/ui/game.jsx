@@ -1139,6 +1139,8 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         step={tutActive}
         index={tutIdx}
         total={tutorial.steps.length}
+        // 読んでから決める回では、説明だけの札を前面に出して先に読ませる
+        front={!!tutorial.readFirst && !tutActive.need}
         onNext={tutActive.end ? onExit : () => setTutStep(tutIdx + 1)}
       />
     ) : tutHold ? (

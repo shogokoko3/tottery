@@ -11,10 +11,22 @@ import { ArrowLeft, ArrowRight, Check, Crown, Hand, Lock } from "../icons.jsx";
 /**
  * 台本の1枚。盤を隠さないよう、下から出る帯にしてある。
  */
-export function TutorialSheet({ step, index, total, onNext }) {
+/**
+ * 台本の1枚。
+ *
+ * front を渡すと、盤の手前に出して操作を止める。読んでから決める回で、
+ * 説明を読み飛ばされたくないときに使う。
+ * 幕は薄くしてある。捨て札など、説明が指しているものが後ろで見えなくなると
+ * かえって分からなくなるため。
+ */
+export function TutorialSheet({ step, index, total, onNext, front }) {
   if (!step) return null;
   return (
-    <div className="tutorial-sheet" role="status" aria-live="polite">
+    <div
+      className={`tutorial-sheet ${front ? "tutorial-sheet-front" : ""}`}
+      role="status"
+      aria-live="polite"
+    >
       <div className="tutorial-sheet-inner">
         <div className="tutorial-progress">
           {Array.from({ length: total }).map((_, i) => (

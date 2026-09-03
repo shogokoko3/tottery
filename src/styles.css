@@ -2881,3 +2881,44 @@ h3 {
   font-size: 11px;
   line-height: 1.7;
 }
+
+/* =========================================================================
+   読んでから決める回の案内
+   ========================================================================= */
+
+/* 盤の手前に出して、読み終わるまで操作を止める。
+   幕は薄くする。説明が指しているもの(捨て札など)が後ろで見えなくなると、
+   かえって分からなくなるため */
+.tutorial-sheet-front {
+  top: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  background: rgba(4, 10, 20, 0.38);
+  /* ここで指を受け止めて、後ろの盤を触らせない */
+  pointer-events: auto;
+}
+.tutorial-sheet-front .tutorial-sheet-inner {
+  border-radius: 14px;
+  border-bottom-color: var(--gold);
+  border-color: var(--gold);
+  padding: 18px 20px 16px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.7);
+  animation: sheet-pop 220ms ease-out;
+}
+@keyframes sheet-pop {
+  from {
+    transform: translateY(10px) scale(0.97);
+    opacity: 0;
+  }
+}
+/* 前面のときは文字を大きくして、先に目が行くようにする */
+.tutorial-sheet-front .tutorial-line {
+  font-size: 15px;
+  line-height: 1.85;
+}
+.tutorial-sheet-front .tutorial-next {
+  width: 100%;
+  margin-top: 12px;
+}

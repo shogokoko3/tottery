@@ -733,6 +733,8 @@ const EP5 = {
   id: 5,
   level: 9,
   title: "第5話 布陣の妙",
+  // 読んでから決める回なので、説明は前面に出して先に読ませる
+  readFirst: true,
   subtitle: "捨て札を読んで、数字をそろえる",
   pool: CARD_POOLS.court,
   poolLabel: "2 〜 K",
@@ -921,6 +923,8 @@ const EP6 = {
   id: 6,
   level: 10,
   title: "第6話 見えた1枚",
+  // 読んでから決める回なので、説明は前面に出して先に読ませる
+  readFirst: true,
   subtitle: "捨て札を読んで、マークをそろえる",
   pool: CARD_POOLS.court,
   poolLabel: "2 〜 K",
