@@ -19,11 +19,21 @@ import { ArrowLeft, ArrowRight, Check, Crown, Hand, Lock } from "../icons.jsx";
  * 幕は薄くしてある。捨て札など、説明が指しているものが後ろで見えなくなると
  * かえって分からなくなるため。
  */
-export function TutorialSheet({ step, index, total, onNext, front, nudge }) {
+export function TutorialSheet({
+  step,
+  index,
+  total,
+  onNext,
+  front,
+  low,
+  nudge,
+}) {
   if (!step) return null;
   return (
     <div
-      className={`tutorial-sheet ${front ? "tutorial-sheet-front" : ""}`}
+      className={`tutorial-sheet ${front ? "tutorial-sheet-front" : ""} ${
+        front && low ? "tutorial-sheet-low" : ""
+      }`}
       role="status"
       aria-live="polite"
     >

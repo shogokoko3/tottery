@@ -104,10 +104,12 @@ export function ClockBar({ clocks, currentTurn, viewer }) {
                 side={idx}
                 size="sm"
               />
-              {shortPlayerLabel(idx, viewer, names)}({PLAYER_META[idx].name})
-              {titles && titleNameOf(titles[idx]) && (
-                <em className="seat-title">{titleNameOf(titles[idx])}</em>
-              )}
+              <span className="clock-name">
+                {shortPlayerLabel(idx, viewer, names)}({PLAYER_META[idx].name})
+                {titles && titleNameOf(titles[idx]) && (
+                  <em className="seat-title">{titleNameOf(titles[idx])}</em>
+                )}
+              </span>
             </span>
             <strong className="clock-time">{fmt(ms)}</strong>
           </div>
@@ -1171,8 +1173,17 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         index={tutIdx}
         total={tutorial.steps.length}
         nudge={tutNudge}
-        // 読んでから決める回では、説明だけの札を前面に出して先に読ませる
-        front={!tutActive.need}
+        // 「次へ」で進む説明の札は、盤の上に前面で出して気づかせる。
+        // 撃破の札などのモーダルが出ている間は下の帯に戻す(覆うと閉じられない)。
+        // 締めの札も下の帯。前面にすると勝敗の画面を隠してしまう
+        front={
+          !tutActive.need &&
+          !tutActive.end &&
+          !a.captureReveal &&
+          !a.pendingKingChoice
+        }
+        // 駒やマスを光らせている札は下寄せにして、盤の真ん中を空ける
+        low={tutHasTarget}
         onNext={tutActive.end ? onExit : () => setTutStep(tutIdx + 1)}
       />
     ) : tutHold ? (

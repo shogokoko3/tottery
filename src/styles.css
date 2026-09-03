@@ -2257,6 +2257,13 @@ h3 {
   opacity: 0.45;
   cursor: default;
 }
+/* 時計の欄: 名前の下に称号 */
+.clock-name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
 /* 名前に添える称号(時計の欄・顔ぶれ) */
 .seat-title {
   display: block;
@@ -3179,6 +3186,8 @@ h3 {
    かえって分からなくなるため */
 .tutorial-sheet-front {
   top: 0;
+  /* 撃破の札などのモーダル(z-index: 50)より下。覆うと閉じられなくなる */
+  z-index: 40;
   display: flex;
   /* 盤の上に重ねる。下に寄せると盤を見ていて気づかない */
   align-items: center;
@@ -3187,6 +3196,10 @@ h3 {
   background: rgba(4, 10, 20, 0.38);
   /* ここで指を受け止めて、後ろの盤を触らせない */
   pointer-events: auto;
+}
+/* 駒やマスを光らせている札は下寄せ。真ん中に置くと、その駒を自分で隠す */
+.tutorial-sheet-front.tutorial-sheet-low {
+  align-items: flex-end;
 }
 .tutorial-sheet-front .tutorial-sheet-inner {
   border-radius: 14px;

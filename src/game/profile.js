@@ -202,9 +202,14 @@ export function recordGame(won, opts) {
     rating: after,
     rated: profile.rated + (rated ? 1 : 0),
   };
-  saveProfile(next);
-  // この1局で新しく使えるようになった称号。画面で知らせる
+  // この1局で新しく使えるようになった称号。画面で知らせる。
+  // 持ち点で決まるものは、あとで持ち点が下がっても失わないように焼き付ける
   const earned = newlyEarned(profile, next);
+  next.titles = [
+    ...next.titles,
+    ...earned.map((t) => t.id).filter((id) => !next.titles.includes(id)),
+  ];
+  saveProfile(next);
   return { ...next, delta: rated ? after - before : null, before, earned };
 }
 
