@@ -1,0 +1,96 @@
+/* 管理画面だけの見た目。本体の styles.css の上に重ねる */
+.admin-stage {
+  padding: 14px 12px 40px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.admin-card {
+  background: rgba(9, 20, 38, 0.66);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+}
+.admin-card h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: var(--gold-soft);
+  font-family: "Shippori Mincho", serif;
+}
+.admin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.admin-tools {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+.admin-input {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(4, 10, 20, 0.6);
+  color: var(--text);
+  font-size: 14px;
+}
+.admin-error {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(176, 32, 47, 0.6);
+  background: rgba(176, 32, 47, 0.15);
+  color: #ffd2d6;
+  font-size: 13px;
+}
+/* 横に長い表は、表だけを横に送る */
+.admin-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.admin-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.admin-table th,
+.admin-table td {
+  padding: 7px 9px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.14);
+  text-align: left;
+  vertical-align: middle;
+}
+.admin-table th {
+  color: var(--text-dim);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.admin-name {
+  font-weight: 700;
+  color: var(--ink, var(--text));
+}
+.admin-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.admin-id,
+.admin-json {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.admin-json {
+  white-space: normal;
+  max-width: 520px;
+}
+.admin-foot {
+  text-align: center;
+  font-size: 11px;
+}
