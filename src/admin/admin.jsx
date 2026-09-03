@@ -312,10 +312,12 @@ function AdminApp() {
                     <td className="admin-json">
                       {Object.entries(l)
                         .filter(([k]) => k !== "code")
-                        .map(
-                          ([k, v]) =>
-                            `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`,
-                        )
+                        .map(([k, v]) => {
+                          // 時刻は生の数字ではなく「何分前」で読ませる
+                          if (/At$|^at$/.test(k) && typeof v === "number")
+                            return `${k}: ${ago(v)} (${when(v)})`;
+                          return `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`;
+                        })
                         .join(" / ") || "—"}
                     </td>
                     <td>
