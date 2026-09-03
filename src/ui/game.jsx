@@ -41,7 +41,7 @@ import { LOCAL_ONLY_ACTIONS, withLocalContext } from "../net/sync.js";
 import { CardFace, Piece } from "./cards.jsx";
 import { useNames, useSeats } from "./names.jsx";
 import { PlayerIcon } from "./playericon.jsx";
-import { DiceStage, DiceStep, Die } from "./dice.jsx";
+import { DIE_SETTLE_MS, DiceStage, DiceStep, Die } from "./dice.jsx";
 import {
   CaptureRevealModal,
   Interstitial,
@@ -697,6 +697,19 @@ export function GameView({
     </div>
   );
 }
+/**
+ * 相手(CPUや台本)が次の手を指すまでの間。
+ *
+ * サイコロの場面だけは動きに合わせる。振るまでに少し転がして見せ、
+ * 出目が決まったら、減速して止まり「N が出ました」が読めるまで待つ。
+ * それ以外は、対局中は考えているふうに長め、布陣などは短め。
+ */
+function foeWait(state, act, playMs) {
+  if (act.type === "ROLL_DICE_SINGLE") return 900;
+  if (act.type === "NEXT_DICE_STEP") return DIE_SETTLE_MS + 900;
+  return state.phase === "play" ? playMs : 400;
+}
+
 export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   const names = useNames();
   let [a, u] = (0, useState)(initialState),
@@ -754,7 +767,9 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         // 取る手は確認が先に出てしまうので、ここで閉じる。
         // 出しっぱなしにすると「取るを押したのに何も起きない」になる
         setPendingCapture(null);
-        setTutNudge("その手はいまは指せません。光っているところを操作してください。");
+        setTutNudge(
+          "その手はいまは指せません。光っているところを操作してください。",
+        );
         return;
       }
       setTutNudge(null);
@@ -850,7 +865,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         }
         y({ ...act, __foe: !0 });
       },
-      a.phase === "play" ? 1200 : 420,
+      foeWait(a, act, 1200),
     );
     return () => clearTimeout(id);
   }, [a, tutorial, network]);
@@ -860,7 +875,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (!cpu || network || tutorial) return;
     let E = cpuAction(a, T);
     if (!E) return;
-    let U = a.phase === "play" ? 1000 : 380,
+    let U = foeWait(a, E, 1000),
       be = setTimeout(() => {
         E.type === "__CPU_SHUFFLE"
           ? (y({
