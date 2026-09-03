@@ -41,5 +41,6 @@ Copyright (c) James Long and contributors (Prettier)
 
 - **曲**(`audio/*.m4a`)は `tools/make-placeholder-bgm.mjs` で生成した仮のもの。
   第三者の権利は含まれない。
-- **カードの絵柄**(`assets/cards/*.webp`)の出所は未確認。
+- **カードの絵柄**(`assets/cards/*.webp`)は ChatGPT(OpenAI)の画像生成で
+  作ったもの。OpenAI の規約により商用利用できる。
   [法務メモ.md](法務メモ.md) の 4-(A) を参照。

@@ -24,9 +24,6 @@ npm run build     # index.html を生成
 - [THIRD-PARTY.md](THIRD-PARTY.md) — 同梱している第三者ソフトウェアの表示
 - [プライバシーポリシー.md](プライバシーポリシー.md) — App Store 提出用の下書き
 
-**未解決: `assets/cards/` の絵柄96枚の出所が分からない。** 配信の前に
-はっきりさせること。詳しくは法務メモの 4-(A)。
-
 ## 配信 (Netlify)
 
 GitHub の `main` へ push すると、Netlify が [netlify.toml](netlify.toml) のとおりに組み立てて配信する。
