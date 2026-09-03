@@ -11,24 +11,45 @@ import { OMEN_TEXT, ladderOf, omenOf } from "../skins/reveal.js";
 const rarityLabel = (s) => (s.rarity === "LIMITED" ? "早期特典" : s.rarity);
 
 /** めくる1枚。指で引き寄せると角度がついてめくれ、半分を越えると裏返る */
-function RevealCard({ result, index, flipped, onFlip, stepMs, reduce }) {
+/** 昇格の間合い。格を読ませる時間と、くるくる回る時間 */
+const PROMOTE_HOLD_MS = 900;
+const PROMOTE_SPIN_MS = 1100;
+
+/** めくる1枚。指で引き寄せると角度がついてめくれ、半分を越えると裏返る */
+function RevealCard({ result, index, flipped, onFlip, reduce }) {
   const skin = byId(result.id);
   const ladder = ladderOf(skin.rarity);
   // -1 は伏せたまま。0 以降は ladder の段階(昇格の途中)
   const [stage, setStage] = useState(-1);
+  // 次の格へ向けて回っている最中か。回っている間も今の格は見せたまま
+  const [spinning, setSpinning] = useState(false);
+  // 着地した瞬間だけ光る
+  const [landing, setLanding] = useState(false);
   const [angle, setAngle] = useState(0);
   const [dragging, setDragging] = useState(false);
   const drag = useRef(null);
   useEffect(() => {
     if (!flipped) return;
-    if (reduce) {
+    if (reduce || ladder.length === 1) {
       setStage(ladder.length - 1);
       return;
     }
     setStage(0);
-    const timers = ladder
-      .slice(1)
-      .map((_, k) => setTimeout(() => setStage(k + 1), stepMs * (k + 1)));
+    const timers = [];
+    let t = PROMOTE_HOLD_MS; // まず R を読ませる
+    for (let k = 1; k < ladder.length; k++) {
+      timers.push(setTimeout(() => setSpinning(true), t)); // 回りはじめる
+      t += PROMOTE_SPIN_MS;
+      timers.push(
+        setTimeout(() => {
+          setSpinning(false);
+          setStage(k); // 着地して昇格
+          setLanding(true);
+        }, t),
+      );
+      timers.push(setTimeout(() => setLanding(false), t + 650));
+      t += PROMOTE_HOLD_MS; // 上がった格を読ませてから次へ
+    }
     return () => timers.forEach(clearTimeout);
   }, [flipped]);
   const down = (e) => {
@@ -57,6 +78,7 @@ function RevealCard({ result, index, flipped, onFlip, stepMs, reduce }) {
     else setAngle(0);
   };
   const shown = stage >= 0 ? ladder[stage] : null;
+  const next = stage >= 0 ? ladder[stage + 1] : null;
   const final = stage === ladder.length - 1;
   const label =
     shown === "SSR" && skin.rarity === "LIMITED" ? "早期特典" : shown;
@@ -66,8 +88,8 @@ function RevealCard({ result, index, flipped, onFlip, stepMs, reduce }) {
       className={`reveal-card ${flipped ? "is-flipped" : ""} ${
         dragging ? "is-dragging" : ""
       } ${shown ? `rarity-${shown}` : ""} ${final ? "is-final" : ""} ${
-        stage > 0 ? "is-promoted" : ""
-      }`}
+        spinning ? `is-spinning spin-to-${next}` : ""
+      } ${landing ? "is-landing" : ""}`}
       style={{ "--i": index, "--angle": `${flipped ? 180 : angle}deg` }}
       onPointerDown={down}
       onPointerMove={move}
@@ -79,7 +101,13 @@ function RevealCard({ result, index, flipped, onFlip, stepMs, reduce }) {
           onFlip();
         }
       }}
-      aria-label={flipped ? skin.name : `${index + 1}枚目をめくる`}
+      aria-label={
+        flipped
+          ? final
+            ? skin.name
+            : `${label}。${next}へ昇格中`
+          : `${index + 1}枚目をめくる`
+      }
     >
       <span className="reveal-inner">
         <img
@@ -95,6 +123,7 @@ function RevealCard({ result, index, flipped, onFlip, stepMs, reduce }) {
             <span className="reveal-veil" />
           )}
           <span className="reveal-rarity">{label || ""}</span>
+          {!final && spinning && <span className="reveal-promoting">昇格</span>}
           {final && <strong className="reveal-name">{skin.name}</strong>}
           {final && result.isNew && <span className="reveal-new">NEW</span>}
         </span>
@@ -137,7 +166,6 @@ function SummonReveal({ results, onFinish, reduce }) {
               index={i}
               flipped={flipped[i]}
               onFlip={() => flipAt(i)}
-              stepMs={reduce ? 0 : 520}
               reduce={reduce}
             />
           ))}
