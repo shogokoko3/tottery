@@ -66,7 +66,7 @@ export function TutorialSelect({ onStart, onBack }) {
       <p className="hint">
         {TUTORIALS.some((t) => level < t.level)
           ? "対局するとレベルが上がり、続きの話が開きます。勝つと2つぶん進みます。"
-          : "続きの話は順次追加します。"}
+          : "全12話。ここまでで、52枚すべての動きと王の力がそろいます。"}
       </p>
       <div className="menu-list">
         {TUTORIALS.map((t) => {

@@ -11,7 +11,7 @@
  *   at     出す場面の条件。無ければ前の step が終わり次第すぐ出す
  *   end    最後の1枚。閉じるとチュートリアルを抜ける
  */
-import { CARD_POOLS, SUITS } from "./constants.js";
+import { CARD_POOLS, PLAYER_META, SUITS } from "./constants.js";
 
 const SUIT_OF = { S: "spade", H: "heart", D: "diamond", C: "club" };
 
@@ -280,7 +280,7 @@ const EP2_DECK = fill(
 
 const EP2 = {
   id: 2,
-  level: 2,
+  level: 1,
   title: "第2話 王が継ぐ",
   subtitle: "王を取られても、終わらない",
   pool: CARD_POOLS.basic,
@@ -448,7 +448,7 @@ const EP3_DECK = fill(
 
 const EP3 = {
   id: 3,
-  level: 3,
+  level: 2,
   title: "第3話 道連れ",
   subtitle: "取られた駒が、相手を道づれにする",
   pool: CARD_POOLS.basic,
@@ -576,71 +576,77 @@ const EP3 = {
 
 /* ---------------- 第4話 ---------------- */
 
+/**
+ * ふさがれる道。
+ *
+ * 6 と 8 だけを扱う。どちらも縦横で、6は偶数マス、8は奇数マス。
+ * この2枚に絞ったのは、覚えることを「偶数か奇数か」の一点にしたいため。
+ * 斜めの 7・9 は第5話で、同じ理屈のまま向きだけ変えて出す。
+ *
+ * 盤の上では 6♠ の真上に味方の 8♠ を置いてある。6♠ は行き先が
+ * ひとつも光らない。読まなくても、触れば分かる。
+ */
 const EP4_DECK = fill(
   [
-    // あなたの手札9枚。王は 6♠ にする
+    // あなたの手札7枚。王は 4♠。5♦ が余分
     "6S",
-    "6H",
     "8S",
-    "10S",
     "4S",
     "2S",
     "3S",
     "5S",
-    "9S",
-    // 相手の手札9枚。王は 7♥（7は継承しないので、取れば決着）
-    "7H",
-    "7D",
-    "9H",
-    "10H",
+    "5D",
+    // 相手の手札7枚。王は 2♥。2 はこの1枚だけなので王位を継ぐ駒がいない
+    "4H",
     "2H",
     "3H",
-    "4H",
     "5H",
-    "8H",
+    "3D",
+    "2C",
+    "4C",
   ],
-  CARD_POOLS.numbers,
+  CARD_POOLS.mid,
 );
 
 const EP4 = {
   id: 4,
-  level: 4,
-  title: "第4話 まとめて討つ",
-  subtitle: "飛び越える駒と、王のまとめ取り",
-  pool: CARD_POOLS.numbers,
-  poolLabel: "2 〜 10",
+  level: 3,
+  title: "第4話 ふさがれる道",
+  subtitle: "6は偶数、8は奇数",
+  pool: CARD_POOLS.mid,
+  poolLabel: "2 〜 9",
   boardSize: 5,
-  handSize: 9,
+  handSize: 7,
   dice: [5, 3],
   deck: EP4_DECK,
-  reserveOrder: EP4_DECK.slice(18).map((c) => c.id),
+  reserveOrder: EP4_DECK.slice(14).map((c) => c.id),
   foe: {
     discardIds: [],
     placement: {
-      t9: { row: 0, col: 2 },
-      t10: { row: 0, col: 1 },
-      t11: { row: 1, col: 1 },
-      t12: { row: 1, col: 3 },
-      t13: { row: 1, col: 2 },
+      t7: { row: 0, col: 1 },
+      t8: { row: 0, col: 2 },
+      t9: { row: 1, col: 2 },
+      t10: { row: 1, col: 3 },
+      t11: { row: 0, col: 3 },
     },
-    kingId: "t9",
+    kingId: "t8",
     moves: [
-      // c4 から c3 へ出てくる。王の6の射線に2体並ぶ形になる
-      { pieceId: "t13", row: 2, col: 2 },
-      { pieceId: "t12", row: 2, col: 1 },
+      // c4 から b3 へ。6♠ のちょうど2マス先に出てくる
+      { pieceId: "t9", row: 2, col: 1 },
+      { pieceId: "t10", row: 2, col: 2 },
     ],
   },
   steps: [
     {
-      text: "第4話は 2〜10 の36枚で戦います。サイコロを振ります。",
+      text: "第4話から 6・7・8・9 が加わります。まずサイコロ。",
       need: { type: "ROLL_DICE_SINGLE" },
       focus: { button: true },
     },
     {
       at: atMulligan,
-      text: "いらない札は捨てて引き直せます。光った 2♠ をタップ。",
-      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t5" },
-      focus: { cards: ["t5"] },
+      text: "盤には5枚しか置けません。余る 5♦ をタップ。",
+      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t6" },
+      focus: { cards: ["t6"] },
     },
     {
       text: "捨てた札は相手に見えます。「引き直して確定」を押します。",
@@ -649,184 +655,27 @@ const EP4 = {
     },
     {
       at: atPlace,
-      text: "9枚から5枚を選んで並べます。光った 6♠ を c1 へドラッグ。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 2 },
-      focus: { cards: ["t0"], cells: [{ row: 4, col: 2 }] },
+      text: "4♠ を c1 へ。ここまでに覚えた、縦横に動く駒です。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 4, col: 2 },
+      focus: { cards: ["t2"], cells: [{ row: 4, col: 2 }] },
     },
     {
-      text: "8♠ を b1 へ。8は縦横に奇数マス動けます。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 4, col: 1 },
-      focus: { cards: ["t2"], cells: [{ row: 4, col: 1 }] },
+      text: "8♠ を b2 へ。8は縦横に奇数マス。1・3・5マス先に降ります。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 3, col: 1 },
+      focus: { cards: ["t1"], cells: [{ row: 3, col: 1 }] },
     },
     {
-      text: "9♠ は a2 へ。8♠ の前を塞ぐと進めなくなるので、避けて置きます。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t8", row: 3, col: 0 },
-      focus: { cards: ["t8"], cells: [{ row: 3, col: 0 }] },
+      text: "6♠ を b1 へ。6は縦横に偶数マス。8♠ の真後ろになります。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 1 },
+      focus: { cards: ["t0"], cells: [{ row: 4, col: 1 }] },
     },
     {
-      text: "10♠ を d2 へ。10は将棋の桂馬と同じ跳び方をします。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 3, col: 3 },
-      focus: { cards: ["t3"], cells: [{ row: 3, col: 3 }] },
-    },
-    {
-      text: "6♥ を d1 へ。これで5枚そろいます。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 4, col: 3 },
-      focus: { cards: ["t1"], cells: [{ row: 4, col: 3 }] },
-    },
-    {
-      text: "「王を選ぶ」を押します。",
-      need: { type: "SETUP_GOTO_KING_STEP" },
-      focus: { button: true },
-    },
-    {
-      at: atKing,
-      text: "今回は6を王にします。光った c1 の 6♠ をタップ。",
-      need: { type: "SETUP_PICK_KING", cardId: "t0" },
-      focus: { cells: [{ row: 4, col: 2 }] },
-    },
-    {
-      text: "王の6は、同じ線に並んだ相手をまとめて取れます。「布陣を確定」を押します。",
-      need: { type: "SETUP_CONFIRM" },
-      focus: { button: true },
-    },
-    {
-      at: myTurn,
-      text: "6〜9は進路を塞がれます。味方が前にいると止まり、相手なら取って止まります。",
-      // 読まずにそのまま指しても進めるよう、次に触る場所を光らせておく
-      focus: { pieces: ["t2"], cells: [{ row: 1, col: 1 }] },
-    },
-    {
-      at: myTurn,
-      text: "b列は空いています。b1 の 8♠ で、b4 の相手を取ります。",
-      need: { type: "MOVE_PIECE", pieceId: "t2", row: 1, col: 1 },
-      focus: { pieces: ["t2"], cells: [{ row: 1, col: 1 }] },
-    },
-    {
-      at: myTurn,
-      text: "10の跳び方も見ておきます。d2 の 10♠ を e4 へ。",
-      need: { type: "MOVE_PIECE", pieceId: "t3", row: 1, col: 4 },
-      focus: { pieces: ["t3"], cells: [{ row: 1, col: 4 }] },
-    },
-    {
-      at: myTurn,
-      text: "c列が空きました。王の 6♠ で、c3 と c5 をまとめて取ります。",
-      need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
-      focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
-    },
-    {
-      at: atEnd,
-      text: "2体まとめて取って決着です。数字の駒はこれで全部そろいました。",
-      end: true,
-    },
-  ],
-};
-
-/* ---------------- 第5話 ---------------- */
-
-const EP5_DECK = fill(
-  [
-    // あなたの手札13枚。王は K♠
-    "KS",
-    "JS",
-    "QS",
-    "10S",
-    "5S",
-    "9S",
-    "8S",
-    "7S",
-    "6S",
-    "4S",
-    "3S",
-    "2S",
-    "JH",
-    // 相手の手札13枚。王は Q♥（Qは継承しないので、取れば決着）
-    "QH",
-    "10H",
-    "9H",
-    "8H",
-    "7H",
-    "6H",
-    "5H",
-    "4H",
-    "3H",
-    "2H",
-    "JD",
-    "QD",
-    "KH",
-  ],
-  CARD_POOLS.court,
-);
-
-const EP5 = {
-  id: 5,
-  level: 5,
-  title: "第5話 宮廷の札",
-  subtitle: "J・Q・K と、失って増える王",
-  pool: CARD_POOLS.court,
-  poolLabel: "2 〜 K",
-  boardSize: 5,
-  handSize: 13,
-  dice: [4, 2],
-  deck: EP5_DECK,
-  reserveOrder: EP5_DECK.slice(26).map((c) => c.id),
-  foe: {
-    discardIds: [],
-    placement: {
-      t13: { row: 0, col: 2 },
-      t23: { row: 1, col: 2 },
-      t14: { row: 1, col: 1 },
-      t15: { row: 1, col: 3 },
-      t16: { row: 0, col: 1 },
-    },
-    kingId: "t13",
-    moves: [
-      // あなたの J♠ を取りに来る。ここで K の王の力が働く
-      { pieceId: "t23", row: 2, col: 2 },
-      { pieceId: "t14", row: 0, col: 3 },
-      { pieceId: "t16", row: 1, col: 1 },
-    ],
-  },
-  steps: [
-    {
-      text: "第5話は J・Q・K が加わります。サイコロを振ります。",
-      need: { type: "ROLL_DICE_SINGLE" },
-      focus: { button: true },
-    },
-    {
-      at: atMulligan,
-      // Kを王にすると J と Q は1枚ずつ。余った J♥ を捨てさせる
-      text: "Kを王にすると J と Q は1枚ずつしか使えません。余る J♥ をタップ。",
-      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t12" },
-      focus: { cards: ["t12"] },
-    },
-    {
-      text: "捨てた札は相手に見えます。「引き直して確定」を押します。",
-      need: { type: "CONFIRM_MULLIGAN" },
-      focus: { button: true },
-    },
-    {
-      at: atPlace,
-      text: "K♠ を c1 へ。Kは王にするときだけ1枚採用できます。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 2 },
-      focus: { cards: ["t0"], cells: [{ row: 4, col: 2 }] },
-    },
-    {
-      text: "J♠ を c2 へ。Jは縦横にどこまでも動けます。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 3, col: 2 },
-      focus: { cards: ["t1"], cells: [{ row: 3, col: 2 }] },
-    },
-    {
-      text: "Q♠ を b1 へ。Qは斜めにどこまでも。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 4, col: 1 },
-      focus: { cards: ["t2"], cells: [{ row: 4, col: 1 }] },
-    },
-    {
-      text: "10♠ を d1 へ。",
+      text: "2♠ を d1 へ。",
       need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 4, col: 3 },
       focus: { cards: ["t3"], cells: [{ row: 4, col: 3 }] },
     },
     {
-      text: "5♠ を d2 へ。これで5枚そろいます。",
+      text: "3♠ を d2 へ。これで5枚そろいます。",
       need: { type: "SETUP_PLACE_CARD", cardId: "t4", row: 3, col: 3 },
       focus: { cards: ["t4"], cells: [{ row: 3, col: 3 }] },
     },
@@ -837,43 +686,219 @@ const EP5 = {
     },
     {
       at: atKing,
-      text: "Kを置いているので、王はKになります。c1 の K♠ をタップ。",
-      need: { type: "SETUP_PICK_KING", cardId: "t0" },
+      text: "c1 の 4♠ を王にします。タップしてください。",
+      need: { type: "SETUP_PICK_KING", cardId: "t2" },
       focus: { cells: [{ row: 4, col: 2 }] },
     },
     {
-      text: "Kの王は、自分のJかQが倒されるたびに予備札を1枚出せます。「布陣を確定」を押します。",
+      text: "「布陣を確定」を押します。",
       need: { type: "SETUP_CONFIRM" },
       focus: { button: true },
     },
     {
       at: myTurn,
-      text: "c2 の J♠ を c3 へ。縦横なら何マスでも進めます。",
-      need: { type: "MOVE_PIECE", pieceId: "t1", row: 2, col: 2 },
-      focus: { pieces: ["t1"], cells: [{ row: 2, col: 2 }] },
-    },
-    {
-      // 相手が J♠ を取ると、予備札を置く画面が出る
-      at: (s) => s.phase === "play" && s.currentTurn === 0 && !!s.kPlacement,
-      text: "J♠ を取られました。王がKなので予備札を1枚出せます。光った b2 をタップ。",
-      need: { type: "PLACE_RESERVE_CARD", row: 3, col: 1 },
-      focus: { cells: [{ row: 3, col: 1 }] },
+      text: "b1 の 6♠ を触ってみてください。行き先がひとつも光りません。",
+      focus: { pieces: ["t0"] },
     },
     {
       at: myTurn,
-      text: "失うほど戦力が湧く王です。K♠ で c3 の相手を取り返します。",
-      need: { type: "MOVE_PIECE", pieceId: "t0", row: 2, col: 2 },
-      focus: { pieces: ["t0"], cells: [{ row: 2, col: 2 }] },
+      text: "6は2マス先に降ります。その手前の b2 に味方の 8♠ がいて、越えられません。",
+      focus: { pieces: ["t0", "t1"] },
     },
     {
       at: myTurn,
-      text: "c5 の駒を K♠ で取ります。",
-      need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
-      focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
+      text: "先に 8♠ を動かします。b2 から b5 へ3マス。奇数なので届きます。",
+      need: { type: "MOVE_PIECE", pieceId: "t1", row: 0, col: 1 },
+      focus: { pieces: ["t1"], cells: [{ row: 0, col: 1 }] },
+    },
+    {
+      at: myTurn,
+      text: "道が空きました。相手も b3 へ出てきています。ちょうど2マス先です。",
+      focus: { pieces: ["t0"], cells: [{ row: 2, col: 1 }] },
+    },
+    {
+      at: myTurn,
+      text: "6♠ を b3 へ。2マス進んで相手を取ります。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 2, col: 1 },
+      focus: { pieces: ["t0"], cells: [{ row: 2, col: 1 }] },
+    },
+    {
+      at: myTurn,
+      text: "b5 の 8♠ で、隣の c5 にいる王を取ります。1マスも奇数です。",
+      need: { type: "MOVE_PIECE", pieceId: "t1", row: 0, col: 2 },
+      focus: { pieces: ["t1"], cells: [{ row: 0, col: 2 }] },
     },
     {
       at: atEnd,
-      text: "Aを除く全部のカードが出そろいました。最後はAを扱います。",
+      text: "6は偶数マス、8は奇数マス。どちらも味方に道を塞がれます。",
+      end: true,
+    },
+  ],
+};
+
+/* ---------------- 第5話 ---------------- */
+
+/**
+ * ななめの兄弟。
+ *
+ * 7 と 9 は、第4話の 6 と 8 を斜めにしただけ。新しく覚えることは
+ * 向きひとつなので、ここに王のまとめ取りを重ねられる。
+ *
+ * 王の 6〜9 は、同じ線に並んだ相手を手前からまとめて取る。7♠ を王に
+ * すると 2マス先と4マス先が取れる。偶数マスという決まりが、そのまま
+ * まとめ取りの形になって見える。
+ */
+const EP5_DECK = fill(
+  [
+    // あなたの手札7枚。王は 7♠。9♦ が余分
+    "7S",
+    "9S",
+    "7H",
+    "2S",
+    "3S",
+    "4S",
+    "9D",
+    // 相手の手札7枚。王は 2♥。2 はこの1枚だけ
+    "2H",
+    "3H",
+    "4H",
+    "5H",
+    "3D",
+    "6C",
+    "8C",
+  ],
+  CARD_POOLS.mid,
+);
+
+const EP5 = {
+  id: 5,
+  level: 3,
+  title: "第5話 ななめの兄弟",
+  subtitle: "7と9、そして王のまとめ取り",
+  pool: CARD_POOLS.mid,
+  poolLabel: "2 〜 9",
+  boardSize: 5,
+  handSize: 7,
+  dice: [6, 2],
+  deck: EP5_DECK,
+  reserveOrder: EP5_DECK.slice(14).map((c) => c.id),
+  foe: {
+    discardIds: [],
+    placement: {
+      t7: { row: 0, col: 4 },
+      t8: { row: 1, col: 1 },
+      t9: { row: 0, col: 2 },
+      t10: { row: 0, col: 3 },
+      t11: { row: 0, col: 0 },
+    },
+    kingId: "t7",
+    moves: [
+      // b4 から c3 へ。7♠ の斜め2マス先、王と同じ線に並ぶ
+      { pieceId: "t8", row: 2, col: 2 },
+      { pieceId: "t9", row: 0, col: 1 },
+    ],
+  },
+  steps: [
+    {
+      text: "第5話は 7 と 9 を見ます。サイコロを振ります。",
+      need: { type: "ROLL_DICE_SINGLE" },
+      focus: { button: true },
+    },
+    {
+      at: atMulligan,
+      text: "9 は1枚あれば足ります。余る 9♦ をタップ。",
+      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t6" },
+      focus: { cards: ["t6"] },
+    },
+    {
+      text: "「引き直して確定」を押します。",
+      need: { type: "CONFIRM_MULLIGAN" },
+      focus: { button: true },
+    },
+    {
+      at: atPlace,
+      text: "7♠ を a1 へ。角に置きます。この駒を王にします。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 0 },
+      focus: { cards: ["t0"], cells: [{ row: 4, col: 0 }] },
+    },
+    {
+      text: "9♠ を a2 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 3, col: 0 },
+      focus: { cards: ["t1"], cells: [{ row: 3, col: 0 }] },
+    },
+    {
+      text: "7♥ を b1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 4, col: 1 },
+      focus: { cards: ["t2"], cells: [{ row: 4, col: 1 }] },
+    },
+    {
+      text: "2♠ を c1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 4, col: 2 },
+      focus: { cards: ["t3"], cells: [{ row: 4, col: 2 }] },
+    },
+    {
+      text: "3♠ を d1 へ。これで5枚そろいます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t4", row: 4, col: 3 },
+      focus: { cards: ["t4"], cells: [{ row: 4, col: 3 }] },
+    },
+    {
+      text: "「王を選ぶ」を押します。",
+      need: { type: "SETUP_GOTO_KING_STEP" },
+      focus: { button: true },
+    },
+    {
+      at: atKing,
+      text: "a1 の 7♠ を王にします。タップしてください。",
+      need: { type: "SETUP_PICK_KING", cardId: "t0" },
+      focus: { cells: [{ row: 4, col: 0 }] },
+    },
+    {
+      text: "「布陣を確定」を押します。",
+      need: { type: "SETUP_CONFIRM" },
+      focus: { button: true },
+    },
+    {
+      at: myTurn,
+      text: "7と9は、前回の 6と8 を斜めにした駒です。7が偶数マス、9が奇数マス。",
+      focus: { pieces: ["t2", "t1"] },
+    },
+    {
+      at: myTurn,
+      text: "b1 の 7♥ を d3 へ。斜めに2マス、偶数です。",
+      need: { type: "MOVE_PIECE", pieceId: "t2", row: 2, col: 3 },
+      focus: { pieces: ["t2"], cells: [{ row: 2, col: 3 }] },
+    },
+    {
+      at: myTurn,
+      text: "a2 の 9♠ を d5 へ。斜めに3マス、奇数です。相手を取ります。",
+      need: { type: "MOVE_PIECE", pieceId: "t1", row: 0, col: 3 },
+      focus: { pieces: ["t1"], cells: [{ row: 0, col: 3 }] },
+    },
+    {
+      at: myTurn,
+      text: "ここからが王の力です。6〜9 の王は、同じ線に並んだ相手をまとめて取れます。",
+      focus: { pieces: ["t0"] },
+    },
+    {
+      at: myTurn,
+      text: "a1 の 7♠ から斜めを見ます。2マス先の c3 と、4マス先の e5。どちらも偶数マス。",
+      focus: {
+        pieces: ["t0"],
+        cells: [
+          { row: 2, col: 2 },
+          { row: 0, col: 4 },
+        ],
+      },
+    },
+    {
+      at: myTurn,
+      text: "7♠ を e5 へ。途中の c3 ごと、2枚まとめて取ります。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 4 },
+      focus: { pieces: ["t0"], cells: [{ row: 0, col: 4 }] },
+    },
+    {
+      at: atEnd,
+      text: "7は斜めの偶数、9は斜めの奇数。王なら、その線の相手をまとめて討てます。",
       end: true,
     },
   ],
@@ -881,110 +906,775 @@ const EP5 = {
 
 /* ---------------- 第6話 ---------------- */
 
+/**
+ * 跳ぶ駒。
+ *
+ * 10 だけを扱う。将棋の桂馬と同じで、間に何がいても関係なく跳ぶ。
+ * 第4話で「味方に塞がれる」を体で覚えた直後だからこそ、塞がれない駒の
+ * ありがたみが出る。だから 10♠ は最初から味方に囲ませてある。
+ *
+ * 王の10 は1つの手番で2回動ける。跳んで、跳んで、届く。
+ */
 const EP6_DECK = fill(
   [
-    // あなたの手札13枚。王は 3♠
-    "AS",
-    "AH",
-    "KS",
-    "QS",
-    "JS",
+    // あなたの手札7枚。王は 10♠。6♠ が余分
     "10S",
-    "9S",
-    "8S",
-    "7S",
-    "6S",
-    "5S",
     "4S",
+    "5S",
     "3S",
-    // 相手の手札13枚。王は J♥（Jは継承しないので、囲んで取れば決着）
-    "AD",
-    "KH",
-    "QH",
-    "JH",
-    "10H",
-    "9H",
-    "8H",
-    "7H",
-    "6H",
-    "5H",
+    "2S",
+    "9S",
+    "6S",
+    // 相手の手札7枚。王は 2♥。2 はこの1枚だけ
+    "2H",
     "4H",
     "3H",
-    "2H",
+    "5H",
+    "3D",
+    "7C",
+    "9C",
   ],
-  CARD_POOLS.full,
+  CARD_POOLS.numbers,
 );
 
 const EP6 = {
   id: 6,
+  level: 4,
+  title: "第6話 跳ぶ駒",
+  subtitle: "10は、塞がれない",
+  pool: CARD_POOLS.numbers,
+  poolLabel: "2 〜 10",
+  boardSize: 5,
+  handSize: 7,
+  dice: [6, 2],
+  deck: EP6_DECK,
+  reserveOrder: EP6_DECK.slice(14).map((c) => c.id),
+  foe: {
+    discardIds: [],
+    placement: {
+      t7: { row: 0, col: 2 },
+      t8: { row: 1, col: 2 },
+      t9: { row: 1, col: 1 },
+      t10: { row: 1, col: 3 },
+      t11: { row: 0, col: 0 },
+    },
+    kingId: "t7",
+    moves: [{ pieceId: "t8", row: 2, col: 2 }],
+  },
+  steps: [
+    {
+      text: "第6話で 10 が加わります。サイコロを振ります。",
+      need: { type: "ROLL_DICE_SINGLE" },
+      focus: { button: true },
+    },
+    {
+      at: atMulligan,
+      text: "盤には5枚。余る 6♠ をタップして捨てます。",
+      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t6" },
+      focus: { cards: ["t6"] },
+    },
+    {
+      text: "「引き直して確定」を押します。",
+      need: { type: "CONFIRM_MULLIGAN" },
+      focus: { button: true },
+    },
+    {
+      at: atPlace,
+      text: "10♠ を c1 へ。10は将棋の桂馬と同じ跳び方をします。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 2 },
+      focus: { cards: ["t0"], cells: [{ row: 4, col: 2 }] },
+    },
+    {
+      text: "4♠ を b2 へ。10♠ の斜め前です。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 3, col: 1 },
+      focus: { cards: ["t1"], cells: [{ row: 3, col: 1 }] },
+    },
+    {
+      text: "5♠ を c2 へ。10♠ の真ん前を塞ぎます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 3, col: 2 },
+      focus: { cards: ["t2"], cells: [{ row: 3, col: 2 }] },
+    },
+    {
+      text: "3♠ を d2 へ。反対の斜め前も塞ぎます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 3, col: 3 },
+      focus: { cards: ["t3"], cells: [{ row: 3, col: 3 }] },
+    },
+    {
+      text: "2♠ を b1 へ。10♠ は味方に囲まれました。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t4", row: 4, col: 1 },
+      focus: { cards: ["t4"], cells: [{ row: 4, col: 1 }] },
+    },
+    {
+      text: "「王を選ぶ」を押します。",
+      need: { type: "SETUP_GOTO_KING_STEP" },
+      focus: { button: true },
+    },
+    {
+      at: atKing,
+      text: "c1 の 10♠ を王にします。タップしてください。",
+      need: { type: "SETUP_PICK_KING", cardId: "t0" },
+      focus: { cells: [{ row: 4, col: 2 }] },
+    },
+    {
+      text: "「布陣を確定」を押します。",
+      need: { type: "SETUP_CONFIRM" },
+      focus: { button: true },
+    },
+    {
+      at: myTurn,
+      text: "前回までの駒なら、こう囲まれると出られません。10は跳び越えます。",
+      focus: { pieces: ["t0"] },
+    },
+    {
+      at: myTurn,
+      text: "c1 の 10♠ を e2 へ。縦に1つ、横に2つ。間に何がいても関係ありません。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 3, col: 4 },
+      focus: { pieces: ["t0"], cells: [{ row: 3, col: 4 }] },
+    },
+    {
+      at: myTurn,
+      text: "王の10には、もうひとつ力があります。1つの手番で2回動けます。",
+      focus: { pieces: ["t0"] },
+    },
+    {
+      at: myTurn,
+      text: "続けて e2 から d4 へ。跳んだ先の相手を取ります。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 1, col: 3 },
+      focus: { pieces: ["t0"], cells: [{ row: 1, col: 3 }] },
+    },
+    {
+      at: myTurn,
+      text: "相手が c3 へ出てきました。もう一度あなたの番です。",
+      focus: { pieces: ["t0"] },
+    },
+    {
+      at: myTurn,
+      text: "d4 から b3 へ跳びます。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 2, col: 1 },
+      focus: { pieces: ["t0"], cells: [{ row: 2, col: 1 }] },
+    },
+    {
+      at: myTurn,
+      text: "2回目です。b3 から c5 へ跳んで、王を取ります。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
+      focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
+    },
+    {
+      at: atEnd,
+      text: "10は味方も相手も跳び越えます。王の10なら、1つの手番で2回。",
+      end: true,
+    },
+  ],
+};
+
+/* ---------------- 第7話 ---------------- */
+
+/**
+ * 果てまで走る。
+ *
+ * J と Q。動ける距離に上限が無いぶん、進路を塞がれることの重みが増す。
+ * 布陣の時点で Q♠ の真ん前に味方の 3♠ を置かせてある。開幕の Q♠ は
+ * 行き先がひとつも無い。どかしてから走らせる、という順番を手で覚える。
+ */
+const EP7_DECK = fill(
+  [
+    // あなたの手札7枚。王は 4♠。6♠ が余分
+    "JS",
+    "QS",
+    "3S",
+    "4S",
+    "2S",
+    "5S",
+    "6S",
+    // 相手の手札7枚。王は 2♥。2 はこの1枚だけ
+    "3H",
+    "4H",
+    "2H",
+    "5H",
+    "3D",
+    "7C",
+    "8C",
+  ],
+  CARD_POOLS.high,
+);
+
+const EP7 = {
+  id: 7,
+  level: 5,
+  title: "第7話 果てまで走る",
+  subtitle: "J は縦横、Q は斜め",
+  pool: CARD_POOLS.high,
+  poolLabel: "2 〜 Q",
+  boardSize: 5,
+  handSize: 7,
+  dice: [6, 2],
+  deck: EP7_DECK,
+  reserveOrder: EP7_DECK.slice(14).map((c) => c.id),
+  foe: {
+    discardIds: [],
+    placement: {
+      t7: { row: 0, col: 0 },
+      t8: { row: 1, col: 1 },
+      t9: { row: 0, col: 2 },
+      t10: { row: 1, col: 3 },
+      t11: { row: 0, col: 4 },
+    },
+    kingId: "t9",
+    moves: [
+      { pieceId: "t10", row: 3, col: 1 },
+      { pieceId: "t11", row: 1, col: 3 },
+      { pieceId: "t10", row: 2, col: 0 },
+    ],
+  },
+  steps: [
+    {
+      text: "第7話で J と Q が加わります。サイコロを振ります。",
+      need: { type: "ROLL_DICE_SINGLE" },
+      focus: { button: true },
+    },
+    {
+      at: atMulligan,
+      text: "盤には5枚。余る 6♠ をタップして捨てます。",
+      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t6" },
+      focus: { cards: ["t6"] },
+    },
+    {
+      text: "「引き直して確定」を押します。",
+      need: { type: "CONFIRM_MULLIGAN" },
+      focus: { button: true },
+    },
+    {
+      at: atPlace,
+      text: "J♠ を a1 へ。Jは縦横に、どこまでも進みます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 0 },
+      focus: { cards: ["t0"], cells: [{ row: 4, col: 0 }] },
+    },
+    {
+      text: "Q♠ を e1 へ。Qは斜めに、どこまでも。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 4, col: 4 },
+      focus: { cards: ["t1"], cells: [{ row: 4, col: 4 }] },
+    },
+    {
+      text: "3♠ を d2 へ。Q♠ の斜め前になります。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 3, col: 3 },
+      focus: { cards: ["t2"], cells: [{ row: 3, col: 3 }] },
+    },
+    {
+      text: "4♠ を c1 へ。この駒を王にします。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 4, col: 2 },
+      focus: { cards: ["t3"], cells: [{ row: 4, col: 2 }] },
+    },
+    {
+      text: "2♠ を b1 へ。これで5枚そろいます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t4", row: 4, col: 1 },
+      focus: { cards: ["t4"], cells: [{ row: 4, col: 1 }] },
+    },
+    {
+      text: "「王を選ぶ」を押します。",
+      need: { type: "SETUP_GOTO_KING_STEP" },
+      focus: { button: true },
+    },
+    {
+      at: atKing,
+      text: "c1 の 4♠ を王にします。タップしてください。",
+      need: { type: "SETUP_PICK_KING", cardId: "t3" },
+      focus: { cells: [{ row: 4, col: 2 }] },
+    },
+    {
+      text: "「布陣を確定」を押します。",
+      need: { type: "SETUP_CONFIRM" },
+      focus: { button: true },
+    },
+    {
+      at: myTurn,
+      text: "e1 の Q♠ を触ってください。どこまでも進めるはずが、1マスも光りません。",
+      focus: { pieces: ["t1"] },
+    },
+    {
+      at: myTurn,
+      text: "斜め前の d2 に味方の 3♠ がいるからです。距離に上限が無くても、塞がれます。",
+      focus: { pieces: ["t1", "t2"] },
+    },
+    {
+      at: myTurn,
+      text: "先に J♠ を走らせます。a1 から a5 まで4マス、まっすぐ進んで取ります。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 0 },
+      focus: { pieces: ["t0"], cells: [{ row: 0, col: 0 }] },
+    },
+    {
+      at: myTurn,
+      text: "次に 3♠ を e3 へ動かして、Q♠ の道を空けます。",
+      need: { type: "MOVE_PIECE", pieceId: "t2", row: 2, col: 4 },
+      focus: { pieces: ["t2"], cells: [{ row: 2, col: 4 }] },
+    },
+    {
+      at: myTurn,
+      text: "道が空きました。Q♠ から斜めに見ると、3マス先に相手がいます。",
+      focus: { pieces: ["t1"], cells: [{ row: 1, col: 1 }] },
+    },
+    {
+      at: myTurn,
+      text: "Q♠ を b4 へ。斜めに3マス走って取ります。",
+      need: { type: "MOVE_PIECE", pieceId: "t1", row: 1, col: 1 },
+      focus: { pieces: ["t1"], cells: [{ row: 1, col: 1 }] },
+    },
+    {
+      at: myTurn,
+      text: "a5 の J♠ を横に2マス。c5 の王を取ります。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
+      focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
+    },
+    {
+      at: atEnd,
+      text: "Jは縦横、Qは斜め。どちらも果てまで進めて、どちらも塞がれます。",
+      end: true,
+    },
+  ],
+};
+
+/* ---------------- 第8話 ---------------- */
+
+/**
+ * K の王。
+ *
+ * K は王にするときだけ1枚だけ採用できる。そのぶん J と Q も1枚ずつに
+ * 減る。引き直しで2枚目の J を捨てさせるのは、この決まりを手で
+ * 覚えてもらうため。
+ *
+ * K の王の力は、自分の J か Q が倒されるたびに予備札を1枚呼べること。
+ * 損をした瞬間に得が返ってくるので、わざと J♠ を取らせる筋にしてある。
+ */
+const EP8_DECK = fill(
+  [
+    // あなたの手札7枚。王は K♠。2枚目の J♥ が余分
+    "KS",
+    "JS",
+    "QS",
+    "2S",
+    "3S",
+    "4S",
+    "JH",
+    // 相手の手札7枚。王は 2♥。2 はこの1枚だけ
+    "2H",
+    "JD",
+    "3H",
+    "4H",
+    "5H",
+    "6C",
+    "7C",
+  ],
+  CARD_POOLS.court,
+);
+
+const EP8 = {
+  id: 8,
+  level: 5,
+  title: "第8話 Kの王",
+  subtitle: "失うほど、湧いてくる",
+  pool: CARD_POOLS.court,
+  poolLabel: "2 〜 K",
+  boardSize: 5,
+  handSize: 7,
+  dice: [6, 2],
+  deck: EP8_DECK,
+  reserveOrder: EP8_DECK.slice(14).map((c) => c.id),
+  foe: {
+    discardIds: [],
+    placement: {
+      t7: { row: 0, col: 2 },
+      t8: { row: 1, col: 2 },
+      t9: { row: 1, col: 1 },
+      t10: { row: 1, col: 3 },
+      t11: { row: 0, col: 0 },
+    },
+    kingId: "t7",
+    moves: [
+      // J♦ が降りてきて、あなたの J♠ を取る。ここで予備札が来る
+      { pieceId: "t8", row: 2, col: 2 },
+      { pieceId: "t9", row: 2, col: 0 },
+    ],
+  },
+  steps: [
+    {
+      text: "第8話で K が加わります。サイコロを振ります。",
+      need: { type: "ROLL_DICE_SINGLE" },
+      focus: { button: true },
+    },
+    {
+      at: atMulligan,
+      text: "王をKにすると、JとQは1枚ずつしか置けません。2枚目の J♥ をタップ。",
+      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t6" },
+      focus: { cards: ["t6"] },
+    },
+    {
+      text: "「引き直して確定」を押します。",
+      need: { type: "CONFIRM_MULLIGAN" },
+      focus: { button: true },
+    },
+    {
+      at: atPlace,
+      text: "K♠ を c1 へ。Kは縦横も斜めも走り、桂馬にも跳びます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 2 },
+      focus: { cards: ["t0"], cells: [{ row: 4, col: 2 }] },
+    },
+    {
+      text: "J♠ を c2 へ。K♠ の真ん前です。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 3, col: 2 },
+      focus: { cards: ["t1"], cells: [{ row: 3, col: 2 }] },
+    },
+    {
+      text: "Q♠ を b1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 4, col: 1 },
+      focus: { cards: ["t2"], cells: [{ row: 4, col: 1 }] },
+    },
+    {
+      text: "2♠ を d1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 4, col: 3 },
+      focus: { cards: ["t3"], cells: [{ row: 4, col: 3 }] },
+    },
+    {
+      text: "3♠ を a1 へ。これで5枚そろいます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t4", row: 4, col: 0 },
+      focus: { cards: ["t4"], cells: [{ row: 4, col: 0 }] },
+    },
+    {
+      text: "「王を選ぶ」を押します。",
+      need: { type: "SETUP_GOTO_KING_STEP" },
+      focus: { button: true },
+    },
+    {
+      at: atKing,
+      text: "Kを置いた軍は、Kが王になります。c1 の K♠ をタップ。",
+      need: { type: "SETUP_PICK_KING", cardId: "t0" },
+      focus: { cells: [{ row: 4, col: 2 }] },
+    },
+    {
+      text: "「布陣を確定」を押します。",
+      need: { type: "SETUP_CONFIRM" },
+      focus: { button: true },
+    },
+    {
+      at: myTurn,
+      text: "Kの王には力があります。自分の J か Q が倒されるたび、予備札を1枚呼べます。",
+      focus: { pieces: ["t1"] },
+    },
+    {
+      at: myTurn,
+      text: "確かめます。c2 の J♠ を c3 へ、わざと前に出します。",
+      need: { type: "MOVE_PIECE", pieceId: "t1", row: 2, col: 2 },
+      focus: { pieces: ["t1"], cells: [{ row: 2, col: 2 }] },
+    },
+    {
+      at: (s) => s.phase === "play" && s.currentTurn === 0 && !!s.kPlacement,
+      text: "取られました。予備札が1枚来ています。光った b2 をタップして出します。",
+      need: { type: "PLACE_RESERVE_CARD", row: 3, col: 1 },
+      focus: { cells: [{ row: 3, col: 1 }] },
+    },
+    {
+      at: myTurn,
+      text: "取られたのに、盤の駒は減っていません。失うほど戦力が湧く王です。",
+      focus: { pieces: ["t0"] },
+    },
+    {
+      at: myTurn,
+      text: "K♠ で c3 の相手を取り返します。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 2, col: 2 },
+      focus: { pieces: ["t0"], cells: [{ row: 2, col: 2 }] },
+    },
+    {
+      at: myTurn,
+      text: "そのまま c5 の王を取ります。縦にどこまでも走れます。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
+      focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
+    },
+    {
+      at: atEnd,
+      text: "Kは全方向へ走り、桂馬にも跳ぶ。JかQを失うたび、予備札が来ます。",
+      end: true,
+    },
+  ],
+};
+
+/* ---------------- 第9話 ---------------- */
+
+/**
+ * 動かない駒。
+ *
+ * A は一歩も動けない。代わりに、盤の駒を3つ選んで位置をぐるりと
+ * 入れ替える。相手の駒も選べるので、守りを剥がして自分の攻め駒を
+ * その場所に置く、という使い方ができる。
+ *
+ * この回は入れ替えだけを扱う。3つとも味方にすると包囲で取れてしまう
+ * ので、わざと相手の駒を1つ混ぜた選び方にしてある。包囲は第10話。
+ */
+const EP9_DECK = fill(
+  [
+    // あなたの手札7枚。王は 4♠。2枚目の A♥ が余分
+    "AS",
+    "4S",
+    "8S",
+    "2S",
+    "3S",
+    "AH",
+    "6S",
+    // 相手の手札7枚。王は 2♥。2 はこの1枚だけ
+    "2H",
+    "4H",
+    "3H",
+    "5H",
+    "3D",
+    "7C",
+    "9C",
+  ],
+  CARD_POOLS.full,
+);
+
+const EP9 = {
+  id: 9,
   level: 6,
-  title: "第6話 A の理",
-  subtitle: "動かない駒と、囲んでの撃破",
+  title: "第9話 動かない駒",
+  subtitle: "A は、盤ごと組み替える",
   pool: CARD_POOLS.full,
   poolLabel: "A 〜 K",
   boardSize: 5,
-  handSize: 13,
+  handSize: 7,
+  dice: [6, 2],
+  deck: EP9_DECK,
+  reserveOrder: EP9_DECK.slice(14).map((c) => c.id),
+  // 入れ替えの並び順。固定しないと毎回ちがう配置になる
+  shuffleOrder: [2, 0, 1],
+  foe: {
+    discardIds: [],
+    placement: {
+      t7: { row: 0, col: 2 },
+      t8: { row: 1, col: 2 },
+      t9: { row: 1, col: 1 },
+      t10: { row: 1, col: 3 },
+      t11: { row: 0, col: 0 },
+    },
+    kingId: "t7",
+    moves: [{ pieceId: "t9", row: 2, col: 2 }],
+  },
+  steps: [
+    {
+      text: "最後に A が加わり、52枚すべてがそろいます。サイコロを振ります。",
+      need: { type: "ROLL_DICE_SINGLE" },
+      focus: { button: true },
+    },
+    {
+      at: atMulligan,
+      text: "A は動けない駒です。2枚は要りません。A♥ をタップして捨てます。",
+      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t5" },
+      focus: { cards: ["t5"] },
+    },
+    {
+      text: "「引き直して確定」を押します。",
+      need: { type: "CONFIRM_MULLIGAN" },
+      focus: { button: true },
+    },
+    {
+      at: atPlace,
+      text: "A♠ を b1 へ。A は一歩も動けません。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 1 },
+      focus: { cards: ["t0"], cells: [{ row: 4, col: 1 }] },
+    },
+    {
+      text: "4♠ を c1 へ。この駒を王にします。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 4, col: 2 },
+      focus: { cards: ["t1"], cells: [{ row: 4, col: 2 }] },
+    },
+    {
+      text: "8♠ を d1 へ。縦横に奇数マス進む駒でした。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 4, col: 3 },
+      focus: { cards: ["t2"], cells: [{ row: 4, col: 3 }] },
+    },
+    {
+      text: "2♠ を a1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 4, col: 0 },
+      focus: { cards: ["t3"], cells: [{ row: 4, col: 0 }] },
+    },
+    {
+      text: "3♠ を e1 へ。これで5枚そろいます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t4", row: 4, col: 4 },
+      focus: { cards: ["t4"], cells: [{ row: 4, col: 4 }] },
+    },
+    {
+      text: "「王を選ぶ」を押します。",
+      need: { type: "SETUP_GOTO_KING_STEP" },
+      focus: { button: true },
+    },
+    {
+      at: atKing,
+      text: "c1 の 4♠ を王にします。タップしてください。",
+      need: { type: "SETUP_PICK_KING", cardId: "t1" },
+      focus: { cells: [{ row: 4, col: 2 }] },
+    },
+    {
+      text: "「布陣を確定」を押します。",
+      need: { type: "SETUP_CONFIRM" },
+      focus: { button: true },
+    },
+    {
+      at: myTurn,
+      text: "b1 の A♠ を触ってください。行き先がひとつも光りません。A は動きません。",
+      focus: { pieces: ["t0"] },
+    },
+    {
+      at: myTurn,
+      text: "代わりに A は、盤の駒を3つ選んで位置をぐるりと入れ替えます。相手の駒も選べます。",
+      focus: { pieces: ["t0"] },
+    },
+    {
+      at: myTurn,
+      text: "相手の王 c5 は、真下の c4 に守られています。d1 の 8♠ では届きません。",
+      focus: {
+        cells: [
+          { row: 0, col: 2 },
+          { row: 1, col: 2 },
+        ],
+        pieces: ["t2"],
+      },
+    },
+    {
+      at: myTurn,
+      text: "A♠ をタップして入れ替えを始めます。次に、守っている c4 の相手をタップ。",
+      need: { type: "TOGGLE_SHUFFLE_PICK", id: "t8" },
+      focus: { pieces: ["t0", "t8"] },
+    },
+    {
+      at: myTurn,
+      text: "もう1つ、d1 の 8♠ をタップ。これで3つそろいます。",
+      need: { type: "TOGGLE_SHUFFLE_PICK", id: "t2" },
+      focus: { pieces: ["t2"] },
+    },
+    {
+      at: myTurn,
+      text: "確定を押します。3つの駒が、ぐるりと場所を入れ替えます。",
+      need: { type: "CONFIRM_SHUFFLE" },
+      focus: { button: true },
+    },
+    {
+      at: myTurn,
+      text: "守っていた駒は b1 まで飛ばされ、代わりに 8♠ が c4 に立ちました。",
+      focus: { pieces: ["t2"] },
+    },
+    {
+      at: myTurn,
+      text: "8♠ で、真上の c5 にいる王を取ります。",
+      need: { type: "MOVE_PIECE", pieceId: "t2", row: 0, col: 2 },
+      focus: { pieces: ["t2"], cells: [{ row: 0, col: 2 }] },
+    },
+    {
+      at: atEnd,
+      text: "A は動けませんが、盤ごと組み替えます。相手の守りも剥がせます。",
+      end: true,
+    },
+  ],
+};
+
+/* ---------------- 第10話 ---------------- */
+
+/**
+ * 囲んで討つ。
+ *
+ * 第9話の入れ替えで、3つとも味方を選ぶとどうなるか。3つの駒が作る
+ * 三角形の内側にいる相手は、そのまま倒れる。
+ *
+ * 相手の王をわざと自陣まで踏み込ませ、三角形の内側に入れてある。
+ * 「囲むと取れる」を、王を討つ形で一度だけ見せる。
+ */
+const EP10_DECK = fill(
+  [
+    // あなたの手札7枚。王は 3♠。K♠ は置くと王がKに決まってしまうので捨てる
+    "AS",
+    "4S",
+    "5S",
+    "3S",
+    "6S",
+    "KS",
+    "2S",
+    // 相手の手札7枚。王は J♥（Jは継承しないので、囲んで取れば決着）
+    "JH",
+    "10H",
+    "9H",
+    "6H",
+    "2H",
+    "QH",
+    "KH",
+  ],
+  CARD_POOLS.full,
+);
+
+const EP10 = {
+  id: 10,
+  level: 7,
+  title: "第10話 囲んで討つ",
+  subtitle: "三角形の内側は、倒れる",
+  pool: CARD_POOLS.full,
+  poolLabel: "A 〜 K",
+  boardSize: 5,
+  handSize: 7,
   dice: [6, 1],
-  deck: EP6_DECK,
-  reserveOrder: EP6_DECK.slice(26).map((c) => c.id),
+  deck: EP10_DECK,
+  reserveOrder: EP10_DECK.slice(14).map((c) => c.id),
   // 入れ替えの並び順。固定しないと毎回ちがう配置になる
   shuffleOrder: [1, 2, 0],
   foe: {
     discardIds: [],
     placement: {
-      t16: { row: 0, col: 2 },
-      t17: { row: 0, col: 1 },
-      t18: { row: 1, col: 1 },
-      t21: { row: 1, col: 3 },
-      t25: { row: 1, col: 0 },
+      t7: { row: 0, col: 2 },
+      t8: { row: 0, col: 1 },
+      t9: { row: 1, col: 1 },
+      t10: { row: 1, col: 3 },
+      t11: { row: 1, col: 0 },
     },
-    kingId: "t16",
+    kingId: "t7",
     // 王が c2 まで踏み込んでくる。三角形の内側に入る
-    moves: [{ pieceId: "t16", row: 3, col: 2 }],
+    moves: [{ pieceId: "t7", row: 3, col: 2 }],
   },
   steps: [
     {
-      text: "最後にAが加わり、52枚すべてがそろいます。サイコロを振ります。",
+      text: "第10話も52枚すべてで戦います。サイコロを振ります。",
       need: { type: "ROLL_DICE_SINGLE" },
       focus: { button: true },
     },
     {
       at: atMulligan,
       // K を布陣に入れると王が K に固定される。3 を王にしたいので捨てさせる
-      text: "Kを置くと王はKに決まってしまいます。今回は3を王にするので、K♠ をタップ。",
-      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t2" },
-      focus: { cards: ["t2"] },
+      text: "Kを置くと王はKに決まります。今回は3を王にするので、K♠ をタップ。",
+      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t5" },
+      focus: { cards: ["t5"] },
     },
     {
-      text: "捨てた札は相手に見えます。「引き直して確定」を押します。",
+      text: "「引き直して確定」を押します。",
       need: { type: "CONFIRM_MULLIGAN" },
       focus: { button: true },
     },
     {
       at: atPlace,
-      text: "A♠ を b2 へ。Aだけは移動できません。",
+      text: "A♠ を b2 へ。入れ替えの起点になります。",
       need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 3, col: 1 },
       focus: { cards: ["t0"], cells: [{ row: 3, col: 1 }] },
     },
     {
-      text: "4♠ を c1 へ。Aと三角形をつくる位置です。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t11", row: 4, col: 2 },
-      focus: { cards: ["t11"], cells: [{ row: 4, col: 2 }] },
+      text: "4♠ を c1 へ。A♠ と三角形をつくる位置です。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 4, col: 2 },
+      focus: { cards: ["t1"], cells: [{ row: 4, col: 2 }] },
     },
     {
-      text: "5♠ を d2 へ。これで3点が三角形になります。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t10", row: 3, col: 3 },
-      focus: { cards: ["t10"], cells: [{ row: 3, col: 3 }] },
+      text: "5♠ を d2 へ。これで3点が三角形に並びます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 3, col: 3 },
+      focus: { cards: ["t2"], cells: [{ row: 3, col: 3 }] },
     },
     {
       text: "3♠ を b1 へ。この駒を王にします。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t12", row: 4, col: 1 },
-      focus: { cards: ["t12"], cells: [{ row: 4, col: 1 }] },
+      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 4, col: 1 },
+      focus: { cards: ["t3"], cells: [{ row: 4, col: 1 }] },
     },
     {
       text: "6♠ を e1 へ。これで5枚そろいます。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t9", row: 4, col: 4 },
-      focus: { cards: ["t9"], cells: [{ row: 4, col: 4 }] },
+      need: { type: "SETUP_PLACE_CARD", cardId: "t4", row: 4, col: 4 },
+      focus: { cards: ["t4"], cells: [{ row: 4, col: 4 }] },
     },
     {
       text: "「王を選ぶ」を押します。",
@@ -994,47 +1684,60 @@ const EP6 = {
     {
       at: atKing,
       text: "b1 の 3♠ を王にします。タップしてください。",
-      need: { type: "SETUP_PICK_KING", cardId: "t12" },
+      need: { type: "SETUP_PICK_KING", cardId: "t3" },
       focus: { cells: [{ row: 4, col: 1 }] },
     },
     {
-      text: "Aを王にすると1ターンに2回入れ替えられますが、動けない王になります。「布陣を確定」を押します。",
+      text: "「布陣を確定」を押します。",
       need: { type: "SETUP_CONFIRM" },
       focus: { button: true },
     },
     {
       at: myTurn,
-      text: "Aは動けないので、他の駒を動かします。e1 の 6♠ を e3 へ。",
-      need: { type: "MOVE_PIECE", pieceId: "t9", row: 2, col: 4 },
-      focus: { pieces: ["t9"], cells: [{ row: 2, col: 4 }] },
+      text: "前回は入れ替えに相手の駒を混ぜました。今回は3つとも味方で選びます。",
+      focus: { pieces: ["t0"] },
     },
     {
       at: myTurn,
-      text: "相手が c2 まで踏み込みました。b2 の A♠ をタップし、c1 の 4♠ をタップ。",
-      need: { type: "TOGGLE_SHUFFLE_PICK", id: "t11" },
-      focus: { pieces: ["t0", "t11"] },
+      text: "まず1手ようすを見ます。e1 の 6♠ を e3 へ。",
+      need: { type: "MOVE_PIECE", pieceId: "t4", row: 2, col: 4 },
+      focus: { pieces: ["t4"], cells: [{ row: 2, col: 4 }] },
+    },
+    {
+      at: myTurn,
+      text: "相手の王が c2 まで踏み込みました。A♠・4♠・5♠ が囲む三角形の内側です。",
+      focus: {
+        cells: [{ row: 3, col: 2 }],
+        pieces: ["t0", "t1", "t2"],
+      },
+    },
+    {
+      at: myTurn,
+      text: "b2 の A♠ をタップし、続けて c1 の 4♠ をタップ。",
+      need: { type: "TOGGLE_SHUFFLE_PICK", id: "t1" },
+      focus: { pieces: ["t0", "t1"] },
     },
     {
       at: myTurn,
       text: "もう1つ、d2 の 5♠ をタップ。これで3点が決まります。",
-      need: { type: "TOGGLE_SHUFFLE_PICK", id: "t10" },
-      focus: { pieces: ["t10"] },
+      need: { type: "TOGGLE_SHUFFLE_PICK", id: "t2" },
+      focus: { pieces: ["t2"] },
     },
     {
       at: myTurn,
-      text: "3つとも味方なので、囲んだ内側の相手を取れます。確定を押します。",
+      text: "3つとも味方なので、囲んだ内側の相手が倒れます。確定を押します。",
       need: { type: "CONFIRM_SHUFFLE" },
       focus: { button: true },
     },
     {
       at: atEnd,
-      text: "囲んで王を討ちました。13ランクすべての動きと、王の力を見てきました。",
+      text: "囲んだ内側の相手は倒れます。Aを王にすると、入れ替えは1手番に2回。",
       end: true,
     },
   ],
 };
 
-/* ---------------- 第7話 ---------------- */
+/* ---------------- 第11話 ---------------- */
 
 /**
  * 布陣ボーナスの回。ストレートを狙う。
@@ -1053,7 +1756,7 @@ const EP6 = {
  * 盤の上では 8♣ の進路を味方の 6♦ が塞いでいる。どかしてから進むと
  * 相手が取れる。
  */
-const EP7_DECK = fill(
+const EP11_DECK = fill(
   [
     // あなたの手札7枚。5・6・8・9 と、7 だけが抜けている。K♦ が余分
     "5H",
@@ -1076,12 +1779,12 @@ const EP7_DECK = fill(
   CARD_POOLS.court,
 );
 
-const EP7_SEVEN = idOf(EP7_DECK, "7H");
+const EP11_SEVEN = idOf(EP11_DECK, "7H");
 
-const EP7 = {
-  id: 7,
-  level: 8,
-  title: "第7話 布陣の妙",
+const EP11 = {
+  id: 11,
+  level: 7,
+  title: "第11話 布陣の妙",
   // 読んでから決める回なので、説明は前面に出して先に読ませる
   readFirst: true,
   subtitle: "数字をそろえて、先手を取り返す",
@@ -1091,9 +1794,9 @@ const EP7 = {
   handSize: 7,
   // 必ず後手になる目。相手の引き直しを先に見せたい
   dice: [2, 6],
-  deck: EP7_DECK,
+  deck: EP11_DECK,
   bonus: true,
-  reserveOrder: reserveWith(EP7_DECK, 2, ["7H"]),
+  reserveOrder: reserveWith(EP11_DECK, 2, ["7H"]),
   foe: {
     // ハート以外の2枚を捨てる。「ハートを集めている」と読める
     discardIds: ["t12", "t13"],
@@ -1155,8 +1858,8 @@ const EP7 = {
     },
     {
       text: "7♥ を a2 へ。",
-      need: { type: "SETUP_PLACE_CARD", cardId: EP7_SEVEN, row: 3, col: 0 },
-      focus: { cards: [EP7_SEVEN], cells: [{ row: 3, col: 0 }] },
+      need: { type: "SETUP_PLACE_CARD", cardId: EP11_SEVEN, row: 3, col: 0 },
+      focus: { cards: [EP11_SEVEN], cells: [{ row: 3, col: 0 }] },
     },
     {
       text: "5♥ を e1 へ。これで 5・6・7・8・9 がそろいました。",
@@ -1232,7 +1935,7 @@ const EP7 = {
   ],
 };
 
-/* ---------------- 第8話 ---------------- */
+/* ---------------- 第12話 ---------------- */
 
 /**
  * フラッシュの回。
@@ -1244,7 +1947,7 @@ const EP7 = {
  * めくれた駒は動ける先まで読めるので、それを確かめてから踏み込む。
  * 分かった1枚をどう使うかが、この回のねらい。
  */
-const EP8_DECK = fill(
+const EP12_DECK = fill(
   [
     // あなたの手札7枚。スペードが4枚
     "3S",
@@ -1266,12 +1969,12 @@ const EP8_DECK = fill(
   CARD_POOLS.court,
 );
 
-const EP8_JACK = idOf(EP8_DECK, "JS");
+const EP12_JACK = idOf(EP12_DECK, "JS");
 
-const EP8 = {
-  id: 8,
-  level: 9,
-  title: "第8話 見えた1枚",
+const EP12 = {
+  id: 12,
+  level: 8,
+  title: "第12話 見えた1枚",
   // 読んでから決める回なので、説明は前面に出して先に読ませる
   readFirst: true,
   subtitle: "捨て札を読んで、マークをそろえる",
@@ -1280,9 +1983,9 @@ const EP8 = {
   boardSize: 5,
   handSize: 7,
   dice: [2, 6],
-  deck: EP8_DECK,
+  deck: EP12_DECK,
   bonus: true,
-  reserveOrder: reserveWith(EP8_DECK, 2, ["JS"]),
+  reserveOrder: reserveWith(EP12_DECK, 2, ["JS"]),
   foe: {
     // ♠ を含まない2枚を捨てる
     discardIds: ["t12", "t13"],
@@ -1339,8 +2042,8 @@ const EP8 = {
     },
     {
       text: "J♠ を c1 へ。",
-      need: { type: "SETUP_PLACE_CARD", cardId: EP8_JACK, row: 4, col: 2 },
-      focus: { cards: [EP8_JACK], cells: [{ row: 4, col: 2 }] },
+      need: { type: "SETUP_PLACE_CARD", cardId: EP12_JACK, row: 4, col: 2 },
+      focus: { cards: [EP12_JACK], cells: [{ row: 4, col: 2 }] },
     },
     {
       text: "3♠ を d2 へ。",
@@ -1411,7 +2114,20 @@ const EP8 = {
   ],
 };
 
-export const TUTORIALS = [EP1, EP2, EP3, EP4, EP5, EP6, EP7, EP8];
+export const TUTORIALS = [
+  EP1,
+  EP2,
+  EP3,
+  EP4,
+  EP5,
+  EP6,
+  EP7,
+  EP8,
+  EP9,
+  EP10,
+  EP11,
+  EP12,
+];
 
 export function tutorialById(id) {
   return TUTORIALS.find((t) => t.id === id) || null;
@@ -1565,6 +2281,16 @@ const NEED_RANK = {
 };
 
 /**
+ * あなたが入れ替えを済ませたか。
+ *
+ * 盤の lastSwap は演出用で、手番が移ると消える。それを見ていると
+ * 済んだはずの案内が「まだ」に戻ってしまう。記録は増える一方なので、
+ * こちらを見る。1話に入れ替えが2回ある台本では、数え方を足すこと。
+ */
+const swapDone = (s) =>
+  s.log.some((l) => l.startsWith(`${PLAYER_META[0].name}が3つの駒の位置を入れ替えた`));
+
+/**
  * その操作がもう済んでいるか。
  * 案内はこれを見て自動で次へ進むので、どんな触り方をされても画面とずれない。
  */
@@ -1594,10 +2320,10 @@ export function needDone(need, s) {
       return false;
     case "TOGGLE_SHUFFLE_PICK":
       // 入れ替えが済んでいれば、選び直しの段階はもう過ぎている
-      if (s.lastSwap) return true;
+      if (swapDone(s)) return true;
       return !!s.shuffleMode && s.shuffleMode.picks.includes(need.id);
     case "CONFIRM_SHUFFLE":
-      return !!s.lastSwap;
+      return swapDone(s);
     case "PLACE_RESERVE_CARD": {
       // 「置く札が無い」だけだと、引く前と置いた後を区別できない。
       // 指定のマスに自分の駒が立ったかで見る

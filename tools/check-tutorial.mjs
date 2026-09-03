@@ -17,7 +17,7 @@ import { SUIT_SYMBOL } from "../src/game/constants.js";
  * どちらの布陣がそろい、誰の駒がめくれ、引き直しで何を引くか。
  */
 const BONUS_EXPECT = {
-  7: {
+  11: {
     straight: 0,
     swapped: true,
     drewRank: "7",
@@ -29,7 +29,7 @@ const BONUS_EXPECT = {
     noReveal: true,
     foeNoBonus: true,
   },
-  8: {
+  12: {
     flush: 0,
     swapped: false,
     revealedOwner: 1,
@@ -41,6 +41,7 @@ const BONUS_EXPECT = {
   },
 };
 import { getLegalMoves } from "../src/game/board.js";
+import { LEVEL_STEP, MAX_LEVEL } from "../src/game/profile.js";
 import { cpuAction } from "../src/game/cpu.js";
 import {
   FREE_ACTIONS,
@@ -122,6 +123,25 @@ function actionFor(need, s, tut) {
   return act;
 }
 
+/**
+ * need を実際に指す。
+ *
+ * 入れ替えのように、画面で2度触ってはじめて成り立つ操作がある。
+ * A をタップして入れ替えを始め、それから駒を選ぶ。1度で済ませると
+ * 「指したのに案内が進まない」と誤って読めてしまう。
+ */
+function applyNeed(s, need, tut) {
+  const act = actionFor(need, s, tut);
+  if (!act) return null;
+  let next = reducer(s, act);
+  if (act.type === "SELECT_PIECE" && need.type === "TOGGLE_SHUFFLE_PICK") {
+    const then = actionFor(need, next, tut);
+    if (!then) return null;
+    next = reducer(next, then);
+  }
+  return next;
+}
+
 for (const tut of TUTORIALS) {
   console.log(tut.title);
   let s = reducer(
@@ -170,10 +190,10 @@ for (const tut of TUTORIALS) {
     if (!cur.need && (!cur.at || cur.at(s))) {
       const ahead = upcomingNeedStep(tut, idx, s);
       if (ahead) {
-        const act = actionFor(ahead.need, s, tut);
-        if (act) {
+        const played = applyNeed(s, ahead.need, tut);
+        if (played) {
           const before = idx;
-          s = reducer(s, act);
+          s = played;
           const after = currentStepIndex(tut, s, watermark);
           if (after <= before) {
             stuck = `${idx + 1}枚目の説明中に指しても案内が進まない`;
@@ -311,7 +331,7 @@ for (const tut of TUTORIALS) {
       );
       ok(
         "相手の捨て札にスペードが混ざらない",
-        tut.id !== 8 || !shown.some((c) => c.includes("♠")),
+        tut.id !== 12 || !shown.some((c) => c.includes("♠")),
         shown.join(","),
       );
     }
@@ -383,6 +403,69 @@ for (const tut of TUTORIALS) {
     }
   }
 }
+
+/**
+ * 案内が光らせようとしている先が、本当に盤や手札にあるか。
+ *
+ * 存在しない id を指しても画面は何も光らない。読む人は「押せと言われた
+ * ものが無い」状態で止まるが、台本自体は進んでしまうので気づけない。
+ */
+console.log("\n案内が指す先");
+for (const tut of TUTORIALS) {
+  const handIds = tut.deck.slice(0, tut.handSize).map((c) => c.id);
+  const foeIds = Object.keys(tut.foe.placement);
+  const reserveIds = tut.reserveOrder || [];
+  const known = new Set([...handIds, ...foeIds, ...reserveIds]);
+  // 引き直しで来た札も手札に入る。布陣ボーナスの回はその札を置かせる
+  const mine = new Set([...handIds, ...reserveIds]);
+  const bad = [];
+  for (const [i, step] of tut.steps.entries()) {
+    const f = step.focus;
+    if (!f) continue;
+    for (const id of f.cards || [])
+      if (!mine.has(id)) bad.push(`${i + 1}枚目 手札に ${id} が無い`);
+    for (const id of f.pieces || [])
+      if (!known.has(id)) bad.push(`${i + 1}枚目 盤に ${id} が無い`);
+    for (const c of f.cells || [])
+      if (
+        c.row < 0 ||
+        c.row >= tut.boardSize ||
+        c.col < 0 ||
+        c.col >= tut.boardSize
+      )
+        bad.push(`${i + 1}枚目 盤の外 (${c.row},${c.col})`);
+    // need が指す駒や札も同じ
+    const n = step.need || {};
+    if (n.cardId && !known.has(n.cardId))
+      bad.push(`${i + 1}枚目 ${n.type} の ${n.cardId} が無い`);
+    if (n.pieceId && !known.has(n.pieceId))
+      bad.push(`${i + 1}枚目 ${n.type} の ${n.pieceId} が無い`);
+    if (n.id && !known.has(n.id))
+      bad.push(`${i + 1}枚目 ${n.type} の ${n.id} が無い`);
+  }
+  ok(`${tut.title} は実在する駒と札だけを指す`, bad.length === 0, bad.join(" / "));
+}
+
+/**
+ * チュートリアルだけを順に遊んで、途中で鍵がかかったままにならないか。
+ *
+ * レベルは (対局数 + 勝った数) / 3。チュートリアルは1話につき1勝なので
+ * 2ポイント入る。配信ビルド(TEST_BUILD=false)ではこの鍵が本当に効くので、
+ * ここが崩れると第2話から先へ進めなくなる。
+ */
+console.log("\nレベルの鍵");
+let unlockable = true;
+for (let i = 0; i < TUTORIALS.length; i++) {
+  // i 話ぶん終えた時点の持ち点と、そのときのレベル
+  const level = Math.min(MAX_LEVEL, 1 + Math.floor((2 * i) / LEVEL_STEP));
+  const need = TUTORIALS[i].level;
+  if (need > level) unlockable = false;
+  ok(
+    `${TUTORIALS[i].title} は Lv.${need} で、${i}話終えた時点の Lv.${level} で開く`,
+    need <= level,
+  );
+}
+if (unlockable) console.log("  チュートリアルだけで最後まで開きます");
 
 console.log(fail ? `\n${fail} 件の失敗` : "\nすべて通りました");
 process.exit(fail ? 1 : 0);
