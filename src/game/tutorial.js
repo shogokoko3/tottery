@@ -699,27 +699,31 @@ const EP4 = {
  *
  * 後手だと相手が先に引き直すので、その捨て札を見てから決められる。
  * 捨て札に 7 が無い＝まだ残っている、と読めるようにしてある。
- * こちらの手札は 4・5・6・8 と、7 だけが抜けた並び。引き直しで 7♥ を
+ * こちらの手札は 5・6・8・9 と、7 だけが抜けた並び。引き直しで 7♥ を
  * 引くとストレートがそろう。
+ *
+ * 相手の布陣はわざと何もそろえていない。この回で覚えることを
+ * ストレートひとつに絞りたいため。フラッシュは第6話で扱う。
  *
  * 盤の上では 8♣ の進路を味方の 6♦ が塞いでいる。どかしてから進むと
  * 相手が取れる。
  */
 const EP5_DECK = fill(
   [
-    // あなたの手札7枚。7 が抜けていて、K♦ が余分
-    "4S",
+    // あなたの手札7枚。5・6・8・9 と、7 だけが抜けている。K♦ が余分
     "5H",
     "6D",
     "8C",
+    "9C",
     "KD",
     "2C",
-    "9C",
-    // 相手の手札7枚。ハート5枚でフラッシュ。余分な2枚を捨てて見せる
+    "3S",
+    // 相手の手札7枚。マークも数字もばらけさせて、効果が出ないようにする。
+    // この話はストレートだけを教えたいので、相手側では何も起こさない
     "QH",
-    "JH",
-    "10H",
-    "9H",
+    "JD",
+    "10C",
+    "9S",
     "3H",
     "4D",
     "6C",
@@ -779,7 +783,7 @@ const EP5 = {
       text: "相手が先に引き直しました。捨て札に 7 はありません。まだ残っています。",
     },
     {
-      text: "手札は 4・5・6・8。7 を引ければ並びます。光った K♦ をタップ。",
+      text: "手札は 5・6・8・9。7 を引ければ並びます。光った K♦ をタップ。",
       need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t4" },
       focus: { cards: ["t4"] },
     },
@@ -790,19 +794,19 @@ const EP5 = {
     },
     {
       at: atPlace,
-      text: "7♥ が来ました。4・5・6・7・8 で並びます。8♣ を c1 へ。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 4, col: 2 },
-      focus: { cards: ["t3"], cells: [{ row: 4, col: 2 }] },
+      text: "7♥ が来ました。5・6・7・8・9 で並びます。8♣ を c1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 4, col: 2 },
+      focus: { cards: ["t2"], cells: [{ row: 4, col: 2 }] },
     },
     {
       text: "6♦ を c2 へ。8 のすぐ前です。あとで効いてきます。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 3, col: 2 },
-      focus: { cards: ["t2"], cells: [{ row: 3, col: 2 }] },
+      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 3, col: 2 },
+      focus: { cards: ["t1"], cells: [{ row: 3, col: 2 }] },
     },
     {
-      text: "4♠ を a1 へ。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 0 },
-      focus: { cards: ["t0"], cells: [{ row: 4, col: 0 }] },
+      text: "9♣ を a1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 4, col: 0 },
+      focus: { cards: ["t3"], cells: [{ row: 4, col: 0 }] },
     },
     {
       text: "7♥ を a2 へ。",
@@ -810,9 +814,9 @@ const EP5 = {
       focus: { cards: [EP5_SEVEN], cells: [{ row: 3, col: 0 }] },
     },
     {
-      text: "5♥ を e1 へ。これで 4・5・6・7・8 がそろいました。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 4, col: 4 },
-      focus: { cards: ["t1"], cells: [{ row: 4, col: 4 }] },
+      text: "5♥ を e1 へ。これで 5・6・7・8・9 がそろいました。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 4 },
+      focus: { cards: ["t0"], cells: [{ row: 4, col: 4 }] },
     },
     {
       text: "「王を選ぶ」へ進みます。",
@@ -822,7 +826,7 @@ const EP5 = {
     {
       at: atKing,
       text: "e1 の 5♥ を王にします。タップしてください。",
-      need: { type: "SETUP_PICK_KING", cardId: "t1" },
+      need: { type: "SETUP_PICK_KING", cardId: "t0" },
       focus: { cells: [{ row: 4, col: 4 }] },
     },
     {
@@ -832,20 +836,20 @@ const EP5 = {
     },
     {
       at: (s) => !!s.setupEffects,
-      text: "狙いどおりストレート。相手はマークがそろっていました。",
+      text: "狙いどおりストレート。先手と後手が入れ替わります。",
       need: { type: "DISMISS_SETUP_EFFECTS" },
       focus: { button: true },
     },
     {
       at: myTurn,
-      text: "ストレートで先手と後手が入れ替わり、後手だったあなたが先に指せます。",
+      text: "後手だったあなたが、先に指せるようになりました。",
     },
     {
       text: "c1 の 8♣ は縦横に奇数マス。でも前に味方の 6♦ がいて進めません。",
     },
     {
       text: "先に 6♦ をどかします。c2 の 6♦ を e2 へ。6 は縦横に偶数マス。",
-      need: { type: "MOVE_PIECE", pieceId: "t2", row: 3, col: 4 },
+      need: { type: "MOVE_PIECE", pieceId: "t1", row: 3, col: 4 },
       focus: {
         cells: [
           { row: 3, col: 2 },
@@ -856,7 +860,7 @@ const EP5 = {
     {
       at: myTurn,
       text: "道が空きました。8♣ を3マス先の c4 へ。相手なら取れます。",
-      need: { type: "MOVE_PIECE", pieceId: "t3", row: 1, col: 2 },
+      need: { type: "MOVE_PIECE", pieceId: "t2", row: 1, col: 2 },
       focus: {
         cells: [
           { row: 4, col: 2 },
@@ -867,7 +871,7 @@ const EP5 = {
     {
       at: myTurn,
       text: "もう1マス先が相手の王です。8♣ を c5 へ。",
-      need: { type: "MOVE_PIECE", pieceId: "t3", row: 0, col: 2 },
+      need: { type: "MOVE_PIECE", pieceId: "t2", row: 0, col: 2 },
       focus: {
         cells: [
           { row: 1, col: 2 },

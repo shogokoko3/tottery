@@ -19,13 +19,15 @@ import { SUIT_SYMBOL } from "../src/game/constants.js";
 const BONUS_EXPECT = {
   5: {
     straight: 0,
-    flush: 1,
     swapped: true,
-    revealedOwner: 0,
     drewRank: "7",
     // 後手だからこそ、相手の捨て札を見てから決められる
     youAreSecond: true,
     foeDiscards: ["4♦", "6♣"],
+    // この回で覚えることをストレートひとつに絞る。
+    // 相手側で何かそろうと、学ぶことが混ざってしまう
+    noReveal: true,
+    foeNoBonus: true,
   },
   6: {
     flush: 0,
@@ -295,6 +297,24 @@ for (const tut of TUTORIALS) {
         shown.join(","),
       );
     }
+    if (want && want.foeNoBonus) {
+      ok(
+        "相手の布陣は何もそろえない",
+        !isStraight(army(1)) && !isFlush(army(1)),
+        `${army(1)
+          .map((p) => p.rank)
+          .join(",")} / ${army(1)
+          .map((p) => p.suit[0])
+          .join(",")}`,
+      );
+    }
+    if (want && want.noReveal) {
+      ok(
+        "駒は1枚もめくれない",
+        (bonusSeen.revealed || []).length === 0,
+        JSON.stringify(bonusSeen.revealed),
+      );
+    }
     if (want && want.revealedCard) {
       const shown = (bonusSeen.revealed || []).map(
         (r) => `${r.rank}${SUIT_SYMBOL[r.suit]}`,
@@ -327,11 +347,14 @@ for (const tut of TUTORIALS) {
         bonusSeen.swapped === want.swapped,
         JSON.stringify(bonusSeen.swapped),
       );
-      ok(
-        `${want.revealedOwner === 0 ? "あなた" : "相手"}の駒がめくれる`,
-        (bonusSeen.revealed || []).some((r) => r.owner === want.revealedOwner),
-        JSON.stringify(bonusSeen.revealed),
-      );
+      if (want.revealedOwner !== undefined)
+        ok(
+          `${want.revealedOwner === 0 ? "あなた" : "相手"}の駒がめくれる`,
+          (bonusSeen.revealed || []).some(
+            (r) => r.owner === want.revealedOwner,
+          ),
+          JSON.stringify(bonusSeen.revealed),
+        );
       ok(
         `引き直しで ${want.drewRank} を引いている`,
         army(0).some((p) => p.rank === want.drewRank),
