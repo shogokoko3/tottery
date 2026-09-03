@@ -1393,6 +1393,173 @@ h3 {
     transform: rotateX(0deg) rotateY(360deg) translateY(0);
   }
 }
+/* --- 転がる立体のサイコロ --- */
+.die-cube-wrap {
+  position: relative;
+  width: 104px;
+  height: 104px;
+}
+.die-cube {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.is-rolling .die-cube {
+  animation: die-roll 0.62s linear infinite;
+}
+/* 止まるときの回り方。速く回って、減速しながら出目で止まる。
+   行き先は要素ごとの --to-x / --to-y。同じ関数列(rotateX rotateY)で
+   補間させることで、余分な2回転がそのまま回る */
+.is-settled .die-cube {
+  animation: die-settle 1.15s cubic-bezier(0.12, 0.85, 0.18, 1) both;
+}
+@keyframes die-settle {
+  from {
+    transform: rotateX(0deg) rotateY(0deg);
+  }
+  to {
+    transform: rotateX(var(--to-x, 720deg)) rotateY(var(--to-y, 720deg));
+  }
+}
+.die-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  padding: 12px;
+  background: linear-gradient(145deg, #fffdf7 0%, #f2ece0 45%, #ddd3bd 100%);
+  box-shadow:
+    inset 0 -5px 10px rgba(0, 0, 0, 0.16),
+    inset 0 3px 5px rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  backface-visibility: hidden;
+}
+.die-face-front {
+  transform: rotateY(0deg) translateZ(52px);
+}
+.die-face-back {
+  transform: rotateY(180deg) translateZ(52px);
+}
+.die-face-right {
+  transform: rotateY(90deg) translateZ(52px);
+}
+.die-face-left {
+  transform: rotateY(-90deg) translateZ(52px);
+}
+.die-face-top {
+  transform: rotateX(90deg) translateZ(52px);
+}
+.die-face-bottom {
+  transform: rotateX(-90deg) translateZ(52px);
+}
+/* 地面の影。跳ねると小さく薄く、着地で大きく濃く */
+.die-shadow {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -30px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.6),
+    rgba(0, 0, 0, 0) 70%
+  );
+  transform-origin: center;
+  pointer-events: none;
+}
+.is-rolling .die-shadow {
+  animation: die-shadow-roll 0.62s linear infinite;
+}
+/* 着地の跳ね返り。止まりはじめに一度だけ */
+.is-settled {
+  animation: die-land 1.15s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.is-settled .die-shadow {
+  animation: die-shadow-land 1.15s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+@keyframes die-roll {
+  0% {
+    transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  }
+  25% {
+    transform: translateY(-36px) rotateX(200deg) rotateY(110deg) rotateZ(18deg);
+  }
+  50% {
+    transform: translateY(0) rotateX(400deg) rotateY(200deg) rotateZ(0deg);
+  }
+  75% {
+    transform: translateY(-22px) rotateX(560deg) rotateY(290deg) rotateZ(-14deg);
+  }
+  100% {
+    transform: translateY(0) rotateX(720deg) rotateY(360deg) rotateZ(0deg);
+  }
+}
+@keyframes die-shadow-roll {
+  0%,
+  50%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: scale(0.72);
+    opacity: 0.55;
+  }
+  75% {
+    transform: scale(0.82);
+    opacity: 0.7;
+  }
+}
+@keyframes die-land {
+  0% {
+    transform: translateY(-30px);
+  }
+  38% {
+    transform: translateY(0);
+  }
+  58% {
+    transform: translateY(-9px);
+  }
+  76% {
+    transform: translateY(0);
+  }
+  88% {
+    transform: translateY(-3px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+@keyframes die-shadow-land {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.55;
+  }
+  38% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  58% {
+    transform: scale(0.92);
+    opacity: 0.85;
+  }
+  76%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-rolling .die-cube,
+  .is-rolling .die-shadow,
+  .is-settled,
+  .is-settled .die-cube,
+  .is-settled .die-shadow {
+    animation: none;
+  }
+}
+
 .die-result {
   font-family: "Shippori Mincho", serif;
   font-size: 22px;
