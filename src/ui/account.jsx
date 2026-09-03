@@ -19,6 +19,7 @@ import {
   toNextLevel,
 } from "../game/profile.js";
 import { TITLES, hasTitle, titleOf } from "../game/titles.js";
+import { publishPlayer } from "../net/players.js";
 import { ICONS, hasIcon } from "../game/icons.js";
 import { Check, Close, Sparkle } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
@@ -46,7 +47,7 @@ function NameField({ value, onChange, error }) {
 }
 
 /** はじめて遊ぶときの登録画面 */
-export function NameSetupScreen({ onDone }) {
+export function NameSetupScreen({ onDone, notice }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState(null);
 
@@ -56,7 +57,10 @@ export function NameSetupScreen({ onDone }) {
       setError(bad);
       return;
     }
-    onDone(saveName(value));
+    const next = saveName(value);
+    // 登録した人の台帳へ。はじめてなので登録日も書く
+    publishPlayer(next, { since: Date.now() });
+    onDone(next);
   }
 
   return (
@@ -64,6 +68,7 @@ export function NameSetupScreen({ onDone }) {
       <div className="name-card">
         <p className="name-eyebrow">はじめまして</p>
         <h2>名前を決めてください</h2>
+        {notice && <p className="name-notice">{notice}</p>}
         <p className="hint">
           対戦中の手番や記録に、この名前が出ます。
           <br />
@@ -100,6 +105,7 @@ export function NameEditModal({ onClose, onSaved }) {
       return;
     }
     const next = saveName(value);
+    publishPlayer(next);
     onSaved && onSaved(next);
     onClose();
   }
@@ -222,7 +228,9 @@ export function IconPickModal({ onClose, onSaved }) {
   const [picked, setPicked] = useState(profile.icon || "initial");
 
   function submit() {
-    onSaved && onSaved(saveIcon(picked));
+    const next = saveIcon(picked);
+    publishPlayer(next);
+    onSaved && onSaved(next);
     onClose();
   }
 
@@ -282,7 +290,9 @@ export function TitlePickModal({ onClose, onSaved }) {
   const [picked, setPicked] = useState(titleOf(profile).id);
 
   function submit() {
-    onSaved && onSaved(saveTitle(picked));
+    const next = saveTitle(picked);
+    publishPlayer(next);
+    onSaved && onSaved(next);
     onClose();
   }
 

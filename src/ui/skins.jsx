@@ -98,6 +98,7 @@ function RevealCard({ result, index, flipped, onFlip, reduce, seed }) {
         spinning ? `is-spinning spin-to-${next}` : ""
       } ${landing ? "is-landing" : ""}`}
       style={{ "--i": index, "--angle": `${flipped ? 180 : angle}deg` }}
+      data-index={index}
       onPointerDown={down}
       onPointerMove={move}
       onPointerUp={up}
@@ -152,6 +153,29 @@ function SummonReveal({ results, onFinish, reduce }) {
   const flipAt = (i) =>
     setFlipped((f) => (f[i] ? f : f.map((v, k) => (k === i ? true : v))));
   const cols = results.length === 1 ? 1 : results.length <= 4 ? 2 : 5;
+  // 指でなぞる: 押したまま動かして通った札を順にめくる。
+  // 1枚目は自分の引き寄せ(RevealCard)に任せ、指がその札の外へ出てから他の札をめくる
+  const sweep = useRef(null);
+  const sweepDown = (e) => {
+    const card = e.target.closest?.(".reveal-card");
+    sweep.current = { origin: card, id: e.pointerId };
+  };
+  const sweepMove = (e) => {
+    const s = sweep.current;
+    if (!s || s.id !== e.pointerId || e.buttons === 0) return;
+    const under = document
+      .elementFromPoint(e.clientX, e.clientY)
+      ?.closest?.(".reveal-card");
+    if (!under || under === s.origin) return;
+    // 出発した札からよそへ移ったら、出発した札もめくる
+    if (s.origin && !s.origin.classList.contains("is-flipped"))
+      flipAt(Number(s.origin.dataset.index));
+    if (!under.classList.contains("is-flipped"))
+      flipAt(Number(under.dataset.index));
+  };
+  const sweepUp = () => {
+    sweep.current = null;
+  };
   return (
     <SkinModal
       label="スキン召喚"
@@ -166,6 +190,10 @@ function SummonReveal({ results, onFinish, reduce }) {
         <div
           className={`reveal-grid ${results.length === 1 ? "single" : ""}`}
           style={{ "--cols": cols }}
+          onPointerDown={sweepDown}
+          onPointerMove={sweepMove}
+          onPointerUp={sweepUp}
+          onPointerCancel={sweepUp}
         >
           {results.map((r, i) => (
             <RevealCard
@@ -184,7 +212,7 @@ function SummonReveal({ results, onFinish, reduce }) {
             ? ""
             : results.length === 1
               ? "札を引き寄せて、めくってください。"
-              : "札を1枚ずつ引き寄せて、めくってください。"}
+              : "札を引き寄せてめくるか、指でなぞって次々にめくれます。"}
         </p>
         <div className="reveal-actions">
           {!all && (

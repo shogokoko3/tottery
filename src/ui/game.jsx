@@ -76,6 +76,7 @@ import {
 import { isTestPlay, recordGame } from "../game/profile.js";
 import { titleNameOf } from "../game/titles.js";
 import { publishRank } from "../net/ranking.js";
+import { publishPlayer } from "../net/players.js";
 
 /** 持ち時間の表示。自分の時計は下、相手の時計は上に置く */
 export function ClockBar({ clocks, currentTurn, viewer }) {
@@ -1125,6 +1126,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     );
     setRatingResult(after.delta === null ? null : after);
     if (after.delta !== null) publishRank(after);
+    publishPlayer(after);
   }, [a.phase, a.winner]);
 
   // 進んだところまでを覚えておく。

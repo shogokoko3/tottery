@@ -1438,3 +1438,45 @@
     transition: none !important;
   }
 }
+
+/* ===== スマホ幅の調整。狭い画面で小さくなりすぎるものを引き上げる ===== */
+@media (max-width: 480px) {
+  /* 伏せた10枚: 5列だと 55px 幅で絵も名前も読めない。4列(約 80×107px)にする */
+  .reveal-grid:not(.single) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .reveal-card {
+    font-size: 11px;
+  }
+  /* 押し場所は 36px 以上に */
+  .skins-odds button {
+    padding: 8px 10px;
+    min-height: 36px;
+  }
+  .skins-result .skin-btn {
+    min-height: 36px;
+    font-size: 12px;
+  }
+  /* 8〜10px の文字を 10〜11px に */
+  .skins-tile > strong,
+  .skins-result > strong {
+    font-size: 11px;
+  }
+  .skins-tile-rarity {
+    font-size: 10px;
+    padding: 4px 5px;
+  }
+  .skins-pull-buttons .skin-btn span {
+    font-size: 11px;
+  }
+  .skins-heading .skins-eyebrow,
+  .skins-eyebrow {
+    font-size: 10px;
+  }
+  /* 絞り込みの釦は横に隠れず、折り返す */
+  .skins-filters {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}

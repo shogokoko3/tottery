@@ -3224,3 +3224,14 @@ h3 {
   width: 100%;
   margin-top: 12px;
 }
+
+/* 名前を決め直す画面に出す、運営からの一言 */
+.name-notice {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(176, 32, 47, 0.6);
+  background: rgba(176, 32, 47, 0.15);
+  color: #ffd2d6;
+  font-size: 13px;
+}

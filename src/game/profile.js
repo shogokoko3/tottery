@@ -118,6 +118,20 @@ export function normalizeName(raw) {
     .slice(0, MAX_NAME_LEN);
 }
 
+/**
+ * 名前と端末の目印を捨てて、決め直しの画面へ戻す。
+ * 運営に使用停止にされたときに使う。対局数などの記録も一緒に消える
+ */
+export function resetAccount() {
+  try {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(OLD_KEY);
+  } catch {
+    // 消せなくても次で上書きされる
+  }
+  return { ...EMPTY };
+}
+
 /** 名前として使えるか。使えないときは理由を返す */
 export function nameError(raw) {
   const name = normalizeName(raw);

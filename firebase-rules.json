@@ -16,12 +16,17 @@
     },
     "ranks": {
       ".read": true,
-      ".indexOn": [
-        "rating"
-      ],
+      ".indexOn": ["rating"],
       "$id": {
         ".write": true,
         ".validate": "newData.hasChildren(['name','rating']) && newData.child('name').isString() && newData.child('name').val().length <= 10 && newData.child('rating').isNumber() && newData.child('rating').val() >= 0 && newData.child('rating').val() <= 4000"
+      }
+    },
+    "players": {
+      ".read": true,
+      "$id": {
+        ".write": true,
+        ".validate": "newData.child('name').isString() && newData.child('name').val().length <= 10"
       }
     }
   }

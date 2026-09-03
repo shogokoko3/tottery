@@ -94,3 +94,13 @@
   text-align: center;
   font-size: 11px;
 }
+.admin-actions {
+  display: flex;
+  gap: 6px;
+}
+.admin-banned td {
+  opacity: 0.55;
+}
+.admin-banned .admin-actions {
+  opacity: 1;
+}

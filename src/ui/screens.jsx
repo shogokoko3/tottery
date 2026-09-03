@@ -37,6 +37,8 @@ import { RankingScreen } from "./ranking.jsx";
 import { hasName, isTestPlay, loadProfile } from "../game/profile.js";
 import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { titleOf } from "../game/titles.js";
+import { resetAccount } from "../game/profile.js";
+import { syncPlayer } from "../net/players.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
 import SKIN_STYLES from "../skins/styles.css";
@@ -763,9 +765,28 @@ export function TotteryApp() {
     // ルール設定を開いた元の画面。「戻る」はここへ帰る。
     // 対戦の種類(o)から推測すると、CPU対戦とルームの「オフラインで対戦」が
     // どちらも "game" なので見分けられず、CPUの戻り先がフレンド対戦になる
-    [rulesFrom, setRulesFrom] = (0, useState)("matching");
+    [rulesFrom, setRulesFrom] = (0, useState)("matching"),
+    // 運営に使用停止にされたとき、名前を決め直す画面に出す一言
+    [banNotice, setBanNotice] = (0, useState)(null);
   // 場面に合った曲へ。対局中は GameCore のほうが決めるので、ここは触らない
   useScreenBgm(e);
+  // 起動時に、登録した人の台帳へ自分を置き直す。使用停止なら名前を捨てる
+  useEffect(() => {
+    const me = loadProfile();
+    if (!me.id || !me.name) return;
+    let gone = false;
+    syncPlayer(me).then((banned) => {
+      if (gone || !banned) return;
+      resetAccount();
+      setBanNotice(
+        "運営により、この名前は使えなくなりました。新しい名前を決めてください。",
+      );
+      setNamed(false);
+    });
+    return () => {
+      gone = true;
+    };
+  }, []);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [e]);
@@ -787,7 +808,13 @@ export function TotteryApp() {
   if (!named)
     return (
       <GameShell showRules={l} setShowRules={n}>
-        <NameSetupScreen onDone={() => setNamed(!0)} />
+        <NameSetupScreen
+          notice={banNotice}
+          onDone={() => {
+            setBanNotice(null);
+            setNamed(!0);
+          }}
+        />
       </GameShell>
     );
   if (e === "game") {
