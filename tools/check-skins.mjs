@@ -274,23 +274,111 @@ for (const skin of SKINS)
 if (SKINS.some((s) => !s.video)) throw new Error("動画の無いスキンがある");
 console.log("盤面の表裏・所有者・数字・全32画像と16本の動画: OK");
 
-// 開示演出の決まり。前兆は束の中でいちばん強い格、昇格は R→SR→SSR
+// 開示演出の決まり。前兆は束の中でいちばん強い格(SSR は低確率で SR に抑える)、
+// 昇格は R→SR→SSR だが素で出ることもある。乱数は使わず束の中身から決める
 {
-  const { ladderOf, omenOf, OMEN_TEXT } =
-    await import("../src/skins/reveal.js");
+  const {
+    OMEN_FAKEOUT,
+    OMEN_TEXT,
+    STRAIGHT,
+    bestOf,
+    ladderFor,
+    ladderOf,
+    omenOf,
+    roll,
+    seedOf,
+  } = await import("../src/skins/reveal.js");
   assert.deepEqual(ladderOf("R"), ["R"]);
   assert.deepEqual(ladderOf("SR"), ["R", "SR"]);
   assert.deepEqual(ladderOf("SSR"), ["R", "SR", "SSR"]);
   assert.deepEqual(ladderOf("LIMITED"), ["R", "SR", "SSR"]);
-  assert.equal(omenOf([]), "R");
-  assert.equal(omenOf([{ id: "zombie-male" }, { id: "pirate-female" }]), "R");
-  assert.equal(omenOf([{ id: "zombie-male" }, { id: "elf-male" }]), "SR");
-  assert.equal(
-    omenOf([{ id: "elf-male" }, { id: "angel-j" }, { id: "zombie-male" }]),
-    "SSR",
-  );
-  assert.equal(omenOf([{ id: "dragon-knight" }]), "SSR");
-  assert.equal(omenOf([{ id: "no-such" }]), "R");
+  assert.equal(bestOf([]), "R");
+  assert.equal(bestOf([{ id: "zombie-male" }, { id: "elf-male" }]), "SR");
+  assert.equal(bestOf([{ id: "elf-male" }, { id: "angel-j" }]), "SSR");
+  assert.equal(bestOf([{ id: "no-such" }]), "R");
   for (const k of ["R", "SR", "SSR"]) assert.ok(OMEN_TEXT[k]);
-  console.log("開示演出: 前兆の格、昇格の段階: OK");
+  // 同じ文字列なら同じ値、範囲は [0,1)
+  assert.equal(roll("abc"), roll("abc"));
+  assert.notEqual(roll("abc"), roll("abd"));
+  for (const t of ["", "a", "zombie-male,angel-j#omen"]) {
+    assert.ok(roll(t) >= 0 && roll(t) < 1);
+  }
+  // 前兆は強く見せすぎない: SSR のいない束で SSR の前兆は出ない
+  const rs = ["zombie-male", "pirate-female", "zombie-female", "pirate-male"];
+  const srs = ["elf-male", "elf-female", "viking-male", "viking-female"];
+  const ssrs = [
+    "angel-j",
+    "angel-q",
+    "angel-k",
+    "demon-j",
+    "demon-q",
+    "demon-k",
+  ];
+  let fake = 0,
+    ssrBatches = 0,
+    srOmenWithoutSsr = 0;
+  // 束が毎回ちがう並びになるように、簡単な擬似乱数で札を選ぶ
+  let x = 12345;
+  const next = () => (x = (Math.imul(x, 1103515245) + 12345) >>> 0);
+  // 線形合同法の下位ビットは周期が短いので、上位ビットで選ぶ
+  const pick = (arr) => arr[(next() >>> 16) % arr.length];
+  let at = 0;
+  for (let n = 0; n < 4000; n++) {
+    // SSR 入りの10連
+    const batch = Array.from({ length: 10 }, (_, i) => ({
+      id: i === (at = n % 10) ? pick(ssrs) : pick(rs),
+    }));
+    ssrBatches++;
+    const omen = omenOf(batch);
+    assert.ok(omen === "SSR" || omen === "SR");
+    if (omen === "SR") fake++;
+    assert.equal(omenOf(batch), omen, "同じ束なら同じ前兆");
+    // SR 止まりの10連
+    const b2 = Array.from({ length: 10 }, (_, i) => ({
+      id: i === at ? pick(srs) : pick(rs),
+    }));
+    assert.notEqual(omenOf(b2), "SSR");
+    if (omenOf(b2) === "SR") srOmenWithoutSsr++;
+    // R だけの10連
+    const b3 = Array.from({ length: 10 }, () => ({ id: pick(rs) }));
+    assert.equal(omenOf(b3), "R");
+  }
+  const fakeRate = fake / ssrBatches;
+  assert.ok(
+    Math.abs(fakeRate - OMEN_FAKEOUT) < 0.03,
+    `SSR を SR の前兆に抑える割合 ${fakeRate.toFixed(3)} が ${OMEN_FAKEOUT} から離れている`,
+  );
+  assert.equal(srOmenWithoutSsr, 4000, "SR がいれば前兆は SR");
+  // 昇格: 最後は必ず本当の格。素で出る割合は決めた通り
+  let straight = { SSR: 0, SR: 0 };
+  const N = 4000;
+  for (let n = 0; n < N; n++) {
+    const seed = `${seedOf(Array.from({ length: 10 }, () => ({ id: pick(rs) })))}#${n % 10}`;
+    for (const [rarity, tier] of [
+      ["SSR", "SSR"],
+      ["LIMITED", "SSR"],
+      ["SR", "SR"],
+    ]) {
+      const l = ladderFor(rarity, seed);
+      assert.equal(l[l.length - 1], tier, "最後は本当の格");
+      assert.ok(l.length === 1 || l.join() === ladderOf(rarity).join());
+      if (rarity !== "LIMITED" && l.length === 1) straight[tier]++;
+    }
+    assert.deepEqual(ladderFor("R", seed), ["R"]);
+    assert.deepEqual(
+      ladderFor("SSR", seed),
+      ladderFor("SSR", seed),
+      "同じ種なら同じ段階",
+    );
+  }
+  for (const tier of ["SSR", "SR"]) {
+    const rate = straight[tier] / N;
+    assert.ok(
+      Math.abs(rate - STRAIGHT[tier]) < 0.03,
+      `${tier} が素で出る割合 ${rate.toFixed(3)} が ${STRAIGHT[tier]} から離れている`,
+    );
+  }
+  console.log(
+    `開示演出: 前兆(SSR を SR に抑える ${(fakeRate * 100).toFixed(1)}%)、昇格(素で出る SSR ${((straight.SSR / N) * 100).toFixed(1)}% / SR ${((straight.SR / N) * 100).toFixed(1)}%)、乱数なし: OK`,
+  );
 }

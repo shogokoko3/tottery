@@ -6,7 +6,7 @@ import { updateCollection, useCollection } from "../skins/store.js";
 import { CardFace } from "./cards.jsx";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
 import { SkinFilm } from "./skin-film.jsx";
-import { OMEN_TEXT, ladderOf, omenOf } from "../skins/reveal.js";
+import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
 
 const rarityLabel = (s) => (s.rarity === "LIMITED" ? "早期特典" : s.rarity);
 
@@ -16,9 +16,10 @@ const PROMOTE_HOLD_MS = 900;
 const PROMOTE_SPIN_MS = 1100;
 
 /** めくる1枚。指で引き寄せると角度がついてめくれ、半分を越えると裏返る */
-function RevealCard({ result, index, flipped, onFlip, reduce }) {
+function RevealCard({ result, index, flipped, onFlip, reduce, seed }) {
   const skin = byId(result.id);
-  const ladder = ladderOf(skin.rarity);
+  // 素で出るか、昇格を経るかは束と位置で決まる(再読み込みしても同じ)
+  const ladder = ladderFor(skin.rarity, `${seed}#${index}`);
   // -1 は伏せたまま。0 以降は ladder の段階(昇格の途中)
   const [stage, setStage] = useState(-1);
   // 次の格へ向けて回っている最中か。回っている間も今の格は見せたまま
@@ -32,6 +33,12 @@ function RevealCard({ result, index, flipped, onFlip, reduce }) {
     if (!flipped) return;
     if (reduce || ladder.length === 1) {
       setStage(ladder.length - 1);
+      // 素で SR・SSR が出た札は、めくった瞬間に光る
+      if (ladder[ladder.length - 1] !== "R") {
+        setLanding(true);
+        const t = setTimeout(() => setLanding(false), 650);
+        return () => clearTimeout(t);
+      }
       return;
     }
     setStage(0);
@@ -140,6 +147,7 @@ function RevealCard({ result, index, flipped, onFlip, reduce }) {
 function SummonReveal({ results, onFinish, reduce }) {
   const [flipped, setFlipped] = useState(() => results.map(() => false));
   const omen = omenOf(results);
+  const seed = seedOf(results);
   const all = flipped.every(Boolean);
   const flipAt = (i) =>
     setFlipped((f) => (f[i] ? f : f.map((v, k) => (k === i ? true : v))));
@@ -167,6 +175,7 @@ function SummonReveal({ results, onFinish, reduce }) {
               flipped={flipped[i]}
               onFlip={() => flipAt(i)}
               reduce={reduce}
+              seed={seed}
             />
           ))}
         </div>
