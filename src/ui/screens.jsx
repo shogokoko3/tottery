@@ -36,6 +36,7 @@ import { TutorialSelect } from "./tutorial.jsx";
 import { RankingScreen } from "./ranking.jsx";
 import { hasName, isTestPlay, loadProfile } from "../game/profile.js";
 import { NameEditModal, NameSetupScreen } from "./account.jsx";
+import { titleOf } from "../game/titles.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
 
@@ -47,6 +48,11 @@ function myName() {
 /** いま選んでいるアイコン。相手にも渡す */
 function myIcon() {
   return loadProfile().icon || null;
+}
+
+/** いま選んでいる称号。相手にも渡す */
+function myTitle() {
+  return titleOf(loadProfile()).id;
 }
 
 /** いまの持ち点。相手に渡して、対局後の増減を互いに計算する */
@@ -214,6 +220,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               myPlayerIndex: 0,
               names: [myName(), (g.data && g.data.guestName) || null],
               icons: [myIcon(), (g.data && g.data.guestIcon) || null],
+              titles: [myTitle(), (g.data && g.data.guestTitle) || null],
               ratings: [myRating(), (g.data && g.data.guestRating) || null],
             }));
         }
@@ -274,6 +281,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
                 guestPresent: !0,
                 guestName: myName(),
                 guestIcon: myIcon(),
+                guestTitle: myTitle(),
                 guestRating: myRating(),
               }),
               o.current)
@@ -284,6 +292,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               myPlayerIndex: 1,
               names: [(b.data && b.data.hostName) || null, myName()],
               icons: [(b.data && b.data.hostIcon) || null, myIcon()],
+              titles: [(b.data && b.data.hostTitle) || null, myTitle()],
               ratings: [(b.data && b.data.hostRating) || null, myRating()],
             });
             return;
@@ -295,6 +304,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
             gameState: null,
             hostName: myName(),
             hostIcon: myIcon(),
+            hostTitle: myTitle(),
             hostRating: myRating(),
           });
         if (o.current) return;
@@ -480,6 +490,7 @@ export function RoomScreen({
                 myPlayerIndex: 0,
                 names: [myName(), N.data.guestName || null],
                 icons: [myIcon(), N.data.guestIcon || null],
+                titles: [myTitle(), N.data.guestTitle || null],
                 ratings: [myRating(), N.data.guestRating || null],
               }));
           }
@@ -496,6 +507,7 @@ export function RoomScreen({
         gameState: null,
         hostName: myName(),
         hostIcon: myIcon(),
+        hostTitle: myTitle(),
         hostRating: myRating(),
       });
     if ((p(!1), !x.ok)) {
@@ -529,6 +541,7 @@ export function RoomScreen({
       guestPresent: !0,
       guestName: myName(),
       guestIcon: myIcon(),
+      guestTitle: myTitle(),
       guestRating: myRating(),
     });
     if ((p(!1), !N.ok)) {
@@ -539,6 +552,7 @@ export function RoomScreen({
       code: P,
       names: [x.data.hostName || null, myName()],
       icons: [x.data.hostIcon || null, myIcon()],
+      titles: [x.data.hostTitle || null, myTitle()],
       ratings: [x.data.hostRating || null, myRating()],
       myPlayerIndex: 1,
     });
@@ -751,9 +765,11 @@ export function TotteryApp() {
         ? a.icons || [null, null]
         : d
           ? [mine.icon, null]
-          : [null, null];
+          : [null, null],
+      // 称号はマッチした相手と交わすもの。CPU戦・同じ端末では渡さない
+      titles = a ? a.titles || [null, null] : [null, null];
     return (
-      <SeatsProvider value={{ names, icons }}>
+      <SeatsProvider value={{ names, icons, titles }}>
         <GameCore
           network={a}
           boardSize={tut ? tut.boardSize : i}

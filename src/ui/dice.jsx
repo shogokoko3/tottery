@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { dieImg } from "../assets.js";
 import { PLAYER_META, playerLabel } from "../game/constants.js";
 import { ArrowRight } from "../icons.jsx";
-import { useNames } from "./names.jsx";
+import { useNames, useSeats } from "./names.jsx";
+import { PlayerIcon } from "./playericon.jsx";
+import { shortPlayerLabel } from "../game/constants.js";
+import { titleNameOf } from "../game/titles.js";
 
 export const DIE_PIPS = {
   1: [[1, 1]],
@@ -183,6 +186,42 @@ function useSettled(value, rolling) {
   return settled;
 }
 
+/**
+ * 対戦の顔ぶれ。マッチした相手の名前と称号を、最初のサイコロの場面で見せる。
+ * 称号が渡ってこない対局(CPU・同じ端末)では何も出さない。
+ */
+export function MatchupBar({ viewer }) {
+  let { names, icons, titles } = useSeats();
+  // 相手が古い版で称号を持っていなくても、自分の称号があれば顔ぶれは出す
+  if (!names || !titles || !titles.some(Boolean)) return null;
+  let side = (idx) => (
+    <div className="matchup-side">
+      <PlayerIcon
+        icon={icons && icons[idx]}
+        name={names[idx]}
+        side={idx}
+        size="sm"
+      />
+      <div className="matchup-who">
+        <b style={{ color: PLAYER_META[idx].color }}>
+          {shortPlayerLabel(idx, viewer, names)}
+        </b>
+        {titleNameOf(titles[idx]) && (
+          <em className="seat-title">{titleNameOf(titles[idx])}</em>
+        )}
+      </div>
+    </div>
+  );
+  let [me, foe] = viewer === 1 ? [1, 0] : [0, 1];
+  return (
+    <div className="matchup">
+      {side(me)}
+      <span className="matchup-vs">vs</span>
+      {side(foe)}
+    </div>
+  );
+}
+
 export function DiceStage({ playerIdx, value }) {
   let names = useNames(),
     l = PLAYER_META[playerIdx],
@@ -190,6 +229,7 @@ export function DiceStage({ playerIdx, value }) {
     settled = useSettled(value, !u);
   return (
     <div className="center-stage">
+      <MatchupBar viewer={1 - playerIdx} />
       <h2
         style={{
           color: l.color,
@@ -235,6 +275,7 @@ export function DiceStep({ playerIdx, value, onRoll, onNext }) {
     r = value !== null && !a && settled;
   return (
     <div className="center-stage">
+      <MatchupBar viewer={playerIdx} />
       <h2
         style={{
           color: o.color,

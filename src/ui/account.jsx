@@ -11,12 +11,14 @@ import {
   MAX_NAME_LEN,
   levelOf,
   saveIcon,
+  saveTitle,
   loadProfile,
   nameError,
   normalizeName,
   saveName,
   toNextLevel,
 } from "../game/profile.js";
+import { TITLES, hasTitle, titleOf } from "../game/titles.js";
 import { ICONS, hasIcon } from "../game/icons.js";
 import { Check, Close, Sparkle } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
@@ -141,7 +143,7 @@ export function NameEditModal({ onClose, onSaved }) {
  * 名前・レベル・戦績を1枚にまとめる。項目名と値を並べただけの表よりも、
  * 「いまの自分」がひと目で分かる形にした。
  */
-export function AccountCard({ profile, onEditName, onEditIcon }) {
+export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
   const level = levelOf(profile);
   const next = toNextLevel(profile);
   const rate = profile.plays
@@ -163,6 +165,15 @@ export function AccountCard({ profile, onEditName, onEditIcon }) {
         </button>
         <div className="account-id">
           <b className="account-name">{profile.name || "(未設定)"}</b>
+          {/* 称号。押すと選ぶ画面へ。対戦相手にも見える */}
+          <button
+            className="title-tag"
+            onClick={onEditTitle}
+            title="称号を選ぶ"
+          >
+            {titleOf(profile).name}
+            <span className="title-tag-edit">変える</span>
+          </button>
           <span className="account-sub">
             レベル {level}
             {level >= MAX_LEVEL ? "(最高)" : ""}
@@ -247,6 +258,65 @@ export function IconPickModal({ onClose, onSaved }) {
         <p className="hint">
           鍵のかかったものは、これから対局で手に入るようになります。
         </p>
+        <div className="setup-actions">
+          <button className="btn btn-ghost" onClick={onClose}>
+            やめる
+          </button>
+          <button className="btn btn-primary" onClick={submit}>
+            <Check size={16} /> 決定
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 称号を選ぶ画面。
+ *
+ * まだ手に入れていないものも並べて、手に入れ方を見せる。
+ * 対局数などで決まるものは、条件を満たした時点で自動で使えるようになる。
+ */
+export function TitlePickModal({ onClose, onSaved }) {
+  const profile = loadProfile();
+  const [picked, setPicked] = useState(titleOf(profile).id);
+
+  function submit() {
+    onSaved && onSaved(saveTitle(picked));
+    onClose();
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>称号を選ぶ</h3>
+          <button className="icon-btn" onClick={onClose}>
+            <Close size={18} />
+          </button>
+        </div>
+        <p className="hint">名前の横に付きます。対戦相手にも見えます。</p>
+        <div className="title-list">
+          {TITLES.map((t) => {
+            const owned = hasTitle(profile, t.id);
+            return (
+              <button
+                className={`title-choice ${picked === t.id ? "title-choice-on" : ""} ${
+                  owned ? "" : "title-choice-locked"
+                }`}
+                disabled={!owned}
+                onClick={() => owned && setPicked(t.id)}
+                key={t.id}
+              >
+                <b>{t.name}</b>
+                <small>
+                  {owned ? (t.free ? "最初から" : "手に入れた") : t.how}
+                </small>
+              </button>
+            );
+          })}
+        </div>
+        <p className="hint">薄いものは、条件を満たすと使えるようになります。</p>
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onClose}>
             やめる

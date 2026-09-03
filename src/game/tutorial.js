@@ -725,7 +725,7 @@ const EP4 = {
     },
     {
       at: myTurn,
-      text: "b1 の 6♠ を触ってみてください。行き先がひとつも光りません。",
+      text: "b1 の 6♠ は、いま行き先がひとつもありません。",
       focus: { pieces: ["t0"] },
     },
     {
@@ -1217,7 +1217,7 @@ const EP7 = {
     },
     {
       at: myTurn,
-      text: "e1 の Q♠ を触ってください。どこまでも進めるはずが、1マスも光りません。",
+      text: "e1 の Q♠ は、どこまでも進めるはずなのに行き先がひとつもありません。",
       focus: { pieces: ["t1"] },
     },
     {
@@ -1552,7 +1552,7 @@ const EP9 = {
     },
     {
       at: myTurn,
-      text: "b1 の A♠ を触ってください。行き先がひとつも光りません。A は動きません。",
+      text: "b1 の A♠ は行き先がありません。A は動きません。",
       focus: { pieces: ["t0"] },
     },
     {
@@ -2327,7 +2327,9 @@ const NEED_RANK = {
  * こちらを見る。1話に入れ替えが2回ある台本では、数え方を足すこと。
  */
 const swapDone = (s) =>
-  s.log.some((l) => l.startsWith(`${PLAYER_META[0].name}が3つの駒の位置を入れ替えた`));
+  s.log.some((l) =>
+    l.startsWith(`${PLAYER_META[0].name}が3つの駒の位置を入れ替えた`),
+  );
 
 /**
  * その操作がもう済んでいるか。
@@ -2410,7 +2412,10 @@ function rewoundForPlacement(tut, s, from) {
  * from から始めて、盤面を見て「もう済んだ」ものを飛ばす。
  */
 export function currentStepIndex(tut, s, from) {
-  let i = Math.max(0, rewoundForPlacement(tut, s, Math.min(from, tut.steps.length)));
+  let i = Math.max(
+    0,
+    rewoundForPlacement(tut, s, Math.min(from, tut.steps.length)),
+  );
   while (i < tut.steps.length) {
     const step = tut.steps[i];
     if (step.need) {

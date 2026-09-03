@@ -10,7 +10,7 @@
  */
 import { createContext, useContext } from "react";
 
-const SeatsContext = createContext({ names: null, icons: null });
+const SeatsContext = createContext({ names: null, icons: null, titles: null });
 
 export const SeatsProvider = SeatsContext.Provider;
 
@@ -26,4 +26,9 @@ export function useNames() {
 /** [先手のアイコン, 後手のアイコン]。無ければ null */
 export function useSeatIcons() {
   return useSeats().icons;
+}
+
+/** [先手の称号id, 後手の称号id]。無ければ null */
+export function useSeatTitles() {
+  return useSeats().titles;
 }

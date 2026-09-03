@@ -73,11 +73,12 @@ import {
   upcomingNeedStep,
 } from "../game/tutorial.js";
 import { isTestPlay, recordGame } from "../game/profile.js";
+import { titleNameOf } from "../game/titles.js";
 import { publishRank } from "../net/ranking.js";
 
 /** 持ち時間の表示。自分の時計は下、相手の時計は上に置く */
 export function ClockBar({ clocks, currentTurn, viewer }) {
-  const { names, icons } = useSeats();
+  const { names, icons, titles } = useSeats();
   const fmt = (ms) => {
     const total = Math.max(0, Math.ceil(ms / 1000));
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
@@ -104,6 +105,9 @@ export function ClockBar({ clocks, currentTurn, viewer }) {
                 size="sm"
               />
               {shortPlayerLabel(idx, viewer, names)}({PLAYER_META[idx].name})
+              {titles && titleNameOf(titles[idx]) && (
+                <em className="seat-title">{titleNameOf(titles[idx])}</em>
+              )}
             </span>
             <strong className="clock-time">{fmt(ms)}</strong>
           </div>
@@ -1168,7 +1172,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         total={tutorial.steps.length}
         nudge={tutNudge}
         // 読んでから決める回では、説明だけの札を前面に出して先に読ませる
-        front={!!tutorial.readFirst && !tutActive.need}
+        front={!tutActive.need}
         onNext={tutActive.end ? onExit : () => setTutStep(tutIdx + 1)}
       />
     ) : tutHold ? (

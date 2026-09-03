@@ -13,7 +13,12 @@ import { ArrowLeft, Check, Close, Crown, Flag, Sparkle } from "../icons.jsx";
 import { CardBack, CardFace, Piece } from "./cards.jsx";
 import { CardGuide } from "./guides.jsx";
 import { useNames } from "./names.jsx";
-import { AccountCard, IconPickModal, NameEditModal } from "./account.jsx";
+import {
+  AccountCard,
+  IconPickModal,
+  NameEditModal,
+  TitlePickModal,
+} from "./account.jsx";
 import { loadProfile } from "../game/profile.js";
 
 export function Interstitial({ forPlayer, kind, onReady }) {
@@ -407,6 +412,13 @@ export function SettingsModal({ onClose }) {
         onSaved={(next) => setProfile(next)}
       />
     );
+  if (editing === "title")
+    return (
+      <TitlePickModal
+        onClose={() => setEditing(null)}
+        onSaved={(next) => setProfile(next)}
+      />
+    );
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
@@ -425,6 +437,7 @@ export function SettingsModal({ onClose }) {
           profile={profile}
           onEditName={() => setEditing("name")}
           onEditIcon={() => setEditing("icon")}
+          onEditTitle={() => setEditing("title")}
         />
 
         <p className="settings-head">音</p>

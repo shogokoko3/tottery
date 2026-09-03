@@ -12,6 +12,7 @@
  */
 
 import { hasIcon } from "./icons.js";
+import { hasTitle, newlyEarned } from "./titles.js";
 import { START_RATING, applyRating } from "./rating.js";
 
 const KEY = "tottery.account.v1";
@@ -52,6 +53,10 @@ const EMPTY = {
   name: "",
   icon: null,
   icons: [],
+  // 選んでいる称号と、あとから配られた称号。対局数などで決まるものは
+  // titles.js が profile から判定するので、ここには持たない
+  title: null,
+  titles: [],
   plays: 0,
   wins: 0,
   // レーティングと、その対象になった対局数(オンラインだけ)
@@ -84,6 +89,10 @@ export function loadProfile() {
     icon: typeof saved.icon === "string" ? saved.icon : null,
     icons: Array.isArray(saved.icons)
       ? saved.icons.filter((x) => typeof x === "string")
+      : [],
+    title: typeof saved.title === "string" ? saved.title : null,
+    titles: Array.isArray(saved.titles)
+      ? saved.titles.filter((x) => typeof x === "string")
       : [],
     plays: Number(saved.plays) || 0,
     wins: Number(saved.wins) || 0,
@@ -145,6 +154,24 @@ export function saveIcon(id) {
   return next;
 }
 
+/** 使う称号を選ぶ。持っていないものは受け付けない */
+export function saveTitle(id) {
+  const profile = loadProfile();
+  if (!hasTitle(profile, id)) return profile;
+  const next = { ...profile, title: id };
+  saveProfile(next);
+  return next;
+}
+
+/** 称号を配る。対局数などで決まらない、催しなどの褒美の想定 */
+export function grantTitle(id) {
+  const profile = loadProfile();
+  if (profile.titles.includes(id)) return profile;
+  const next = { ...profile, titles: [...profile.titles, id] };
+  saveProfile(next);
+  return next;
+}
+
 /** アイコンを手に入れる。対局の褒美として配る想定 */
 export function grantIcon(id) {
   const profile = loadProfile();
@@ -176,7 +203,9 @@ export function recordGame(won, opts) {
     rated: profile.rated + (rated ? 1 : 0),
   };
   saveProfile(next);
-  return { ...next, delta: rated ? after - before : null, before };
+  // この1局で新しく使えるようになった称号。画面で知らせる
+  const earned = newlyEarned(profile, next);
+  return { ...next, delta: rated ? after - before : null, before, earned };
 }
 
 /** 経験の合計。勝った対局は2局ぶんとして数える */
