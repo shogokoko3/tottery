@@ -1,0 +1,656 @@
+{
+  "version": 8,
+  "size": {
+    "width": 240,
+    "height": 320
+  },
+  "count": 92,
+  "unitCount": 52,
+  "captainCount": 40,
+  "cards": [
+    {
+      "id": "AS-unit",
+      "rank": "A",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/AS.png"
+    },
+    {
+      "id": "AH-unit",
+      "rank": "A",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/AH.png"
+    },
+    {
+      "id": "AD-unit",
+      "rank": "A",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/AD.png"
+    },
+    {
+      "id": "AC-unit",
+      "rank": "A",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/AC.png"
+    },
+    {
+      "id": "2S-unit",
+      "rank": "2",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/2S.png"
+    },
+    {
+      "id": "2H-unit",
+      "rank": "2",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/2H.png"
+    },
+    {
+      "id": "2D-unit",
+      "rank": "2",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/2D.png"
+    },
+    {
+      "id": "2C-unit",
+      "rank": "2",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/2C.png"
+    },
+    {
+      "id": "3S-unit",
+      "rank": "3",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/3S.png"
+    },
+    {
+      "id": "3H-unit",
+      "rank": "3",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/3H.png"
+    },
+    {
+      "id": "3D-unit",
+      "rank": "3",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/3D.png"
+    },
+    {
+      "id": "3C-unit",
+      "rank": "3",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/3C.png"
+    },
+    {
+      "id": "4S-unit",
+      "rank": "4",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/4S.png"
+    },
+    {
+      "id": "4H-unit",
+      "rank": "4",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/4H.png"
+    },
+    {
+      "id": "4D-unit",
+      "rank": "4",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/4D.png"
+    },
+    {
+      "id": "4C-unit",
+      "rank": "4",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/4C.png"
+    },
+    {
+      "id": "5S-unit",
+      "rank": "5",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/5S.png"
+    },
+    {
+      "id": "5H-unit",
+      "rank": "5",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/5H.png"
+    },
+    {
+      "id": "5D-unit",
+      "rank": "5",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/5D.png"
+    },
+    {
+      "id": "5C-unit",
+      "rank": "5",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/5C.png"
+    },
+    {
+      "id": "6S-unit",
+      "rank": "6",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/6S.png"
+    },
+    {
+      "id": "6H-unit",
+      "rank": "6",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/6H.png"
+    },
+    {
+      "id": "6D-unit",
+      "rank": "6",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/6D.png"
+    },
+    {
+      "id": "6C-unit",
+      "rank": "6",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/6C.png"
+    },
+    {
+      "id": "7S-unit",
+      "rank": "7",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/7S.png"
+    },
+    {
+      "id": "7H-unit",
+      "rank": "7",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/7H.png"
+    },
+    {
+      "id": "7D-unit",
+      "rank": "7",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/7D.png"
+    },
+    {
+      "id": "7C-unit",
+      "rank": "7",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/7C.png"
+    },
+    {
+      "id": "8S-unit",
+      "rank": "8",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/8S.png"
+    },
+    {
+      "id": "8H-unit",
+      "rank": "8",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/8H.png"
+    },
+    {
+      "id": "8D-unit",
+      "rank": "8",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/8D.png"
+    },
+    {
+      "id": "8C-unit",
+      "rank": "8",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/8C.png"
+    },
+    {
+      "id": "9S-unit",
+      "rank": "9",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/9S.png"
+    },
+    {
+      "id": "9H-unit",
+      "rank": "9",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/9H.png"
+    },
+    {
+      "id": "9D-unit",
+      "rank": "9",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/9D.png"
+    },
+    {
+      "id": "9C-unit",
+      "rank": "9",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/9C.png"
+    },
+    {
+      "id": "10S-unit",
+      "rank": "10",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/10S.png"
+    },
+    {
+      "id": "10H-unit",
+      "rank": "10",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/10H.png"
+    },
+    {
+      "id": "10D-unit",
+      "rank": "10",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/10D.png"
+    },
+    {
+      "id": "10C-unit",
+      "rank": "10",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/10C.png"
+    },
+    {
+      "id": "JS-unit",
+      "rank": "J",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/JS.png"
+    },
+    {
+      "id": "JH-unit",
+      "rank": "J",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/JH.png"
+    },
+    {
+      "id": "JD-unit",
+      "rank": "J",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/JD.png"
+    },
+    {
+      "id": "JC-unit",
+      "rank": "J",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/JC.png"
+    },
+    {
+      "id": "QS-unit",
+      "rank": "Q",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/QS.png"
+    },
+    {
+      "id": "QH-unit",
+      "rank": "Q",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/QH.png"
+    },
+    {
+      "id": "QD-unit",
+      "rank": "Q",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/QD.png"
+    },
+    {
+      "id": "QC-unit",
+      "rank": "Q",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/QC.png"
+    },
+    {
+      "id": "KS-unit",
+      "rank": "K",
+      "suit": "spade",
+      "role": "unit",
+      "file": "normal/KS.png"
+    },
+    {
+      "id": "KH-unit",
+      "rank": "K",
+      "suit": "heart",
+      "role": "unit",
+      "file": "normal/KH.png"
+    },
+    {
+      "id": "KD-unit",
+      "rank": "K",
+      "suit": "diamond",
+      "role": "unit",
+      "file": "normal/KD.png"
+    },
+    {
+      "id": "KC-unit",
+      "rank": "K",
+      "suit": "club",
+      "role": "unit",
+      "file": "normal/KC.png"
+    },
+    {
+      "id": "AS-captain",
+      "rank": "A",
+      "suit": "spade",
+      "role": "captain",
+      "file": "captain/AS.png"
+    },
+    {
+      "id": "AH-captain",
+      "rank": "A",
+      "suit": "heart",
+      "role": "captain",
+      "file": "captain/AH.png"
+    },
+    {
+      "id": "AD-captain",
+      "rank": "A",
+      "suit": "diamond",
+      "role": "captain",
+      "file": "captain/AD.png"
+    },
+    {
+      "id": "AC-captain",
+      "rank": "A",
+      "suit": "club",
+      "role": "captain",
+      "file": "captain/AC.png"
+    },
+    {
+      "id": "2S-captain",
+      "rank": "2",
+      "suit": "spade",
+      "role": "captain",
+      "file": "captain/2S.png"
+    },
+    {
+      "id": "2H-captain",
+      "rank": "2",
+      "suit": "heart",
+      "role": "captain",
+      "file": "captain/2H.png"
+    },
+    {
+      "id": "2D-captain",
+      "rank": "2",
+      "suit": "diamond",
+      "role": "captain",
+      "file": "captain/2D.png"
+    },
+    {
+      "id": "2C-captain",
+      "rank": "2",
+      "suit": "club",
+      "role": "captain",
+      "file": "captain/2C.png"
+    },
+    {
+      "id": "3S-captain",
+      "rank": "3",
+      "suit": "spade",
+      "role": "captain",
+      "file": "captain/3S.png"
+    },
+    {
+      "id": "3H-captain",
+      "rank": "3",
+      "suit": "heart",
+      "role": "captain",
+      "file": "captain/3H.png"
+    },
+    {
+      "id": "3D-captain",
+      "rank": "3",
+      "suit": "diamond",
+      "role": "captain",
+      "file": "captain/3D.png"
+    },
+    {
+      "id": "3C-captain",
+      "rank": "3",
+      "suit": "club",
+      "role": "captain",
+      "file": "captain/3C.png"
+    },
+    {
+      "id": "4S-captain",
+      "rank": "4",
+      "suit": "spade",
+      "role": "captain",
+      "file": "captain/4S.png"
+    },
+    {
+      "id": "4H-captain",
+      "rank": "4",
+      "suit": "heart",
+      "role": "captain",
+      "file": "captain/4H.png"
+    },
+    {
+      "id": "4D-captain",
+      "rank": "4",
+      "suit": "diamond",
+      "role": "captain",
+      "file": "captain/4D.png"
+    },
+    {
+      "id": "4C-captain",
+      "rank": "4",
+      "suit": "club",
+      "role": "captain",
+      "file": "captain/4C.png"
+    },
+    {
+      "id": "5S-captain",
+      "rank": "5",
+      "suit": "spade",
+      "role": "captain",
+      "file": "captain/5S.png"
+    },
+    {
+      "id": "5H-captain",
+      "rank": "5",
+      "suit": "heart",
+      "role": "captain",
+      "file": "captain/5H.png"
+    },
+    {
+      "id": "5D-captain",
+      "rank": "5",
+      "suit": "diamond",
+      "role": "captain",
+      "file": "captain/5D.png"
+    },
+    {
+      "id": "5C-captain",
+      "rank": "5",
+      "suit": "club",
+      "role": "captain",
+      "file": "captain/5C.png"
+    },
+    {
+      "id": "6S-captain",
+      "rank": "6",
+      "suit": "spade",
+      "role": "captain",
+      "file": "captain/6S.png"
+    },
+    {
+      "id": "6H-captain",
+      "rank": "6",
+      "suit": "heart",
+      "role": "captain",
+      "file": "captain/6H.png"
+    },
+    {
+      "id": "6D-captain",
+      "rank": "6",
+      "suit": "diamond",
+      "role": "captain",
+      "file": "captain/6D.png"
+    },
+    {
+      "id": "6C-captain",
+      "rank": "6",
+      "suit": "club",
+      "role": "captain",
+      "file": "captain/6C.png"
+    },
+    {
+      "id": "7S-captain",
+      "rank": "7",
+      "suit": "spade",
+      "role": "captain",
+      "file": "captain/7S.png"
+    },
+    {
+      "id": "7H-captain",
+      "rank": "7",
+      "suit": "heart",
+      "role": "captain",
+      "file": "captain/7H.png"
+    },
+    {
+      "id": "7D-captain",
+      "rank": "7",
+      "suit": "diamond",
+      "role": "captain",
+      "file": "captain/7D.png"
+    },
+    {
+      "id": "7C-captain",
+      "rank": "7",
+      "suit": "club",
+      "role": "captain",
+      "file": "captain/7C.png"
+    },
+    {
+      "id": "8S-captain",
+      "rank": "8",
+      "suit": "spade",
+      "role": "captain",
+      "file": "captain/8S.png"
+    },
+    {
+      "id": "8H-captain",
+      "rank": "8",
+      "suit": "heart",
+      "role": "captain",
+      "file": "captain/8H.png"
+    },
+    {
+      "id": "8D-captain",
+      "rank": "8",
+      "suit": "diamond",
+      "role": "captain",
+      "file": "captain/8D.png"
+    },
+    {
+      "id": "8C-captain",
+      "rank": "8",
+      "suit": "club",
+      "role": "captain",
+      "file": "captain/8C.png"
+    },
+    {
+      "id": "9S-captain",
+      "rank": "9",
+      "suit": "spade",
+      "role": "captain",
+      "file": "captain/9S.png"
+    },
+    {
+      "id": "9H-captain",
+      "rank": "9",
+      "suit": "heart",
+      "role": "captain",
+      "file": "captain/9H.png"
+    },
+    {
+      "id": "9D-captain",
+      "rank": "9",
+      "suit": "diamond",
+      "role": "captain",
+      "file": "captain/9D.png"
+    },
+    {
+      "id": "9C-captain",
+      "rank": "9",
+      "suit": "club",
+      "role": "captain",
+      "file": "captain/9C.png"
+    },
+    {
+      "id": "10S-captain",
+      "rank": "10",
+      "suit": "spade",
+      "role": "captain",
+      "file": "captain/10S.png"
+    },
+    {
+      "id": "10H-captain",
+      "rank": "10",
+      "suit": "heart",
+      "role": "captain",
+      "file": "captain/10H.png"
+    },
+    {
+      "id": "10D-captain",
+      "rank": "10",
+      "suit": "diamond",
+      "role": "captain",
+      "file": "captain/10D.png"
+    },
+    {
+      "id": "10C-captain",
+      "rank": "10",
+      "suit": "club",
+      "role": "captain",
+      "file": "captain/10C.png"
+    }
+  ]
+}

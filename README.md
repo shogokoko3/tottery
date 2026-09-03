@@ -78,6 +78,7 @@ src/
     index.js         画面から使うフック
   ui/                画面とコンポーネント
 assets/              カード画像(webp) と BGM(m4a)
+                     cards/card-manifest.json は原画に付いてきた一覧
 reference/           元のビルド v47 と、そこから機械抽出した比較用ロジック
 tools/               復元と検証に使ったスクリプト
 ```
@@ -191,6 +192,7 @@ npm run check     # 下の3本をまとめて走らせる
 | `tools/dejsx.mjs` | `(0,c.jsx)(...)` を JSX 記法へ戻す |
 | `tools/rename.mjs` | 圧縮された識別子を意味のある名前へ戻す |
 | `tools/split.mjs` | 1枚岩を `src/` へ分割し、import を自動生成する |
+| `tools/import-cards.mjs` | 配布された原画(PNG)を 160x213 の webp へ落とし込む |
 | `tools/parity.mjs` | 復元版と元バンドルの挙動を突き合わせる |
 | `tools/extract-logic.py` | 元バンドルから比較用のロジックだけ切り出す |
 | `tools/check-mod3.mjs` | v48 で作り替えた布陣と持ち時間を確かめる |
