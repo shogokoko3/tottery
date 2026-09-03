@@ -10,6 +10,34 @@
  */
 import { reducer } from "../src/game/reducer.js";
 import { isFlush, isStraight } from "../src/game/bonus.js";
+import { SUIT_SYMBOL } from "../src/game/constants.js";
+
+/**
+ * 布陣ボーナスを教える話で、何が起きるはずか。
+ * どちらの布陣がそろい、誰の駒がめくれ、引き直しで何を引くか。
+ */
+const BONUS_EXPECT = {
+  5: {
+    straight: 0,
+    flush: 1,
+    swapped: true,
+    revealedOwner: 0,
+    drewRank: "7",
+    // 後手だからこそ、相手の捨て札を見てから決められる
+    youAreSecond: true,
+    foeDiscards: ["4♦", "6♣"],
+  },
+  6: {
+    flush: 0,
+    swapped: false,
+    revealedOwner: 1,
+    drewRank: "J",
+    youAreSecond: true,
+    foeDiscards: ["4♣", "3♦"],
+    // 案内で名前を挙げている札が、実際にめくれるか
+    revealedCard: "10♦",
+  },
+};
 import { getLegalMoves } from "../src/game/board.js";
 import { cpuAction } from "../src/game/cpu.js";
 import {
@@ -242,41 +270,77 @@ for (const tut of TUTORIALS) {
     `${foeIdx}/${tut.foe.moves.length}`,
   );
   if (tut.bonus) {
-    // 布陣ボーナスを教える回。台本どおりに進めば必ず両方が起きるはず
+    // 布陣ボーナスを教える回。話ごとに、何が起きるはずかを決めてある
+    const want = BONUS_EXPECT[tut.id];
     const army = (i) => Object.values(s.pieces).filter((p) => p.owner === i);
-    ok(
-      "あなたの布陣がストレートになる",
-      isStraight(army(0)),
-      army(0)
-        .map((p) => p.rank)
-        .join(","),
-    );
-    ok(
-      "相手の布陣がフラッシュになる",
-      isFlush(army(1)),
-      army(1)
-        .map((p) => p.suit[0])
-        .join(","),
-    );
-    ok(
-      "ストレートで先手と後手が入れ替わる",
-      bonusSeen && bonusSeen.swapped === true,
-      JSON.stringify(bonusSeen),
-    );
-    ok(
-      "フラッシュであなたの駒が公開される",
-      !!(bonusSeen && (bonusSeen.revealed || []).some((r) => r.owner === 0)),
-      JSON.stringify(bonusSeen && bonusSeen.revealed),
-    );
-    ok(
-      "引き直しで 7 を引いている",
-      army(0).some((p) => p.rank === "7"),
-      army(0)
-        .map((p) => p.rank)
-        .join(","),
-    );
+    ok("布陣ボーナスが起きる", !!bonusSeen);
+    if (want && want.youAreSecond)
+      ok(
+        "サイコロでは必ず後手になる",
+        tut.dice[0] < tut.dice[1],
+        `${tut.dice[0]} vs ${tut.dice[1]}`,
+      );
+    if (want && want.foeDiscards) {
+      const shown = s.players[1].discard.map(
+        (c) => `${c.rank}${SUIT_SYMBOL[c.suit]}`,
+      );
+      ok(
+        `相手の捨て札が ${want.foeDiscards.join("・")} になる`,
+        want.foeDiscards.every((c) => shown.includes(c)),
+        shown.join(","),
+      );
+      ok(
+        "相手の捨て札にスペードが混ざらない",
+        tut.id !== 6 || !shown.some((c) => c.includes("♠")),
+        shown.join(","),
+      );
+    }
+    if (want && want.revealedCard) {
+      const shown = (bonusSeen.revealed || []).map(
+        (r) => `${r.rank}${SUIT_SYMBOL[r.suit]}`,
+      );
+      ok(
+        `案内どおり ${want.revealedCard} がめくれる`,
+        shown.includes(want.revealedCard),
+        shown.join(","),
+      );
+    }
+    if (want && bonusSeen) {
+      if (want.straight !== undefined)
+        ok(
+          `${want.straight === 0 ? "あなた" : "相手"}の布陣がストレートになる`,
+          isStraight(army(want.straight)),
+          army(want.straight)
+            .map((p) => p.rank)
+            .join(","),
+        );
+      if (want.flush !== undefined)
+        ok(
+          `${want.flush === 0 ? "あなた" : "相手"}の布陣がフラッシュになる`,
+          isFlush(army(want.flush)),
+          army(want.flush)
+            .map((p) => p.suit[0])
+            .join(","),
+        );
+      ok(
+        want.swapped ? "先手と後手が入れ替わる" : "先手はそのまま",
+        bonusSeen.swapped === want.swapped,
+        JSON.stringify(bonusSeen.swapped),
+      );
+      ok(
+        `${want.revealedOwner === 0 ? "あなた" : "相手"}の駒がめくれる`,
+        (bonusSeen.revealed || []).some((r) => r.owner === want.revealedOwner),
+        JSON.stringify(bonusSeen.revealed),
+      );
+      ok(
+        `引き直しで ${want.drewRank} を引いている`,
+        army(0).some((p) => p.rank === want.drewRank),
+        army(0)
+          .map((p) => p.rank)
+          .join(","),
+      );
+    }
   }
-  console.log(`  相手が指した手: ${foeIdx} / 用意 ${tut.foe.moves.length}`);
 }
 
 console.log(fail ? `\n${fail} 件の失敗` : "\nすべて通りました");
