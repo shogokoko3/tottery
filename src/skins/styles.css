@@ -1084,3 +1084,272 @@
     transition: none !important;
   }
 }
+
+/* ===== 召喚の開示(伏せた札を自分でめくる) ===== */
+.skin-reveal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: max(64px, env(safe-area-inset-top)) 14px 24px;
+  overflow: auto;
+  background: radial-gradient(ellipse at 50% 40%, #173043, #030913 70%);
+}
+.skin-reveal.omen-SR {
+  background: radial-gradient(ellipse at 50% 40%, #1d3a5c, #030913 70%);
+}
+.skin-reveal.omen-SSR {
+  background: radial-gradient(ellipse at 50% 40%, #4a3a12, #0a0703 70%);
+}
+/* 前兆。SSR がいると金の光が回り、伏せた札が脈打つ。どれが当たりかは見せない */
+.reveal-omen {
+  position: absolute;
+  inset: -40%;
+  pointer-events: none;
+  opacity: 0;
+}
+.omen-SSR .reveal-omen {
+  opacity: 1;
+  background: conic-gradient(
+    from 0deg,
+    #f4cc7933,
+    #ffffff00 30%,
+    #f4cc7955 50%,
+    #ffffff00 70%,
+    #f4cc7933
+  );
+  mix-blend-mode: screen;
+  animation: reveal-omen-spin 9s linear infinite;
+}
+.omen-SR .reveal-omen {
+  opacity: 0.7;
+  background: radial-gradient(circle at 50% 45%, #a5c9f355, transparent 60%);
+}
+.reveal-caption {
+  position: relative;
+  margin: 0;
+  color: #e9dcc5;
+  font:
+    700 15px/1.6 "Shippori Mincho",
+    serif;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 14px currentColor;
+}
+.omen-SSR .reveal-caption {
+  color: #f4cc79;
+  animation: reveal-caption-pulse 1.6s ease-in-out infinite;
+}
+.reveal-hint {
+  position: relative;
+  margin: 0;
+  min-height: 1.6em;
+  color: #b9c4d3;
+  font-size: 12px;
+}
+.reveal-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr));
+  gap: 10px;
+  width: min(100%, 560px);
+}
+.reveal-grid.single {
+  grid-template-columns: minmax(0, 210px);
+}
+.reveal-card {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  perspective: 900px;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  animation: reveal-deal 0.5s ease-out both;
+  animation-delay: calc(var(--i) * 70ms);
+}
+.reveal-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateY(var(--angle, 0deg));
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.reveal-card.is-dragging .reveal-inner {
+  transition: none;
+}
+.reveal-back,
+.reveal-front {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+}
+.reveal-back {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  box-shadow: 0 6px 18px #0009;
+}
+.omen-SSR .reveal-card:not(.is-flipped) .reveal-back {
+  box-shadow:
+    0 0 18px #f4cc7988,
+    0 6px 18px #0009;
+  animation: reveal-back-pulse 1.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 120ms);
+}
+.reveal-front {
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  background: linear-gradient(160deg, #1b3559, #0d1c33);
+  border: 2px solid var(--rarity, #8b9bab);
+  box-shadow:
+    0 0 0 1px #0008,
+    0 0 18px color-mix(in srgb, var(--rarity, #8b9bab) 55%, transparent);
+}
+.reveal-front img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* 昇格の途中。絵はまだ見せず、格の色だけが揺れる */
+.reveal-veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 40%,
+    color-mix(in srgb, var(--rarity, #8b9bab) 45%, transparent),
+    transparent 70%
+  );
+  animation: reveal-veil 0.9s ease-in-out infinite alternate;
+}
+.reveal-rarity {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #000a;
+  color: var(--rarity, #e9dcc5);
+  font: 800 11px/1.3 sans-serif;
+  letter-spacing: 0.08em;
+}
+.reveal-name {
+  position: relative;
+  margin: 0 4px 6px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: #000b;
+  color: #f4e9d1;
+  font:
+    700 11px/1.3 "Shippori Mincho",
+    serif;
+  text-align: center;
+}
+.reveal-new {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: #f4cc79;
+  color: #2a1d05;
+  font: 800 10px/1.2 sans-serif;
+}
+/* 昇格の瞬間に光る。SSR に至ったら金の破裂 */
+.reveal-card.is-promoted .reveal-front {
+  animation: reveal-promote 0.55s ease-out;
+}
+.reveal-card.is-final.rarity-SSR .reveal-front {
+  animation: reveal-burst 0.9s ease-out;
+}
+.reveal-actions {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  min-height: 44px;
+}
+@keyframes reveal-deal {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes reveal-omen-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes reveal-caption-pulse {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes reveal-back-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.35);
+  }
+}
+@keyframes reveal-veil {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes reveal-promote {
+  0% {
+    filter: brightness(3);
+    transform: rotateY(180deg) scale(1.06);
+  }
+  100% {
+    filter: brightness(1);
+    transform: rotateY(180deg) scale(1);
+  }
+}
+@keyframes reveal-burst {
+  0% {
+    box-shadow: 0 0 0 0 #f4cc79cc;
+    filter: brightness(2.2);
+  }
+  100% {
+    box-shadow: 0 0 40px 12px #f4cc7900;
+    filter: brightness(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-card,
+  .reveal-inner,
+  .reveal-back,
+  .reveal-front,
+  .reveal-veil,
+  .reveal-omen,
+  .reveal-caption {
+    animation: none !important;
+    transition: none !important;
+  }
+}

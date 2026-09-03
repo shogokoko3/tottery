@@ -6,56 +6,170 @@ import { updateCollection, useCollection } from "../skins/store.js";
 import { CardFace } from "./cards.jsx";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
 import { SkinFilm } from "./skin-film.jsx";
+import { OMEN_TEXT, ladderOf, omenOf } from "../skins/reveal.js";
 
 const rarityLabel = (s) => (s.rarity === "LIMITED" ? "早期特典" : s.rarity);
-const power = { R: 1, SR: 2, SSR: 3 };
 
-function SummonAnimation({ results, onFinish }) {
-  const finish = useRef(onFinish);
-  finish.current = onFinish;
-  const best = results
-    .map((r) => byId(r.id))
-    .sort((a, b) => power[b.rarity] - power[a.rarity])[0];
+/** めくる1枚。指で引き寄せると角度がついてめくれ、半分を越えると裏返る */
+function RevealCard({ result, index, flipped, onFlip, stepMs, reduce }) {
+  const skin = byId(result.id);
+  const ladder = ladderOf(skin.rarity);
+  // -1 は伏せたまま。0 以降は ladder の段階(昇格の途中)
+  const [stage, setStage] = useState(-1);
+  const [angle, setAngle] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const drag = useRef(null);
   useEffect(() => {
-    const id = setTimeout(() => finish.current(), 5000);
-    return () => clearTimeout(id);
-  }, []);
+    if (!flipped) return;
+    if (reduce) {
+      setStage(ladder.length - 1);
+      return;
+    }
+    setStage(0);
+    const timers = ladder
+      .slice(1)
+      .map((_, k) => setTimeout(() => setStage(k + 1), stepMs * (k + 1)));
+    return () => timers.forEach(clearTimeout);
+  }, [flipped]);
+  const down = (e) => {
+    if (flipped) return;
+    drag.current = {
+      x: e.clientX,
+      w: e.currentTarget.getBoundingClientRect().width || 120,
+      moved: 0,
+    };
+    setDragging(true);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const move = (e) => {
+    if (!drag.current || flipped) return;
+    const dx = Math.abs(e.clientX - drag.current.x);
+    drag.current.moved = Math.max(drag.current.moved, dx);
+    setAngle(Math.min(180, (dx / drag.current.w) * 180));
+  };
+  const up = () => {
+    if (!drag.current || flipped) return;
+    const { moved } = drag.current;
+    drag.current = null;
+    setDragging(false);
+    // 触っただけ(タップ)でもめくれる。引き寄せたなら半分を越えたときだけ
+    if (moved < 8 || angle >= 90) onFlip();
+    else setAngle(0);
+  };
+  const shown = stage >= 0 ? ladder[stage] : null;
+  const final = stage === ladder.length - 1;
+  const label =
+    shown === "SSR" && skin.rarity === "LIMITED" ? "早期特典" : shown;
+  return (
+    <button
+      type="button"
+      className={`reveal-card ${flipped ? "is-flipped" : ""} ${
+        dragging ? "is-dragging" : ""
+      } ${shown ? `rarity-${shown}` : ""} ${final ? "is-final" : ""} ${
+        stage > 0 ? "is-promoted" : ""
+      }`}
+      style={{ "--i": index, "--angle": `${flipped ? 180 : angle}deg` }}
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={up}
+      onKeyDown={(e) => {
+        if (!flipped && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onFlip();
+        }
+      }}
+      aria-label={flipped ? skin.name : `${index + 1}枚目をめくる`}
+    >
+      <span className="reveal-inner">
+        <img
+          className="reveal-back"
+          src={cardBackImg}
+          alt=""
+          draggable="false"
+        />
+        <span className="reveal-front">
+          {final ? (
+            <img src={skin.card} alt={skin.role} draggable="false" />
+          ) : (
+            <span className="reveal-veil" />
+          )}
+          <span className="reveal-rarity">{label || ""}</span>
+          {final && <strong className="reveal-name">{skin.name}</strong>}
+          {final && result.isNew && <span className="reveal-new">NEW</span>}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * 召喚の開示。引いた札を伏せて並べ、1枚ずつ自分でめくる。
+ * 束に SSR がいれば伏せた時点で前兆を出す。めくると R→SR→SSR と昇格して見せる。
+ * 結果は先に保存してあるので、途中で閉じても失わない。
+ */
+function SummonReveal({ results, onFinish, reduce }) {
+  const [flipped, setFlipped] = useState(() => results.map(() => false));
+  const omen = omenOf(results);
+  const all = flipped.every(Boolean);
+  const flipAt = (i) =>
+    setFlipped((f) => (f[i] ? f : f.map((v, k) => (k === i ? true : v))));
+  const cols = results.length === 1 ? 1 : results.length <= 4 ? 2 : 5;
   return (
     <SkinModal
       label="スキン召喚"
       onClose={onFinish}
       className="skin-summon-overlay"
     >
-      <div className={`skin-summon rarity-${best.rarity}`}>
-        <div className="summon-halo" />
-        <div className="summon-orbit orbit-two" />
-        <div className="summon-orbit" />
-        <div className="summon-fan" aria-hidden="true">
-          {Array.from({ length: results.length === 10 ? 10 : 4 }, (_, i) => (
-            <img
+      <div className={`skin-reveal omen-${omen}`}>
+        <div className="reveal-omen" aria-hidden="true" />
+        <p className="reveal-caption" role="status">
+          {all ? "すべての札がめくれました。" : OMEN_TEXT[omen]}
+        </p>
+        <div
+          className={`reveal-grid ${results.length === 1 ? "single" : ""}`}
+          style={{ "--cols": cols }}
+        >
+          {results.map((r, i) => (
+            <RevealCard
               key={i}
-              src={cardBackImg}
-              alt=""
-              style={{ "--i": i, "--n": results.length === 10 ? 10 : 4 }}
+              result={r}
+              index={i}
+              flipped={flipped[i]}
+              onFlip={() => flipAt(i)}
+              stepMs={reduce ? 0 : 520}
+              reduce={reduce}
             />
           ))}
         </div>
-        <div className="summon-card">
-          <img className="summon-back" src={cardBackImg} alt="" />
-          <img className="summon-front" src={best.image} alt={best.name} />
+        <p className="reveal-hint">
+          {all
+            ? ""
+            : results.length === 1
+              ? "札を引き寄せて、めくってください。"
+              : "札を1枚ずつ引き寄せて、めくってください。"}
+        </p>
+        <div className="reveal-actions">
+          {!all && (
+            <button
+              className="skin-btn"
+              onClick={() => setFlipped(results.map(() => true))}
+            >
+              すべてめくる
+            </button>
+          )}
+          {all && (
+            <button className="skin-btn skin-btn-gold" onClick={onFinish}>
+              結果へ →
+            </button>
+          )}
         </div>
-        <div className="summon-title">
-          <span>{best.rarity}</span>
-          <strong>{best.name}</strong>
-          <small>
-            {best.rank} · {best.role}
-          </small>
-        </div>
-        <p className="summon-opening">運命が、目を覚ます。</p>
       </div>
-      <button className="skin-skip" onClick={onFinish}>
-        スキップして結果へ →
-      </button>
+      {!all && (
+        <button className="skin-skip" onClick={onFinish}>
+          スキップして結果へ →
+        </button>
+      )}
     </SkinModal>
   );
 }
@@ -377,9 +491,10 @@ export function SkinsScreen() {
 
       {collection.pending &&
         (animating ? (
-          <SummonAnimation
+          <SummonReveal
             results={collection.pending.results}
             onFinish={() => setAnimating(false)}
+            reduce={reduce}
           />
         ) : (
           <SkinModal

@@ -271,4 +271,26 @@ for (const skin of SKINS)
   for (const asset of [skin.image, skin.card, skin.video].filter(Boolean)) {
     assert.ok(fs.statSync(path.join("assets", asset)).size > 0, asset);
   }
-console.log("盤面の表裏・所有者・数字・全32画像と完成動画: OK");
+if (SKINS.some((s) => !s.video)) throw new Error("動画の無いスキンがある");
+console.log("盤面の表裏・所有者・数字・全32画像と16本の動画: OK");
+
+// 開示演出の決まり。前兆は束の中でいちばん強い格、昇格は R→SR→SSR
+{
+  const { ladderOf, omenOf, OMEN_TEXT } =
+    await import("../src/skins/reveal.js");
+  assert.deepEqual(ladderOf("R"), ["R"]);
+  assert.deepEqual(ladderOf("SR"), ["R", "SR"]);
+  assert.deepEqual(ladderOf("SSR"), ["R", "SR", "SSR"]);
+  assert.deepEqual(ladderOf("LIMITED"), ["R", "SR", "SSR"]);
+  assert.equal(omenOf([]), "R");
+  assert.equal(omenOf([{ id: "zombie-male" }, { id: "pirate-female" }]), "R");
+  assert.equal(omenOf([{ id: "zombie-male" }, { id: "elf-male" }]), "SR");
+  assert.equal(
+    omenOf([{ id: "elf-male" }, { id: "angel-j" }, { id: "zombie-male" }]),
+    "SSR",
+  );
+  assert.equal(omenOf([{ id: "dragon-knight" }]), "SSR");
+  assert.equal(omenOf([{ id: "no-such" }]), "R");
+  for (const k of ["R", "SR", "SSR"]) assert.ok(OMEN_TEXT[k]);
+  console.log("開示演出: 前兆の格、昇格の段階: OK");
+}
