@@ -72,11 +72,6 @@
     serif;
   text-shadow: 0 1px 2px #000;
 }
-.intro-skins {
-  position: relative;
-  z-index: 1;
-  margin-top: 12px;
-}
 .title-hero-visual {
   position: relative;
   width: 100%;
