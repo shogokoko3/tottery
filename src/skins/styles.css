@@ -727,17 +727,22 @@
   height: 100%;
   object-fit: contain;
 }
+/* 閉じる印。文言は置かず、右上の × だけにする */
 .skin-skip {
   position: absolute;
-  top: max(20px, env(safe-area-inset-top));
-  right: 20px;
+  top: max(14px, env(safe-area-inset-top));
+  right: 14px;
   z-index: 5;
-  border: 1px solid #d9c89b66;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d9c89b55;
   background: #07121cdf;
   color: #e9dcc5;
-  font: 12px/1.5 sans-serif;
-  padding: 12px 16px;
-  border-radius: 5px;
+  font: 18px/1 sans-serif;
+  border-radius: 50%;
+  padding: 0;
   cursor: pointer;
 }
 .skin-summon {

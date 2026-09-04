@@ -231,8 +231,13 @@ function SummonReveal({ results, onFinish, reduce }) {
         </div>
       </div>
       {!all && (
-        <button className="skin-skip" onClick={onFinish}>
-          スキップして結果へ →
+        <button
+          className="skin-skip"
+          onClick={onFinish}
+          aria-label="めくらずに結果へ"
+          title="めくらずに結果へ"
+        >
+          ×
         </button>
       )}
     </SkinModal>
