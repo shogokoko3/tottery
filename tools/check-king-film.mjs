@@ -172,5 +172,79 @@ console.log("\n二重に流さない");
   t("取っていない手では流さない", filmsFor(before, reducer(before, { type: "SELECT_PIECE", id: "elf" }), loadouts, 1).length === 0);
 }
 
+console.log("\n王を討った駒は名乗りを上げる(決まり)");
+{
+  const before = build([
+    ["elf", "6", 0, 3, 1, false],
+    ["k0", "K", 0, 4, 0, true],
+    ["k1", "K", 1, 2, 2, true],
+  ]);
+  t("討つ前は伏せている", before.pieces.elf.revealed === false);
+  const after = move(before, "elf", 2, 2);
+  t("討った駒が表になる", after.pieces.elf.revealed === true);
+  t("盤の上でも表になっている", after.board[2][2].revealed === true);
+  t("めくる演出の相手が分かる", after.lastReveal?.id === "elf");
+  t("行動の記録に残る", after.pieces.elf.history.includes("王を討って名乗りを上げた"));
+  t(
+    "対局の記録に名乗りが出る",
+    after.log.some((l) => l.includes("名乗りを上げた")),
+  );
+  t("相手の駒は表にならない", after.pieces.k0.revealed === false);
+}
+{
+  // 王でない駒を取っただけなら、名乗らない
+  const before = build([
+    ["elf", "6", 0, 3, 1, false],
+    ["foe", "8", 1, 2, 2, false],
+    ["k0", "K", 0, 4, 0, true],
+    ["k1", "K", 1, 0, 4, true],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  t("ふだんの取りでは伏せたまま", after.pieces.elf.revealed === false);
+  t("めくる相手も立たない", !after.lastReveal);
+}
+{
+  // 2の王を討ったときも名乗る(対局は続く)
+  const before = build([
+    ["elf", "6", 0, 3, 1, false],
+    ["k0", "K", 0, 4, 0, true],
+    ["k1", "2", 1, 2, 2, true],
+    ["heir", "2", 1, 0, 4, false],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  t("対局が続いても名乗る", after.pieces.elf.revealed === true);
+  t("跡継ぎは伏せたまま", after.pieces.heir.revealed === false);
+  t("跡継ぎが王になっている", after.players[1].kingId === "heir");
+}
+{
+  // すでに表だった駒を二度めくらない
+  const before = build([
+    ["elf", "6", 0, 3, 1, false],
+    ["k0", "K", 0, 4, 0, true],
+    ["k1", "K", 1, 2, 2, true],
+  ]);
+  before.pieces.elf.revealed = true;
+  before.board[3][1].revealed = true;
+  const after = move(before, "elf", 2, 2);
+  t("もとから表なら演出は立てない", !after.lastReveal);
+  t("表のままである", after.pieces.elf.revealed === true);
+}
+
+console.log("\n名乗るので、相手の画面にも映像が流れる");
+{
+  const before = build([
+    ["elf", "6", 0, 3, 1, false],
+    ["k0", "K", 0, 4, 0, true],
+    ["k1", "2", 1, 2, 2, true],
+    ["heir", "2", 1, 0, 4, false],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  t(
+    "映像の側に例外を置かなくても相手に流れる",
+    name(captureFilm(before, after, loadouts, 1)) === "翠樹の射手",
+  );
+  t("スキンの有無で正体の割れ方が変わらない", after.pieces.elf.revealed === true);
+}
+
 console.log(`\n${ok} ok / ${fail} fail`);
 process.exit(fail ? 1 : 0);

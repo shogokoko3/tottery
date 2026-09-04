@@ -3953,3 +3953,41 @@ h3 {
   min-width: 200px;
   min-height: 48px;
 }
+
+/* 王を討った駒が名乗りを上げる。盤の上でくるりと表になる。
+ * 取られた側にも「どの駒に討たれたか」が見えるように、めくったあと
+ * 金の光をひと呼吸だけ添える */
+.piece-unveiled {
+  animation: piece-unveil 620ms ease-out both;
+}
+@keyframes piece-unveil {
+  0% {
+    transform: rotateY(90deg) scale(0.9);
+    filter: brightness(1.6);
+  }
+  55% {
+    transform: rotateY(-10deg) scale(1.08);
+    filter: brightness(1.35) drop-shadow(0 0 10px var(--gold));
+  }
+  100% {
+    transform: rotateY(0) scale(1);
+    filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .piece-unveiled {
+    animation: none;
+  }
+}
+
+/* 早見表の足元に添える一言 */
+.rule-foot {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  line-height: 1.7;
+}
+.rule-foot b {
+  color: var(--gold-soft);
+}

@@ -1,16 +1,5 @@
 import { byId, sanitizeLoadout } from "./catalog.js";
 
-/** その手で、相手の王が倒れたか */
-function killedKing(before, after, byOwner) {
-  return Object.values(before?.pieces || {}).some(
-    (p) =>
-      p.alive &&
-      p.isKing &&
-      (byOwner === undefined || p.owner !== byOwner) &&
-      after?.pieces?.[p.id]?.alive === false,
-  );
-}
-
 // 確定した「取る移動」だけを見る。選択、包囲、引き分け、王位継承、
 // CPUの検討、再描画では映像を発火させない。複数取りも1手につき1本。
 export function captureFilm(before, after, loadouts, viewer = null) {
@@ -30,16 +19,13 @@ export function captureFilm(before, after, loadouts, viewer = null) {
   )
     return null;
   // 裏向きの相手駒の正体を、専用映像から推測できないようにする。
-  // ただし相手の王を取った手だけは、伏せたままでも相手に見せる。
-  // 勝敗が決まる場面であり、2・3なら王位が移る大きな山場なので、
-  // ここは正体を明かしてでも両方の画面で演出を通す。
-  if (
-    viewer !== null &&
-    actor.owner !== viewer &&
-    !actor.revealed &&
-    !killedKing(before, after, actor.owner)
-  )
-    return null;
+  //
+  // 見るのは「この手が終わった時点で表かどうか」。王を討った駒は決まりで
+  // その場で表になる(reducer の removePiece)ので、王を取った手は自然に
+  // 相手の画面でも流れる。映像のほうに例外を置くと、スキンを着けている人
+  // だけが正体を早く割られることになるので、そちらでは何もしない。
+  const shown = actor.revealed || after.pieces?.[actor.id]?.revealed;
+  if (viewer !== null && actor.owner !== viewer && !shown) return null;
   const defeated = Object.values(before.pieces || {}).some(
     (p) =>
       p.alive &&

@@ -1979,6 +1979,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                             }
                             isPickable={!!Pl && ze.id !== a.shuffleMode.aId}
                             isGuided={focusPiece(ze.id)}
+                            justRevealed={a.lastReveal?.id === ze.id}
                           />
                         </div>
                       )}

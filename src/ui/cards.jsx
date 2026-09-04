@@ -117,14 +117,16 @@ export function Piece({
   isSelected,
   isPickable,
   isGuided,
+  justRevealed,
   size = "md",
 }) {
   let u = PLAYER_META[piece.owner],
-    // フラッシュで公開された駒は、持ち主でなくても表向きに見える
+    // フラッシュで公開された駒と、王を討って名乗りを上げた駒は、
+    // 持ち主でなくても表向きに見える
     i = piece.owner === viewer || !!piece.revealed;
   return (
     <div
-      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""}`}
+      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""} ${justRevealed ? "piece-unveiled" : ""}`}
     >
       {i ? (
         <CardFace

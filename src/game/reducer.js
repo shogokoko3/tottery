@@ -162,6 +162,33 @@ export function removePiece(state, pieceId, opts) {
     );
   }
 
+  // 王を討った駒は、その場で表になって名乗りを上げる。
+  //
+  // 王を取れば基本的に勝敗が決まるので、そこから先に隠しておく意味が薄い。
+  // 2・3の王なら対局は続くが、そのぶんは討った側が正体を明かす代償として払う。
+  // 隠したままにすると「討った駒の映像を出すと正体が漏れる」ことになり、
+  // スキンを着けている人だけが損をする形になってしまう。
+  //
+  // 包囲で討ったときは名乗る駒が定まらないので、誰も表にしない。
+  let lastReveal = null;
+  if (dead.isKing && opts.by) {
+    const killer = pieces[opts.by];
+    if (killer && killer.alive && !killer.revealed) {
+      const shown = {
+        ...killer,
+        revealed: true,
+        history: [...killer.history, "王を討って名乗りを上げた"],
+      };
+      pieces[shown.id] = shown;
+      if (board[shown.row][shown.col]?.id === shown.id)
+        board[shown.row][shown.col] = shown;
+      lastReveal = { id: shown.id, reason: "王を討った" };
+      log.push(
+        `${PLAYER_META[shown.owner].name}の${shown.rank}${SUIT_SYMBOL[shown.suit]}が名乗りを上げた!`,
+      );
+    }
+  }
+
   let next = {
     ...state,
     board,
@@ -170,6 +197,9 @@ export function removePiece(state, pieceId, opts) {
     log,
     winner,
     pendingKingChoice,
+    // 名乗りを上げた駒。盤でめくる演出に使う。
+    // 1手で複数取っても、王を討った1枚だけが入る
+    ...(lastReveal ? { lastReveal } : {}),
     // 演出用。倒れたマスを積み、reducer の後始末で lastDefeat にまとめる
     _defeats: [
       ...(state._defeats || []),
