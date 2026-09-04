@@ -1,8 +1,14 @@
 /* 管理画面だけの見た目。本体の styles.css の上に重ねる */
 .admin-stage {
+  /* 本体の .stage は flex。そのままだと欄が縮まず、
+     中の広い表が画面の外へはみ出す */
+  display: block;
   padding: 14px 12px 40px;
   max-width: 1100px;
   margin: 0 auto;
+}
+.admin-card {
+  min-width: 0;
 }
 .admin-card {
   background: rgba(9, 20, 38, 0.66);
@@ -103,4 +109,106 @@
 }
 .admin-banned .admin-actions {
   opacity: 1;
+}
+
+/* ===== スマホ幅。11列の表は指では扱えないので、1人1枚の札に組み替える ===== */
+@media (max-width: 700px) {
+  .admin-stage {
+    padding: 12px 10px 32px;
+  }
+  .admin-card {
+    padding: 12px;
+  }
+  .admin-table-wrap {
+    overflow: visible;
+  }
+  .admin-table,
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table td {
+    display: block;
+    width: 100%;
+  }
+  /* 見出しの行は、各マスの左に出すので隠す */
+  .admin-table thead {
+    display: none;
+  }
+  .admin-table tr {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(4, 10, 20, 0.4);
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .admin-table td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    border: 0;
+    padding: 4px 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+  /* 各マスの左に、その列の見出しを出す */
+  .admin-table td::before {
+    content: attr(data-label);
+    flex: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-align: left;
+  }
+  /* 名前だけは大きく、見出しなしで頭に置く */
+  .admin-table td.admin-name {
+    justify-content: flex-start;
+    font-size: 16px;
+    padding-bottom: 8px;
+    text-align: left;
+  }
+  .admin-table td.admin-name::before {
+    content: "";
+  }
+  /* 中身が空の欄(押し場所)は見出しを出さず、釦を横に並べる */
+  .admin-table td[data-label=""] {
+    justify-content: stretch;
+    padding-top: 8px;
+  }
+  .admin-table td[data-label=""]::before {
+    content: "";
+    flex: 0;
+  }
+  .admin-actions {
+    gap: 8px;
+  }
+  .admin-actions .btn {
+    flex: 1;
+  }
+  /* 指で押せる大きさに */
+  .admin-table .btn-small,
+  .admin-head .btn-small {
+    min-height: 38px;
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+  .admin-input {
+    min-height: 40px;
+  }
+  .admin-num {
+    text-align: right;
+  }
+  /* 端末idは長いので小さく折り返す */
+  .admin-id {
+    font-size: 10px;
+  }
+  /* 「まだ誰も登録していません」の行は札にしない */
+  .admin-table td[colspan] {
+    justify-content: center;
+    text-align: center;
+    padding: 6px 0;
+  }
+  .admin-table td[colspan]::before {
+    content: "";
+  }
 }

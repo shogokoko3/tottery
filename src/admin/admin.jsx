@@ -323,23 +323,35 @@ function AdminApp() {
               <tbody>
                 {found.map((r) => (
                   <tr key={r.id} className={r.banned ? "admin-banned" : ""}>
-                    <td className="admin-name">{r.name || "(名無し)"}</td>
-                    <td>
+                    <td data-label="名前" className="admin-name">
+                      {r.name || "(名無し)"}
+                    </td>
+                    <td data-label="称号">
                       {titleNameOf(r.title) || (r.title ? `? ${r.title}` : "—")}
                     </td>
-                    <td className="admin-num">
+                    <td data-label="持ち点" className="admin-num">
                       {typeof r.rating === "number" ? r.rating : "—"}
                     </td>
-                    <td className="admin-num">{r.plays ?? "—"}</td>
-                    <td className="admin-num">{r.wins ?? "—"}</td>
-                    <td>{r.icon ? findIcon(r.icon).label : "—"}</td>
-                    <td title={when(r.since)}>
+                    <td data-label="対局" className="admin-num">
+                      {r.plays ?? "—"}
+                    </td>
+                    <td data-label="勝ち" className="admin-num">
+                      {r.wins ?? "—"}
+                    </td>
+                    <td data-label="アイコン">
+                      {r.icon ? findIcon(r.icon).label : "—"}
+                    </td>
+                    <td data-label="登録" title={when(r.since)}>
                       {r.since ? ago(r.since) : "—"}
                     </td>
-                    <td title={when(r.at)}>{ago(r.at)}</td>
-                    <td>{r.banned ? "使用停止" : "—"}</td>
-                    <td className="admin-id">{r.id}</td>
-                    <td className="admin-actions">
+                    <td data-label="最終更新" title={when(r.at)}>
+                      {ago(r.at)}
+                    </td>
+                    <td data-label="状態">{r.banned ? "使用停止" : "—"}</td>
+                    <td data-label="端末id" className="admin-id">
+                      {r.id}
+                    </td>
+                    <td data-label="" className="admin-actions">
                       <button
                         className="btn btn-ghost btn-small"
                         onClick={() => toggleBan(r)}
@@ -436,23 +448,37 @@ function AdminApp() {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id}>
-                    <td className="admin-name">{r.name || "(名無し)"}</td>
-                    <td>
+                    <td data-label="名前" className="admin-name">
+                      {r.name || "(名無し)"}
+                    </td>
+                    <td data-label="称号">
                       {titleNameOf(r.title) || (r.title ? `? ${r.title}` : "—")}
                     </td>
-                    <td className="admin-num">
+                    <td data-label="持ち点" className="admin-num">
                       {typeof r.rating === "number" ? r.rating : "—"}
                     </td>
-                    <td>
+                    <td data-label="位">
                       {typeof r.rating === "number" ? rankTitle(r.rating) : "—"}
                     </td>
-                    <td className="admin-num">{r.rated ?? "—"}</td>
-                    <td className="admin-num">{r.plays ?? "—"}</td>
-                    <td className="admin-num">{r.wins ?? "—"}</td>
-                    <td>{r.icon ? findIcon(r.icon).label : "—"}</td>
-                    <td title={when(r.at)}>{ago(r.at)}</td>
-                    <td className="admin-id">{r.id}</td>
-                    <td>
+                    <td data-label="持ち点つき" className="admin-num">
+                      {r.rated ?? "—"}
+                    </td>
+                    <td data-label="対局" className="admin-num">
+                      {r.plays ?? "—"}
+                    </td>
+                    <td data-label="勝ち" className="admin-num">
+                      {r.wins ?? "—"}
+                    </td>
+                    <td data-label="アイコン">
+                      {r.icon ? findIcon(r.icon).label : "—"}
+                    </td>
+                    <td data-label="最終更新" title={when(r.at)}>
+                      {ago(r.at)}
+                    </td>
+                    <td data-label="端末id" className="admin-id">
+                      {r.id}
+                    </td>
+                    <td data-label="">
                       <button
                         className="btn btn-ghost btn-small"
                         onClick={() => removeRank(r)}
@@ -495,8 +521,10 @@ function AdminApp() {
               <tbody>
                 {(lobby || []).map((l) => (
                   <tr key={l.code}>
-                    <td className="admin-id">{l.code}</td>
-                    <td className="admin-json">
+                    <td data-label="合言葉" className="admin-id">
+                      {l.code}
+                    </td>
+                    <td data-label="中身" className="admin-json">
                       {Object.entries(l)
                         .filter(([k]) => k !== "code")
                         .map(([k, v]) => {
@@ -507,7 +535,7 @@ function AdminApp() {
                         })
                         .join(" / ") || "—"}
                     </td>
-                    <td>
+                    <td data-label="">
                       <button
                         className="btn btn-ghost btn-small"
                         onClick={() => removeLobby(l)}
