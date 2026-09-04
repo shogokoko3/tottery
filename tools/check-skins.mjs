@@ -24,11 +24,19 @@ import { initialState, reducer } from "../src/game/reducer.js";
 import { emptyBoard } from "../src/game/board.js";
 
 assert.equal(SKINS.length, 16);
-assert.equal(POOL.length, 14);
+// 早期特典(天馬騎士)だけが抽選に入らない。竜騎士は SSR として入る
+assert.equal(POOL.length, 15);
+assert.deepEqual(
+  SKINS.filter((s) => s.rarity === "LIMITED").map((s) => s.id),
+  ["pegasus-knight"],
+);
+assert.equal(POOL.filter((s) => s.rarity === "SSR").length, 7);
 assert.deepEqual(ODDS, { R: 65, SR: 32, SSR: 3 });
-assert.equal(
-  POOL.reduce((n, s) => n + rate(s), 0),
-  100,
+// SSR は7枚なので 3÷7 が割り切れない。小数の誤差ぶんは許す
+// (draw は最後の1枚に落とす作りなので、足りなくても溢れても引ける)
+assert.ok(
+  Math.abs(POOL.reduce((n, s) => n + rate(s), 0) - 100) < 1e-9,
+  "提供割合の合計が100%にならない",
 );
 const histogram = { R: 0, SR: 0, SSR: 0 };
 // 乱数の全区間を均等に渡し、境界と各アイテムの幅を検査する。
@@ -39,7 +47,12 @@ for (let i = 0; i < 10000; i++) {
   perSkin[skin.id] = (perSkin[skin.id] || 0) + 1;
 }
 assert.deepEqual(histogram, { R: 6500, SR: 3200, SSR: 300 });
-for (const s of POOL) assert.equal(perSkin[s.id], rate(s) * 100);
+// SSR は 3÷7 で割り切れないので、1枚ぶんの幅は小数になる。丸めて見る
+for (const s of POOL)
+  assert.ok(
+    Math.abs(perSkin[s.id] - rate(s) * 100) <= 1,
+    `${s.id} の幅が合わない`,
+  );
 assert.equal(draw(() => 0.65).rarity, "SR");
 assert.equal(draw(() => 0.97).rarity, "SSR");
 for (const bad of [-1, 1, NaN, Infinity]) assert.throws(() => draw(() => bad));
@@ -56,10 +69,12 @@ state = equip(state, "elf-male");
 assert.equal(state.equipped["6"], "elf-male");
 assert.throws(() => equip(state, "angel-k"));
 assert.deepEqual(unequip(state, "6").equipped, {});
+// 早期特典は天馬騎士だけ。竜騎士は SSR としてガチャから出る
 state = claimEarly(state);
-assert.equal(state.owned["dragon-knight"], 1);
+assert.equal(state.owned["pegasus-knight"], 1);
+assert.equal(state.owned["dragon-knight"], void 0);
 assert.deepEqual(claimEarly(state), state);
-state = equip(equip(state, "dragon-knight"), "pegasus-knight");
+state = equip(state, "pegasus-knight");
 assert.equal(state.equipped["10"], "pegasus-knight");
 assert.equal(Object.keys(state.equipped).length, 2);
 // 回数制限なし。チケット・課金・確定枠による別の確率分岐が無い。

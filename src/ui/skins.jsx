@@ -12,11 +12,11 @@ import {
 } from "../skins/collection.js";
 import {
   CRAFT,
-  DUST,
   ETHER_NAME,
   costOf,
   dustOf,
   etherOf,
+  forgeSummary,
   isKeepsake,
   spares,
   totalOfSpares,
@@ -29,6 +29,13 @@ import { ArrowLeft, Ether } from "../icons.jsx";
 import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
 
 const rarityLabel = (s) => (s.rarity === "LIMITED" ? "早期特典" : s.rarity);
+
+/**
+ * 提供割合の見せ方。SSR は 3÷7 で割り切れないので、そのまま出すと
+ * 0.42857142857142855％ になってしまう。小数第3位まで出し、
+ * 末尾の 0 は落とす(16.25％ は 16.25％ のまま)。
+ */
+const ratePct = (skin) => Number(rate(skin).toFixed(3)).toString();
 
 /** めくる1枚。指で引き寄せると角度がついてめくれ、半分を越えると裏返る */
 /** 昇格の間合い。格を読ませる時間と、くるくる回る時間 */
@@ -260,6 +267,9 @@ function SummonReveal({ results, onFinish, reduce }) {
  */
 function ForgePanel({ collection, run, working, onPick, setMessage }) {
   const [pick, setPick] = useState("SSR");
+  // 目安の数字は抽選の中身から引き直す。手で書くと片方だけ古くなる
+  const summary = forgeSummary();
+  const top = summary.byId("SSR");
   const ether = etherOf(collection);
   const rows = spares(collection, SKINS);
   const bulk = totalOfSpares(collection, SKINS);
@@ -411,16 +421,12 @@ function ForgePanel({ collection, run, working, onPick, setMessage }) {
             </tr>
           </thead>
           <tbody>
-            {[
-              ["R", "6回"],
-              ["SR", "13回"],
-              ["SSR", "200回"],
-            ].map(([r, pulls]) => (
-              <tr key={r}>
-                <td>{r}</td>
-                <td>+{DUST[r]}</td>
-                <td>{CRAFT[r].toLocaleString()}</td>
-                <td>{pulls}</td>
+            {summary.rows.map((row) => (
+              <tr key={row.rarity}>
+                <td>{row.rarity}</td>
+                <td>+{row.dust}</td>
+                <td>{row.craft.toLocaleString()}</td>
+                <td>{row.pulls}回</td>
               </tr>
             ))}
           </tbody>
@@ -431,10 +437,16 @@ function ForgePanel({ collection, run, working, onPick, setMessage }) {
           。
           <br />
           SSR 1枚（{CRAFT.SSR.toLocaleString()}）は
-          <b> R なら128枚 ・ SR なら64枚 ・ SSR なら4枚</b>。 R
-          だけを崩して貯めると約197回ぶん、SR だけなら約200回ぶんで、 狙った SSR
-          を運で当てる200回とほぼ同じです。
-          引いたものを全部崩せば約57回ぶんになります。
+          <b>
+            {" "}
+            R なら{summary.byId("R").cardsForTop}枚 ・ SR なら
+            {summary.byId("SR").cardsForTop}枚 ・ SSR なら
+            {summary.byId("SSR").cardsForTop}枚
+          </b>
+          。 R だけを崩して貯めると約{summary.byId("R").pullsForTop}回ぶん、SR
+          だけなら約{summary.byId("SR").pullsForTop}回ぶんで、 狙った SSR
+          を運で当てる{top.pulls}回とほぼ同じです。 引いたものを全部崩せば約
+          {summary.pullsIfAll}回ぶんになります。
           <br />
           早期特典の札は崩すことも作ることもできません。二度と手に入らないためです。
         </p>
@@ -586,12 +598,6 @@ export function SkinsScreen({ onBack }) {
             <div className="skins-early-cards">
               <CardFace
                 rank="10"
-                suit="spade"
-                size="lg"
-                skinId="dragon-knight"
-              />
-              <CardFace
-                rank="10"
                 suit="heart"
                 size="lg"
                 skinId="pegasus-knight"
@@ -599,11 +605,13 @@ export function SkinsScreen({ onBack }) {
             </div>
             <div>
               <span className="skins-eyebrow">EARLY ACCESS GIFT</span>
-              <h3>ふたつの翼を、あなたに。</h3>
+              <h3>白い翼を、あなたに。</h3>
               <p>
-                ドラゴンナイト ＆ ペガサスナイト
+                ペガサスナイト
                 <br />
                 早期特典の「10」用スキンをプレゼント。
+                <br />
+                ここでしか手に入りません。
               </p>
               <button
                 className="skin-btn"
@@ -613,7 +621,7 @@ export function SkinsScreen({ onBack }) {
                     setTab("collection");
                     setFilter("LIMITED");
                     setMessage(
-                      "早期特典の2種を受け取りました。カードを選んで装備できます。",
+                      "早期特典を受け取りました。カードを選んで装備できます。",
                     );
                   }
                 }}
@@ -762,7 +770,7 @@ export function SkinsScreen({ onBack }) {
                     {s.rank} · {s.name}
                   </td>
                   <td>{s.rarity}</td>
-                  <td>{rate(s)}％</td>
+                  <td>{ratePct(s)}％</td>
                 </tr>
               ))}
             </tbody>

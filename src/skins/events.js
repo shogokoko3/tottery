@@ -29,11 +29,14 @@ export function captureFilm(before, after, loadouts, viewer = null) {
   if (ABILITY_RANKS.has(actor.rank)) return null;
   // 裏向きの相手駒の正体を、専用映像から推測できないようにする。
   //
-  // 見るのは「この手が終わった時点で表かどうか」。王を討った駒は決まりで
-  // その場で表になる(reducer の removePiece)ので、王を取った手は自然に
-  // 相手の画面でも流れる。映像のほうに例外を置くと、スキンを着けている人
-  // だけが正体を早く割られることになるので、そちらでは何もしない。
-  const shown = actor.revealed || after.pieces?.[actor.id]?.revealed;
+  // 見るのは「この手が終わった時点で正体が公になっているか」。次の2つ。
+  //   表になっている … 王を討った駒は決まりでその場で表になる
+  //   倒れている     … 道連れに巻き込まれた駒。失った駒の欄に札が並ぶ
+  // どちらも盤か札置き場を見れば分かることなので、映像で隠す意味がない。
+  // 映像のほうに数字ごとの例外を置くと、スキンを着けている人だけが正体を
+  // 早く割られることになるので、そちらでは何もしない。
+  const at = after.pieces?.[actor.id];
+  const shown = actor.revealed || at?.revealed || at?.alive === false;
   if (viewer !== null && actor.owner !== viewer && !shown) return null;
   const defeated = Object.values(before.pieces || {}).some(
     (p) =>
