@@ -56,6 +56,7 @@ import { SkinsScreen } from "./skins.jsx";
 import { MissionsScreen } from "./missions.jsx";
 import { BattlePassScreen } from "./battlepass.jsx";
 import { LettersScreen, useUnreadLetters } from "./letters.jsx";
+import { LoginBonus } from "./loginbonus.jsx";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 import { sanitizeLoadout } from "../skins/catalog.js";
@@ -261,6 +262,8 @@ export function MenuScreen({
   const collection = useCollection();
   return (
     <div className="home-wrap">
+      {/* その日のぶんがまだなら、ここに着いたときに札が出る */}
+      <LoginBonus />
       <HomeSelf profile={profile} tickets={collection.tickets} />
 
       <button className="home-hero" onClick={onPlay}>

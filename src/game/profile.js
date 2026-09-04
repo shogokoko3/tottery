@@ -64,6 +64,10 @@ const EMPTY = {
   days: 0,
   streak: 0,
   lastDay: null,
+  // ログインボーナスを最後に受け取った日と、受け取った回数。
+  // 回数がひと回りの中の位置になる(休んでも巻き戻らない)
+  bonusDay: null,
+  bonusTaken: 0,
   // 褒美を受け取り済みのミッション
   missions: [],
   // 一度クリアしたチュートリアル。2回目からは経験値を配らない
@@ -119,6 +123,8 @@ export function loadProfile() {
     days: Number(saved.days) || 0,
     streak: Number(saved.streak) || 0,
     lastDay: typeof saved.lastDay === "string" ? saved.lastDay : null,
+    bonusDay: typeof saved.bonusDay === "string" ? saved.bonusDay : null,
+    bonusTaken: Number(saved.bonusTaken) || 0,
     missions: Array.isArray(saved.missions)
       ? saved.missions.filter((x) => typeof x === "string")
       : [],
@@ -340,6 +346,23 @@ export function markMissionClaimed(id) {
   const profile = loadProfile();
   if (!id || profile.missions.includes(id)) return profile;
   const next = { ...profile, missions: [...profile.missions, id] };
+  saveProfile(next);
+  return next;
+}
+
+/**
+ * ログインボーナスを受け取ったことを控える。
+ * 同じ日に2回目を呼んでも増えない(端末の時計が戻された時の備え)。
+ */
+export function markBonusTaken(at) {
+  const profile = loadProfile();
+  const today = dayKey(at);
+  if (profile.bonusDay === today) return profile;
+  const next = {
+    ...profile,
+    bonusDay: today,
+    bonusTaken: profile.bonusTaken + 1,
+  };
   saveProfile(next);
   return next;
 }

@@ -3862,3 +3862,84 @@ h3 {
     min-height: 84px;
   }
 }
+
+/* --- ログインボーナス --- */
+/* 受け取るまで閉じない札。外を押しても消えない */
+.bonus-panel {
+  max-width: 400px;
+}
+.bonus-title {
+  margin: 0;
+  font-size: 19px;
+  color: var(--gold-soft);
+  letter-spacing: 0.08em;
+}
+.bonus-sub {
+  margin: 4px 0 16px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+/* 7日ぶんを横に並べる。狭い画面でも折り返さず、1マスずつ細くする */
+.bonus-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.bonus-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.bonus-cell small {
+  font-size: 9px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.bonus-cell b {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--text);
+}
+/* 今日のマス。ここだけ金で光らせる */
+.bonus-cell.is-today {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.16);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.3);
+}
+.bonus-cell.is-today b {
+  color: var(--gold-soft);
+}
+/* 受け取り済み。沈めて、済みの印を重ねる */
+.bonus-cell.is-taken {
+  opacity: 0.45;
+}
+.bonus-check {
+  color: var(--gold-soft);
+}
+/* 幅の狭い電話。7マスが潰れないよう、札の余白を詰める */
+@media (max-width: 380px) {
+  .bonus-panel {
+    padding: 20px 12px;
+  }
+  .bonus-cell {
+    padding: 8px 1px;
+  }
+}
+.bonus-gain {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--text);
+}
+.bonus-gain b {
+  color: var(--gold-soft);
+  font-size: 17px;
+}
