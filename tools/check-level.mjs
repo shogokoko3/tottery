@@ -116,27 +116,62 @@ is(
   true,
 );
 const sum = TUTORIALS.reduce((a, t) => a + t.xp, 0);
-is("12話ぶんの合計がレベル10ちょうど", sum, totalFor(10));
-is("全部終えるとレベル10", levelOfXp(sum), 10);
-// この話を開くのに要るレベルが、前の話まで終えた時点で届いているか
+is("全部終えるとレベル10以上", levelOfXp(sum) >= 10, true);
+// この話を開くのに要るレベルが、前の話まで終えた時点で届いているか。
+// あわせて、1話終えるごとに何話が新しく開くかを数える
 let acc = 0;
 let stuck = null;
+const openedAt = [];
+const seen = new Set(TUTORIALS.filter((t) => t.level <= 1).map((t) => t.id));
 TUTORIALS.forEach((t, i) => {
   const have = levelOfXp(acc);
   if (t.level > have && !stuck)
     stuck = `${t.title} は Lv${t.level} だが、${i}話終えた時点では Lv${have}`;
   acc += t.xp;
+  const now = TUTORIALS.filter(
+    (o) => o.level <= levelOfXp(acc) && !seen.has(o.id),
+  );
+  now.forEach((o) => seen.add(o.id));
+  openedAt.push(now.length);
 });
 is("チュートリアルだけで最後まで開く", stuck, null);
+is(
+  "はじめに開いているのは第1話だけ",
+  TUTORIALS.filter((t) => t.level <= 1).length,
+  1,
+);
+is(
+  "第10話を終えた時点でレベル10",
+  levelOfXp(TUTORIALS.slice(0, 10).reduce((a, t) => a + t.xp, 0)),
+  10,
+);
+// 12話に対してレベルは10段しかないので、対になっている2組だけ同時に開く
+is("最初の8話は1話ずつ開く", openedAt.slice(0, 7), [1, 1, 1, 1, 1, 1, 1]);
+is(
+  "一度に3話以上は開かない",
+  openedAt.every((n) => n <= 2),
+  true,
+);
+is(
+  "同時に2話開くのは2回だけ(Aの2話と布陣の2話)",
+  openedAt.filter((n) => n === 2).length,
+  2,
+);
 is(
   "レベル10で全話が開いている",
   TUTORIALS.every((t) => t.level <= 10),
   true,
 );
+// 各話の経験値は「次のレベルまでちょうど届く量」。対の回は2話で1段ぶん
 is(
-  "あとの話ほど経験値が多い",
-  TUTORIALS.every((t, i) => i === 0 || t.xp >= TUTORIALS[i - 1].xp),
-  true,
+  "第1〜8話は1話でちょうど1つ上がる",
+  TUTORIALS.slice(0, 8).map((t) => t.xp),
+  EARLY_STEPS.slice(0, 8),
+);
+is(
+  "第9・10話の2話で1つ上がる",
+  TUTORIALS[8].xp + TUTORIALS[9].xp,
+  EARLY_STEPS[8],
 );
 
 console.log("記録のつけ方");
@@ -151,7 +186,7 @@ is("チュートリアルは対戦の数に入れない", [r.plays, r.battles], 
 is(
   "経験値の総量でレベルが上がっている",
   [levelOfXp(50), levelOfXp(r.xp)],
-  [1, 3],
+  [1, 2],
 );
 is(
   "テストビルドの間は全員が上限",
