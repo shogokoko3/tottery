@@ -589,13 +589,20 @@
 .skins-results-overlay .skin-dialog {
   width: min(860px, 100%);
 }
+/* 引いた札の並び。どの幅でも4枚ずつ。10枚なら 4+4+2 で、
+   最後の行は中央にそろう */
 .skins-results-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 18px 12px;
 }
 .skins-result {
   min-width: 0;
+  flex: 0 0 calc((100% - 36px) / 4);
+}
+.single-result .skins-result {
+  flex-basis: 100%;
 }
 .skins-result-art {
   box-shadow: 0 4px 18px #0004;
@@ -1035,11 +1042,21 @@
     max-height: calc(100dvh - 24px);
   }
   .skins-results-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px 9px;
+    gap: 14px 9px;
+  }
+  .skins-result {
+    flex-basis: calc((100% - 27px) / 4);
   }
   .skins-result > strong {
     font-size: 10px;
+    line-height: 1.5;
+    min-height: 30px;
+    margin-top: 5px;
+  }
+  .skins-result .skin-btn {
+    padding: 8px 2px;
+    font-size: 10px;
+    letter-spacing: -0.02em;
   }
   .single-result {
     grid-template-columns: 1fr;
@@ -1473,11 +1490,9 @@
   }
   .skins-result .skin-btn {
     min-height: 36px;
-    font-size: 12px;
   }
   /* 8〜10px の文字を 10〜11px に */
-  .skins-tile > strong,
-  .skins-result > strong {
+  .skins-tile > strong {
     font-size: 11px;
   }
   .skins-tile-rarity {
