@@ -24,6 +24,9 @@ export function normalize(raw) {
     : [];
   return {
     version: 1,
+    // ガチャチケット。ミッションの褒美で増える。
+    // いまのガチャは無料のテスト版なので、まだ減らない
+    tickets: count(value.tickets),
     owned,
     equipped,
     draws: count(value.draws),
@@ -49,6 +52,28 @@ export function pull(state, amount, random = Math.random) {
     return { id: skin.id, isNew };
   });
   return { ...state, owned, draws: state.draws + amount, pending: { results } };
+}
+
+/** チケットを足す */
+export function addTickets(state, n) {
+  const add = Number.isSafeInteger(n) && n > 0 ? n : 0;
+  return add ? { ...state, tickets: state.tickets + add } : state;
+}
+
+/** チケットを使う。足りなければ何もしない */
+export function spendTickets(state, n) {
+  const cost = Number.isSafeInteger(n) && n > 0 ? n : 0;
+  if (!cost || state.tickets < cost) return state;
+  return { ...state, tickets: state.tickets - cost };
+}
+
+/** ガチャを通さずにスキンを配る。ミッションの褒美から呼ぶ */
+export function grantSkin(state, id) {
+  if (!byId(id)) return state;
+  return {
+    ...state,
+    owned: { ...state.owned, [id]: (state.owned[id] || 0) + 1 },
+  };
 }
 
 export function equip(state, id) {

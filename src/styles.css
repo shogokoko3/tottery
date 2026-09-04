@@ -3235,3 +3235,93 @@ h3 {
   color: #ffd2d6;
   font-size: 13px;
 }
+
+/* --- ミッション --- */
+.mission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0;
+}
+.mission {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(9, 20, 38, 0.6);
+  padding: 12px 14px;
+}
+/* 受け取れるものは金の縁で目を引く。受け取り済みは沈める */
+.mission.is-ready {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+}
+.mission.is-claimed {
+  opacity: 0.55;
+}
+.mission-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mission-kind {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.mission-head b {
+  font-family: "Shippori Mincho", serif;
+  font-size: 14px;
+}
+.mission-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin: 9px 0 7px;
+}
+.mission-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold));
+}
+.mission-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mission-foot small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.mission-done {
+  font-size: 11px;
+  color: var(--gold-soft);
+}
+.mission-message {
+  min-height: 1.6em;
+  margin: 0;
+  font-size: 12px;
+  color: var(--gold-soft);
+  text-align: center;
+}
+/* 受け取れる数の印 */
+.menu-badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--card-red);
+  color: #fff;
+  font: 700 11px/20px sans-serif;
+  text-align: center;
+}
+.btn-choice {
+  position: relative;
+}

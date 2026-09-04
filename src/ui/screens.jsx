@@ -37,12 +37,14 @@ import { RankingScreen } from "./ranking.jsx";
 import { hasName, isTestPlay, loadProfile } from "../game/profile.js";
 import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { titleOf } from "../game/titles.js";
-import { resetAccount } from "../game/profile.js";
+import { resetAccount, touchDay } from "../game/profile.js";
 import { syncPlayer } from "../net/players.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
 import SKIN_STYLES from "../skins/styles.css";
 import { SkinsScreen } from "./skins.jsx";
+import { MissionsScreen } from "./missions.jsx";
+import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 import { sanitizeLoadout } from "../skins/catalog.js";
 
@@ -170,7 +172,10 @@ export function MatchingScreen({
   onTutorial,
   onRanking,
   onSkins,
+  onMissions,
 }) {
+  // 受け取れるミッションの数。入り口に印を出す
+  const ready = claimableCount(loadProfile());
   return (
     <div className="center-stage">
       <h2>対戦相手を選ぶ</h2>
@@ -204,6 +209,13 @@ export function MatchingScreen({
           <span className="choice-label">
             スキンガチャ・装備<small>無料・回数制限なしのテスト召喚</small>
           </span>
+        </button>
+        <button className="btn btn-ghost btn-choice" onClick={onMissions}>
+          <Check size={30} />
+          <span className="choice-label">
+            ミッション<small>条件を満たして称号やチケットを受け取る</small>
+          </span>
+          {ready > 0 && <span className="menu-badge">{ready}</span>}
         </button>
         <button className="btn btn-ghost btn-choice" onClick={onRanking}>
           <Crown size={30} />
@@ -774,6 +786,8 @@ export function TotteryApp() {
   useEffect(() => {
     const me = loadProfile();
     if (!me.id || !me.name) return;
+    // 使用頻度のミッション用に、1日1回だけ数える
+    touchDay();
     let gone = false;
     syncPlayer(me).then((banned) => {
       if (gone || !banned) return;
@@ -893,9 +907,11 @@ export function TotteryApp() {
               onTutorial={() => {
                 (u(null), t("tutorial"));
               }}
+              onMissions={() => t("missions")}
             />
           ),
           ranking: <RankingScreen onBack={() => t("matching")} />,
+          missions: <MissionsScreen onBack={() => t("matching")} />,
           tutorial: (
             <TutorialSelect
               onBack={() => t("matching")}

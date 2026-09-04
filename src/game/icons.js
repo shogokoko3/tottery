@@ -13,8 +13,13 @@ export const ICONS = [
   { id: "heart", label: "ハート", mark: "♥", free: true },
   { id: "diamond", label: "ダイヤ", mark: "♦", free: true },
   { id: "club", label: "クラブ", mark: "♣", free: true },
-  { id: "crown", label: "王冠", mark: "♛", how: "これから手に入ります" },
-  { id: "star", label: "星", mark: "★", how: "これから手に入ります" },
+  {
+    id: "crown",
+    label: "王冠",
+    mark: "♛",
+    how: "ミッション「レベル10になる」",
+  },
+  { id: "star", label: "星", mark: "★", how: "ミッション「レベル30になる」" },
   { id: "flame", label: "炎", mark: "✦", how: "これから手に入ります" },
 ];
 

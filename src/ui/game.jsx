@@ -1123,7 +1123,9 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     // チュートリアルは話ごとの経験値。対戦の数には数えない
     const after = recordGame(won, {
       ...(typeof foeRating === "number" ? { foeRating } : null),
-      ...(tutorial ? { xp: tutorial.xp, tutorial: !0 } : null),
+      ...(tutorial
+        ? { xp: tutorial.xp, tutorial: !0, tutorialId: tutorial.id }
+        : null),
     });
     setRatingResult(after.delta === null ? null : after);
     if (after.delta !== null) publishRank(after);

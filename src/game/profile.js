@@ -60,6 +60,14 @@ const EMPTY = {
   wins: 0,
   // 経験値。レベルはここから毎回導くので、レベルは保存しない
   xp: 0,
+  // 使った日数。ミッションの「使用頻度」に使う
+  days: 0,
+  streak: 0,
+  lastDay: null,
+  // 褒美を受け取り済みのミッション
+  missions: [],
+  // 一度クリアしたチュートリアル。2回目からは経験値を配らない
+  cleared: [],
   // レーティングと、その対象になった対局数(オンラインだけ)
   rating: START_RATING,
   rated: 0,
@@ -106,6 +114,15 @@ export function loadProfile() {
           ? saved.xp
           : (Number(saved.plays) || 0) * XP.BATTLE,
       ) || 0,
+    days: Number(saved.days) || 0,
+    streak: Number(saved.streak) || 0,
+    lastDay: typeof saved.lastDay === "string" ? saved.lastDay : null,
+    missions: Array.isArray(saved.missions)
+      ? saved.missions.filter((x) => typeof x === "string")
+      : [],
+    cleared: Array.isArray(saved.cleared)
+      ? saved.cleared.filter((x) => Number.isInteger(x))
+      : [],
     rating: Number(saved.rating) || START_RATING,
     rated: Number(saved.rated) || 0,
   };
@@ -221,8 +238,16 @@ export function recordGame(won, opts) {
   const after = rated
     ? applyRating(before, foeRating, won, profile.rated)
     : before;
-  const gained =
-    opts && Number.isFinite(opts.xp) && opts.xp >= 0 ? opts.xp : XP.BATTLE;
+  // チュートリアルは初回だけ経験値が入る。2回目からは0
+  const again =
+    opts &&
+    opts.tutorialId != null &&
+    profile.cleared.includes(opts.tutorialId);
+  const gained = again
+    ? 0
+    : opts && Number.isFinite(opts.xp) && opts.xp >= 0
+      ? opts.xp
+      : XP.BATTLE;
   const levelBefore = levelOf(profile);
   const next = {
     ...profile,
@@ -230,6 +255,10 @@ export function recordGame(won, opts) {
     battles: profile.battles + (opts && opts.tutorial ? 0 : 1),
     wins: profile.wins + (won ? 1 : 0),
     xp: profile.xp + gained,
+    cleared:
+      opts && opts.tutorialId != null && !again
+        ? [...profile.cleared, opts.tutorialId]
+        : profile.cleared,
     rating: after,
     rated: profile.rated + (rated ? 1 : 0),
   };
@@ -248,6 +277,7 @@ export function recordGame(won, opts) {
     before,
     earned,
     gained,
+    firstClear: !!(opts && opts.tutorialId != null) && !again,
     levelBefore,
     levelAfter,
     leveledUp: levelAfter > levelBefore,
@@ -271,6 +301,47 @@ export function levelProgress(profile) {
 /** 次のレベルまでに必要な経験値。最高レベルなら null */
 export function toNextLevel(profile) {
   return levelProgress(profile).left;
+}
+
+/** 端末の時計での今日。日付だけを "2026-09-04" の形で持つ */
+export function dayKey(at) {
+  const d = at instanceof Date ? at : new Date(at == null ? Date.now() : at);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * 「今日も遊んだ」を1日1回だけ数える。アプリを開いたときに呼ぶ。
+ * 続けて遊んだ日数(streak)は、前日から続いていれば伸び、飛ぶと1に戻る。
+ */
+export function touchDay(at) {
+  const profile = loadProfile();
+  const now = at == null ? Date.now() : at;
+  const today = dayKey(now);
+  if (profile.lastDay === today) return profile;
+  const yesterday = dayKey(now - 24 * 60 * 60 * 1000);
+  const next = {
+    ...profile,
+    days: profile.days + 1,
+    streak: profile.lastDay === yesterday ? profile.streak + 1 : 1,
+    lastDay: today,
+  };
+  saveProfile(next);
+  return next;
+}
+
+/** ミッションの褒美を受け取ったことを控える */
+export function markMissionClaimed(id) {
+  const profile = loadProfile();
+  if (!id || profile.missions.includes(id)) return profile;
+  const next = { ...profile, missions: [...profile.missions, id] };
+  saveProfile(next);
+  return next;
+}
+
+/** そのチュートリアルをもうクリアしているか。経験値は初回だけ配る */
+export function hasCleared(id, profile) {
+  return (profile || loadProfile()).cleared.includes(id);
 }
 
 /** 経験値を足す。対局以外(有償ガチャなど)から呼ぶ */

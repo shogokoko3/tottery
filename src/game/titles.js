@@ -43,6 +43,9 @@ export const TITLES = [
     how: "オンラインで1局遊ぶ",
     unlocked: (p) => p.rated >= 1,
   },
+  // ミッションの褒美。条件では自動で開かず、受け取ったときに配られる
+  { id: "regular", name: "常連", how: "ミッション「3日あそぶ」" },
+  { id: "devoted", name: "皆勤の士", how: "ミッション「30日あそぶ」" },
   {
     id: "rank-shi",
     name: "士の位",
