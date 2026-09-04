@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useGameBgm, useGameSounds } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
 import { enrichAction } from "../game/actions.js";
-import { getLegalMoves, squareName } from "../game/board.js";
+import { getLegalMoves, kingRankOf, squareName } from "../game/board.js";
 import {
   PLAYER_META,
   nameOf,
@@ -884,7 +884,13 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   (0, useEffect)(() => {
     if (!tutorial || network) return;
     let act = foeAction(a, tutorial, foeIdxRef.current, (piece) =>
-      getLegalMoves(piece, a.board, a.boardSize, a.players[1].armyRankCounts),
+      getLegalMoves(
+        piece,
+        a.board,
+        a.boardSize,
+        a.players[1].armyRankCounts,
+        kingRankOf(a, 1),
+      ),
     );
     if (!act) return;
     let id = setTimeout(
@@ -1742,7 +1748,15 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   }
 
   let M = x && a.selectedId ? a.pieces[a.selectedId] : null,
-    ct = M ? getLegalMoves(M, a.board, R, a.players[P].armyRankCounts) : [],
+    ct = M
+      ? getLegalMoves(
+          M,
+          a.board,
+          R,
+          a.players[P].armyRankCounts,
+          kingRankOf(a, P),
+        )
+      : [],
     Jl = P === 1,
     Pl = x && a.shuffleMode;
   return (

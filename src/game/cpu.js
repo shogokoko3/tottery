@@ -1,4 +1,9 @@
-import { totalSlots, territoryRows, getLegalMoves } from "./board.js";
+import {
+  totalSlots,
+  territoryRows,
+  getLegalMoves,
+  kingRankOf,
+} from "./board.js";
 
 /** ランクのざっくりした強さ。CPU の評価にだけ使う */
 const RANK_VALUE = {
@@ -84,6 +89,7 @@ export function bestMove(state, player) {
       state.board,
       size,
       state.players[player].armyRankCounts,
+      kingRankOf(state, player),
     )) {
       let score = Math.random() * 0.8;
       const target = state.board[move.row][move.col];

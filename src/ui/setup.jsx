@@ -298,7 +298,8 @@ function previewMoves(state, pIdx, size, placement, card, at) {
     alive: true,
   };
   board[at.row][at.col] = piece;
-  return getLegalMoves(piece, board, size, {});
+  // 布陣中はまだ王が決まっていない。伸びる前の素の動きを出す
+  return getLegalMoves(piece, board, size, {}, null);
 }
 
 export function SetupWaiting({

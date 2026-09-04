@@ -9,7 +9,7 @@ import {
   CLOCK_INITIAL_MS,
   CLOCK_INCREMENT_MS,
 } from "../src/game/reducer.js";
-import { getLegalMoves, totalSlots } from "../src/game/board.js";
+import { getLegalMoves, kingRankOf, totalSlots } from "../src/game/board.js";
 import { cpuAction } from "../src/game/cpu.js";
 
 let pass = 0;
@@ -160,6 +160,7 @@ console.log("持ち時間");
       s.board,
       5,
       s.players[first].armyRankCounts,
+      kingRankOf(s, first),
     ).find((m) => !m.capture);
     if (mv) {
       acted = reducer(

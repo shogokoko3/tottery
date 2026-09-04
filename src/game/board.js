@@ -167,12 +167,44 @@ export function knightMoves(piece, board, size) {
   return moves;
 }
 
+/** 採用1枚あたり何マス伸びるか */
+export const KING_RANGE_PER_CARD = 2;
+
+/**
+ * その駒の移動距離が何マス伸びるか。伸び幅は「採用枚数 × 2マス」。
+ *
+ *   2・3 が王 … 王自身が伸びる。小回りの利く王が、そのぶん遠くまで動ける
+ *   4・5 が王 … 王以外の同じ数字が伸びる。王は動かず、兄弟が前に出る
+ *
+ * 例) 2を4枚採用して王にすると、王の2は 1 + 2×4 = 9マス。
+ *
+ * 伸びるのは距離の決まっている2〜5だけ。6以降は「偶数マス」「何マスでも」と
+ * 上限が無いので関わらない。
+ */
+export function rangeBonus(piece, armyRankCounts, kingRank) {
+  const rank = piece.rank;
+  const cards = (armyRankCounts && armyRankCounts[rank]) || 1;
+  const grows =
+    rank === "2" || rank === "3"
+      ? piece.isKing
+      : (rank === "4" || rank === "5") && !piece.isKing && kingRank === rank;
+  return grows ? KING_RANGE_PER_CARD * cards : 0;
+}
+
+/** その軍の王の数字。まだ王が決まっていなければ null */
+export function kingRankOf(state, owner) {
+  const id = state?.players?.[owner]?.kingId;
+  const king = id ? state.pieces?.[id] : null;
+  return king ? king.rank : null;
+}
+
 /**
  * ある駒の合法手。
- * armyRankCounts は「軍内に同じランクが何枚あるか」で、王のときだけ距離が伸びる。
+ * armyRankCounts は軍内のランク別の採用枚数、kingRank はその軍の王の数字。
+ * 4・5 の王は自分ではなく同じ数字を伸ばすので、駒だけを見ても伸び幅が決まらない。
  */
-export function getLegalMoves(piece, board, size, armyRankCounts) {
-  const bonus = piece.isKing ? armyRankCounts[piece.rank] || 1 : 0;
+export function getLegalMoves(piece, board, size, armyRankCounts, kingRank) {
+  const bonus = rangeBonus(piece, armyRankCounts, kingRank);
   switch (piece.rank) {
     case "A":
       return [];

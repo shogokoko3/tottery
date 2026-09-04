@@ -40,7 +40,7 @@ const BONUS_EXPECT = {
     revealedCard: "10♦",
   },
 };
-import { getLegalMoves } from "../src/game/board.js";
+import { getLegalMoves, kingRankOf } from "../src/game/board.js";
 import { levelOfXp } from "../src/game/level.js";
 import { cpuAction } from "../src/game/cpu.js";
 import {
@@ -61,7 +61,13 @@ function ok(label, cond, extra) {
 }
 
 const legalOf = (s, owner) => (piece) =>
-  getLegalMoves(piece, s.board, s.boardSize, s.players[owner].armyRankCounts);
+  getLegalMoves(
+    piece,
+    s.board,
+    s.boardSize,
+    s.players[owner].armyRankCounts,
+    kingRankOf(s, owner),
+  );
 
 /** 台本が待っているあいだ、画面の流れを進めるだけの操作 */
 function flowAction(s) {
@@ -142,6 +148,7 @@ function noteKingStretch(s, act) {
     s.board,
     s.boardSize,
     s.players[0].armyRankCounts,
+    kingRankOf(s, 0),
   );
   if (!base.some((m) => m.row === act.row && m.col === act.col))
     stretched.push(`${p.rank} が素の射程を越えて動く`);

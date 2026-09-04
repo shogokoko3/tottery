@@ -5,6 +5,11 @@ import { Close } from "../icons.jsx";
 import { CardFace } from "./cards.jsx";
 
 export function MoveDiagram({ rank, isKing = !1, gridSize = 7 }) {
+  // 4・5 の王は自分ではなく「王以外の同じ数字」を伸ばす。
+  // 王の欄では、その伸びた駒のほうを描く(王自身は素の動きのままなので、
+  // 王として描くと通常の欄と同じ図になり、何が変わったのか読めない)
+  const growsOthers = rank === "4" || rank === "5";
+  const drawAsKing = isKing && !growsOthers;
   let n = Math.floor(gridSize / 2),
     a = emptyBoard(gridSize),
     u = {
@@ -12,13 +17,13 @@ export function MoveDiagram({ rank, isKing = !1, gridSize = 7 }) {
       rank,
       suit: "spade",
       owner: 0,
-      isKing,
+      isKing: drawAsKing,
       row: n,
       col: n,
       alive: !0,
       history: [],
     };
-  if (((a[n][n] = u), isKing && ["6", "7", "8", "9"].includes(rank)))
+  if (((a[n][n] = u), drawAsKing && ["6", "7", "8", "9"].includes(rank)))
     for (let o = 0; o < gridSize; o++)
       for (let r = 0; r < gridSize; r++)
         (o === n && r === n) ||
@@ -36,9 +41,7 @@ export function MoveDiagram({ rank, isKing = !1, gridSize = 7 }) {
   let i =
       rank === "A"
         ? []
-        : getLegalMoves(u, a, gridSize, {
-            [rank]: 1,
-          }),
+        : getLegalMoves(u, a, gridSize, { [rank]: 1 }, isKing ? rank : null),
     f = new Set(i.map((o) => `${o.row},${o.col}`));
   return (
     <div
