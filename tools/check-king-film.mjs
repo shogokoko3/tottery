@@ -8,7 +8,12 @@
 import assert from "node:assert/strict";
 import { initialState, reducer } from "../src/game/reducer.js";
 import { emptyBoard } from "../src/game/board.js";
-import { captureFilm, filmsFor, successionFilm } from "../src/skins/events.js";
+import {
+  captureFilm,
+  filmsFor,
+  revengeFilm,
+  successionFilm,
+} from "../src/skins/events.js";
 
 let ok = 0,
   fail = 0;
@@ -47,11 +52,20 @@ function build(cards) {
   }
   return s;
 }
-const move = (s, id, row, col) => reducer(s, { type: "MOVE_PIECE", pieceId: id, row, col });
+const move = (s, id, row, col) =>
+  reducer(s, { type: "MOVE_PIECE", pieceId: id, row, col });
 const name = (v) => (v ? v.name : null);
 
 // 攻める側は 0 番、6 に「翠樹の射手」。守る側は 1 番、2 に「墓守のレヴナント」
-const loadouts = [{ 6: "elf-male" }, { 2: "zombie-male", 3: "zombie-female" }];
+const loadouts = [
+  { 6: "elf-male" },
+  {
+    2: "zombie-male",
+    3: "zombie-female",
+    4: "pirate-male",
+    5: "pirate-female",
+  },
+];
 
 console.log("ふだんの取り(王ではない)");
 {
@@ -62,8 +76,14 @@ console.log("ふだんの取り(王ではない)");
     ["k1", "K", 1, 0, 4, true],
   ]);
   const after = move(before, "elf", 2, 2);
-  t("取った本人には流れる", name(captureFilm(before, after, loadouts, 0)) === "翠樹の射手");
-  t("伏せたままなら相手には流れない", captureFilm(before, after, loadouts, 1) === null);
+  t(
+    "取った本人には流れる",
+    name(captureFilm(before, after, loadouts, 0)) === "翠樹の射手",
+  );
+  t(
+    "伏せたままなら相手には流れない",
+    captureFilm(before, after, loadouts, 1) === null,
+  );
   t("継承の映像は無い", successionFilm(before, after, loadouts) === null);
   t("流すのは1本だけ", filmsFor(before, after, loadouts, 0).length === 1);
   t("相手の画面では0本", filmsFor(before, after, loadouts, 1).length === 0);
@@ -78,7 +98,10 @@ console.log("\n王(K)を取って決着したとき");
   ]);
   const after = move(before, "elf", 2, 2);
   t("決着している", after.winner === 0);
-  t("取った本人に流れる", name(captureFilm(before, after, loadouts, 0)) === "翠樹の射手");
+  t(
+    "取った本人に流れる",
+    name(captureFilm(before, after, loadouts, 0)) === "翠樹の射手",
+  );
   t(
     "伏せたままでも相手に流れる",
     name(captureFilm(before, after, loadouts, 1)) === "翠樹の射手",
@@ -98,15 +121,24 @@ console.log("\n王の2を取って、跡継ぎが1枚だけのとき");
   const after = move(before, "elf", 2, 2);
   t("決着していない", after.winner === null || after.winner === undefined);
   t("跡継ぎが王になった", after.players[1].kingId === "heir");
-  t("取った側の映像", name(captureFilm(before, after, loadouts, 1)) === "翠樹の射手");
+  t(
+    "取った側の映像",
+    name(captureFilm(before, after, loadouts, 1)) === "翠樹の射手",
+  );
   t(
     "継承の映像は取られた側のスキン",
     name(successionFilm(before, after, loadouts)) === "墓守のレヴナント",
   );
   const both = filmsFor(before, after, loadouts, 1);
   t("2本流れる", both.length === 2);
-  t("順番は 取った側 → 継承", both[0].name === "翠樹の射手" && both[1].name === "墓守のレヴナント");
-  t("どちらの画面でも同じ2本", filmsFor(before, after, loadouts, 0).length === 2);
+  t(
+    "順番は 取った側 → 継承",
+    both[0].name === "翠樹の射手" && both[1].name === "墓守のレヴナント",
+  );
+  t(
+    "どちらの画面でも同じ2本",
+    filmsFor(before, after, loadouts, 0).length === 2,
+  );
 }
 
 console.log("\n王の3を取って、跡継ぎを選ぶとき");
@@ -168,8 +200,19 @@ console.log("\n二重に流さない");
     ["heir", "2", 1, 0, 4, false],
   ]);
   const after = move(before, "elf", 2, 2);
-  t("同じ盤をもう一度描いても流さない", filmsFor(after, { ...after }, loadouts, 1).length === 0);
-  t("取っていない手では流さない", filmsFor(before, reducer(before, { type: "SELECT_PIECE", id: "elf" }), loadouts, 1).length === 0);
+  t(
+    "同じ盤をもう一度描いても流さない",
+    filmsFor(after, { ...after }, loadouts, 1).length === 0,
+  );
+  t(
+    "取っていない手では流さない",
+    filmsFor(
+      before,
+      reducer(before, { type: "SELECT_PIECE", id: "elf" }),
+      loadouts,
+      1,
+    ).length === 0,
+  );
 }
 
 console.log("\n王を討った駒は名乗りを上げる(決まり)");
@@ -184,7 +227,10 @@ console.log("\n王を討った駒は名乗りを上げる(決まり)");
   t("討った駒が表になる", after.pieces.elf.revealed === true);
   t("盤の上でも表になっている", after.board[2][2].revealed === true);
   t("めくる演出の相手が分かる", after.lastReveal?.id === "elf");
-  t("行動の記録に残る", after.pieces.elf.history.includes("王を討って名乗りを上げた"));
+  t(
+    "行動の記録に残る",
+    after.pieces.elf.history.includes("王を討って名乗りを上げた"),
+  );
   t(
     "対局の記録に名乗りが出る",
     after.log.some((l) => l.includes("名乗りを上げた")),
@@ -243,7 +289,171 @@ console.log("\n名乗るので、相手の画面にも映像が流れる");
     "映像の側に例外を置かなくても相手に流れる",
     name(captureFilm(before, after, loadouts, 1)) === "翠樹の射手",
   );
-  t("スキンの有無で正体の割れ方が変わらない", after.pieces.elf.revealed === true);
+  t(
+    "スキンの有無で正体の割れ方が変わらない",
+    after.pieces.elf.revealed === true,
+  );
+}
+
+console.log("\n道連れ(4・5の効果)の映像");
+{
+  // 王が4。王以外の4が取られると、取った相手も道連れになる
+  const before = build([
+    ["k0", "K", 0, 4, 0, true],
+    ["four", "4", 1, 2, 2, false],
+    ["k1", "4", 1, 0, 4, true],
+    ["elf", "6", 0, 3, 1, false],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  t(
+    "道連れの印が立つ",
+    after.lastRevenge?.rank === "4" && after.lastRevenge?.owner === 1,
+  );
+  t("取った駒も倒れている", after.pieces.elf.alive === false);
+  t(
+    "取られた側の4のスキンが流れる",
+    name(revengeFilm(before, after, loadouts)) === "黒潮の船長",
+  );
+  const both = filmsFor(before, after, loadouts, 0);
+  t("2本流れる", both.length === 2);
+  t(
+    "順番は 取った側 → 道連れ",
+    both[0].name === "翠樹の射手" && both[1].name === "黒潮の船長",
+  );
+  // 道連れの映像は誰にでも流すが、取った駒がまだ伏せているなら、その駒の
+  // 映像だけは相手に見せない(正体が漏れる)。王を討った手と違って対局は続く
+  {
+    const foeSide = filmsFor(before, after, loadouts, 1);
+    t("取られた側には道連れの1本だけ", foeSide.length === 1);
+    t("その1本は道連れの映像", foeSide[0].name === "黒潮の船長");
+  }
+  {
+    // 取った駒がもう表なら、相手にも2本流れる
+    const shown = build([
+      ["k0", "K", 0, 4, 0, true],
+      ["four", "4", 1, 2, 2, false],
+      ["k1", "4", 1, 0, 4, true],
+      ["elf", "6", 0, 3, 1, false],
+    ]);
+    shown.pieces.elf.revealed = true;
+    shown.board[3][1].revealed = true;
+    const done = move(shown, "elf", 2, 2);
+    t(
+      "取った駒が表なら相手にも2本",
+      filmsFor(shown, done, loadouts, 1).length === 2,
+    );
+  }
+  t(
+    "同じ盤をもう一度描いても流さない",
+    revengeFilm(after, { ...after }, loadouts) === null,
+  );
+  t(
+    "印が残ったままの次の手では流さない",
+    revengeFilm(after, { ...after, seq: 99 }, loadouts) === null,
+  );
+}
+{
+  // 王が4でも、取られたのが5なら道連れは起きない
+  const before = build([
+    ["k0", "K", 0, 4, 0, true],
+    ["five", "5", 1, 2, 2, false],
+    ["k1", "4", 1, 0, 4, true],
+    ["elf", "6", 0, 3, 1, false],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  t("数字が違えば道連れなし", !after.lastRevenge);
+  t("映像も流れない", revengeFilm(before, after, loadouts) === null);
+}
+{
+  // 王が6なら、4を取られても道連れは起きない
+  const before = build([
+    ["k0", "K", 0, 4, 0, true],
+    ["four", "4", 1, 2, 2, false],
+    ["k1", "6", 1, 0, 4, true],
+    ["elf", "6", 0, 3, 1, false],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  t("王が別の数字なら道連れなし", !after.lastRevenge);
+}
+{
+  // スキンを着けていなければ流れない
+  const before = build([
+    ["k0", "K", 0, 4, 0, true],
+    ["four", "4", 1, 2, 2, false],
+    ["k1", "4", 1, 0, 4, true],
+    ["elf", "6", 0, 3, 1, false],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  t("未装備なら流れない", revengeFilm(before, after, [{}, {}]) === null);
+  t(
+    "取った側が未装備でも道連れの1本は流れる",
+    filmsFor(before, after, [{}, { 4: "pirate-male" }], 0).length === 1,
+  );
+}
+
+console.log("\n2・3 は継承、4・5 は道連れ。効果が出たときに流れる");
+{
+  const before = build([
+    ["k0", "K", 0, 4, 0, true],
+    ["k1", "2", 1, 2, 2, true],
+    ["heir", "2", 1, 0, 4, false],
+    ["elf", "6", 0, 3, 1, false],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  t(
+    "2の王を討つと継承の映像",
+    name(successionFilm(before, after, loadouts)) === "墓守のレヴナント",
+  );
+  t("道連れは起きない", revengeFilm(before, after, loadouts) === null);
+}
+
+console.log("\n2〜5 は取っても流さない(効果のときだけ)");
+{
+  const all = {
+    2: "zombie-male",
+    3: "zombie-female",
+    4: "pirate-male",
+    5: "pirate-female",
+    6: "elf-male",
+    7: "elf-female",
+    8: "viking-male",
+    9: "viking-female",
+  };
+  const mine = [all, {}];
+  const shot = (rank) => {
+    const before = build([
+      ["me", rank, 0, 3, 1, false],
+      ["foe", "8", 1, 2, 2, false],
+      ["k0", "K", 0, 4, 0, true],
+      ["k1", "K", 1, 0, 4, true],
+    ]);
+    before.pieces.me.revealed = true;
+    before.board[3][1].revealed = true;
+    return captureFilm(before, move(before, "me", 2, 2), mine, 1);
+  };
+  for (const r of ["2", "3", "4", "5"])
+    t(`${r} が取っても流れない`, shot(r) === null);
+  for (const r of ["6", "7", "8", "9"])
+    t(`${r} が取ると流れる`, shot(r) !== null);
+}
+{
+  // 2〜5 が王を討ったときも、取った側の映像は流さない。
+  // 名乗り(表になる決まり)はそのまま働く
+  const before = build([
+    ["four", "4", 0, 3, 2, false],
+    ["k0", "K", 0, 4, 0, true],
+    ["k1", "K", 1, 2, 2, true],
+  ]);
+  const after = move(before, "four", 2, 2);
+  t(
+    "王を討っても4の映像は流れない",
+    captureFilm(before, after, [{ 4: "pirate-male" }, {}], 1) === null,
+  );
+  t("名乗りは働く", after.pieces.four.revealed === true);
+  t(
+    "流れる映像は無い",
+    filmsFor(before, after, [{ 4: "pirate-male" }, {}], 1).length === 0,
+  );
 }
 
 console.log(`\n${ok} ok / ${fail} fail`);

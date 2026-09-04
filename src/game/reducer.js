@@ -90,6 +90,7 @@ export function initialState() {
     logViewerId: null,
     log: [],
     lastReveal: null,
+    lastRevenge: null,
     winner: null,
     seq: 0,
   };
@@ -229,10 +230,22 @@ export function removePiece(state, pieceId, opts) {
         log.push(
           `${PLAYER_META[dead.owner].name}の${dead.rank}${SUIT_SYMBOL[dead.suit]}が道連れにした!`,
         );
-        next = removePiece({ ...next, log }, opts.by, {
-          by: null,
-          viaCounter: true,
-        });
+        next = removePiece(
+          {
+            ...next,
+            log,
+            // 道連れが起きたこと。映像を出す側が盤を見比べずに済むよう、
+            // 印だけ置く。次に起きるまで同じものが残るので、二重に流れない
+            lastRevenge: {
+              id: dead.id,
+              owner: dead.owner,
+              rank: dead.rank,
+              suit: dead.suit,
+            },
+          },
+          opts.by,
+          { by: null, viaCounter: true },
+        );
       }
     }
   }
