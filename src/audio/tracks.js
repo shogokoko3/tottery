@@ -100,26 +100,70 @@ export function isEndgame(state, clocks) {
 }
 
 /**
+ * 画面ごとの曲。
+ *
+ * **画面を足したら、ここにも足すこと。** 書き忘れても遊べなくなりはしないが、
+ * その画面だけ表題の曲のままになる。`npm run check` が
+ * src/ui/screens.jsx の並びと突き合わせて、書き忘れを知らせる。
+ *
+ * "game" は対局そのもので、曲は下の PHASE_TRACK が決めるので null。
+ */
+export const SCREEN_TRACK = {
+  home: "title",
+  matching: "title",
+  ranking: "title",
+  tutorial: "title",
+  rules: "title",
+  // 相手を待っているあいだは、数分続いても飽きない薄い曲にする
+  online: "waiting",
+  room: "waiting",
+  game: null,
+};
+
+/**
+ * 対局の進み具合ごとの曲。
+ *
+ * **場面(phase)を足したら、ここにも足すこと。** `npm run check` が
+ * src/game/reducer.js の phase と突き合わせて、書き忘れを知らせる。
+ *
+ * play と gameover はここに書いた曲から更に振り分ける。
+ * 終盤なら endgame、負けなら lose。振り分け先は EXTRA_TRACKS に挙げてある。
+ */
+export const PHASE_TRACK = {
+  intro: "setup",
+  dice: "setup",
+  mulligan: "setup",
+  setup: "setup",
+  play: "battle",
+  gameover: "win",
+};
+
+/**
+ * 上の2つの表には出てこないが、場面によって差し替わる曲。
+ * ここに挙げていない曲が TRACKS にあると、鳴らす道がないので検査が知らせる。
+ */
+export const EXTRA_TRACKS = ["endgame", "lose"];
+
+/**
  * いまの場面で鳴らす曲。鳴らさないときは null。
  *
  * scene は次の形:
- *   screen  画面(home / matching / tutorial / rules / online / room / game)
- *   phase   対局中の進み具合(intro / dice / mulligan / setup / play / gameover)
+ *   screen  画面(SCREEN_TRACK の見出し)
+ *   phase   対局中の進み具合(PHASE_TRACK の見出し)
  *   endgame 終盤かどうか
  *   result  決着したときだけ "win" か "lose"
+ *
+ * 表に無いものが来ても、音が止まるより鳴っているほうがましなので
+ * 既定の曲を返す。**書き忘れを知らせるのは実行時ではなく `npm run check`。**
  */
 export function trackForScene(scene) {
   if (!scene) return null;
   const { screen, phase } = scene;
 
-  if (screen !== "game") {
-    // 相手を待っているあいだは、数分続いても飽きない薄い曲にする
-    if (screen === "online" || screen === "room") return "waiting";
-    return "title";
-  }
+  if (screen !== "game")
+    return screen in SCREEN_TRACK ? SCREEN_TRACK[screen] : "title";
 
   if (phase === "gameover") return scene.result === "lose" ? "lose" : "win";
   if (phase === "play") return scene.endgame ? "endgame" : "battle";
-  // intro / dice / mulligan / setup。対局が始まるまでは1曲で通す
-  return "setup";
+  return phase in PHASE_TRACK ? PHASE_TRACK[phase] : "setup";
 }

@@ -11,6 +11,9 @@ import { SOUNDS, TICK_AT_MS, warnLevel } from "../src/audio/sounds.js";
 import {
   AUDIO_DIR,
   ENDGAME_CLOCK_MS,
+  EXTRA_TRACKS,
+  PHASE_TRACK,
+  SCREEN_TRACK,
   TRACKS,
   isEndgame,
   trackForScene,
@@ -110,10 +113,136 @@ for (let i = 1; i < TICK_AT_MS.length; i++)
     "残り時間の区切りは短くなる順に並ぶ",
   );
 
+
+/* -------------------------------------------------------------------------
+   画面や場面が増えたときに、音の割り当てを忘れていないか。
+
+   忘れても遊べなくなりはしない(既定の曲に落ちる)ので、実行時には気づけない。
+   ここでソースと突き合わせて知らせる。
+   ------------------------------------------------------------------------- */
+
+/** src/ui/screens.jsx の、画面を振り分けている表から見出しを拾う */
+function screensInSource() {
+  const src = fs.readFileSync("src/ui/screens.jsx", "utf8");
+  const end = src.indexOf("}[e]");
+  if (end < 0) return null;
+  let depth = 0;
+  let i = end;
+  for (; i >= 0; i--) {
+    if (src[i] === "}") depth++;
+    else if (src[i] === "{") {
+      depth--;
+      if (depth === 0) break;
+    }
+  }
+  if (i < 0) return null;
+  const body = src.slice(i + 1, end);
+  const keys = [];
+  let d = 0;
+  for (const line of body.split("\n")) {
+    const m = /^([A-Za-z_$][\w$]*):/.exec(line.trim());
+    if (d === 0 && m) keys.push(m[1]);
+    for (const c of line) {
+      if ("([{".includes(c)) d++;
+      else if (")]}".includes(c)) d--;
+    }
+  }
+  return keys.length ? keys : null;
+}
+
+const screens = screensInSource();
+if (!screens) {
+  failed++;
+  console.error(
+    "× src/ui/screens.jsx の画面の表が読めない。" +
+      "作りが変わったなら、この検査(screensInSource)も直すこと",
+  );
+} else {
+  for (const screen of screens)
+    if (!(screen in SCREEN_TRACK)) {
+      failed++;
+      console.error(
+        `× 画面 "${screen}" にどの曲を鳴らすか決まっていない。` +
+          `src/audio/tracks.js の SCREEN_TRACK に足すこと`,
+      );
+    }
+  // 対局そのものは表に出てこないが、SCREEN_TRACK には要る
+  if (!("game" in SCREEN_TRACK)) {
+    failed++;
+    console.error('× SCREEN_TRACK に "game" が無い');
+  }
+}
+
+/** src/game/reducer.js が使っている phase を拾う */
+const phases = [
+  ...new Set(
+    (fs.readFileSync("src/game/reducer.js", "utf8").match(/phase: "(\w+)"/g) || [])
+      .map((m) => m.slice('phase: "'.length, -1)),
+  ),
+];
+if (phases.length === 0) {
+  failed++;
+  console.error("× src/game/reducer.js から phase が拾えない");
+}
+for (const phase of phases)
+  if (!(phase in PHASE_TRACK)) {
+    failed++;
+    console.error(
+      `× 場面 "${phase}" にどの曲を鳴らすか決まっていない。` +
+        `src/audio/tracks.js の PHASE_TRACK に足すこと`,
+    );
+  }
+
+// 逆に、鳴らす道の無い曲が残っていないか
+const reachable = new Set([
+  ...Object.values(SCREEN_TRACK),
+  ...Object.values(PHASE_TRACK),
+  ...EXTRA_TRACKS,
+]);
+for (const id of Object.keys(TRACKS))
+  if (!reachable.has(id)) {
+    failed++;
+    console.error(
+      `× 曲 "${id}" は、どの場面からも鳴らされない。` +
+        `使わないなら TRACKS から外すこと`,
+    );
+  }
+
+/* -------------------------------------------------------------------------
+   画面に音が配線されたままか。
+
+   配線は画面側のファイルにあるので、担当の違うセッションが
+   その辺りを作り替えたときに落ちやすい。落ちても画面は動くので、
+   実際に遊ぶまで気づけない。
+   ------------------------------------------------------------------------- */
+const WIRING = [
+  ["src/ui/game.jsx", "useGameBgm(", "対局中に曲が切り替わらなくなる"],
+  ["src/ui/game.jsx", "useGameSounds(", "駒の音と時計の音が鳴らなくなる"],
+  ["src/ui/screens.jsx", "useScreenBgm(", "対局の外の画面で曲が鳴らなくなる"],
+  ["src/main.jsx", "armAudioUnlock(", "最初のタップで解錠されず、何も鳴らなくなる"],
+  ["src/ui/overlays.jsx", "<SoundSettings", "設定から音を切れなくなる"],
+  ["src/styles.css", ".settings-slider", "音量のつまみが崩れる"],
+];
+for (const [file, needle, what] of WIRING) {
+  if (!fs.existsSync(file)) {
+    failed++;
+    console.error(`× ${file} が無い。${what}`);
+    continue;
+  }
+  if (fs.readFileSync(file, "utf8").includes(needle)) continue;
+  failed++;
+  console.error(
+    `× ${file} から ${needle} が消えている。${what}。` +
+      `その辺りを作り替えたなら、音の行も一緒に運ぶこと`,
+  );
+}
+
 if (failed) {
   console.error(`\n${failed}件おかしい`);
   process.exit(1);
 }
 console.log(
-  `場面と曲の対応、曲${Object.keys(TRACKS).length}本、効果音${Object.keys(SOUNDS).length}本、どれも問題なし`,
+  `場面と曲の対応(画面${screens ? screens.length + 1 : "?"}・場面${phases.length})、` +
+    `曲${Object.keys(TRACKS).length}本、効果音${Object.keys(SOUNDS).length}本、` +
+    `画面への配線${WIRING.length}か所、どれも問題なし`,
 );

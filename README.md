@@ -221,7 +221,7 @@ npm run check     # 下の3本をまとめて走らせる
 | `tools/check-mod3.mjs` | 同時配置・順番配置・時間切れの自動配置・持ち時間の増減と時間切れ |
 | `tools/check-tutorial.mjs` | 台本どおりに操作して、最後まで進んで勝てるか |
 | `tools/check-board.mjs` | 盤と駒の食い違い・駒の増減・王の生死を、毎手たしかめる |
-| `tools/check-bgm.mjs` | 場面と曲の対応、音源が揃っているか |
+| `tools/check-bgm.mjs` | 場面と曲の対応、音源、画面への配線の取りこぼし |
 | `tools/parity.mjs` | v47 から変えていない部分の完全一致 |
 
 復元に使った道具:
@@ -330,6 +330,47 @@ npm run check     # 下の3本をまとめて走らせる
 
 `setup` は 92.8秒に戻すと 0.98 になるが、2:23 が 1:29 になる。
 0.93 なら繋がるので、長さを取ってそのままにしてある。
+
+### 画面や場面が増えたとき
+
+音の割り当ては**書き忘れても遊べなくなりはしない**。知らない画面は表題の曲、
+知らない場面は布陣の曲に落ちるだけなので、実行時には誰も気づけない。
+気づけるように `npm run check` がソースと突き合わせている。
+
+新しい画面や場面を足したら、次の1つを直せば済む。
+
+| 足したもの | 直す場所 |
+| --- | --- |
+| 画面(`screens.jsx` の振り分けの見出し) | `src/audio/tracks.js` の `SCREEN_TRACK` |
+| 対局の場面(`reducer.js` の `phase`) | `src/audio/tracks.js` の `PHASE_TRACK` |
+| 曲そのもの | `TRACKS` と `tools/bgm-list.mjs`、`assets/audio/` に m4a |
+| 効果音 | `src/audio/sounds.js` と `tools/prepare-se.mjs` |
+
+忘れると `npm run check` がこう言う。
+
+```
+× 画面 "shop" にどの曲を鳴らすか決まっていない。src/audio/tracks.js の SCREEN_TRACK に足すこと
+× 場面 "negotiation" にどの曲を鳴らすか決まっていない。src/audio/tracks.js の PHASE_TRACK に足すこと
+× 曲 "credits" は、どの場面からも鳴らされない。使わないなら TRACKS から外すこと
+```
+
+### 画面を作り替えるとき
+
+音を鳴らす行は画面側のファイルに6か所ある。**消えても画面は動くので、
+実際に遊ぶまで気づけない。** これも `npm run check` が見張っている。
+
+| 場所 | 行 | 消えると |
+| --- | --- | --- |
+| `src/main.jsx` | `armAudioUnlock()` | 最初のタップで解錠されず、何も鳴らない |
+| `src/ui/screens.jsx` | `useScreenBgm(e)` | 対局の外で曲が鳴らない |
+| `src/ui/game.jsx` | `useGameBgm(...)` | 対局中に曲が切り替わらない |
+| `src/ui/game.jsx` | `useGameSounds(...)` | 駒の音と時計の音が鳴らない |
+| `src/ui/overlays.jsx` | `<SoundSettings />` | 設定から音を切れない |
+| `src/styles.css` | `.settings-slider` | 音量のつまみが崩れる |
+
+`game.jsx` と `screens.jsx` の2つは、**早期 return より前**に置く必要がある
+(React のフックなので、描画のたびに必ず通らないといけない)。
+その辺りを動かすときは一緒に運ぶこと。
 
 ### 継ぎ目の確かめ方
 
