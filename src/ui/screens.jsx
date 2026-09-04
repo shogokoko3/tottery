@@ -169,7 +169,12 @@ export function GameShell({
     </div>
   );
 }
-export function HomeScreen({ onStart, onSkins }) {
+/**
+ * タイトル。押すところは「ゲームスタート」だけにしてある。
+ * スキンはこの次のホームから入る。ここに並べると、
+ * 遊び始める前に寄り道の口が見えてしまう。
+ */
+export function HomeScreen({ onStart }) {
   return (
     <div className="intro title-hero">
       <div className="title-hero-visual">
@@ -181,9 +186,6 @@ export function HomeScreen({ onStart, onSkins }) {
           ゲームスタート <ArrowRight size={18} />
         </button>
       </div>
-      <button className="btn btn-ghost intro-skins" onClick={onSkins}>
-        スキンガチャ・装備
-      </button>
     </div>
   );
 }
@@ -1010,9 +1012,7 @@ export function TotteryApp() {
     >
       {
         {
-          home: (
-            <HomeScreen onStart={() => t("menu")} onSkins={() => t("skins")} />
-          ),
+          home: <HomeScreen onStart={() => t("menu")} />,
           skins: <SkinsScreen onBack={() => t("menu")} />,
           menu: (
             <MenuScreen
