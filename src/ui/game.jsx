@@ -1120,10 +1120,11 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     const won = a.winner === (network ? p : 0);
     const foeRating =
       network && network.ratings ? network.ratings[1 - p] : null;
-    const after = recordGame(
-      won,
-      typeof foeRating === "number" ? { foeRating } : void 0,
-    );
+    // チュートリアルは話ごとの経験値。対戦の数には数えない
+    const after = recordGame(won, {
+      ...(typeof foeRating === "number" ? { foeRating } : null),
+      ...(tutorial ? { xp: tutorial.xp, tutorial: !0 } : null),
+    });
     setRatingResult(after.delta === null ? null : after);
     if (after.delta !== null) publishRank(after);
     publishPlayer(after);

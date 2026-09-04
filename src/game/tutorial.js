@@ -128,6 +128,8 @@ const EP1_DECK = fill(
 const EP1 = {
   id: 1,
   level: 1,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 400,
   title: "第1話 はじめの一局",
   subtitle: "並べて、動かして、王を討つ",
   pool: CARD_POOLS.basic,
@@ -302,7 +304,9 @@ const EP2_DECK = fill(
 
 const EP2 = {
   id: 2,
-  level: 1,
+  level: 3,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 450,
   title: "第2話 王が継ぐ",
   subtitle: "王を取られても、終わらない",
   pool: CARD_POOLS.basic,
@@ -470,7 +474,9 @@ const EP3_DECK = fill(
 
 const EP3 = {
   id: 3,
-  level: 2,
+  level: 3,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 500,
   title: "第3話 道連れ",
   subtitle: "取られた駒が、相手を道連れにする",
   pool: CARD_POOLS.basic,
@@ -638,7 +644,9 @@ const EP4_DECK = fill(
 
 const EP4 = {
   id: 4,
-  level: 3,
+  level: 4,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 550,
   title: "第4話 ふさがれる道",
   subtitle: "6は偶数、8は奇数",
   pool: CARD_POOLS.mid,
@@ -800,7 +808,9 @@ const EP5_DECK = fill(
 
 const EP5 = {
   id: 5,
-  level: 3,
+  level: 5,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 600,
   title: "第5話 ななめの兄弟",
   subtitle: "7と9、そして王のまとめ取り",
   pool: CARD_POOLS.mid,
@@ -969,7 +979,9 @@ const EP6_DECK = fill(
 
 const EP6 = {
   id: 6,
-  level: 4,
+  level: 6,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 650,
   title: "第6話 跳ぶ駒",
   subtitle: "10は、塞がれない",
   pool: CARD_POOLS.numbers,
@@ -1130,7 +1142,9 @@ const EP7_DECK = fill(
 
 const EP7 = {
   id: 7,
-  level: 5,
+  level: 6,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 700,
   title: "第7話 果てまで走る",
   subtitle: "J は縦横、Q は斜め",
   pool: CARD_POOLS.high,
@@ -1298,7 +1312,9 @@ const EP8_DECK = fill(
 
 const EP8 = {
   id: 8,
-  level: 5,
+  level: 7,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 750,
   title: "第8話 Kの王",
   subtitle: "失うほど、湧いてくる",
   pool: CARD_POOLS.court,
@@ -1467,7 +1483,9 @@ const EP9_DECK = fill(
 
 const EP9 = {
   id: 9,
-  level: 6,
+  level: 7,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 800,
   title: "第9話 動かない駒",
   subtitle: "A は、盤ごと組み替える",
   pool: CARD_POOLS.full,
@@ -1643,7 +1661,9 @@ const EP10_DECK = fill(
 
 const EP10 = {
   id: 10,
-  level: 7,
+  level: 8,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 850,
   title: "第10話 囲んで討つ",
   subtitle: "三角形の内側は、倒れる",
   pool: CARD_POOLS.full,
@@ -1819,7 +1839,9 @@ const EP11_SEVEN = idOf(EP11_DECK, "7H");
 
 const EP11 = {
   id: 11,
-  level: 7,
+  level: 8,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 900,
   title: "第11話 布陣の妙",
   // 読んでから決める回なので、説明は前面に出して先に読ませる
   readFirst: true,
@@ -2009,7 +2031,9 @@ const EP12_JACK = idOf(EP12_DECK, "JS");
 
 const EP12 = {
   id: 12,
-  level: 8,
+  level: 9,
+  // 終えると入る経験値。12話ぶんの合計がちょうどレベル10
+  xp: 950,
   title: "第12話 見えた1枚",
   // 読んでから決める回なので、説明は前面に出して先に読ませる
   readFirst: true,

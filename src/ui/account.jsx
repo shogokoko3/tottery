@@ -6,7 +6,6 @@
  */
 import { useState } from "react";
 import {
-  LEVEL_STEP,
   MAX_LEVEL,
   MAX_NAME_LEN,
   levelOf,
@@ -16,7 +15,7 @@ import {
   nameError,
   normalizeName,
   saveName,
-  toNextLevel,
+  levelProgress,
 } from "../game/profile.js";
 import { TITLES, hasTitle, titleOf } from "../game/titles.js";
 import { publishPlayer } from "../net/players.js";
@@ -150,13 +149,11 @@ export function NameEditModal({ onClose, onSaved }) {
  * 「いまの自分」がひと目で分かる形にした。
  */
 export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
-  const level = levelOf(profile);
-  const next = toNextLevel(profile);
+  const progress = levelProgress(profile);
+  const level = progress.level;
   const rate = profile.plays
     ? Math.round((profile.wins / profile.plays) * 100)
     : null;
-  // 次のレベルまでの進み具合。最高レベルなら満杯にする
-  const step = next === null ? 1 : (LEVEL_STEP - next) / LEVEL_STEP;
 
   return (
     <div className="account-card">
@@ -191,12 +188,15 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
       </div>
 
       <div className="level-bar">
-        <span className="level-fill" style={{ width: `${step * 100}%` }} />
+        <span
+          className="level-fill"
+          style={{ width: `${Math.round(progress.ratio * 100)}%` }}
+        />
       </div>
       <p className="level-note">
-        {next === null
-          ? "これ以上は上がりません"
-          : `次のレベルまであと${next}(1局で1、勝つと2)`}
+        {progress.done
+          ? `経験値 ${progress.xp.toLocaleString()} · これ以上は上がりません`
+          : `次のレベルまであと ${progress.left.toLocaleString()}(${progress.into.toLocaleString()} / ${progress.need.toLocaleString()})`}
       </p>
 
       <div className="stat-row">

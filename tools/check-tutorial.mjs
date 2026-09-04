@@ -41,7 +41,7 @@ const BONUS_EXPECT = {
   },
 };
 import { getLegalMoves } from "../src/game/board.js";
-import { LEVEL_STEP, MAX_LEVEL } from "../src/game/profile.js";
+import { levelOfXp } from "../src/game/level.js";
 import { cpuAction } from "../src/game/cpu.js";
 import {
   FREE_ACTIONS,
@@ -342,9 +342,10 @@ for (const tut of TUTORIALS) {
   // 王がKなら J・Q・K は1枚ずつしか採用できない。ところが予備札は
   // 枚数を見ずに盤へ出るので、教えたばかりの決まりを破る札が来うる
   const myKing = s.players[0].kingId && s.pieces[s.players[0].kingId];
-  const bad = myKing && myKing.rank === "K"
-    ? drawnCards.filter((c) => ["J", "Q", "K"].includes(c.rank))
-    : [];
+  const bad =
+    myKing && myKing.rank === "K"
+      ? drawnCards.filter((c) => ["J", "Q", "K"].includes(c.rank))
+      : [];
   ok(
     "予備札が、教えた採用枚数の決まりを破らない",
     bad.length === 0,
@@ -352,7 +353,9 @@ for (const tut of TUTORIALS) {
   );
 
   // 王の距離が伸びる決まりに頼るなら、その話で言葉にしていること
-  const tellsStretch = tut.steps.some((x) => /遠くまで動け|マス伸び/.test(x.text));
+  const tellsStretch = tut.steps.some((x) =>
+    /遠くまで動け|マス伸び/.test(x.text),
+  );
   ok(
     "説明していない王の距離の伸びに頼らない",
     stretched.length === 0 || tellsStretch,
@@ -579,28 +582,38 @@ for (const tut of TUTORIALS) {
     if (n.id && !known.has(n.id))
       bad.push(`${i + 1}枚目 ${n.type} の ${n.id} が無い`);
   }
-  ok(`${tut.title} は実在する駒と札だけを指す`, bad.length === 0, bad.join(" / "));
+  ok(
+    `${tut.title} は実在する駒と札だけを指す`,
+    bad.length === 0,
+    bad.join(" / "),
+  );
 }
 
 /**
  * チュートリアルだけを順に遊んで、途中で鍵がかかったままにならないか。
  *
- * レベルは (対局数 + 勝った数) / 3。チュートリアルは1話につき1勝なので
- * 2ポイント入る。配信ビルド(TEST_BUILD=false)ではこの鍵が本当に効くので、
- * ここが崩れると第2話から先へ進めなくなる。
+ * 話を終えると、その話の経験値が入る。次の話の必要レベルに、そこまでの
+ * 経験値で届いていること。配信ビルド(TEST_BUILD=false)ではこの鍵が
+ * 本当に効くので、ここが崩れると先へ進めなくなる。
  */
 console.log("\nレベルの鍵");
 let unlockable = true;
+let earned = 0;
 for (let i = 0; i < TUTORIALS.length; i++) {
-  // i 話ぶん終えた時点の持ち点と、そのときのレベル
-  const level = Math.min(MAX_LEVEL, 1 + Math.floor((2 * i) / LEVEL_STEP));
+  const level = levelOfXp(earned);
   const need = TUTORIALS[i].level;
   if (need > level) unlockable = false;
   ok(
     `${TUTORIALS[i].title} は Lv.${need} で、${i}話終えた時点の Lv.${level} で開く`,
     need <= level,
   );
+  earned += TUTORIALS[i].xp;
 }
+ok(
+  `全部終えるとレベル10 (経験値 ${earned})`,
+  levelOfXp(earned) === 10,
+  `Lv.${levelOfXp(earned)}`,
+);
 if (unlockable) console.log("  チュートリアルだけで最後まで開きます");
 
 console.log(fail ? `\n${fail} 件の失敗` : "\nすべて通りました");

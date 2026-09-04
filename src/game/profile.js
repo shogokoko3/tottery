@@ -13,6 +13,9 @@
 
 import { hasIcon } from "./icons.js";
 import { hasTitle, newlyEarned } from "./titles.js";
+import { MAX_LEVEL, XP, levelOfXp, progressOfXp } from "./level.js";
+
+export { MAX_LEVEL };
 import { START_RATING, applyRating } from "./rating.js";
 
 const KEY = "tottery.account.v1";
@@ -21,12 +24,6 @@ const OLD_KEY = "tottery.profile.v1";
 
 /** 名前の長さの上限 */
 export const MAX_NAME_LEN = 10;
-
-/** 最高レベル */
-export const MAX_LEVEL = 10;
-
-/** レベルが1つ上がるのに要るポイント */
-export const LEVEL_STEP = 3;
 
 /**
  * テストプレイ環境では全プレイヤーをレベル10として扱う。
@@ -58,7 +55,11 @@ const EMPTY = {
   title: null,
   titles: [],
   plays: 0,
+  // 対戦だけの数(チュートリアルを含めない)。ミッションの条件に使う
+  battles: 0,
   wins: 0,
+  // 経験値。レベルはここから毎回導くので、レベルは保存しない
+  xp: 0,
   // レーティングと、その対象になった対局数(オンラインだけ)
   rating: START_RATING,
   rated: 0,
@@ -95,7 +96,16 @@ export function loadProfile() {
       ? saved.titles.filter((x) => typeof x === "string")
       : [],
     plays: Number(saved.plays) || 0,
+    battles:
+      Number(Number.isFinite(saved.battles) ? saved.battles : saved.plays) || 0,
     wins: Number(saved.wins) || 0,
+    // 経験値を持たない古い保存は、それまでの対局数ぶんを配って引き継ぐ
+    xp:
+      Number(
+        Number.isFinite(saved.xp)
+          ? saved.xp
+          : (Number(saved.plays) || 0) * XP.BATTLE,
+      ) || 0,
     rating: Number(saved.rating) || START_RATING,
     rated: Number(saved.rated) || 0,
   };
@@ -200,6 +210,8 @@ export function grantIcon(id) {
  *
  * opts.foeRating を渡した対局だけレーティングが動く。オンライン対戦で
  * 相手の持ち点が分かっているときだけ渡す。増減は戻り値の delta に入る。
+ * opts.xp を渡すと、対戦ぶんの代わりにその経験値を配る(チュートリアル)。
+ * opts.tutorial を立てた対局は、対戦の数に数えない。
  */
 export function recordGame(won, opts) {
   const profile = loadProfile();
@@ -209,10 +221,15 @@ export function recordGame(won, opts) {
   const after = rated
     ? applyRating(before, foeRating, won, profile.rated)
     : before;
+  const gained =
+    opts && Number.isFinite(opts.xp) && opts.xp >= 0 ? opts.xp : XP.BATTLE;
+  const levelBefore = levelOf(profile);
   const next = {
     ...profile,
     plays: profile.plays + 1,
+    battles: profile.battles + (opts && opts.tutorial ? 0 : 1),
     wins: profile.wins + (won ? 1 : 0),
+    xp: profile.xp + gained,
     rating: after,
     rated: profile.rated + (rated ? 1 : 0),
   };
@@ -224,22 +241,52 @@ export function recordGame(won, opts) {
     ...earned.map((t) => t.id).filter((id) => !next.titles.includes(id)),
   ];
   saveProfile(next);
-  return { ...next, delta: rated ? after - before : null, before, earned };
+  const levelAfter = levelOf(next);
+  return {
+    ...next,
+    delta: rated ? after - before : null,
+    before,
+    earned,
+    gained,
+    levelBefore,
+    levelAfter,
+    leveledUp: levelAfter > levelBefore,
+  };
 }
 
-/** 経験の合計。勝った対局は2局ぶんとして数える */
-export function pointsOf(profile) {
-  return profile.plays + profile.wins;
-}
-
-/** レベル。3ポイントごとに1つ上がる */
+/** レベル。経験値の総量から決まる */
 export function levelOf(profile) {
   if (TEST_BUILD) return MAX_LEVEL;
-  return Math.min(MAX_LEVEL, 1 + Math.floor(pointsOf(profile) / LEVEL_STEP));
+  return levelOfXp((profile || EMPTY).xp);
 }
 
-/** 次のレベルまでに必要なポイント。最高レベルなら null */
+/** いまのレベルの中での進み具合。帯や「あと◯」の表示に使う */
+export function levelProgress(profile) {
+  const p = progressOfXp((profile || EMPTY).xp);
+  if (!TEST_BUILD) return p;
+  // テストビルドでは全員が上限。帯は満杯にしておく
+  return { ...p, level: MAX_LEVEL, ratio: 1, left: null, done: true };
+}
+
+/** 次のレベルまでに必要な経験値。最高レベルなら null */
 export function toNextLevel(profile) {
-  if (TEST_BUILD || levelOf(profile) >= MAX_LEVEL) return null;
-  return LEVEL_STEP - (pointsOf(profile) % LEVEL_STEP);
+  return levelProgress(profile).left;
+}
+
+/** 経験値を足す。対局以外(有償ガチャなど)から呼ぶ */
+export function addXp(amount) {
+  const profile = loadProfile();
+  const gained = Number.isFinite(amount) && amount > 0 ? Math.floor(amount) : 0;
+  if (!gained) return { ...profile, gained: 0, leveledUp: false };
+  const levelBefore = levelOf(profile);
+  const next = { ...profile, xp: profile.xp + gained };
+  saveProfile(next);
+  const levelAfter = levelOf(next);
+  return {
+    ...next,
+    gained,
+    levelBefore,
+    levelAfter,
+    leveledUp: levelAfter > levelBefore,
+  };
 }
