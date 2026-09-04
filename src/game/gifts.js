@@ -2,7 +2,7 @@
  * 褒美・贈り物の配り口。
  *
  * ミッションの報酬と、運営からの手紙の添付は同じ形にしてある。
- *   { type: "ticket" | "xp", amount }
+ *   { type: "ticket" | "ether" | "xp", amount }
  *   { type: "title" | "icon" | "skin", id }
  * 配る先が2か所(アカウントとスキンの持ち物)に分かれているので、ここでまとめる。
  */
@@ -10,13 +10,16 @@ import { addXp, grantIcon, grantTitle } from "./profile.js";
 import { findIcon } from "./icons.js";
 import { findTitle } from "./titles.js";
 import { byId as skinById } from "../skins/catalog.js";
-import { addTickets, grantSkin } from "../skins/collection.js";
+import { addEther, addTickets, grantSkin } from "../skins/collection.js";
+import { ETHER_NAME } from "../skins/ether.js";
 import { updateCollection } from "../skins/store.js";
 
 /** 画面に出す呼び名。知らない id でも壊れない */
 export function giftLabel(gift) {
   if (!gift) return "—";
   if (gift.type === "ticket") return `ガチャチケット ×${gift.amount}`;
+  if (gift.type === "ether")
+    return `${ETHER_NAME} ${Number(gift.amount).toLocaleString()}`;
   if (gift.type === "xp") return `経験値 ${gift.amount}`;
   if (gift.type === "title")
     return `称号「${(findTitle(gift.id) || {}).name || gift.id}」`;
@@ -40,6 +43,8 @@ export async function giveGift(gift) {
     await updateCollection((s) => grantSkin(s, gift.id));
   if (gift.type === "ticket")
     await updateCollection((s) => addTickets(s, gift.amount));
+  if (gift.type === "ether")
+    await updateCollection((s) => addEther(s, gift.amount));
 }
 
 /** 並びをまとめて配る */

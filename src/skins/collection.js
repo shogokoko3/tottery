@@ -1,4 +1,5 @@
 import { SKINS, byId, draw, sanitizeLoadout } from "./catalog.js";
+import { craftCheck, dismantleCheck } from "./ether.js";
 
 const count = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : 0);
 export function normalize(raw) {
@@ -27,6 +28,8 @@ export function normalize(raw) {
     // ガチャチケット。ミッションの褒美で増える。
     // いまのガチャは無料のテスト版なので、まだ減らない
     tickets: count(value.tickets),
+    // エーテル。ダブりを崩すと増え、狙った1枚を作ると減る
+    ether: count(value.ether),
     owned,
     equipped,
     draws: count(value.draws),
@@ -61,6 +64,12 @@ export function addTickets(state, n) {
 }
 
 /** チケットを使う。足りなければ何もしない */
+/** エーテルを足す。運営からの手紙やミッションの褒美から呼ぶ */
+export function addEther(state, n) {
+  const add = count(n);
+  return add ? { ...state, ether: count(state.ether) + add } : state;
+}
+
 export function spendTickets(state, n) {
   const cost = Number.isSafeInteger(n) && n > 0 ? n : 0;
   if (!cost || state.tickets < cost) return state;
@@ -87,6 +96,35 @@ export function unequip(state, rank) {
   delete equipped[rank];
   return { ...state, equipped };
 }
+/**
+ * ダブりを1枚崩して、エーテルに変える。
+ * 最後の1枚と早期特典の札は崩さない(ether.js の決まり)。
+ */
+export function dismantle(state, id) {
+  const check = dismantleCheck(state, id);
+  if (!check.ok) throw new Error(check.why);
+  const owned = { ...state.owned, [id]: state.owned[id] - 1 };
+  return { ...state, owned, ether: count(state.ether) + check.gain };
+}
+
+/** 崩せるダブりを、まとめて全部エーテルに変える */
+export function dismantleAll(state) {
+  let next = state;
+  for (const skin of SKINS) {
+    // 1枚ずつ減らす。途中で崩せなくなったら、その札はそこで止める
+    while (dismantleCheck(next, skin.id).ok) next = dismantle(next, skin.id);
+  }
+  return next;
+}
+
+/** エーテルを払って、好きな1枚を作る。すでに持っている札なら枚数が増える */
+export function craft(state, id) {
+  const check = craftCheck(state, id);
+  if (!check.ok) throw new Error(check.why);
+  const owned = { ...state.owned, [id]: (state.owned[id] || 0) + 1 };
+  return { ...state, owned, ether: count(state.ether) - check.cost };
+}
+
 export function claimEarly(state) {
   if (state.earlyClaimed) return state;
   const owned = { ...state.owned };

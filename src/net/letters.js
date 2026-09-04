@@ -37,7 +37,7 @@ function withTimeout(promise, ms) {
 export function normalizeGift(raw) {
   if (!raw || typeof raw !== "object") return null;
   const type = raw.type;
-  if (type === "ticket" || type === "xp") {
+  if (type === "ticket" || type === "ether" || type === "xp") {
     const amount = Number(raw.amount);
     return Number.isSafeInteger(amount) && amount > 0 ? { type, amount } : null;
   }

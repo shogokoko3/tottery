@@ -182,6 +182,14 @@ export const Mail = (props) => (
   </IconBase>
 );
 
+/** エーテル。錬成の素材。六角の結晶 */
+export const Ether = (props) => (
+  <IconBase {...props}>
+    <path d="M12 2.5 20 7v10l-8 4.5L4 17V7z" />
+    <path d="M12 7.5 16 10v4l-4 2.5L8 14v-4z" />
+  </IconBase>
+);
+
 /** チケット。切り取り線の入った札 */
 export const Ticket = (props) => (
   <IconBase {...props}>

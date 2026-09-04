@@ -88,6 +88,7 @@ const SORTS = {
 function GiftPicker({ gift, onChange, onRemove }) {
   const kinds = [
     ["ticket", "ガチャチケット"],
+    ["ether", "エーテル"],
     ["xp", "経験値"],
     ["title", "称号"],
     ["icon", "アイコン"],
@@ -106,7 +107,10 @@ function GiftPicker({ gift, onChange, onRemove }) {
           onChange(
             list
               ? { type, id: list[0].id }
-              : { type, amount: type === "xp" ? 100 : 1 },
+              : {
+                  type,
+                  amount: type === "xp" ? 100 : type === "ether" ? 100 : 1,
+                },
           );
         }}
       >
