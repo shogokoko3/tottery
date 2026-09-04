@@ -167,18 +167,69 @@ export function HomeScreen({ onStart, onSkins }) {
     </div>
   );
 }
-export function MatchingScreen({
-  onOnline,
-  onFriend,
-  onCpu,
+/**
+ * ホーム。タイトルの「ゲームスタート」の次に出る。
+ * ここから対戦・チュートリアル・スキン・バトルパス・ミッション・ランキングへ分かれる。
+ * 「対戦する」だけは、相手の種類を選ぶ画面(MatchingScreen)へ進む。
+ */
+export function MenuScreen({
+  onPlay,
   onTutorial,
-  onRanking,
   onSkins,
-  onMissions,
   onBattlePass,
+  onMissions,
+  onRanking,
 }) {
   // 受け取れるミッションの数。入り口に印を出す
   const ready = claimableCount(loadProfile());
+  return (
+    <div className="center-stage">
+      <h2>ホーム</h2>
+      <div className="nav-stack">
+        <button className="btn btn-primary btn-choice" onClick={onPlay}>
+          <Globe size={30} />
+          <span className="choice-label">
+            対戦する<small>オンライン・フレンド・CPU</small>
+          </span>
+        </button>
+        <button className="btn btn-scroll btn-choice" onClick={onTutorial}>
+          <Book size={30} />
+          <span className="choice-label">
+            チュートリアル<small>ルールとカードの効果を学ぶ</small>
+          </span>
+        </button>
+        <button className="btn btn-friend btn-choice" onClick={onSkins}>
+          <Sparkle size={30} />
+          <span className="choice-label">
+            スキンガチャ・装備<small>英雄を召喚してカードに着せる</small>
+          </span>
+        </button>
+        <button className="btn btn-teal btn-choice" onClick={onBattlePass}>
+          <Crown size={30} />
+          <span className="choice-label">
+            バトルパス<small>駒を取ってマスを埋め、絵柄をそろえる</small>
+          </span>
+        </button>
+        <button className="btn btn-ghost btn-choice" onClick={onMissions}>
+          <Check size={30} />
+          <span className="choice-label">
+            ミッション<small>条件を満たして称号やチケットを受け取る</small>
+          </span>
+          {ready > 0 && <span className="menu-badge">{ready}</span>}
+        </button>
+        <button className="btn btn-ghost btn-choice" onClick={onRanking}>
+          <Crown size={30} />
+          <span className="choice-label">
+            ランキング<small>オンライン対戦の成績で並びます</small>
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** 対戦の相手を選ぶ。ホームの「対戦する」から来る */
+export function MatchingScreen({ onOnline, onFriend, onCpu, onBack }) {
   return (
     <div className="center-stage">
       <h2>対戦相手を選ぶ</h2>
@@ -201,41 +252,14 @@ export function MatchingScreen({
             CPUと対戦する<small>ひとりで練習・腕試し</small>
           </span>
         </button>
-        <button className="btn btn-scroll btn-choice" onClick={onTutorial}>
-          <Book size={30} />
-          <span className="choice-label">
-            チュートリアル<small>ルールとカードの効果を学ぶ</small>
-          </span>
-        </button>
-        <button className="btn btn-ghost btn-choice" onClick={onSkins}>
-          <Crown size={30} />
-          <span className="choice-label">
-            スキンガチャ・装備<small>無料・回数制限なしのテスト召喚</small>
-          </span>
-        </button>
-        <button className="btn btn-ghost btn-choice" onClick={onMissions}>
-          <Check size={30} />
-          <span className="choice-label">
-            ミッション<small>条件を満たして称号やチケットを受け取る</small>
-          </span>
-          {ready > 0 && <span className="menu-badge">{ready}</span>}
-        </button>
-        <button className="btn btn-ghost btn-choice" onClick={onBattlePass}>
-          <Sparkle size={30} />
-          <span className="choice-label">
-            バトルパス<small>駒を取ってマスを埋め、絵柄をそろえる</small>
-          </span>
-        </button>
-        <button className="btn btn-ghost btn-choice" onClick={onRanking}>
-          <Crown size={30} />
-          <span className="choice-label">
-            ランキング<small>オンライン対戦の成績で並びます</small>
-          </span>
-        </button>
       </div>
+      <button className="btn btn-ghost btn-wide" onClick={onBack}>
+        <ArrowLeft size={18} /> ホームに戻る
+      </button>
     </div>
   );
 }
+
 export function RandomMatchScreen({ onBack, onRoomReady }) {
   const loadout = useRef(mySkins()).current;
   let [l, n] = (0, useState)("searching"),
@@ -880,21 +904,29 @@ export function TotteryApp() {
       showRules={l}
       setShowRules={n}
       onHome={e === "home" ? null : goHome}
-      onBack={e === "skins" ? () => t("matching") : undefined}
+      onBack={e === "skins" ? () => t("menu") : undefined}
     >
       {
         {
           home: (
-            <HomeScreen
-              onStart={() => t("matching")}
-              onSkins={() => t("skins")}
-            />
+            <HomeScreen onStart={() => t("menu")} onSkins={() => t("skins")} />
           ),
           skins: <SkinsScreen />,
+          menu: (
+            <MenuScreen
+              onPlay={() => t("matching")}
+              onTutorial={() => {
+                (u(null), t("tutorial"));
+              }}
+              onSkins={() => t("skins")}
+              onBattlePass={() => t("battlepass")}
+              onMissions={() => t("missions")}
+              onRanking={() => t("ranking")}
+            />
+          ),
           matching: (
             <MatchingScreen
-              onRanking={() => t("ranking")}
-              onSkins={() => t("skins")}
+              onBack={() => t("menu")}
               onOnline={() => {
                 (u(null),
                   m(!1),
@@ -913,19 +945,14 @@ export function TotteryApp() {
                   setRulesFrom("matching"),
                   t("rules"));
               }}
-              onTutorial={() => {
-                (u(null), t("tutorial"));
-              }}
-              onMissions={() => t("missions")}
-              onBattlePass={() => t("battlepass")}
             />
           ),
-          ranking: <RankingScreen onBack={() => t("matching")} />,
-          missions: <MissionsScreen onBack={() => t("matching")} />,
-          battlepass: <BattlePassScreen onBack={() => t("matching")} />,
+          ranking: <RankingScreen onBack={() => t("menu")} />,
+          missions: <MissionsScreen onBack={() => t("menu")} />,
+          battlepass: <BattlePassScreen onBack={() => t("menu")} />,
           tutorial: (
             <TutorialSelect
-              onBack={() => t("matching")}
+              onBack={() => t("menu")}
               onStart={(chosen) => {
                 (setTut(chosen), m(!0), r("game"), t("game"));
               }}
