@@ -54,161 +54,130 @@
   color: #ffd2d6;
   font-size: 13px;
 }
-/* 横に長い表は、表だけを横に送る */
-.admin-table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-.admin-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 13px;
-  white-space: nowrap;
-}
-.admin-table th,
-.admin-table td {
-  padding: 7px 9px;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.14);
-  text-align: left;
-  vertical-align: middle;
-}
-.admin-table th {
-  color: var(--text-dim);
-  font-weight: 400;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-}
-.admin-name {
-  font-weight: 700;
-  color: var(--ink, var(--text));
-}
-.admin-num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.admin-id,
-.admin-json {
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-}
-.admin-json {
-  white-space: normal;
-  max-width: 520px;
-}
-.admin-foot {
-  text-align: center;
-  font-size: 11px;
-}
-.admin-actions {
+
+/* --- 名前の一覧。押すと詳細が出る --- */
+.admin-rows {
   display: flex;
+  flex-direction: column;
   gap: 6px;
+  margin-top: 10px;
 }
-.admin-banned td {
+.admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(4, 10, 20, 0.45);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.admin-row:hover {
+  border-color: var(--gold-deep);
+}
+.admin-row.is-dim {
   opacity: 0.55;
 }
-.admin-banned .admin-actions {
-  opacity: 1;
+.admin-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.admin-row-main b {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.admin-row-main small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.admin-row-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  color: var(--text-dim);
+}
+.admin-row-side em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--card-red);
+  border: 1px solid var(--card-red);
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 
-/* ===== スマホ幅。11列の表は指では扱えないので、1人1枚の札に組み替える ===== */
-@media (max-width: 700px) {
-  .admin-stage {
-    padding: 12px 10px 32px;
+/* --- 詳細。スマホでは下から、広い画面では真ん中に --- */
+.admin-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(4, 10, 20, 0.72);
+  padding: 0;
+}
+.admin-panel {
+  width: 100%;
+  max-width: 520px;
+  max-height: 86dvh;
+  overflow-y: auto;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  border-radius: 14px 14px 0 0;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #16294a 0%, #0e1c33 100%);
+}
+.admin-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.admin-panel-head b {
+  font-family: "Shippori Mincho", serif;
+  font-size: 19px;
+  overflow-wrap: anywhere;
+}
+.admin-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.14);
+  font-size: 13px;
+}
+.admin-line > span {
+  flex: none;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.admin-line > b {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.admin-panel-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.admin-panel-actions .btn {
+  flex: 1;
+  min-height: 44px;
+}
+@media (min-width: 640px) {
+  .admin-sheet {
+    align-items: center;
+    padding: 20px;
   }
-  .admin-card {
-    padding: 12px;
-  }
-  .admin-table-wrap {
-    overflow: visible;
-  }
-  .admin-table,
-  .admin-table tbody,
-  .admin-table tr,
-  .admin-table td {
-    display: block;
-    width: 100%;
-  }
-  /* 見出しの行は、各マスの左に出すので隠す */
-  .admin-table thead {
-    display: none;
-  }
-  .admin-table tr {
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    background: rgba(4, 10, 20, 0.4);
-    padding: 10px 12px;
-    margin-bottom: 10px;
-  }
-  .admin-table td {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    border: 0;
-    padding: 4px 0;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    text-align: right;
-  }
-  /* 各マスの左に、その列の見出しを出す */
-  .admin-table td::before {
-    content: attr(data-label);
-    flex: none;
-    color: var(--text-dim);
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    text-align: left;
-  }
-  /* 名前だけは大きく、見出しなしで頭に置く */
-  .admin-table td.admin-name {
-    justify-content: flex-start;
-    font-size: 16px;
-    padding-bottom: 8px;
-    text-align: left;
-  }
-  .admin-table td.admin-name::before {
-    content: "";
-  }
-  /* 中身が空の欄(押し場所)は見出しを出さず、釦を横に並べる */
-  .admin-table td[data-label=""] {
-    justify-content: stretch;
-    padding-top: 8px;
-  }
-  .admin-table td[data-label=""]::before {
-    content: "";
-    flex: 0;
-  }
-  .admin-actions {
-    gap: 8px;
-  }
-  .admin-actions .btn {
-    flex: 1;
-  }
-  /* 指で押せる大きさに */
-  .admin-table .btn-small,
-  .admin-head .btn-small {
-    min-height: 38px;
-    font-size: 12px;
-    padding: 8px 10px;
-  }
-  .admin-input {
-    min-height: 40px;
-  }
-  .admin-num {
-    text-align: right;
-  }
-  /* 端末idは長いので小さく折り返す */
-  .admin-id {
-    font-size: 10px;
-  }
-  /* 「まだ誰も登録していません」の行は札にしない */
-  .admin-table td[colspan] {
-    justify-content: center;
-    text-align: center;
-    padding: 6px 0;
-  }
-  .admin-table td[colspan]::before {
-    content: "";
+  .admin-panel {
+    border-radius: 14px;
   }
 }

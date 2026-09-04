@@ -87,6 +87,8 @@ function AdminApp() {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("rating");
   const [loadedAt, setLoadedAt] = useState(null);
+  // 押して開いている行。{ kind, id }
+  const [detail, setDetail] = useState(null);
 
   async function load() {
     setBusy(true);
@@ -229,6 +231,40 @@ function AdminApp() {
     (r) => r.at && Date.now() - r.at < 30 * DAY,
   ).length;
 
+  // 押して開いている行。{ kind: "player"|"rank"|"lobby", id }
+  const opened =
+    detail &&
+    (detail.kind === "player"
+      ? (players || []).find((r) => r.id === detail.id)
+      : detail.kind === "rank"
+        ? (ranks || []).find((r) => r.id === detail.id)
+        : (lobby || []).find((r) => r.code === detail.id));
+
+  /** 一覧の1行。名前(または合言葉)と、そえ書きだけを出す */
+  const Row = ({ id, kind, name, sub, note, dim }) => (
+    <button
+      className={`admin-row ${dim ? "is-dim" : ""}`}
+      onClick={() => setDetail({ kind, id })}
+    >
+      <span className="admin-row-main">
+        <b>{name}</b>
+        <small>{sub}</small>
+      </span>
+      <span className="admin-row-side">
+        {note && <em>{note}</em>}
+        <span aria-hidden="true">›</span>
+      </span>
+    </button>
+  );
+
+  /** 詳細の1項目 */
+  const Line = ({ label, children }) => (
+    <div className="admin-line">
+      <span>{label}</span>
+      <b>{children}</b>
+    </div>
+  );
+
   return (
     <div className="tottery-root admin-root">
       <style>{STYLES}</style>
@@ -246,21 +282,17 @@ function AdminApp() {
             サーバーに本人確認の仕組みは無く、端末を替えると別の人として数えられます。
           </p>
           <p className="hint">
-            <b>登録した人</b>
-            は、名前を決めた端末すべて(この版より前に決めた人は、
-            次にアプリを開いたときに載ります)。<b>持ち点つきの成績</b>は、
-            オンラインの持ち点つき対局を終えた端末だけです。
-          </p>
-          <p className="hint">
+            <b>登録した人</b>は、名前を決めた端末すべて。
+            <b>持ち点つきの成績</b>
+            は、オンラインの持ち点つき対局を終えた端末だけです。
             「消す」はサーバーの記録を消すだけで、端末は次に開いたときにまた載ります。
-            「使用停止」にすると、その端末は次に開いたときに名前を失い、決め直しになります
-            (本人確認が無いので、同じ端末で別の名前を決め直すことはできます)。
+            「使用停止」にすると、その端末は次に開いたときに名前を失い、決め直しになります。
           </p>
         </section>
 
         <section className="admin-card">
           <div className="admin-head">
-            <h2>登録した人(players)</h2>
+            <h2>登録した人</h2>
             <button
               className="btn btn-ghost btn-small"
               onClick={load}
@@ -303,258 +335,70 @@ function AdminApp() {
               ))}
             </select>
           </div>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>名前</th>
-                  <th>称号</th>
-                  <th>持ち点</th>
-                  <th>対局</th>
-                  <th>勝ち</th>
-                  <th>アイコン</th>
-                  <th>登録</th>
-                  <th>最終更新</th>
-                  <th>状態</th>
-                  <th>端末id</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {found.map((r) => (
-                  <tr key={r.id} className={r.banned ? "admin-banned" : ""}>
-                    <td data-label="名前" className="admin-name">
-                      {r.name || "(名無し)"}
-                    </td>
-                    <td data-label="称号">
-                      {titleNameOf(r.title) || (r.title ? `? ${r.title}` : "—")}
-                    </td>
-                    <td data-label="持ち点" className="admin-num">
-                      {typeof r.rating === "number" ? r.rating : "—"}
-                    </td>
-                    <td data-label="対局" className="admin-num">
-                      {r.plays ?? "—"}
-                    </td>
-                    <td data-label="勝ち" className="admin-num">
-                      {r.wins ?? "—"}
-                    </td>
-                    <td data-label="アイコン">
-                      {r.icon ? findIcon(r.icon).label : "—"}
-                    </td>
-                    <td data-label="登録" title={when(r.since)}>
-                      {r.since ? ago(r.since) : "—"}
-                    </td>
-                    <td data-label="最終更新" title={when(r.at)}>
-                      {ago(r.at)}
-                    </td>
-                    <td data-label="状態">{r.banned ? "使用停止" : "—"}</td>
-                    <td data-label="端末id" className="admin-id">
-                      {r.id}
-                    </td>
-                    <td data-label="" className="admin-actions">
-                      <button
-                        className="btn btn-ghost btn-small"
-                        onClick={() => toggleBan(r)}
-                        disabled={busy}
-                      >
-                        {r.banned ? "解除" : "使用停止"}
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-small"
-                        onClick={() => removePlayer(r)}
-                        disabled={busy}
-                      >
-                        消す
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {players && found.length === 0 && (
-                  <tr>
-                    <td colSpan={11} className="hint">
-                      {registered === 0
-                        ? "まだ誰も登録していません"
-                        : "見つかりません"}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div className="admin-rows">
+            {found.map((r) => (
+              <Row
+                key={r.id}
+                id={r.id}
+                kind="player"
+                name={r.name || "(名無し)"}
+                sub={`${titleNameOf(r.title) || "—"} · ${ago(r.at)}`}
+                note={r.banned ? "使用停止" : ""}
+                dim={r.banned}
+              />
+            ))}
+            {players && found.length === 0 && (
+              <p className="hint">
+                {registered === 0
+                  ? "まだ誰も登録していません"
+                  : "見つかりません"}
+              </p>
+            )}
           </div>
         </section>
 
         <section className="admin-card">
-          <div className="admin-head">
-            <h2>持ち点つきの成績(ranks)</h2>
-            <button
-              className="btn btn-ghost btn-small"
-              onClick={load}
-              disabled={busy}
-            >
-              {busy ? "読み込み中…" : "更新"}
-            </button>
-          </div>
-          <div className="stat-row">
-            <div className="stat">
-              <b>{ranks ? total : "—"}</b>
-              <span>登録</span>
-            </div>
-            <div className="stat">
-              <b>{ranks ? active7 : "—"}</b>
-              <span>7日以内</span>
-            </div>
-            <div className="stat">
-              <b>{ranks ? active30 : "—"}</b>
-              <span>30日以内</span>
-            </div>
-          </div>
-          {error && <p className="admin-error">{error}</p>}
-          <div className="admin-tools">
-            <input
-              className="admin-input"
-              placeholder="名前か端末idで探す"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-            <select
-              className="admin-input"
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-            >
-              {Object.entries(SORTS).map(([k, v]) => (
-                <option value={k} key={k}>
-                  {v.label}の順
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>名前</th>
-                  <th>称号</th>
-                  <th>持ち点</th>
-                  <th>位</th>
-                  <th>持ち点つき</th>
-                  <th>対局</th>
-                  <th>勝ち</th>
-                  <th>アイコン</th>
-                  <th>最終更新</th>
-                  <th>端末id</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id}>
-                    <td data-label="名前" className="admin-name">
-                      {r.name || "(名無し)"}
-                    </td>
-                    <td data-label="称号">
-                      {titleNameOf(r.title) || (r.title ? `? ${r.title}` : "—")}
-                    </td>
-                    <td data-label="持ち点" className="admin-num">
-                      {typeof r.rating === "number" ? r.rating : "—"}
-                    </td>
-                    <td data-label="位">
-                      {typeof r.rating === "number" ? rankTitle(r.rating) : "—"}
-                    </td>
-                    <td data-label="持ち点つき" className="admin-num">
-                      {r.rated ?? "—"}
-                    </td>
-                    <td data-label="対局" className="admin-num">
-                      {r.plays ?? "—"}
-                    </td>
-                    <td data-label="勝ち" className="admin-num">
-                      {r.wins ?? "—"}
-                    </td>
-                    <td data-label="アイコン">
-                      {r.icon ? findIcon(r.icon).label : "—"}
-                    </td>
-                    <td data-label="最終更新" title={when(r.at)}>
-                      {ago(r.at)}
-                    </td>
-                    <td data-label="端末id" className="admin-id">
-                      {r.id}
-                    </td>
-                    <td data-label="">
-                      <button
-                        className="btn btn-ghost btn-small"
-                        onClick={() => removeRank(r)}
-                        disabled={busy}
-                      >
-                        消す
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {ranks && rows.length === 0 && (
-                  <tr>
-                    <td colSpan={11} className="hint">
-                      {total === 0
-                        ? "まだ誰も載っていません"
-                        : "見つかりません"}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="admin-card">
-          <h2>待ち合わせ(lobby)</h2>
+          <h2>持ち点つきの成績</h2>
           <p className="hint">
-            フレンド対戦・オンライン対戦で相手を待っている部屋。対局が始まるか3分たつと消えます。
-            残ったままのものはここから消せます。
+            オンラインの持ち点つき対局を終えた端末が置いた記録です。
           </p>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>合言葉</th>
-                  <th>中身</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(lobby || []).map((l) => (
-                  <tr key={l.code}>
-                    <td data-label="合言葉" className="admin-id">
-                      {l.code}
-                    </td>
-                    <td data-label="中身" className="admin-json">
-                      {Object.entries(l)
-                        .filter(([k]) => k !== "code")
-                        .map(([k, v]) => {
-                          // 時刻は生の数字ではなく「何分前」で読ませる
-                          if (/At$|^at$/.test(k) && typeof v === "number")
-                            return `${k}: ${ago(v)} (${when(v)})`;
-                          return `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`;
-                        })
-                        .join(" / ") || "—"}
-                    </td>
-                    <td data-label="">
-                      <button
-                        className="btn btn-ghost btn-small"
-                        onClick={() => removeLobby(l)}
-                        disabled={busy}
-                      >
-                        消す
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {lobby && lobby.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="hint">
-                      いま待っている部屋はありません
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          {error && <p className="admin-error">{error}</p>}
+          <div className="admin-rows">
+            {rows.map((r) => (
+              <Row
+                key={r.id}
+                id={r.id}
+                kind="rank"
+                name={r.name || "(名無し)"}
+                sub={`持ち点 ${typeof r.rating === "number" ? r.rating : "—"} · ${ago(r.at)}`}
+              />
+            ))}
+            {ranks && rows.length === 0 && (
+              <p className="hint">
+                {total === 0 ? "まだ誰も載っていません" : "見つかりません"}
+              </p>
+            )}
+          </div>
+        </section>
+
+        <section className="admin-card">
+          <h2>待ち合わせ</h2>
+          <p className="hint">
+            相手を待っている部屋。対局が始まるか3分たつと消えます。
+          </p>
+          <div className="admin-rows">
+            {(lobby || []).map((l) => (
+              <Row
+                key={l.code}
+                id={l.code}
+                kind="lobby"
+                name={l.code}
+                sub={l.createdAt ? ago(l.createdAt) : "—"}
+              />
+            ))}
+            {lobby && lobby.length === 0 && (
+              <p className="hint">いま待っている部屋はありません</p>
+            )}
           </div>
         </section>
 
@@ -562,6 +406,124 @@ function AdminApp() {
           {loadedAt ? `${when(loadedAt)} に読み込み` : ""} ・ 宛先 {DB_URL}
         </p>
       </main>
+
+      {opened && (
+        <div className="admin-sheet" onClick={() => setDetail(null)}>
+          <div className="admin-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-panel-head">
+              <b>
+                {detail.kind === "lobby"
+                  ? opened.code
+                  : opened.name || "(名無し)"}
+              </b>
+              <button
+                className="icon-btn"
+                aria-label="閉じる"
+                onClick={() => setDetail(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            {detail.kind === "lobby" ? (
+              <>
+                <Line label="合言葉">{opened.code}</Line>
+                <Line label="作られた">
+                  {opened.createdAt
+                    ? `${ago(opened.createdAt)}(${when(opened.createdAt)})`
+                    : "—"}
+                </Line>
+                <Line label="中身">
+                  <span className="admin-json">
+                    {Object.entries(opened)
+                      .filter(([k]) => k !== "code" && k !== "createdAt")
+                      .map(
+                        ([k, v]) =>
+                          `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`,
+                      )
+                      .join(" / ") || "—"}
+                  </span>
+                </Line>
+                <div className="admin-panel-actions">
+                  <button
+                    className="btn btn-ghost"
+                    disabled={busy}
+                    onClick={() =>
+                      removeLobby(opened).then(() => setDetail(null))
+                    }
+                  >
+                    消す
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <Line label="称号">
+                  {titleNameOf(opened.title) ||
+                    (opened.title ? `? ${opened.title}` : "—")}
+                </Line>
+                <Line label="持ち点">
+                  {typeof opened.rating === "number"
+                    ? `${opened.rating}(${rankTitle(opened.rating)})`
+                    : "—"}
+                </Line>
+                <Line label="持ち点つき対局">{opened.rated ?? "—"}</Line>
+                <Line label="対局">{opened.plays ?? "—"}</Line>
+                <Line label="勝ち">
+                  {opened.wins ?? "—"}
+                  {opened.plays
+                    ? `(${Math.round((opened.wins / opened.plays) * 100)}%)`
+                    : ""}
+                </Line>
+                <Line label="アイコン">
+                  {opened.icon ? findIcon(opened.icon).label : "—"}
+                </Line>
+                {detail.kind === "player" && (
+                  <Line label="登録">
+                    {opened.since
+                      ? `${ago(opened.since)}(${when(opened.since)})`
+                      : "—"}
+                  </Line>
+                )}
+                <Line label="最終更新">
+                  {`${ago(opened.at)}(${when(opened.at)})`}
+                </Line>
+                {detail.kind === "player" && (
+                  <Line label="状態">
+                    {opened.banned ? "使用停止" : "ふつう"}
+                  </Line>
+                )}
+                <Line label="端末id">
+                  <span className="admin-id">{opened.id}</span>
+                </Line>
+                <div className="admin-panel-actions">
+                  {detail.kind === "player" && (
+                    <button
+                      className="btn btn-ghost"
+                      disabled={busy}
+                      onClick={() => toggleBan(opened)}
+                    >
+                      {opened.banned ? "使用停止を解く" : "使用停止にする"}
+                    </button>
+                  )}
+                  <button
+                    className="btn btn-ghost"
+                    disabled={busy}
+                    onClick={() =>
+                      (detail.kind === "player"
+                        ? removePlayer(opened)
+                        : removeRank(opened)
+                      ).then(() => setDetail(null))
+                    }
+                  >
+                    消す
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
