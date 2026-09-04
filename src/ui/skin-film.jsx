@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { audioSettings, duckMusic } from "../audio/index.js";
 import { useCollection } from "../skins/store.js";
-import { captureFilm } from "../skins/events.js";
+import { filmsFor } from "../skins/events.js";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
 
 export function SkinFilm({ skin, short = false, onClose }) {
@@ -80,23 +80,24 @@ export function useBattleFilm(state, loadouts, disabled, viewer = null) {
     seq = useRef(0);
   const [queue, setQueue] = useState([]);
   const enabled = !disabled && collection.motion !== "off" && !reduce;
+  // 1手で2本続くことがある(取った側の映像 → 王位継承の映像)
   const pending = enabled
-    ? captureFilm(before.current, state, loadouts, viewer)
-    : null;
+    ? filmsFor(before.current, state, loadouts, viewer)
+    : [];
   useLayoutEffect(() => {
     before.current = state;
     if (!enabled) {
       setQueue((q) => (q.length ? [] : q));
       return;
     }
-    if (pending) {
-      const entry = { skin: pending, key: ++seq.current };
-      setQueue((q) => [...q, entry]);
+    if (pending.length) {
+      const entries = pending.map((skin) => ({ skin, key: ++seq.current }));
+      setQueue((q) => [...q, ...entries]);
     }
   }, [state, enabled]);
   const active = enabled && queue[0];
   return {
-    busy: enabled && (!!active || !!pending),
+    busy: enabled && (!!active || pending.length > 0),
     overlay: active ? (
       <SkinFilm
         key={active.key}
