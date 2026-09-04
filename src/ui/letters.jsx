@@ -124,7 +124,7 @@ export function LettersScreen({ onBack }) {
           </button>
         ))}
       </div>
-      <button className="btn btn-ghost" onClick={onBack}>
+      <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る
       </button>
 

@@ -85,7 +85,7 @@ export function RankingScreen({ onBack }) {
         いまの本人確認は端末ごとの目印だけです。アプリを消して入れ直すと
         別人として載ります。端末を替えても続くアカウントは今後入れる予定です。
       </p>
-      <button className="btn btn-ghost" onClick={onBack}>
+      <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る
       </button>
     </div>

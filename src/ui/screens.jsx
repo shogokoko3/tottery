@@ -109,8 +109,11 @@ export function GameShell({
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
       <style>{STYLES + SKIN_STYLES}</style>
       <header className="top-bar">
+        {/* 戻る釦が無いときは空のまま。飾りの王冠を置いていたが、
+            押せそうに見えて何も起きないので外した。
+            桁は残す(消すと真ん中の題がずれる) */}
         <div className="top-left">
-          {onBack ? (
+          {onBack && (
             <button
               className="icon-btn plain"
               onClick={onBack}
@@ -118,13 +121,6 @@ export function GameShell({
             >
               <ArrowLeft size={20} />
             </button>
-          ) : (
-            <Crown
-              size={20}
-              style={{
-                color: "var(--gold)",
-              }}
-            />
           )}
         </div>
         {goHome ? (
@@ -357,7 +353,7 @@ export function MatchingScreen({ onOnline, onFriend, onCpu, onBack }) {
           </span>
         </button>
       </div>
-      <button className="btn btn-ghost btn-wide" onClick={onBack}>
+      <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={18} /> ホームに戻る
       </button>
     </div>

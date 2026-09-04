@@ -148,7 +148,7 @@ export function BattlePassScreen({ onBack }) {
             : "全部のマスをクリアして、めくると絵柄が現れます。"}
         </p>
       )}
-      <button className="btn btn-ghost" onClick={onBack}>
+      <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る
       </button>
     </div>

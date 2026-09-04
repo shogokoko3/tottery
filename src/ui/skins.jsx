@@ -719,7 +719,7 @@ export function SkinsScreen({ onBack }) {
       )}
       {film && <SkinFilm skin={film} onClose={() => setFilm(null)} />}
       {onBack && (
-        <button className="btn btn-ghost skins-back" onClick={onBack}>
+        <button className="btn btn-ghost btn-home" onClick={onBack}>
           <ArrowLeft size={16} /> ホームに戻る
         </button>
       )}

@@ -128,7 +128,7 @@ export function MissionsScreen({ onBack }) {
         ))}
       </div>
       <p className="hint">条件は今後も増やします。</p>
-      <button className="btn btn-ghost" onClick={onBack}>
+      <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る
       </button>
     </div>

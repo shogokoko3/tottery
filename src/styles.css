@@ -3943,3 +3943,13 @@ h3 {
   color: var(--gold-soft);
   font-size: 17px;
 }
+
+/* 「ホームに戻る」。どの画面でも同じ置き方にする。
+ * すぐ上の釦にくっついていると押し間違えるので、間を空けて単体で立たせる。
+ * 主役ではないので幅は控えめに。ただし指で押せる高さは確保する。 */
+.btn-home {
+  display: block;
+  margin: 26px auto 0;
+  min-width: 200px;
+  min-height: 48px;
+}

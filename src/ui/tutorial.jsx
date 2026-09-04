@@ -107,7 +107,7 @@ export function TutorialSelect({ onStart, onBack }) {
           );
         })}
       </div>
-      <button className="btn btn-ghost" onClick={onBack}>
+      <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る
       </button>
     </div>

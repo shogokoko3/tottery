@@ -1509,8 +1509,3 @@
 }
 
 /* スキンの画面の下に置く、ホームへ戻る釦 */
-.skins-back {
-  display: block;
-  margin: 26px auto 0;
-  min-width: 200px;
-}
