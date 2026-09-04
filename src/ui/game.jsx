@@ -1,4 +1,5 @@
 import { useBattleFilm } from "./skin-film.jsx";
+import { useBattlePass } from "./battlepass-track.jsx";
 import { useEffect, useRef, useState } from "react";
 import { useGameBgm, useGameSounds } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
@@ -763,6 +764,9 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     testPlay = (0, useRef)(isTestPlay()).current;
   // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない
   let noLimit = !!tutorial || testPlay;
+  // 自分が取った駒をバトルパスへ。チュートリアルでは進めない
+  useBattlePass(a, network ? p : cpu ? 0 : a.currentTurn, !!tutorial);
+
   const cinematic = useBattleFilm(
     a,
     skins,

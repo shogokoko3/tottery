@@ -16,6 +16,7 @@ import {
   Play,
   Settings,
   Users,
+  Sparkle,
 } from "../icons.jsx";
 import {
   LOBBY_TTL,
@@ -44,6 +45,7 @@ import STYLES from "../styles.css";
 import SKIN_STYLES from "../skins/styles.css";
 import { SkinsScreen } from "./skins.jsx";
 import { MissionsScreen } from "./missions.jsx";
+import { BattlePassScreen } from "./battlepass.jsx";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 import { sanitizeLoadout } from "../skins/catalog.js";
@@ -173,6 +175,7 @@ export function MatchingScreen({
   onRanking,
   onSkins,
   onMissions,
+  onBattlePass,
 }) {
   // 受け取れるミッションの数。入り口に印を出す
   const ready = claimableCount(loadProfile());
@@ -216,6 +219,12 @@ export function MatchingScreen({
             ミッション<small>条件を満たして称号やチケットを受け取る</small>
           </span>
           {ready > 0 && <span className="menu-badge">{ready}</span>}
+        </button>
+        <button className="btn btn-ghost btn-choice" onClick={onBattlePass}>
+          <Sparkle size={30} />
+          <span className="choice-label">
+            バトルパス<small>駒を取ってマスを埋め、絵柄をそろえる</small>
+          </span>
         </button>
         <button className="btn btn-ghost btn-choice" onClick={onRanking}>
           <Crown size={30} />
@@ -908,10 +917,12 @@ export function TotteryApp() {
                 (u(null), t("tutorial"));
               }}
               onMissions={() => t("missions")}
+              onBattlePass={() => t("battlepass")}
             />
           ),
           ranking: <RankingScreen onBack={() => t("matching")} />,
           missions: <MissionsScreen onBack={() => t("matching")} />,
+          battlepass: <BattlePassScreen onBack={() => t("matching")} />,
           tutorial: (
             <TutorialSelect
               onBack={() => t("matching")}

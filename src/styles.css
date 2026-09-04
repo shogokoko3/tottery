@@ -3325,3 +3325,110 @@ h3 {
 .btn-choice {
   position: relative;
 }
+
+/* --- バトルパス --- */
+.pass-counts {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin: 10px 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.pass-counts b {
+  color: var(--gold-soft);
+  font-size: 15px;
+}
+.pass-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr));
+  gap: 4px;
+  max-width: 420px;
+  margin: 0 auto 14px;
+}
+.pass-cell {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 3px;
+  overflow: hidden;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  background: rgba(9, 20, 38, 0.7);
+  color: var(--text-dim);
+  font-size: 8.5px;
+  line-height: 1.25;
+  text-align: center;
+  cursor: default;
+}
+/* まだ開いていないマスは沈める */
+.pass-cell.is-locked {
+  opacity: 0.35;
+}
+/* いま挑戦できるマス */
+.pass-cell.is-open {
+  border-color: var(--gold-deep);
+  color: var(--text);
+}
+/* クリア済み。押すとめくれる */
+.pass-cell.is-cleared {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.14);
+  color: var(--gold-soft);
+  cursor: pointer;
+}
+.pass-cell.is-free {
+  cursor: default;
+}
+.pass-cell.is-flipped {
+  border-color: var(--gold);
+  padding: 0;
+  cursor: default;
+}
+.pass-name {
+  overflow-wrap: anywhere;
+}
+.pass-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.pass-turn {
+  font-size: 8px;
+  border: 1px solid var(--gold);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+/* 進み具合。マスの下辺に細く */
+.pass-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.pass-bar::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: var(--p, 0%);
+  background: var(--gold);
+}
+/* めくったマス。褒美の絵柄の一片が出る */
+.pass-art {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+}
+@media (max-width: 400px) {
+  .pass-cell {
+    font-size: 8px;
+  }
+  .pass-turn {
+    display: none;
+  }
+}
