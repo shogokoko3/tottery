@@ -171,10 +171,24 @@ export function applyCaptures(state, captured) {
   return changed ? { ...state, progress, cleared } : state;
 }
 
-/** クリアしたマスをひっくり返す */
-export function flip(state, id) {
-  if (!state.cleared.includes(id) || state.flipped.includes(id)) return state;
-  return { ...state, flipped: [...state.flipped, id] };
+/**
+ * クリアしたマスをひっくり返す。もう一度押すと戻り、元の条件が読める。
+ * クリアしていないマスは返せない。
+ */
+export function toggleFlip(state, id) {
+  if (!state.cleared.includes(id)) return state;
+  const on = state.flipped.includes(id);
+  return {
+    ...state,
+    flipped: on
+      ? state.flipped.filter((x) => x !== id)
+      : [...state.flipped, id],
+  };
+}
+
+/** クリア済みをまとめて返す / まとめて戻す */
+export function flipAll(state, on) {
+  return { ...state, flipped: on ? [...state.cleared] : [] };
 }
 
 /** 全部クリアしたか */

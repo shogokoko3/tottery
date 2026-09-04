@@ -12,9 +12,10 @@ import {
   SIZE,
   allCleared,
   canClaim,
-  flip,
+  flipAll,
   rewardSkin,
   statusOf,
+  toggleFlip,
 } from "../game/battlepass.js";
 import { updatePass, usePass } from "../game/battlepass-store.js";
 import { grantSkin } from "../skins/collection.js";
@@ -87,13 +88,12 @@ export function BattlePassScreen({ onBack }) {
               key={c.id}
               aria-label={label}
               title={label}
-              disabled={!c.cleared || c.flipped}
-              onClick={() => updatePass((s) => flip(s, c.id))}
+              disabled={!c.cleared}
+              onClick={() => updatePass((s) => toggleFlip(s, c.id))}
             >
-              {c.flipped ? (
-                <span className="pass-art" style={art} />
-              ) : (
-                <>
+              {/* 表は条件、裏は絵柄の一片。押すとくるっと回って入れ替わる */}
+              <span className="pass-inner">
+                <span className="pass-front">
                   <span className="pass-name">{c.name}</span>
                   {!c.free && (
                     <span className="pass-num">
@@ -109,12 +109,23 @@ export function BattlePassScreen({ onBack }) {
                       style={{ "--p": `${Math.round(c.ratio * 100)}%` }}
                     />
                   )}
-                </>
-              )}
+                </span>
+                <span className="pass-back" style={art} />
+              </span>
             </button>
           );
         })}
       </div>
+      {done > 1 && (
+        <div className="pass-actions">
+          <button
+            className="btn btn-ghost"
+            onClick={() => updatePass((s) => flipAll(s, turned < done))}
+          >
+            {turned < done ? "クリアしたマスを全部めくる" : "全部を条件に戻す"}
+          </button>
+        </div>
+      )}
       <p className="mission-message" role="status">
         {message}
       </p>
@@ -133,7 +144,7 @@ export function BattlePassScreen({ onBack }) {
       ) : (
         <p className="hint">
           {allCleared(pass)
-            ? "残りのマスをめくると、絵柄がそろいます。"
+            ? "残りのマスをめくると、絵柄がそろいます。もう一度押すと条件に戻ります。"
             : "全部のマスをクリアして、めくると絵柄が現れます。"}
         </p>
       )}
