@@ -19,6 +19,11 @@ import { findIcon } from "../game/icons.js";
 import { rankTitle } from "../game/rating.js";
 import { titleNameOf } from "../game/titles.js";
 import { deletePlayer, readPlayers, setBanned } from "../net/players.js";
+import { deleteLetter, normalizeLetter, sendLetter } from "../net/letters.js";
+import { giftsLabel } from "../game/gifts.js";
+import { TITLES } from "../game/titles.js";
+import { ICONS } from "../game/icons.js";
+import { SKINS } from "../skins/catalog.js";
 
 const TIMEOUT_MS = 8000;
 
@@ -77,6 +82,73 @@ const SORTS = {
   },
 };
 
+/**
+ * 添付を1つ選ぶ。種類によって、選ぶものと数を出し分ける。
+ */
+function GiftPicker({ gift, onChange, onRemove }) {
+  const kinds = [
+    ["ticket", "ガチャチケット"],
+    ["xp", "経験値"],
+    ["title", "称号"],
+    ["icon", "アイコン"],
+    ["skin", "スキン"],
+  ];
+  const lists = { title: TITLES, icon: ICONS, skin: SKINS };
+  const nameOf = (o) => o.name || o.label;
+  return (
+    <div className="letter-gift-row">
+      <select
+        className="admin-input"
+        value={gift.type}
+        onChange={(e) => {
+          const type = e.target.value;
+          const list = lists[type];
+          onChange(
+            list
+              ? { type, id: list[0].id }
+              : { type, amount: type === "xp" ? 100 : 1 },
+          );
+        }}
+      >
+        {kinds.map(([v, label]) => (
+          <option value={v} key={v}>
+            {label}
+          </option>
+        ))}
+      </select>
+      {lists[gift.type] ? (
+        <select
+          className="admin-input"
+          value={gift.id}
+          onChange={(e) => onChange({ ...gift, id: e.target.value })}
+        >
+          {lists[gift.type].map((o) => (
+            <option value={o.id} key={o.id}>
+              {nameOf(o)}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          className="admin-input"
+          type="number"
+          min="1"
+          value={gift.amount}
+          onChange={(e) =>
+            onChange({
+              ...gift,
+              amount: Math.max(1, Number(e.target.value) || 1),
+            })
+          }
+        />
+      )}
+      <button className="btn btn-ghost btn-small" onClick={onRemove}>
+        外す
+      </button>
+    </div>
+  );
+}
+
 function AdminApp() {
   const [ranks, setRanks] = useState(null);
   const [players, setPlayers] = useState(null);
@@ -89,12 +161,20 @@ function AdminApp() {
   const [loadedAt, setLoadedAt] = useState(null);
   // 押して開いている行。{ kind, id }
   const [detail, setDetail] = useState(null);
+  // 手紙。宛先が null なら全員宛て
+  const [letters, setLetters] = useState(null);
+  const [draft, setDraft] = useState({
+    to: "all",
+    subject: "",
+    body: "",
+    gifts: [],
+  });
 
   async function load() {
     setBusy(true);
     setError(null);
     try {
-      const [r, l, p] = await Promise.all([
+      const [r, l, p, m] = await Promise.all([
         getJson("ranks"),
         getJson("lobby"),
         // 登録した人の台帳。ルールがまだなら、そこだけ知らせて他は出す
@@ -102,8 +182,18 @@ function AdminApp() {
           (rows) => ({ rows }),
           (e) => ({ error: (e && e.message) || String(e) }),
         ),
+        getJson("letters").then(
+          (rows) => ({ rows }),
+          (e) => ({ error: (e && e.message) || String(e) }),
+        ),
       ]);
       setRanks(Object.entries(r || {}).map(([id, row]) => ({ id, ...row })));
+      setLetters(
+        Object.entries((m && m.rows) || {})
+          .map(([id, row]) => normalizeLetter(id, row))
+          .filter(Boolean)
+          .sort((a, b) => b.at - a.at),
+      );
       setPlayers(p.rows || []);
       setPlayersError(p.error || null);
       setLobby(
@@ -171,6 +261,51 @@ function AdminApp() {
     setBusy(true);
     try {
       await setBanned(row.id, on);
+      await load();
+    } catch (e) {
+      setError((e && e.message) || String(e));
+      setBusy(false);
+    }
+  }
+
+  async function send() {
+    if (busy) return;
+    if (!draft.subject.trim()) {
+      setError("件名を入れてください");
+      return;
+    }
+    const who =
+      draft.to === "all"
+        ? "全員"
+        : `「${(players || []).find((p) => p.id === draft.to)?.name || draft.to}」`;
+    if (
+      !window.confirm(
+        `${who}に手紙を出します。\n\n件名: ${draft.subject}\n添付: ${giftsLabel(draft.gifts)}\n\n出したあとは、受け取った人からは取り消せません。`,
+      )
+    )
+      return;
+    setBusy(true);
+    setError(null);
+    try {
+      await sendLetter(draft);
+      setDraft({ to: "all", subject: "", body: "", gifts: [] });
+      await load();
+    } catch (e) {
+      setError((e && e.message) || String(e));
+      setBusy(false);
+    }
+  }
+
+  async function removeLetter(l) {
+    if (
+      !window.confirm(
+        `手紙「${l.subject}」を取り消します。\nまだ受け取っていない人には届かなくなります。受け取り済みの人からは戻せません。`,
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      await deleteLetter(l.id);
       await load();
     } catch (e) {
       setError((e && e.message) || String(e));
@@ -382,6 +517,121 @@ function AdminApp() {
         </section>
 
         <section className="admin-card">
+          <h2>運営からの手紙</h2>
+          <p className="hint">
+            補填やプレゼントを渡します。受け取ると添付がその場で配られます。
+            出したあとに取り消せるのは、まだ受け取っていない人にだけです。
+          </p>
+          <div className="letter-form">
+            <label className="letter-field">
+              <span>宛先</span>
+              <select
+                className="admin-input"
+                value={draft.to}
+                onChange={(e) => setDraft({ ...draft, to: e.target.value })}
+              >
+                <option value="all">全員</option>
+                {(players || []).map((p) => (
+                  <option value={p.id} key={p.id}>
+                    {p.name || p.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="letter-field">
+              <span>件名</span>
+              <input
+                className="admin-input"
+                maxLength={60}
+                placeholder="おわびとお知らせ"
+                value={draft.subject}
+                onChange={(e) =>
+                  setDraft({ ...draft, subject: e.target.value })
+                }
+              />
+            </label>
+            <label className="letter-field">
+              <span>本文</span>
+              <textarea
+                className="admin-input"
+                rows={4}
+                maxLength={1000}
+                placeholder="ご不便をおかけしました。おわびの品をお受け取りください。"
+                value={draft.body}
+                onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+              />
+            </label>
+            <div className="letter-field">
+              <span>添付</span>
+              <div className="letter-gifts-edit">
+                {draft.gifts.map((g, i) => (
+                  <GiftPicker
+                    key={i}
+                    gift={g}
+                    onChange={(next) =>
+                      setDraft({
+                        ...draft,
+                        gifts: draft.gifts.map((x, k) => (k === i ? next : x)),
+                      })
+                    }
+                    onRemove={() =>
+                      setDraft({
+                        ...draft,
+                        gifts: draft.gifts.filter((_, k) => k !== i),
+                      })
+                    }
+                  />
+                ))}
+                <button
+                  className="btn btn-ghost btn-small"
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      gifts: [...draft.gifts, { type: "ticket", amount: 1 }],
+                    })
+                  }
+                >
+                  添付を足す
+                </button>
+              </div>
+            </div>
+            <button
+              className="btn btn-primary"
+              disabled={busy || !draft.subject.trim()}
+              onClick={send}
+            >
+              手紙を出す
+            </button>
+          </div>
+          <div className="admin-rows">
+            {(letters || []).map((l) => (
+              <div className="admin-row letter-sent" key={l.id}>
+                <span className="admin-row-main">
+                  <b>{l.subject}</b>
+                  <small>
+                    {l.to === "all"
+                      ? "全員"
+                      : `→ ${(players || []).find((p) => p.id === l.to)?.name || l.to}`}
+                    {" · "}
+                    {ago(l.at)} · {giftsLabel(l.gifts)}
+                  </small>
+                </span>
+                <button
+                  className="btn btn-ghost btn-small"
+                  disabled={busy}
+                  onClick={() => removeLetter(l)}
+                >
+                  取り消す
+                </button>
+              </div>
+            ))}
+            {letters && letters.length === 0 && (
+              <p className="hint">まだ手紙を出していません</p>
+            )}
+          </div>
+        </section>
+
+        <section className="admin-card">
           <h2>待ち合わせ</h2>
           <p className="hint">
             相手を待っている部屋。対局が始まるか3分たつと消えます。
@@ -497,6 +747,18 @@ function AdminApp() {
                   <span className="admin-id">{opened.id}</span>
                 </Line>
                 <div className="admin-panel-actions">
+                  {detail.kind === "player" && (
+                    <button
+                      className="btn btn-ghost"
+                      disabled={busy}
+                      onClick={() => {
+                        setDraft({ ...draft, to: opened.id });
+                        setDetail(null);
+                      }}
+                    >
+                      手紙を出す
+                    </button>
+                  )}
                   {detail.kind === "player" && (
                     <button
                       className="btn btn-ghost"

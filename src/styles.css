@@ -3462,3 +3462,95 @@ h3 {
     transition: none;
   }
 }
+
+/* --- 運営からの手紙 --- */
+.letter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+.letter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(4, 10, 20, 0.45);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+/* 未読は金の縁で目を引く。受け取り済みは沈める */
+.letter.is-new {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+}
+.letter.is-taken {
+  opacity: 0.6;
+}
+.letter-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.letter-main b {
+  font-family: "Shippori Mincho", serif;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.letter-main small {
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+.letter-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.letter-side em {
+  font-style: normal;
+}
+.letter-side em.letter-new {
+  color: #2a1d05;
+  background: var(--gold);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 700;
+}
+.letter-date {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.letter-body {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.letter-gifts {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(212, 175, 55, 0.08);
+}
+.letter-gifts > span {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--gold-soft);
+}
+.letter-gifts ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}

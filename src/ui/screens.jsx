@@ -46,6 +46,7 @@ import SKIN_STYLES from "../skins/styles.css";
 import { SkinsScreen } from "./skins.jsx";
 import { MissionsScreen } from "./missions.jsx";
 import { BattlePassScreen } from "./battlepass.jsx";
+import { LettersScreen, useUnreadLetters } from "./letters.jsx";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 import { sanitizeLoadout } from "../skins/catalog.js";
@@ -179,9 +180,11 @@ export function MenuScreen({
   onBattlePass,
   onMissions,
   onRanking,
+  onLetters,
 }) {
   // 受け取れるミッションの数。入り口に印を出す
   const ready = claimableCount(loadProfile());
+  const unread = useUnreadLetters();
   return (
     <div className="center-stage">
       <h2>ホーム</h2>
@@ -216,6 +219,13 @@ export function MenuScreen({
             ミッション<small>条件を満たして称号やチケットを受け取る</small>
           </span>
           {ready > 0 && <span className="menu-badge">{ready}</span>}
+        </button>
+        <button className="btn btn-ghost btn-choice" onClick={onLetters}>
+          <Book size={30} />
+          <span className="choice-label">
+            運営からの手紙<small>お知らせとプレゼントを受け取る</small>
+          </span>
+          {unread > 0 && <span className="menu-badge">{unread}</span>}
         </button>
         <button className="btn btn-ghost btn-choice" onClick={onRanking}>
           <Crown size={30} />
@@ -921,6 +931,7 @@ export function TotteryApp() {
               onSkins={() => t("skins")}
               onBattlePass={() => t("battlepass")}
               onMissions={() => t("missions")}
+              onLetters={() => t("letters")}
               onRanking={() => t("ranking")}
             />
           ),
@@ -950,6 +961,7 @@ export function TotteryApp() {
           ranking: <RankingScreen onBack={() => t("menu")} />,
           missions: <MissionsScreen onBack={() => t("menu")} />,
           battlepass: <BattlePassScreen onBack={() => t("menu")} />,
+          letters: <LettersScreen onBack={() => t("menu")} />,
           tutorial: (
             <TutorialSelect
               onBack={() => t("menu")}

@@ -7,30 +7,13 @@
  */
 import { useState } from "react";
 import { ArrowLeft, Check, Crown } from "../icons.jsx";
-import {
-  grantIcon,
-  grantTitle,
-  loadProfile,
-  markMissionClaimed,
-} from "../game/profile.js";
+import { loadProfile, markMissionClaimed } from "../game/profile.js";
 import { KINDS, listMissions } from "../game/missions.js";
-import { findIcon } from "../game/icons.js";
-import { findTitle } from "../game/titles.js";
-import { byId as skinById } from "../skins/catalog.js";
-import { addTickets, grantSkin } from "../skins/collection.js";
-import { updateCollection, useCollection } from "../skins/store.js";
+import { giftLabel, giveGift } from "../game/gifts.js";
+import { useCollection } from "../skins/store.js";
 
-/** 褒美の呼び名。知らない id でも画面が壊れないようにする */
-export function rewardLabel(reward) {
-  if (!reward) return "—";
-  if (reward.type === "ticket") return `ガチャチケット ×${reward.amount}`;
-  if (reward.type === "title")
-    return `称号「${(findTitle(reward.id) || {}).name || reward.id}」`;
-  if (reward.type === "icon") return `アイコン「${findIcon(reward.id).label}」`;
-  if (reward.type === "skin")
-    return `スキン「${(skinById(reward.id) || {}).name || reward.id}」`;
-  return "—";
-}
+/** 褒美の呼び名。手紙の添付と同じ形なので、共通のものを使う */
+export const rewardLabel = giftLabel;
 
 export function MissionsScreen({ onBack }) {
   const collection = useCollection();
@@ -42,12 +25,7 @@ export function MissionsScreen({ onBack }) {
 
   /** 1件ぶんを配る。控えるのは配り終えてから(途中で失敗しても二重取りにならない) */
   async function give(mission) {
-    const r = mission.reward;
-    if (r.type === "title") grantTitle(r.id);
-    if (r.type === "icon") grantIcon(r.id);
-    if (r.type === "skin") await updateCollection((s) => grantSkin(s, r.id));
-    if (r.type === "ticket")
-      await updateCollection((s) => addTickets(s, r.amount));
+    await giveGift(mission.reward);
     return markMissionClaimed(mission.id);
   }
 

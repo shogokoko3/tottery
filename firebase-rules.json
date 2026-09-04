@@ -28,6 +28,14 @@
         ".write": true,
         ".validate": "newData.child('name').isString() && newData.child('name').val().length <= 10"
       }
+    },
+    "letters": {
+      ".read": true,
+      ".indexOn": ["at"],
+      "$id": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['subject','at']) && newData.child('subject').isString() && newData.child('subject').val().length <= 60 && newData.child('at').isNumber()"
+      }
     }
   }
 }

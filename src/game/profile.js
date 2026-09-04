@@ -68,6 +68,8 @@ const EMPTY = {
   missions: [],
   // 一度クリアしたチュートリアル。2回目からは経験値を配らない
   cleared: [],
+  // 受け取り済みの手紙。二重取りを防ぐ
+  letters: [],
   // レーティングと、その対象になった対局数(オンラインだけ)
   rating: START_RATING,
   rated: 0,
@@ -122,6 +124,9 @@ export function loadProfile() {
       : [],
     cleared: Array.isArray(saved.cleared)
       ? saved.cleared.filter((x) => Number.isInteger(x))
+      : [],
+    letters: Array.isArray(saved.letters)
+      ? saved.letters.filter((x) => typeof x === "string")
       : [],
     rating: Number(saved.rating) || START_RATING,
     rated: Number(saved.rated) || 0,
@@ -335,6 +340,15 @@ export function markMissionClaimed(id) {
   const profile = loadProfile();
   if (!id || profile.missions.includes(id)) return profile;
   const next = { ...profile, missions: [...profile.missions, id] };
+  saveProfile(next);
+  return next;
+}
+
+/** 手紙を受け取ったことを控える */
+export function markLetterTaken(id) {
+  const profile = loadProfile();
+  if (!id || profile.letters.includes(id)) return profile;
+  const next = { ...profile, letters: [...profile.letters, id] };
   saveProfile(next);
   return next;
 }
