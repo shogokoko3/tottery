@@ -6,6 +6,7 @@ import { updateCollection, useCollection } from "../skins/store.js";
 import { CardFace } from "./cards.jsx";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
 import { SkinFilm } from "./skin-film.jsx";
+import { ArrowLeft } from "../icons.jsx";
 import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
 
 const rarityLabel = (s) => (s.rarity === "LIMITED" ? "早期特典" : s.rarity);
@@ -234,7 +235,7 @@ function SummonReveal({ results, onFinish, reduce }) {
   );
 }
 
-export function SkinsScreen() {
+export function SkinsScreen({ onBack }) {
   const collection = useCollection(),
     reduce = useReducedMotion();
   const [tab, setTab] = useState("gacha"),
@@ -717,6 +718,11 @@ export function SkinsScreen() {
         </SkinModal>
       )}
       {film && <SkinFilm skin={film} onClose={() => setFilm(null)} />}
+      {onBack && (
+        <button className="btn btn-ghost skins-back" onClick={onBack}>
+          <ArrowLeft size={16} /> ホームに戻る
+        </button>
+      )}
     </div>
   );
 }

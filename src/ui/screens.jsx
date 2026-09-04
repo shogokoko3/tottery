@@ -411,7 +411,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           {a}
         </p>
         <button className="btn btn-ghost" onClick={onBack}>
-          マッチング画面に戻る
+          対戦相手を選ぶに戻る
         </button>
       </div>
     ) : (
@@ -675,7 +675,7 @@ export function RoomScreen({
             (R(), onBackToMatching());
           }}
         >
-          マッチング画面に戻る
+          対戦相手を選ぶに戻る
         </button>
       </div>
     </div>
@@ -791,7 +791,7 @@ export function RoomScreen({
         }}
         onClick={onBackToMatching}
       >
-        <ArrowLeft size={18} /> メインメニューへ戻る
+        <ArrowLeft size={18} /> 対戦相手を選ぶに戻る
       </button>
     </div>
   );
@@ -911,7 +911,7 @@ export function TotteryApp() {
           home: (
             <HomeScreen onStart={() => t("menu")} onSkins={() => t("skins")} />
           ),
-          skins: <SkinsScreen />,
+          skins: <SkinsScreen onBack={() => t("menu")} />,
           menu: (
             <MenuScreen
               onPlay={() => t("matching")}
@@ -985,7 +985,11 @@ export function TotteryApp() {
             <RulesSelectScreen
               onStart={z}
               onBack={() => t(rulesFrom)}
-              backLabel="戻る"
+              backLabel={
+                rulesFrom === "room"
+                  ? "フレンド対戦に戻る"
+                  : "対戦相手を選ぶに戻る"
+              }
               note={
                 o === "online"
                   ? "この設定で対戦相手を探します。相手が先に待っていた場合は、相手の設定が使われます。"

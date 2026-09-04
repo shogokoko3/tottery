@@ -149,7 +149,7 @@ export function BattlePassScreen({ onBack }) {
         </p>
       )}
       <button className="btn btn-ghost" onClick={onBack}>
-        <ArrowLeft size={16} /> もどる
+        <ArrowLeft size={16} /> ホームに戻る
       </button>
     </div>
   );

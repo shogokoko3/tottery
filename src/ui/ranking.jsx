@@ -86,7 +86,7 @@ export function RankingScreen({ onBack }) {
         別人として載ります。端末を替えても続くアカウントは今後入れる予定です。
       </p>
       <button className="btn btn-ghost" onClick={onBack}>
-        <ArrowLeft size={16} /> 戻る
+        <ArrowLeft size={16} /> ホームに戻る
       </button>
     </div>
   );
