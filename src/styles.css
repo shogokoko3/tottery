@@ -3554,3 +3554,311 @@ h3 {
   padding-left: 18px;
   font-size: 13px;
 }
+
+/* --- ホーム ---
+ * 片手で持った電話で見るところ。7つの入り口を同じ帯で並べると、
+ * どれも同じ重さに見えて選べなくなるので、大きさと色で軽重をつけた。
+ * 触るところはどれも 44px 以上にしてある。 */
+.home-wrap {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* 画面の高さが余ったぶんは上下に分ける。下だけに余白が溜まらないように */
+  margin-block: auto;
+}
+/* ホームのときだけ、置き場を画面の高さいっぱいに広げる */
+.stage:has(> .home-wrap) {
+  min-height: calc(100vh - 60px);
+  min-height: calc(100dvh - 60px);
+  justify-content: flex-start;
+}
+
+/* 自分の札。名前・称号・レベル・チケット */
+.home-self {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-self:active {
+  transform: scale(0.99);
+}
+.home-self-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.home-self-id b {
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-self-id small {
+  font-size: 11px;
+  color: var(--gold-soft);
+  opacity: 0.85;
+}
+.home-self-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+/* 押せることが分かるように、右端に小さな矢印を添える */
+.home-self-more {
+  opacity: 0.4;
+  flex: none;
+}
+.home-lv b {
+  font-size: 16px;
+  color: var(--gold-soft);
+  margin-left: 2px;
+}
+.home-tickets {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(212, 175, 55, 0.08);
+  color: var(--gold-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+/* レベルの帯は札の下辺に沿わせる。数字だけより進み具合が伝わる */
+.home-self-bar {
+  grid-column: 1 / -1;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.14);
+  overflow: hidden;
+}
+.home-self-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold-soft), var(--gold));
+}
+
+/* 一番やってほしいところ。ここだけ金にする */
+.home-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #f0d98a, #d4af37 60%, #b8942b);
+  color: #22160a;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    0 6px 0 #7a5f18,
+    0 10px 24px rgba(0, 0, 0, 0.4);
+  -webkit-tap-highlight-color: transparent;
+}
+.home-hero:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 2px 0 #7a5f18,
+    0 4px 10px rgba(0, 0, 0, 0.4);
+}
+.home-hero-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 50%;
+  background: rgba(34, 22, 10, 0.14);
+}
+.home-hero-label {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 3px;
+}
+.home-hero-label b {
+  font-size: 21px;
+  letter-spacing: 0.08em;
+}
+.home-hero-label small {
+  font-size: 12px;
+  opacity: 0.75;
+}
+.home-hero-arrow {
+  opacity: 0.5;
+  flex: none;
+}
+
+/* チュートリアル。金の次に置く一段 */
+.home-wide {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border: 1px solid rgba(143, 111, 214, 0.45);
+  border-radius: 12px;
+  background: linear-gradient(150deg, #2c2450, #1b1836);
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  -webkit-tap-highlight-color: transparent;
+}
+.home-wide:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+.home-wide-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 10px;
+  background: rgba(203, 182, 255, 0.14);
+  color: var(--swap-soft);
+}
+.home-wide-label {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 2px;
+}
+.home-wide-label b {
+  font-size: 15px;
+  letter-spacing: 0.06em;
+}
+.home-wide-label small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.home-wide-arrow {
+  color: var(--text-dim);
+  opacity: 0.6;
+  flex: none;
+}
+
+/* 四角い入り口。2つずつ並べる */
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.home-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 96px;
+  padding: 12px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  -webkit-tap-highlight-color: transparent;
+}
+.home-tile:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+.home-tile b {
+  font-size: 13.5px;
+  letter-spacing: 0.04em;
+}
+.home-tile small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.home-tile-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+/* 入り口ごとに絵柄の色を変える。同じ絵柄・同じ色だと押し間違える */
+.home-tile-skins .home-tile-icon {
+  color: var(--swap-soft);
+  background: rgba(143, 111, 214, 0.16);
+}
+.home-tile-pass .home-tile-icon {
+  color: #7fd3c4;
+  background: rgba(127, 211, 196, 0.14);
+}
+/* 金は金の釦(対戦する)に取ってあるので、ここは琥珀にして分ける */
+.home-tile-missions .home-tile-icon {
+  color: #f5c26b;
+  background: rgba(245, 194, 107, 0.22);
+}
+.home-tile-letters .home-tile-icon {
+  color: #8fbce8;
+  background: rgba(143, 188, 232, 0.14);
+}
+.home-tile .menu-badge {
+  top: 8px;
+  right: 8px;
+}
+
+/* ランキング。毎日押すものではないので控えめに */
+.home-quiet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-quiet:active {
+  color: var(--gold-soft);
+}
+
+/* 背の低い電話。詰めて1画面に収める */
+@media (max-height: 700px) {
+  .home-hero {
+    padding: 14px 16px;
+  }
+  .home-hero-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .home-hero-label b {
+    font-size: 19px;
+  }
+  .home-tile {
+    min-height: 84px;
+  }
+}

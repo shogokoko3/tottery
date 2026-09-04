@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useScreenBgm } from "../audio/index.js";
 import { titleBgImg } from "../assets.js";
 import { VERSION } from "../game/constants.js";
@@ -17,6 +17,9 @@ import {
   Settings,
   Users,
   Sparkle,
+  Grid,
+  Mail,
+  Ticket,
 } from "../icons.jsx";
 import {
   LOBBY_TTL,
@@ -35,9 +38,15 @@ import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
 import { RankingScreen } from "./ranking.jsx";
-import { hasName, isTestPlay, loadProfile } from "../game/profile.js";
+import {
+  hasName,
+  isTestPlay,
+  loadProfile,
+  levelProgress,
+} from "../game/profile.js";
 import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { titleOf } from "../game/titles.js";
+import { PlayerIcon } from "./playericon.jsx";
 import { resetAccount, touchDay } from "../game/profile.js";
 import { syncPlayer } from "../net/players.js";
 import { SeatsProvider } from "./names.jsx";
@@ -72,6 +81,13 @@ function myTitle() {
 function myRating() {
   return loadProfile().rating;
 }
+
+/**
+ * 設定を開く手。GameShell が持っている設定の札を、
+ * その下に置かれた画面(ホームなど)からも開けるようにする。
+ */
+const OpenSettings = createContext(null);
+export const useOpenSettings = () => useContext(OpenSettings);
 
 export function GameShell({
   children,
@@ -139,7 +155,9 @@ export function GameShell({
         <div className="test-badge">テストプレイ中 · 時間制限なし</div>
       )}
       <main className={`stage ${sheet ? "stage-with-sheet" : ""}`}>
-        {children}
+        <OpenSettings.Provider value={() => f(!0)}>
+          {children}
+        </OpenSettings.Provider>
       </main>
       {sheet}
       {showRules && <RulesPanel onClose={() => setShowRules(!1)} />}
@@ -169,9 +187,63 @@ export function HomeScreen({ onStart, onSkins }) {
   );
 }
 /**
+ * ホームの一番上に出る、自分の札。
+ *
+ * 「いまの自分」(名前・称号・レベル・持っているチケット)をひと目で出す。
+ * 押すと設定が開く。名前やアイコンを変えるのはそこ。
+ */
+function HomeSelf({ profile, tickets }) {
+  const openSettings = useOpenSettings();
+  const progress = levelProgress(profile);
+  return (
+    <button
+      className="home-self"
+      onClick={openSettings || void 0}
+      aria-label="自分の設定を開く"
+    >
+      <PlayerIcon icon={profile.icon} name={profile.name} size="md" />
+      <span className="home-self-id">
+        <b>{profile.name || "名無し"}</b>
+        <small>{titleOf(profile).name}</small>
+      </span>
+      <span className="home-self-right">
+        <span className="home-lv">
+          Lv <b>{progress.level}</b>
+        </span>
+        <span className="home-tickets">
+          <Ticket size={13} />
+          {tickets}
+        </span>
+        <ArrowRight size={14} className="home-self-more" />
+      </span>
+      <span className="home-self-bar">
+        <span style={{ width: `${Math.round(progress.ratio * 100)}%` }} />
+      </span>
+    </button>
+  );
+}
+
+/** ホームの四角い入り口。絵柄を上、名前を下に置く */
+function HomeTile({ tone, icon, label, note, badge, onClick }) {
+  return (
+    <button className={`home-tile home-tile-${tone}`} onClick={onClick}>
+      <span className="home-tile-icon">{icon}</span>
+      <b>{label}</b>
+      <small>{note}</small>
+      {badge > 0 && (
+        <span className="menu-badge">{badge > 99 ? "99+" : badge}</span>
+      )}
+    </button>
+  );
+}
+
+/**
  * ホーム。タイトルの「ゲームスタート」の次に出る。
- * ここから対戦・チュートリアル・スキン・バトルパス・ミッション・ランキングへ分かれる。
- * 「対戦する」だけは、相手の種類を選ぶ画面(MatchingScreen)へ進む。
+ *
+ * 片手で持った電話で見るところなので、並べ方に軽重をつけた。
+ * 一番やってほしい「対戦する」を大きく、次に「チュートリアル」、
+ * あとは四角い入り口を2つずつ。ランキングは下に控えめに置く。
+ * 7つを同じ帯で並べると、どれも同じ重さに見えて選べなくなる。
  */
 export function MenuScreen({
   onPlay,
@@ -182,58 +254,75 @@ export function MenuScreen({
   onRanking,
   onLetters,
 }) {
-  // 受け取れるミッションの数。入り口に印を出す
-  const ready = claimableCount(loadProfile());
+  const profile = loadProfile();
+  // 受け取れるミッションの数と、未読の手紙。入り口に印を出す
+  const ready = claimableCount(profile);
   const unread = useUnreadLetters();
+  const collection = useCollection();
   return (
-    <div className="center-stage">
-      <h2>ホーム</h2>
-      <div className="nav-stack">
-        <button className="btn btn-primary btn-choice" onClick={onPlay}>
-          <Globe size={30} />
-          <span className="choice-label">
-            対戦する<small>オンライン・フレンド・CPU</small>
-          </span>
-        </button>
-        <button className="btn btn-scroll btn-choice" onClick={onTutorial}>
-          <Book size={30} />
-          <span className="choice-label">
-            チュートリアル<small>ルールとカードの効果を学ぶ</small>
-          </span>
-        </button>
-        <button className="btn btn-friend btn-choice" onClick={onSkins}>
-          <Sparkle size={30} />
-          <span className="choice-label">
-            スキンガチャ・装備<small>英雄を召喚してカードに着せる</small>
-          </span>
-        </button>
-        <button className="btn btn-teal btn-choice" onClick={onBattlePass}>
-          <Crown size={30} />
-          <span className="choice-label">
-            バトルパス<small>駒を取ってマスを埋め、絵柄をそろえる</small>
-          </span>
-        </button>
-        <button className="btn btn-ghost btn-choice" onClick={onMissions}>
-          <Check size={30} />
-          <span className="choice-label">
-            ミッション<small>条件を満たして称号やチケットを受け取る</small>
-          </span>
-          {ready > 0 && <span className="menu-badge">{ready}</span>}
-        </button>
-        <button className="btn btn-ghost btn-choice" onClick={onLetters}>
-          <Book size={30} />
-          <span className="choice-label">
-            運営からの手紙<small>お知らせとプレゼントを受け取る</small>
-          </span>
-          {unread > 0 && <span className="menu-badge">{unread}</span>}
-        </button>
-        <button className="btn btn-ghost btn-choice" onClick={onRanking}>
-          <Crown size={30} />
-          <span className="choice-label">
-            ランキング<small>オンライン対戦の成績で並びます</small>
-          </span>
-        </button>
+    <div className="home-wrap">
+      <HomeSelf profile={profile} tickets={collection.tickets} />
+
+      <button className="home-hero" onClick={onPlay}>
+        <span className="home-hero-icon">
+          <Globe size={34} />
+        </span>
+        <span className="home-hero-label">
+          <b>対戦する</b>
+          <small>オンライン・フレンド・CPU</small>
+        </span>
+        <ArrowRight size={20} className="home-hero-arrow" />
+      </button>
+
+      <button className="home-wide" onClick={onTutorial}>
+        <span className="home-wide-icon">
+          <Book size={22} />
+        </span>
+        <span className="home-wide-label">
+          <b>チュートリアル</b>
+          <small>ルールとカードの効果を学ぶ</small>
+        </span>
+        <ArrowRight size={16} className="home-wide-arrow" />
+      </button>
+
+      <div className="home-grid">
+        <HomeTile
+          tone="skins"
+          icon={<Sparkle size={26} />}
+          label="ガチャ・装備"
+          note="英雄を召喚する"
+          onClick={onSkins}
+        />
+        <HomeTile
+          tone="pass"
+          icon={<Grid size={26} />}
+          label="バトルパス"
+          note="マスを埋める"
+          onClick={onBattlePass}
+        />
+        <HomeTile
+          tone="missions"
+          icon={<Check size={26} />}
+          label="ミッション"
+          note="褒美を受け取る"
+          badge={ready}
+          onClick={onMissions}
+        />
+        <HomeTile
+          tone="letters"
+          icon={<Mail size={26} />}
+          label="運営からの手紙"
+          note="お知らせと贈り物"
+          badge={unread}
+          onClick={onLetters}
+        />
       </div>
+
+      <button className="home-quiet" onClick={onRanking}>
+        <Crown size={16} />
+        ランキングを見る
+        <ArrowRight size={14} />
+      </button>
     </div>
   );
 }
