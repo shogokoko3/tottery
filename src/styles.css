@@ -3463,96 +3463,223 @@ h3 {
   }
 }
 
-/* --- 運営からの手紙 --- */
-.letter-list {
+/* --- 運営からのお知らせ ---
+ * 覆いの見た目は管理画面側の CSS にしか無く、プレイヤーの画面では
+ * 素の文字が一覧の下に伸びていた。ここに独立して置き直す。 */
+.notice-wrap {
+  text-align: left;
+}
+.notice-wrap h2,
+.notice-wrap .mission-message {
+  text-align: center;
+}
+/* まとめて受け取る。文言が折り返すと読みにくいので1行に収める */
+.notice-all {
+  font-size: 15px;
+  padding: 13px 16px;
+}
+
+.notice-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin: 12px 0;
 }
-.letter {
+
+/* お知らせ1件。件名・日付・本文の頭・添付をこの順に積む。
+ * 件名だけだと中身が想像できず、いちいち開くことになる */
+.notice {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  flex-direction: column;
+  gap: 5px;
   width: 100%;
-  min-height: 58px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
+  border-left: 3px solid transparent;
   border-radius: 10px;
   background: rgba(4, 10, 20, 0.45);
   color: var(--text);
   text-align: left;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-/* 未読は金の縁で目を引く。受け取り済みは沈める */
-.letter.is-new {
-  border-color: var(--gold);
-  background: rgba(212, 175, 55, 0.1);
+.notice:active {
+  transform: translateY(1px);
 }
-.letter.is-taken {
-  opacity: 0.6;
+/* 未読は左の縁と点で示す。全体を金で塗ると、並んだとき目が休まらない */
+.notice.is-new {
+  border-left-color: var(--gold);
 }
-.letter-main {
+.notice.is-read {
+  opacity: 0.55;
+}
+
+.notice-head {
   display: flex;
-  flex-direction: column;
-  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
 }
-.letter-main b {
-  font-family: "Shippori Mincho", serif;
-  font-size: 14px;
-  overflow-wrap: anywhere;
-}
-.letter-main small {
-  font-size: 11px;
-  color: var(--text-dim);
-  overflow-wrap: anywhere;
-}
-.letter-side {
+.notice-mark {
+  flex: none;
+  width: 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: none;
-  color: var(--text-dim);
-  font-size: 11px;
+  justify-content: center;
+  color: var(--gold-soft);
+  align-self: center;
 }
-.letter-side em {
-  font-style: normal;
-}
-.letter-side em.letter-new {
-  color: #2a1d05;
+.notice-mark i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
   background: var(--gold);
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-weight: 700;
 }
-.letter-date {
-  margin: 0 0 8px;
+.notice-head b {
+  flex: 1;
+  min-width: 0;
+  font-family: "Shippori Mincho", serif;
+  font-size: 14.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.notice-when {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+/* 本文の頭。1行だけ見せて、続きは開いてもらう */
+.notice-peek {
+  margin-left: 20px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+/* 添付は小さな札にして、開かなくても中身が分かるようにする */
+.notice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-left: 20px;
+}
+.notice-chip {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--gold-soft);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* 開いたときの覆い。画面いっぱいを覆って、外を押すと閉じる */
+.notice-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(4, 8, 18, 0.78);
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+@media (min-height: 620px) {
+  .notice-sheet {
+    align-items: center;
+  }
+}
+.notice-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 440px;
+  max-height: 82vh;
+  border: 1px solid var(--gold);
+  border-radius: 14px;
+  background: linear-gradient(170deg, #142a48, #0b1729);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  text-align: left;
+}
+.notice-panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 14px 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.notice-panel-head b {
+  flex: 1;
+  font-family: "Shippori Mincho", serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--gold-soft);
+  overflow-wrap: anywhere;
+}
+/* 閉じるは指で押せる大きさに */
+.notice-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -8px -6px 0 0;
+  display: grid;
+  place-items: center;
+}
+/* 本文が長くてもここだけが動く。題と受け取る釦は動かない */
+.notice-panel-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 16px 4px;
+}
+.notice-date {
+  margin: 0 0 10px;
   font-size: 11px;
   color: var(--text-dim);
 }
-.letter-body {
-  margin: 0 0 12px;
-  font-size: 13.5px;
-  line-height: 1.85;
+.notice-body {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.9;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.letter-gifts {
+.notice-gifts {
+  margin-bottom: 4px;
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
   background: rgba(212, 175, 55, 0.08);
 }
-.letter-gifts > span {
+.notice-gifts-label {
   font-size: 11px;
-  letter-spacing: 0.1em;
-  color: var(--gold-soft);
+  color: var(--text-dim);
 }
-.letter-gifts ul {
+.notice-gifts ul {
   margin: 6px 0 0;
   padding-left: 18px;
-  font-size: 13px;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--gold-soft);
+}
+/* 続きがあることが分かるよう、下端をふわりと薄くする */
+.notice-actions {
+  position: relative;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+}
+.notice-actions::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -22px;
+  height: 22px;
+  pointer-events: none;
+  background: linear-gradient(rgba(11, 23, 41, 0), #0b1729);
 }
 
 /* --- ホーム ---
