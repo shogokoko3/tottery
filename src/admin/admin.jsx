@@ -12,7 +12,13 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { authedFetch } from "../net/auth.js";
+import {
+  API_KEY,
+  authedFetch,
+  myUid,
+  signInAsOperator,
+  signOut,
+} from "../net/auth.js";
 import STYLES from "../styles.css";
 import ADMIN_STYLES from "./admin.css";
 import { DB_URL } from "../net/firebase.js";
@@ -161,7 +167,92 @@ function GiftPicker({ gift, onChange, onRemove }) {
   );
 }
 
+/**
+ * 運営としてのサインイン。
+ *
+ * この画面は配信していない(手元でしか開かない)ので、パスワードを打つのは
+ * 運営自身の端末だけ。匿名の口座だと端末のデータを消した時点で運営権限ごと
+ * 失われるため、メール+パスワードにしてある。
+ */
+function OperatorGate({ onDone }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function submit(e) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const a = await signInAsOperator(email.trim(), password);
+      onDone(a.uid);
+    } catch (err) {
+      setError((err && err.message) || String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="tottery-root admin-root">
+      <style>{STYLES}</style>
+      <style>{ADMIN_STYLES}</style>
+      <header className="top-bar">
+        <div className="top-left" />
+        <span className="brand">Tottery 管理</span>
+        <div className="top-right" />
+      </header>
+      <main className="stage admin-stage">
+        <section className="admin-card">
+          <h2>運営としてサインイン</h2>
+          <p className="hint">
+            台帳を読んだり、お知らせを出したりするのに要ります。 Firebase
+            に登録した運営用のアドレスを入れてください。
+          </p>
+          {!API_KEY && (
+            <p className="admin-warn">
+              API キーが入っていません。src/net/auth.js の API_KEY
+              を埋めてください。
+            </p>
+          )}
+          <form className="letter-form" onSubmit={submit}>
+            <label className="letter-field">
+              <span>メールアドレス</span>
+              <input
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </label>
+            <label className="letter-field">
+              <span>パスワード</span>
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </label>
+            <button
+              className="btn btn-primary btn-wide"
+              disabled={busy || !email || !password}
+            >
+              {busy ? "確かめています…" : "サインイン"}
+            </button>
+          </form>
+          {error && <p className="admin-warn">{error}</p>}
+        </section>
+      </main>
+    </div>
+  );
+}
+
 function AdminApp() {
+  // 運営として通っているか。通るまで台帳には触らせない
+  const [uid, setUid] = useState(() => myUid());
   const [ranks, setRanks] = useState(null);
   const [players, setPlayers] = useState(null);
   const [playersError, setPlayersError] = useState(null);
@@ -422,6 +513,8 @@ function AdminApp() {
     </div>
   );
 
+  if (!uid) return <OperatorGate onDone={setUid} />;
+
   return (
     <div className="tottery-root admin-root">
       <style>{STYLES}</style>
@@ -429,11 +522,26 @@ function AdminApp() {
       <header className="top-bar">
         <div className="top-left" />
         <span className="brand">Tottery 管理</span>
-        <div className="top-right" />
+        <div className="top-right">
+          <button
+            className="btn btn-ghost btn-small"
+            onClick={() => {
+              signOut();
+              setUid(null);
+            }}
+          >
+            サインアウト
+          </button>
+        </div>
       </header>
       <main className="stage admin-stage">
         <section className="admin-card">
           <h2>アカウントの持ち方</h2>
+          <p className="hint admin-uid">
+            運営としてのあなたの uid: <code>{uid}</code>
+            <br />
+            これを firebase-rules.json の PUT-OPERATOR-UID-HERE と入れ替えます。
+          </p>
           <p className="hint">
             アカウントは各端末の中にだけあります(名前・アイコン・称号・対局数・勝数・持ち点)。
             サーバーに本人確認の仕組みは無く、端末を替えると別の人として数えられます。

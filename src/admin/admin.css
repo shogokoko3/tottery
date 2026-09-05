@@ -224,3 +224,14 @@
 .letter-sent:hover {
   border-color: var(--line);
 }
+
+/* 運営としての uid。ルールに貼るので、選びやすく等幅で出す */
+.admin-uid code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  color: var(--gold-soft);
+  background: rgba(212, 175, 55, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  user-select: all;
+}

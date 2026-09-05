@@ -203,6 +203,65 @@ export async function ensureAuth() {
   return inflight;
 }
 
+/**
+ * 運営としてサインインする(メール+パスワード)。
+ *
+ * 匿名の口座は端末のデータを消すと失われる。運営権限をそれに紐づけると、
+ * 消したとたんに何もできなくなり、ルールを書き直すことになる。
+ * メール+パスワードなら端末を替えても同じ uid のまま。
+ *
+ * この口は管理画面からしか呼ばない。管理画面は配信していないので、
+ * パスワードを打つのは運営自身の端末だけ。
+ */
+export async function signInAsOperator(email, password) {
+  if (!API_KEY) throw new Error("API キーが入っていません");
+  const res = await withTimeout(
+    fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, returnSecureToken: true }),
+      },
+    ),
+    TIMEOUT_MS,
+  );
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const why = (d.error || {}).message || `HTTP ${res.status}`;
+    throw new Error(
+      why.includes("INVALID_LOGIN_CREDENTIALS") ||
+        why.includes("INVALID_PASSWORD")
+        ? "メールアドレスかパスワードが違います"
+        : why.includes("EMAIL_NOT_FOUND")
+          ? "そのメールアドレスは登録されていません"
+          : why.includes("TOO_MANY_ATTEMPTS")
+            ? "試行が多すぎます。しばらく待ってからお試しください"
+            : `サインインできませんでした(${why})`,
+    );
+  }
+  save(d.refreshToken, d.localId);
+  held = {
+    idToken: d.idToken,
+    uid: d.localId,
+    expiresAt: Date.now() + Number(d.expiresIn || 3600) * 1000,
+  };
+  quietUntil = 0;
+  return held;
+}
+
+/** サインインしていた状態を捨てる(管理画面のサインアウト) */
+export function signOut() {
+  held = null;
+  inflight = null;
+  quietUntil = 0;
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* 消せなくても、次に開いたときに取り直すだけ */
+  }
+}
+
 /** 期限がまだ来ていない合言葉。切れていれば null */
 function usable() {
   return held && held.expiresAt > Date.now() ? held : null;

@@ -49,6 +49,7 @@ import { titleOf } from "../game/titles.js";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, resetAccount, touchDay } from "../game/profile.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
+import { publishRank } from "../net/ranking.js";
 import { ensureAuth } from "../net/auth.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
@@ -921,24 +922,32 @@ export function TotteryApp() {
   useScreenBgm(e);
   // 起動時に、登録した人の台帳へ自分を置き直す。使用停止なら名前を捨てる
   useEffect(() => {
-    const me = loadProfile();
-    if (!me.id || !me.name) return;
-    // 使用頻度のミッション用に、1日1回だけ数える
-    touchDay();
     let gone = false;
-    // 先に Firebase の匿名サインインを通す。サーバーの記録は uid で持つので、
-    // 端末が名乗る古い id で載っていたぶんは片付けてから置き直す。
-    // 通信できなければ null が返る。そのときは今までどおり素で進む
     (async () => {
+      // 先に Firebase のサインインを通す。サーバーの記録は uid を鍵に持つので、
+      // 名前がまだ無い人でもここは通す(名前を決めた瞬間に uid で載るように)。
+      // 通信できなければ null が返る。そのときは今までどおり素で進む
       const auth = await ensureAuth();
-      let now = me;
-      if (auth && me.id !== auth.uid) {
+      const me = loadProfile();
+      if (auth && me.id && me.id !== auth.uid) {
+        // 端末が名乗っていた古い鍵から、Firebase の uid へ持ち替える。
+        // 名前・持ち点・戦績は端末の中にあるので、鍵が変わっても失われない
         const oldId = me.id;
-        now = adoptUid(auth.uid);
+        adoptUid(auth.uid);
+        // 先に新しい鍵で載せ直してから、古い鍵の行を消す。
+        // 逆順だと、途中で落ちたときランキングから消えたままになる
+        const now = loadProfile();
+        await syncPlayer(now);
+        publishRank(now);
         dropOldRows(oldId);
+        if (gone) return;
       }
+      const now = loadProfile();
+      if (!now.id || !now.name) return;
+      // 使用頻度のミッション用に、1日1回だけ数える
+      touchDay();
       if (gone) return;
-      const banned = await syncPlayer(now);
+      const banned = await syncPlayer(loadProfile());
       if (gone || !banned) return;
       resetAccount();
       setBanNotice(
@@ -949,7 +958,8 @@ export function TotteryApp() {
     return () => {
       gone = true;
     };
-  }, []);
+    // 名前を決めた直後にも通す(初回の記録を取りこぼさないため)
+  }, [named]);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [e]);
