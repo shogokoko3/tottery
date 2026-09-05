@@ -4,12 +4,15 @@
  * ・ふだんは、伏せたままの駒で取っても相手の画面には流さない(正体が漏れる)
  * ・王を取った手だけは、伏せたままでも相手に見せる
  * ・王の2・3なら跡継ぎが立つので、取った側の映像のあとに継承の映像が続く
+ * ・新公開の相手駒と道連れ・継承の映像は、撃破札を確認したあとに見せる
  */
 import assert from "node:assert/strict";
 import { initialState, reducer } from "../src/game/reducer.js";
 import { emptyBoard } from "../src/game/board.js";
 import {
   captureFilm,
+  filmPlanFor,
+  filmQueueState,
   filmsFor,
   revengeFilm,
   successionFilm,
@@ -492,6 +495,145 @@ console.log("\nKの王の予備札は表向きで出る");
   t(
     "出さずに見送れる",
     reducer(taken, { type: "SKIP_RESERVE_PLACEMENT" }).kPlacement === null,
+  );
+}
+
+console.log("\n撃破札の公開と映像の順序");
+{
+  const before = build([
+    ["elf", "6", 0, 3, 1, false],
+    ["k0", "K", 0, 4, 0, true],
+    ["k1", "K", 1, 2, 2, true],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  const foePlan = filmPlanFor(before, after, loadouts, 1);
+  t(
+    "王撃破で新公開の相手の攻撃映像は延期",
+    foePlan.length === 1 && foePlan[0].afterReveal,
+  );
+  t("延期しても映像自体は残す", foePlan[0].skin.id === "elf-male");
+  const waiting = filmQueueState(foePlan, { revealPending: true });
+  t("公開待ちでは映像を表示しない", waiting.active === null);
+  t("公開待ちはbusyにせず撃破札を開ける", waiting.busy === false);
+  const ready = filmQueueState(foePlan, { revealPending: false });
+  t(
+    "撃破札の確認後に映像を開始する",
+    ready.busy && ready.active === foePlan[0],
+  );
+  const ownPlan = filmPlanFor(before, after, loadouts, 0);
+  t(
+    "自分の攻撃映像は従来タイミング",
+    ownPlan.length === 1 && !ownPlan[0].afterReveal,
+  );
+  t(
+    "自分の攻撃映像は撃破札より前に開始できる",
+    filmQueueState(ownPlan, { revealPending: true }).busy,
+  );
+  const acknowledged = reducer(after, { type: "DISMISS_CAPTURE" });
+  t(
+    "撃破札を閉じる際に同じ映像を新規発火しない",
+    filmPlanFor(after, acknowledged, loadouts, 1).length === 0,
+  );
+  t(
+    "再描画でも計画を再発火しない",
+    filmPlanFor(after, { ...after }, loadouts, 1).length === 0,
+  );
+
+  before.pieces.elf.revealed = true;
+  const shownAfter = move(before, "elf", 2, 2);
+  const shownPlan = filmPlanFor(before, shownAfter, loadouts, 1);
+  t(
+    "以前から公開の相手の映像は延期しない",
+    shownPlan.length === 1 && !shownPlan[0].afterReveal,
+  );
+}
+{
+  const before = build([
+    ["elf", "6", 0, 3, 1, false],
+    ["foe", "8", 1, 2, 2, false],
+    ["k0", "K", 0, 4, 0, true],
+    ["k1", "K", 1, 0, 4, true],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  t(
+    "通常捕獲の未公開相手は延期列にも入れない",
+    filmPlanFor(before, after, loadouts, 1).length === 0,
+  );
+  const ownPlan = filmPlanFor(before, after, loadouts, 0);
+  t(
+    "通常捕獲の自分の映像は即時",
+    ownPlan.length === 1 && !ownPlan[0].afterReveal,
+  );
+}
+{
+  const before = build([
+    ["elf", "6", 0, 3, 1, false],
+    ["k0", "K", 0, 4, 0, true],
+    ["k1", "2", 1, 2, 2, true],
+    ["heir", "2", 1, 0, 4, false],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  const ownPlan = filmPlanFor(before, after, loadouts, 0);
+  t(
+    "自分の攻撃→公開待ちの継承",
+    ownPlan.length === 2 && !ownPlan[0].afterReveal && ownPlan[1].afterReveal,
+  );
+  t("継承の映像の順番を維持", ownPlan[1].skin.id === "zombie-male");
+  const afterAttack = ownPlan.slice(1);
+  t(
+    "攻撃映像を終了・スキップすると撃破札を開ける",
+    !filmQueueState(afterAttack, { revealPending: true }).busy,
+  );
+  t(
+    "継承は撃破札のあとに始まる",
+    filmQueueState(afterAttack, { revealPending: false }).active ===
+      afterAttack[0],
+  );
+  const foePlan = filmPlanFor(before, after, loadouts, 1);
+  t(
+    "相手の新公開攻撃→継承は両方延期",
+    foePlan.length === 2 && foePlan.every((entry) => entry.afterReveal),
+  );
+  t(
+    "相手にも攻撃→継承の順",
+    foePlan[0].skin.id === "elf-male" && foePlan[1].skin.id === "zombie-male",
+  );
+  const paused = filmQueueState(foePlan, {
+    revealPending: false,
+    paused: true,
+  });
+  t("他演出中は映像を重ねない", paused.active === null);
+  t("他演出待ちでも再生可能な列はbusyを保つ", paused.busy);
+  t(
+    "空の列は公開後もbusyを残さない",
+    !filmQueueState([], { revealPending: false }).busy,
+  );
+}
+{
+  const before = build([
+    ["k0", "K", 0, 4, 0, true],
+    ["four", "4", 1, 2, 2, false],
+    ["k1", "4", 1, 0, 4, true],
+    ["elf", "6", 0, 3, 1, false],
+  ]);
+  const after = move(before, "elf", 2, 2);
+  const foePlan = filmPlanFor(before, after, loadouts, 1);
+  t(
+    "道連れで新公開の相手の攻撃→道連れも延期",
+    foePlan.length === 2 && foePlan.every((entry) => entry.afterReveal),
+  );
+  t(
+    "延期後も攻撃→道連れの順",
+    foePlan[0].skin.id === "elf-male" && foePlan[1].skin.id === "pirate-male",
+  );
+  const ownPlan = filmPlanFor(before, after, loadouts, 0);
+  t(
+    "自分の攻撃は即時・道連れは公開後",
+    !ownPlan[0].afterReveal && ownPlan[1].afterReveal,
+  );
+  assert.deepEqual(
+    filmsFor(before, after, loadouts, 1),
+    foePlan.map(({ skin }) => skin),
   );
 }
 

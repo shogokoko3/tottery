@@ -1,6 +1,8 @@
 import { useAceMagic } from "./ace-magic.jsx";
 import { useBattleFilm } from "./skin-film.jsx";
 import { useBattlePass } from "./battlepass-track.jsx";
+import { useCapturePresentation } from "./capture-presentation.jsx";
+import { movePresentationMs } from "../game/capture-presentation.js";
 import { useEffect, useRef, useState } from "react";
 import { useGameBgm, useGameSounds } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
@@ -754,7 +756,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     setupStartRef = (0, useRef)(null),
     setupPhaseStartRef = (0, useRef)(null),
     [pendingCapture, setPendingCapture] = (0, useState)(null),
-    [holdFx, setHoldFx] = (0, useState)(!1),
+    [finishedDefeat, setFinishedDefeat] = (0, useState)(null),
     [tutStep, setTutStep] = (0, useState)(0),
     // 台本にない手を指したときに、帯へ返す一言。
     // 黙って握りつぶすと「押しても何も起きない=壊れている」と読まれる
@@ -784,12 +786,20 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     aceMagic.busy,
   );
   const fxBusy = cinematic.busy || aceMagic.busy;
-  const displayed = aceMagic.displayState;
+  const pauseClock = fxBusy || !!a.captureReveal;
+  const captureDisplayed = useCapturePresentation(a);
+  const displayed = aceMagic.busy ? aceMagic.displayState : captureDisplayed;
+  const holdFx =
+    !!a.captureReveal &&
+    !aceMagic.captureHandled &&
+    !!a.lastDefeat &&
+    finishedDefeat !== a.lastDefeat;
   // 案内の位置は、押した回数ではなく盤面から引き直す。
   // どんな触り方をされても画面とずれない
   let tutIdx = tutorial ? currentStepIndex(tutorial, a, tutStep) : -1;
   function y(E) {
     if (fxBusy) return;
+    if (a.captureReveal && E.type === "VIEW_LOG") return;
     // どの駒を動かすかをアクション自身に持たせる。
     // 台本の照合にも、通信で相手へ送るときにも要る
     if (E.type === "MOVE_PIECE" && !E.pieceId && a.selectedId)
@@ -949,7 +959,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     return () => clearTimeout(be);
   }, [a, cpu, network, fxBusy]),
     (0, useEffect)(() => {
-      if (!network || fxBusy) return;
+      if (!network || fxBusy || a.captureReveal) return;
       let E = !1,
         reading = false,
         U = setInterval(async () => {
@@ -970,8 +980,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             (ne) => ne && ne.__id && !g.current.has(ne.__id),
           );
           const { actions: at, consumedIds } = takePresentationBatch(unseen, {
-            split:
-              a.phase === "play" && (cinematic.enabled || aceMagic.enabled),
+            split: a.phase === "play",
           });
           at.length !== 0 &&
             (consumedIds.forEach((id) => g.current.add(id)),
@@ -981,18 +990,26 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
       return () => {
         ((E = !0), clearInterval(U));
       };
-    }, [network, fxBusy, a.phase, cinematic.enabled, aceMagic.enabled]));
+    }, [
+      network,
+      fxBusy,
+      a.phase,
+      a.captureReveal,
+      cinematic.enabled,
+      aceMagic.enabled,
+    ]));
   // 駒が倒れたら、盤の上で演出を見せてから結果の札を開く
   (0, useEffect)(() => {
     if (!a.lastDefeat || aceMagic.captureHandled) {
-      setHoldFx(false);
       return;
     }
-    setHoldFx(!0);
     let n = a.lastDefeat.cells.length;
-    let id = setTimeout(() => setHoldFx(!1), 1500 + (n - 1) * 440);
+    let id = setTimeout(
+      () => setFinishedDefeat(a.lastDefeat),
+      Math.max(1500 + (n - 1) * 440, movePresentationMs(a.lastMove)),
+    );
     return () => clearTimeout(id);
-  }, [a.lastDefeat ? a.lastDefeat.seq : 0, aceMagic.captureHandled]);
+  }, [a.lastDefeat, aceMagic.captureHandled]);
 
   // 1秒未満の刻みで残り時間を描き替える
   ((0, useEffect)(() => {
@@ -1083,9 +1100,9 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     turnStartRef.current = Date.now();
     pausedAt.current = null;
   }
-  // 映像の待ち時間を、その手番の持ち時間から差し引かない。
-  if (fxBusy && pausedAt.current === null) pausedAt.current = Date.now();
-  if (!fxBusy && pausedAt.current !== null) {
+  // 映像と撃破札の確認中は操作できないので、持ち時間から差し引かない。
+  if (pauseClock && pausedAt.current === null) pausedAt.current = Date.now();
+  if (!pauseClock && pausedAt.current !== null) {
     turnStartRef.current += Date.now() - pausedAt.current;
     pausedAt.current = null;
   }
@@ -1093,7 +1110,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   let clockRunning =
       a.phase === "play" &&
       !noLimit &&
-      !fxBusy &&
+      !pauseClock &&
       (a.winner === null || a.winner === undefined) &&
       !handoff,
     clockSpent = clockRunning ? Math.max(0, nowMs - turnStartRef.current) : 0,
@@ -1274,9 +1291,10 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     </>
   );
   let R = a.boardSize,
-    P = network ? p : cpu ? 0 : (aceMagic.viewer ?? a.currentTurn),
+    P = network ? p : cpu ? 0 : (aceMagic.viewer ?? displayed.currentTurn),
     x =
       !fxBusy &&
+      !a.captureReveal &&
       (network ? a.currentTurn === p : cpu ? a.currentTurn === 0 : !0),
     N = network
       ? `${p === 0 ? "host" : "guest"} acts:${g.current.size} d${a.diceIdx}[${(a.dice || []).map((E) => E ?? "-").join(",")}]`
@@ -1286,7 +1304,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   // 1台で交互に指す対戦はどちらも自分なので、いつも勝ちの側で鳴らす
   useGameBgm({
     state:
-      fxBusy && displayed.phase === "gameover"
+      (fxBusy || a.captureReveal) && displayed.phase === "gameover"
         ? { ...displayed, phase: "play" }
         : displayed,
     clocks: liveClocks,
@@ -1301,7 +1319,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     self: network ? p : cpu ? 0 : null,
     captureHandled: aceMagic.captureHandled,
     warnMs:
-      noLimit || fxBusy
+      noLimit || pauseClock
         ? null
         : a.phase === "setup"
           ? setupRemaining
@@ -1398,7 +1416,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         />
       </GameShell>
     );
-  if (a.pendingKingChoice && !fxBusy)
+  if (a.pendingKingChoice && !a.captureReveal && !fxBusy)
     return network && a.pendingKingChoice.owner !== p ? (
       <GameShell
         sheet={presentationSheet}
@@ -1450,7 +1468,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         />
       </GameShell>
     );
-  if (a.interstitial && !network && !cpu && !fxBusy)
+  if (a.interstitial && !a.captureReveal && !network && !cpu && !fxBusy)
     return (
       <GameShell
         sheet={presentationSheet}
@@ -1838,7 +1856,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         {!tutorial && (
           <ClockBar
             clocks={liveClocks}
-            currentTurn={a.currentTurn}
+            currentTurn={displayed.currentTurn}
             viewer={P}
           />
         )}
@@ -1937,7 +1955,10 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                       Oi &&
                       Oi.cells.some((wl) => wl.row === ne && wl.col === Me),
                     fxIdx =
-                      !aceMagic.captureHandled && !aceMagic.busy && a.lastDefeat
+                      a.captureReveal &&
+                      !aceMagic.captureHandled &&
+                      !aceMagic.busy &&
+                      a.lastDefeat
                         ? a.lastDefeat.cells.findIndex(
                             (wl) => wl.row === ne && wl.col === Me,
                           )
@@ -1945,7 +1966,11 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                     fx = fxIdx >= 0 ? a.lastDefeat.cells[fxIdx] : null,
                     // 直前に動いた駒。1マスずつ進んで見えるようにする
                     stepIn =
-                      Go && Vt && ze && Vt.from
+                      Go &&
+                      Vt &&
+                      ze &&
+                      Vt.from &&
+                      (!Vt.captured || a.captureReveal)
                         ? (() => {
                             const dc = Vt.from.col - Vt.to.col;
                             const dr = Vt.from.row - Vt.to.row;
@@ -1961,7 +1986,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                               sy: Jl ? -dr : dr,
                               stops: n + 1,
                               // 立ち寄る場所ごとに 190ms 留まる
-                              ms: (n + 1) * 190,
+                              ms: movePresentationMs(Vt),
                               seq: Vt.seq || 0,
                             };
                           })()
@@ -2008,7 +2033,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                             a.lastDefeat.via === "surround"
                               ? "fx-defeat-surround"
                               : ""
-                          } ${fx.wasKing ? "fx-defeat-king" : ""}`}
+                          }`}
                         />
                       )}
                       {ze && (
@@ -2062,7 +2087,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                             }
                             isPickable={!!Pl && ze.id !== a.shuffleMode.aId}
                             isGuided={focusPiece(ze.id)}
-                            justRevealed={a.lastReveal?.id === ze.id}
+                            justRevealed={displayed.lastReveal?.id === ze.id}
                           />
                         </div>
                       )}
@@ -2168,7 +2193,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             <Flag size={16} /> 降参する
           </button>
         </div>
-        {a.logViewerId && a.pieces[a.logViewerId] && (
+        {!a.captureReveal && a.logViewerId && a.pieces[a.logViewerId] && (
           <LogViewer
             piece={a.pieces[a.logViewerId]}
             viewer={P}

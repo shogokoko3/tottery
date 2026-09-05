@@ -29,12 +29,8 @@ export function captureFilm(before, after, loadouts, viewer = null) {
   if (ABILITY_RANKS.has(actor.rank)) return null;
   // 裏向きの相手駒の正体を、専用映像から推測できないようにする。
   //
-  // 見るのは「この手が終わった時点で正体が公になっているか」。次の2つ。
-  //   表になっている … 王を討った駒は決まりでその場で表になる
-  //   倒れている     … 道連れに巻き込まれた駒。失った駒の欄に札が並ぶ
-  // どちらも盤か札置き場を見れば分かることなので、映像で隠す意味がない。
-  // 映像のほうに数字ごとの例外を置くと、スキンを着けている人だけが正体を
-  // 早く割られることになるので、そちらでは何もしない。
+  // この手で公開される/倒れる駒も映像の対象にする。
+  // 新しく正体が判明する場合の上映時刻は filmPlanFor で撃破札の確認後へ送る。
   const at = after.pieces?.[actor.id];
   const shown = actor.revealed || at?.revealed || at?.alive === false;
   if (viewer !== null && actor.owner !== viewer && !shown) return null;
@@ -111,9 +107,54 @@ export function revengeFilm(before, after, loadouts) {
  * 起きたものだけが、この順で続けて流れる。
  */
 export function filmsFor(before, after, loadouts, viewer = null) {
-  return [
-    captureFilm(before, after, loadouts, viewer),
-    revengeFilm(before, after, loadouts),
-    successionFilm(before, after, loadouts),
-  ].filter(Boolean);
+  return filmPlanFor(before, after, loadouts, viewer).map(({ skin }) => skin);
+}
+
+/**
+ * 公開する順序も含めた映像の計画。
+ * reducer は取った手で結果を確定するが、撃破札がめくられるまでは、
+ * 新しく表になった相手の正体や、道連れ・王位継承を映像から先に知らせない。
+ * 自分の駒と、取る前から公開されていた駒の攻撃映像は従来の順で見せる。
+ */
+export function filmPlanFor(before, after, loadouts, viewer = null) {
+  const attack = captureFilm(before, after, loadouts, viewer);
+  const revenge = revengeFilm(before, after, loadouts);
+  const succession = successionFilm(before, after, loadouts);
+  const revealPending = !!after?.captureReveal;
+  const move = after?.lastMove;
+  const actor = attack
+    ? before.board?.[move.from?.row]?.[move.from?.col]
+    : null;
+  const attackAfterReveal =
+    revealPending &&
+    !!actor &&
+    viewer !== null &&
+    actor?.owner !== viewer &&
+    !actor?.revealed;
+  let waitForReveal = false;
+  const plan = [];
+  for (const [skin, afterReveal] of [
+    [attack, attackAfterReveal],
+    [revenge, revealPending],
+    [succession, revealPending],
+  ]) {
+    if (!skin) continue;
+    // 先行する映像が公開待ちなら、後続も追い越させない。
+    waitForReveal ||= afterReveal;
+    plan.push({ skin, afterReveal: waitForReveal });
+  }
+  return plan;
+}
+
+/**
+ * 公開待ちだけの列は画面を占有しない。busy にすると、その解除に必要な
+ * CaptureRevealModal 自体が開けなくなる。別の演出(paused)の待機はbusyを保つ。
+ */
+export function filmQueueState(
+  entries,
+  { revealPending = false, paused = false } = {},
+) {
+  const head = entries[0];
+  const ready = head && (!head.afterReveal || !revealPending);
+  return { active: ready && !paused ? head : null, busy: !!ready };
 }

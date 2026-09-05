@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { audioSettings, connectFilmSound, duckMusic } from "../audio/index.js";
 import { useCollection } from "../skins/store.js";
-import { filmsFor } from "../skins/events.js";
+import { filmPlanFor, filmQueueState } from "../skins/events.js";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
 
 export function SkinFilm({ skin, short = false, onClose }) {
@@ -91,7 +91,7 @@ export function useBattleFilm(
   const enabled = !disabled && collection.motion !== "off" && !reduce;
   // 1手で2本続くことがある(取った側の映像 → 王位継承の映像)
   const pending = enabled
-    ? filmsFor(before.current, state, loadouts, viewer)
+    ? filmPlanFor(before.current, state, loadouts, viewer)
     : [];
   useLayoutEffect(() => {
     before.current = state;
@@ -100,21 +100,31 @@ export function useBattleFilm(
       return;
     }
     if (pending.length) {
-      const entries = pending.map((skin) => ({ skin, key: ++seq.current }));
+      const entries = pending.map((entry) => ({
+        ...entry,
+        key: ++seq.current,
+      }));
       setQueue((q) => [...q, ...entries]);
     }
   }, [state, enabled]);
-  const active = enabled && !paused && queue[0];
+  const presentation = {
+    revealPending: !!state.captureReveal,
+    paused,
+  };
+  const { active } = filmQueueState(queue, presentation);
+  // pending は最初の描画も守る。公開待ちの先頭を後続の映像が追い越さない。
+  const { busy } = filmQueueState(queue.length ? queue : pending, presentation);
   return {
     enabled,
-    busy: enabled && (queue.length > 0 || pending.length > 0),
-    overlay: active ? (
-      <SkinFilm
-        key={active.key}
-        skin={active.skin}
-        short={collection.motion === "short"}
-        onClose={() => setQueue((q) => q.slice(1))}
-      />
-    ) : null,
+    busy: enabled && busy,
+    overlay:
+      enabled && active ? (
+        <SkinFilm
+          key={active.key}
+          skin={active.skin}
+          short={collection.motion === "short"}
+          onClose={() => setQueue((q) => q.slice(1))}
+        />
+      ) : null,
   };
 }
