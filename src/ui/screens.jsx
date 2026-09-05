@@ -967,16 +967,22 @@ export function TotteryApp() {
       // 通信できなければ null が返る。そのときは今までどおり素で進む
       const auth = await ensureAuth();
       const me = loadProfile();
-      if (auth && me.id && me.id !== auth.uid) {
+      if (auth && me.id !== auth.uid) {
         // 端末が名乗っていた古い鍵から、Firebase の uid へ持ち替える。
-        // 名前・持ち点・戦績は端末の中にあるので、鍵が変わっても失われない
+        // 名前・持ち点・戦績は端末の中にあるので、鍵が変わっても失われない。
+        //
+        // まだ名前が無い(id も無い)初回起動でも、ここを通しておく。
+        // 通さないと、名前を決めたときに端末が自分で p… という鍵を作り、
+        // その鍵で台帳に載せようとして弾かれる(ルールは uid しか許さない)。
         const oldId = me.id;
         adoptUid(auth.uid);
+        const now = loadProfile();
         // 先に新しい鍵で載せ直してから、古い鍵の行を消す。
         // 逆順だと、途中で落ちたときランキングから消えたままになる
-        const now = loadProfile();
-        await syncPlayer(now);
-        publishRank(now);
+        if (now.name) {
+          await syncPlayer(now);
+          publishRank(now);
+        }
         dropOldRows(oldId);
         if (gone) return;
       }
