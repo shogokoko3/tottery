@@ -30,6 +30,9 @@
  * 何もできない。何ができるかを決めるのはデータベースのルールのほう。
  */
 export const API_KEY = "";
+// 受け取り済みのキー(2026-09-05)。移行の段取りが整うまでは入れない。
+// 入れた瞬間から uid への付け替えが始まり、ranks の行がいったん消えるため。
+//   AIzaSyDcV6cXMZyzOYrhpUO2Pd4wvP9oXe9vTdY
 
 /** 取り直し用の合言葉を控える場所。端末の外へは出さない */
 const KEY = "tottery.auth.v1";
@@ -41,12 +44,25 @@ const EARLY_MS = 5 * 60 * 1000;
 let held = null;
 /** 同時に何度も呼ばれても、取りに行くのは1回だけにする */
 let inflight = null;
+/**
+ * 失敗したあと、次に試してよくなる時刻。
+ *
+ * これが無いと、圏外のときに呼ばれるたび8秒待たされる。対局中は0.7秒ごとに
+ * 手番を読みに行くので、待ちが積み上がって盤が固まって見える。
+ * 一度失敗したらしばらく諦めて、素の URL で進む(繋がらないのは同じだが、待たない)。
+ */
+let quietUntil = 0;
+const RETRY_MS = 30 * 1000;
 
 function withTimeout(promise, ms) {
   return Promise.race([
     promise,
     new Promise((_r, reject) =>
-      setTimeout(() => reject(new Error("timeout")), ms),
+      setTimeout(() => {
+        const err = new Error("timeout");
+        err.__timeout = true;
+        reject(err);
+      }, ms),
     ),
   ]);
 }
@@ -68,6 +84,21 @@ function save(refreshToken, uid) {
     // 保存できなくても遊べる方を優先する。次に開いたとき別の uid になるだけ
   }
 }
+
+/**
+ * 取り直しが弾かれた理由が「控えがもう使えない」ときだけ真。
+ *
+ * 通信が届かなかっただけで口座を作り直すと uid が変わり、その人の記録が
+ * 別人のものになる(ランキングに同じ人が二重に並ぶ)。作り直してよいのは、
+ * 控えそのものが無効だと Firebase が言ったときだけ。
+ */
+const DEAD_TOKEN = [
+  "TOKEN_EXPIRED",
+  "USER_DISABLED",
+  "USER_NOT_FOUND",
+  "INVALID_REFRESH_TOKEN",
+  "MISSING_REFRESH_TOKEN",
+];
 
 /** 匿名の口座を新しく作る */
 async function signUp() {
@@ -102,7 +133,18 @@ async function refresh(refreshToken) {
     }),
     TIMEOUT_MS,
   );
-  if (!res.ok) throw new Error(`refresh HTTP ${res.status}`);
+  if (!res.ok) {
+    // 本文の error.message を見て、控えが死んでいるのかどうかを分ける
+    let why = "";
+    try {
+      why = ((await res.json()).error || {}).message || "";
+    } catch {
+      /* 本文が読めなくても、下の判定で「死んでいない」に倒す */
+    }
+    const err = new Error(`refresh HTTP ${res.status}`);
+    err.__dead = res.status === 400 && DEAD_TOKEN.some((m) => why.includes(m));
+    throw err;
+  }
   const d = await res.json();
   // 取り直すと合言葉が変わることがあるので、控えも更新する
   save(d.refresh_token || refreshToken, d.user_id);
@@ -121,27 +163,44 @@ export async function ensureAuth() {
   if (!API_KEY) return null;
   if (held && held.expiresAt - EARLY_MS > Date.now()) return held;
   if (inflight) return inflight;
+  // 直前に失敗しているあいだは、待たずにすぐ諦める。
+  // ただし手持ちの合言葉がまだ本当に切れていないなら、それを使う。
+  // 早めの取り直し(5分前)にしくじっただけで捨てると、まだ使えるものを
+  // 手放して素の通信になり、締めたあとは対局中の手が届かなくなる
+  if (Date.now() < quietUntil) return usable();
 
   inflight = (async () => {
     try {
       const saved = readSaved();
       // 一度でも作ってあれば、同じ uid のまま取り直す(記録が続く)
       held = saved ? await refresh(saved.refreshToken) : await signUp();
+      quietUntil = 0;
       return held;
-    } catch {
-      // 控えが古くて弾かれたときは、作り直して次に繋ぐ
-      try {
-        held = await signUp();
-        return held;
-      } catch {
-        held = null;
-        return null;
+    } catch (err) {
+      // 作り直してよいのは「控えが死んでいる」と Firebase が言ったときだけ。
+      // 圏外や 5xx で作り直すと uid が変わり、その人の記録が別人になる
+      if (err && err.__dead) {
+        try {
+          held = await signUp();
+          quietUntil = 0;
+          return held;
+        } catch {
+          /* 作り直しても駄目なら、下の諦めへ */
+        }
       }
+      quietUntil = Date.now() + RETRY_MS;
+      // 手持ちがまだ切れていなければ手放さない
+      return usable();
     } finally {
       inflight = null;
     }
   })();
   return inflight;
+}
+
+/** 期限がまだ来ていない合言葉。切れていれば null */
+function usable() {
+  return held && held.expiresAt > Date.now() ? held : null;
 }
 
 /** いまの uid。まだ通っていなければ null */
