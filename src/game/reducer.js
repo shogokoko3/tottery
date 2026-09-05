@@ -102,6 +102,61 @@ function actorAllowed(state, action) {
 }
 
 /**
+ * その手札で、盤に置く枚数をそろえられるか。
+ *
+ * 採用上限(Kは1枚、J・Qは2枚ずつ。Kを軍に入れるなら J・Q は1枚ずつ)があるので、
+ * J・Q・K に偏った手札は枚数が足りなくなる。9×9(9枚)で、実際の配り方だと
+ * およそ2600局に1回起きる
+ */
+export function canFillBoard(hand, slots) {
+  const counts = {};
+  for (const c of hand) counts[c.rank] = (counts[c.rank] || 0) + 1;
+  const ranks = Object.keys(counts);
+  return ranks.some((kingRank) => {
+    let total = 0;
+    for (const r of ranks) total += Math.min(counts[r], maxAdopt(r, kingRank));
+    return total >= slots;
+  });
+}
+
+/**
+ * 並べられない手札を配り直す。
+ *
+ * 手札と捨て札をぜんぶ予備札に戻し、そこから J・Q・K を抜いて引き直す。
+ * 数字の札だけになるので、必ず盤に並べきれる。抜いた J・Q・K は
+ * そのあと予備札に戻す(次に引く人のぶんが減らないように)。
+ * 乱数は使わない。並びは両方の端末で同じなので、盤も同じになる
+ */
+function rescueHand(state, idx) {
+  const me = state.players[idx];
+  const want = me.hand.length;
+  const pool = [...state.reserve, ...me.hand, ...(me.discard || [])];
+  const heavy = pool.filter(
+    (c) => c.rank === "J" || c.rank === "Q" || c.rank === "K",
+  );
+  const plain = pool.filter(
+    (c) => c.rank !== "J" && c.rank !== "Q" && c.rank !== "K",
+  );
+  if (plain.length < want) return state; // 数字の札が足りない。ここは触らない
+  const players = [...state.players];
+  players[idx] = {
+    ...me,
+    hand: plain.slice(0, want),
+    discard: [],
+  };
+  return {
+    ...state,
+    players,
+    reserve: [...plain.slice(want), ...heavy],
+    handRescued: replaceAt(state.handRescued || [false, false], idx, true),
+    log: [
+      ...state.log,
+      `${PLAYER_META[idx].name}の手札は絵札に偏っていて盤に並べきれないため、数字の札で配り直した`,
+    ],
+  };
+}
+
+/**
  * その布陣を受け付けてよいか。
  *
  * 1枚ずつ置くとき(SETUP_PLACE_CARD)には自陣・重なり・採用上限の関門があるのに、
@@ -311,6 +366,8 @@ export const KING_LIMIT_MS = 15 * 1000;
 export function initialState() {
   return {
     phase: "intro",
+    // 絵札に偏って盤に並べきれず、数字の札で配り直した側
+    handRescued: [false, false],
     boardSize: 5,
     players: [makePlayer(0), makePlayer(1)],
     reserve: [],
@@ -1156,7 +1213,9 @@ function coreReducer(state, action) {
           interstitial: { forPlayer: 1 - state.firstPlayer, kind: "mulligan" },
         };
       }
-      return {
+      // 引き直しが終わった時点で、盤に並べきれない手札を救済する。
+      // 順番は決まっているので、両方の端末で同じ結果になる
+      let entering = {
         ...state,
         players,
         reserve: rest,
@@ -1172,6 +1231,11 @@ function coreReducer(state, action) {
             ? null
             : { forPlayer: state.firstPlayer, kind: "setup" },
       };
+      const slots = totalSlots(entering.boardSize);
+      for (const who of [0, 1])
+        if (!canFillBoard(entering.players[who].hand, slots))
+          entering = rescueHand(entering, who);
+      return entering;
     }
 
     case "SETUP_PLACE_CARD": {

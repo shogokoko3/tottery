@@ -9,6 +9,7 @@ import { useState } from "react";
 import { ArrowLeft, Check, Crown } from "../icons.jsx";
 import { loadProfile, markMissionClaimed } from "../game/profile.js";
 import { KINDS, listMissions } from "../game/missions.js";
+import { chanceLabel, listSecrets } from "../game/secrets.js";
 import { giftLabel, giveGift } from "../game/gifts.js";
 import { useCollection } from "../skins/store.js";
 
@@ -21,6 +22,7 @@ export function MissionsScreen({ onBack }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const rows = listMissions(profile);
+  const secrets = listSecrets(profile);
   const ready = rows.filter((m) => m.done && !m.claimed);
 
   /** 1件ぶんを配る。控えるのは配り終えてから(途中で失敗しても二重取りにならない) */
@@ -82,6 +84,24 @@ export function MissionsScreen({ onBack }) {
       <p className="mission-message" role="status">
         {message}
       </p>
+      {/* シークレットは条件を伏せておく。出くわして初めて名前が出る */}
+      <div className="mission-secrets">
+        <h3>シークレット</h3>
+        {secrets.found.map((sc) => (
+          <div className="secret-row" key={sc.id}>
+            <h4>{sc.name}</h4>
+            <p className="hint">{sc.how}</p>
+            <p className="secret-chance">{chanceLabel(sc.chance)}</p>
+          </div>
+        ))}
+        {secrets.hidden > 0 && (
+          <p className="hint">
+            まだ見つかっていないもの: {secrets.hidden} 件
+            <br />
+            めったに起きない場面に出くわすと達成になります。条件は伏せてあります。
+          </p>
+        )}
+      </div>
       {ready.length > 0 && (
         <button
           className="btn btn-primary btn-wide"

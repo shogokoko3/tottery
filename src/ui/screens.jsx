@@ -1011,6 +1011,8 @@ export function TotteryApp() {
     // 対戦の種類(o)から推測すると、CPU対戦とルームの「オフラインで対戦」が
     // どちらも "game" なので見分けられず、CPUの戻り先がフレンド対戦になる
     [rulesFrom, setRulesFrom] = (0, useState)("matching"),
+    // 同じ部屋で何局目か。再戦のたびに1つ進める
+    [round, setRound] = (0, useState)(0),
     // 運営に使用停止にされたかどうか
     [banned, setBanned] = (0, useState)(!1);
   // 場面に合った曲へ。対局中は GameCore のほうが決めるので、ここは触らない
@@ -1071,7 +1073,7 @@ export function TotteryApp() {
     (w(!1), s());
   }
   function v(b) {
-    (u(b), t("game"));
+    (u(b), setRound(0), t("game"));
   }
   let [p, w] = (0, useState)(!1);
   function z(b) {
@@ -1129,6 +1131,11 @@ export function TotteryApp() {
     return (
       <SeatsProvider value={{ names, icons, titles, skins }}>
         <GameCore
+          // 再戦のたびに作り直す。見た手の控えも記録済みの印も、
+          // 前の対局のものを引きずらせない
+          key={round}
+          round={round}
+          onRematch={a ? () => setRound((n) => n + 1) : null}
           network={a}
           boardSize={tut ? tut.boardSize : i}
           cpu={d}

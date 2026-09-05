@@ -4234,3 +4234,49 @@ h3 {
   border-color: var(--gold);
   opacity: 1;
 }
+
+/* 絵札に偏って配り直したときの知らせ */
+.setup-rescue {
+  margin: 10px auto;
+  max-width: 480px;
+  padding: 10px 14px;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  background: rgba(198, 163, 90, 0.12);
+  color: var(--gold-soft);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* シークレットミッションの達成 */
+.secret-panel {
+  text-align: center;
+}
+.secret-name {
+  font-family: "Shippori Mincho", serif;
+  font-size: 24px;
+  color: var(--gold);
+  margin: 6px 0;
+}
+.secret-chance {
+  display: inline-block;
+  margin: 8px auto;
+  padding: 5px 12px;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  color: var(--gold-soft);
+  font-size: 13px;
+}
+.secret-row {
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: rgba(198, 163, 90, 0.08);
+}
+.secret-row h4 {
+  margin: 0 0 4px;
+  font-family: "Shippori Mincho", serif;
+  color: var(--gold);
+}

@@ -556,6 +556,16 @@ export function PlaceStep({
         paused={paused}
         limitMs={limitMs}
       />
+      {/* 絵札に偏って盤に並べきれない手札は、数字の札で配り直している。
+          黙って差し替えると「引いた札と違う」と読まれるので、必ず伝える */}
+      {state.handRescued && state.handRescued[pIdx] && (
+        <p className="setup-rescue">
+          手札が絵札（J・Q・K）に偏っていて、盤に並べきれませんでした。
+          <br />
+          手札と捨て札を予備札に戻し、数字の札だけで配り直しています。
+          引き直しはできません。
+        </p>
+      )}
       {terse ? (
         <p className="hint">
           <span className="legend-dot" />

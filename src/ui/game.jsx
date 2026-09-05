@@ -36,13 +36,19 @@ import {
   Sparkle,
 } from "../icons.jsx";
 import {
+  bumpRound,
   clearActs,
   deleteRoom,
   makeClientId,
   pushAct,
   readActs,
+  readRematch,
+  readRound,
+  wantRematch,
 } from "../net/firebase.js";
 import { myUid } from "../net/auth.js";
+import { achieveSecret } from "../game/profile.js";
+import { chanceLabel } from "../game/secrets.js";
 import {
   LOCAL_ONLY_ACTIONS,
   acceptAct,
@@ -294,6 +300,7 @@ export function GameView({
   tutorial,
   youAre,
   rating,
+  rematch,
 }) {
   const names = useNames();
   let [f, o] = (0, useState)(!1),
@@ -703,20 +710,31 @@ export function GameView({
           }}
         >
           {/* チュートリアルは同じ台本をなぞるだけなので、もう一度は出さない */}
-          {tutorial ? null : !network || myIdx === 0 ? (
+          {tutorial ? null : rematch ? (
+            // オンラインは両者の合意で始める。片方だけで盤を作り直すと、
+            // 相手は準備ができていないまま次の対局に入ってしまう
+            rematch.asked ? (
+              <p className="hint">
+                相手の返事を待っています…
+                {rematch.foeAsked && "（そろいました。仕切り直します）"}
+              </p>
+            ) : (
+              <>
+                {rematch.foeAsked && (
+                  <p className="hint">相手はもう一度遊びたいようです</p>
+                )}
+                <button className="btn btn-ghost" onClick={rematch.ask}>
+                  <RotateCcw size={16} /> もう一度遊ぶ
+                </button>
+              </>
+            )
+          ) : (
             <button
               className="btn btn-ghost"
-              onClick={() => {
-                // 部屋の手番の列は積まれる一方で、1000件で頭打ちになる。
-                // 再戦のたびに前の対局ぶんを片付けておく(消せるのは当事者だけ)
-                if (network && myIdx === 0) clearActs(network.code);
-                dispatch({ type: "NEW_GAME" });
-              }}
+              onClick={() => dispatch({ type: "NEW_GAME" })}
             >
               <RotateCcw size={16} /> もう一度遊ぶ
             </button>
-          ) : (
-            <p className="hint">ホストがもう一度遊ぶか選んでいます…</p>
           )}
           {onExit && (
             <button className="btn btn-ghost" onClick={onExit}>
@@ -741,7 +759,15 @@ function foeWait(state, act, playMs) {
   return state.phase === "play" ? playMs : 400;
 }
 
-export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
+export function GameCore({
+  onExit,
+  network,
+  boardSize,
+  cpu,
+  tutorial,
+  round = 0,
+  onRematch,
+}) {
   const names = useNames();
   const { skins } = useSeats();
   const pausedAt = useRef(null);
@@ -1183,6 +1209,68 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
       captures: mv.captures,
     });
   }
+
+  /**
+   * 再戦は両者の合意で始める。
+   *
+   * 片方が押しただけで盤を作り直すと、相手は準備ができていないまま
+   * 新しい対局に入る。部屋の手番の列も積まれる一方で、1000件で頭打ちになる。
+   * 両方そろったらホストが列を片付け、何局目かを1つ進める。
+   * どちらの端末も、それを見てから入り直す(GameCore を作り直す)
+   */
+  let [askedRematch, setAskedRematch] = (0, useState)(!1),
+    [foeAsked, setFoeAsked] = (0, useState)(!1);
+  (0, useEffect)(() => {
+    if (!network || a.phase !== "gameover" || !onRematch) return;
+    let stop = !1;
+    const me = myUid();
+    const id = setInterval(async () => {
+      // 相手の意思
+      const r = await readRematch(network.code, round);
+      if (stop) return;
+      if (r.ok)
+        setFoeAsked(
+          Object.keys(r.data || {}).some((u) => u !== me && (r.data || {})[u]),
+        );
+      // 片付けが済んで局が進んだら入り直す
+      const n = await readRound(network.code);
+      if (stop) return;
+      if (n.ok && Number(n.data) > round) {
+        clearInterval(id);
+        onRematch();
+      }
+    }, 1200);
+    return () => {
+      ((stop = !0), clearInterval(id));
+    };
+  }, [network, a.phase, round, onRematch]);
+
+  // 両方そろったら、ホストが片付けて局を進める
+  (0, useEffect)(() => {
+    if (!network || p !== 0 || !askedRematch || !foeAsked) return;
+    let stop = !1;
+    (async () => {
+      await clearActs(network.code);
+      if (!stop) await bumpRound(network.code, round + 1);
+    })();
+    return () => {
+      stop = !0;
+    };
+  }, [network, p, askedRematch, foeAsked, round]);
+
+  /**
+   * シークレットミッションの達成。
+   *
+   * 絵札に偏って盤に並べきれず、数字の札で配り直された場面。
+   * 実際の配り方で およそ2600局に1回しか起きない
+   */
+  let [secretGot, setSecretGot] = (0, useState)(null);
+  (0, useEffect)(() => {
+    const mine = network ? p : cpu ? 0 : a.setupIdx;
+    if (!a.handRescued || !a.handRescued[mine]) return;
+    const got = achieveSecret("court-heavy");
+    if (got) setSecretGot(got);
+  }, [a.handRescued, a.setupIdx]);
 
   // 対局が終わったら1局ぶん記録する。レベルの元になる。
   // オンラインで相手の持ち点が分かっていれば、レーティングもここで動かす
@@ -2217,6 +2305,26 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         {a.kPlacement && a.kPlacement.owner === P && !a.captureReveal && (
           <ReservePlacer state={a} dispatch={y} size={R} focus={tutFocus} />
         )}
+        {/* めったに起きない場面に出くわしたら、その場で知らせる。
+            どれくらい珍しかったかを見せないと、ただの不運に見える */}
+        {secretGot && (
+          <div className="modal-overlay">
+            <div className="modal-panel secret-panel">
+              <Crown size={28} className="dim-icon" />
+              <h3>シークレット達成</h3>
+              <p className="secret-name">{secretGot.name}</p>
+              <p className="hint">{secretGot.how}</p>
+              <p className="secret-chance">{chanceLabel(secretGot.chance)}</p>
+              <p className="hint">称号「{secretGot.name}」を手に入れました。</p>
+              <button
+                className="btn btn-primary"
+                onClick={() => setSecretGot(null)}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        )}
         <CapturedRow players={displayed.players} dispatch={y} viewer={P} />
         <div className="resign-row">
           <button
@@ -2252,6 +2360,17 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             tutorial={tutorial}
             youAre={network ? p : cpu ? 0 : null}
             rating={ratingResult}
+            rematch={
+              network && onRematch
+                ? {
+                    asked: askedRematch,
+                    foeAsked,
+                    ask: () => {
+                      (setAskedRematch(!0), wantRematch(network.code, round));
+                    },
+                  }
+                : null
+            }
           />
         )}
       </div>

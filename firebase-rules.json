@@ -271,6 +271,36 @@
               }
             }
           }
+        },
+        "round": {
+          ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('members').hasChild(auth.uid) && (!newData.exists() || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 999))",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999",
+          "$sa": {
+            ".validate": false,
+            "$sb": {
+              ".validate": false,
+              "$sc": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "rematch": {
+          "$r": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('members').hasChild(auth.uid) && (!newData.exists() || newData.isBoolean())",
+              ".validate": "newData.isBoolean()",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

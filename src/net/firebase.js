@@ -155,6 +155,31 @@ export const deleteRoom = (code) => remove(roomUrl(code));
 export const clearActs = (code) => remove(actsUrl(code));
 
 /**
+ * 再戦の意思を置く。局ごとに分けてあるので、消さなくても混ざらない。
+ * 両方そろったらホストが手番の列を片付け、round を1つ進める。
+ * どちらの端末も round が変わったのを見て入り直す
+ */
+export async function wantRematch(code, round) {
+  const uid = await whoAmI();
+  if (!uid) return { ok: false, error: "サインインできていません" };
+  return sendJson(
+    `${DB_URL}/rooms/${code}/rematch/r${round}/${uid}.json`,
+    "PUT",
+    true,
+  );
+}
+
+export const readRematch = (code, round) =>
+  getJson(`${DB_URL}/rooms/${code}/rematch/r${round}.json`);
+
+/** 何局目か。ホストだけが進める */
+export const bumpRound = (code, round) =>
+  sendJson(`${DB_URL}/rooms/${code}/round.json`, "PUT", round);
+
+export const readRound = (code) =>
+  getJson(`${DB_URL}/rooms/${code}/round.json`);
+
+/**
  * 手番を1件追記する。キーの昇順がそのまま再生順になる。
  * by には自分の uid を入れる。ルールがここを見て、他人になりすました
  * 手を弾く。

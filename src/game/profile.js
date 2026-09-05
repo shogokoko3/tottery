@@ -13,6 +13,7 @@
 
 import { hasIcon } from "./icons.js";
 import { hasTitle, newlyEarned } from "./titles.js";
+import { SECRETS } from "./secrets.js";
 import { MAX_LEVEL, XP, levelOfXp, progressOfXp } from "./level.js";
 
 export { MAX_LEVEL };
@@ -54,6 +55,8 @@ const EMPTY = {
   // titles.js が profile から判定するので、ここには持たない
   title: null,
   titles: [],
+  // 達成したシークレットミッションの id
+  secrets: [],
   plays: 0,
   // 対戦だけの数(チュートリアルを含めない)。ミッションの条件に使う
   battles: 0,
@@ -108,6 +111,9 @@ export function loadProfile() {
     title: typeof saved.title === "string" ? saved.title : null,
     titles: Array.isArray(saved.titles)
       ? saved.titles.filter((x) => typeof x === "string")
+      : [],
+    secrets: Array.isArray(saved.secrets)
+      ? saved.secrets.filter((x) => typeof x === "string")
       : [],
     plays: Number(saved.plays) || 0,
     battles:
@@ -216,6 +222,26 @@ export function saveTitle(id) {
 }
 
 /** 称号を配る。対局数などで決まらない、催しなどの褒美の想定 */
+/**
+ * シークレットミッションの達成を控え、褒美の称号を配る。
+ * すでに達成しているなら何もしない(同じ出来事に何度出くわしても1回)
+ */
+export function achieveSecret(id) {
+  const profile = loadProfile();
+  if ((profile.secrets || []).includes(id)) return null;
+  const secret = SECRETS.find((s) => s.id === id);
+  if (!secret) return null;
+  const titles = profile.titles.includes(secret.reward.id)
+    ? profile.titles
+    : [...profile.titles, secret.reward.id];
+  saveProfile({
+    ...profile,
+    secrets: [...(profile.secrets || []), id],
+    titles,
+  });
+  return secret;
+}
+
 export function grantTitle(id) {
   const profile = loadProfile();
   if (profile.titles.includes(id)) return profile;
