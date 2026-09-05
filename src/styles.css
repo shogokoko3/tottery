@@ -4211,3 +4211,26 @@ h3 {
   border-radius: 12px;
   opacity: 0.35;
 }
+
+/* 予備札が2枚めくれたときの選択 */
+.reserve-picks {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 10px 0;
+}
+.reserve-pick {
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity 0.15s,
+    border-color 0.15s;
+}
+.reserve-pick-on {
+  border-color: var(--gold);
+  opacity: 1;
+}

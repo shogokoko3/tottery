@@ -217,7 +217,12 @@ export function cpuAction(state, player) {
       for (let r = lo; r <= hi; r++)
         for (let c = 0; c < state.boardSize; c++)
           if (!state.board[r][c])
-            return { type: "PLACE_RESERVE_CARD", row: r, col: c };
+            return {
+              type: "PLACE_RESERVE_CARD",
+              row: r,
+              col: c,
+              cardId: state.kPlacement.cards[0].id,
+            };
       return { type: "SKIP_RESERVE_PLACEMENT" };
     }
 

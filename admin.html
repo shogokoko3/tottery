@@ -4226,6 +4226,29 @@ h3 {
   border-radius: 12px;
   opacity: 0.35;
 }
+
+/* \u4E88\u5099\u672D\u304C2\u679A\u3081\u304F\u308C\u305F\u3068\u304D\u306E\u9078\u629E */
+.reserve-picks {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 10px 0;
+}
+.reserve-pick {
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity 0.15s,
+    border-color 0.15s;
+}
+.reserve-pick-on {
+  border-color: var(--gold);
+  opacity: 1;
+}
 `;var yr=`/* \u7BA1\u7406\u753B\u9762\u3060\u3051\u306E\u898B\u305F\u76EE\u3002\u672C\u4F53\u306E styles.css \u306E\u4E0A\u306B\u91CD\u306D\u308B */
 .admin-stage {
   /* \u672C\u4F53\u306E .stage \u306F flex\u3002\u305D\u306E\u307E\u307E\u3060\u3068\u6B04\u304C\u7E2E\u307E\u305A\u3001

@@ -521,18 +521,21 @@ export function removePiece(state, pieceId, opts) {
   if (dead.rank === "J" || dead.rank === "Q") {
     const owner = next.players[dead.owner];
     const king = owner.kingId ? next.pieces[owner.kingId] : null;
-    // 置き場は1枚ぶんしかない。まとめ取りで J と Q が同時に倒れると、
-    // 1枚目に引いた札が上書きされて山にも手札にも戻らず、黙って消える
-    if (
-      king &&
-      king.rank === "K" &&
-      king.alive &&
-      next.reserve.length > 0 &&
-      !next.kPlacement
-    ) {
+    // まとめ取りで J と Q が同時に倒れると、2枚めくれることがある。
+    // 置き場を1枚にしていた頃は、1枚目が上書きされて山にも手札にも
+    // 戻らず黙って消えていた。列にして、どちらからでも置けるようにする
+    if (king && king.rank === "K" && king.alive && next.reserve.length > 0) {
       const reserve = [...next.reserve];
       const card = reserve.pop();
-      next = { ...next, reserve, kPlacement: { owner: dead.owner, card } };
+      const held =
+        next.kPlacement && next.kPlacement.owner === dead.owner
+          ? next.kPlacement.cards
+          : [];
+      next = {
+        ...next,
+        reserve,
+        kPlacement: { owner: dead.owner, cards: [...held, card] },
+      };
       next.log = [
         ...next.log,
         `${PLAYER_META[dead.owner].name}は予備札を1枚引いた(配置できます)`,
@@ -1688,7 +1691,12 @@ function coreReducer(state, action) {
 
     case "PLACE_RESERVE_CARD": {
       if (!state.kPlacement) return state;
-      const { owner, card } = state.kPlacement;
+      const { owner, cards } = state.kPlacement;
+      // どの札を置くか。指定が無ければ先頭の1枚
+      const card = action.cardId
+        ? cards.find((c) => c.id === action.cardId)
+        : cards[0];
+      if (!card) return state;
       // 盤の内側・自陣・空いているマス。どれも見ていないと、相手の駒の上に
       // 置いて、撃破もせずに盤から消せる(取るより強い手になる)
       if (!onBoard(state.board, action.row, action.col)) return state;
@@ -1734,7 +1742,11 @@ function coreReducer(state, action) {
         board,
         pieces,
         players,
-        kPlacement: null,
+        // 残りがあれば置き場に残す
+        kPlacement:
+          cards.length > 1
+            ? { owner, cards: cards.filter((c) => c.id !== card.id) }
+            : null,
         // 盤でめくる演出に乗せる。表で出ることが目で分かるように
         lastReveal: { id: piece.id, reason: "予備札から出た" },
         log: [

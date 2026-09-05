@@ -81,6 +81,11 @@ export function pointInTriangle(p, a, b, c) {
  *
  * multiCapture(=王のとき)だけは、相手の駒を取りながら進み続けられる。
  * 同じ線に並んだ相手を手前からまとめて取る手を返す。ただし味方には止められる。
+ *
+ * 王も空きマスへ動ける。以前は「取れるときしか動けない」形だったが、
+ * それだと周りに敵がいないと合法手が0になり、手番を渡す手も無いので
+ * 持ち時間が尽きるまで何も押せなくなった。通り道にいた相手は、
+ * これまでどおりまとめて取る。
  */
 export function parityMoves(piece, dirs, board, size, parity, multiCapture) {
   const moves = [];
@@ -101,9 +106,15 @@ export function parityMoves(piece, dirs, board, size, parity, multiCapture) {
       if (target && target.owner === piece.owner) break;
 
       if (multiCapture) {
-        if (target && okParity) {
+        if (!okParity) continue;
+        if (target) {
           chain.push({ row, col });
           moves.push({ row, col, capture: true, captures: [...chain] });
+        } else if (chain.length) {
+          // 通り道の相手はまとめて取り、空きマスに降りる
+          moves.push({ row, col, capture: true, captures: [...chain] });
+        } else {
+          moves.push({ row, col, capture: false });
         }
         continue;
       }

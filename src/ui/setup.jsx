@@ -822,17 +822,34 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
   let n = state.kPlacement.owner,
     [a, u] = territoryRows(size, n),
     i = n === 1;
+  // JとQが同じ手で倒れると2枚めくれる。どちらから置くかを選べるようにする
+  const cards = state.kPlacement.cards;
+  const [pick, setPick] = (0, useState)(0);
+  const chosen = cards[Math.min(pick, cards.length - 1)];
   return (
     <div className="modal-overlay">
       <div className="modal-panel">
         <h3>予備札を配置</h3>
         <p className="hint">
-          Kの効果で引いた1枚。自陣の空きマスに配置できます。
+          {cards.length > 1
+            ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスに配置できます。`
+            : "Kの効果で引いた1枚。自陣の空きマスに配置できます。"}
         </p>
-        <CardGuide
-          rank={state.kPlacement.card.rank}
-          suit={state.kPlacement.card.suit}
-        />
+        {cards.length > 1 ? (
+          <div className="reserve-picks">
+            {cards.map((c, idx) => (
+              <button
+                key={c.id}
+                className={`reserve-pick ${chosen.id === c.id ? "reserve-pick-on" : ""}`}
+                onClick={() => setPick(idx)}
+              >
+                <CardGuide rank={c.rank} suit={c.suit} />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <CardGuide rank={chosen.rank} suit={chosen.suit} />
+        )}
         <div
           className="mini-board"
           style={{
@@ -865,6 +882,7 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
                         type: "PLACE_RESERVE_CARD",
                         row: m,
                         col: s,
+                        cardId: chosen.id,
                       });
                   }}
                   key={`${m}-${s}`}

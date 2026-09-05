@@ -498,7 +498,7 @@ console.log("\nKの王の予備札は表向きで出る");
   before.currentTurn = 1;
   const taken = move(before, "foe", 3, 2);
   t("予備札が来ている", taken.kPlacement?.owner === 0);
-  t("引いた札が控えている", taken.kPlacement?.card.id === "spare");
+  t("引いた札が控えている", taken.kPlacement?.cards[0].id === "spare");
   const placed = reducer(taken, { type: "PLACE_RESERVE_CARD", row: 4, col: 4 });
   t("盤に出る", placed.pieces.spare?.alive === true);
   t("表向きで出る", placed.pieces.spare?.revealed === true);

@@ -215,7 +215,7 @@ for (const tut of TUTORIALS) {
   while (guard++ < 400) {
     if (s.setupEffects && !bonusSeen) bonusSeen = s.setupEffects;
     if (s.kPlacement && s.kPlacement.owner === 0) {
-      const c = s.kPlacement.card;
+      const c = s.kPlacement.cards[0];
       if (!drawnCards.some((d) => d.id === c.id)) drawnCards.push(c);
     }
     // 画面と同じく、盤面から案内の位置を引き直す

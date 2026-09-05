@@ -801,6 +801,8 @@ console.log("\n跡継ぎが全滅したとき");
 
 console.log("\n指せる手が無いとき");
 {
+  // A の駒は自分では動けない(入れ替えの起点になるだけ)。
+  // A だけが残った側には、指せる手がひとつも無い
   const { initialState } = await import("../src/game/reducer.js");
   const { emptyBoard } = await import("../src/game/board.js");
   const st = initialState();
@@ -808,42 +810,79 @@ console.log("\n指せる手が無いとき");
   st.board = emptyBoard(5);
   st.boardSize = 5;
   st.currentTurn = 0;
-  const pc = {
-    id: "lone",
-    rank: "6",
-    owner: 0,
-    row: 2,
-    col: 2,
-    isKing: true,
-    suit: "spade",
-    alive: true,
-    revealed: false,
-    history: [],
+  const put = (id, rank, owner, row, col, isKing) => {
+    const pc = {
+      id,
+      rank,
+      owner,
+      row,
+      col,
+      isKing,
+      suit: "spade",
+      alive: true,
+      revealed: false,
+      history: [],
+    };
+    st.board[row][col] = pc;
+    st.pieces[id] = pc;
+    if (isKing) st.players[owner].kingId = id;
+    return pc;
   };
-  st.board[2][2] = pc;
-  st.pieces.lone = pc;
-  st.players[0].kingId = "lone";
-  const foe = {
-    id: "far",
-    rank: "J",
-    owner: 1,
-    row: 0,
-    col: 4,
-    isKing: true,
-    suit: "spade",
-    alive: true,
-    revealed: false,
-    history: [],
+  put("k", "A", 0, 0, 0, true);
+  put("f", "J", 1, 4, 4, true);
+  const stuck = !hasAnyMove(st, 0);
+  is("Aだけが残ると指せる手が無い", stuck, true);
+  if (stuck)
+    is(
+      "そのときは手番を渡せる",
+      reducer(st, { type: "SKIP_EXTRA_ACTION", player: 0 }).currentTurn,
+      1,
+    );
+  else ok++;
+}
+
+console.log("\n王も空きマスへ動ける");
+{
+  const { initialState } = await import("../src/game/reducer.js");
+  const { emptyBoard } = await import("../src/game/board.js");
+  const st = initialState();
+  st.phase = "play";
+  st.board = emptyBoard(5);
+  st.boardSize = 5;
+  const put = (id, rank, owner, row, col, isKing) => {
+    const pc = {
+      id,
+      rank,
+      owner,
+      row,
+      col,
+      isKing,
+      suit: "spade",
+      alive: true,
+      revealed: false,
+      history: [],
+    };
+    st.board[row][col] = pc;
+    st.pieces[id] = pc;
+    if (isKing) st.players[owner].kingId = id;
+    return pc;
   };
-  st.board[0][4] = foe;
-  st.pieces.far = foe;
-  st.players[1].kingId = "far";
-  is("指せる手が無い", hasAnyMove(st, 0), false);
-  is(
-    "そのときは手番を渡せる",
-    reducer(st, { type: "SKIP_EXTRA_ACTION", player: 0 }).currentTurn,
-    1,
+  const k = put("k", "6", 0, 2, 2, true);
+  put("far", "J", 1, 1, 4, true);
+  const mv = getLegalMoves(
+    k,
+    st.board,
+    5,
+    st.players[0].armyRankCounts,
+    kingRankOf(st, 0),
   );
+  is("敵が線上にいなくても動ける", mv.length > 0, true);
+  is(
+    "そのときは何も取らない",
+    mv.every((m) => !m.capture),
+    true,
+  );
+  is("指せる手がある", hasAnyMove(st, 0), true);
 }
 
 console.log(`\n${ok} ok / ${fails.length} fail`);
