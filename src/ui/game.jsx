@@ -967,7 +967,15 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             return;
           }
           const unseen = be.list.filter(
-            (ne) => ne && ne.__id && !g.current.has(ne.__id),
+            (ne) =>
+              ne &&
+              ne.__id &&
+              !g.current.has(ne.__id) &&
+              // 自分の名前で指された手は受け取らない。
+              // 投了・時間切れ・布陣の確定は、どれも指した本人の席番号を
+              // 名乗る。相手から自分の席番号で届くことはあり得ないので、
+              // 届いたなら細工されている(投了を代わりに宣言されるなど)
+              !(ne.player === p),
           );
           const { actions: at, consumedIds } = takePresentationBatch(unseen, {
             split:

@@ -139,9 +139,16 @@ export async function dropOldRows(oldId) {
 export async function readPlayers() {
   const [res, bans] = await Promise.all([
     withTimeout(authedFetch(`${DB_URL}/players.json`), TIMEOUT_MS),
-    withTimeout(authedFetch(`${DB_URL}/bans.json`), TIMEOUT_MS)
-      .then((r) => (r.ok ? r.json() : null))
-      .catch(() => null),
+    // 停止の印が読めなかったときに null で流すと、停止中の人まで
+    // 「停止していない」と表示され、解除したつもりで解除できていない、
+    // といったことが起きる。読めなかったら一覧ごと出さない
+    withTimeout(authedFetch(`${DB_URL}/bans.json`), TIMEOUT_MS).then((r) => {
+      if (!r.ok)
+        throw new Error(
+          `停止の印(bans)が読めません(HTTP ${r.status})。ルールの bans に運営の .read があるか確かめてください。`,
+        );
+      return r.json();
+    }),
   ]);
   if (res.status === 401)
     throw new Error(

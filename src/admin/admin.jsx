@@ -6,19 +6,27 @@
  * 端末が置いていく成績(ranks/<端末id>)だけ。ここではそれと、待ち合わせ
  * (lobby)を一覧にして、探す・並べ替える・消すができる。
  *
- * 消しても本人の端末の記録は消えない(次の持ち点つき対局でまた載る)。
- * 読み書きは本体と同じ REST で、ルール上は誰でもできる。管理画面が
- * 特別な権限を持っているわけではない。
+ * 消しても本人の端末の記録は消えない(次の持ち点でまた載る)。
+ *
+ * 読み書きの権限はデータベースのルールが決める。台帳の一覧や停止の印を
+ * 触れるのは、ルールに書いてある運営の uid で通ったときだけ。この頁を
+ * 開いただけでは何もできない。頁そのものも配信していない。
  */
 import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   API_KEY,
+  OPERATOR_UID,
   authedFetch,
   myUid,
   signInAsOperator,
   signOut,
+  useOperatorSlot,
 } from "../net/auth.js";
+
+// 合言葉の置き場をゲーム本体と分ける。同じオリジンなので、分けないと
+// あとから開いたほうが先の合言葉を上書きしてしまう
+useOperatorSlot();
 import STYLES from "../styles.css";
 import ADMIN_STYLES from "./admin.css";
 import { DB_URL } from "../net/firebase.js";
@@ -187,6 +195,15 @@ function OperatorGate({ onDone }) {
     setError(null);
     try {
       const a = await signInAsOperator(email.trim(), password);
+      // 通ったからといって運営とは限らない。ルールに書いてある uid と
+      // 違うなら、この画面では何も読めない。入る前にそう伝える
+      if (a.uid !== OPERATOR_UID) {
+        signOut();
+        setError(
+          `この口座(${a.uid})は運営として登録されていません。firebase-rules.json に書いてある uid でサインインしてください。`,
+        );
+        return;
+      }
       onDone(a.uid);
     } catch (err) {
       setError((err && err.message) || String(err));
@@ -252,10 +269,14 @@ function OperatorGate({ onDone }) {
 
 function AdminApp() {
   // 運営として通っているか。通るまで台帳には触らせない
-  const [uid, setUid] = useState(() => myUid());
+  // 前に運営で通っていたときだけ、そのまま入る
+  const [uid, setUid] = useState(() =>
+    myUid() === OPERATOR_UID ? OPERATOR_UID : null,
+  );
   const [ranks, setRanks] = useState(null);
   const [players, setPlayers] = useState(null);
   const [playersError, setPlayersError] = useState(null);
+  const [lettersError, setLettersError] = useState(null);
   const [lobby, setLobby] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -309,6 +330,7 @@ function AdminApp() {
       }
       setPlayers(p.rows || []);
       setPlayersError(p.error || null);
+      setLettersError((m && m.error) || null);
       setLobby(
         Object.entries(l || {}).map(([code, row]) => ({
           code,
@@ -540,7 +562,8 @@ function AdminApp() {
           <p className="hint admin-uid">
             運営としてのあなたの uid: <code>{uid}</code>
             <br />
-            これを firebase-rules.json の PUT-OPERATOR-UID-HERE と入れ替えます。
+            firebase-rules.json にもこの uid が書いてあります。作り直したときは
+            両方そろえてください(ずれていれば npm run check が知らせます)。
           </p>
           <p className="hint">
             アカウントは各端末の中にだけあります(名前・アイコン・称号・対局数・勝数・持ち点)。
@@ -551,7 +574,8 @@ function AdminApp() {
             <b>持ち点つきの成績</b>
             は、オンラインの持ち点つき対局を終えた端末だけです。
             「消す」はサーバーの記録を消すだけで、端末は次に開いたときにまた載ります。
-            「使用停止」にすると、その端末は次に開いたときに名前を失い、決め直しになります。
+            「使用停止」にすると、その口座は次に開いたときから遊べなくなります
+            (理由を出して止まります)。解除すればまた遊べます。
           </p>
         </section>
 
@@ -755,7 +779,8 @@ function AdminApp() {
                 </button>
               </div>
             ))}
-            {letters && letters.length === 0 && (
+            {lettersError && <p className="admin-error">{lettersError}</p>}
+            {!lettersError && letters && letters.length === 0 && (
               <p className="hint">まだお知らせを出していません</p>
             )}
           </div>

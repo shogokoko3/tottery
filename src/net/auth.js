@@ -31,8 +31,29 @@
  */
 export const API_KEY = "AIzaSyDcV6cXMZyzOYrhpUO2Pd4wvP9oXe9vTdY";
 
-/** 取り直し用の合言葉を控える場所。端末の外へは出さない */
-const KEY = "tottery.auth.v1";
+/**
+ * 運営の uid。firebase-rules.json に書いてあるものと同じでなければならない。
+ * ずれていないかは check-rules が見張っている。
+ */
+export const OPERATOR_UID = "4jAiZRTJdQTtSJI39JrnpRLtSrB2";
+
+/**
+ * 取り直し用の合言葉を控える場所。端末の外へは出さない。
+ *
+ * 遊ぶ側(匿名)と運営とで置き場を分ける。管理画面はゲーム本体と同じ
+ * オリジンに置くので、同じ鍵を使うと後から開いたほうが先の合言葉を
+ * 上書きする。運営で入ったあとゲームを開くと運営のまま遊ぶことになり、
+ * 逆はサインインが黙って外れる。
+ */
+let KEY = "tottery.auth.v1";
+
+/** この頁を運営用として扱う。管理画面が読み込みのいちばん最初に呼ぶ */
+export function useOperatorSlot() {
+  KEY = "tottery.auth.op.v1";
+  held = null;
+  inflight = null;
+  quietUntil = 0;
+}
 /**
  * サインインの上限。呼び出し側の上限(8秒)より短くしてある。
  * 同じ8秒にすると、サインインだけで持ち時間を使い切り、

@@ -23,15 +23,17 @@ import {
 } from "../icons.jsx";
 import {
   LOBBY_TTL,
+  createRoom,
   deleteLobbyPath,
   deleteRoom,
   generateRoomCode,
-  makeClientId,
+  joinRoom,
+  leaveRoom,
   readLobby,
   readLobbyPath,
   readRoom,
   writeLobby,
-  writeRoom,
+  updateRoom,
 } from "../net/firebase.js";
 import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
@@ -47,7 +49,7 @@ import {
 import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { titleOf } from "../game/titles.js";
 import { PlayerIcon } from "./playericon.jsx";
-import { adoptUid, resetAccount, touchDay } from "../game/profile.js";
+import { adoptUid, touchDay } from "../game/profile.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
 import { publishRank } from "../net/ranking.js";
 import { ensureAuth } from "../net/auth.js";
@@ -369,7 +371,6 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
   const loadout = useRef(mySkins()).current;
   let [l, n] = (0, useState)("searching"),
     [a, u] = (0, useState)(""),
-    i = (0, useRef)(makeClientId()),
     f = (0, useRef)(null),
     o = (0, useRef)(!1);
   return (
@@ -410,7 +411,18 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
     ),
     (0, useEffect)(() => {
       (async () => {
-        let r = i.current,
+        // 待ち合わせの掲示は uid で名乗る。ルール側が「持ち主だけが動かせる」
+        // ようにしてあるので、端末ごとの仮のidでは掲示できない
+        let auth = await ensureAuth();
+        if (o.current) return;
+        if (!auth) {
+          (u(
+            "サインインできませんでした。通信状況を確認して、もう一度お試しください。",
+          ),
+            n("error"));
+          return;
+        }
+        let r = auth.uid,
           d = await readLobby();
         if (o.current) return;
         if (!d.ok) {
@@ -438,21 +450,36 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           )
           .sort((z, g) => (g[1].createdAt || 0) - (z[1].createdAt || 0));
         for (let [z] of s) {
+          // 先に部屋の席をとる。部屋の中身は席についてからでないと読めないし、
+          // 取れなければ何も汚さずに次の掲示へ行ける。
+          // 逆に掲示へ先に名乗ると、席が取れなかったときに名乗りだけが残り、
+          // 待っている人は「来たのに始まらない」ことになる(掲示の名乗りは
+          // 一度きりで、こちらからは取り消せない)
+          let seat = await joinRoom(z);
+          if (o.current) return;
+          if (!seat.ok) continue;
           let g = await writeLobby(`/${z}/guest`, r);
           if (o.current) return;
-          if (!g.ok) continue;
+          if (!g.ok) {
+            await leaveRoom(z);
+            continue;
+          }
           let A = await readLobbyPath(`/${z}/guest`);
           if (o.current) return;
-          if (A.ok && A.data === r) {
+          if (!A.ok || A.data !== r) {
+            // 掲示は他の人に取られた。座った席は空けて次へ
+            await leaveRoom(z);
+            continue;
+          }
+          {
             let b = await readRoom(z);
             if (o.current) return;
             if (!b.ok) {
-              (u(b.error), n("error"));
+              (await leaveRoom(z), u(b.error), n("error"));
               return;
             }
             if (
-              (await writeRoom(z, {
-                ...(b.data || {}),
+              (await updateRoom(z, {
                 guestPresent: !0,
                 guestName: myName(),
                 guestIcon: myIcon(),
@@ -476,7 +503,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           }
         }
         let v = generateRoomCode() + generateRoomCode(),
-          p = await writeRoom(v, {
+          p = await createRoom(v, {
             guestPresent: !1,
             gameState: null,
             hostName: myName(),
@@ -625,7 +652,7 @@ export function RoomScreen({
     return (
       (async () => {
         let x = `diag${Date.now()}`,
-          N = await writeRoom(x, {
+          N = await createRoom(x, {
             test: !0,
           });
         if (P) return;
@@ -685,7 +712,7 @@ export function RoomScreen({
   async function y() {
     (p(!0), s(""));
     let P = generateRoomCode(),
-      x = await writeRoom(P, {
+      x = await createRoom(P, {
         guestPresent: !1,
         gameState: null,
         hostName: myName(),
@@ -707,21 +734,32 @@ export function RoomScreen({
       return;
     }
     (p(!0), s(""));
-    let x = await readRoom(P);
-    if (!x.ok) {
-      (p(!1), s(x.error));
+    // 先に席をとる。部屋の中身は席についてからでないと読めない。
+    // 断られたら、その合言葉の部屋が無いか、もう二人そろっている
+    let seat = await joinRoom(P);
+    if (!seat.ok) {
+      (p(!1),
+        s("そのコードのルームは見つからないか、既に対戦相手が参加しています"));
       return;
     }
-    if (!x.data) {
-      (p(!1), s("そのコードのルームは見つかりませんでした"));
+    let x = await readRoom(P);
+    if (!x.ok) {
+      (await leaveRoom(P), p(!1), s(x.error));
+      return;
+    }
+    // 席をとれたからといって部屋があるとは限らない(締める前のルールでは
+    // 存在しない部屋にも座れてしまう)。中身を見て確かめる
+    if (!x.data || (!x.data.createdAt && !x.data.hostName)) {
+      (await leaveRoom(P),
+        p(!1),
+        s("そのコードのルームは見つかりませんでした"));
       return;
     }
     if (x.data.guestPresent) {
-      (p(!1), s("このルームは既に対戦相手が参加済みです"));
+      (await leaveRoom(P), p(!1), s("このルームは既に対戦相手が参加済みです"));
       return;
     }
-    let N = await writeRoom(P, {
-      ...x.data,
+    let N = await updateRoom(P, {
       guestPresent: !0,
       guestName: myName(),
       guestIcon: myIcon(),
@@ -730,7 +768,7 @@ export function RoomScreen({
       guestSkins: loadout,
     });
     if ((p(!1), !N.ok)) {
-      s(N.error);
+      (await leaveRoom(P), s(N.error));
       return;
     }
     onRoomReady({
@@ -916,8 +954,8 @@ export function TotteryApp() {
     // 対戦の種類(o)から推測すると、CPU対戦とルームの「オフラインで対戦」が
     // どちらも "game" なので見分けられず、CPUの戻り先がフレンド対戦になる
     [rulesFrom, setRulesFrom] = (0, useState)("matching"),
-    // 運営に使用停止にされたとき、名前を決め直す画面に出す一言
-    [banNotice, setBanNotice] = (0, useState)(null);
+    // 運営に使用停止にされたかどうか
+    [banned, setBanned] = (0, useState)(!1);
   // 場面に合った曲へ。対局中は GameCore のほうが決めるので、ここは触らない
   useScreenBgm(e);
   // 起動時に、登録した人の台帳へ自分を置き直す。使用停止なら名前を捨てる
@@ -947,13 +985,12 @@ export function TotteryApp() {
       // 使用頻度のミッション用に、1日1回だけ数える
       touchDay();
       if (gone) return;
-      const banned = await syncPlayer(loadProfile());
-      if (gone || !banned) return;
-      resetAccount();
-      setBanNotice(
-        "運営により、この名前は使えなくなりました。新しい名前を決めてください。",
-      );
-      setNamed(false);
+      const stopped = await syncPlayer(loadProfile());
+      if (gone || !stopped) return;
+      // 名前を捨てて決め直させてはいけない。停止の印は uid に付くので、
+      // 何度名乗り直しても同じ印が見つかり、名前を決める画面から
+      // 出られなくなる。ここで止めて、理由を出す
+      setBanned(!0);
     })();
     return () => {
       gone = true;
@@ -978,16 +1015,29 @@ export function TotteryApp() {
     (f(b), o === "room" && w(!0), t(o));
   }
   // 画面の枠(背景や上のバー)は GameShell が出すので、その中に入れる
+  //
+  // 使用停止は名前ではなく口座に付く。名前を決め直させても同じ印が
+  // 残るので、ここで行き止まりにする
+  if (banned)
+    return (
+      <GameShell>
+        <div className="center-stage">
+          <h2>ご利用を停止しています</h2>
+          <p className="hint">
+            他の方への迷惑行為が確認されたため、このアカウントでは Tottery
+            をご利用いただけません。
+          </p>
+          <p className="hint">
+            心当たりがない場合や、内容についてのお問い合わせは、
+            ストアの製品ページに記載の連絡先までご連絡ください。
+          </p>
+        </div>
+      </GameShell>
+    );
   if (!named)
     return (
       <GameShell showRules={l} setShowRules={n}>
-        <NameSetupScreen
-          notice={banNotice}
-          onDone={() => {
-            setBanNotice(null);
-            setNamed(!0);
-          }}
-        />
+        <NameSetupScreen onDone={() => setNamed(!0)} />
       </GameShell>
     );
   if (e === "game") {

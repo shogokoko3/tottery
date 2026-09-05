@@ -4,7 +4,7 @@
  * どの呼び出しも 8 秒でタイムアウトし、例外ではなく {ok, error} を返す。
  */
 
-import { authedFetch } from "./auth.js";
+import { authedFetch, ensureAuth, myUid } from "./auth.js";
 
 export const DB_URL =
   "https://tottery-66e0f-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -87,12 +87,73 @@ async function remove(url) {
 
 /* ---------------------------- ルーム ---------------------------- */
 
+const memberUrl = (code, uid) => `${DB_URL}/rooms/${code}/members/${uid}.json`;
+
+/** サインインが通っていれば uid。通らなければ null */
+async function whoAmI() {
+  const a = await ensureAuth();
+  return (a && a.uid) || myUid();
+}
+
 export const readRoom = (code) => getJson(roomUrl(code));
-export const writeRoom = (code, data) => sendJson(roomUrl(code), "PUT", data);
+
+/**
+ * 部屋を新しく作る。
+ *
+ * 部屋は席についた二人だけのものにしてある(ルール側で閉じている)ので、
+ * 作るときに自分を席へ入れておく。createdAt は、放置された部屋を
+ * あとから誰かが片付けられるようにするための日付。
+ */
+export async function createRoom(code, data) {
+  const uid = await whoAmI();
+  if (!uid) return { ok: false, error: "サインインできていません" };
+  const base = data && typeof data === "object" ? data : {};
+  return sendJson(roomUrl(code), "PUT", {
+    ...base,
+    members: { ...(base.members || {}), [uid]: true },
+    createdAt: Number(base.createdAt) || Date.now(),
+  });
+}
+
+/**
+ * 出来ている部屋に、自分の名乗り(名前・アイコン・持ち点など)を書き足す。
+ *
+ * 丸ごと置き直さない。置き直すと、それまでに積んだ手番の列を
+ * 消してしまううえ、ルール側でも中身の丸ごと上書きは断っている。
+ */
+export const updateRoom = (code, patch) =>
+  sendJson(roomUrl(code), "PATCH", patch);
+
+/**
+ * 空いている席に座る。
+ *
+ * 部屋の中身は席についてからでないと読めないので、参加する側は
+ * まずこれを呼ぶ。席が埋まっていたり、その合言葉の部屋が無ければ
+ * サーバーが断る。断られたことが「満室 or 見つからない」の合図になる。
+ */
+export async function joinRoom(code) {
+  const uid = await whoAmI();
+  if (!uid) return { ok: false, error: "サインインできていません" };
+  return sendJson(memberUrl(code, uid), "PUT", true);
+}
+
+/** 座った席を空ける(参加をやめたとき) */
+export async function leaveRoom(code) {
+  const uid = await whoAmI();
+  if (uid) await remove(memberUrl(code, uid));
+}
+
 export const deleteRoom = (code) => remove(roomUrl(code));
 
-/** 手番を1件追記する。キーの昇順がそのまま再生順になる */
-export const pushAct = (code, act) => sendJson(actsUrl(code), "POST", act);
+/**
+ * 手番を1件追記する。キーの昇順がそのまま再生順になる。
+ * by には自分の uid を入れる。ルールがここを見て、他人になりすました
+ * 手を弾く。
+ */
+export async function pushAct(code, act) {
+  const uid = await whoAmI();
+  return sendJson(actsUrl(code), "POST", uid ? { ...act, by: uid } : act);
+}
 
 /** 追記された手番を古い順に読み出す */
 export async function readActs(code) {

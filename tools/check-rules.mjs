@@ -1,0 +1,527 @@
+/**
+ * データベースのルール(firebase-rules.json)を、実際に公開する前に検査する。
+ *
+ * Firebase の判定を丸ごと真似ることはできないので、要点だけを真似た小さな
+ * 評価器で確かめる。真似ているのは次の三つ:
+ *
+ *   ・.read/.write は上から下へだけ効く。祖先のどれかが許せば通る。
+ *     深いところに書いた規則で、浅いところの許可を取り消すことはできない。
+ *   ・.validate は消すときには見ない。書くときだけ、書いた場所とその下を見る。
+ *   ・無いところの値を数と比べても真にならない(JS と違うので、ここを合わせる)。
+ *
+ * 通信はしない。公開する手順は firebase-rules.md にある。
+ */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const RULES = JSON.parse(
+  readFileSync(join(here, "..", "firebase-rules.json"), "utf8"),
+).rules;
+
+const { OPERATOR_UID } = await import("../src/net/auth.js");
+const OP = OPERATOR_UID;
+
+const NOW = 1_700_000_000_000;
+
+/* ------------------------- 覗き見の口 ------------------------- */
+
+/** 木の中の一点。Firebase の RuleDataSnapshot にあたる */
+class Snap {
+  constructor(root, path) {
+    this.root = root;
+    this.path = path;
+  }
+  get raw() {
+    let v = this.root;
+    for (const seg of this.path) {
+      if (v == null || typeof v !== "object") return undefined;
+      v = v[seg];
+    }
+    return v;
+  }
+  /**
+   * 無い場所の値。Firebase では null が返り、数と比べても真にならない。
+   * JS の null は数と比べると 0 になってしまうので undefined にしておく
+   */
+  val() {
+    const v = this.raw;
+    if (v === undefined || v === null) return undefined;
+    return typeof v === "object" ? null : v;
+  }
+  child(p) {
+    return new Snap(this.root, [...this.path, ...String(p).split("/")]);
+  }
+  parent() {
+    return new Snap(this.root, this.path.slice(0, -1));
+  }
+  exists() {
+    return this.raw !== undefined && this.raw !== null;
+  }
+  hasChild(k) {
+    return this.child(k).exists();
+  }
+  hasChildren(keys) {
+    return keys.every((k) => this.hasChild(k));
+  }
+  numChildren() {
+    const v = this.raw;
+    return v && typeof v === "object" ? Object.keys(v).length : 0;
+  }
+  isString() {
+    return typeof this.raw === "string";
+  }
+  isNumber() {
+    return typeof this.raw === "number";
+  }
+  isBoolean() {
+    return typeof this.raw === "boolean";
+  }
+}
+
+const cache = new Map();
+function compile(src) {
+  if (!cache.has(src))
+    cache.set(
+      src,
+      new Function(
+        "auth",
+        "data",
+        "newData",
+        "root",
+        "now",
+        `return (${src});`,
+      ),
+    );
+  return cache.get(src);
+}
+
+function evalExpr(expr, ctx) {
+  if (typeof expr === "boolean") return expr;
+  let src = expr;
+  for (const [k, v] of Object.entries(ctx.vars))
+    src = src.split("$" + k).join(JSON.stringify(v));
+  try {
+    return !!compile(src)(ctx.auth, ctx.data, ctx.newData, ctx.root, ctx.now);
+  } catch (e) {
+    throw new Error(`式が評価できません: ${expr}\n  ${e.message}`);
+  }
+}
+
+/** path をたどりながら、規則のある節とワイルドカードの束縛を集める */
+function walk(path) {
+  const steps = [];
+  let node = RULES;
+  const vars = {};
+  steps.push({ node, vars: { ...vars }, path: [] });
+  for (let i = 0; i < path.length; i++) {
+    const seg = path[i];
+    if (!node) return steps;
+    let next = node[seg];
+    if (next === undefined) {
+      const wild = Object.keys(node).find((k) => k.startsWith("$"));
+      if (wild === undefined) return steps;
+      vars[wild.slice(1)] = seg;
+      next = node[wild];
+    }
+    node = next;
+    steps.push({ node, vars: { ...vars }, path: path.slice(0, i + 1) });
+  }
+  return steps;
+}
+
+/** 木のコピーに、path の場所へ value を書いたもの */
+function writtenTree(db, path, value) {
+  const copy = structuredClone(db);
+  if (path.length === 0) return value;
+  let v = copy;
+  for (const seg of path.slice(0, -1)) {
+    if (v[seg] == null || typeof v[seg] !== "object") v[seg] = {};
+    v = v[seg];
+  }
+  const last = path[path.length - 1];
+  if (value === null) delete v[last];
+  else v[last] = value;
+  return copy;
+}
+
+/** .read が通るか */
+export function canRead(db, path, auth) {
+  const root = new Snap(db, []);
+  for (const step of walk(path)) {
+    if (!step.node || step.node[".read"] === undefined) continue;
+    const ok = evalExpr(step.node[".read"], {
+      auth,
+      vars: step.vars,
+      data: new Snap(db, step.path),
+      newData: new Snap(db, step.path),
+      root,
+      now: NOW,
+    });
+    if (ok) return true;
+  }
+  return false;
+}
+
+/** 書いた後の木で .validate を回す。消すとき(値が null)は見ない */
+function validates(db, after, path, value, vars0) {
+  if (value === null) return true;
+  const rootAfter = new Snap(after, []);
+  const rootBefore = new Snap(db, []);
+  const stack = [{ path, value, node: null }];
+  // 書いた場所の規則の節を取る
+  const steps = walk(path);
+  const start = steps[steps.length - 1];
+  if (steps.length !== path.length + 1) return true; // 規則の無い深さ
+  stack[0].node = start.node;
+  stack[0].vars = start.vars;
+  while (stack.length) {
+    const cur = stack.pop();
+    if (!cur.node) continue;
+    if (cur.node[".validate"] !== undefined) {
+      const ok = evalExpr(cur.node[".validate"], {
+        auth: vars0.auth,
+        vars: cur.vars,
+        data: new Snap(db, cur.path),
+        newData: new Snap(after, cur.path),
+        root: rootAfter,
+        now: NOW,
+      });
+      if (!ok) return false;
+    }
+    if (cur.value && typeof cur.value === "object")
+      for (const [k, v] of Object.entries(cur.value)) {
+        if (v === null) continue;
+        let node = cur.node[k];
+        const vars = { ...cur.vars };
+        if (node === undefined) {
+          const wild = Object.keys(cur.node).find((w) => w.startsWith("$"));
+          if (wild === undefined) continue;
+          vars[wild.slice(1)] = k;
+          node = cur.node[wild];
+        }
+        stack.push({ path: [...cur.path, k], value: v, node, vars });
+      }
+  }
+  void rootBefore;
+  return true;
+}
+
+/** .write が通り、.validate も通るか */
+export function canWrite(db, path, auth, value) {
+  const after = writtenTree(db, path, value);
+  const root = new Snap(db, []);
+  let allowed = false;
+  for (const step of walk(path)) {
+    if (!step.node || step.node[".write"] === undefined) continue;
+    if (
+      evalExpr(step.node[".write"], {
+        auth,
+        vars: step.vars,
+        data: new Snap(db, step.path),
+        newData: new Snap(after, step.path),
+        root,
+        now: NOW,
+      })
+    ) {
+      allowed = true;
+      break;
+    }
+  }
+  if (!allowed) return false;
+  return validates(db, after, path, value, { auth });
+}
+
+/* ------------------------- ここから検査 ------------------------- */
+
+let ok = 0;
+const fails = [];
+function is(label, got, want) {
+  if (got === want) {
+    ok++;
+    console.log(`  ok   ${label}`);
+  } else {
+    fails.push(label);
+    console.log(`  NG   ${label}  ${got} であるべきは ${want}`);
+  }
+}
+const allow = (l, g) => is(l, g, true);
+const deny = (l, g) => is(l, g, false);
+
+const op = { uid: OP };
+const A = { uid: "uidA" };
+const B = { uid: "uidB" };
+const X = { uid: "uidX" }; // 部外者
+const none = null;
+
+/* --- 対局部屋 --- */
+console.log("\n対局部屋は当事者だけのもの");
+const room = {
+  rooms: {
+    ABCD: {
+      members: { uidA: true, uidB: true },
+      createdAt: NOW - 60_000,
+      hostName: "あ",
+      acts: { "-N1": { type: "MOVE_PIECE", by: "uidA" } },
+    },
+  },
+};
+allow("席についている人は部屋を読める", canRead(room, ["rooms", "ABCD"], A));
+allow(
+  "席についている人は手番の列を読める",
+  canRead(room, ["rooms", "ABCD", "acts"], B),
+);
+deny("部外者は部屋を読めない", canRead(room, ["rooms", "ABCD"], X));
+deny(
+  "部外者は手番の列を読めない(伏せた王が見える口)",
+  canRead(room, ["rooms", "ABCD", "acts"], X),
+);
+deny(
+  "サインインしていない人は読めない",
+  canRead(room, ["rooms", "ABCD"], none),
+);
+deny(
+  "部外者は投了を差し込めない",
+  canWrite(room, ["rooms", "ABCD", "acts", "-N9"], X, {
+    type: "RESIGN",
+    player: 0,
+    by: "uidX",
+  }),
+);
+allow(
+  "当事者は自分の名前で手を指せる",
+  canWrite(room, ["rooms", "ABCD", "acts", "-N9"], A, {
+    type: "RESIGN",
+    player: 0,
+    by: "uidA",
+  }),
+);
+deny(
+  "当事者でも相手の名前は騙れない",
+  canWrite(room, ["rooms", "ABCD", "acts", "-N9"], A, {
+    type: "RESIGN",
+    player: 1,
+    by: "uidB",
+  }),
+);
+deny(
+  "名前を書かない手は通らない",
+  canWrite(room, ["rooms", "ABCD", "acts", "-N9"], A, { type: "RESIGN" }),
+);
+deny(
+  "一度指した手は書き換えられない",
+  canWrite(room, ["rooms", "ABCD", "acts", "-N1"], A, {
+    type: "MOVE_PIECE",
+    by: "uidA",
+  }),
+);
+deny(
+  "部外者は部屋を丸ごと上書きできない",
+  canWrite(room, ["rooms", "ABCD"], X, { members: { uidX: true } }),
+);
+deny(
+  "部外者は対局中の部屋を消せない",
+  canWrite(room, ["rooms", "ABCD"], X, null),
+);
+allow(
+  "当事者は終わった部屋を消せる",
+  canWrite(room, ["rooms", "ABCD"], A, null),
+);
+
+console.log("\n席の取り合い");
+deny(
+  "二人そろった部屋には割り込めない",
+  canWrite(room, ["rooms", "ABCD", "members", "uidX"], X, true),
+);
+deny(
+  "他人を席に着かせることはできない",
+  canWrite(room, ["rooms", "ABCD", "members", "uidB"], X, true),
+);
+const half = {
+  rooms: { EFGH: { members: { uidA: true }, createdAt: NOW - 10_000 } },
+};
+allow(
+  "空いている席には座れる",
+  canWrite(half, ["rooms", "EFGH", "members", "uidB"], B, true),
+);
+deny(
+  "無い部屋の席には座れない",
+  canWrite(half, ["rooms", "ZZZZ", "members", "uidB"], B, true),
+);
+deny("座る前に部屋の中身は読めない", canRead(half, ["rooms", "EFGH"], B));
+allow(
+  "部屋を作れる",
+  canWrite({}, ["rooms", "WXYZ"], A, {
+    members: { uidA: true },
+    createdAt: NOW,
+  }),
+);
+deny(
+  "自分の入らない部屋は作れない",
+  canWrite({}, ["rooms", "WXYZ"], A, {
+    members: { uidB: true },
+    createdAt: NOW,
+  }),
+);
+
+console.log("\n名乗りの欄");
+allow(
+  "席についた人は自分の名前を書ける",
+  canWrite(room, ["rooms", "ABCD", "guestName"], B, "い"),
+);
+deny(
+  "部外者は名前の欄も書けない",
+  canWrite(room, ["rooms", "ABCD", "guestName"], X, "の"),
+);
+deny(
+  "名乗りの欄から席をこじ開けられない",
+  canWrite(room, ["rooms", "ABCD", "members"], X, { uidX: true }),
+);
+allow(
+  "座った席は自分で立てる",
+  canWrite(room, ["rooms", "ABCD", "members", "uidA"], A, null),
+);
+deny(
+  "相手を席から降ろせない",
+  canWrite(room, ["rooms", "ABCD", "members", "uidB"], A, null),
+);
+
+console.log("\n放り出された部屋の片付け");
+const stale = {
+  rooms: { OLD1: { members: { uidA: true }, createdAt: NOW - 10 * 60_000 } },
+};
+allow(
+  "相手が来ないまま古くなった部屋は誰でも片付けられる",
+  canWrite(stale, ["rooms", "OLD1"], X, null),
+);
+const playing = {
+  rooms: {
+    PLAY: { members: { uidA: true, uidB: true }, createdAt: NOW - 10 * 60_000 },
+  },
+};
+deny(
+  "対局が続いている部屋は片付けられない",
+  canWrite(playing, ["rooms", "PLAY"], X, null),
+);
+const veryOld = {
+  rooms: {
+    OLD2: {
+      members: { uidA: true, uidB: true },
+      createdAt: NOW - 25 * 3600_000,
+    },
+  },
+};
+allow(
+  "1日置かれた部屋は誰でも片付けられる",
+  canWrite(veryOld, ["rooms", "OLD2"], X, null),
+);
+
+/* --- 待ち合わせ --- */
+console.log("\n待ち合わせの掲示");
+const lob = {
+  lobby: { ABCD: { host: "uidA", createdAt: NOW - 30_000 } },
+};
+allow("掲示は誰でも見られる", canRead(lob, ["lobby"], X));
+allow(
+  "自分の名前で掲示できる",
+  canWrite({}, ["lobby", "QQQQ"], A, { host: "uidA", createdAt: NOW }),
+);
+deny(
+  "他人の名前では掲示できない",
+  canWrite({}, ["lobby", "QQQQ"], A, { host: "uidB", createdAt: NOW }),
+);
+deny("他人の掲示は消せない", canWrite(lob, ["lobby", "ABCD"], X, null));
+allow("自分の掲示は消せる", canWrite(lob, ["lobby", "ABCD"], A, null));
+allow("運営は掲示を消せる", canWrite(lob, ["lobby", "ABCD"], op, null));
+allow(
+  "空いている席に手を挙げられる",
+  canWrite(lob, ["lobby", "ABCD", "guest"], B, "uidB"),
+);
+deny(
+  "他人の名前で手を挙げられない",
+  canWrite(lob, ["lobby", "ABCD", "guest"], B, "uidA"),
+);
+const taken = {
+  lobby: { ABCD: { host: "uidA", guest: "uidB", createdAt: NOW - 30_000 } },
+};
+deny(
+  "先に手を挙げた人を押しのけられない",
+  canWrite(taken, ["lobby", "ABCD", "guest"], X, "uidX"),
+);
+const oldLob = {
+  lobby: { OLD: { host: "uidA", createdAt: NOW - 10 * 60_000 } },
+};
+allow(
+  "時間切れの掲示は誰でも片付けられる",
+  canWrite(oldLob, ["lobby", "OLD"], X, null),
+);
+
+/* --- 運営 --- */
+console.log("\n運営ができること");
+const db = {
+  players: { uidA: { name: "あ" } },
+  bans: { uidA: { at: NOW } },
+  letters: { all: { L1: { subject: "お知らせ", at: NOW } }, to: { uidA: {} } },
+  ranks: { uidA: { name: "あ", rating: 1500 } },
+};
+allow("台帳を一覧できる", canRead(db, ["players"], op));
+allow("停止の印を一覧できる", canRead(db, ["bans"], op));
+allow("お知らせを丸ごと読める", canRead(db, ["letters"], op));
+allow("宛先ごとのお知らせを読める", canRead(db, ["letters", "to"], op));
+allow("使用停止にできる", canWrite(db, ["bans", "uidA"], op, { at: NOW }));
+allow("停止を解除できる", canWrite(db, ["bans", "uidA"], op, null));
+allow(
+  "全員宛てのお知らせを出せる",
+  canWrite(db, ["letters", "all", "L2"], op, { subject: "件名", at: NOW }),
+);
+allow("台帳の行を消せる", canWrite(db, ["players", "uidA"], op, null));
+
+console.log("\n遊ぶ側にできないこと");
+deny("台帳を一覧できない", canRead(db, ["players"], X));
+deny("他人の台帳を読めない", canRead(db, ["players", "uidA"], X));
+deny(
+  "他人の台帳を書き換えられない",
+  canWrite(db, ["players", "uidA"], X, { name: "の" }),
+);
+deny("停止の印を一覧できない", canRead(db, ["bans"], X));
+deny("自分の停止を消せない", canWrite(db, ["bans", "uidA"], A, null));
+allow("自分の停止は見える", canRead(db, ["bans", "uidA"], A));
+deny("他人宛てのお知らせを読めない", canRead(db, ["letters", "to", "uidA"], X));
+deny(
+  "お知らせを出せない",
+  canWrite(db, ["letters", "all", "L3"], X, { subject: "にせ", at: NOW }),
+);
+deny("他人の成績を消せない", canWrite(db, ["ranks", "uidA"], X, null));
+allow(
+  "自分の成績は置ける",
+  canWrite(db, ["ranks", "uidX"], X, { name: "え", rating: 1500 }),
+);
+deny(
+  "持ち点は上限を越えられない",
+  canWrite(db, ["ranks", "uidX"], X, { name: "え", rating: 99999 }),
+);
+deny(
+  "知らない項目は混ぜられない",
+  canWrite(db, ["ranks", "uidX"], X, { name: "え", rating: 1500, admin: true }),
+);
+allow("ランキングは誰でも見られる", canRead(db, ["ranks"], none));
+deny(
+  "素性の知れない人は何も書けない",
+  canWrite(db, ["ranks", "uidX"], none, { name: "え", rating: 1500 }),
+);
+
+/* --- 埋め込んだ uid がずれていないか --- */
+console.log("\n運営の uid のつじつま");
+const raw = readFileSync(join(here, "..", "firebase-rules.json"), "utf8");
+is(
+  "ルールに書いてある uid が src/net/auth.js と同じ",
+  raw.includes(OP) && !/PUT-OPERATOR-UID-HERE/.test(raw),
+  true,
+);
+
+console.log(`\n${ok} 件 ok / ${fails.length} 件 NG`);
+if (fails.length) {
+  for (const f of fails) console.log(`  - ${f}`);
+  process.exit(1);
+}
