@@ -29,10 +29,7 @@
  * これは秘密ではない。誰の端末にも配られる前提のもので、これ単体では
  * 何もできない。何ができるかを決めるのはデータベースのルールのほう。
  */
-export const API_KEY = "";
-// 受け取り済みのキー(2026-09-05)。移行の段取りが整うまでは入れない。
-// 入れた瞬間から uid への付け替えが始まり、ranks の行がいったん消えるため。
-//   AIzaSyDcV6cXMZyzOYrhpUO2Pd4wvP9oXe9vTdY
+export const API_KEY = "AIzaSyDcV6cXMZyzOYrhpUO2Pd4wvP9oXe9vTdY";
 
 /** 取り直し用の合言葉を控える場所。端末の外へは出さない */
 const KEY = "tottery.auth.v1";
