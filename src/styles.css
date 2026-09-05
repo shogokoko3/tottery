@@ -3846,10 +3846,14 @@ h3 {
   color: var(--gold-soft);
 }
 
-/* 背の低い電話。詰めて1画面に収める */
+/* 背の低い電話。詰めて1画面に収める。
+ * お知らせの帯を足したぶん、四角の入り口も薄くする */
 @media (max-height: 700px) {
+  .home-wrap {
+    gap: 9px;
+  }
   .home-hero {
-    padding: 14px 16px;
+    padding: 12px 16px;
   }
   .home-hero-icon {
     width: 44px;
@@ -3858,8 +3862,20 @@ h3 {
   .home-hero-label b {
     font-size: 19px;
   }
+  .home-wide {
+    padding: 10px 16px;
+  }
   .home-tile {
-    min-height: 84px;
+    min-height: 0;
+    padding: 9px 8px;
+    gap: 3px;
+  }
+  .home-tile-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .home-self {
+    padding: 8px 14px 10px;
   }
 }
 
@@ -3990,4 +4006,57 @@ h3 {
 }
 .rule-foot b {
   color: var(--gold-soft);
+}
+
+/* 運営からのお知らせ。読み物なので、自分の札の上に細く置く。
+ * 毎日押すものではないが、届いたことには気づいてほしいので、
+ * 数がある時だけ赤い印を出す */
+.home-news {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(143, 188, 232, 0.08);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-news:active {
+  transform: translateY(1px);
+}
+.home-news svg {
+  color: #8fbce8;
+  flex: none;
+}
+.home-news-count {
+  min-width: 18px;
+  height: 18px;
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--card-red);
+  color: #fff;
+  font: 700 11px/18px sans-serif;
+  text-align: center;
+}
+/* 印が無いときも矢印は右端に寄せる */
+.home-news-arrow {
+  margin-left: auto;
+  opacity: 0.5;
+}
+.home-news-count ~ .home-news-arrow {
+  margin-left: 6px;
+}
+
+/* 次に増やすものの席。四角の並びを崩さないための空き */
+.home-slot {
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  opacity: 0.35;
 }

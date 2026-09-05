@@ -254,7 +254,7 @@ export function MenuScreen({
   onLetters,
 }) {
   const profile = loadProfile();
-  // 受け取れるミッションの数と、未読の手紙。入り口に印を出す
+  // 受け取れるミッションの数と、未読のお知らせ。入り口に印を出す
   const ready = claimableCount(profile);
   const unread = useUnreadLetters();
   const collection = useCollection();
@@ -262,6 +262,15 @@ export function MenuScreen({
     <div className="home-wrap">
       {/* その日のぶんがまだなら、ここに着いたときに札が出る */}
       <LoginBonus />
+
+      {/* 運営からのお知らせ。読み物なので入り口は細く、一番上に置く */}
+      <button className="home-news" onClick={onLetters}>
+        <Mail size={15} />
+        運営からのお知らせ
+        {unread > 0 && <span className="home-news-count">{unread}</span>}
+        <ArrowRight size={13} className="home-news-arrow" />
+      </button>
+
       <HomeSelf profile={profile} tickets={collection.tickets} />
 
       <button className="home-hero" onClick={onPlay}>
@@ -286,21 +295,9 @@ export function MenuScreen({
         <ArrowRight size={16} className="home-wide-arrow" />
       </button>
 
+      {/* 左上は次に増やすものの席。空けたままにしてある */}
       <div className="home-grid">
-        <HomeTile
-          tone="skins"
-          icon={<Sparkle size={26} />}
-          label="ガチャ・装備"
-          note="英雄を召喚する"
-          onClick={onSkins}
-        />
-        <HomeTile
-          tone="pass"
-          icon={<Grid size={26} />}
-          label="バトルパス"
-          note="マスを埋める"
-          onClick={onBattlePass}
-        />
+        <div className="home-slot" aria-hidden="true" />
         <HomeTile
           tone="missions"
           icon={<Check size={26} />}
@@ -310,12 +307,18 @@ export function MenuScreen({
           onClick={onMissions}
         />
         <HomeTile
-          tone="letters"
-          icon={<Mail size={26} />}
-          label="運営からの手紙"
-          note="お知らせと贈り物"
-          badge={unread}
-          onClick={onLetters}
+          tone="pass"
+          icon={<Grid size={26} />}
+          label="バトルパス"
+          note="マスを埋める"
+          onClick={onBattlePass}
+        />
+        <HomeTile
+          tone="skins"
+          icon={<Sparkle size={26} />}
+          label="ガチャ・装備"
+          note="英雄を召喚する"
+          onClick={onSkins}
         />
       </div>
 

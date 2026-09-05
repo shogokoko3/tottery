@@ -284,7 +284,7 @@ function AdminApp() {
         : `「${(players || []).find((p) => p.id === draft.to)?.name || draft.to}」`;
     if (
       !window.confirm(
-        `${who}に手紙を出します。\n\n件名: ${draft.subject}\n添付: ${giftsLabel(draft.gifts)}\n\n出したあとは、受け取った人からは取り消せません。`,
+        `${who}にお知らせを出します。\n\n件名: ${draft.subject}\n添付: ${giftsLabel(draft.gifts)}\n\n出したあとは、受け取った人からは取り消せません。`,
       )
     )
       return;
@@ -303,7 +303,7 @@ function AdminApp() {
   async function removeLetter(l) {
     if (
       !window.confirm(
-        `手紙「${l.subject}」を取り消します。\nまだ受け取っていない人には届かなくなります。受け取り済みの人からは戻せません。`,
+        `お知らせ「${l.subject}」を取り消します。\nまだ受け取っていない人には届かなくなります。受け取り済みの人からは戻せません。`,
       )
     )
       return;
@@ -521,7 +521,7 @@ function AdminApp() {
         </section>
 
         <section className="admin-card">
-          <h2>運営からの手紙</h2>
+          <h2>運営からのお知らせ</h2>
           <p className="hint">
             補填やプレゼントを渡します。受け取ると添付がその場で配られます。
             出したあとに取り消せるのは、まだ受け取っていない人にだけです。
@@ -604,7 +604,7 @@ function AdminApp() {
               disabled={busy || !draft.subject.trim()}
               onClick={send}
             >
-              手紙を出す
+              お知らせを出す
             </button>
           </div>
           <div className="admin-rows">
@@ -630,7 +630,7 @@ function AdminApp() {
               </div>
             ))}
             {letters && letters.length === 0 && (
-              <p className="hint">まだ手紙を出していません</p>
+              <p className="hint">まだお知らせを出していません</p>
             )}
           </div>
         </section>
@@ -760,7 +760,7 @@ function AdminApp() {
                         setDetail(null);
                       }}
                     >
-                      手紙を出す
+                      お知らせを出す
                     </button>
                   )}
                   {detail.kind === "player" && (

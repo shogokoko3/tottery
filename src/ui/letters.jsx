@@ -1,5 +1,5 @@
 /**
- * 運営からの手紙。
+ * 運営からのお知らせ(コードの上では letters)。
  *
  * サーバーの手紙を読み、受け取っていないものを未読として出す。
  * 添付は受け取ったときにだけ配り、受け取った印は端末に控える(二重取りを防ぐ)。
@@ -82,7 +82,7 @@ export function LettersScreen({ onBack }) {
 
   return (
     <div className="setup-wrap">
-      <h2>運営からの手紙</h2>
+      <h2>運営からのお知らせ</h2>
       <p className="mission-message" role="status">
         {message}
       </p>
@@ -98,7 +98,7 @@ export function LettersScreen({ onBack }) {
       <div className="letter-list">
         {list === null && <p className="hint">読み込んでいます…</p>}
         {list && list.length === 0 && (
-          <p className="hint">いま届いている手紙はありません。</p>
+          <p className="hint">いま届いているお知らせはありません。</p>
         )}
         {(list || []).map((l) => (
           <button
