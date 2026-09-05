@@ -2315,6 +2315,7 @@ export function GameCore({
               <p className="secret-name">{secretGot.name}</p>
               <p className="hint">{secretGot.how}</p>
               <p className="secret-chance">{chanceLabel(secretGot.chance)}</p>
+              {secretGot.like && <p className="hint">{secretGot.like}</p>}
               <p className="hint">称号「{secretGot.name}」を手に入れました。</p>
               <button
                 className="btn btn-primary"

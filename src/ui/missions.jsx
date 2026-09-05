@@ -92,6 +92,7 @@ export function MissionsScreen({ onBack }) {
             <h4>{sc.name}</h4>
             <p className="hint">{sc.how}</p>
             <p className="secret-chance">{chanceLabel(sc.chance)}</p>
+            {sc.like && <p className="hint">{sc.like}</p>}
           </div>
         ))}
         {secrets.hidden > 0 && (
