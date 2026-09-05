@@ -79,6 +79,7 @@ import {
   upcomingNeedStep,
 } from "../game/tutorial.js";
 import { isTestPlay, recordGame } from "../game/profile.js";
+import { releaseXpNotice } from "../game/xp-notices.js";
 import { titleNameOf } from "../game/titles.js";
 import { publishRank } from "../net/ranking.js";
 import { publishPlayer } from "../net/players.js";
@@ -822,6 +823,8 @@ export function GameCore({
     [tutNudge, setTutNudge] = (0, useState)(null),
     foeIdxRef = (0, useRef)(0),
     recordedRef = (0, useRef)(!1),
+    xpNoticeRef = (0, useRef)(null),
+    mountedRef = (0, useRef)(false),
     [ratingResult, setRatingResult] = (0, useState)(null),
     // テストプレイ中は、布陣の1分も対局の持ち時間も止める
     testPlay = (0, useRef)(isTestPlay()).current;
@@ -1227,22 +1230,43 @@ export function GameCore({
   // 対局が終わったら1局ぶん記録する。レベルの元になる。
   // オンラインで相手の持ち点が分かっていれば、レーティングもここで動かす
   (0, useEffect)(() => {
-    if (a.phase !== "gameover" || recordedRef.current) return;
+    if (a.phase !== "gameover") {
+      recordedRef.current = false;
+      return;
+    }
+    if (recordedRef.current) return;
     recordedRef.current = !0;
     const won = a.winner === (network ? p : 0);
     const foeRating =
       network && network.ratings ? network.ratings[1 - p] : null;
     // チュートリアルは話ごとの経験値。対戦の数には数えない
     const after = recordGame(won, {
+      deferXpNotice: true,
       ...(typeof foeRating === "number" ? { foeRating } : null),
       ...(tutorial
         ? { xp: tutorial.xp, tutorial: !0, tutorialId: tutorial.id }
         : null),
     });
+    xpNoticeRef.current = after.xpNoticeId;
     setRatingResult(after.delta === null ? null : after);
     if (after.delta !== null) publishRank(after);
     publishPlayer(after);
   }, [a.phase, a.winner]);
+
+  // 経験値で先に決着を知らせない。撃破札と映像の後でゲージを出す。
+  (0, useEffect)(() => {
+    if (!a.captureReveal && !fxBusy) releaseXpNotice(xpNoticeRef.current);
+  }, [a.phase, a.captureReveal, fxBusy]);
+  (0, useEffect)(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      // 画面を離れても獲得表示を失わない。StrictModeの再接続では解放しない。
+      queueMicrotask(() => {
+        if (!mountedRef.current) releaseXpNotice(xpNoticeRef.current);
+      });
+    };
+  }, []);
 
   // 進んだところまでを覚えておく。
   // これが無いと、同じ駒を2度動かす台本で前の指示へ戻ってしまう

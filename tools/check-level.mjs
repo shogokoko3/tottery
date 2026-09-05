@@ -182,16 +182,16 @@ is("対戦の数に入る", [r.plays, r.battles], [1, 1]);
 r = recordGame(false, { xp: TUTORIALS[0].xp, tutorial: true });
 is("チュートリアルはその話の経験値", r.xp, 50 + TUTORIALS[0].xp);
 is("チュートリアルは対戦の数に入れない", [r.plays, r.battles], [2, 1]);
-// TEST_BUILD の間は全員が上限なので、レベルの上下は経験値の側で見る
+// テスト環境でも、獲得時の表示は実経験値で増える。
 is(
   "経験値の総量でレベルが上がっている",
   [levelOfXp(50), levelOfXp(r.xp)],
   [1, 2],
 );
 is(
-  "テストビルドの間は全員が上限",
+  "テストビルドでも獲得前後の表示レベルは実経験値",
   [TEST_BUILD, r.levelBefore, r.levelAfter],
-  [true, MAX_LEVEL, MAX_LEVEL],
+  [true, 1, 2],
 );
 r = addXp(XP.PAID_GACHA);
 is("有償ガチャの経験値を足せる", r.xp, 50 + TUTORIALS[0].xp + 150);

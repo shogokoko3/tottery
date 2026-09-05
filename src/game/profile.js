@@ -3,7 +3,7 @@
  *
  * 名前・対局数・勝数を端末に持つ。名前は対戦相手にも渡して、
  * 「どちらの手番か」「誰が指したのか」を色だけでなく名前でも分かるようにする。
- * レベルは対局数と勝数から決まり、チュートリアルの開放条件になる。
+ * レベルは貯めた経験値から決まり、チュートリアルの開放条件になる。
  *
  * 保存先は端末の localStorage だけ。サーバーには置いていない。
  * レーティングやランキングを入れるときは、ここに rating を足したうえで、
@@ -14,6 +14,7 @@
 import { hasIcon } from "./icons.js";
 import { hasTitle, newlyEarned } from "./titles.js";
 import { MAX_LEVEL, XP, levelOfXp, progressOfXp } from "./level.js";
+import { publishXpNotice } from "./xp-notices.js";
 
 export { MAX_LEVEL };
 import { START_RATING, applyRating } from "./rating.js";
@@ -26,8 +27,8 @@ const OLD_KEY = "tottery.profile.v1";
 export const MAX_NAME_LEN = 10;
 
 /**
- * テストプレイ環境では全プレイヤーをレベル10として扱う。
- * 配信時に false へ戻すと、実際のプレイ数でレベルが上がるようになる。
+ * テストプレイ用の時計停止を許可する。?test= を付けた場合だけ働く。
+ * レベルはテスト環境でも実際の経験値で決まり、0XPならレベル1から始まる。
  */
 export const TEST_BUILD = true;
 
@@ -259,7 +260,7 @@ export function recordGame(won, opts) {
     : opts && Number.isFinite(opts.xp) && opts.xp >= 0
       ? opts.xp
       : XP.BATTLE;
-  const levelBefore = levelOf(profile);
+  const levelBefore = levelProgress(profile).level;
   const next = {
     ...profile,
     plays: profile.plays + 1,
@@ -281,7 +282,13 @@ export function recordGame(won, opts) {
     ...earned.map((t) => t.id).filter((id) => !next.titles.includes(id)),
   ];
   saveProfile(next);
-  const levelAfter = levelOf(next);
+  const levelAfter = levelProgress(next).level;
+  const xpNoticeId = publishXpNotice({
+    beforeXp: profile.xp,
+    afterXp: next.xp,
+    source: opts?.tutorial ? "tutorial" : "battle",
+    ready: !opts?.deferXpNotice,
+  });
   return {
     ...next,
     delta: rated ? after - before : null,
@@ -292,21 +299,19 @@ export function recordGame(won, opts) {
     levelBefore,
     levelAfter,
     leveledUp: levelAfter > levelBefore,
+    xpNoticeId,
   };
 }
 
 /** レベル。経験値の総量から決まる */
 export function levelOf(profile) {
-  if (TEST_BUILD) return MAX_LEVEL;
   return levelOfXp((profile || EMPTY).xp);
 }
 
 /** いまのレベルの中での進み具合。帯や「あと◯」の表示に使う */
 export function levelProgress(profile) {
-  const p = progressOfXp((profile || EMPTY).xp);
-  if (!TEST_BUILD) return p;
-  // テストビルドでは全員が上限。帯は満杯にしておく
-  return { ...p, level: MAX_LEVEL, ratio: 1, left: null, done: true };
+  // テスト環境も含め、帯には実際に貯めた経験値を出す。
+  return progressOfXp((profile || EMPTY).xp);
 }
 
 /** 次のレベルまでに必要な経験値。最高レベルなら null */
@@ -398,19 +403,26 @@ export function hasCleared(id, profile) {
 }
 
 /** 経験値を足す。対局以外(有償ガチャなど)から呼ぶ */
-export function addXp(amount) {
+export function addXp(amount, { source = "reward" } = {}) {
   const profile = loadProfile();
   const gained = Number.isFinite(amount) && amount > 0 ? Math.floor(amount) : 0;
-  if (!gained) return { ...profile, gained: 0, leveledUp: false };
-  const levelBefore = levelOf(profile);
+  if (!gained)
+    return { ...profile, gained: 0, leveledUp: false, xpNoticeId: null };
+  const levelBefore = levelProgress(profile).level;
   const next = { ...profile, xp: profile.xp + gained };
   saveProfile(next);
-  const levelAfter = levelOf(next);
+  const levelAfter = levelProgress(next).level;
+  const xpNoticeId = publishXpNotice({
+    beforeXp: profile.xp,
+    afterXp: next.xp,
+    source,
+  });
   return {
     ...next,
     gained,
     levelBefore,
     levelAfter,
     leveledUp: levelAfter > levelBefore,
+    xpNoticeId,
   };
 }

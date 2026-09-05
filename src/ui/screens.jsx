@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useScreenBgm } from "../audio/index.js";
 import { titleBgImg } from "../assets.js";
 import { VERSION } from "../game/constants.js";
@@ -38,6 +45,8 @@ import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
 import { nextTutorialAfter } from "../game/tutorial.js";
+import { XpGainToast } from "./xp-gain.jsx";
+import { getXpNotices, subscribeXpNotices } from "../game/xp-notices.js";
 import { RankingScreen } from "./ranking.jsx";
 import {
   hasName,
@@ -903,6 +912,17 @@ export function RoomScreen({
   );
 }
 export function TotteryApp() {
+  // 獲得時はホームのレベル欄も新しい経験値へ更新する。
+  useSyncExternalStore(subscribeXpNotices, getXpNotices, getXpNotices);
+  return (
+    <>
+      <TotteryScreens />
+      <XpGainToast />
+    </>
+  );
+}
+
+function TotteryScreens() {
   const collection = useCollection();
   // はじめて遊ぶときは、まず名前を決めてもらう
   let [named, setNamed] = (0, useState)(() => hasName()),
