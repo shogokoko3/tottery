@@ -9,7 +9,7 @@
  * (Sign in with Apple や Game Center)を入れるまでは、そのつもりで扱う。
  */
 import { DB_URL } from "./firebase.js";
-import { authed } from "./auth.js";
+import { authedFetch } from "./auth.js";
 
 const TIMEOUT_MS = 8000;
 /** 一覧に出す人数 */
@@ -33,7 +33,7 @@ export async function publishRank(profile) {
   if (!profile || !profile.id || !profile.name) return { ok: false };
   try {
     await withTimeout(
-      fetch(await authed(`${DB_URL}/ranks/${profile.id}.json`), {
+      authedFetch(`${DB_URL}/ranks/${profile.id}.json`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -59,7 +59,7 @@ export async function publishRank(profile) {
 export async function readRanks(limit = RANK_LIMIT) {
   const url = `${DB_URL}/ranks.json?orderBy=%22rating%22&limitToLast=${limit}`;
   try {
-    const res = await withTimeout(fetch(await authed(url)), TIMEOUT_MS);
+    const res = await withTimeout(authedFetch(url), TIMEOUT_MS);
     // 401 は ranks の読み書きを許すルールがまだ公開されていないとき
     if (res.status === 401)
       return {

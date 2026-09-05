@@ -36,7 +36,12 @@ export const API_KEY = "";
 
 /** 取り直し用の合言葉を控える場所。端末の外へは出さない */
 const KEY = "tottery.auth.v1";
-const TIMEOUT_MS = 8000;
+/**
+ * サインインの上限。呼び出し側の上限(8秒)より短くしてある。
+ * 同じ8秒にすると、サインインだけで持ち時間を使い切り、
+ * そのあとの本来の通信ぶんが残らない。
+ */
+const TIMEOUT_MS = 4000;
 /** 期限より少し early に取り直す。時計のずれと通信の遅れを見込む */
 const EARLY_MS = 5 * 60 * 1000;
 
@@ -206,6 +211,21 @@ function usable() {
 /** いまの uid。まだ通っていなければ null */
 export function myUid() {
   return held ? held.uid : (readSaved() || {}).uid || null;
+}
+
+/**
+ * 合言葉を付けてから投げる。
+ *
+ * `fetch(await authed(url))` と書くと、合言葉を取りに行く往復が
+ * 呼び出し側の withTimeout の**外**に出てしまう。取りに行くのに8秒、
+ * そのあと通信に8秒で、上限が二重に積まれる。対局中は0.7秒ごとに
+ * 読みに行くので、これだけで盤が止まって見える。
+ *
+ * ひとつの約束にまとめて返せば、呼び出し側の withTimeout が
+ * 合言葉の取得ごと包む。
+ */
+export function authedFetch(url, init) {
+  return (async () => fetch(await authed(url), init))();
 }
 
 /**

@@ -11,7 +11,7 @@
  * 「消す」はサーバーの記録を消すだけで、端末は次の起動でまた載る。
  */
 import { DB_URL } from "./firebase.js";
-import { authed } from "./auth.js";
+import { authedFetch } from "./auth.js";
 
 const TIMEOUT_MS = 8000;
 
@@ -49,7 +49,7 @@ export function playerRecord(profile) {
 export async function readPlayer(id) {
   if (!id) return { ok: false, data: null };
   try {
-    const res = await withTimeout(fetch(await authed(url(id))), TIMEOUT_MS);
+    const res = await withTimeout(authedFetch(url(id)), TIMEOUT_MS);
     if (!res.ok) return { ok: false, data: null, status: res.status };
     return { ok: true, data: await res.json() };
   } catch {
@@ -63,7 +63,7 @@ export async function publishPlayer(profile, extra) {
   if (!record) return { ok: false };
   try {
     const res = await withTimeout(
-      fetch(await authed(url(profile.id)), {
+      authedFetch(url(profile.id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...record, ...(extra || {}) }),
@@ -96,7 +96,7 @@ export async function dropOldRows(oldId) {
   for (const path of [`players/${oldId}`, `ranks/${oldId}`]) {
     try {
       await withTimeout(
-        fetch(await authed(`${DB_URL}/${path}.json`), { method: "DELETE" }),
+        authedFetch(`${DB_URL}/${path}.json`, { method: "DELETE" }),
         TIMEOUT_MS,
       );
     } catch {
@@ -109,7 +109,7 @@ export async function dropOldRows(oldId) {
 
 export async function readPlayers() {
   const res = await withTimeout(
-    fetch(await authed(`${DB_URL}/players.json`)),
+    authedFetch(`${DB_URL}/players.json`),
     TIMEOUT_MS,
   );
   if (res.status === 401)
@@ -123,7 +123,7 @@ export async function readPlayers() {
 
 export async function deletePlayer(id) {
   const res = await withTimeout(
-    fetch(await authed(url(id)), { method: "DELETE" }),
+    authedFetch(url(id), { method: "DELETE" }),
     TIMEOUT_MS,
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -131,7 +131,7 @@ export async function deletePlayer(id) {
 
 export async function setBanned(id, banned) {
   const res = await withTimeout(
-    fetch(await authed(url(id)), {
+    authedFetch(url(id), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

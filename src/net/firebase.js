@@ -4,7 +4,7 @@
  * どの呼び出しも 8 秒でタイムアウトし、例外ではなく {ok, error} を返す。
  */
 
-import { authed } from "./auth.js";
+import { authedFetch } from "./auth.js";
 
 export const DB_URL =
   "https://tottery-66e0f-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -52,7 +52,7 @@ function withTimeout(promise, ms) {
 
 async function getJson(url) {
   try {
-    const res = await withTimeout(fetch(await authed(url)), TIMEOUT_MS);
+    const res = await withTimeout(authedFetch(url), TIMEOUT_MS);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return { ok: true, data: await res.json(), error: null };
   } catch (err) {
@@ -63,7 +63,7 @@ async function getJson(url) {
 async function sendJson(url, method, body) {
   try {
     const res = await withTimeout(
-      fetch(await authed(url), {
+      authedFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -79,10 +79,7 @@ async function sendJson(url, method, body) {
 
 async function remove(url) {
   try {
-    await withTimeout(
-      fetch(await authed(url), { method: "DELETE" }),
-      TIMEOUT_MS,
-    );
+    await withTimeout(authedFetch(url, { method: "DELETE" }), TIMEOUT_MS);
   } catch {
     /* 後始末なので失敗しても進める */
   }
@@ -100,10 +97,7 @@ export const pushAct = (code, act) => sendJson(actsUrl(code), "POST", act);
 /** 追記された手番を古い順に読み出す */
 export async function readActs(code) {
   try {
-    const res = await withTimeout(
-      fetch(await authed(actsUrl(code))),
-      TIMEOUT_MS,
-    );
+    const res = await withTimeout(authedFetch(actsUrl(code)), TIMEOUT_MS);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!data) return { ok: true, list: [], error: null };
