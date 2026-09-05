@@ -1389,13 +1389,17 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           onClose={() => setSelected(null)}
           className="skins-detail-overlay"
         >
-          <button
-            className="skin-close detail-close"
-            aria-label="スキンの詳細を閉じる"
-            onClick={() => setSelected(null)}
-          >
-            ×
-          </button>
+          <div className="skins-detail-nav">
+            <button
+              type="button"
+              className="skin-btn skins-detail-back"
+              aria-label="スキン一覧に戻る"
+              onClick={() => setSelected(null)}
+            >
+              <ArrowLeft size={18} /> もどる
+            </button>
+            <span>スキン詳細</span>
+          </div>
           <div className="skins-detail">
             {selectedLocked ? (
               <BattlePassSkinLock className="skins-detail-portrait" />

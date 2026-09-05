@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { build } from "esbuild";
 import {
   FOIL_ACQUISITION_MS,
+  FOIL_ACQUISITION_STEPS,
   FOIL_IMAGE_TIMEOUT_MS,
   foilAcquisitionFrame,
   scheduleFoilAcquisition,
@@ -45,18 +46,19 @@ function manualClock() {
   };
 }
 
-assert.equal(FOIL_ACQUISITION_MS, 2350);
+assert.equal(FOIL_ACQUISITION_MS, 3000);
+assert.deepEqual(FOIL_ACQUISITION_STEPS, [320, 1100, 2200, 3000]);
 assert.equal(FOIL_IMAGE_TIMEOUT_MS, 2500);
 for (const [elapsed, phase, complete] of [
   [0, "normal", false],
-  [259, "normal", false],
-  [260, "gather", false],
-  [849, "gather", false],
-  [850, "reveal", false],
-  [1899, "reveal", false],
-  [1900, "settle", false],
-  [2349, "settle", false],
-  [2350, "complete", true],
+  [319, "normal", false],
+  [320, "gather", false],
+  [1099, "gather", false],
+  [1100, "reveal", false],
+  [2199, "reveal", false],
+  [2200, "settle", false],
+  [2999, "settle", false],
+  [3000, "complete", true],
   [10000, "complete", true],
 ]) {
   const frame = foilAcquisitionFrame(elapsed);
@@ -68,6 +70,13 @@ for (const [elapsed, phase, complete] of [
       frame.progress <= 1,
   );
 }
+assert.equal(
+  foilAcquisitionFrame(1100).progress,
+  0,
+  "溜めの間は箔波を進めない",
+);
+assert.equal(foilAcquisitionFrame(1650).progress, 0.5);
+assert.equal(foilAcquisitionFrame(2200).progress, 1);
 for (const options of [{ play: false }, { reduce: true }, { failed: true }]) {
   const frame = foilAcquisitionFrame(0, options);
   assert.equal(frame.complete, true);
@@ -89,16 +98,16 @@ const cancel = scheduleFoilAcquisition({
   },
 });
 assert.deepEqual(phases, ["normal"]);
-clock.advance(259);
+clock.advance(319);
 assert.deepEqual(phases, ["normal"]);
 clock.advance(1);
 assert.deepEqual(phases, ["normal", "gather"]);
-clock.advance(590);
+clock.advance(780);
 assert.equal(phases.at(-1), "reveal");
-clock.advance(1050);
+clock.advance(1100);
 assert.equal(phases.at(-1), "settle");
 assert.equal(completeCount, 0);
-clock.advance(450);
+clock.advance(800);
 assert.equal(phases.at(-1), "complete");
 assert.equal(completeCount, 1);
 clock.advance(10000);
@@ -136,7 +145,7 @@ const cancelLate = scheduleFoilAcquisition({
   onComplete: () => lateComplete++,
 });
 lateBy = 7000;
-lateClock.advance(260);
+lateClock.advance(320);
 assert.equal(lateComplete, 1);
 assert.equal(lateClock.pending(), 0);
 lateClock.advance(10000);
@@ -171,7 +180,7 @@ const stop = scheduleFoilAcquisition({
   onFrame: (frame) => canceledPhases.push(frame.phase),
   onComplete: () => canceledComplete++,
 });
-canceledClock.advance(260);
+canceledClock.advance(320);
 const beforeCancel = canceledPhases.slice();
 stop();
 stop();
@@ -217,7 +226,7 @@ try {
   const outfile = path.join(directory, "acquisition.cjs");
   await build({
     stdin: {
-      contents: `import React from 'react'; import {renderToStaticMarkup} from 'react-dom/server'; import {FoilAcquisition} from './src/ui/foil-acquisition.jsx'; import {RevealCard} from './src/ui/skins.jsx'; export function render(props){return renderToStaticMarkup(React.createElement(FoilAcquisition,props));} export function renderReveal(props){return renderToStaticMarkup(React.createElement(RevealCard,props));}`,
+      contents: `import React from 'react'; import {renderToStaticMarkup} from 'react-dom/server'; import {FoilAcquisition} from './src/ui/foil-acquisition.jsx'; import {RevealCard,SummonReveal} from './src/ui/skins.jsx'; export function render(props){return renderToStaticMarkup(React.createElement(FoilAcquisition,props));} export function renderReveal(props){return renderToStaticMarkup(React.createElement(RevealCard,props));} export function renderSummon(props){return renderToStaticMarkup(React.createElement(SummonReveal,props));}`,
       resolveDir: process.cwd(),
       loader: "jsx",
     },
@@ -233,10 +242,23 @@ try {
       {
         name: "export-actual-reveal-for-check",
         setup(builder) {
+          builder.onLoad({ filter: /src\/ui\/skin-modal\.jsx$/ }, (args) => ({
+            // SSR has no portal target. Keep the actual modal and children; only inline the portal.
+            contents: fs
+              .readFileSync(args.path, "utf8")
+              .replace(
+                'import { createPortal } from "react-dom";',
+                "const createPortal = (children) => children;",
+              )
+              .replace("    document.body,", "    null,"),
+            loader: "jsx",
+            resolveDir: path.dirname(args.path),
+          }));
           builder.onLoad({ filter: /src\/ui\/skins\.jsx$/ }, (args) => ({
             // Expose the existing private component without substituting its render or hooks.
             contents:
-              fs.readFileSync(args.path, "utf8") + "\nexport { RevealCard };\n",
+              fs.readFileSync(args.path, "utf8") +
+              "\nexport { RevealCard, SummonReveal };\n",
             loader: "jsx",
             resolveDir: path.dirname(args.path),
           }));
@@ -244,7 +266,31 @@ try {
       },
     ],
   });
-  const { render, renderReveal } = createRequire(import.meta.url)(outfile);
+  const { render, renderReveal, renderSummon } = createRequire(import.meta.url)(
+    outfile,
+  );
+  for (const count of [1, 10]) {
+    const html = renderSummon({
+      results: Array.from({ length: count }, (_, index) => ({
+        id: index % 2 ? "zombie-male" : "angel-k:foil",
+        isNew: true,
+      })),
+      onFinish() {},
+      reduce: false,
+    });
+    assert.equal((html.match(/class="reveal-card /g) || []).length, count);
+    assert.match(html, /すべてめくる/, "1連/10連とも全めくり操作を残す");
+    assert.doesNotMatch(
+      html,
+      /演出をスキップ/,
+      "召喚中のスキップボタンを再表示しない",
+    );
+    assert.doesNotMatch(
+      html,
+      /結果へ/,
+      "未開示のまま結果へ進むボタンを出さない",
+    );
+  }
   for (const id of ["zombie-male", "elf-female", "angel-k"]) {
     const base = byId(id);
     const foil = byId(id + ":foil");
@@ -293,5 +339,5 @@ try {
   fs.rmSync(directory, { recursive: true, force: true });
 }
 console.log(
-  "フォイル変化: 実React初期描画の通常絵・foil名非開示・off/reduced即確定: OK",
+  "フォイル変化: 実React初期描画の通常絵・foil名非開示・off/reduced即確定・召喚のスキップなし: OK",
 );

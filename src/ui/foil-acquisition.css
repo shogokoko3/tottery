@@ -25,9 +25,7 @@
   display: block;
   border-radius: inherit;
 }
-.foil-acquisition-base {
-  z-index: 0;
-}
+.foil-acquisition-base { z-index: 0; }
 .foil-acquisition-coating {
   z-index: 1;
   clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
@@ -35,167 +33,191 @@
 .foil-acquisition-rim,
 .foil-acquisition-edge-light,
 .foil-acquisition-sweep,
-.foil-acquisition-glint {
+.foil-acquisition-burst,
+.foil-acquisition-glint,
+.foil-acquisition-sparks {
   position: absolute;
   pointer-events: none;
   opacity: 0;
   z-index: 2;
 }
+
+/* The anticipation gathers around the portrait, keeping its centre legible. */
 .foil-acquisition-rim {
-  inset: 1px;
-  border: 1px solid #fff0c2;
+  inset: 2px;
+  border: 2px solid #fff1bb;
   border-radius: inherit;
   box-shadow:
-    inset 0 0 7px #f5d79999,
-    0 0 5px #c8e9ff66;
+    inset 0 0 9px #fff0ba,
+    inset 0 0 22px #d5a1ed88,
+    0 0 7px #fff8de;
+}
+.foil-acquisition-rim::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid #fff4d05c;
+  border-radius: inherit;
 }
 .foil-acquisition-edge-light {
   inset: 0;
   border-radius: inherit;
   background:
-    radial-gradient(ellipse 8% 24% at 0% 24%, #b6ebff88, transparent),
-    radial-gradient(ellipse 10% 28% at 100% 72%, #dcaeff77, transparent),
-    radial-gradient(ellipse 30% 6% at 64% 0%, #fff0aa88, transparent),
-    radial-gradient(ellipse 27% 7% at 26% 100%, #bde5ff77, transparent);
+    radial-gradient(ellipse 14% 36% at 0% 22%, #c3f5ffcc, transparent),
+    radial-gradient(ellipse 16% 37% at 100% 75%, #d4adffbb, transparent),
+    radial-gradient(ellipse 50% 10% at 63% 0%, #fff1b8cc, transparent),
+    radial-gradient(ellipse 48% 14% at 28% 100%, #c0ebffbb, transparent);
 }
+.foil-acquisition-sparks { inset: 0; }
+.foil-acquisition-sparks > i {
+  position: absolute;
+  width: 17%;
+  aspect-ratio: 1;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse 7% 49% at 50% 50%, #fffbed 0 28%, #fff0b677 50%, transparent 100%),
+    radial-gradient(ellipse 49% 7% at 50% 50%, #fffbed 0 28%, #d2edff88 50%, transparent 100%),
+    radial-gradient(circle at 50% 50%, #fffbe7 0 5%, #fff0bb55 13%, transparent 40%);
+}
+.foil-acquisition-sparks > i:nth-child(1) {
+  left: -3%; top: 12%; --spark-x: -80%; --spark-y: -160%;
+}
+.foil-acquisition-sparks > i:nth-child(2) {
+  right: -3%; top: 48%; --spark-x: 140%; --spark-y: -90%;
+}
+.foil-acquisition-sparks > i:nth-child(3) {
+  left: 8%; bottom: -4%; --spark-x: -130%; --spark-y: 180%;
+}
+.foil-acquisition-sparks > i:nth-child(4) {
+  right: 5%; top: -5%; --spark-x: 100%; --spark-y: -190%;
+}
+
+/* A luminous moving seam lays the foil down once, instead of washing out the image. */
 .foil-acquisition-sweep {
   top: -20%;
-  left: -52%;
-  width: 34%;
+  left: -68%;
+  width: 48%;
   height: 140%;
   transform: translateX(0) rotate(16deg);
   background: linear-gradient(
     90deg,
-    transparent 15%,
-    #dccbff0a 31%,
-    #a5e8ff1a 40%,
-    #fff1c946 48%,
-    #fff9df73 50%,
-    #fff2c540 53%,
-    #eab9ff1a 63%,
-    transparent 82%
+    transparent 8%,
+    #d69aff08 20%,
+    #c9a2ff2e 31%,
+    #b3efff61 41%,
+    #fff4c794 47%,
+    #fffbecc9 50%,
+    #fff1aeb3 52%,
+    #f3b4f057 59%,
+    #b9e4ff21 72%,
+    transparent 92%
   );
+  mix-blend-mode: screen;
+}
+.foil-acquisition-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0 43%;
+  background: linear-gradient(180deg, transparent 3%, #fff9df77 28%, #fffdf5 62%, #e7d1ff99 85%, transparent);
+  clip-path: polygon(44% 0, 55% 0, 40% 20%, 65% 41%, 39% 64%, 55% 83%, 39% 100%, 29% 100%, 45% 83%, 29% 64%, 55% 41%, 30% 20%);
+}
+.foil-acquisition-burst {
+  inset: -12%;
+  transform-origin: 50% 72%;
+  background:
+    radial-gradient(ellipse 59% 47% at 50% 72%, transparent 64%, #fff2c400 67%, #fff2c4bb 70%, #d8beff66 72%, transparent 77%),
+    radial-gradient(ellipse 65% 52% at 50% 72%, transparent 64%, #c3efff66 69%, transparent 73%);
   mix-blend-mode: screen;
 }
 .foil-acquisition-glint {
   inset: 0;
   background:
-    radial-gradient(
-      ellipse 1.1% 4% at 96% 9%,
-      #fff7dc 0,
-      #e8d9ad77 35%,
-      transparent 100%
-    ),
-    radial-gradient(
-      ellipse 4% 0.85% at 96% 9%,
-      #fff7dc 0,
-      #e8d9ad66 35%,
-      transparent 100%
-    ),
-    radial-gradient(ellipse 0.8% 2.5% at 5% 91%, #d8f0ff 0, transparent 100%);
+    radial-gradient(ellipse 1.2% 6% at 94% 11%, #fffbe9 0 18%, #fff0afbb 36%, transparent 100%),
+    radial-gradient(ellipse 6% 1% at 94% 11%, #fffbe9 0 18%, #d9e5ff99 36%, transparent 100%),
+    radial-gradient(ellipse 1% 4% at 7% 85%, #fffbe9 0 18%, #c9e6ff99 36%, transparent 100%),
+    radial-gradient(ellipse 4% 0.8% at 7% 85%, #fffbe9 0 18%, #c9e6ff99 36%, transparent 100%),
+    radial-gradient(circle at 91% 78%, #fff8d4 0 0.5%, transparent 1.4%),
+    radial-gradient(circle at 19% 94%, #ecddff 0 0.4%, transparent 1.2%);
 }
+
 .foil-acquisition.is-running > .foil-acquisition-coating {
-  animation: foil-acquisition-coat 2350ms linear both;
+  animation: foil-acquisition-coat var(--foil-acquisition-duration) cubic-bezier(.22,.65,.35,1) both;
 }
 .foil-acquisition.is-running > .foil-acquisition-rim {
-  animation: foil-acquisition-rim 2350ms ease-in-out both;
+  animation: foil-acquisition-rim var(--foil-acquisition-duration) ease-in-out both;
 }
 .foil-acquisition.is-running > .foil-acquisition-edge-light {
-  animation: foil-acquisition-gather 2350ms ease-in-out both;
+  animation: foil-acquisition-gather var(--foil-acquisition-duration) ease-in-out both;
+}
+.foil-acquisition.is-running > .foil-acquisition-sparks { opacity: 1; }
+.foil-acquisition.is-running > .foil-acquisition-sparks > i {
+  animation: foil-acquisition-spark var(--foil-acquisition-duration) ease-in-out both;
 }
 .foil-acquisition.is-running > .foil-acquisition-sweep {
-  animation: foil-acquisition-sweep 2350ms linear both;
+  animation: foil-acquisition-sweep var(--foil-acquisition-duration) cubic-bezier(.22,.65,.35,1) both;
+}
+.foil-acquisition.is-running > .foil-acquisition-burst {
+  animation: foil-acquisition-burst var(--foil-acquisition-duration) ease-out both;
 }
 .foil-acquisition.is-running > .foil-acquisition-glint {
-  animation: foil-acquisition-glint 2350ms ease-in-out both;
+  animation: foil-acquisition-glint var(--foil-acquisition-duration) ease-in-out both;
 }
+
 @keyframes foil-acquisition-coat {
-  0%,
-  36.17% {
-    clip-path: polygon(0 0, -18% 0, -45% 100%, 0 100%);
+  0%, 36.667% {
+    clip-path: polygon(0 0, -12% 0, -16% 20%, -19% 40%, -16% 60%, -24% 80%, -34% 100%, 0 100%);
   }
-  80.85%,
-  100% {
-    clip-path: polygon(0 0, 135% 0, 108% 100%, 0 100%);
+  73.333%, 100% {
+    clip-path: polygon(0 0, 134% 0, 130% 20%, 127% 40%, 130% 60%, 122% 80%, 112% 100%, 0 100%);
   }
 }
 @keyframes foil-acquisition-rim {
-  0%,
-  11.06% {
-    opacity: 0;
-  }
-  32% {
-    opacity: 0.85;
-  }
-  68% {
-    opacity: 0.6;
-  }
-  86% {
-    opacity: 0.35;
-  }
-  100% {
-    opacity: 0;
-  }
+  0%, 10.667% { opacity: 0; }
+  31% { opacity: .65; }
+  36.667%, 60% { opacity: 1; }
+  76% { opacity: .85; }
+  91% { opacity: .45; }
+  100% { opacity: 0; }
 }
 @keyframes foil-acquisition-gather {
-  0%,
-  11.06% {
-    opacity: 0;
-    transform: scale(1.08);
-  }
-  33% {
-    opacity: 0.8;
-    transform: scale(1);
-  }
-  68%,
-  100% {
-    opacity: 0;
-    transform: scale(0.98);
-  }
+  0%, 10.667% { opacity: 0; transform: scale(1.14); }
+  33% { opacity: .95; transform: scale(1); }
+  39% { opacity: 1; transform: scale(.98); }
+  58%, 100% { opacity: 0; transform: scale(1.05); }
+}
+@keyframes foil-acquisition-spark {
+  0%, 13% { opacity: 0; transform: translate(var(--spark-x),var(--spark-y)) scale(.25); }
+  25% { opacity: .8; }
+  35% { opacity: 1; transform: translate(0,0) scale(1.2); }
+  42%, 100% { opacity: 0; transform: translate(0,0) scale(.35); }
 }
 @keyframes foil-acquisition-sweep {
-  0%,
-  36.17% {
-    opacity: 0;
-    transform: translateX(0) rotate(16deg);
-  }
-  43% {
-    opacity: 0.9;
-    transform: translateX(86%) rotate(16deg);
-  }
-  74% {
-    opacity: 0.75;
-    transform: translateX(400%) rotate(16deg);
-  }
-  80.85%,
-  100% {
-    opacity: 0;
-    transform: translateX(476%) rotate(16deg);
-  }
+  0%, 36.667% { opacity: 0; transform: translateX(0) rotate(16deg); }
+  37% { opacity: 1; transform: translateX(0) rotate(16deg); }
+  70% { opacity: .85; transform: translateX(360%) rotate(16deg); }
+  75%, 100% { opacity: 0; transform: translateX(390%) rotate(16deg); }
+}
+@keyframes foil-acquisition-burst {
+  0%, 57% { opacity: 0; transform: scale(.55); }
+  66% { opacity: .6; }
+  86%, 100% { opacity: 0; transform: scale(1.4); }
 }
 @keyframes foil-acquisition-glint {
-  0%,
-  75% {
-    opacity: 0;
-  }
-  86% {
-    opacity: 0.85;
-  }
-  100% {
-    opacity: 0;
-  }
+  0%, 69% { opacity: 0; transform: scale(.98); }
+  79% { opacity: 1; transform: scale(1); }
+  91% { opacity: .6; }
+  100% { opacity: 0; transform: scale(1.025); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .foil-acquisition.is-running > * {
+  .foil-acquisition.is-running > *,
+  .foil-acquisition.is-running > .foil-acquisition-sparks > i {
     animation: none !important;
   }
-  .foil-acquisition-coating {
-    clip-path: none;
-  }
+  .foil-acquisition-coating { clip-path: none; }
   .foil-acquisition-rim,
   .foil-acquisition-edge-light,
+  .foil-acquisition-sparks,
   .foil-acquisition-sweep,
-  .foil-acquisition-glint {
-    display: none;
-  }
+  .foil-acquisition-burst,
+  .foil-acquisition-glint { display: none; }
 }

@@ -1,6 +1,7 @@
 import { useInsertionEffect, useLayoutEffect, useRef, useState } from "react";
 import { baseSkinId, byId } from "../skins/catalog.js";
 import {
+  FOIL_ACQUISITION_MS,
   FOIL_IMAGE_TIMEOUT_MS,
   foilAcquisitionFrame,
   scheduleFoilAcquisition,
@@ -150,6 +151,7 @@ function Acquisition({
     <span
       className={`foil-acquisition ${running ? "is-running" : ""} ${className}`}
       data-phase={view.phase}
+      style={{ "--foil-acquisition-duration": `${FOIL_ACQUISITION_MS}ms` }}
       role="img"
       aria-label={base?.name || "カード"}
     >
@@ -170,7 +172,14 @@ function Acquisition({
           />
           <span className="foil-acquisition-rim" aria-hidden="true" />
           <span className="foil-acquisition-edge-light" aria-hidden="true" />
+          <span className="foil-acquisition-sparks" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
           <span className="foil-acquisition-sweep" aria-hidden="true" />
+          <span className="foil-acquisition-burst" aria-hidden="true" />
           <span className="foil-acquisition-glint" aria-hidden="true" />
         </>
       )}
