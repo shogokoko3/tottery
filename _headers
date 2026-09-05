@@ -8,9 +8,6 @@
 /index.html
   Cache-Control: public, max-age=0, must-revalidate
 
-/admin.html
-  Cache-Control: public, max-age=0, must-revalidate
-
 # 曲。名前に中身のハッシュが入っているので、同じ名前なら中身も同じ。
 # 1年そのまま使ってよく、差し替えたときは新しい名前で落ちてくる
 /audio/*

@@ -81,10 +81,18 @@ for (const dir of ["skins", "dist/skins"]) {
 }
 
 // 管理画面。サーバーに載っている成績(ranks)と待ち合わせ(lobby)を見る。
-// 本体とは別の1枚にして、/admin.html で開く
+// 運営用の管理画面。
+//
+// **配信先(dist/)には置かない。** 置くと URL を知っている誰でも開けてしまい、
+// 台帳の一覧・使用停止・お知らせの送信まで触れる。認証の仕組みが無いので、
+// 公開しないことで塞ぐ。
+//
+// 使うときは手元で `npm run serve` して http://localhost:4199/admin.html を開く。
+// Firebase へは手元からでも同じように届くので、できることは変わらない。
 const admin = await bundleInto("src/admin/admin.jsx", "admin.template.html");
 fs.writeFileSync("admin.html", admin.html);
-fs.writeFileSync("dist/admin.html", admin.html);
+// 前に配信していた名残が dist に残っていたら消す(消し忘れると公開が続く)
+if (fs.existsSync("dist/admin.html")) fs.rmSync("dist/admin.html");
 
 // 配信側の設定。Cloudflare Pages と Netlify のどちらも、この2ファイルを
 // 公開フォルダに置くだけで読む(キャッシュの期限・セキュリティ用のヘッダー)
@@ -97,5 +105,5 @@ console.log(
 );
 console.log(`audio/ と dist/audio/ に曲を写しました: ${kb(audioKb)}`);
 console.log(
-  `admin.html と dist/admin.html を書き出しました: ${kb(Buffer.byteLength(admin.html))}`,
+  `admin.html を書き出しました(手元だけ。配信先には置かない): ${kb(Buffer.byteLength(admin.html))}`,
 );
