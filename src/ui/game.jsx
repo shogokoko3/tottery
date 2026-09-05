@@ -989,7 +989,12 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                 try {
                   return reducer(Me, ze);
                 } catch (err) {
+                  // 握りつぶすと、こちらの盤だけが進まないまま対局が
+                  // 続いてしまう。少なくとも起きたことは知らせる
                   console.warn("受け取った手を適用できませんでした", ze, err);
+                  v(
+                    "相手から受け取れない手が届きました。盤がずれている可能性があります。",
+                  );
                   return Me;
                 }
               }, ne),
@@ -1168,6 +1173,15 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
 
   // 対局が終わったら1局ぶん記録する。レベルの元になる。
   // オンラインで相手の持ち点が分かっていれば、レーティングもここで動かす
+  // 「もう一度遊ぶ」で盤が初期化されても、記録済みの印は残っていた。
+  // そのままだと2局目以降が誰の分も記録されない(対戦数・勝数・経験値・
+  // 持ち点・称号の判定がまるごと止まる)
+  (0, useEffect)(() => {
+    if (a.phase !== "gameover") {
+      recordedRef.current = !1;
+      setRatingResult(null);
+    }
+  }, [a.phase]);
   (0, useEffect)(() => {
     if (a.phase !== "gameover" || recordedRef.current) return;
     recordedRef.current = !0;

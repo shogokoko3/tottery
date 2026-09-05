@@ -86,6 +86,17 @@ function actorAllowed(state, action) {
   if (phases && !phases.includes(state.phase)) return false;
   const who = action.player;
   if (who !== 0 && who !== 1) return true;
+  // 王が倒れて跡継ぎを選ぶ場面では、それを選ぶまで他の手を出せない。
+  // 手元の画面は選ばせるが、通信で届く手には強制力が無い。放っておくと、
+  // 王のいない軍ができて「撃破では二度と負けない」状態になる
+  if (
+    state.pendingKingChoice &&
+    state.pendingKingChoice.owner === who &&
+    action.type !== "CHOOSE_HEIR" &&
+    action.type !== "RESIGN" &&
+    action.type !== "CLOCK_TIMEOUT"
+  )
+    return false;
   const want = expectedActor(state, action.type);
   return want === null || want === undefined || who === want;
 }
@@ -135,6 +146,10 @@ function placementOk(state, idx, placement, kingId) {
  * 好きなだけマスを並べて1手で盤を掃討できる
  */
 function movePermitted(state, mover, action) {
+  // 形を確かめるより先に使うと、配列でない captures で例外が出る。
+  // 受け取り側だけが手を落とすと、二人の盤が黙って食い違っていく
+  if (action.captures !== undefined && !Array.isArray(action.captures))
+    return false;
   const moves = getLegalMoves(
     mover,
     state.board,
@@ -154,6 +169,45 @@ function movePermitted(state, mover, action) {
   if (got.length !== want.length) return false;
   const set = new Set(want);
   return got.every((k) => set.has(k));
+}
+
+/**
+ * 通信で届いた手か。
+ *
+ * 届いた手には受け取り側が「送り主の席」を書き込む(acceptAct)ので、
+ * 名乗りがあれば通信、無ければ手元の操作。
+ */
+function fromNetwork(action) {
+  return action.player === 0 || action.player === 1;
+}
+
+/**
+ * 乱数の結果は、送る側が手に焼き込む(src/game/actions.js の enrichAction)。
+ * 欄が欠けた手を受け取ったときに、受け手が自分で振ってしまうと、
+ * 二人の盤が別々に決まって黙って食い違っていく。
+ * **欄が無いことを「乱数で埋めてよい合図」にしない。**
+ */
+function seedsPresent(state, action) {
+  if (!fromNetwork(action)) return true;
+  switch (action.type) {
+    case "START_SETUP":
+      return Array.isArray(action.deck);
+    case "ROLL_DICE_SINGLE":
+      return (
+        Number.isInteger(action.value) && action.value >= 1 && action.value <= 6
+      );
+    case "CONFIRM_MULLIGAN":
+      return Array.isArray(action.reserveOrder);
+    case "CONFIRM_SHUFFLE":
+      return (
+        Array.isArray(action.order) &&
+        action.order.length === 3 &&
+        new Set(action.order).size === 3 &&
+        action.order.every((i) => i === 0 || i === 1 || i === 2)
+      );
+    default:
+      return true;
+  }
 }
 
 /** 盤の上のマスか。通信で届いた座標をそのまま添字に使わないための番人 */
@@ -672,6 +726,8 @@ function startPlay(base, log) {
 export function reducer(state, action) {
   // 場面にも席にも合わない手は、盤に触れさせない
   if (!actorAllowed(state, action)) return state;
+  // 乱数の結果を持たない手も受け取らない(盤が二人で食い違う)
+  if (!seedsPresent(state, action)) return state;
   const next = coreReducer(state, action);
   return afterAction(state, next, action);
 }
@@ -800,12 +856,25 @@ function afterAction(prev, next, action) {
 function coreReducer(state, action) {
   switch (action.type) {
     case "START_SETUP": {
-      const size = action.size;
-      const deck = action.deck || shuffle(buildDeck(action.pool));
+      // 盤の大きさは 5 か 9 だけ。ここを言い値にすると、たとえば文字列の "5" で
+      // 両者の自陣が重なる盤ができ、あとから布陣した側が相手の駒を上書きして
+      // 「盤に無いのに生きている駒」を作れる。大きな数を送れば、相手の端末は
+      // size×size のマスを確保しようとして落ちる
+      const size = action.size === 9 ? 9 : action.size === 5 ? 5 : null;
+      if (size === null) return state;
+      const deck = Array.isArray(action.deck)
+        ? action.deck
+        : shuffle(buildDeck(action.pool));
       // 小さいカードプールでは手札も減らす。予備札が尽きると引き直せなくなる
+      const wanted = Number(action.handSize);
       const handSize =
-        action.handSize ||
-        Math.max(totalSlots(size), Math.min(13, Math.floor(deck.length / 3)));
+        Number.isInteger(wanted) && wanted >= totalSlots(size) && wanted <= 26
+          ? wanted
+          : Math.max(
+              totalSlots(size),
+              Math.min(13, Math.floor(deck.length / 3)),
+            );
+      if (deck.length < handSize * 2) return state;
       const hand0 = deck.slice(0, handSize);
       const hand1 = deck.slice(handSize, handSize * 2);
       const reserve = deck.slice(handSize * 2);
@@ -871,14 +940,27 @@ function coreReducer(state, action) {
     }
 
     case "REROLL_DICE":
+      // 振り直せるのは「目が同じだったとき」だけ。これが無いと、
+      // 先手が決まったあとでも何度でも巻き戻せる(永久に始まらなくできる)
+      if (
+        state.dice[0] === null ||
+        state.dice[1] === null ||
+        state.dice[0] !== state.dice[1]
+      )
+        return state;
       return {
         ...state,
         dice: [null, null],
         diceIdx: 0,
+        firstPlayer: 0,
+        currentTurn: 0,
         interstitial: { forPlayer: 0, kind: "dice" },
       };
 
     case "GOTO_MULLIGAN":
+      // 先手が決まってから進む。これが無いと、対局開始直後に1件送るだけで
+      // サイコロを飛ばして先手を自分にできる
+      if (state.diceIdx !== 2) return state;
       return {
         ...state,
         phase: "mulligan",
@@ -902,6 +984,8 @@ function coreReducer(state, action) {
       const idx = state.mulliganIdx;
       const players = [...state.players];
       const me = { ...players[idx] };
+      if (action.discardIds !== undefined && !Array.isArray(action.discardIds))
+        return state;
       const discardIds = new Set(
         action.discardIds || me._mulliganSelected || [],
       );
@@ -925,6 +1009,7 @@ function coreReducer(state, action) {
         picked &&
         picked.length === state.reserve.length &&
         new Set(picked.map((c) => c.id)).size === picked.length;
+      if (!orderOk && fromNetwork(action)) return state;
       const pool = orderOk ? picked : shuffle(state.reserve);
       const drawn = pool.slice(0, count);
       const rest = pool.slice(count);
@@ -1222,6 +1307,7 @@ function coreReducer(state, action) {
             ? action.player
             : state.currentTurn;
         if (ace.rank !== "A" || ace.owner !== actor) return state;
+        if (state.extraMoveFor && state.extraMoveFor !== aId) return state;
       }
       // 同じ駒を並べると、3駒が同じマスに重なって「盤に無いのに生きている駒」ができる
       if (new Set(ids).size !== 3) return state;
@@ -1329,6 +1415,9 @@ function coreReducer(state, action) {
       // 番でない側の駒や、盤の外の座標をそのまま通すと、相手の盤で
       // 好きな駒を取れてしまうし、盤の外を読んで画面ごと落ちる
       if (mover.owner !== state.currentTurn) return state;
+      // 王の10とAの「もう一度」の枠は、その駒のためのもの。
+      // 手元では SELECT_PIECE が縛っているが、届いた手にも同じ縛りが要る
+      if (state.extraMoveFor && state.extraMoveFor !== mover.id) return state;
       if (!onBoard(state.board, action.row, action.col)) return state;
       if (!movePermitted(state, mover, action)) return state;
       if (
@@ -1362,6 +1451,9 @@ function coreReducer(state, action) {
       const defeated = [];
 
       for (const at of targets) {
+        // 道連れで自分が倒れていたら、そこで止める。
+        // 倒れた駒が取り続けると、決着したあとに撃破が積まれて記録が壊れる
+        if (next.pieces[mover.id] && !next.pieces[mover.id].alive) break;
         const victim = next.board[at.row][at.col];
         if (!victim || victim.owner === mover.owner) continue;
         defeated.push({
@@ -1540,6 +1632,9 @@ function coreReducer(state, action) {
       return { ...state, kPlacement: null };
 
     case "SKIP_EXTRA_ACTION":
+      // 「王の2回目を使わずに終える」ためだけの手。これが無いと、
+      // 1手も指さずに手番を押し返せる(将棋やチェスで言えば手番の放棄)
+      if (!state.extraMoveFor) return state;
       return endTurn(state);
 
     case "VIEW_LOG":

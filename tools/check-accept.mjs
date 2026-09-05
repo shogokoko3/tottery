@@ -490,6 +490,154 @@ console.log("\n布陣の確定");
   );
 }
 
+console.log("\n盤そのものを細工する");
+{
+  const start = (size) =>
+    reducer(
+      { phase: "intro" },
+      {
+        type: "START_SETUP",
+        player: 0,
+        size,
+        setupMode: "simultaneous",
+        deck: [],
+      },
+    );
+  is('文字列の "5" では盤を作れない', start("5").phase, "intro");
+  is("5でも9でもない大きさは作れない", start(4).phase, "intro");
+  is("巨大な盤は作れない", start(3000).phase, "intro");
+  is(
+    "山札を持たない始まりの合図は受け取らない",
+    reducer(
+      { phase: "intro" },
+      { type: "START_SETUP", player: 0, size: 5, setupMode: "simultaneous" },
+    ).phase,
+    "intro",
+  );
+}
+
+console.log("\n乱数の欄が欠けた手");
+{
+  const dice = reducer(
+    { phase: "intro" },
+    {
+      type: "START_SETUP",
+      size: 5,
+      setupMode: "simultaneous",
+      handSize: 13,
+    },
+  );
+  is("サイコロの場面になった", dice.phase, "dice");
+  is(
+    "目を持たないサイコロの手は受け取らない",
+    reducer(dice, { type: "ROLL_DICE_SINGLE", player: 0 }) === dice,
+    true,
+  );
+  is(
+    "目が範囲外でも受け取らない",
+    reducer(dice, { type: "ROLL_DICE_SINGLE", player: 0, value: 99 }) === dice,
+    true,
+  );
+  is(
+    "目があれば受け取る",
+    reducer(dice, { type: "ROLL_DICE_SINGLE", player: 0, value: 3 }) !== dice,
+    true,
+  );
+  is(
+    "先手が決まる前に引き直しへは進めない",
+    reducer(dice, { type: "GOTO_MULLIGAN", player: 0 }) === dice,
+    true,
+  );
+  is(
+    "目がそろっていないのに振り直せない",
+    reducer(dice, { type: "REROLL_DICE", player: 0 }) === dice,
+    true,
+  );
+}
+
+console.log("\n「もう一度」の枠と、手番の放棄");
+{
+  const mineAlive = alive(me);
+  const a1 = mineAlive[0];
+  const a2 = mineAlive[1];
+  is(
+    "「もう一度」の枠は、その駒のためのもの",
+    a2
+      ? reducer(
+          { ...g0, extraMoveFor: a1.id },
+          {
+            type: "MOVE_PIECE",
+            player: me,
+            pieceId: a2.id,
+            row: a2.row,
+            col: a2.col,
+          },
+        ).pieces[a2.id].row === a2.row
+      : true,
+    true,
+  );
+  is(
+    "1手も指さずに手番は渡せない",
+    reducer(g0, { type: "SKIP_EXTRA_ACTION", player: me }) === g0,
+    true,
+  );
+}
+
+console.log("\n跡継ぎを選ぶまで、ほかの手は出せない");
+{
+  const waiting = {
+    ...g0,
+    pendingKingChoice: { owner: me, rank: "2", candidateIds: ["x1", "x2"] },
+  };
+  is(
+    "跡継ぎを選ぶ前に駒は動かせない",
+    reducer(waiting, {
+      type: "MOVE_PIECE",
+      player: me,
+      pieceId: myPiece.id,
+      row: myPiece.row,
+      col: myPiece.col,
+    }) === waiting,
+    true,
+  );
+  is(
+    "手番も飛ばせない",
+    reducer(waiting, { type: "SKIP_EXTRA_ACTION", player: me }) === waiting,
+    true,
+  );
+  is(
+    "相手の側の手は止めない",
+    reducer(waiting, { type: "SKIP_EXTRA_ACTION", player: foe }) === waiting,
+    true,
+  );
+}
+
+console.log("\n形の違う中身で落とせないか");
+{
+  const bad = (act) => {
+    let threw = null;
+    let out;
+    try {
+      out = reducer(g0, act);
+    } catch (e) {
+      threw = e.message;
+    }
+    return { threw, same: out === g0 };
+  };
+  const c = bad({
+    type: "MOVE_PIECE",
+    player: me,
+    pieceId: myPiece.id,
+    row: myPiece.row,
+    col: myPiece.col,
+    captures: {},
+  });
+  is("取る駒の形が違っても落ちない", c.threw, null);
+  is("その手は捨てられる", c.same, true);
+  const d = bad({ type: "CONFIRM_MULLIGAN", player: me, discardIds: 5 });
+  is("捨て札の形が違っても落ちない", d.threw, null);
+}
+
 console.log(`\n${ok} ok / ${fails.length} fail`);
 if (fails.length) {
   for (const f of fails) console.log(`  - ${f}`);

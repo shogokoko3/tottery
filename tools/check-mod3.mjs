@@ -196,9 +196,15 @@ console.log("持ち時間");
   ok("時間切れで決着", dead.phase === "gameover" && dead.winner === first);
   ok("時間切れした側が記録される", dead.timeoutBy === acted.currentTurn);
 
-  // 持ち時間より長く考えた手は、その場で負けになる
+  // 持ち時間より長く考えた手は、その場で負けになる。
+  // 手番を終える手として「王の2回目を使わずに終える」を使う。
+  // これは extraMoveFor が立っているときにしか出せない手なので、
+  // 立った状態を作ってから送る(そうでないと reducer が捨てる)
+  const stillMoving = Object.values(acted.pieces).find(
+    (x) => x.alive && x.owner === acted.currentTurn,
+  );
   const over = reducer(
-    { ...acted, selectedId: null },
+    { ...acted, selectedId: null, extraMoveFor: stillMoving.id },
     {
       type: "SKIP_EXTRA_ACTION",
       elapsedMs: CLOCK_INITIAL_MS + CLOCK_INCREMENT_MS + 1000,
