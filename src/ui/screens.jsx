@@ -1035,7 +1035,12 @@ export function TotteryApp() {
       {
         {
           home: <HomeScreen onStart={() => t("menu")} />,
-          skins: <SkinsScreen onBack={() => t("menu")} />,
+          skins: (
+            <SkinsScreen
+              onBack={() => t("menu")}
+              onBattlePass={() => t("battlepass")}
+            />
+          ),
           menu: (
             <MenuScreen
               onPlay={() => t("matching")}
@@ -1074,7 +1079,12 @@ export function TotteryApp() {
           ),
           ranking: <RankingScreen onBack={() => t("menu")} />,
           missions: <MissionsScreen onBack={() => t("menu")} />,
-          battlepass: <BattlePassScreen onBack={() => t("menu")} />,
+          battlepass: (
+            <BattlePassScreen
+              onBack={() => t("menu")}
+              onSkins={() => t("skins")}
+            />
+          ),
           letters: <LettersScreen onBack={() => t("menu")} />,
           tutorial: (
             <TutorialSelect

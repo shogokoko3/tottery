@@ -6,7 +6,6 @@ import {
   craft,
   dismantle,
   dismantleAll,
-  claimSpecial,
   equip,
   pull,
   unequip,
@@ -463,7 +462,7 @@ function ForgePanel({ collection, run, working, onPick, setMessage }) {
   );
 }
 
-export function SkinsScreen({ onBack }) {
+export function SkinsScreen({ onBack, onBattlePass }) {
   const collection = useCollection(),
     reduce = useReducedMotion();
   const [tab, setTab] = useState("gacha"),
@@ -500,14 +499,6 @@ export function SkinsScreen({ onBack }) {
   const equipSkin = async (skin) => {
     if (await run((s) => equip(s, skin.id)))
       setMessage(`${skin.rank}のカードに「${skin.name}」を装備しました。`);
-  };
-  const receiveMagician = async () => {
-    if (
-      await run((s) =>
-        equip(claimSpecial(s, "genie-magician"), "genie-magician"),
-      )
-    )
-      setMessage("Aに「ランプのマジシャン」を装備しました。");
   };
   const closeResults = () => run((s) => ({ ...s, pending: null }));
   const shown = SKINS.filter(
@@ -622,23 +613,31 @@ export function SkinsScreen({ onBack }) {
               />
             </button>
             <div>
-              <span className="skins-eyebrow">SPECIAL SKIN / A</span>
+              <span className="skins-eyebrow">BATTLE PASS REWARD / A</span>
               <h3>ランプのマジシャン</h3>
               <p>
                 3つの帽子で入れ替え、包囲した相手は大きな帽子の中へ。
                 <br />
-                華やかな魔法で、次の一手を。
+                バトルパスを完成させて手に入る特別スキンです。
               </p>
               <button
                 className="skin-btn skin-btn-gold"
-                disabled={working || collection.equipped.A === "genie-magician"}
-                onClick={receiveMagician}
+                disabled={
+                  working ||
+                  collection.equipped.A === "genie-magician" ||
+                  (!collection.owned["genie-magician"] && !onBattlePass)
+                }
+                onClick={() =>
+                  collection.owned["genie-magician"]
+                    ? equipSkin(byId("genie-magician"))
+                    : onBattlePass()
+                }
               >
                 {collection.equipped.A === "genie-magician"
                   ? "Aに装備中"
                   : collection.owned["genie-magician"]
                     ? "Aに装備"
-                    : "受け取ってAに装備"}
+                    : "バトルパスで獲得"}
               </button>
             </div>
           </section>
@@ -981,10 +980,10 @@ export function SkinsScreen({ onBack }) {
               ) : selected.rarity === "SPECIAL" ? (
                 <button
                   className="skin-btn skin-btn-gold"
-                  disabled={working}
-                  onClick={receiveMagician}
+                  disabled={working || !onBattlePass}
+                  onClick={onBattlePass}
                 >
-                  受け取ってAに装備
+                  バトルパスで獲得
                 </button>
               ) : (
                 <p className="skins-locked">

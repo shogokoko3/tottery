@@ -18,10 +18,10 @@ import {
   toggleFlip,
 } from "../game/battlepass.js";
 import { updatePass, usePass } from "../game/battlepass-store.js";
-import { grantSkin } from "../skins/collection.js";
+import { claimSpecial } from "../skins/collection.js";
 import { updateCollection } from "../skins/store.js";
 
-export function BattlePassScreen({ onBack }) {
+export function BattlePassScreen({ onBack, onSkins }) {
   const pass = usePass();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -34,7 +34,8 @@ export function BattlePassScreen({ onBack }) {
     if (busy || !canClaim(pass)) return;
     setBusy(true);
     try {
-      await updateCollection((s) => grantSkin(s, skin.id));
+      // 先行受取済みの場合や保存の再試行でも、特別スキンは1枚だけ。
+      await updateCollection((s) => claimSpecial(s, skin.id));
       updatePass((s) => ({ ...s, claimed: true }));
       setMessage(`「${skin.name}」を手に入れました。`);
     } catch (e) {
@@ -50,6 +51,10 @@ export function BattlePassScreen({ onBack }) {
       <p className="hint">
         相手の駒を取ると、真ん中のとなりのマスから埋まっていきます。
         クリアしたマスはめくれて、全部そろうと絵柄が現れます。
+      </p>
+      <p className="pass-reward">
+        <Sparkle size={16} /> コンプリート報酬
+        <strong>A専用スキン「{skin.name}」</strong>
       </p>
       <div className="pass-counts">
         <span>
@@ -147,6 +152,11 @@ export function BattlePassScreen({ onBack }) {
             ? "残りのマスをめくると、絵柄がそろいます。もう一度押すと条件に戻ります。"
             : "全部のマスをクリアして、めくると絵柄が現れます。"}
         </p>
+      )}
+      {pass.claimed && onSkins && (
+        <button className="btn btn-primary btn-wide" onClick={onSkins}>
+          スキン画面でAに装備する
+        </button>
       )}
       <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る

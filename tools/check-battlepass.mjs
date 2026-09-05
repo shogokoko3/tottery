@@ -22,6 +22,9 @@ const {
   statusOf,
   toggleFlip,
 } = await import("../src/game/battlepass.js");
+const { claimSpecial, normalize: normalizeCollection } =
+  await import("../src/skins/collection.js");
+const { POOL } = await import("../src/skins/catalog.js");
 
 let ok = 0;
 const fails = [];
@@ -52,6 +55,16 @@ is(
   true,
 );
 is("褒美のスキンが実在する", !!rewardSkin(), true);
+is(
+  "報酬はAのランプのマジシャン",
+  [rewardSkin().id, rewardSkin().rank, rewardSkin().rarity],
+  ["genie-magician", "A", "SPECIAL"],
+);
+is(
+  "通常ガチャからは出ない",
+  POOL.some((skin) => skin.id === rewardSkin().id),
+  false,
+);
 
 console.log("取った駒の数え方");
 is("何も取らなければ0", gainOf([]).any, 0);
@@ -130,8 +143,81 @@ is(
 );
 full = toggleFlip(full, "0-0");
 is("全部めくると受け取れる", [allFlipped(full), canClaim(full)], [true, true]);
-full = { ...full, claimed: true };
+full = normalize({ ...full, claimed: true });
 is("一度受け取ったら終わり", canClaim(full), false);
+is(
+  "受取済みを保存し直しても受け取れない",
+  canClaim(normalize(JSON.parse(JSON.stringify(full)))),
+  false,
+);
+
+console.log("報酬変更時の引き継ぎ");
+const legacy = {
+  version: 1,
+  progress: { "1-2": 3, "0-0": 10 },
+  cleared: CELLS.map((c) => c.id),
+  flipped: CELLS.map((c) => c.id),
+  claimed: true,
+};
+const migrated = normalize(legacy);
+is("旧天使を受取済みでもAは受け取れる", canClaim(migrated), true);
+is(
+  "以前の報酬IDがあっても新報酬の受取を塞がない",
+  canClaim(normalize({ ...legacy, rewardId: "angel-k" })),
+  true,
+);
+is("移行で進捗を消さない", migrated.progress, legacy.progress);
+is(
+  "移行でクリアしたマスを消さない",
+  [...migrated.cleared].sort(),
+  [...legacy.cleared].sort(),
+);
+is("移行でめくったマスを戻さない", migrated.flipped, legacy.flipped);
+is("移行後も報酬と受取待ちが保存される", normalize(migrated), migrated);
+const partial = normalize({
+  ...legacy,
+  cleared: [centerId, "1-2"],
+  flipped: [centerId],
+  claimed: false,
+});
+is(
+  "途中の進捗・めくりも引き継ぐ",
+  [partial.progress, partial.cleared, partial.flipped],
+  [legacy.progress, [centerId, "1-2"], [centerId]],
+);
+is("途中の人は完成するまで受け取れない", canClaim(partial), false);
+const oldCollection = normalizeCollection({
+  owned: { "angel-k": 1 },
+  equipped: { K: "angel-k" },
+  tickets: 4,
+  ether: 12,
+});
+const received = claimSpecial(oldCollection, rewardSkin().id);
+is("新報酬のAを1枚受け取る", received.owned[rewardSkin().id], 1);
+is(
+  "旧報酬・装備・チケット・エーテルを残す",
+  [
+    received.owned["angel-k"],
+    received.equipped,
+    received.tickets,
+    received.ether,
+  ],
+  [1, oldCollection.equipped, 4, 12],
+);
+is(
+  "保存再試行や重複受取でも増えない",
+  claimSpecial(received, rewardSkin().id),
+  received,
+);
+const alreadyOwned = normalizeCollection({
+  ...received,
+  equipped: { ...received.equipped, A: rewardSkin().id },
+});
+is(
+  "先行受取済みのAは枚数も装備も維持",
+  claimSpecial(alreadyOwned, rewardSkin().id),
+  alreadyOwned,
+);
 
 console.log("保存の読み直し");
 is(

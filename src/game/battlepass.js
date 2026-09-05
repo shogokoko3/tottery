@@ -18,7 +18,7 @@ export const CENTER = (SIZE - 1) / 2;
 export const centerId = `${CENTER}-${CENTER}`;
 
 /** 全部そろえたときに手に入るスキン。差し替えるならここだけ */
-export const REWARD_SKIN = "angel-k";
+export const REWARD_SKIN = "genie-magician";
 
 /**
  * 進みの数え方。
@@ -113,11 +113,14 @@ export function normalize(raw) {
   const cleared = new Set([centerId, ...keep(v.cleared)]);
   const flipped = new Set(keep(v.flipped).filter((id) => cleared.has(id)));
   return {
-    version: 1,
+    version: 2,
+    rewardId: REWARD_SKIN,
     progress,
     cleared: [...cleared],
     flipped: [...flipped],
-    claimed: v.claimed === true,
+    // 旧報酬(報酬IDの無いv1はKの天使)の受取済みでは、新報酬を塞がない。
+    // マスの進捗・めくりはそのまま引き継ぐ。
+    claimed: v.rewardId === REWARD_SKIN && v.claimed === true,
   };
 }
 

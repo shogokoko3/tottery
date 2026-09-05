@@ -3327,6 +3327,20 @@ h3 {
 }
 
 /* --- バトルパス --- */
+.pass-reward {
+  margin: 14px 0;
+  color: var(--gold-soft);
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.pass-reward svg {
+  vertical-align: middle;
+}
+.pass-reward strong {
+  display: block;
+  font-size: 15px;
+}
 .pass-counts {
   display: flex;
   justify-content: center;
