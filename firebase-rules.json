@@ -21,32 +21,80 @@
       ".read": true,
       ".indexOn": ["rating"],
       "$uid": {
-        ".write": "auth != null && auth.uid === $uid",
-        ".validate": "newData.hasChildren(['name','rating']) && newData.child('name').isString() && newData.child('name').val().length <= 10 && newData.child('rating').isNumber() && newData.child('rating').val() >= 0 && newData.child('rating').val() <= 4000"
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'PUT-OPERATOR-UID-HERE')",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 10"
+        },
+        "rating": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4000"
+        },
+        "rated": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "plays": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "wins": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "at": { ".validate": "newData.isNumber()" },
+        "icon": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "title": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": { ".validate": false },
+        ".validate": "newData.hasChildren(['name','rating'])"
       }
     },
 
     "players": {
       ".read": "auth != null && auth.uid === 'PUT-OPERATOR-UID-HERE'",
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
+        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'PUT-OPERATOR-UID-HERE')",
         ".write": "auth != null && (auth.uid === $uid || auth.uid === 'PUT-OPERATOR-UID-HERE')",
-        ".validate": "newData.child('name').isString() && newData.child('name').val().length <= 10",
-        "banned": {
-          ".write": "auth != null && auth.uid === 'PUT-OPERATOR-UID-HERE'"
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 10"
         },
-        "bannedAt": {
-          ".write": "auth != null && auth.uid === 'PUT-OPERATOR-UID-HERE'"
-        }
+        "rating": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4000"
+        },
+        "rated": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "plays": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "wins": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "at": { ".validate": "newData.isNumber()" },
+        "since": { ".validate": "newData.isNumber()" },
+        "icon": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "title": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": { ".validate": false },
+        ".validate": "newData.hasChildren(['name'])"
+      }
+    },
+
+    "bans": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'PUT-OPERATOR-UID-HERE')",
+        ".write": "auth != null && auth.uid === 'PUT-OPERATOR-UID-HERE'"
       }
     },
 
     "letters": {
-      ".read": "auth != null",
-      ".indexOn": ["at"],
-      "$id": {
-        ".write": "auth != null && auth.uid === 'PUT-OPERATOR-UID-HERE'",
-        ".validate": "newData.hasChildren(['subject','at']) && newData.child('subject').isString() && newData.child('subject').val().length <= 60 && newData.child('at').isNumber()"
+      "all": {
+        ".read": "auth != null",
+        ".indexOn": ["at"],
+        "$id": {
+          ".write": "auth != null && auth.uid === 'PUT-OPERATOR-UID-HERE'",
+          ".validate": "newData.hasChildren(['subject','at']) && newData.child('subject').isString() && newData.child('subject').val().length <= 60 && newData.child('at').isNumber()"
+        }
+      },
+      "to": {
+        "$uid": {
+          ".read": "auth != null && (auth.uid === $uid || auth.uid === 'PUT-OPERATOR-UID-HERE')",
+          ".indexOn": ["at"],
+          "$id": {
+            ".write": "auth != null && auth.uid === 'PUT-OPERATOR-UID-HERE'",
+            ".validate": "newData.hasChildren(['subject','at']) && newData.child('subject').isString() && newData.child('subject').val().length <= 60 && newData.child('at').isNumber()"
+          }
+        }
       }
     }
   }

@@ -5,7 +5,7 @@
  * 対局を終えたときに自分の記録を置き直す。管理画面はこれを一覧にする。
  * ranks(持ち点つきの成績)と違い、CPU戦だけの人も載る。
  *
- * 運営が「使用停止」にすると banned が立つ。端末は起動時にそれを見て、
+ * 運営が「使用停止」にすると bans/<uid> に印が立つ。端末は起動時にそれを見て、
  * 名前を捨てて決め直しの画面へ戻る。本人確認は無いので、同じ端末で
  * 新しい名前を決めれば別の人として登録し直せる(いまの限界)。
  * 「消す」はサーバーの記録を消すだけで、端末は次の起動でまた載る。
@@ -77,12 +77,37 @@ export async function publishPlayer(profile, extra) {
 }
 
 /** 起動時: 記録を確かめ、使用停止なら true を返す。そうでなければ置き直す */
+/**
+ * 使用停止かどうか。
+ *
+ * 停止の印は players ではなく bans/<uid> に置く。players は本人が書ける
+ * 場所なので、そこに置くと停止された本人が消せてしまう(行ごと消せば
+ * 停止も消える)。別の木に出しておけば、本人が何をしても残る。
+ */
+export async function isBanned(uid) {
+  if (!uid) return false;
+  try {
+    const res = await withTimeout(
+      authedFetch(`${DB_URL}/bans/${uid}.json`),
+      TIMEOUT_MS,
+    );
+    if (!res.ok) return false;
+    return (await res.json()) != null;
+  } catch {
+    // 読めないときは止めない。通信が切れただけで遊べなくなるほうが困る
+    return false;
+  }
+}
+
 export async function syncPlayer(profile) {
+  if (await isBanned(profile.id)) return true;
   const found = await readPlayer(profile.id);
-  if (found.ok && found.data && found.data.banned === true) return true;
-  // はじめて載るときだけ登録日を書く
-  const extra = found.ok && !found.data ? { since: Date.now() } : undefined;
-  await publishPlayer(profile, extra);
+  // はじめて載るときだけ登録日を書く。すでにあるならその日付を保つ
+  const since =
+    found.ok && found.data && Number(found.data.since)
+      ? Number(found.data.since)
+      : Date.now();
+  await publishPlayer(profile, { since });
   return false;
 }
 
@@ -107,18 +132,29 @@ export async function dropOldRows(oldId) {
 
 /* ---- 管理画面から ---- */
 
+/**
+ * 台帳をぜんぶ読む。停止の印は別の木(bans)にあるので、ここで合流させて
+ * 1件ずつ banned を付ける。管理画面はこれまでどおり row.banned を見ればよい。
+ */
 export async function readPlayers() {
-  const res = await withTimeout(
-    authedFetch(`${DB_URL}/players.json`),
-    TIMEOUT_MS,
-  );
+  const [res, bans] = await Promise.all([
+    withTimeout(authedFetch(`${DB_URL}/players.json`), TIMEOUT_MS),
+    withTimeout(authedFetch(`${DB_URL}/bans.json`), TIMEOUT_MS)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null),
+  ]);
   if (res.status === 401)
     throw new Error(
       "players は読めません。Firebase のルールに players を足して公開してください。",
     );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
-  return Object.entries(data || {}).map(([id, row]) => ({ id, ...row }));
+  return Object.entries(data || {}).map(([id, row]) => ({
+    id,
+    ...row,
+    banned: !!(bans && bans[id]),
+    bannedAt: bans && bans[id] ? bans[id].at : null,
+  }));
 }
 
 export async function deletePlayer(id) {
@@ -131,14 +167,16 @@ export async function deletePlayer(id) {
 
 export async function setBanned(id, banned) {
   const res = await withTimeout(
-    authedFetch(url(id), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        banned: !!banned,
-        bannedAt: banned ? Date.now() : null,
-      }),
-    }),
+    authedFetch(
+      `${DB_URL}/bans/${id}.json`,
+      banned
+        ? {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ at: Date.now() }),
+          }
+        : { method: "DELETE" },
+    ),
     TIMEOUT_MS,
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

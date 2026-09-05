@@ -73,37 +73,49 @@ console.log("起動時の同期(通信は偽物)");
     rated: 0,
   };
   let sent = [];
-  const serve = (getBody, status = 200) => {
+  /**
+   * 通信の代わり。停止の印(bans)と台帳(players)は別の木なので、
+   * 呼ばれた先で返すものを変える
+   */
+  const serve = ({ ban = null, row = null, status = 200 } = {}) => {
     globalThis.fetch = async (url, opt) => {
       const method = (opt && opt.method) || "GET";
       if (method === "PATCH") sent.push(JSON.parse(opt.body));
+      const isBan = String(url).includes("/bans/");
       return {
         ok: status < 400,
         status,
-        json: async () => (method === "GET" ? getBody : {}),
+        json: async () => (method === "GET" ? (isBan ? ban : row) : {}),
       };
     };
   };
-  serve({ name: "たろう", banned: true });
-  is("使用停止なら true", await syncPlayer(me), true);
+  serve({ ban: { at: 1 } });
+  is("使用停止の印があれば true", await syncPlayer(me), true);
   sent = [];
-  serve(null);
+  serve({ ban: null, row: null });
   is(
     "記録が無ければ false で、登録日つきで置く",
     [await syncPlayer(me), "since" in sent[0]],
     [false, true],
   );
   sent = [];
-  serve({ name: "たろう", plays: 0 });
+  serve({ ban: null, row: { name: "たろう", plays: 0, since: 12345 } });
   is(
-    "記録があれば登録日は書き直さない",
-    [await syncPlayer(me), "since" in sent[0]],
-    [false, false],
+    "記録があれば登録日を引き継ぐ",
+    [await syncPlayer(me), sent[0].since],
+    [false, 12345],
   );
   is(
     "置く中身に名前と時刻",
     [sent[0].name, typeof sent[0].at],
     ["たろう", "number"],
+  );
+  sent = [];
+  serve({ ban: null, row: { name: "たろう" } });
+  is(
+    "登録日を持たない古い記録なら、今日を入れる",
+    [await syncPlayer(me), typeof sent[0].since],
+    [false, "number"],
   );
   globalThis.fetch = async () => {
     throw new Error("offline");

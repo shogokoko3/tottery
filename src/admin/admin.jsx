@@ -12,6 +12,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { authedFetch } from "../net/auth.js";
 import STYLES from "../styles.css";
 import ADMIN_STYLES from "./admin.css";
 import { DB_URL } from "../net/firebase.js";
@@ -39,17 +40,24 @@ function withTimeout(promise, ms) {
   ]);
 }
 
+// この2本だけ authed を通していなかった。ルールを締めると管理画面の
+// 半分(待ち合わせ・お知らせ)が読めなくなるので、他と同じ口に揃える
 async function getJson(path) {
-  const res = await withTimeout(fetch(`${DB_URL}/${path}.json`), TIMEOUT_MS);
+  const res = await withTimeout(
+    authedFetch(`${DB_URL}/${path}.json`),
+    TIMEOUT_MS,
+  );
   if (res.status === 401)
-    throw new Error(`${path} は読めません(Firebase のルールで閉じています)`);
+    throw new Error(
+      `${path} は読めません(運営としてサインインしていないか、ルールで閉じています)`,
+    );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
 async function remove(path) {
   const res = await withTimeout(
-    fetch(`${DB_URL}/${path}.json`, { method: "DELETE" }),
+    authedFetch(`${DB_URL}/${path}.json`, { method: "DELETE" }),
     TIMEOUT_MS,
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -186,18 +194,28 @@ function AdminApp() {
           (rows) => ({ rows }),
           (e) => ({ error: (e && e.message) || String(e) }),
         ),
+        // お知らせは置き場が2つ(全員宛て / 宛先ごと)。運営はどちらも読める
         getJson("letters").then(
-          (rows) => ({ rows }),
+          (tree) => ({ tree }),
           (e) => ({ error: (e && e.message) || String(e) }),
         ),
       ]);
       setRanks(Object.entries(r || {}).map(([id, row]) => ({ id, ...row })));
-      setLetters(
-        Object.entries((m && m.rows) || {})
-          .map(([id, row]) => normalizeLetter(id, row))
-          .filter(Boolean)
-          .sort((a, b) => b.at - a.at),
-      );
+      // letters/all/<id> と letters/to/<uid>/<id> を1本にならす
+      {
+        const tree = (m && m.tree) || {};
+        const rows = [
+          ...Object.entries(tree.all || {}).map(([id, row]) =>
+            normalizeLetter(id, row),
+          ),
+          ...Object.entries(tree.to || {}).flatMap(([uid, byId]) =>
+            Object.entries(byId || {}).map(([id, row]) =>
+              normalizeLetter(id, { ...row, to: uid }),
+            ),
+          ),
+        ];
+        setLetters(rows.filter(Boolean).sort((a, b) => b.at - a.at));
+      }
       setPlayers(p.rows || []);
       setPlayersError(p.error || null);
       setLobby(
@@ -309,7 +327,7 @@ function AdminApp() {
       return;
     setBusy(true);
     try {
-      await deleteLetter(l.id);
+      await deleteLetter(l.id, l.to);
       await load();
     } catch (e) {
       setError((e && e.message) || String(e));

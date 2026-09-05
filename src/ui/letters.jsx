@@ -37,7 +37,8 @@ export function LettersScreen({ onBack }) {
 
   useEffect(() => {
     let gone = false;
-    readLetters().then((r) => {
+    // 自分の uid で読む。個人宛ての置き場が uid ごとに分かれているため
+    readLetters(loadProfile().id).then((r) => {
       if (gone) return;
       const me = loadProfile();
       setList(r.list.filter((l) => isFor(l, me.id)));
@@ -211,7 +212,7 @@ export function useUnreadLetters() {
   const [n, setN] = useState(0);
   useEffect(() => {
     let gone = false;
-    readLetters().then((r) => {
+    readLetters(loadProfile().id).then((r) => {
       if (gone) return;
       const me = loadProfile();
       setN(

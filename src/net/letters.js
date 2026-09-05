@@ -66,29 +66,53 @@ export function normalizeLetter(id, raw) {
   };
 }
 
-/** 自分に届いている手紙か */
+/**
+ * 自分に届いているお知らせか。
+ *
+ * 置き場を分けたので、届く時点でもう自分宛てのものしか来ない。
+ * ここで見るのは期限だけ。myId は残してあるが、混ぜていた頃の
+ * 保存を読み込んだときのために、宛先が入っていれば一応照らす。
+ */
 export function isFor(letter, myId, now) {
   if (!letter) return false;
   if (letter.until && letter.until < (now == null ? Date.now() : now))
     return false;
-  return letter.to === "all" || letter.to === myId;
+  if (!letter.to || letter.to === "all") return true;
+  return !myId || letter.to === myId;
 }
 
-/** 手紙を読む。読めなくても遊びは止めないので、黙って空を返す */
-export async function readLetters() {
+/** 1か所ぶんを読んで、形をそろえた並びにする */
+async function readFrom(path) {
+  const res = await withTimeout(
+    authedFetch(
+      `${DB_URL}/${path}.json?orderBy=%22at%22&limitToLast=${LETTER_LIMIT}`,
+    ),
+    TIMEOUT_MS,
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Object.entries(data || {})
+    .map(([id, row]) => normalizeLetter(id, row))
+    .filter(Boolean);
+}
+
+/**
+ * お知らせを読む。読めなくても遊びは止めないので、黙って空を返す。
+ *
+ * 置き場を2つに分けてある。
+ *   letters/all/<id>       … 全員宛て。サインインしていれば誰でも読める
+ *   letters/to/<uid>/<id>  … 個人宛て。**本人と運営しか読めない**
+ * ひとつの木に混ぜていたときは、端末が全部を受け取ってから自分宛てを
+ * 選り分けていた。つまり他人宛ての件名・本文・添付・宛先が、通信としては
+ * 全員に渡っていた。分けたので、届く前に絞られる。
+ */
+export async function readLetters(myUid) {
   try {
-    const res = await withTimeout(
-      authedFetch(
-        `${DB_URL}/letters.json?orderBy=%22at%22&limitToLast=${LETTER_LIMIT}`,
-      ),
-      TIMEOUT_MS,
-    );
-    if (!res.ok) return { ok: false, list: [] };
-    const data = await res.json();
-    const list = Object.entries(data || {})
-      .map(([id, row]) => normalizeLetter(id, row))
-      .filter(Boolean)
-      .sort((a, b) => b.at - a.at);
+    const [all, mine] = await Promise.all([
+      readFrom("letters/all"),
+      myUid ? readFrom(`letters/to/${myUid}`) : Promise.resolve([]),
+    ]);
+    const list = [...all, ...mine].sort((a, b) => b.at - a.at);
     return { ok: true, list };
   } catch {
     return { ok: false, list: [] };
@@ -108,8 +132,10 @@ export async function sendLetter(letter) {
     ...(letter.until ? { until: Number(letter.until) } : null),
   };
   if (!body.subject) throw new Error("件名を入れてください");
+  // 全員宛てと個人宛てで置き場が違う。個人宛ては本人しか読めない場所へ
+  const where = body.to === "all" ? "letters/all" : `letters/to/${body.to}`;
   const res = await withTimeout(
-    authedFetch(`${DB_URL}/letters.json`, {
+    authedFetch(`${DB_URL}/${where}.json`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -120,10 +146,11 @@ export async function sendLetter(letter) {
   return res.json();
 }
 
-/** 手紙を取り消す */
-export async function deleteLetter(id) {
+/** お知らせを取り消す。個人宛ては宛先も要る */
+export async function deleteLetter(id, to) {
+  const where = !to || to === "all" ? "letters/all" : `letters/to/${to}`;
   const res = await withTimeout(
-    authedFetch(`${DB_URL}/letters/${id}.json`, { method: "DELETE" }),
+    authedFetch(`${DB_URL}/${where}/${id}.json`, { method: "DELETE" }),
     TIMEOUT_MS,
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
