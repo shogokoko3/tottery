@@ -828,6 +828,40 @@ deny(
   canWrite(room, ["rooms", "ABCD", "payload"], B, "x"),
 );
 
+console.log("\n手番の中身と、止められた人の名乗り");
+// 手の中身は、入れ替えや布陣のように入れ子を持つので形を決められない。
+// 欄の数(24)と件数(1000)で抑えるところまでが限界で、
+// 1つの手をどれだけ大きくできるかはルールでは縛れていない
+deny(
+  "欄を並べすぎた手は積めない",
+  canWrite(room, ["rooms", "ABCD", "acts", "-N9"], A, {
+    type: "MOVE_PIECE",
+    by: "uidA",
+    __id: "a-9",
+    ...Object.fromEntries(
+      Array.from({ length: 30 }, (_, i) => [`f${i}`, i]),
+    ),
+  }),
+);
+deny(
+  "席についていない人は手番の中へ1段下げても書けない",
+  canWrite(room, ["rooms", "ABCD", "acts", "-N9", "payload"], X, "x"),
+);
+deny(
+  "止められた人は名乗りの欄も書けない",
+  canWrite(
+    {
+      bans: { uidB: { at: NOW } },
+      rooms: {
+        ABCD: { members: { uidA: true, uidB: true }, createdAt: NOW - 1000 },
+      },
+    },
+    ["rooms", "ABCD", "guestName"],
+    B,
+    "と",
+  ),
+);
+
 console.log("\nスキンと掲示のすき間");
 deny(
   "スキンの欄を深いところで物にできない",
