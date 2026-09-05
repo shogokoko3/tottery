@@ -2,7 +2,9 @@ import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, SUIT_SYMBOL } from "./constants.js";
 import {
   buildDeck,
+  getLegalMoves,
   inBounds,
+  kingRankOf,
   shuffle,
   emptyBoard,
   totalSlots,
@@ -13,6 +15,83 @@ import {
   placedRankCounts,
   makePlayer,
 } from "./board.js";
+
+/**
+ * その手を名乗ってよい席か。
+ *
+ * 通信で届いた手には、受け取り側が「送り主の席」を必ず書き込む
+ * (src/net/sync.js の acceptAct)。名乗りが無いのは手元の操作なので通す。
+ * 名乗りがあるのに、その場面で指してよい側でなければ捨てる。
+ *
+ * これが無いと、相手はこちらの手番を勝手に指せる。盤を進める手の多くは
+ * 「誰が指したか」を手の中に持たず、受け取った側の state.currentTurn から
+ * 決めているので、相手の番に1件送るだけで通ってしまう
+ */
+const PLAY_ONLY = new Set([
+  "MOVE_PIECE",
+  "CONFIRM_SHUFFLE",
+  "SKIP_EXTRA_ACTION",
+  "SKIP_RESERVE_PLACEMENT",
+  "PLACE_RESERVE_CARD",
+  "CHOOSE_HEIR",
+]);
+
+function actorAllowed(state, action) {
+  // 場面に合わない手を通すと、盤の無い状態で決着したことになったり、
+  // サイコロの最中に手番が入れ替わったりして、描くところで落ちる。
+  // 相手はそれを1件送るだけで対局を壊せる
+  if (PLAY_ONLY.has(action.type) && state.phase !== "play") return false;
+  if (
+    (action.type === "RESIGN" || action.type === "CLOCK_TIMEOUT") &&
+    state.phase !== "play" &&
+    state.phase !== "setup"
+  )
+    return false;
+  const who = action.player;
+  if (who !== 0 && who !== 1) return true;
+  switch (action.type) {
+    case "MOVE_PIECE":
+    case "CONFIRM_SHUFFLE":
+    case "SKIP_EXTRA_ACTION":
+    case "SKIP_RESERVE_PLACEMENT":
+    case "PLACE_RESERVE_CARD":
+      return state.phase !== "play" || who === state.currentTurn;
+    case "CONFIRM_MULLIGAN":
+      return state.mulliganIdx == null || who === state.mulliganIdx;
+    default:
+      return true;
+  }
+}
+
+/**
+ * その MOVE_PIECE が、その駒で本当に指せる手か。
+ *
+ * 着地点も取る駒も送り主の言い値でしかない。データベースのルールは盤を
+ * 知らないので止められない。受け取った側で合法手を引き直して照らす。
+ * これが無いと、相手は盤の反対側から王を直接取れるし、captures に
+ * 好きなだけマスを並べて1手で盤を掃討できる
+ */
+function movePermitted(state, mover, action) {
+  const moves = getLegalMoves(
+    mover,
+    state.board,
+    state.board.length,
+    state.players[mover.owner].armyRankCounts,
+    kingRankOf(state, mover.owner),
+  );
+  const mv = moves.find((m) => m.row === action.row && m.col === action.col);
+  if (!mv) return false;
+  const key = (c) => `${c.row},${c.col}`;
+  const want = mv.captures ? mv.captures.map(key) : mv.capture ? [key(mv)] : [];
+  const got = action.captures
+    ? action.captures.map(key)
+    : mv.capture
+      ? [key(action)]
+      : [];
+  if (got.length !== want.length) return false;
+  const set = new Set(want);
+  return got.every((k) => set.has(k));
+}
 
 /** 盤の上のマスか。通信で届いた座標をそのまま添字に使わないための番人 */
 function onBoard(board, row, col) {
@@ -528,6 +607,8 @@ function startPlay(base, log) {
    ========================================================================= */
 
 export function reducer(state, action) {
+  // 名乗りが場に合わない手は、盤に触れさせない
+  if (!actorAllowed(state, action)) return state;
   const next = coreReducer(state, action);
   return afterAction(state, next, action);
 }
@@ -611,7 +692,14 @@ function afterAction(prev, next, action) {
     out.clocks &&
     out.currentTurn !== prev.currentTurn
   ) {
-    const spent = Math.max(0, action.elapsedMs || 0);
+    // 考えた時間は送り主の言い値。数でないものが届くと時計が NaN になり、
+    // そこから先の判定が全部おかしくなるので、必ず数に直す。
+    //
+    // なお、値そのものの正しさはここでは分からない。上限を持ち時間に
+    // 揃えても、持ち時間ぶん申告されれば同じことなので意味がない。
+    // 「考えた時間を受け取る側で測る」まで、ここは自己申告のまま
+    const raw = Number(action.elapsedMs);
+    const spent = Number.isFinite(raw) ? Math.max(0, raw) : 0;
     const mover = prev.currentTurn;
     const clocks = [...out.clocks];
     clocks[mover] = Math.max(0, clocks[mover] - spent);
@@ -1139,6 +1227,7 @@ function coreReducer(state, action) {
       // 好きな駒を取れてしまうし、盤の外を読んで画面ごと落ちる
       if (mover.owner !== state.currentTurn) return state;
       if (!onBoard(state.board, action.row, action.col)) return state;
+      if (!movePermitted(state, mover, action)) return state;
       if (
         action.captures &&
         (!Array.isArray(action.captures) ||

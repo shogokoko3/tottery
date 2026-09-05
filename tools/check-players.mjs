@@ -48,13 +48,16 @@ is(
   playerRecord({ id: "p2", name: "あいうえおかきくけこさし" }).name.length,
   10,
 );
+// null にすると Firebase では「その欄が無い」ことになる。
+// ルールは行の欄がぴったりそろっていることを求める（知らない名前を
+// 1つ足すだけで弾ける形にしてあるため）ので、空でも欄は残す
 is(
-  "アイコンと称号が無ければ null",
+  "アイコンと称号が無ければ空文字（欄は残す）",
   [
     playerRecord({ id: "p3", name: "x" }).icon,
     playerRecord({ id: "p3", name: "x" }).title,
   ],
-  [null, null],
+  ["", ""],
 );
 is(
   "壊れた数は 0 に",

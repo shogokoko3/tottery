@@ -300,6 +300,19 @@ const allow = (l, g) => is(l, g, true);
 const deny = (l, g) => is(l, g, false);
 
 const op = { uid: OP };
+/** 実際にクライアントが置く形。欄が1つでも欠けると弾かれる */
+const rankRow = (o) => ({
+  name: "え",
+  rating: 1500,
+  rated: 0,
+  plays: 0,
+  wins: 0,
+  at: NOW,
+  icon: "",
+  title: "",
+  ...o,
+});
+const playerRow = (o) => ({ ...rankRow(), since: NOW, ...o });
 const A = { uid: "uidA" };
 const B = { uid: "uidB" };
 const X = { uid: "uidX" }; // 部外者
@@ -555,18 +568,32 @@ deny(
   canWrite(db, ["letters", "all", "L3"], X, { subject: "にせ", at: NOW }),
 );
 deny("他人の成績を消せない", canWrite(db, ["ranks", "uidA"], X, null));
-allow(
-  "自分の成績は置ける",
-  canWrite(db, ["ranks", "uidX"], X, { name: "え", rating: 1500 }),
-);
+allow("自分の成績は置ける", canWrite(db, ["ranks", "uidX"], X, rankRow()));
 deny(
   "持ち点は上限を越えられない",
-  canWrite(db, ["ranks", "uidX"], X, { name: "え", rating: 99999 }),
+  canWrite(db, ["ranks", "uidX"], X, rankRow({ rating: 99999 })),
 );
 deny(
   "知らない項目は混ぜられない",
-  canWrite(db, ["ranks", "uidX"], X, { name: "え", rating: 1500, admin: true }),
+  canWrite(db, ["ranks", "uidX"], X, rankRow({ admin: true })),
 );
+deny(
+  "欄が欠けた行は置けない",
+  canWrite(db, ["ranks", "uidX"], X, { name: "え", rating: 1500 }),
+);
+deny(
+  "深いところへ知らない名前を生やせない(5段でも)",
+  canWrite(db, ["ranks", "uidX", "junk", "a", "b", "c", "d"], X, "x"),
+);
+deny(
+  "台帳も同じ(5段でも)",
+  canWrite(db, ["players", "uidX", "junk", "a", "b", "c", "d"], X, "x"),
+);
+deny(
+  "既にある行へ知らない名前を足せない",
+  canWrite({ ranks: { uidX: rankRow() } }, ["ranks", "uidX", "junk"], X, "x"),
+);
+allow("自分の台帳も置ける", canWrite(db, ["players", "uidX"], X, playerRow()));
 deny(
   "素性の知れない人は何も書けない",
   canWrite(db, ["ranks", "uidX"], none, { name: "え", rating: 1500 }),
@@ -710,11 +737,11 @@ const stopped = {
 };
 deny(
   "止められた人は成績を置けない",
-  canWrite(stopped, ["ranks", "uidX"], X, { name: "と", rating: 1600 }),
+  canWrite(stopped, ["ranks", "uidX"], X, rankRow({ name: "と" })),
 );
 deny(
   "止められた人は台帳に載せられない",
-  canWrite(stopped, ["players", "uidX"], X, { name: "と" }),
+  canWrite(stopped, ["players", "uidX"], X, playerRow({ name: "と" })),
 );
 deny(
   "止められた人は掲示を出せない",
@@ -737,7 +764,7 @@ deny(
 );
 allow(
   "止められていない人は今までどおり置ける",
-  canWrite(stopped, ["ranks", "uidA"], A, { name: "あ", rating: 1500 }),
+  canWrite(stopped, ["ranks", "uidA"], A, rankRow({ name: "あ" })),
 );
 
 console.log("\n通報の置き場");
@@ -799,6 +826,25 @@ deny(
 deny(
   "知らない欄を部屋に生やせない",
   canWrite(room, ["rooms", "ABCD", "payload"], B, "x"),
+);
+
+console.log("\nスキンと掲示のすき間");
+deny(
+  "スキンの欄を深いところで物にできない",
+  canWrite(room, ["rooms", "ABCD", "guestSkins", "2", "x"], B, "boom"),
+);
+allow(
+  "正しいスキンは置ける",
+  canWrite(room, ["rooms", "ABCD", "guestSkins", "2"], B, "skin-2-a"),
+);
+deny(
+  "掲示の無い部屋(合言葉の部屋)に名乗りを生やせない",
+  canWrite(
+    { rooms: { EFGH: { members: { uidA: true }, createdAt: NOW - 1000 } } },
+    ["lobby", "EFGH", "guest"],
+    X,
+    "uidX",
+  ),
 );
 
 console.log("\nランキングの見え方");

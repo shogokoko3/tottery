@@ -56,27 +56,30 @@ export const HOST_ONLY_ACTIONS = new Set(["START_SETUP", "NEW_GAME"]);
 /**
  * 届いた手を、そのまま使ってよい形に直す。使えないなら null。
  *
- * @param act   受け取ったもの
- * @param me    自分の uid（無ければ null）
- * @param seat  自分の席番号（0 か 1）
+ * かなめは **「誰が指したか」を手の中身から決めない** こと。
+ * 席番号を名乗らない手(MOVE_PIECE など11種)は、名乗りを照らしようがなく
+ * 素通りしていた。相手はそれでこちらの手番を勝手に指せた。
+ * 対局は二人しかいないので、届いた手の指し手は必ず「相手の席」になる。
+ * ここで書き込んでしまえば、盤(reducer)は誰の手かを確かめられる。
+ *
+ * @param act    受け取ったもの
+ * @param me     自分の uid（無ければ null）
+ * @param seat   自分の席番号（0 か 1）
+ * @param foeUid 相手の uid（分かっていれば。分からなければ null）
  */
-export function acceptAct(act, me, seat) {
+export function acceptAct(act, me, seat, foeUid) {
   if (!act || typeof act !== "object") return null;
   if (typeof act.__id !== "string" || !act.__id) return null;
   if (typeof act.type !== "string" || !NET_ACTIONS.has(act.type)) return null;
+  if (seat !== 0 && seat !== 1) return null;
   // 自分が指した手は、手元でもう反映してある
   if (me && act.by === me) return null;
+  // 相手が分かっているなら、それ以外の名前で来た手は受け取らない
+  if (foeUid && act.by !== foeUid) return null;
   // 始まりの合図はホストが出す。自分がホストなら、届くはずがない
   if (seat === 0 && HOST_ONLY_ACTIONS.has(act.type)) return null;
-  if (act.player === undefined || act.player === null) return act;
-  // JSON は型を保つので、"0" のような文字列で送られると
-  // 厳密等価の照合をすり抜ける。数に直してから照らす
-  const who = Number(act.player);
-  if (who !== 0 && who !== 1) return null;
-  // 投了・時間切れ・布陣の確定は、どれも指した本人の席番号を名乗る。
-  // 自分の席番号で届いたなら細工されている
-  if (who === seat) return null;
-  return who === act.player ? act : { ...act, player: who };
+  // 指し手は相手。手が何を名乗っていても、こちらで書き換える
+  return { ...act, player: 1 - seat };
 }
 
 /**

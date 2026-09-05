@@ -52,7 +52,7 @@ import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
 import { publishRank } from "../net/ranking.js";
-import { ensureAuth } from "../net/auth.js";
+import { ensureAuth, myUid } from "../net/auth.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
 import SKIN_STYLES from "../skins/styles.css";
@@ -372,6 +372,12 @@ export function MatchingScreen({ onOnline, onFriend, onCpu, onBack }) {
  * 物や桁外れの数がそのまま画面に届くと、描くところで落ちて真っ白になる。
  * 受け取る側で必ず通す
  */
+/** 部屋の席から、自分でないほうの uid を取り出す */
+function foeOf(members, me) {
+  const ids = Object.keys(members || {}).filter((id) => id !== me);
+  return ids.length === 1 ? ids[0] : null;
+}
+
 function safeName(v) {
   return typeof v === "string" && v ? v.slice(0, 10) : null;
 }
@@ -424,6 +430,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
             onRoomReady({
               code: s,
               myPlayerIndex: 0,
+              foeUid: foeOf(g.data.members, myUid()),
               names: [myName(), safeName(g.data.guestName)],
               icons: [myIcon(), safeTag(g.data.guestIcon)],
               titles: [myTitle(), safeTag(g.data.guestTitle)],
@@ -544,6 +551,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
             onRoomReady({
               code: z,
               myPlayerIndex: 1,
+              foeUid: foeOf(b.data && b.data.members, myUid()),
               names: [safeName(b.data && b.data.hostName), myName()],
               icons: [safeTag(b.data && b.data.hostIcon), myIcon()],
               titles: [safeTag(b.data && b.data.hostTitle), myTitle()],
@@ -743,6 +751,7 @@ export function RoomScreen({
               onRoomReady({
                 code: f,
                 myPlayerIndex: 0,
+                foeUid: foeOf(N.data.members, myUid()),
                 names: [myName(), safeName(N.data.guestName)],
                 icons: [myIcon(), safeTag(N.data.guestIcon)],
                 titles: [myTitle(), safeTag(N.data.guestTitle)],
@@ -824,6 +833,7 @@ export function RoomScreen({
     }
     onRoomReady({
       code: P,
+      foeUid: foeOf(x.data.members, myUid()),
       names: [safeName(x.data.hostName), myName()],
       icons: [safeTag(x.data.hostIcon), myIcon()],
       titles: [safeTag(x.data.hostTitle), myTitle()],

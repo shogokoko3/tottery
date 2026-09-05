@@ -974,7 +974,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
           // 届いた手はそのまま信じない。acceptAct が形を確かめて直す
           const me = myUid();
           const unseen = be.list
-            .map((ne) => acceptAct(ne, me, p))
+            .map((ne) => acceptAct(ne, me, p, network.foeUid || null))
             .filter((ne) => ne && !g.current.has(ne.__id));
           const { actions: at, consumedIds } = takePresentationBatch(unseen, {
             split:

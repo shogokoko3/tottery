@@ -38,8 +38,8 @@ export async function publishRank(profile) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: profile.name,
-          icon: profile.icon || null,
-          title: profile.title || null,
+          icon: profile.icon || "",
+          title: profile.title || "",
           rating: profile.rating,
           rated: profile.rated,
           wins: profile.wins,

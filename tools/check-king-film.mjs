@@ -27,7 +27,13 @@ const t = (name, cond) => {
   }
 };
 
-/** 盤を組む。cards は [id, 数字, 持ち主, 行, 列, 王か] */
+/**
+ * 盤を組む。cards は [id, 数字, 持ち主, 行, 列, 王か]
+ *
+ * 6の駒は縦横に2マス進む。取る相手を (2,2) に置くので、6は (2,0) に置く。
+ * 以前は (3,1) に置いていたが、そこから (2,2) へは行けない＝違法な手だった。
+ * reducer が届いた手を検算するようになって、初めて表に出た
+ */
 function build(cards) {
   const s = initialState();
   s.phase = "play";
@@ -70,7 +76,7 @@ const loadouts = [
 console.log("ふだんの取り(王ではない)");
 {
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["foe", "8", 1, 2, 2, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "K", 1, 0, 4, true],
@@ -92,7 +98,7 @@ console.log("ふだんの取り(王ではない)");
 console.log("\n王(K)を取って決着したとき");
 {
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "K", 1, 2, 2, true],
   ]);
@@ -113,7 +119,7 @@ console.log("\n王(K)を取って決着したとき");
 console.log("\n王の2を取って、跡継ぎが1枚だけのとき");
 {
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "2", 1, 2, 2, true],
     ["heir", "2", 1, 0, 4, false],
@@ -144,7 +150,7 @@ console.log("\n王の2を取って、跡継ぎが1枚だけのとき");
 console.log("\n王の3を取って、跡継ぎを選ぶとき");
 {
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "3", 1, 2, 2, true],
     ["h1", "3", 1, 0, 3, false],
@@ -162,7 +168,7 @@ console.log("\n王の3を取って、跡継ぎを選ぶとき");
 console.log("\n跡継ぎがいないとき(2の王だが他に2が無い)");
 {
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "2", 1, 2, 2, true],
   ]);
@@ -176,7 +182,7 @@ console.log("\nスキンを着けていないとき");
 {
   const bare = [{}, {}];
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "2", 1, 2, 2, true],
     ["heir", "2", 1, 0, 4, false],
@@ -194,7 +200,7 @@ console.log("\nスキンを着けていないとき");
 console.log("\n二重に流さない");
 {
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "2", 1, 2, 2, true],
     ["heir", "2", 1, 0, 4, false],
@@ -218,7 +224,7 @@ console.log("\n二重に流さない");
 console.log("\n王を討った駒は名乗りを上げる(決まり)");
 {
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "K", 1, 2, 2, true],
   ]);
@@ -240,7 +246,7 @@ console.log("\n王を討った駒は名乗りを上げる(決まり)");
 {
   // 王でない駒を取っただけなら、名乗らない
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["foe", "8", 1, 2, 2, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "K", 1, 0, 4, true],
@@ -252,7 +258,7 @@ console.log("\n王を討った駒は名乗りを上げる(決まり)");
 {
   // 2の王を討ったときも名乗る(対局は続く)
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "2", 1, 2, 2, true],
     ["heir", "2", 1, 0, 4, false],
@@ -265,12 +271,12 @@ console.log("\n王を討った駒は名乗りを上げる(決まり)");
 {
   // すでに表だった駒を二度めくらない
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "K", 1, 2, 2, true],
   ]);
   before.pieces.elf.revealed = true;
-  before.board[3][1].revealed = true;
+  before.board[2][0].revealed = true;
   const after = move(before, "elf", 2, 2);
   t("もとから表なら演出は立てない", !after.lastReveal);
   t("表のままである", after.pieces.elf.revealed === true);
@@ -279,7 +285,7 @@ console.log("\n王を討った駒は名乗りを上げる(決まり)");
 console.log("\n名乗るので、相手の画面にも映像が流れる");
 {
   const before = build([
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
     ["k0", "K", 0, 4, 0, true],
     ["k1", "2", 1, 2, 2, true],
     ["heir", "2", 1, 0, 4, false],
@@ -302,7 +308,7 @@ console.log("\n道連れ(4・5の効果)の映像");
     ["k0", "K", 0, 4, 0, true],
     ["four", "4", 1, 2, 2, false],
     ["k1", "4", 1, 0, 4, true],
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
   ]);
   const after = move(before, "elf", 2, 2);
   t(
@@ -337,10 +343,10 @@ console.log("\n道連れ(4・5の効果)の映像");
       ["k0", "K", 0, 4, 0, true],
       ["four", "4", 1, 2, 2, false],
       ["k1", "4", 1, 0, 4, true],
-      ["elf", "6", 0, 3, 1, false],
+      ["elf", "6", 0, 2, 0, false],
     ]);
     shown.pieces.elf.revealed = true;
-    shown.board[3][1].revealed = true;
+    shown.board[2][0].revealed = true;
     const done = move(shown, "elf", 2, 2);
     t(
       "取った駒が表なら相手にも2本",
@@ -362,7 +368,7 @@ console.log("\n道連れ(4・5の効果)の映像");
     ["k0", "K", 0, 4, 0, true],
     ["five", "5", 1, 2, 2, false],
     ["k1", "4", 1, 0, 4, true],
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
   ]);
   const after = move(before, "elf", 2, 2);
   t("数字が違えば道連れなし", !after.lastRevenge);
@@ -374,7 +380,7 @@ console.log("\n道連れ(4・5の効果)の映像");
     ["k0", "K", 0, 4, 0, true],
     ["four", "4", 1, 2, 2, false],
     ["k1", "6", 1, 0, 4, true],
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
   ]);
   const after = move(before, "elf", 2, 2);
   t("王が別の数字なら道連れなし", !after.lastRevenge);
@@ -385,7 +391,7 @@ console.log("\n道連れ(4・5の効果)の映像");
     ["k0", "K", 0, 4, 0, true],
     ["four", "4", 1, 2, 2, false],
     ["k1", "4", 1, 0, 4, true],
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
   ]);
   const after = move(before, "elf", 2, 2);
   t("未装備なら流れない", revengeFilm(before, after, [{}, {}]) === null);
@@ -401,7 +407,7 @@ console.log("\n2・3 は継承、4・5 は道連れ。効果が出たときに�
     ["k0", "K", 0, 4, 0, true],
     ["k1", "2", 1, 2, 2, true],
     ["heir", "2", 1, 0, 4, false],
-    ["elf", "6", 0, 3, 1, false],
+    ["elf", "6", 0, 2, 0, false],
   ]);
   const after = move(before, "elf", 2, 2);
   t(
@@ -424,16 +430,34 @@ console.log("\n2〜5 は取っても流さない(効果のときだけ)");
     9: "viking-female",
   };
   const mine = [all, {}];
+  // 数字ごとに進み方が違う。取れる位置から指させないと、手そのものが
+  // 弾かれて「映像が流れる／流れない」の検査にならない。
+  //   2・4・8 … 縦横（8は奇数マス、2/4は1〜2マス）
+  //   3・5・9 … 斜め
+  //   6 … 縦横に偶数マス   7 … 斜めに偶数マス
+  const from = {
+    2: [2, 1],
+    3: [3, 1],
+    4: [2, 1],
+    5: [3, 1],
+    6: [2, 0],
+    7: [0, 0],
+    8: [2, 1],
+    9: [3, 1],
+  };
   const shot = (rank) => {
+    const [r, c] = from[rank];
     const before = build([
-      ["me", rank, 0, 3, 1, false],
+      ["me", rank, 0, r, c, false],
       ["foe", "8", 1, 2, 2, false],
       ["k0", "K", 0, 4, 0, true],
       ["k1", "K", 1, 0, 4, true],
     ]);
     before.pieces.me.revealed = true;
-    before.board[3][1].revealed = true;
-    return captureFilm(before, move(before, "me", 2, 2), mine, 1);
+    before.board[r][c].revealed = true;
+    const after = move(before, "me", 2, 2);
+    if (after === before) throw new Error(`${rank} の手が通らない(型が違法)`);
+    return captureFilm(before, after, mine, 1);
   };
   for (const r of ["2", "3", "4", "5"])
     t(`${r} が取っても流れない`, shot(r) === null);

@@ -35,8 +35,8 @@ export function playerRecord(profile) {
   if (!profile || !profile.id || !profile.name) return null;
   return {
     name: String(profile.name).slice(0, 10),
-    icon: profile.icon || null,
-    title: profile.title || null,
+    icon: profile.icon || "",
+    title: profile.title || "",
     plays: Number(profile.plays) || 0,
     wins: Number(profile.wins) || 0,
     rating: Number(profile.rating) || 0,

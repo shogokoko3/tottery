@@ -204,7 +204,8 @@
                   ".validate": false
                 }
               }
-            }
+            },
+            ".write": "auth != null && root.child('rooms').child($code).child('members').hasChild(auth.uid) && (!newData.exists() || (newData.isString() && newData.val().length <= 40))"
           }
         },
         "guestSkins": {
@@ -219,7 +220,8 @@
                   ".validate": false
                 }
               }
-            }
+            },
+            ".write": "auth != null && root.child('rooms').child($code).child('members').hasChild(auth.uid) && (!newData.exists() || (newData.isString() && newData.val().length <= 40))"
           }
         },
         "$other": {
@@ -253,7 +255,7 @@
           }
         },
         "guest": {
-          ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).exists()) || (!newData.exists() && (data.val() === auth.uid || root.child('lobby').child($code).child('host').val() === auth.uid || auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2')))",
+          ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid && !root.child('bans').hasChild(auth.uid) && root.child('lobby').child($code).child('host').exists()) || (!newData.exists() && (data.val() === auth.uid || root.child('lobby').child($code).child('host').val() === auth.uid || auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2')))",
           ".validate": "newData.val() === auth.uid",
           "$sa": {
             ".validate": false,
@@ -297,7 +299,7 @@
         "rating"
       ],
       "$uid": {
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2') && (auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2' || !root.child('bans').hasChild(auth.uid)) && (!newData.exists() || (newData.hasChildren(['name', 'rating']) && newData.numChildren() <= 10 && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 10 && newData.child('rating').isNumber() && newData.child('rating').val() >= 0 && newData.child('rating').val() <= 4000 && (!newData.child('rated').exists() || (newData.child('rated').isNumber() && newData.child('rated').val() >= 0 && newData.child('rated').val() <= 1000000000.0)) && (!newData.child('plays').exists() || (newData.child('plays').isNumber() && newData.child('plays').val() >= 0 && newData.child('plays').val() <= 1000000000.0)) && (!newData.child('wins').exists() || (newData.child('wins').isNumber() && newData.child('wins').val() >= 0 && newData.child('wins').val() <= 1000000000.0)) && (!newData.child('at').exists() || (newData.child('at').isNumber() && newData.child('at').val() >= 0 && newData.child('at').val() <= 1000000000000000.0)) && (!newData.child('icon').exists() || (newData.child('icon').isString() && newData.child('icon').val().length >= 0 && newData.child('icon').val().length <= 40)) && (!newData.child('title').exists() || (newData.child('title').isString() && newData.child('title').val().length >= 0 && newData.child('title').val().length <= 40))))",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2') && (auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2' || !root.child('bans').hasChild(auth.uid)) && (!newData.exists() || (newData.hasChildren(['name', 'rating', 'rated', 'plays', 'wins', 'at', 'icon', 'title']) && newData.numChildren() === 8 && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 10 && newData.child('rating').isNumber() && newData.child('rating').val() >= 0 && newData.child('rating').val() <= 4000 && newData.child('rated').isNumber() && newData.child('rated').val() >= 0 && newData.child('rated').val() <= 1000000000 && newData.child('plays').isNumber() && newData.child('plays').val() >= 0 && newData.child('plays').val() <= 1000000000 && newData.child('wins').isNumber() && newData.child('wins').val() >= 0 && newData.child('wins').val() <= 1000000000 && newData.child('at').isNumber() && newData.child('at').val() >= 0 && newData.child('at').val() <= 100000000000000 && newData.child('icon').isString() && newData.child('icon').val().length >= 0 && newData.child('icon').val().length <= 40 && newData.child('title').isString() && newData.child('title').val().length >= 0 && newData.child('title').val().length <= 40))",
         "name": {
           ".validate": "newData.isString() && newData.val().length <= 10",
           "$sa": {
@@ -412,7 +414,7 @@
       ".read": "auth != null && auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2'",
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2')",
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2') && (auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2' || !root.child('bans').hasChild(auth.uid)) && (!newData.exists() || (newData.hasChildren(['name']) && newData.numChildren() <= 12 && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 10 && (!newData.child('rating').exists() || (newData.child('rating').isNumber() && newData.child('rating').val() >= 0 && newData.child('rating').val() <= 4000)) && (!newData.child('rated').exists() || (newData.child('rated').isNumber() && newData.child('rated').val() >= 0 && newData.child('rated').val() <= 1000000000.0)) && (!newData.child('plays').exists() || (newData.child('plays').isNumber() && newData.child('plays').val() >= 0 && newData.child('plays').val() <= 1000000000.0)) && (!newData.child('wins').exists() || (newData.child('wins').isNumber() && newData.child('wins').val() >= 0 && newData.child('wins').val() <= 1000000000.0)) && (!newData.child('at').exists() || (newData.child('at').isNumber() && newData.child('at').val() >= 0 && newData.child('at').val() <= 1000000000000000.0)) && (!newData.child('icon').exists() || (newData.child('icon').isString() && newData.child('icon').val().length >= 0 && newData.child('icon').val().length <= 40)) && (!newData.child('title').exists() || (newData.child('title').isString() && newData.child('title').val().length >= 0 && newData.child('title').val().length <= 40)) && (!newData.child('since').exists() || (newData.child('since').isNumber() && newData.child('since').val() >= 0 && newData.child('since').val() <= 1000000000000000.0))))",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2') && (auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2' || !root.child('bans').hasChild(auth.uid)) && (!newData.exists() || (newData.hasChildren(['name', 'rating', 'rated', 'plays', 'wins', 'at', 'icon', 'title', 'since']) && newData.numChildren() === 9 && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 10 && newData.child('rating').isNumber() && newData.child('rating').val() >= 0 && newData.child('rating').val() <= 4000 && newData.child('rated').isNumber() && newData.child('rated').val() >= 0 && newData.child('rated').val() <= 1000000000 && newData.child('plays').isNumber() && newData.child('plays').val() >= 0 && newData.child('plays').val() <= 1000000000 && newData.child('wins').isNumber() && newData.child('wins').val() >= 0 && newData.child('wins').val() <= 1000000000 && newData.child('at').isNumber() && newData.child('at').val() >= 0 && newData.child('at').val() <= 100000000000000 && newData.child('icon').isString() && newData.child('icon').val().length >= 0 && newData.child('icon').val().length <= 40 && newData.child('title').isString() && newData.child('title').val().length >= 0 && newData.child('title').val().length <= 40 && newData.child('since').isNumber() && newData.child('since').val() >= 0 && newData.child('since').val() <= 100000000000000))",
         "name": {
           ".validate": "newData.isString() && newData.val().length <= 10",
           "$sa": {

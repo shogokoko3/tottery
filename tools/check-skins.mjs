@@ -152,6 +152,9 @@ await updateCollection((s) => ({ ...s, pending: null }));
 assert.equal(getCollection().pending, null);
 console.log("連打の排他、演出前の永続化、旧版移行、保存失敗時の保護: OK");
 
+// 6の駒は縦横に2マス進む。取る相手はその行き先に置く
+// (以前は (2,2) に置いていたが、6ではそこへ行けない=違法な手だった。
+//  reducer が届いた手を検算するようになって、初めて表に出た)
 function position() {
   const s = initialState();
   s.phase = "play";
@@ -159,7 +162,7 @@ function position() {
   s.board = emptyBoard(5);
   const cards = [
     ["elf", "6", 0, 3, 1, false],
-    ["foe", "8", 1, 2, 2, false],
+    ["foe", "8", 1, 3, 3, false],
     ["king0", "K", 0, 4, 0, true],
     ["king1", "K", 1, 0, 4, true],
   ];
@@ -186,8 +189,8 @@ const before = position();
 const after = reducer(before, {
   type: "MOVE_PIECE",
   pieceId: "elf",
-  row: 2,
-  col: 2,
+  row: 3,
+  col: 3,
   elapsedMs: 700,
 });
 const loadouts = [{ 6: "elf-male" }, {}];
@@ -202,7 +205,7 @@ revealed.pieces.elf.revealed = true;
 assert.equal(
   captureFilm(
     revealed,
-    reducer(revealed, { type: "MOVE_PIECE", pieceId: "elf", row: 2, col: 2 }),
+    reducer(revealed, { type: "MOVE_PIECE", pieceId: "elf", row: 3, col: 3 }),
     loadouts,
     1,
   )?.id,
@@ -221,7 +224,7 @@ assert.equal(
 assert.equal(
   captureFilm(
     before,
-    reducer(before, { type: "MOVE_PIECE", pieceId: "elf", row: 2, col: 0 }),
+    reducer(before, { type: "MOVE_PIECE", pieceId: "elf", row: 1, col: 1 }),
     loadouts,
   ),
   null,
@@ -238,8 +241,8 @@ victory.players[1].kingId = "foe";
 const won = reducer(victory, {
   type: "MOVE_PIECE",
   pieceId: "elf",
-  row: 2,
-  col: 2,
+  row: 3,
+  col: 3,
 });
 assert.equal(won.phase, "gameover");
 assert.equal(captureFilm(victory, won, loadouts)?.id, "elf-male");
