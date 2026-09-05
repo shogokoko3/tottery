@@ -1,5 +1,16 @@
 export const SKINS = [
   [
+    "genie-magician",
+    "A",
+    "ランプのマジシャン",
+    "愉快なランプの魔人",
+    "genie",
+    "SPECIAL",
+    "#d3a7eb",
+    "マジカルシルクハット",
+    "3つの帽子で駒を入れ替え、包囲した相手を大きな帽子へ吸い込む。",
+  ],
+  [
     "zombie-male",
     "2",
     "墓守のレヴナント",
@@ -187,12 +198,19 @@ export const SKINS = [
   description,
   image: `skins/portraits/${id}.webp`,
   card: `skins/cards/${id}.webp`,
-  // 撃破の演出動画。16種とも id.mp4
-  video: `skins/videos/${id}.mp4`,
+  // 既存16種の動画は維持。Aは入れ替え/包囲撃破を使い分ける。
+  video: id === "genie-magician" ? null : `skins/videos/${id}.mp4`,
+  videos:
+    id === "genie-magician"
+      ? {
+          swap: "skins/videos/ace-genie-swap.mp4",
+          capture: "skins/videos/ace-genie-capture.mp4",
+        }
+      : null,
 }));
 
 export const byId = (id) => SKINS.find((s) => s.id === id);
-export const POOL = SKINS.filter((s) => s.rarity !== "LIMITED");
+export const POOL = SKINS.filter((s) => ["R", "SR", "SSR"].includes(s.rarity));
 export const ODDS = Object.freeze({ R: 65, SR: 32, SSR: 3 });
 export const rate = (s) =>
   (ODDS[s.rarity] || 0) /

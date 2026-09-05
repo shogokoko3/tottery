@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { audioSettings, duckMusic } from "../audio/index.js";
+import { audioSettings, connectFilmSound, duckMusic } from "../audio/index.js";
 import { useCollection } from "../skins/store.js";
 import { filmsFor } from "../skins/events.js";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
@@ -12,7 +12,8 @@ export function SkinFilm({ skin, short = false, onClose }) {
     const el = video.current;
     let done = false,
       started = false,
-      playbackTimer;
+      playbackTimer,
+      releaseMusic;
     const finish = () => {
       if (!done) {
         done = true;
@@ -28,11 +29,11 @@ export function SkinFilm({ skin, short = false, onClose }) {
       clearTimeout(loadingTimer);
       const duration = short ? 2000 : 5000;
       playbackTimer = setTimeout(finish, duration);
-      if (!el.muted) duckMusic(duration);
+      if (!el.muted) releaseMusic = duckMusic(duration);
     };
     el.playbackRate = short ? 2.5 : 1;
-    el.muted = audioSettings().muted;
-    el.volume = 0.7;
+    el.muted = audioSettings().muted || audioSettings().se === 0;
+    const disconnectSound = connectFilmSound(el);
     el.addEventListener("playing", playing);
     el.addEventListener("ended", finish);
     el.addEventListener("error", finish);
@@ -50,6 +51,8 @@ export function SkinFilm({ skin, short = false, onClose }) {
       el.removeEventListener("ended", finish);
       el.removeEventListener("error", finish);
       el.pause();
+      disconnectSound();
+      releaseMusic?.();
     };
   }, [skin.video, short]);
   return (
@@ -64,7 +67,7 @@ export function SkinFilm({ skin, short = false, onClose }) {
         poster={skin.image}
         playsInline
         preload="auto"
-        aria-label={`${skin.name}・5秒の射撃演出`}
+        aria-label={`${skin.name}・${skin.move}の演出`}
       />
       <button className="skin-skip" onClick={onClose}>
         演出をスキップ →
@@ -73,7 +76,13 @@ export function SkinFilm({ skin, short = false, onClose }) {
   );
 }
 
-export function useBattleFilm(state, loadouts, disabled, viewer = null) {
+export function useBattleFilm(
+  state,
+  loadouts,
+  disabled,
+  viewer = null,
+  paused = false,
+) {
   const collection = useCollection(),
     reduce = useReducedMotion();
   const before = useRef(state),
@@ -95,9 +104,10 @@ export function useBattleFilm(state, loadouts, disabled, viewer = null) {
       setQueue((q) => [...q, ...entries]);
     }
   }, [state, enabled]);
-  const active = enabled && queue[0];
+  const active = enabled && !paused && queue[0];
   return {
-    busy: enabled && (!!active || pending.length > 0),
+    enabled,
+    busy: enabled && (queue.length > 0 || pending.length > 0),
     overlay: active ? (
       <SkinFilm
         key={active.key}

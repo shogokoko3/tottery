@@ -23,8 +23,10 @@ import {
   craft,
   dismantle,
   dismantleAll,
+  grantSkin,
   normalize,
 } from "../src/skins/collection.js";
+import { bestOf, ladderFor, ladderOf } from "../src/skins/reveal.js";
 import { giftLabel } from "../src/game/gifts.js";
 import { normalizeGift } from "../src/net/letters.js";
 
@@ -116,6 +118,65 @@ t(
   t("3枚あっても崩せない", spareOf(c, "pegasus-knight") === 0);
   t("崩そうとすると断る", !dismantleCheck(c, "pegasus-knight").ok);
   t("作ろうとすると断る", !craftCheck(c, "pegasus-knight").ok);
+}
+
+console.log("\n特別スキンは抽選・錬成の対象外");
+{
+  const id = "genie-magician";
+  const special = SKINS.find((s) => s.id === id);
+  t(
+    "A の特別スキンがある",
+    special?.rank === "A" && special.rarity === "SPECIAL",
+  );
+  t("通常抽選の15種に入らない", POOL.length === 15 && !POOL.includes(special));
+  t("錬成対象外の目印が付く", isKeepsake(id));
+  t("分解量も作成価格もない", dustOf(id) === 0 && costOf(id) === null);
+  const c = normalize({
+    owned: { [id]: 3, "zombie-male": 2 },
+    equipped: { A: id },
+    ether: 9999,
+  });
+  t("複数所持でも分解対象は0枚", spareOf(c, id) === 0);
+  t("分解一覧に出ない", !spares(c, SKINS).some((row) => row.skin.id === id));
+  t("特別スキンの分解を断る", !dismantleCheck(c, id).ok);
+  t("エーテルの量にかかわらず作成を断る", !craftCheck(c, id).ok);
+  for (const [name, action] of [
+    ["分解", dismantle],
+    ["作成", craft],
+  ]) {
+    let threw = false;
+    try {
+      action(c, id);
+    } catch {
+      threw = true;
+    }
+    t(
+      `${name}の直接呼び出しでも所持とエーテルを変えない`,
+      threw && c.owned[id] === 3 && c.ether === 9999,
+    );
+  }
+  const after = dismantleAll(c);
+  t(
+    "まとめて分解しても特別スキンと装備を保つ",
+    after.owned[id] === 3 &&
+      after.equipped.A === id &&
+      after.owned["zombie-male"] === 1 &&
+      after.ether === 10009,
+  );
+  t(
+    "報酬からも既知スキンとして受け取れる",
+    grantSkin(normalize({}), id).owned[id] === 1,
+  );
+  t(
+    "報酬の名前が特別スキンの名前になる",
+    giftLabel({ type: "skin", id }) === `スキン「${special?.name}」`,
+  );
+  t(
+    "特別スキンの共通開示はSSR相当",
+    bestOf([{ id }]) === "SSR" &&
+      ladderOf("SPECIAL").join() === "R,SR,SSR" &&
+      ladderFor("SPECIAL", "gift").at(-1) === "SSR",
+  );
 }
 
 console.log("\n崩す");

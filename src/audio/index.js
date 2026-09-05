@@ -15,6 +15,7 @@ export { MUSIC_CREDIT, SE_CREDIT } from "./tracks.js";
 export {
   armAudioUnlock,
   audioSettings,
+  connectFilmSound,
   duckMusic,
   playSound,
   setBgmVolume,
@@ -95,7 +96,7 @@ export function useGameBgm({ state, clocks, self, tutorial }) {
  * 相手がどこで手を止めているかが伝わってしまう。
  * 駒が倒れたことは盤を見れば分かるので、そちらは両方で鳴らす。
  */
-export function useGameSounds({ state, self, warnMs }) {
+export function useGameSounds({ state, self, warnMs, captureHandled = false }) {
   const side = self == null ? (state ? state.setupIdx : 0) : self;
   const placed = state
     ? Object.keys((state.setupPlacements && state.setupPlacements[side]) || {})
@@ -113,13 +114,14 @@ export function useGameSounds({ state, self, warnMs }) {
     // 対局に入った最初の描画では鳴らさない
     if (!before) return;
     if (dead > before.dead) {
+      if (captureHandled) return;
       // 効果音とぶつからないよう、BGM を一瞬下げる
       duckMusic(CAPTURE_DUCK_MS);
       playSound("capture");
       return;
     }
     if (placed > before.placed || moves > before.moves) playSound("place");
-  }, [placed, moves, dead]);
+  }, [placed, moves, dead, captureHandled]);
 
   const level = warnLevel(warnMs);
   const warned = (0, useRef)(0);

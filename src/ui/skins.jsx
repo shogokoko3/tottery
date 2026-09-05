@@ -6,6 +6,7 @@ import {
   craft,
   dismantle,
   dismantleAll,
+  claimSpecial,
   equip,
   pull,
   unequip,
@@ -28,7 +29,12 @@ import { SkinFilm } from "./skin-film.jsx";
 import { ArrowLeft, Ether } from "../icons.jsx";
 import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
 
-const rarityLabel = (s) => (s.rarity === "LIMITED" ? "早期特典" : s.rarity);
+const rarityLabel = (s) =>
+  s.rarity === "LIMITED"
+    ? "早期特典"
+    : s.rarity === "SPECIAL"
+      ? "特別スキン"
+      : s.rarity;
 
 /**
  * 提供割合の見せ方。SSR は 3÷7 で割り切れないので、そのまま出すと
@@ -115,7 +121,9 @@ function RevealCard({ result, index, flipped, onFlip, reduce, seed }) {
   const next = stage >= 0 ? ladder[stage + 1] : null;
   const final = stage === ladder.length - 1;
   const label =
-    shown === "SSR" && skin.rarity === "LIMITED" ? "早期特典" : shown;
+    shown === "SSR" && ["LIMITED", "SPECIAL"].includes(skin.rarity)
+      ? rarityLabel(skin)
+      : shown;
   return (
     <button
       type="button"
@@ -448,7 +456,7 @@ function ForgePanel({ collection, run, working, onPick, setMessage }) {
           を運で当てる{top.pulls}回とほぼ同じです。 引いたものを全部崩せば約
           {summary.pullsIfAll}回ぶんになります。
           <br />
-          早期特典の札は崩すことも作ることもできません。二度と手に入らないためです。
+          早期特典・特別スキンは崩すことも作ることもできません。
         </p>
       </section>
     </div>
@@ -492,6 +500,14 @@ export function SkinsScreen({ onBack }) {
   const equipSkin = async (skin) => {
     if (await run((s) => equip(s, skin.id)))
       setMessage(`${skin.rank}のカードに「${skin.name}」を装備しました。`);
+  };
+  const receiveMagician = async () => {
+    if (
+      await run((s) =>
+        equip(claimSpecial(s, "genie-magician"), "genie-magician"),
+      )
+    )
+      setMessage("Aに「ランプのマジシャン」を装備しました。");
   };
   const closeResults = () => run((s) => ({ ...s, pending: null }));
   const shown = SKINS.filter(
@@ -554,7 +570,7 @@ export function SkinsScreen({ onBack }) {
               </h2>
               <p>カードに宿る、新たな姿。</p>
               <span className="skins-banner-label">
-                全14種 · 同じ数字のカードに装備
+                全{POOL.length}種 · 同じ数字のカードに装備
               </span>
             </div>
           </section>
@@ -594,6 +610,38 @@ export function SkinsScreen({ onBack }) {
               1回ごとに同じ確率で抽選します。10回召喚の確定枠はありません。
             </p>
           </div>
+          <section className="skins-special">
+            <button
+              className="skins-special-art"
+              aria-label="A ランプのマジシャンの詳細"
+              onClick={() => setSelected(byId("genie-magician"))}
+            >
+              <img
+                src={byId("genie-magician").image}
+                alt="ランプのマジシャン"
+              />
+            </button>
+            <div>
+              <span className="skins-eyebrow">SPECIAL SKIN / A</span>
+              <h3>ランプのマジシャン</h3>
+              <p>
+                3つの帽子で入れ替え、包囲した相手は大きな帽子の中へ。
+                <br />
+                華やかな魔法で、次の一手を。
+              </p>
+              <button
+                className="skin-btn skin-btn-gold"
+                disabled={working || collection.equipped.A === "genie-magician"}
+                onClick={receiveMagician}
+              >
+                {collection.equipped.A === "genie-magician"
+                  ? "Aに装備中"
+                  : collection.owned["genie-magician"]
+                    ? "Aに装備"
+                    : "受け取ってAに装備"}
+              </button>
+            </div>
+          </section>
           <section className="skins-early">
             <div className="skins-early-cards">
               <CardFace
@@ -675,6 +723,7 @@ export function SkinsScreen({ onBack }) {
               ["SR", "SR"],
               ["SSR", "SSR"],
               ["LIMITED", "早期特典"],
+              ["SPECIAL", "特別スキン"],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -729,8 +778,8 @@ export function SkinsScreen({ onBack }) {
               run((s) => ({ ...s, motion }));
             }}
           >
-            <option value="full">通常（5秒）</option>
-            <option value="short">短縮（バトル2秒・ガチャ省略）</option>
+            <option value="full">通常（動画＋盤面演出）</option>
+            <option value="short">短縮（最大2秒・ガチャ省略）</option>
             <option value="off">演出なし</option>
           </select>
         </label>
@@ -776,7 +825,7 @@ export function SkinsScreen({ onBack }) {
             </tbody>
           </table>
           <p className="skins-note">
-            10回召喚も各回独立です。重複時は所持数が増えます。早期特典2種はガチャから出現しません。
+            10回召喚も各回独立です。重複時は所持数が増えます。早期特典・特別スキンはガチャから出現しません。
           </p>
         </SkinModal>
       )}
@@ -929,12 +978,41 @@ export function SkinsScreen({ onBack }) {
                     ? "装備を外す"
                     : `${selected.rank}のカードに装備`}
                 </button>
+              ) : selected.rarity === "SPECIAL" ? (
+                <button
+                  className="skin-btn skin-btn-gold"
+                  disabled={working}
+                  onClick={receiveMagician}
+                >
+                  受け取ってAに装備
+                </button>
               ) : (
                 <p className="skins-locked">
                   {selected.rarity === "LIMITED"
                     ? "早期特典で獲得"
                     : "ガチャから獲得できます"}
                 </p>
+              )}
+              {selected.videos && (
+                <>
+                  <p>{selected.description}</p>
+                  <button
+                    className="skin-btn"
+                    onClick={() =>
+                      setFilm({ ...selected, video: selected.videos.swap })
+                    }
+                  >
+                    ▶ 入れ替えの動画を見る
+                  </button>
+                  <button
+                    className="skin-btn"
+                    onClick={() =>
+                      setFilm({ ...selected, video: selected.videos.capture })
+                    }
+                  >
+                    ▶ 包囲撃破の動画を見る
+                  </button>
+                </>
               )}
               {selected.video && (
                 <button className="skin-btn" onClick={() => setFilm(selected)}>

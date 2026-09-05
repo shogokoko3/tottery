@@ -23,7 +23,7 @@ import { captureFilm } from "../src/skins/events.js";
 import { initialState, reducer } from "../src/game/reducer.js";
 import { emptyBoard } from "../src/game/board.js";
 
-assert.equal(SKINS.length, 16);
+assert.equal(SKINS.length, 17);
 // 早期特典(天馬騎士)だけが抽選に入らない。竜騎士は SSR として入る
 assert.equal(POOL.length, 15);
 assert.deepEqual(
@@ -279,15 +279,29 @@ try {
   assert.doesNotMatch(render({ ...piece, owner: 1 }, 1, loadouts), /elf-male/);
   assert.doesNotMatch(card("7", "elf-male"), /data-skin/);
   assert.match(card("6", "elf-male"), /red-suit/);
+  const ace = { ...piece, rank: "A", isKing: true };
+  assert.match(
+    render(ace, 0, [{ A: "genie-magician" }, {}]),
+    /data-skin="genie-magician"/,
+  );
+  assert.doesNotMatch(
+    render(ace, 1, [{ A: "genie-magician" }, {}]),
+    /genie-magician|ランプ|skin-king-mark|card-captain/,
+  );
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 for (const skin of SKINS)
-  for (const asset of [skin.image, skin.card, skin.video].filter(Boolean)) {
+  for (const asset of [
+    skin.image,
+    skin.card,
+    skin.video,
+    ...Object.values(skin.videos || {}),
+  ].filter(Boolean)) {
     assert.ok(fs.statSync(path.join("assets", asset)).size > 0, asset);
   }
-if (SKINS.some((s) => !s.video)) throw new Error("動画の無いスキンがある");
-console.log("盤面の表裏・所有者・数字・全32画像と16本の動画: OK");
+if (SKINS.some((s) => !s.video && !(s.videos?.swap && s.videos?.capture))) throw new Error("動画の無いスキンがある");
+console.log("盤面の表裏・所有者・数字・全34画像と18本の動画: OK");
 
 // 開示演出の決まり。前兆は束の中でいちばん強い格(SSR は低確率で SR に抑える)、
 // 昇格は R→SR→SSR だが素で出ることもある。乱数は使わず束の中身から決める

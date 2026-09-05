@@ -26,8 +26,8 @@
  *
  * ■ 決まり
  * - 分解できるのは2枚目から。最後の1枚は残す(装備が消えない)
- * - LIMITED は分解も生成もできない。早期特典で配ったもので、
- *   二度と手に入らないため、崩させると取り返しがつかない
+ * - LIMITED と SPECIAL は分解も生成もできない。一度だけ受け取れる
+ *   特典なので、抽選で手に入る札とは別に保管する
  * - 生成は好きな1枚を選ぶ。すでに持っている札も選べる(枚数が増える)
  */
 import { ODDS, POOL, byId, rate } from "./catalog.js";
@@ -61,10 +61,10 @@ export function costOf(skin) {
   return CRAFT[s.rarity] ?? null;
 }
 
-/** 早期特典のように、二度と手に入らない札か */
+/** 一度だけ受け取れる特典として、錬成の対象外にする札か */
 export function isKeepsake(skin) {
   const s = typeof skin === "string" ? byId(skin) : skin;
-  return !!s && s.rarity === "LIMITED";
+  return !!s && (s.rarity === "LIMITED" || s.rarity === "SPECIAL");
 }
 
 /** いま持っている枚数 */
@@ -92,7 +92,10 @@ export function dismantleCheck(state, id) {
   if (isKeepsake(skin))
     return {
       ok: false,
-      why: "早期特典の札は崩せません。二度と手に入らないためです。",
+      why:
+        skin.rarity === "SPECIAL"
+          ? "特別スキンは崩せません。"
+          : "早期特典の札は崩せません。二度と手に入らないためです。",
     };
   if (heldOf(state, id) === 0) return { ok: false, why: "持っていません。" };
   if (spareOf(state, id) === 0)
@@ -104,8 +107,16 @@ export function dismantleCheck(state, id) {
 export function craftCheck(state, id) {
   const skin = byId(id);
   if (!skin) return { ok: false, why: "その札はありません。" };
-  if (isKeepsake(skin)) return { ok: false, why: "早期特典の札は作れません。" };
+  if (isKeepsake(skin))
+    return {
+      ok: false,
+      why:
+        skin.rarity === "SPECIAL"
+          ? "特別スキンはエーテルで作れません。"
+          : "早期特典の札は作れません。",
+    };
   const cost = costOf(skin);
+  if (cost === null) return { ok: false, why: "この札は作れません。" };
   const have = etherOf(state);
   if (have < cost)
     return {

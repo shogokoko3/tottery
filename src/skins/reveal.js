@@ -12,15 +12,16 @@
  */
 import { byId } from "./catalog.js";
 
-export const POWER = { R: 1, SR: 2, SSR: 3, LIMITED: 3 };
+export const POWER = { R: 1, SR: 2, SSR: 3, LIMITED: 3, SPECIAL: 3 };
 
 /** SSR がいるのに SR の前兆で抑える割合 */
 export const OMEN_FAKEOUT = 0.15;
 /** 昇格を経ずに素で出る割合 */
 export const STRAIGHT = { SSR: 0.4, SR: 0.5 };
 
-/** 早期特典は見た目の格として SSR と同じ扱い */
-const tierOf = (rarity) => (rarity === "LIMITED" ? "SSR" : rarity);
+/** 特典は見た目の格として SSR と同じ扱い。抽選対象は catalog の POOL で決める */
+const tierOf = (rarity) =>
+  rarity === "LIMITED" || rarity === "SPECIAL" ? "SSR" : rarity;
 
 /**
  * 文字列から 0 以上 1 未満の値。同じ文字列なら同じ値。

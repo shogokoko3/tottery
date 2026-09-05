@@ -1518,7 +1518,11 @@
   margin-bottom: 18px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(143, 111, 214, 0.16), rgba(16, 32, 58, 0.6));
+  background: linear-gradient(
+    180deg,
+    rgba(143, 111, 214, 0.16),
+    rgba(16, 32, 58, 0.6)
+  );
 }
 .forge-bank b {
   display: flex;
@@ -1700,4 +1704,82 @@
   .forge-gain {
     font-size: 12px;
   }
+}
+/* Special A skin and in-board performance. Masks remain until React commits
+   the final board, so cleanup cannot flash a displaced or hidden card. */
+.ace-magic-masked > .piece-slot {
+  visibility: hidden !important;
+}
+.ace-magic-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  color: #efcf94;
+  background: #30253d;
+  border: 1px solid #765477;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.ace-magic-status .btn {
+  padding: 6px 8px;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.skins-special {
+  display: grid;
+  grid-template-columns: 125px 1fr;
+  gap: 20px;
+  align-items: center;
+  margin: 24px 0;
+  padding: 18px;
+  border: 1px solid #956d9c;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #30263b, #171824);
+}
+.skins-special-art {
+  padding: 0;
+  border: 1px solid #b99a66;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #211b2b;
+  cursor: pointer;
+}
+.skins-special-art img {
+  display: block;
+  width: 100%;
+}
+.skins-special h3 {
+  margin: 8px 0;
+  font-size: 21px;
+  color: #efd49e;
+}
+.skins-special p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #c8bfd0;
+}
+.rarity-SPECIAL {
+  --rarity: #d3a7eb;
+}
+@media (max-width: 420px) {
+  .skins-special {
+    grid-template-columns: 90px 1fr;
+    padding: 12px;
+    gap: 12px;
+  }
+  .skins-special h3 {
+    font-size: 17px;
+  }
+  .skins-special .skin-btn {
+    padding: 10px;
+    font-size: 12px;
+  }
+}
+.ace-magic-phase {
+  display: block;
+  margin-top: 3px;
+  color: #cbb5de;
+  font-size: 10px;
 }

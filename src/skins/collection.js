@@ -132,3 +132,10 @@ export function claimEarly(state) {
     owned[skin.id] = (owned[skin.id] || 0) + 1;
   return { ...state, owned, earlyClaimed: true };
 }
+
+export function claimSpecial(state, id) {
+  if (byId(id)?.rarity !== "SPECIAL")
+    throw new Error("特別スキンを選んでください");
+  if (state.owned[id]) return state;
+  return { ...state, owned: { ...state.owned, [id]: 1 } };
+}
