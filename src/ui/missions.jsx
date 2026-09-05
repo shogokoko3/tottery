@@ -5,13 +5,17 @@
  * ガチャチケットの4種で、配る先が2か所(アカウントとスキンの持ち物)に
  * 分かれているので、受け取りはここでまとめている。
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, Check, Crown } from "../icons.jsx";
-import { loadProfile, markMissionClaimed } from "../game/profile.js";
-import { KINDS, listMissions } from "../game/missions.js";
+import {
+  grantMissionTitle,
+  loadProfile,
+  markMissionClaimed,
+} from "../game/profile.js";
+import { KINDS, listMissions, statusOf } from "../game/missions.js";
 import { chanceLabel, listSecrets } from "../game/secrets.js";
 import { giftLabel, giveGift } from "../game/gifts.js";
-import { useCollection } from "../skins/store.js";
+import { getCollection, useCollection } from "../skins/store.js";
 
 /** 褒美の呼び名。手紙の添付と同じ形なので、共通のものを使う */
 export const rewardLabel = giftLabel;
@@ -20,19 +24,28 @@ export function MissionsScreen({ onBack }) {
   const collection = useCollection();
   const [profile, setProfile] = useState(() => loadProfile());
   const [busy, setBusy] = useState(false);
+  const claiming = useRef(false);
   const [message, setMessage] = useState("");
-  const rows = listMissions(profile);
+  const rows = listMissions(profile, collection);
   const secrets = listSecrets(profile);
   const ready = rows.filter((m) => m.done && !m.claimed);
 
   /** 1件ぶんを配る。控えるのは配り終えてから(途中で失敗しても二重取りにならない) */
   async function give(mission) {
+    const current = loadProfile();
+    const latest = statusOf(mission, current, getCollection());
+    if (latest.claimed) return current;
+    if (!latest.done)
+      throw new Error("まだミッションの条件を満たしていません。");
+    if (mission.reward.type === "title")
+      return grantMissionTitle(mission.id, mission.reward.id);
     await giveGift(mission.reward);
     return markMissionClaimed(mission.id);
   }
 
   async function claim(mission) {
-    if (busy || mission.claimed || !mission.done) return;
+    if (claiming.current || mission.claimed || !mission.done) return;
+    claiming.current = true;
     setBusy(true);
     setMessage("");
     try {
@@ -41,6 +54,7 @@ export function MissionsScreen({ onBack }) {
     } catch (e) {
       setMessage((e && e.message) || "受け取れませんでした。");
     } finally {
+      claiming.current = false;
       setBusy(false);
     }
   }
@@ -50,7 +64,8 @@ export function MissionsScreen({ onBack }) {
    * 1件ずつ順に配って控えるので、途中で失敗しても、そこまでは受け取れている。
    */
   async function claimAll() {
-    if (busy || !ready.length) return;
+    if (claiming.current || !ready.length) return;
+    claiming.current = true;
     setBusy(true);
     setMessage("");
     let got = 0;
@@ -69,6 +84,7 @@ export function MissionsScreen({ onBack }) {
       );
     } finally {
       setProfile(last);
+      claiming.current = false;
       setBusy(false);
     }
   }
@@ -81,6 +97,11 @@ export function MissionsScreen({ onBack }) {
         <span>ガチャチケット {collection.tickets}枚</span>
         <small>条件を満たすと受け取れます</small>
       </div>
+      <p className="hint">
+        各キャラのフォイルを獲得すると、専用の称号を受け取れます。
+        ガチャ・錬成・通算100回の加工報酬が対象です。すでに所持しているフォイルも達成になります。
+        受け取った称号は設定で選べます。
+      </p>
       <p className="mission-message" role="status">
         {message}
       </p>

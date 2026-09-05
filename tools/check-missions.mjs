@@ -42,12 +42,13 @@ console.log("台帳");
 is("id が重複しない", new Set(MISSIONS.map((m) => m.id)).size, MISSIONS.length);
 is("条件は知っている種類だけ", MISSIONS.every((m) => STATS[m.kind] && KINDS[m.kind]), true);
 is("目標は1以上の整数", MISSIONS.every((m) => Number.isInteger(m.goal) && m.goal > 0), true);
-is("指示の3種がそろっている", Object.keys(KINDS).sort(), ["battles", "days", "level"]);
-// 指示された組み合わせ: 使用頻度→称号/スキン、レベル→チケット/アイコン、対戦回数→チケット
+is("条件の4種がそろっている", Object.keys(KINDS).sort(), ["battles", "days", "foil", "level"]);
+// 使用頻度→称号/スキン、レベル→チケット/アイコン、対戦回数→チケット、フォイル→称号
 const kinds = (k) => new Set(MISSIONS.filter((m) => m.kind === k).map((m) => m.reward.type));
 is("使用頻度の褒美は称号かスキン", [...kinds("days")].sort(), ["skin", "title"]);
 is("レベルの褒美はチケットかアイコン", [...kinds("level")].sort(), ["icon", "ticket"]);
 is("対戦回数の褒美はチケット", [...kinds("battles")], ["ticket"]);
+is("フォイル獲得の褒美は称号", [...kinds("foil")], ["title"]);
 // 褒美の指し先が実在するか
 const missing = MISSIONS.filter((m) => {
   const r = m.reward;

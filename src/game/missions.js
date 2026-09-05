@@ -8,18 +8,24 @@
  *   days    使用頻度(遊んだ日数)     → 称号・スキン
  *   level   プレイヤーレベル          → ガチャチケット・アイコン
  *   battles 対戦回数(チュートリアルは含めない) → ガチャチケット
+ *   foil    指定キャラのフォイル所持         → 専用称号
  *
  * reward の type:
  *   title / icon / skin  それぞれの id を配る
  *   ticket               amount 枚のガチャチケットを配る
  */
 import { levelOf } from "./profile.js";
+import { FOIL_MISSION_DEFS } from "./foil-missions.js";
 
 /** 条件ごとの、いまの数字の読み方 */
 export const STATS = {
   days: (p) => p.days || 0,
   level: (p) => levelOf(p),
   battles: (p) => p.battles || 0,
+  foil: (_profile, collection, mission) => {
+    const owned = collection?.owned?.[mission?.skinId];
+    return Number.isSafeInteger(owned) && owned > 0 ? 1 : 0;
+  },
 };
 
 /** 条件ごとの見出しと単位 */
@@ -27,6 +33,7 @@ export const KINDS = {
   days: { label: "使用頻度", unit: "日" },
   level: { label: "プレイヤーレベル", unit: "" },
   battles: { label: "対戦回数", unit: "戦" },
+  foil: { label: "フォイル獲得", unit: "枚" },
 };
 
 export const MISSIONS = [
@@ -112,6 +119,15 @@ export const MISSIONS = [
     name: "500戦する",
     reward: { type: "ticket", amount: 5 },
   },
+  ...FOIL_MISSION_DEFS.map((entry) => ({
+    id: entry.missionId,
+    kind: "foil",
+    goal: 1,
+    name: entry.missionName,
+    baseId: entry.baseId,
+    skinId: entry.skinId,
+    reward: { type: "title", id: entry.titleId },
+  })),
 ];
 
 export const byId = (id) => MISSIONS.find((m) => m.id === id) || null;
@@ -120,16 +136,20 @@ export const byId = (id) => MISSIONS.find((m) => m.id === id) || null;
  * ミッション1つの様子。
  * now が goal に届いていれば done、受け取り済みなら claimed。
  */
-export function statusOf(mission, profile) {
+export function statusOf(mission, profile, collection) {
   const read = STATS[mission.kind];
-  const now = read ? read(profile) : 0;
+  const raw = read ? read(profile, collection, mission) : 0;
+  const claimed = (profile.missions || []).includes(mission.id);
+  // Keep a received foil mission complete even while collection data is absent.
+  const now =
+    claimed && mission.kind === "foil" ? Math.max(raw, mission.goal) : raw;
   const done = now >= mission.goal;
   return {
     ...mission,
     now: Math.min(now, mission.goal),
-    raw: now,
+    raw,
     done,
-    claimed: (profile.missions || []).includes(mission.id),
+    claimed,
     ratio: mission.goal ? Math.min(1, now / mission.goal) : 0,
   };
 }
@@ -138,17 +158,17 @@ export function statusOf(mission, profile) {
  * 一覧。受け取れるものを先に、次に進行中、最後に受け取り済み。
  * 同じ種類の中では目標の小さい順。
  */
-export function listMissions(profile) {
+export function listMissions(profile, collection) {
   const rank = (s) => (s.done && !s.claimed ? 0 : s.claimed ? 2 : 1);
-  return MISSIONS.map((m) => statusOf(m, profile)).sort(
+  return MISSIONS.map((m) => statusOf(m, profile, collection)).sort(
     (a, b) => rank(a) - rank(b) || a.goal - b.goal,
   );
 }
 
 /** 受け取れるものの数。入り口に出す印に使う */
-export function claimableCount(profile) {
+export function claimableCount(profile, collection) {
   return MISSIONS.filter((m) => {
-    const s = statusOf(m, profile);
+    const s = statusOf(m, profile, collection);
     return s.done && !s.claimed;
   }).length;
 }

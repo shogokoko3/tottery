@@ -271,9 +271,9 @@ export function MenuScreen({
 }) {
   const profile = loadProfile();
   // 受け取れるミッションの数と、未読のお知らせ。入り口に印を出す
-  const ready = claimableCount(profile);
   const unread = useUnreadLetters();
   const collection = useCollection();
+  const ready = claimableCount(profile, collection);
   return (
     <div className="home-wrap">
       {/* その日のぶんがまだなら、ここに着いたときに札が出る */}

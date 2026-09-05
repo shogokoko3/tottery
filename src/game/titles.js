@@ -10,6 +10,8 @@
  * 相手が新しい版で、こちらの知らない称号を持っていることがある。
  * そのときは何も出さない(findTitle が null を返す)。
  */
+import { FOIL_MISSION_DEFS } from "./foil-missions.js";
+
 export const TITLES = [
   { id: "novice", name: "見習い", how: "最初から", free: true },
   { id: "first", name: "初陣", how: "1局遊ぶ", unlocked: (p) => p.plays >= 1 },
@@ -70,6 +72,12 @@ export const TITLES = [
     how: "持ち点 2000",
     unlocked: (p) => p.rating >= 2000,
   },
+  // Ownership completes a mission; only its explicit reward claim grants a title.
+  ...FOIL_MISSION_DEFS.map((entry) => ({
+    id: entry.titleId,
+    name: entry.titleName,
+    how: `${entry.missionName}（ミッション報酬を受け取る）`,
+  })),
 ];
 
 /** 既定の称号 */

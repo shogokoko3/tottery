@@ -12,7 +12,7 @@
  */
 
 import { hasIcon } from "./icons.js";
-import { hasTitle, newlyEarned } from "./titles.js";
+import { findTitle, hasTitle, newlyEarned } from "./titles.js";
 import { SECRETS } from "./secrets.js";
 import { MAX_LEVEL, XP, levelOfXp, progressOfXp } from "./level.js";
 import { publishXpNotice } from "./xp-notices.js";
@@ -408,6 +408,29 @@ export function markMissionClaimed(id) {
   if (!id || profile.missions.includes(id)) return profile;
   const next = { ...profile, missions: [...profile.missions, id] };
   saveProfile(next);
+  return next;
+}
+
+/** 称号報酬と受取済みの控えを同時に保存し、失敗時は再受取できるようにする。 */
+export function grantMissionTitle(missionId, titleId) {
+  if (typeof missionId !== "string" || !missionId || !findTitle(titleId))
+    throw new Error("称号報酬が見つかりません。");
+  const profile = loadProfile();
+  if (profile.missions.includes(missionId)) return profile;
+  const next = {
+    ...profile,
+    titles: profile.titles.includes(titleId)
+      ? profile.titles
+      : [...profile.titles, titleId],
+    missions: [...profile.missions, missionId],
+  };
+  try {
+    localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    throw new Error(
+      "保存できませんでした。空き容量や保存設定を確認して、もう一度受け取ってください。",
+    );
+  }
   return next;
 }
 
