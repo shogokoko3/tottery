@@ -94,7 +94,7 @@ import { isTestPlay, recordGame } from "../game/profile.js";
 import { releaseXpNotice } from "../game/xp-notices.js";
 import { ADJUDICATION_RULE_VERSION } from "../game/adjudication.js";
 import { titleNameOf } from "../game/titles.js";
-import { publishRank } from "../net/ranking.js";
+import { publishRank, readWorldGames } from "../net/ranking.js";
 import { publishPlayer } from "../net/players.js";
 
 /** 持ち時間の表示。自分の時計は下、相手の時計は上に置く */
@@ -1444,7 +1444,9 @@ export function GameCore({
     // チュートリアルは話ごとの経験値。対戦の数には数えない
     const after = recordGame(won, {
       deferXpNotice: true,
-      ...(typeof foeRating === "number" ? { foeRating } : null),
+      ...(typeof foeRating === "number"
+        ? { foeRating, worldGames: worldRef.current }
+        : null),
       ...(tutorial
         ? {
             xp: won ? tutorial.xp : 0,
@@ -1458,6 +1460,20 @@ export function GameCore({
     if (after.delta !== null) publishRank(after);
     publishPlayer(after);
   }, [a.phase, a.winner]);
+
+  // 持ち点の「全体分」に使う、みんなの総対局数。
+  // 対局のあいだに1回だけ読む(終わってから読むと決着が遅れる)
+  const worldRef = (0, useRef)(0);
+  (0, useEffect)(() => {
+    if (!network || boardSize !== 9) return;
+    let gone = !1;
+    readWorldGames().then((n) => {
+      if (!gone) worldRef.current = n;
+    });
+    return () => {
+      gone = !0;
+    };
+  }, [network, boardSize]);
 
   // 経験値で先に決着を知らせない。撃破札と映像の後でゲージを出す。
   (0, useEffect)(() => {

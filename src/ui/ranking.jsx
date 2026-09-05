@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { loadProfile } from "../game/profile.js";
 import { rankTitle } from "../game/rating.js";
+import { readWorldGames } from "../net/ranking.js";
 import { readRanks } from "../net/ranking.js";
 import { ArrowLeft } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
@@ -19,6 +20,9 @@ export function RankingScreen({ onBack }) {
   const [state, setState] = useState("loading");
   const [list, setList] = useState([]);
   const [error, setError] = useState("");
+  // 段位は「1局あたりどれだけ積み上げたか」で決まる。
+  // それを持ち点から戻すのに、全体の総対局数が要る
+  const [world, setWorld] = useState(0);
 
   useEffect(() => {
     let gone = false;
@@ -32,6 +36,9 @@ export function RankingScreen({ onBack }) {
       }
       setList(res.list);
       setState("done");
+      readWorldGames().then((n) => {
+        if (!gone) setWorld(n);
+      });
     })();
     return () => {
       gone = true;
@@ -45,6 +52,9 @@ export function RankingScreen({ onBack }) {
       <h2>ランキング</h2>
       <p className="hint">
         9×9のオンライン対戦の成績で並びます。5×5とCPU戦は数えません。
+        <br />
+        持ち点は遊ぶほど伸びます。位は1局あたりの成績で決まるので、
+        遊んだ量では上がりません。
       </p>
 
       <div className="rank-me">
@@ -52,7 +62,7 @@ export function RankingScreen({ onBack }) {
         <div className="rank-me-id">
           <b>{me.name || "(未設定)"}</b>
           <span className="rank-me-sub">
-            {rankTitle(me.rating)} · {me.rated}戦
+            {rankTitle(me.rating, me.rated, world)} · {me.rated}戦
           </span>
         </div>
         <div className="rank-me-score">
@@ -77,7 +87,9 @@ export function RankingScreen({ onBack }) {
               <span className="rank-place">{i + 1}</span>
               <PlayerIcon icon={row.icon} name={row.name} size="sm" />
               <span className="rank-name">{row.name}</span>
-              <span className="rank-title">{rankTitle(row.rating)}</span>
+              <span className="rank-title">
+                {rankTitle(row.rating, row.rated, world)}
+              </span>
               <b className="rank-score">{row.rating}</b>
             </li>
           ))}

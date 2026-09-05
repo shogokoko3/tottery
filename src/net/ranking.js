@@ -55,6 +55,35 @@ export async function publishRank(profile) {
   }
 }
 
+/**
+ * 全体の総対局数。持ち点の「全体分」に使う。
+ *
+ * ランキングの行にある rated(持ち点つき対局数)を全部足す。
+ * 数えるのは9×9のオンライン対戦だけなので、この合計がそのまま
+ * 「みんなが遊んだ数」になる。
+ *
+ * 読めなかったら0を返す(全体分が乗らないだけで、対局は進む)。
+ * ※遊ぶ人が増えたら、全件を読むのはやめて合計を別に持たせること
+ */
+export async function readWorldGames() {
+  try {
+    const res = await withTimeout(
+      authedFetch(`${DB_URL}/ranks.json`),
+      TIMEOUT_MS,
+    );
+    if (!res.ok) return 0;
+    const data = await res.json();
+    let total = 0;
+    for (const row of Object.values(data || {})) {
+      const n = Number(row && row.rated);
+      if (Number.isFinite(n) && n > 0) total += n;
+    }
+    return total;
+  } catch {
+    return 0;
+  }
+}
+
 /** 持ち点の高い順に読み出す */
 export async function readRanks(limit = RANK_LIMIT) {
   const url = `${DB_URL}/ranks.json?orderBy=%22rating%22&limitToLast=${limit}`;

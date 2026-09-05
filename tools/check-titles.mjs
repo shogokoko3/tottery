@@ -86,12 +86,12 @@ is("配る前は使えない", hasTitle(loadProfile(), "rank-o"), false);
 grantTitle("rank-o");
 is("配られると使える", hasTitle(loadProfile(), "rank-o"), true);
 is("配られた称号を選べる", saveTitle("rank-o").title, "rank-o");
-  // 対局で焼き付いた称号も titles に入るので、rank-o が1つだけあることを見る
-  is(
-    "同じ称号を2度配っても1つ",
-    grantTitle("rank-o").titles.filter((id) => id === "rank-o").length,
-    1,
-  );
+// 対局で焼き付いた称号も titles に入るので、rank-o が1つだけあることを見る
+is(
+  "同じ称号を2度配っても1つ",
+  grantTitle("rank-o").titles.filter((id) => id === "rank-o").length,
+  1,
+);
 
 console.log("持ち点が下がっても失わない");
 {
@@ -110,8 +110,12 @@ console.log("持ち点が下がっても失わない");
     ["士の位"],
   );
   is("士の位を選べる", saveTitle("rank-shi").title, "rank-shi");
+  // 持ち点は積み上げ式なので、負けても下がらない(伸びが止まるだけ)。
+  // 位は「一度手に入れたら失わない」ことをここで見る
+  const beforeLoss = r.rating;
   r = recordGame(false, { foeRating: 1500 });
-  is("負けて持ち点が下がる", r.rating < 1600, true);
+  is("負けても持ち点は下がらない", r.rating >= beforeLoss, true);
+  is("ただし勝ったときより伸びは小さい", r.delta < 20, true);
   is("それでも士の位は使える", titleOf(loadProfile()).name, "士の位");
   r = recordGame(true, { foeRating: 1900 });
   is("取り直しても新しく手に入れた扱いにならない", r.earned.length, 0);

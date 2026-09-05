@@ -18,7 +18,12 @@ import { MAX_LEVEL, XP, levelOfXp, progressOfXp } from "./level.js";
 import { publishXpNotice } from "./xp-notices.js";
 
 export { MAX_LEVEL };
-import { START_RATING, applyRating } from "./rating.js";
+import {
+  START_RATING,
+  displayRating,
+  nextScore,
+  scoreFromRating,
+} from "./rating.js";
 
 const KEY = "tottery.account.v1";
 /** 名前を持たなかった頃の保存先。1度だけ読み込んで引き継ぐ */
@@ -81,6 +86,8 @@ const EMPTY = {
   letters: [],
   // レーティングと、その対象になった対局数(オンラインだけ)
   rating: START_RATING,
+  // 積み上げた功績値。見える持ち点はここから曲線で導く
+  earned: 0,
   rated: 0,
 };
 
@@ -145,6 +152,10 @@ export function loadProfile() {
       ? saved.letters.filter((x) => typeof x === "string")
       : [],
     rating: Number(saved.rating) || START_RATING,
+    // 古い保存には功績値が無い。持ち点から戻して引き継ぐ
+    earned: Number.isFinite(saved.earned)
+      ? Math.max(0, saved.earned)
+      : scoreFromRating(Number(saved.rating) || START_RATING, 0),
     rated: Number(saved.rated) || 0,
   };
 }
@@ -278,10 +289,13 @@ export function recordGame(won, opts) {
   const draw = won === null;
   const foeRating = opts && opts.foeRating;
   const rated = typeof foeRating === "number";
+  const worldGames = (opts && Number(opts.worldGames)) || 0;
   const before = profile.rating;
-  const after = rated
-    ? applyRating(before, foeRating, won, profile.rated)
-    : before;
+  // 持ち点は足し引きしない。功績値を貯めて、そこから曲線で導く
+  const scored = rated
+    ? nextScore(profile.earned, profile.rated, foeRating, won, worldGames)
+    : null;
+  const after = scored ? displayRating(scored.score, worldGames) : before;
   // チュートリアルは初回だけ経験値が入る。2回目からは0
   const again =
     opts &&
@@ -307,14 +321,15 @@ export function recordGame(won, opts) {
         ? [...profile.cleared, opts.tutorialId]
         : profile.cleared,
     rating: after,
+    earned: scored ? scored.earned : profile.earned,
     rated: profile.rated + (rated ? 1 : 0),
   };
   // この1局で新しく使えるようになった称号。画面で知らせる。
   // 持ち点で決まるものは、あとで持ち点が下がっても失わないように焼き付ける
-  const earned = newlyEarned(profile, next);
+  const newTitles = newlyEarned(profile, next);
   next.titles = [
     ...next.titles,
-    ...earned.map((t) => t.id).filter((id) => !next.titles.includes(id)),
+    ...newTitles.map((t) => t.id).filter((id) => !next.titles.includes(id)),
   ];
   saveProfile(next);
   const levelAfter = levelProgress(next).level;
@@ -328,7 +343,9 @@ export function recordGame(won, opts) {
     ...next,
     delta: rated ? after - before : null,
     before,
-    earned,
+    // この1局で新しく使えるようになった称号。
+    // 保存の earned(功績値)とは別物なので、返り値ではこちらが優先する
+    earned: newTitles,
     gained,
     firstClear: !!(opts && opts.tutorialId != null) && !again && !draw,
     levelBefore,

@@ -888,7 +888,7 @@ function AdminApp() {
                 </Line>
                 <Line label="持ち点">
                   {typeof opened.rating === "number"
-                    ? `${opened.rating}(${rankTitle(opened.rating)})`
+                    ? `${opened.rating}(${rankTitle(opened.rating, opened.rated, 0)})`
                     : "—"}
                 </Line>
                 <Line label="持ち点つき対局">{opened.rated ?? "—"}</Line>

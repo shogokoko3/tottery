@@ -9,7 +9,7 @@ globalThis.localStorage = {
 };
 
 const { loadProfile, recordGame } = await import("../src/game/profile.js");
-const { ratingDelta, applyRating, MIN_RATING } =
+const { scoreGain, nextScore, displayRating, worldAverage, MIN_RATING } =
   await import("../src/game/rating.js");
 const { XP } = await import("../src/game/level.js");
 const { hasTitle } = await import("../src/game/titles.js");
@@ -48,32 +48,38 @@ function fixture(extra = {}) {
     assert.equal(fixture({ draws }).draws, 0);
 }
 
-// Eloは引分け0.5点。同格の0変動を勝敗用の最低±1補正で壊さない。
-assert.equal(ratingDelta(1500, 1500, null, 50), 0);
-assert.equal(ratingDelta(1500, 1500, null, 0), 0);
-assert.equal(ratingDelta(1500, 1501, null, 50), 0);
-assert.equal(ratingDelta(1501, 1500, null, 50), 0);
-assert.ok(ratingDelta(1500, 1700, null, 50) > 0);
-assert.ok(ratingDelta(1700, 1500, null, 50) < 0);
-assert.equal(
-  ratingDelta(1500, 1700, null, 50) + ratingDelta(1700, 1500, null, 50),
-  0,
-);
-assert.ok(applyRating(MIN_RATING, MIN_RATING, null, 50) >= MIN_RATING);
-assert.ok(ratingDelta(2800, 100, true, 50) >= 1, "従来の勝利の最低増加を維持");
+// 引き分けは、勝ちより小さく、負け(0)より大きい功績値が入る。
+// 持ち点は積み上げ式なので、引き分けでも下がらない
 assert.ok(
-  ratingDelta(100, 2800, false, 50) <= -1,
-  "従来の敗北の最低減少を維持",
+  scoreGain(worldAverage(0), null, 0) > scoreGain(worldAverage(0), false, 0),
 );
-assert.equal(
-  ratingDelta(1500, 1500, undefined, 50),
-  ratingDelta(1500, 1500, false, 50),
+assert.ok(
+  scoreGain(worldAverage(0), null, 0) < scoreGain(worldAverage(0), true, 0),
 );
+assert.equal(scoreGain(worldAverage(0), false, 0), 0);
+assert.ok(displayRating(0, 0) >= MIN_RATING);
+{
+  // 引き分けを重ねても下がらない
+  let e = 0,
+    n = 0,
+    prev = displayRating(0, 0);
+  for (let i = 1; i <= 30; i++) {
+    const o = nextScore(e, n, worldAverage(i), null, i);
+    e = o.earned;
+    n = o.rated;
+    const r = displayRating(o.score, i);
+    assert.ok(r >= prev, "引き分けで下がらない");
+    prev = r;
+  }
+}
 
 {
   const before = fixture();
   const after = recordGame(null, { foeRating: 1500, deferXpNotice: true });
-  assert.deepEqual([after.rating, after.delta, after.rated], [1500, 0, 51]);
+  // 持ち点は積み上げ式。引き分けでも下がらず、少しだけ伸びる
+  assert.ok(after.rating >= before.rating, "引き分けで下がらない");
+  assert.ok(after.delta >= 0, "引き分けの増減は負にならない");
+  assert.equal(after.rated, 51);
   assert.deepEqual(
     [after.plays, after.battles, after.wins, after.draws],
     [10, 10, 9, 1],
@@ -97,7 +103,7 @@ assert.equal(
   );
   assert.deepEqual(
     [loadProfile().draws, loadProfile().rating, loadProfile().xp],
-    [1, 1500, after.xp],
+    [1, after.rating, after.xp],
   );
   const win = recordGame(true, { foeRating: 1500 });
   assert.deepEqual([win.wins, win.draws], [10, 1]);
