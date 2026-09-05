@@ -15,6 +15,7 @@
  * してあるので、配る側の処理も同じものを使える。
  */
 import { DB_URL } from "./firebase.js";
+import { authed } from "./auth.js";
 
 const TIMEOUT_MS = 8000;
 /** 一度に読む手紙の数 */
@@ -78,7 +79,9 @@ export async function readLetters() {
   try {
     const res = await withTimeout(
       fetch(
-        `${DB_URL}/letters.json?orderBy=%22at%22&limitToLast=${LETTER_LIMIT}`,
+        await authed(
+          `${DB_URL}/letters.json?orderBy=%22at%22&limitToLast=${LETTER_LIMIT}`,
+        ),
       ),
       TIMEOUT_MS,
     );
@@ -108,7 +111,7 @@ export async function sendLetter(letter) {
   };
   if (!body.subject) throw new Error("件名を入れてください");
   const res = await withTimeout(
-    fetch(`${DB_URL}/letters.json`, {
+    fetch(await authed(`${DB_URL}/letters.json`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -122,7 +125,7 @@ export async function sendLetter(letter) {
 /** 手紙を取り消す */
 export async function deleteLetter(id) {
   const res = await withTimeout(
-    fetch(`${DB_URL}/letters/${id}.json`, { method: "DELETE" }),
+    fetch(await authed(`${DB_URL}/letters/${id}.json`), { method: "DELETE" }),
     TIMEOUT_MS,
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

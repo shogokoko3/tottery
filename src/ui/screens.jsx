@@ -47,8 +47,9 @@ import {
 import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { titleOf } from "../game/titles.js";
 import { PlayerIcon } from "./playericon.jsx";
-import { resetAccount, touchDay } from "../game/profile.js";
-import { syncPlayer } from "../net/players.js";
+import { adoptUid, resetAccount, touchDay } from "../game/profile.js";
+import { dropOldRows, syncPlayer } from "../net/players.js";
+import { ensureAuth } from "../net/auth.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
 import SKIN_STYLES from "../skins/styles.css";
@@ -925,14 +926,26 @@ export function TotteryApp() {
     // 使用頻度のミッション用に、1日1回だけ数える
     touchDay();
     let gone = false;
-    syncPlayer(me).then((banned) => {
+    // 先に Firebase の匿名サインインを通す。サーバーの記録は uid で持つので、
+    // 端末が名乗る古い id で載っていたぶんは片付けてから置き直す。
+    // 通信できなければ null が返る。そのときは今までどおり素で進む
+    (async () => {
+      const auth = await ensureAuth();
+      let now = me;
+      if (auth && me.id !== auth.uid) {
+        const oldId = me.id;
+        now = adoptUid(auth.uid);
+        dropOldRows(oldId);
+      }
+      if (gone) return;
+      const banned = await syncPlayer(now);
       if (gone || !banned) return;
       resetAccount();
       setBanNotice(
         "運営により、この名前は使えなくなりました。新しい名前を決めてください。",
       );
       setNamed(false);
-    });
+    })();
     return () => {
       gone = true;
     };

@@ -11,6 +11,7 @@
  * 「消す」はサーバーの記録を消すだけで、端末は次の起動でまた載る。
  */
 import { DB_URL } from "./firebase.js";
+import { authed } from "./auth.js";
 
 const TIMEOUT_MS = 8000;
 
@@ -48,7 +49,7 @@ export function playerRecord(profile) {
 export async function readPlayer(id) {
   if (!id) return { ok: false, data: null };
   try {
-    const res = await withTimeout(fetch(url(id)), TIMEOUT_MS);
+    const res = await withTimeout(fetch(await authed(url(id))), TIMEOUT_MS);
     if (!res.ok) return { ok: false, data: null, status: res.status };
     return { ok: true, data: await res.json() };
   } catch {
@@ -62,7 +63,7 @@ export async function publishPlayer(profile, extra) {
   if (!record) return { ok: false };
   try {
     const res = await withTimeout(
-      fetch(url(profile.id), {
+      fetch(await authed(url(profile.id)), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...record, ...(extra || {}) }),
@@ -85,10 +86,32 @@ export async function syncPlayer(profile) {
   return false;
 }
 
+/**
+ * 付け替え前の鍵で残っている行を片付ける。
+ * ルールを締めるまでのあいだしか消せないが、消せなくても実害は無い
+ * (誰も名乗らない行が残るだけ)。失敗しても黙って進む。
+ */
+export async function dropOldRows(oldId) {
+  if (!oldId) return;
+  for (const path of [`players/${oldId}`, `ranks/${oldId}`]) {
+    try {
+      await withTimeout(
+        fetch(await authed(`${DB_URL}/${path}.json`), { method: "DELETE" }),
+        TIMEOUT_MS,
+      );
+    } catch {
+      /* 後始末なので失敗しても進める */
+    }
+  }
+}
+
 /* ---- 管理画面から ---- */
 
 export async function readPlayers() {
-  const res = await withTimeout(fetch(`${DB_URL}/players.json`), TIMEOUT_MS);
+  const res = await withTimeout(
+    fetch(await authed(`${DB_URL}/players.json`)),
+    TIMEOUT_MS,
+  );
   if (res.status === 401)
     throw new Error(
       "players は読めません。Firebase のルールに players を足して公開してください。",
@@ -100,7 +123,7 @@ export async function readPlayers() {
 
 export async function deletePlayer(id) {
   const res = await withTimeout(
-    fetch(url(id), { method: "DELETE" }),
+    fetch(await authed(url(id)), { method: "DELETE" }),
     TIMEOUT_MS,
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -108,7 +131,7 @@ export async function deletePlayer(id) {
 
 export async function setBanned(id, banned) {
   const res = await withTimeout(
-    fetch(url(id), {
+    fetch(await authed(url(id)), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

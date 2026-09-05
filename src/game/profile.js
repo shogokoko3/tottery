@@ -367,6 +367,22 @@ export function markBonusTaken(at) {
   return next;
 }
 
+/**
+ * サーバー上の記録を Firebase の uid で持ち直す。
+ *
+ * 端末が自分で名乗る id は誰でも騙れるので、書き込みの本人確認に使えない。
+ * Firebase が発行する uid に付け替えると、ルール側で「自分の行だけ書ける」を
+ * 強制できる。名前・持ち点・戦績は端末の中にあるので、鍵が変わっても失われず、
+ * 次にサーバーへ載せ直したときに新しい鍵で並ぶ。
+ */
+export function adoptUid(uid) {
+  const profile = loadProfile();
+  if (!uid || profile.id === uid) return profile;
+  const next = { ...profile, id: uid };
+  saveProfile(next);
+  return next;
+}
+
 /** 手紙を受け取ったことを控える */
 export function markLetterTaken(id) {
   const profile = loadProfile();

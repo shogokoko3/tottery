@@ -2,38 +2,50 @@
   "rules": {
     ".read": false,
     ".write": false,
+
     "rooms": {
       "$code": {
-        ".read": true,
-        ".write": true
+        ".read": "auth != null",
+        ".write": "auth != null"
       }
     },
+
     "lobby": {
-      ".read": true,
+      ".read": "auth != null",
       "$code": {
-        ".write": true
+        ".write": "auth != null"
       }
     },
+
     "ranks": {
       ".read": true,
       ".indexOn": ["rating"],
-      "$id": {
-        ".write": true,
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
         ".validate": "newData.hasChildren(['name','rating']) && newData.child('name').isString() && newData.child('name').val().length <= 10 && newData.child('rating').isNumber() && newData.child('rating').val() >= 0 && newData.child('rating').val() <= 4000"
       }
     },
+
     "players": {
-      ".read": true,
-      "$id": {
-        ".write": true,
-        ".validate": "newData.child('name').isString() && newData.child('name').val().length <= 10"
+      ".read": "auth != null && auth.uid === 'PUT-OPERATOR-UID-HERE'",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'PUT-OPERATOR-UID-HERE')",
+        ".validate": "newData.child('name').isString() && newData.child('name').val().length <= 10",
+        "banned": {
+          ".write": "auth != null && auth.uid === 'PUT-OPERATOR-UID-HERE'"
+        },
+        "bannedAt": {
+          ".write": "auth != null && auth.uid === 'PUT-OPERATOR-UID-HERE'"
+        }
       }
     },
+
     "letters": {
-      ".read": true,
+      ".read": "auth != null",
       ".indexOn": ["at"],
       "$id": {
-        ".write": true,
+        ".write": "auth != null && auth.uid === 'PUT-OPERATOR-UID-HERE'",
         ".validate": "newData.hasChildren(['subject','at']) && newData.child('subject').isString() && newData.child('subject').val().length <= 60 && newData.child('at').isNumber()"
       }
     }
