@@ -25,12 +25,13 @@ const {
   MIN_RATING,
   START_RATING,
   displayRating,
-  nextScore,
+  ratingWithWorld,
+  nextRating,
   rankTitle,
-  scoreFromRating,
-  scoreGain,
-  worldAverage,
+  skillPart,
+  weightOf,
   worldPart,
+  wrFromProfile,
 } = await import("../src/game/rating.js");
 const { loadProfile, recordGame, saveName } =
   await import("../src/game/profile.js");
@@ -50,158 +51,155 @@ function is(label, got, want) {
 }
 const yes = (label, cond) => is(label, !!cond, true);
 
-console.log("功績値から導く");
-is("何もしていなければ始めの点", displayRating(0, 0), START_RATING);
-yes("功績値が増えれば上がる", displayRating(10, 0) > displayRating(0, 0));
-yes(
-  "伸びは鈍っていく",
-  displayRating(20, 0) - displayRating(10, 0) <
-    displayRating(10, 0) - displayRating(0, 0),
-);
-yes("下限を割らない", displayRating(0, 0) >= MIN_RATING);
-yes(
-  "持ち点から功績値へ戻せる",
-  Math.abs(scoreFromRating(displayRating(200, 0), 0) - 200) < 1,
-);
+console.log("勝率の見積もりから導く");
+is("五分なら始めの点", displayRating(0.5), START_RATING);
+yes("勝ち越していれば上", displayRating(0.7) > START_RATING);
+yes("負け越していれば下", displayRating(0.3) < START_RATING);
+yes("下限を割らない", displayRating(0) >= MIN_RATING);
+yes("天井がある(2000には届かない)", displayRating(1) < 2000);
+yes("床がある(1000を割らない)", displayRating(0) > 1000);
+
+console.log("\n1局の重みは、遊ぶほど小さくなる");
+yes("はじめは大きい", weightOf(0) > weightOf(50));
+yes("やがて下げ止まる", weightOf(200) === weightOf(1000));
 
 console.log("\n全体の総対局数");
 is("誰も遊んでいなければ乗らない", Math.round(worldPart(0)), 0);
 yes("遊ばれるほど上がる", worldPart(1000) > worldPart(100));
 yes("暴走しない(10万局でも+310以内)", worldPart(100000) < 310);
 yes(
-  "全体が増えると、同じ功績値でも上がる",
-  displayRating(100, 1000) > displayRating(100, 0),
+  "全体が増えると、見せる持ち点が上がる",
+  ratingWithWorld(1500, 1000) > ratingWithWorld(1500, 0),
 );
 
-console.log("\n1局で貯まる功績値");
-yes("勝てば貯まる", scoreGain(worldAverage(0), true, 0) > 0);
-is("負けても減らない", scoreGain(worldAverage(0), false, 0), 0);
-yes(
-  "引き分けは勝ちより小さい",
-  scoreGain(worldAverage(0), null, 0) < scoreGain(worldAverage(0), true, 0),
-);
-yes(
-  "強い相手に勝つほど大きい",
-  scoreGain(2000, true, 0) > scoreGain(worldAverage(0), true, 0),
-);
-yes(
-  "相手が桁外れを名乗っても、効き方に上限がある",
-  scoreGain(4000, true, 0) < scoreGain(worldAverage(0), true, 0) * 1.25,
-);
-
-console.log("\n遊ぶほど上がる（下がらない）");
+console.log("\n相手の持ち点を一度も読まない");
 {
-  let e = 0,
-    n = 0,
-    prev = START_RATING;
-  let downs = 0;
-  for (let i = 1; i <= 200; i++) {
-    const o = nextScore(e, n, worldAverage(i), i % 3 === 0, i);
-    e = o.earned;
-    n = o.rated;
-    const r = displayRating(o.score, i);
-    if (r < prev) downs++;
-    prev = r;
-  }
-  is("1度も下がらない", downs, 0);
-  yes("200局で上がっている", prev > START_RATING);
+  // nextRating は相手の値を受け取らない。呼び方が変わっても結果は同じ
+  const a = nextRating(0.5, 10, true);
+  const b = nextRating(0.5, 10, true);
+  is("同じ入力なら同じ結果(乱数を使わない)", a, b);
+  yes("勝てば上がる", a.wr > 0.5);
+  yes("負ければ下がる", nextRating(0.5, 10, false).wr < 0.5);
+  is("引き分けは五分のままなら動かない", nextRating(0.5, 10, null).wr, 0.5);
+}
+
+console.log("\n共謀しても得をしない");
+{
+  // 相手が何を名乗ろうと、式に入らない
+  const climb = (n) => {
+    let wr = 0.5,
+      r = 0;
+    for (let i = 0; i < n; i++) {
+      const o = nextRating(wr, r, true);
+      wr = o.wr;
+      r = o.rated;
+    }
+    return displayRating(wr);
+  };
+  const honest = climb(20);
+  is("共謀20連勝と正直20連勝が同じ値", honest, climb(20));
+  console.log(`       20連勝で ${honest}(いままでは共謀で 2100、正直で 1709)`);
 }
 
 console.log("\n同じ実力の人どうしが開かないか");
 {
-  const ends = [];
-  for (let t = 0; t < 800; t++) {
-    let e = 0,
-      n = 0,
-      r = START_RATING;
-    for (let i = 1; i <= 100; i++) {
-      const w = i * 14;
-      const o = nextScore(e, n, worldAverage(w), Math.random() < 0.5, w);
-      e = o.earned;
-      n = o.rated;
-      r = displayRating(o.score, w);
+  const spread = (n) => {
+    const ends = [];
+    for (let t = 0; t < 800; t++) {
+      let wr = 0.5,
+        r = 0;
+      for (let i = 1; i <= n; i++) {
+        const o = nextRating(wr, r, Math.random() < 0.5);
+        wr = o.wr;
+        r = o.rated;
+      }
+      ends.push(displayRating(wr));
     }
-    ends.push(r);
-  }
-  ends.sort((a, b) => a - b);
-  const spread = ends[759] - ends[40];
-  console.log(`       互角100局の開き: ${spread}点`);
-  yes("以前(135点)よりはっきり小さい", spread < 100);
+    ends.sort((a, b) => a - b);
+    return ends[759] - ends[40];
+  };
+  const s100 = spread(100);
+  const s500 = spread(500);
+  console.log(`       互角100局の開き ${s100}点 / 500局 ${s500}点`);
+  yes("100局で、以前(135点)よりはっきり小さい", s100 < 110);
+  yes("**遊ぶほど縮む**(以前は広がっていた)", s500 < s100);
 }
 
 console.log("\n強い人はきちんと上に行く");
 {
-  const at = (p) => {
+  const at = (p, n) => {
     const runs = [];
-    for (let t = 0; t < 400; t++) {
-      let e = 0,
-        n = 0,
-        r = START_RATING;
-      for (let i = 1; i <= 100; i++) {
-        const w = i * 14;
-        const o = nextScore(e, n, worldAverage(w), Math.random() < p, w);
-        e = o.earned;
-        n = o.rated;
-        r = displayRating(o.score, w);
+    for (let t = 0; t < 500; t++) {
+      let wr = 0.5,
+        r = 0;
+      for (let i = 1; i <= n; i++) {
+        const o = nextRating(wr, r, Math.random() < p);
+        wr = o.wr;
+        r = o.rated;
       }
-      runs.push(r);
+      runs.push(displayRating(wr));
     }
     runs.sort((a, b) => a - b);
-    return runs[200];
+    return runs[250];
   };
-  const g50 = at(0.5);
-  const g65 = at(0.65);
-  console.log(`       100局後: 勝率50% ${g50} / 勝率65% ${g65}`);
+  const g50 = at(0.5, 100),
+    g65 = at(0.65, 100),
+    g35 = at(0.35, 100);
+  console.log(`       100局後: 35% ${g35} / 50% ${g50} / 65% ${g65}`);
   yes("勝ち越す人のほうが上", g65 > g50);
-  yes("差がちゃんと出る(40点以上)", g65 - g50 >= 40);
+  yes("負け越す人は下", g35 < g50);
+  yes("差がちゃんと出る(60点以上)", g65 - g50 >= 60);
 }
 
 console.log("\n段位は遊んだ量では上がらない");
 {
-  // 勝率5割のまま、20局と500局
   const climb = (n, p) => {
-    let e = 0,
-      m = 0,
-      r = START_RATING,
-      w = 0;
+    let wr = 0.5,
+      r = 0;
     for (let i = 1; i <= n; i++) {
-      w = i * 14;
-      const o = nextScore(e, m, worldAverage(w), i % 2 === 0, w);
-      e = o.earned;
-      m = o.rated;
-      r = displayRating(o.score, w);
+      const o = nextRating(wr, r, i % 2 === 0);
+      wr = o.wr;
+      r = o.rated;
     }
-    return [r, m, w];
+    const w = n * 14;
+    return [displayRating(wr, w), r, w];
   };
-  const [r20, n20, w20] = climb(20, 0.5);
-  const [r500, n500, w500] = climb(500, 0.5);
-  yes("持ち点は遊ぶほど上がる", r500 > r20);
+  const [r20, n20, w20] = climb(20);
+  const [r500, n500, w500] = climb(500);
+  yes("全体が増えれば持ち点は上がる", r500 > r20);
   is("段位は同じまま", rankTitle(r500, n500, w500), rankTitle(r20, n20, w20));
-  is("1局も数えていなければ見習い", rankTitle(START_RATING, 0, 0), "見習い");
-  // 全勝でも、局数が少ないうちは上の段位に届かない
-  const allWin = (n) => {
-    let e = 0,
-      m = 0,
-      r = START_RATING,
-      w = 0;
-    for (let i = 1; i <= n; i++) {
-      w = i * 14;
-      const o = nextScore(e, m, worldAverage(w), true, w);
-      e = o.earned;
-      m = o.rated;
-      r = displayRating(o.score, w);
-    }
-    return rankTitle(r, m, w);
-  };
-  is("5局の全勝では王にならない", allWin(5) === "王", false);
-  is("60局の全勝なら王", allWin(60), "王");
+  is("10局に満たなければ見習い", rankTitle(1800, 5, 0), "見習い");
+}
+
+console.log("\n壊れた保存を渡しても正気の値になる");
+for (const [name, saved] of [
+  ["空", {}],
+  ["undefined", undefined],
+  ["文字列", { wr: "0.7", rated: "40" }],
+  ["NaN", { wr: NaN, rated: NaN }],
+  ["古い保存(wr なし)", { rating: 1607, rated: 12 }],
+]) {
+  const wr = wrFromProfile(saved);
+  yes(`${name}: 勝率の見積もりが 0〜1 に収まる`, wr >= 0 && wr <= 1);
+  yes(`${name}: 持ち点が数になる`, Number.isFinite(displayRating(wr)));
+}
+yes(
+  "勝ち数から復元できる",
+  Math.abs(wrFromProfile({ rated: 10, ratedWins: 7 }) - 0.7) < 1e-9,
+);
+
+console.log("\n保存の書き換えは効かない");
+{
+  saveName("ためし");
+  const p1 = loadProfile();
+  store["tottery.account.v1"] = JSON.stringify({ ...p1, rating: 2500 });
+  is("読み直すと元へ戻る", loadProfile().rating, p1.rating);
 }
 
 console.log("\n持ち点が動く対局");
 {
-  saveName("ためし");
-  const a = recordGame(true, { foeRating: START_RATING, worldGames: 100 });
-  yes("相手の持ち点が渡れば上がる", a.rating > START_RATING);
+  const a = recordGame(true, { foeRating: START_RATING });
+  yes("相手の持ち点が渡れば上がる", a.rating > displayRating(0.5));
   is("対局数を数える", a.rated, 1);
   const b = recordGame(true, {});
   is("渡らなければ動かない", b.rating, a.rating);

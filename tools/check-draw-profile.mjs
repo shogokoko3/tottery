@@ -9,7 +9,7 @@ globalThis.localStorage = {
 };
 
 const { loadProfile, recordGame } = await import("../src/game/profile.js");
-const { scoreGain, nextScore, displayRating, worldAverage, MIN_RATING } =
+const { nextRating, displayRating, skillPart, MIN_RATING } =
   await import("../src/game/rating.js");
 const { XP } = await import("../src/game/level.js");
 const { hasTitle } = await import("../src/game/titles.js");
@@ -48,29 +48,27 @@ function fixture(extra = {}) {
     assert.equal(fixture({ draws }).draws, 0);
 }
 
-// 引き分けは、勝ちより小さく、負け(0)より大きい功績値が入る。
-// 持ち点は積み上げ式なので、引き分けでも下がらない
-assert.ok(
-  scoreGain(worldAverage(0), null, 0) > scoreGain(worldAverage(0), false, 0),
-);
-assert.ok(
-  scoreGain(worldAverage(0), null, 0) < scoreGain(worldAverage(0), true, 0),
-);
-assert.equal(scoreGain(worldAverage(0), false, 0), 0);
-assert.ok(displayRating(0, 0) >= MIN_RATING);
+// 引き分けは、勝率の見積もりを五分へ寄せる。持ち点は毎回そこから作り直す
+assert.ok(displayRating(0.5, 0) >= MIN_RATING);
+assert.ok(skillPart(0.7) > skillPart(0.5));
+assert.ok(skillPart(0.3) < skillPart(0.5));
 {
-  // 引き分けを重ねても下がらない
-  let e = 0,
+  // 五分の人が引き分けを重ねても動かない
+  let wr = 0.5,
     n = 0,
-    prev = displayRating(0, 0);
+    prev = displayRating(wr, 0);
   for (let i = 1; i <= 30; i++) {
-    const o = nextScore(e, n, worldAverage(i), null, i);
-    e = o.earned;
+    const o = nextRating(wr, n, null);
+    wr = o.wr;
     n = o.rated;
-    const r = displayRating(o.score, i);
-    assert.ok(r >= prev, "引き分けで下がらない");
-    prev = r;
+    assert.equal(displayRating(wr, 0), prev, "五分の引き分けでは動かない");
   }
+  // 勝ち越している人が引き分けると、少し下がる(五分へ寄る)
+  let w2 = 0.7,
+    m = 40;
+  const b = displayRating(w2, 0);
+  const o2 = nextRating(w2, m, null);
+  assert.ok(displayRating(o2.wr, 0) < b, "勝ち越しての引き分けは少し下がる");
 }
 
 {

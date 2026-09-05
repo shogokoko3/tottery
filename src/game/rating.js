@@ -4,31 +4,39 @@
  * 数えるのは **9×9のオンライン対戦だけ**。5×5は5枚で決まる短期戦で運の
  * 割合が大きく、CPU戦とチュートリアルは相手の強さが決まらない。
  *
- * ■ 足し引きではなく、功績値から導く
+ * ■ 足し引きしない
  *
- * 1局ごとに持ち点を直接足し引きすると、勝ち負けが偶然に偏っただけで
- * 大きく上下する。実力が互角の人どうしでも 135点ぶん開いていた(実測)。
- * ここでは裏に「功績値」を貯め、見える持ち点はそこから**曲線で**導く。
- * 功績値が増えるほど1局あたりの伸びが鈍るので、遊ぶほど落ち着く。
+ * 1局ごとに点をやりとりすると、勝ち負けが偶然に偏っただけで持ち点そのものが
+ * さまよう。実力が互角の人どうしでも135点ぶん開き、遊ぶほど広がっていた(実測)。
+ * ここでは「勝率の見積もり」だけを持ち、持ち点は毎回そこから作り直す。
+ * 平均は局数が増えるほど誤差が縮むので、**遊ぶほど落ち着く**。
  *
- *   持ち点 = 1500 + 個人分 + 全体分
- *     個人分 = 30 × √功績値
+ *   持ち点 = 実力分 + 全体分
+ *     保存するのは実力分だけ。全体分は**見せるときに足す**。
+ *     そうしないと、読み直すたびに全体分の古い値と食い違う
+ *     実力分 = 400 × log10( w / (1-w) )
  *     全体分 = 40 × ln(1 + 全体の総対局数 ÷ 50)
+ *
+ *   w(勝率の見積もり)は1局ごとの移動平均:
+ *     a = 1 / (min(対局数, 200) + 32)
+ *     w = w + a × (結果 - w)        結果は 勝ち1 / 引分0.5 / 負け0
+ *
+ * ■ 相手の持ち点を読まない
+ *
+ * 審判役のサーバーが無いので、相手の持ち点は相手の言い値でしかない。
+ * 以前は共謀(片方が4000と名乗ってわざと負ける)で20局に+391点も稼げた。
+ * **この式には相手の値が一度も現れない。** 4000と名乗られても0と名乗られても
+ * 1ミリも動かない(共謀20連勝＝正直な20連勝、利ざや0点で実測)。
  *
  * ■ 全体の総対局数で、みんなが少しずつ上がる
  *
- * 遊ばれるほど全員の持ち点が上がる。対数なので暴走しない
- * (100局で+44、1万局で+216、10万局で+304)。
+ * 遊ばれるほど全員が上がる。対数なので暴走しない
+ * (100局で+44、1万局で+212、10万局で+304)。
  *
- * ■ 功績値の貯まり方
+ * ■ 書き換えに強い
  *
- *   積み上げ  勝ち +4 / 引き分け +1.5 / 負け 0
- *             相手が「世界の平均」より強いほど重い(±300に丸め、0.8〜1.2倍)
- *   下支え    対局数 × 1.0（勝てなくても、遊べば少しは上がる）
- *   功績値 = 積み上げ と 下支え の大きいほう
- *
- * 重みを「自分との差」で測ってはいけない。持ち点が上がるほど重みが下がり、
- * 全員が同じ値に吸い寄せられて実力の差が消える(実測で確かめた)。
+ * 保存の rating は毎回 w から引き直す。localStorage の rating だけを
+ * 2500 に書き換えても、次に読んだ時点で元へ戻る。
  */
 
 /** 始めの持ち点 */
@@ -37,97 +45,111 @@ export const START_RATING = 1500;
 /** ここより下がらない */
 export const MIN_RATING = 100;
 
-/** 個人分の大きさ */
-const SELF = 30;
+/** 五分(0.5)を何局ぶんの重石として置くか。序盤の暴れを抑える */
+const PRIOR = 32;
+/** 記憶の長さ。ここで1局の重みが下げ止まる */
+const WINDOW = 200;
+/** 勝率100点ぶんの目盛り */
+const SLOPE = 400;
+/** 勝率の見積もりを丸める端。持ち点の天井と床を決める */
+const EDGE = 0.055;
 /** 全体分の大きさと、効きはじめの早さ */
 const WORLD = 40;
 const WORLD_SOFT = 50;
-/** 勝てなくても遊べば貯まる下支え(1局あたり) */
-const FLOOR = 1.0;
-/** 相手の強さの重みの、効き方と上限 */
-const SLOPE = 1600;
-const CLAMP = 300;
-/** 1局で貯まる点 */
-const WIN = 4;
-const DRAW = 1.5;
-const LOSS = 0;
+
+const num = (v, fallback) =>
+  Number.isFinite(Number(v)) ? Number(v) : fallback;
 
 /** 全体の総対局数から、みんなに乗る分 */
 export function worldPart(worldGames) {
-  const g = Number.isFinite(worldGames) ? Math.max(0, worldGames) : 0;
-  return WORLD * Math.log(1 + g / WORLD_SOFT);
+  return WORLD * Math.log(1 + Math.max(0, num(worldGames, 0)) / WORLD_SOFT);
 }
 
-/** その時点の「世界の平均」。相手の強さはここと比べる */
-export function worldAverage(worldGames) {
-  return START_RATING + worldPart(worldGames);
+/** 勝率の見積もりから、実力の分 */
+export function skillPart(wr) {
+  const w = Math.min(1 - EDGE, Math.max(EDGE, num(wr, 0.5)));
+  return SLOPE * Math.log10(w / (1 - w));
 }
 
-/** 功績値と全体の対局数から、見える持ち点を出す */
-export function displayRating(score, worldGames) {
-  const s = Number.isFinite(score) ? Math.max(0, score) : 0;
+/**
+ * 実力の持ち点。保存するのはこれ。毎回 wr から作り直す。
+ * 全体分は入っていない
+ */
+export function displayRating(wr) {
+  return Math.max(MIN_RATING, Math.round(START_RATING + skillPart(wr)));
+}
+
+/**
+ * 見せるときの持ち点。実力の持ち点に、全体の伸びを足す。
+ *
+ * 足すのは**見せるときだけ**。保存に混ぜると、読み直したときに
+ * その時点の全体の対局数と食い違って値がずれる
+ */
+export function ratingWithWorld(rating, worldGames) {
   return Math.max(
     MIN_RATING,
-    Math.round(START_RATING + SELF * Math.sqrt(s) + worldPart(worldGames)),
+    Math.round(
+      (Number.isFinite(rating) ? rating : START_RATING) + worldPart(worldGames),
+    ),
   );
 }
 
-/** 見える持ち点から功績値へ戻す。古い保存を引き継ぐときに使う */
-export function scoreFromRating(rating, worldGames) {
-  const base = START_RATING + worldPart(worldGames);
-  const personal = Math.max(0, (Number(rating) || START_RATING) - base);
-  return Math.pow(personal / SELF, 2);
+/** その1局の重み。遊ぶほど小さくなる */
+export function weightOf(rated) {
+  return 1 / (Math.min(Math.max(0, num(rated, 0)), WINDOW) + PRIOR);
 }
 
 /**
- * 1局ぶん貯まる功績値。
+ * 1局終えたあとの勝率の見積もり。
  * won は true が勝ち、false が負け、null が引き分け。
+ * **相手の持ち点は受け取らない。**
  */
-export function scoreGain(foeRating, won, worldGames) {
-  const base = won === null ? DRAW : won ? WIN : LOSS;
-  if (base === 0) return 0;
-  const avg = worldAverage(worldGames);
-  const foe = Number.isFinite(foeRating) ? foeRating : avg;
-  const diff = Math.max(-CLAMP, Math.min(CLAMP, foe - avg));
-  return base * (1 + diff / SLOPE);
+export function nextRating(wr, rated, won) {
+  const score = won === null ? 0.5 : won ? 1 : 0;
+  const before = Math.min(1, Math.max(0, num(wr, 0.5)));
+  const n = Math.max(0, Math.round(num(rated, 0)));
+  const after = before + weightOf(n) * (score - before);
+  return {
+    // 保存と読み直しで値がぶれないよう、ここで丸める
+    wr: Math.round(after * 1e6) / 1e6,
+    rated: n + 1,
+  };
 }
 
 /**
- * 1局終えたあとの功績値。
- * earned は積み上げた点、rated はそれまでの対局数。
+ * 古い保存から勝率の見積もりを作る。
+ *
+ * 持ち点の作りを入れ替えたので、前の持ち点からは実力を復元できない
+ * (前のものは遊んだ量で伸びる作りだった)。勝率が分かるならそれを使い、
+ * 分からなければ五分から始め直す。
  */
-export function nextScore(earned, rated, foeRating, won, worldGames) {
-  const nextEarned =
-    (Number(earned) || 0) + scoreGain(foeRating, won, worldGames);
-  const nextRated = (Number(rated) || 0) + 1;
-  return {
-    earned: nextEarned,
-    rated: nextRated,
-    // 勝てなくても、遊べば少しは上がる
-    score: Math.max(nextRated * FLOOR, nextEarned),
-  };
+export function wrFromProfile(saved) {
+  if (!saved || typeof saved !== "object") return 0.5;
+  if (Number.isFinite(Number(saved.wr)))
+    return Math.min(1, Math.max(0, Number(saved.wr)));
+  const rated = num(saved.rated, 0);
+  const wins = num(saved.ratedWins, NaN);
+  const draws = num(saved.ratedDraws, 0);
+  if (rated > 0 && Number.isFinite(wins))
+    return Math.min(1, Math.max(0, (wins + draws * 0.5) / rated));
+  return 0.5;
 }
 
 /**
  * 段位のような呼び名。
  *
- * **持ち点そのものからは出さない。** 持ち点は遊ぶほど伸びる作りなので、
- * そこから段位を出すと「たくさん遊んだ人」が上位になる。
- * ここでは「1局あたりどれだけ積み上げたか」で決める。遊んだ量では動かず、
- * 勝ち越しているかどうかだけで決まる。
- *
- *   1局あたり 4.0 … 全勝に近い
- *              2.0 … 勝率5割
- *              1.0 … 下支えだけ(ほとんど勝てていない)
+ * **全体分は入れない。** 全体分はみんなに等しく乗るので、入れると
+ * 遊ばれた年数だけで段位が上がってしまう。実力の分だけで決める。
+ * 数局の勝ち運で上がらないよう、局数の下限も置く。
  */
-export function rankTitle(rating, rated, worldGames) {
-  const n = Number(rated) || 0;
-  if (n < 1) return "見習い";
-  const per = scoreFromRating(rating, worldGames) / n;
-  // 数局の勝ち運で上の段位に届かないよう、局数の下限を置く
-  if (per >= 3.2 && n >= 50) return "王";
-  if (per >= 2.6 && n >= 20) return "将";
-  if (per >= 2.2 && n >= 10) return "士";
-  if (per >= 1.6) return "兵";
+export function rankTitle(rating, rated) {
+  const n = Math.max(0, num(rated, 0));
+  if (n < 10) return "見習い";
+  // 渡ってくるのは実力の持ち点(全体分は入っていない)
+  const skill = num(rating, START_RATING);
+  if (skill >= 1750 && n >= 50) return "王";
+  if (skill >= 1650 && n >= 20) return "将";
+  if (skill >= 1550) return "士";
+  if (skill >= 1450) return "兵";
   return "見習い";
 }

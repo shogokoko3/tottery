@@ -95,10 +95,11 @@ is(
 
 console.log("持ち点が下がっても失わない");
 {
-  // 1600 に届いて「士の位」を選んだあと、負けて 1600 を割る
+  // 1600 に届いて「士の位」を選んだあと、負けて 1600 を割る。
+  // 持ち点は勝率の見積もり(wr)から作り直すので、保存する値も wr にする
   store["tottery.account.v1"] = JSON.stringify({
     ...loadProfile(),
-    rating: 1590,
+    wr: 0.638,
     rated: 12,
     title: "novice",
     titles: [],
@@ -110,12 +111,10 @@ console.log("持ち点が下がっても失わない");
     ["士の位"],
   );
   is("士の位を選べる", saveTitle("rank-shi").title, "rank-shi");
-  // 持ち点は積み上げ式なので、負けても下がらない(伸びが止まるだけ)。
   // 位は「一度手に入れたら失わない」ことをここで見る
   const beforeLoss = r.rating;
   r = recordGame(false, { foeRating: 1500 });
-  is("負けても持ち点は下がらない", r.rating >= beforeLoss, true);
-  is("ただし勝ったときより伸びは小さい", r.delta < 20, true);
+  is("負けると持ち点は下がる", r.rating < beforeLoss, true);
   is("それでも士の位は使える", titleOf(loadProfile()).name, "士の位");
   r = recordGame(true, { foeRating: 1900 });
   is("取り直しても新しく手に入れた扱いにならない", r.earned.length, 0);

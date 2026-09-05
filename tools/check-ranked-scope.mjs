@@ -47,7 +47,9 @@ console.log("持ち点が動く条件");
   };
   fresh();
   const ranked = recordGame(true, { foeRating: START_RATING });
-  is("相手の持ち点が渡れば動く", ranked.rating > START_RATING, true);
+  // 相手の値そのものは使わないが、「渡ってきたかどうか」で
+  // 持ち点つきの対局か否かを見分けている
+  is("持ち点つきの対局なら動く", ranked.rating > START_RATING, true);
   is("そのとき対局数も数える", ranked.rated, 1);
 
   fresh();

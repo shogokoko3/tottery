@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from "react";
 import { loadProfile } from "../game/profile.js";
-import { rankTitle } from "../game/rating.js";
+import { rankTitle, ratingWithWorld } from "../game/rating.js";
 import { readWorldGames } from "../net/ranking.js";
 import { readRanks } from "../net/ranking.js";
 import { ArrowLeft } from "../icons.jsx";
@@ -53,8 +53,8 @@ export function RankingScreen({ onBack }) {
       <p className="hint">
         9×9のオンライン対戦の成績で並びます。5×5とCPU戦は数えません。
         <br />
-        持ち点は遊ぶほど伸びます。位は1局あたりの成績で決まるので、
-        遊んだ量では上がりません。
+        持ち点は勝率から決まり、みんなが遊ぶほど全員が少しずつ上がります。
+        相手の申告した持ち点は使わないので、偽られても動きません。
       </p>
 
       <div className="rank-me">
@@ -62,11 +62,11 @@ export function RankingScreen({ onBack }) {
         <div className="rank-me-id">
           <b>{me.name || "(未設定)"}</b>
           <span className="rank-me-sub">
-            {rankTitle(me.rating, me.rated, world)} · {me.rated}戦
+            {rankTitle(me.rating, me.rated)} · {me.rated}戦
           </span>
         </div>
         <div className="rank-me-score">
-          <b>{me.rating}</b>
+          <b>{ratingWithWorld(me.rating, world)}</b>
           <span>{myPlace >= 0 ? `${myPlace + 1}位` : "未掲載"}</span>
         </div>
       </div>
@@ -88,9 +88,9 @@ export function RankingScreen({ onBack }) {
               <PlayerIcon icon={row.icon} name={row.name} size="sm" />
               <span className="rank-name">{row.name}</span>
               <span className="rank-title">
-                {rankTitle(row.rating, row.rated, world)}
+                {rankTitle(row.rating, row.rated)}
               </span>
-              <b className="rank-score">{row.rating}</b>
+              <b className="rank-score">{ratingWithWorld(row.rating, world)}</b>
             </li>
           ))}
         </ol>

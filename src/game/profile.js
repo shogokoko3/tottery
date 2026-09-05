@@ -21,8 +21,8 @@ export { MAX_LEVEL };
 import {
   START_RATING,
   displayRating,
-  nextScore,
-  scoreFromRating,
+  nextRating,
+  wrFromProfile,
 } from "./rating.js";
 
 const KEY = "tottery.account.v1";
@@ -86,8 +86,11 @@ const EMPTY = {
   letters: [],
   // レーティングと、その対象になった対局数(オンラインだけ)
   rating: START_RATING,
-  // 積み上げた功績値。見える持ち点はここから曲線で導く
-  earned: 0,
+  // 勝率の見積もり。見える持ち点は毎回ここから作り直す
+  wr: 0.5,
+  // 持ち点つき対局の勝ち数・引き分け数(勝率の見積もりを復元するのに使う)
+  ratedWins: 0,
+  ratedDraws: 0,
   rated: 0,
 };
 
@@ -151,11 +154,12 @@ export function loadProfile() {
     letters: Array.isArray(saved.letters)
       ? saved.letters.filter((x) => typeof x === "string")
       : [],
-    rating: Number(saved.rating) || START_RATING,
-    // 古い保存には功績値が無い。持ち点から戻して引き継ぐ
-    earned: Number.isFinite(saved.earned)
-      ? Math.max(0, saved.earned)
-      : scoreFromRating(Number(saved.rating) || START_RATING, 0),
+    // **保存の rating は信用しない。** 毎回 wr から作り直す。
+    // localStorage の rating だけを書き換えても、ここで元へ戻る
+    rating: displayRating(wrFromProfile(saved)),
+    wr: wrFromProfile(saved),
+    ratedWins: Number(saved.ratedWins) || 0,
+    ratedDraws: Number(saved.ratedDraws) || 0,
     rated: Number(saved.rated) || 0,
   };
 }
@@ -289,13 +293,11 @@ export function recordGame(won, opts) {
   const draw = won === null;
   const foeRating = opts && opts.foeRating;
   const rated = typeof foeRating === "number";
-  const worldGames = (opts && Number(opts.worldGames)) || 0;
-  const before = profile.rating;
-  // 持ち点は足し引きしない。功績値を貯めて、そこから曲線で導く
-  const scored = rated
-    ? nextScore(profile.earned, profile.rated, foeRating, won, worldGames)
-    : null;
-  const after = scored ? displayRating(scored.score, worldGames) : before;
+  const before = displayRating(profile.wr);
+  // 持ち点は足し引きしない。勝率の見積もりを更新して、そこから作り直す。
+  // **相手の持ち点(foeRating)は使わない。** 相手の言い値では動かさない
+  const step = rated ? nextRating(profile.wr, profile.rated, won) : null;
+  const after = step ? displayRating(step.wr) : before;
   // チュートリアルは初回だけ経験値が入る。2回目からは0
   const again =
     opts &&
@@ -321,7 +323,9 @@ export function recordGame(won, opts) {
         ? [...profile.cleared, opts.tutorialId]
         : profile.cleared,
     rating: after,
-    earned: scored ? scored.earned : profile.earned,
+    wr: step ? step.wr : profile.wr,
+    ratedWins: profile.ratedWins + (rated && won === true ? 1 : 0),
+    ratedDraws: profile.ratedDraws + (rated && draw ? 1 : 0),
     rated: profile.rated + (rated ? 1 : 0),
   };
   // この1局で新しく使えるようになった称号。画面で知らせる。
