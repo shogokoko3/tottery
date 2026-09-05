@@ -198,6 +198,9 @@ export const SKINS = [
   description,
   image: `skins/portraits/${id}.webp`,
   card: `skins/cards/${id}.webp`,
+  // 小さな盤面では顔と帽子が見やすい専用絵を使う。
+  boardCard:
+    id === "genie-magician" ? "skins/board/genie-magician-v1.png" : null,
   // 既存16種の動画は維持。Aは入れ替え/包囲撃破を使い分ける。
   video: id === "genie-magician" ? null : `skins/videos/${id}.mp4`,
   videos:

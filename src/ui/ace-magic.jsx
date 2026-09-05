@@ -20,7 +20,9 @@ function cardPainter(event, loadouts, board) {
   const sourceOf = (p) =>
     p.face === "back"
       ? cardBackImg
-      : skinOf(p)?.card || cardArtSrc(p.rank, p.suit, p.isKing);
+      : skinOf(p)?.boardCard ||
+        skinOf(p)?.card ||
+        cardArtSrc(p.rank, p.suit, p.isKing);
   for (const p of [
     ...event.beforeCards,
     ...event.afterCards,

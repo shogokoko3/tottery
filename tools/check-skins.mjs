@@ -280,13 +280,29 @@ try {
   assert.doesNotMatch(card("7", "elf-male"), /data-skin/);
   assert.match(card("6", "elf-male"), /red-suit/);
   const ace = { ...piece, rank: "A", isKing: true };
+  for (const [suit, mark, red] of [
+    ["spade", "♠", false],
+    ["heart", "♥", true],
+    ["diamond", "♦", true],
+    ["club", "♣", false],
+  ]) {
+    const html = render({ ...ace, suit }, 0, [{ A: "genie-magician" }, {}]);
+    assert.match(html, /src="skins\/board\/genie-magician-v1\.png"/);
+    assert.ok(html.includes(`>A<small>${mark}</small>`));
+    assert.equal(html.includes("red-suit"), red);
+    assert.match(html, /skin-king-mark/);
+  }
   assert.match(
     render(ace, 0, [{ A: "genie-magician" }, {}]),
     /data-skin="genie-magician"/,
   );
   assert.doesNotMatch(
     render(ace, 1, [{ A: "genie-magician" }, {}]),
-    /genie-magician|ランプ|skin-king-mark|card-captain/,
+    /genie-magician|ランプ|skin-card-mark|skin-king-mark|card-captain/,
+  );
+  assert.match(
+    render({ ...ace, revealed: true }, 1, [{ A: "genie-magician" }, {}]),
+    /src="skins\/board\/genie-magician-v1\.png"/,
   );
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });
@@ -295,13 +311,15 @@ for (const skin of SKINS)
   for (const asset of [
     skin.image,
     skin.card,
+    skin.boardCard,
     skin.video,
     ...Object.values(skin.videos || {}),
   ].filter(Boolean)) {
     assert.ok(fs.statSync(path.join("assets", asset)).size > 0, asset);
   }
-if (SKINS.some((s) => !s.video && !(s.videos?.swap && s.videos?.capture))) throw new Error("動画の無いスキンがある");
-console.log("盤面の表裏・所有者・数字・全34画像と18本の動画: OK");
+if (SKINS.some((s) => !s.video && !(s.videos?.swap && s.videos?.capture)))
+  throw new Error("動画の無いスキンがある");
+console.log("盤面の表裏・所有者・数字・Aの4スート・全35画像と18本の動画: OK");
 
 // 開示演出の決まり。前兆は束の中でいちばん強い格(SSR は低確率で SR に抑える)、
 // 昇格は R→SR→SSR だが素で出ることもある。乱数は使わず束の中身から決める

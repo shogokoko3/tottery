@@ -56,7 +56,7 @@ export function CardFace({
       }}
     >
       <img
-        src={skin?.card || cardArtSrc(rank, suit, isKing)}
+        src={skin?.boardCard || skin?.card || cardArtSrc(rank, suit, isKing)}
         alt={`${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}`}
         draggable="false"
       />
