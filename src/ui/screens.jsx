@@ -37,6 +37,7 @@ import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
+import { nextTutorialAfter } from "../game/tutorial.js";
 import { RankingScreen } from "./ranking.jsx";
 import {
   hasName,
@@ -966,6 +967,13 @@ export function TotteryApp() {
   function s() {
     (u(null), m(!1), setTut(null), t("home"));
   }
+  function startTutorial(chosen) {
+    (u(null), setTut(chosen), m(!0), r("game"), t("game"));
+    window.scrollTo(0, 0);
+  }
+  function showTutorials() {
+    (u(null), m(!1), setTut(null), t("tutorial"));
+  }
   // 上の「Tottery」から。ルーム作成の予約(p)も引きずらないように
   function goHome() {
     (w(!1), s());
@@ -991,6 +999,7 @@ export function TotteryApp() {
       </GameShell>
     );
   if (e === "game") {
+    const nextTutorial = tut ? nextTutorialAfter(tut.id) : null;
     // 対局中に出す名前。相手の名前が分からない席は色名のまま
     let mine = loadProfile(),
       me = mine.name || null,
@@ -1016,10 +1025,16 @@ export function TotteryApp() {
     return (
       <SeatsProvider value={{ names, icons, titles, skins }}>
         <GameCore
+          key={tut?.id || "battle"}
           network={a}
           boardSize={tut ? tut.boardSize : i}
           cpu={d}
           tutorial={tut}
+          nextTutorial={nextTutorial}
+          onNextTutorial={
+            nextTutorial ? () => startTutorial(nextTutorial) : null
+          }
+          onTutorialList={showTutorials}
           onExit={s}
         />
       </SeatsProvider>
@@ -1044,9 +1059,7 @@ export function TotteryApp() {
           menu: (
             <MenuScreen
               onPlay={() => t("matching")}
-              onTutorial={() => {
-                (u(null), t("tutorial"));
-              }}
+              onTutorial={showTutorials}
               onSkins={() => t("skins")}
               onBattlePass={() => t("battlepass")}
               onMissions={() => t("missions")}
@@ -1087,12 +1100,7 @@ export function TotteryApp() {
           ),
           letters: <LettersScreen onBack={() => t("menu")} />,
           tutorial: (
-            <TutorialSelect
-              onBack={() => t("menu")}
-              onStart={(chosen) => {
-                (setTut(chosen), m(!0), r("game"), t("game"));
-              }}
-            />
+            <TutorialSelect onBack={() => t("menu")} onStart={startTutorial} />
           ),
           online: (
             <RandomMatchScreen onBack={() => t("matching")} onRoomReady={v} />

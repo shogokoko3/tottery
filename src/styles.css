@@ -960,6 +960,14 @@ h3 {
 .gameover-panel {
   text-align: center;
 }
+.tutorial-complete {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.tutorial-king-card {
+  width: 80px;
+}
 .review-panel {
   max-width: 520px;
   text-align: center;

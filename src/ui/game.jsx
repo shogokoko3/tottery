@@ -287,6 +287,9 @@ export function GameView({
   dispatch,
   onExit,
   tutorial,
+  nextTutorial,
+  onNextTutorial,
+  onTutorialList,
   youAre,
   rating,
 }) {
@@ -642,8 +645,20 @@ export function GameView({
           className={lost ? "defeat-title" : ""}
           style={lost ? void 0 : { color: r.color }}
         >
-          {won ? "あなたの勝ち!" : lost ? "敗北" : `${r.name}の勝利!`}
+          {tutorial && won
+            ? "チュートリアルクリア!"
+            : won
+              ? "あなたの勝ち!"
+              : lost
+                ? "敗北"
+                : `${r.name}の勝利!`}
         </h2>
+        {tutorial && won && (
+          <>
+            <p className="hint">{tutorial.title}</p>
+            <p>{tutorial.steps.find((step) => step.end)?.text}</p>
+          </>
+        )}
         {lost && (
           <p className="defeat-lead">
             {state.timeoutBy === youAre
@@ -663,7 +678,9 @@ export function GameView({
             {nameOf(state.resignedBy, names)}が降参しました
           </p>
         )}
-        <div className={`king-card ${lost ? "lose-card" : "win-card"}`}>
+        <div
+          className={`king-card ${lost ? "lose-card" : "win-card"} ${tutorial && won ? "tutorial-king-card" : ""}`}
+        >
           <img src={winKingCardImg} alt="" />
         </div>
         {rating && (
@@ -681,13 +698,41 @@ export function GameView({
             </span>
           </div>
         )}
+        {tutorial && won && (
+          <div className="tutorial-complete">
+            {nextTutorial && onNextTutorial ? (
+              <>
+                <p className="hint">次は「{nextTutorial.title}」</p>
+                <button
+                  className="btn btn-primary btn-wide"
+                  onClick={onNextTutorial}
+                >
+                  次のステージへ <ArrowRight size={16} />
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="hint">最終ステージをクリアしました!</p>
+                <button
+                  className="btn btn-primary btn-wide"
+                  onClick={onTutorialList || onExit}
+                >
+                  チュートリアル一覧へ
+                </button>
+              </>
+            )}
+          </div>
+        )}
         <div
           className="setup-actions"
           style={{
             marginTop: 16,
           }}
         >
-          <button className="btn btn-primary" onClick={() => o(!0)}>
+          <button
+            className={`btn ${tutorial && won ? "btn-ghost" : "btn-primary"}`}
+            onClick={() => o(!0)}
+          >
             <Info size={16} /> 対局を振り返る
           </button>
         </div>
@@ -698,6 +743,11 @@ export function GameView({
           }}
         >
           {/* チュートリアルは同じ台本をなぞるだけなので、もう一度は出さない */}
+          {tutorial && onTutorialList && (!won || nextTutorial) && (
+            <button className="btn btn-ghost" onClick={onTutorialList}>
+              チュートリアル一覧へ
+            </button>
+          )}
           {tutorial ? null : !network || myIdx === 0 ? (
             <button
               className="btn btn-ghost"
@@ -735,7 +785,16 @@ function foeWait(state, act, playMs) {
   return state.phase === "play" ? playMs : 400;
 }
 
-export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
+export function GameCore({
+  onExit,
+  network,
+  boardSize,
+  cpu,
+  tutorial,
+  nextTutorial,
+  onNextTutorial,
+  onTutorialList,
+}) {
   const names = useNames();
   const { skins } = useSeats();
   const pausedAt = useRef(null);
@@ -1256,32 +1315,28 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                 : "光っているボタンを押して進めてください。",
           }
         : null,
-    tutSheet = tutActive ? (
-      <TutorialSheet
-        step={tutActive}
-        index={tutIdx}
-        total={tutorial.steps.length}
-        nudge={tutNudge}
-        // 「次へ」で進む説明の札は、盤の上に前面で出して気づかせる。
-        // 撃破の札などのモーダルが出ている間は下の帯に戻す(覆うと閉じられない)。
-        // 締めの札も下の帯。前面にすると勝敗の画面を隠してしまう
-        front={
-          !tutActive.need &&
-          !tutActive.end &&
-          !a.captureReveal &&
-          !a.pendingKingChoice
-        }
-        // 駒やマスを光らせている札は下寄せにして、盤の真ん中を空ける
-        low={tutHasTarget}
-        onNext={tutActive.end ? onExit : () => setTutStep(tutIdx + 1)}
-      />
-    ) : tutHold ? (
-      <TutorialSheet
-        step={tutHold}
-        index={tutIdx - 1}
-        total={tutorial.steps.length}
-      />
-    ) : null;
+    // 最後の説明と次の話への案内は、撃破札の確認後に完了画面へまとめる。
+    tutSheet =
+      tutActive && !tutActive.end ? (
+        <TutorialSheet
+          step={tutActive}
+          index={tutIdx}
+          total={tutorial.steps.length}
+          nudge={tutNudge}
+          // 「次へ」で進む説明の札は、盤の上に前面で出して気づかせる。
+          // 撃破の札などのモーダルが出ている間は下の帯に戻す(覆うと閉じられない)。
+          front={!tutActive.need && !a.captureReveal && !a.pendingKingChoice}
+          // 駒やマスを光らせている札は下寄せにして、盤の真ん中を空ける
+          low={tutHasTarget}
+          onNext={() => setTutStep(tutIdx + 1)}
+        />
+      ) : tutHold ? (
+        <TutorialSheet
+          step={tutHold}
+          index={tutIdx - 1}
+          total={tutorial.steps.length}
+        />
+      ) : null;
 
   const presentationSheet = (
     <>
@@ -2216,6 +2271,9 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             dispatch={y}
             onExit={leaveGame}
             tutorial={tutorial}
+            nextTutorial={nextTutorial}
+            onNextTutorial={onNextTutorial}
+            onTutorialList={onTutorialList}
             youAre={network ? p : cpu ? 0 : null}
             rating={ratingResult}
           />

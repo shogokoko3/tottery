@@ -2222,6 +2222,11 @@ export function tutorialById(id) {
   return TUTORIALS.find((t) => t.id === id) || null;
 }
 
+export function nextTutorialAfter(id) {
+  const index = TUTORIALS.findIndex((t) => t.id === id);
+  return index >= 0 ? TUTORIALS[index + 1] || null : null;
+}
+
 /* =========================================================================
    台本を動かすための道具
    ========================================================================= */

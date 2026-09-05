@@ -94,8 +94,8 @@ createRoot(document.getElementById('root')).render(<StrictMode><App/></StrictMod
           );
           source = replaceRequired(
             source,
-            "export function GameCore({ onExit, network, boardSize, cpu, tutorial })",
-            "export function GameCore({ onExit, network, boardSize, cpu, tutorial, fixture, fixtureControl })",
+            "export function GameCore({",
+            "export function GameCore({fixture, fixtureControl,",
           );
           source = replaceRequired(
             source,
