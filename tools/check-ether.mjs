@@ -232,11 +232,11 @@ console.log("\n作る");
       return !r.ok && r.short === 1400;
     })(),
   );
-  c = craft(c, "demon-k");
+  c = craft(c, "demon-k", () => 0.5);
   t("SSR を作ると 1500 減る", c.ether === 0 && c.owned["demon-k"] === 1);
   let threw = false;
   try {
-    craft(c, "angel-k");
+    craft({ ...c, lastCraft: null }, "angel-k", () => 0.5);
   } catch {
     threw = true;
   }
@@ -244,6 +244,7 @@ console.log("\n作る");
   const dup = craft(
     normalize({ owned: { "elf-male": 1 }, ether: 80 }),
     "elf-male",
+    () => 0.5,
   );
   t(
     "持っている札も作れて、枚数が増える",

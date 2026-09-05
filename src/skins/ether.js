@@ -25,10 +25,11 @@
  * だから抽選の顔ぶれを変えたら、この数字も一緒に動く(check-ether が見張る)。
  *
  * ■ 決まり
- * - 分解できるのは2枚目から。最後の1枚は残す(装備が消えない)
+ * - 分解できるのは2枚目から。通常版・フォイル版それぞれ最後の1枚は残す
+ * - フォイルの個別分解は同じ格の価格。まとめて分解には含めない
  * - LIMITED と SPECIAL は分解も生成もできない。一度だけ受け取れる
  *   特典なので、抽選で手に入る札とは別に保管する
- * - 生成は好きな1枚を選ぶ。すでに持っている札も選べる(枚数が増える)
+ * - 生成は通常版からキャラを選ぶ。完成時に独立した1%でフォイルになる
  */
 import { ODDS, POOL, byId, rate } from "./catalog.js";
 
@@ -57,7 +58,7 @@ export function dustOf(skin) {
 /** その札を作るのに要る量。作れない札は null */
 export function costOf(skin) {
   const s = typeof skin === "string" ? byId(skin) : skin;
-  if (!s) return null;
+  if (!s || s.foil) return null;
   return CRAFT[s.rarity] ?? null;
 }
 
@@ -107,6 +108,11 @@ export function dismantleCheck(state, id) {
 export function craftCheck(state, id) {
   const skin = byId(id);
   if (!skin) return { ok: false, why: "その札はありません。" };
+  if (skin.foil)
+    return {
+      ok: false,
+      why: "通常版からキャラクターを選んでください。1%でフォイルが完成します。",
+    };
   if (isKeepsake(skin))
     return {
       ok: false,
@@ -142,7 +148,9 @@ export function spares(state, skins) {
 
 /** その量を全部崩すと、どれだけになるか(「全部崩す」の下見に使う) */
 export function totalOfSpares(state, skins) {
-  return spares(state, skins).reduce((sum, r) => sum + r.gain * r.spare, 0);
+  return spares(state, skins)
+    .filter((row) => !row.skin.foil)
+    .reduce((sum, r) => sum + r.gain * r.spare, 0);
 }
 
 /** ある札を作るのに、その格のダブりが何枚要るか。説明文に使う */

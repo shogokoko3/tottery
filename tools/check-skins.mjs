@@ -79,7 +79,15 @@ assert.equal(state.equipped["10"], "pegasus-knight");
 assert.equal(Object.keys(state.equipped).length, 2);
 // 回数制限なし。チケット・課金・確定枠による別の確率分岐が無い。
 for (let i = 0; i < 120; i++)
-  state = pull({ ...state, pending: null }, 10, () => 0);
+  // 各回はキャラ→仕上げの2乱数。ここでは通常版を固定して無制限を調べる。
+  state = pull(
+    { ...state, pending: null },
+    10,
+    (() => {
+      let n = 0;
+      return () => (n++ % 2 === 0 ? 0 : 0.5);
+    })(),
+  );
 assert.equal(state.draws, 1210);
 assert.equal(state.owned["zombie-male"], 1200);
 const corrupt = normalize({

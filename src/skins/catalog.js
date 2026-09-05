@@ -213,9 +213,29 @@ export const SKINS = [
       : null,
 }));
 
-export const byId = (id) => SKINS.find((s) => s.id === id);
 export const POOL = SKINS.filter((s) => ["R", "SR", "SSR"].includes(s.rarity));
+// キャラクターを決めた後、ガチャ・錬成で独立して仕上げを抽選する。
+export const FOIL_SUFFIX = ":foil";
+export const FOIL_CHANCE = 0.01;
+export const baseSkinId = (id) =>
+  typeof id === "string" && id.endsWith(FOIL_SUFFIX)
+    ? id.slice(0, -FOIL_SUFFIX.length)
+    : id;
+export const foilId = (id) => `${baseSkinId(id)}${FOIL_SUFFIX}`;
+export const FOIL_SKINS = POOL.map((skin) => ({
+  ...skin,
+  id: foilId(skin.id),
+  baseId: skin.id,
+  foil: true,
+  name: `${skin.name}（フォイル）`,
+  image: `skins/foils/${skin.id}.webp`,
+  card: `skins/foils/${skin.id}.webp`,
+  boardCard: `skins/foils/${skin.id}.webp`,
+}));
+export const ALL_SKINS = [...SKINS, ...FOIL_SKINS];
+export const byId = (id) => ALL_SKINS.find((s) => s.id === id);
 export const ODDS = Object.freeze({ R: 65, SR: 32, SSR: 3 });
+// フォイルも同じキャラクターとしての割合。仕上げの1%は別に示す。
 export const rate = (s) =>
   (ODDS[s.rarity] || 0) /
   (POOL.filter((p) => p.rarity === s.rarity).length || 1);
@@ -234,6 +254,6 @@ export function draw(random = Math.random) {
 export function sanitizeLoadout(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   return Object.fromEntries(
-    SKINS.filter((s) => raw[s.rank] === s.id).map((s) => [s.rank, s.id]),
+    ALL_SKINS.filter((s) => raw[s.rank] === s.id).map((s) => [s.rank, s.id]),
   );
 }

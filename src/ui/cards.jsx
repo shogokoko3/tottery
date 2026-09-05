@@ -3,6 +3,7 @@ import { PLAYER_META, SUIT_SYMBOL } from "../game/constants.js";
 import { useSeats } from "./names.jsx";
 import { byId } from "../skins/catalog.js";
 import { Crown } from "../icons.jsx";
+import { FoilArtwork } from "./foil-artwork.jsx";
 
 export const SUIT_CODE = {
   spade: "S",
@@ -21,6 +22,7 @@ export function CardFace({
   isKing = !1,
   owner,
   skinId,
+  animated = true,
 }) {
   const seats = useSeats();
   const selected = byId(skinId || seats.skins?.[owner]?.[rank]);
@@ -55,10 +57,11 @@ export function CardFace({
         height: a.h,
       }}
     >
-      <img
+      <FoilArtwork
+        skin={skin}
         src={skin?.boardCard || skin?.card || cardArtSrc(rank, suit, isKing)}
         alt={`${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}`}
-        draggable="false"
+        animated={animated}
       />
       {skin && (
         <span
