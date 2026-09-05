@@ -50,49 +50,124 @@
               }
             },
             "type": {
-              ".validate": "newData.isString() && newData.val().length <= 40",
-              "$sa": {
-                ".validate": false,
-                "$sb": {
-                  ".validate": false,
-                  "$sc": {
-                    ".validate": false
-                  }
-                }
-              }
+              ".validate": "newData.isString() && newData.val().length <= 40"
             },
             "__id": {
-              ".validate": "newData.isString() && newData.val().length <= 64",
-              "$sa": {
-                ".validate": false,
-                "$sb": {
-                  ".validate": false,
-                  "$sc": {
-                    ".validate": false
-                  }
+              ".validate": "newData.isString() && newData.val().length <= 64"
+            },
+            "deck": {
+              ".validate": "newData.numChildren() <= 64",
+              "$i": {
+                "id": {
+                  ".validate": "newData.isString() && newData.val().length <= 16"
+                },
+                "rank": {
+                  ".validate": "newData.isString() && newData.val().length <= 3"
+                },
+                "suit": {
+                  ".validate": "newData.isString() && newData.val().length <= 10"
+                },
+                "$o": {
+                  ".validate": false
                 }
               }
             },
-            "deck": {
-              ".validate": "newData.numChildren() <= 64"
-            },
             "placement": {
-              ".validate": "newData.numChildren() <= 32"
+              ".validate": "newData.numChildren() <= 32",
+              "$id": {
+                "row": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99",
+                  "$sa": {
+                    ".validate": false,
+                    "$sb": {
+                      ".validate": false,
+                      "$sc": {
+                        ".validate": false
+                      }
+                    }
+                  }
+                },
+                "col": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99",
+                  "$sa": {
+                    ".validate": false,
+                    "$sb": {
+                      ".validate": false,
+                      "$sc": {
+                        ".validate": false
+                      }
+                    }
+                  }
+                },
+                "$o": {
+                  ".validate": false
+                }
+              }
             },
             "captures": {
-              ".validate": "newData.numChildren() <= 16"
+              ".validate": "newData.numChildren() <= 16",
+              "$i": {
+                "row": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99",
+                  "$sa": {
+                    ".validate": false,
+                    "$sb": {
+                      ".validate": false,
+                      "$sc": {
+                        ".validate": false
+                      }
+                    }
+                  }
+                },
+                "col": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99",
+                  "$sa": {
+                    ".validate": false,
+                    "$sb": {
+                      ".validate": false,
+                      "$sc": {
+                        ".validate": false
+                      }
+                    }
+                  }
+                },
+                "$o": {
+                  ".validate": false
+                }
+              }
             },
             "pickIds": {
-              ".validate": "newData.numChildren() <= 4"
+              ".validate": "newData.numChildren() <= 4",
+              "$i": {
+                ".validate": "newData.isString() && newData.val().length <= 16"
+              }
             },
             "discardIds": {
-              ".validate": "newData.numChildren() <= 32"
+              ".validate": "newData.numChildren() <= 32",
+              "$i": {
+                ".validate": "newData.isString() && newData.val().length <= 16"
+              }
             },
             "reserveOrder": {
-              ".validate": "newData.numChildren() <= 64"
+              ".validate": "newData.numChildren() <= 64",
+              "$i": {
+                ".validate": "newData.isString() && newData.val().length <= 16"
+              }
             },
             "order": {
-              ".validate": "newData.numChildren() <= 4"
+              ".validate": "newData.numChildren() <= 4",
+              "$i": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2",
+                "$sa": {
+                  ".validate": false,
+                  "$sb": {
+                    ".validate": false,
+                    "$sc": {
+                      ".validate": false
+                    }
+                  }
+                }
+              }
             },
             "pieceId": {
               ".validate": "newData.isString() && newData.val().length <= 16"
@@ -108,6 +183,132 @@
             },
             "cardId": {
               ".validate": "newData.isString() && newData.val().length <= 16"
+            },
+            "player": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
+            "row": {
+              ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 99",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
+            "col": {
+              ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 99",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
+            "value": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 6",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
+            "size": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
+            "handSize": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 64",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
+            "elapsedMs": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000000000",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
+            "ruleVersion": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
+            "setupMode": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "pool": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "scripted": {
+              ".validate": "newData.isBoolean()",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
+            "$other": {
+              ".validate": false,
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
             }
           },
           ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('members').hasChild(auth.uid) && !newData.exists()"
