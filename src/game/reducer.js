@@ -1,6 +1,11 @@
 import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
 import {
+  ADJUDICATION_RULE_VERSION,
+  adjudicatePosition,
+  withInitialArmies,
+} from "./adjudication.js";
+import {
   buildDeck,
   getLegalMoves,
   inBounds,
@@ -62,6 +67,8 @@ function expectedActor(state, type) {
       return state.currentTurn;
     case "PLACE_RESERVE_CARD":
     case "SKIP_RESERVE_PLACEMENT":
+      // 持ち主であり、かつ自分の手番であること。
+      // 手番の外で置けると、二人の適用順が入れ替わって盤がずれる
       return state.kPlacement ? state.kPlacement.owner : null;
     case "CHOOSE_HEIR":
       return state.pendingKingChoice ? state.pendingKingChoice.owner : null;
@@ -97,6 +104,18 @@ function actorAllowed(state, action) {
     action.type !== "CLOCK_TIMEOUT"
   )
     return false;
+  // 予備札も同じ。置くか見送るまで、その側は他の手を出せない。
+  // 置くのは自分の手番のあいだだけ。手番の外で置けると、二人の端末で
+  // 適用の順が入れ替わり、盤が黙って食い違う
+  if (state.kPlacement && state.kPlacement.owner === who) {
+    if (
+      action.type !== "PLACE_RESERVE_CARD" &&
+      action.type !== "SKIP_RESERVE_PLACEMENT" &&
+      action.type !== "RESIGN" &&
+      action.type !== "CLOCK_TIMEOUT"
+    )
+      return false;
+  }
   const want = expectedActor(state, action.type);
   return want === null || want === undefined || who === want;
 }
@@ -203,8 +222,17 @@ function placementOk(state, idx, placement, kingId) {
 function movePermitted(state, mover, action) {
   // 形を確かめるより先に使うと、配列でない captures で例外が出る。
   // 受け取り側だけが手を落とすと、二人の盤が黙って食い違っていく
-  if (action.captures !== undefined && !Array.isArray(action.captures))
-    return false;
+  if (action.captures !== undefined) {
+    if (!Array.isArray(action.captures)) return false;
+    // 要素の形も、使う前に見る。null が混ざると key() で落ち、
+    // 受け取り側だけが手を落として盤が食い違う
+    if (
+      action.captures.some(
+        (c) => !c || !Number.isInteger(c.row) || !Number.isInteger(c.col),
+      )
+    )
+      return false;
+  }
   const moves = getLegalMoves(
     mover,
     state.board,
@@ -345,7 +373,8 @@ export function isNotableLog(line) {
     line.includes("新しい王") ||
     line.includes("入れ替えた") ||
     line.includes("投入") ||
-    line.includes("降参")
+    line.includes("降参") ||
+    line.includes("布陣判定")
   );
 }
 
@@ -416,6 +445,12 @@ export function initialState() {
     lastReveal: null,
     lastRevenge: null,
     winner: null,
+    /** 開始アクションに版がない旧対局は、従来の終局ルールを使う。 */
+    ruleVersion: null,
+    initialArmyTotals: null,
+    initialArmyRanks: null,
+    endReason: null,
+    adjudication: null,
     seq: 0,
   };
 }
@@ -753,6 +788,7 @@ export function autoPickKing(state, idx, placement) {
  * ここで布陣ボーナス(ストレート・フラッシュ)を確かめて効果を出す。
  */
 function startPlay(base, log) {
+  base = withInitialArmies(base);
   if (base.scripted)
     return {
       ...base,
@@ -857,8 +893,44 @@ export function reducer(state, action) {
   if (!actorAllowed(state, action)) return state;
   // 乱数の結果を持たない手も受け取らない(盤が二人で食い違う)
   if (!seedsPresent(state, action)) return state;
+  // 合計同点の終局はwinner:null。winnerの真偽だけで対局を再開させない。
+  if (
+    state.phase === "gameover" &&
+    state.adjudication &&
+    ![
+      "NEW_GAME",
+      "START_SETUP",
+      "DISMISS_CAPTURE",
+      "DISMISS_SETUP_EFFECTS",
+      "DISMISS_INTERSTITIAL",
+      "VIEW_LOG",
+      "CLOSE_LOG",
+    ].includes(action.type)
+  )
+    return state;
   const next = settleKingChoice(coreReducer(state, action));
   return afterAction(state, next, action);
+}
+
+/** ローカルの札確認や画面操作を、対局の判定タイミングに使わない。 */
+function completedRuleAction(prev, next, action) {
+  if (prev === next || next.phase !== "play") return false;
+  if (action.type === "SETUP_CONFIRM") return prev.phase === "setup";
+  if (prev.phase !== "play") return false;
+  switch (action.type) {
+    case "MOVE_PIECE":
+    case "CONFIRM_SHUFFLE":
+      return true;
+    case "SKIP_EXTRA_ACTION":
+      return !!prev.extraMoveFor;
+    case "CHOOSE_HEIR":
+      return !!prev.pendingKingChoice && !next.pendingKingChoice;
+    case "PLACE_RESERVE_CARD":
+    case "SKIP_RESERVE_PLACEMENT":
+      return !!prev.kPlacement && !next.kPlacement;
+    default:
+      return false;
+  }
 }
 
 /**
@@ -917,7 +989,9 @@ function settleKingChoice(state) {
  * 持ち時間の増減と、演出のための「倒れたマス」の取りまとめをここでやる。
  */
 function afterAction(prev, next, action) {
-  let out = next;
+  // 持ち時間を使い切っていた手は、布陣判定より時間切れを優先する。
+  let out = afterClock(prev, next, action);
+  if (completedRuleAction(prev, out, action)) out = adjudicatePosition(out);
 
   // 記録に残る出来事があったら、その時点の盤面を控えておく。
   // あとから「この時どうなっていたか」を見られるようにするため
@@ -984,7 +1058,12 @@ function afterAction(prev, next, action) {
       };
   }
 
-  // 手番が移ったら、使った分を引いて、始まる側に加算する
+  return out;
+}
+
+/** 手番が移ったら、使った分を引いて、始まる側に加算する。 */
+function afterClock(prev, next, action) {
+  let out = next;
   if (
     prev.phase === "play" &&
     out.phase === "play" &&
@@ -1065,8 +1144,16 @@ function coreReducer(state, action) {
         boardSize: size,
         players,
         reserve,
+        // 通信の対局は必ず同時配置。順番配置を送られると、先手でない側は
+        // 自分の端末の上ですら1枚も置けなくなる(布陣から抜けられない)
         setupMode:
-          action.setupMode === "simultaneous" ? "simultaneous" : "sequential",
+          fromNetwork(action) || action.setupMode === "simultaneous"
+            ? "simultaneous"
+            : "sequential",
+        ruleVersion:
+          action.ruleVersion === ADJUDICATION_RULE_VERSION
+            ? ADJUDICATION_RULE_VERSION
+            : null,
         pool: action.pool || null,
         // 台本どおりに進めるチュートリアルでは布陣ボーナスを出さない。
         // 先手が入れ替わったり駒が公開されたりすると、案内と噛み合わなくなる
@@ -1756,6 +1843,8 @@ function coreReducer(state, action) {
     case "PLACE_RESERVE_CARD": {
       if (!state.kPlacement) return state;
       const { owner, cards } = state.kPlacement;
+      // 置けるのは自分の手番のあいだだけ
+      if (state.currentTurn !== owner) return state;
       // どの札を置くか。指定が無ければ先頭の1枚
       const card = action.cardId
         ? cards.find((c) => c.id === action.cardId)
@@ -1821,14 +1910,25 @@ function coreReducer(state, action) {
     }
 
     case "SKIP_RESERVE_PLACEMENT":
+      if (!state.kPlacement || state.currentTurn !== state.kPlacement.owner)
+        return state;
       return { ...state, kPlacement: null };
 
     case "SKIP_EXTRA_ACTION":
       // 「王の2回目を使わずに終える」ためだけの手。これが無いと、
       // 1手も指さずに手番を押し返せる(将棋やチェスで言えば手番の放棄)。
-      // ただし本当に指せる手がひとつも無いときは、渡せないと
-      // 持ち時間が尽きるまで何もできなくなる
-      if (!state.extraMoveFor && hasAnyMove(state, state.currentTurn))
+      //
+      // 指せる手がひとつも無いときも渡せない。そこは adjudication.js の
+      // 引き分け判定が引き取り、その場で決着させる(手番を渡し合って
+      // 永久に終わらないのを避けるため)。
+      //
+      // 旧版とつないだ対局(ruleVersion が揃わない)だけは、相手の盤と
+      // 食い違わせないために従来どおり渡せる。その対局では手番の放棄も
+      // 止められないが、どのみち相手の端末には他の守りも入っていない
+      if (
+        state.ruleVersion === ADJUDICATION_RULE_VERSION &&
+        !state.extraMoveFor
+      )
         return state;
       return endTurn(state);
 

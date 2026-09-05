@@ -3,7 +3,7 @@
  *
  * 名前・対局数・勝数を端末に持つ。名前は対戦相手にも渡して、
  * 「どちらの手番か」「誰が指したのか」を色だけでなく名前でも分かるようにする。
- * レベルは対局数と勝数から決まり、チュートリアルの開放条件になる。
+ * レベルは貯めた経験値から決まり、チュートリアルの開放条件になる。
  *
  * 保存先は端末の localStorage だけ。サーバーには置いていない。
  * レーティングやランキングを入れるときは、ここに rating を足したうえで、
@@ -15,6 +15,7 @@ import { hasIcon } from "./icons.js";
 import { hasTitle, newlyEarned } from "./titles.js";
 import { SECRETS } from "./secrets.js";
 import { MAX_LEVEL, XP, levelOfXp, progressOfXp } from "./level.js";
+import { publishXpNotice } from "./xp-notices.js";
 
 export { MAX_LEVEL };
 import { START_RATING, applyRating } from "./rating.js";
@@ -27,8 +28,8 @@ const OLD_KEY = "tottery.profile.v1";
 export const MAX_NAME_LEN = 10;
 
 /**
- * テストプレイ環境では全プレイヤーをレベル10として扱う。
- * 配信時に false へ戻すと、実際のプレイ数でレベルが上がるようになる。
+ * テストプレイ用の時計停止を許可する。?test= を付けた場合だけ働く。
+ * レベルはテスト環境でも実際の経験値で決まり、0XPならレベル1から始まる。
  */
 export const TEST_BUILD = true;
 
@@ -61,6 +62,7 @@ const EMPTY = {
   // 対戦だけの数(チュートリアルを含めない)。ミッションの条件に使う
   battles: 0,
   wins: 0,
+  draws: 0,
   // 経験値。レベルはここから毎回導くので、レベルは保存しない
   xp: 0,
   // 使った日数。ミッションの「使用頻度」に使う
@@ -100,6 +102,7 @@ function read(key) {
 export function loadProfile() {
   const saved = read(KEY) || read(OLD_KEY);
   if (!saved) return { ...EMPTY };
+  const savedDraws = Number(saved.draws);
   return {
     id: typeof saved.id === "string" && saved.id ? saved.id : null,
     name: normalizeName(saved.name || ""),
@@ -119,6 +122,7 @@ export function loadProfile() {
     battles:
       Number(Number.isFinite(saved.battles) ? saved.battles : saved.plays) || 0,
     wins: Number(saved.wins) || 0,
+    draws: Number.isSafeInteger(savedDraws) && savedDraws > 0 ? savedDraws : 0,
     // 経験値を持たない古い保存は、それまでの対局数ぶんを配って引き継ぐ
     xp:
       Number(
@@ -266,9 +270,12 @@ export function grantIcon(id) {
  * 相手の持ち点が分かっているときだけ渡す。増減は戻り値の delta に入る。
  * opts.xp を渡すと、対戦ぶんの代わりにその経験値を配る(チュートリアル)。
  * opts.tutorial を立てた対局は、対戦の数に数えない。
+ * won は true が勝ち、false が負け、null が引き分け。
+ * 引き分けでも通常対局の経験値は入り、チュートリアルはクリアに数えない。
  */
 export function recordGame(won, opts) {
   const profile = loadProfile();
+  const draw = won === null;
   const foeRating = opts && opts.foeRating;
   const rated = typeof foeRating === "number";
   const before = profile.rating;
@@ -280,20 +287,23 @@ export function recordGame(won, opts) {
     opts &&
     opts.tutorialId != null &&
     profile.cleared.includes(opts.tutorialId);
-  const gained = again
-    ? 0
-    : opts && Number.isFinite(opts.xp) && opts.xp >= 0
-      ? opts.xp
-      : XP.BATTLE;
-  const levelBefore = levelOf(profile);
+  const tutorialDraw = draw && (opts?.tutorial || opts?.tutorialId != null);
+  const gained =
+    again || tutorialDraw
+      ? 0
+      : opts && Number.isFinite(opts.xp) && opts.xp >= 0
+        ? opts.xp
+        : XP.BATTLE;
+  const levelBefore = levelProgress(profile).level;
   const next = {
     ...profile,
     plays: profile.plays + 1,
     battles: profile.battles + (opts && opts.tutorial ? 0 : 1),
     wins: profile.wins + (won ? 1 : 0),
+    draws: profile.draws + (draw ? 1 : 0),
     xp: profile.xp + gained,
     cleared:
-      opts && opts.tutorialId != null && !again
+      opts && opts.tutorialId != null && !again && !draw
         ? [...profile.cleared, opts.tutorialId]
         : profile.cleared,
     rating: after,
@@ -307,32 +317,36 @@ export function recordGame(won, opts) {
     ...earned.map((t) => t.id).filter((id) => !next.titles.includes(id)),
   ];
   saveProfile(next);
-  const levelAfter = levelOf(next);
+  const levelAfter = levelProgress(next).level;
+  const xpNoticeId = publishXpNotice({
+    beforeXp: profile.xp,
+    afterXp: next.xp,
+    source: opts?.tutorial ? "tutorial" : "battle",
+    ready: !opts?.deferXpNotice,
+  });
   return {
     ...next,
     delta: rated ? after - before : null,
     before,
     earned,
     gained,
-    firstClear: !!(opts && opts.tutorialId != null) && !again,
+    firstClear: !!(opts && opts.tutorialId != null) && !again && !draw,
     levelBefore,
     levelAfter,
     leveledUp: levelAfter > levelBefore,
+    xpNoticeId,
   };
 }
 
 /** レベル。経験値の総量から決まる */
 export function levelOf(profile) {
-  if (TEST_BUILD) return MAX_LEVEL;
   return levelOfXp((profile || EMPTY).xp);
 }
 
 /** いまのレベルの中での進み具合。帯や「あと◯」の表示に使う */
 export function levelProgress(profile) {
-  const p = progressOfXp((profile || EMPTY).xp);
-  if (!TEST_BUILD) return p;
-  // テストビルドでは全員が上限。帯は満杯にしておく
-  return { ...p, level: MAX_LEVEL, ratio: 1, left: null, done: true };
+  // テスト環境も含め、帯には実際に貯めた経験値を出す。
+  return progressOfXp((profile || EMPTY).xp);
 }
 
 /** 次のレベルまでに必要な経験値。最高レベルなら null */
@@ -424,19 +438,26 @@ export function hasCleared(id, profile) {
 }
 
 /** 経験値を足す。対局以外(有償ガチャなど)から呼ぶ */
-export function addXp(amount) {
+export function addXp(amount, { source = "reward" } = {}) {
   const profile = loadProfile();
   const gained = Number.isFinite(amount) && amount > 0 ? Math.floor(amount) : 0;
-  if (!gained) return { ...profile, gained: 0, leveledUp: false };
-  const levelBefore = levelOf(profile);
+  if (!gained)
+    return { ...profile, gained: 0, leveledUp: false, xpNoticeId: null };
+  const levelBefore = levelProgress(profile).level;
   const next = { ...profile, xp: profile.xp + gained };
   saveProfile(next);
-  const levelAfter = levelOf(next);
+  const levelAfter = levelProgress(next).level;
+  const xpNoticeId = publishXpNotice({
+    beforeXp: profile.xp,
+    afterXp: next.xp,
+    source,
+  });
   return {
     ...next,
     gained,
     levelBefore,
     levelAfter,
     leveledUp: levelAfter > levelBefore,
+    xpNoticeId,
   };
 }

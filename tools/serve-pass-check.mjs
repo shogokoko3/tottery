@@ -35,6 +35,16 @@ const fullProgress = Object.fromEntries(CELLS.filter(c => !c.free).map(c => [c.i
 const full = { progress: fullProgress, cleared: allIds, flipped: allIds };
 const fixtures = [
   {
+    label: '最後の1枚・A未所持',
+    pass: { version: 3, rewardId: REWARD_SKIN, ...full, flipped: allIds.filter(id => id !== centerId), assembled: false, claimed: false },
+    collection: { owned: {}, equipped: {} },
+  },
+  {
+    label: '12枚開放・途中',
+    pass: { version: 3, rewardId: REWARD_SKIN, ...full, flipped: allIds.slice(0, 12), assembled: false, claimed: false },
+    collection: { owned: {}, equipped: {} },
+  },
+  {
     label: '新規・A未所持',
     pass: { version: 1, progress: {}, cleared: [centerId], flipped: [], claimed: false },
     collection: { owned: {}, equipped: {} },
@@ -102,8 +112,9 @@ function App() {
         <p>確認ケース: {fixtureLabel}</p>
         <p>A所持枚数: {collection.owned[REWARD_SKIN] || 0} / 旧天使所持枚数: {collection.owned['angel-k'] || 0}</p>
         <p>equipped.A: {collection.equipped.A || '未装備'} / equipped.K: {collection.equipped.K || '未装備'}</p>
-        <p>pass.claimed: {String(pass.claimed)} / version: {pass.version} / rewardId: {pass.rewardId}</p>
+        <p>pass.claimed: {String(pass.claimed)} / assembled: {String(pass.assembled)} / version: {pass.version} / rewardId: {pass.rewardId}</p>
         <p>クリア数: {pass.cleared.length} / めくり数: {pass.flipped.length}</p>
+        <p>絵の配置: {pass.puzzleOrder?.join(', ')}</p>
       </div>
       {error && <p role="alert">{error}</p>}
     </header>

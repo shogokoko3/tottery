@@ -3,6 +3,15 @@
  * 相手に送らなくてよい「自分の画面の中だけの操作」と、
  * 送る前にローカル状態を畳み込む必要があるアクションを定義する。
  */
+import { ADJUDICATION_RULE_VERSION } from "../game/adjudication.js";
+
+/** 古い画面が混ざる対局は、両者が理解できる従来ルールで開始する。 */
+export function roomRuleVersion(room) {
+  return room?.hostRuleVersion === ADJUDICATION_RULE_VERSION &&
+    room?.guestRuleVersion === ADJUDICATION_RULE_VERSION
+    ? ADJUDICATION_RULE_VERSION
+    : null;
+}
 
 /** 手元の表示が変わるだけで、盤面には影響しないアクション */
 export const LOCAL_ONLY_ACTIONS = new Set([
@@ -78,7 +87,21 @@ export function acceptAct(act, me, seat, foeUid) {
   if (foeUid && act.by !== foeUid) return null;
   // 始まりの合図はホストが出す。自分がホストなら、届くはずがない
   if (seat === 0 && HOST_ONLY_ACTIONS.has(act.type)) return null;
-  // 指し手は相手。手が何を名乗っていても、こちらで書き換える
+  //
+  // 時間切れの申告だけは、席を書き換えてはいけない。
+  //
+  // これは「送り主が指した手」ではなく「どちらの時計が尽きたか」を
+  // 運ぶ手で、待っている側が相手について申告することがある。
+  // ここで送り主の席に書き換えると、席0が「席1の時間切れ」と申告した手が
+  // 席1の端末では「席0の時間切れ」になり、**二人とも自分が勝者**になる。
+  // 本当に尽きているかは、盤を持っている受け取り側が確かめる
+  // (src/ui/game.jsx の timeoutSound)
+  if (act.type === "CLOCK_TIMEOUT") {
+    const who = Number(act.player);
+    if (who !== 0 && who !== 1) return null;
+    return who === act.player ? act : { ...act, player: who };
+  }
+  // それ以外の指し手は相手。手が何を名乗っていても、こちらで書き換える
   return { ...act, player: 1 - seat };
 }
 

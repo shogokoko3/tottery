@@ -92,8 +92,8 @@ createRoot(document.getElementById('root')).render(<StrictMode><App /></StrictMo
             fs
               .readFileSync("src/ui/game.jsx", "utf8")
               .replace(
-                "export function GameCore({ onExit, network, boardSize, cpu, tutorial })",
-                "export function GameCore({ onExit, network, boardSize, cpu, tutorial, fixture })",
+                "export function GameCore({",
+                "export function GameCore({fixture,",
               )
               .replace(
                 "(0, useState)(initialState)",

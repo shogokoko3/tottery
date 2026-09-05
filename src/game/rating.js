@@ -1,8 +1,8 @@
 /**
  * レーティング。
  *
- * 仕組みは Elo。勝てば上がり、負ければ下がる。強い相手に勝つほど大きく
- * 上がり、弱い相手に負けるほど大きく下がる。
+ * 仕組みは Elo。勝ちは1点、負けは0点、引き分けは0.5点として更新する。
+ * 強い相手に勝つほど大きく上がり、弱い相手に負けるほど大きく下がる。
  *
  * 数えるのはオンライン対戦だけ。CPU戦とチュートリアルは相手の強さが
  * 決まっていないので、勝っても負けても動かさない。
@@ -29,11 +29,16 @@ export function expectedScore(mine, theirs) {
 
 /**
  * 1局ぶんの増減。
- * won は勝ったかどうか、ratedGames はそれまでに数えた対局数。
+ * won は true が勝ち、false が負け、null が引き分け。
+ * ratedGames はそれまでに数えた対局数。
  */
 export function ratingDelta(mine, theirs, won, ratedGames) {
   const k = kFactor(ratedGames);
-  const gained = Math.round(k * ((won ? 1 : 0) - expectedScore(mine, theirs)));
+  const draw = won === null;
+  const score = draw ? 0.5 : won ? 1 : 0;
+  const gained = Math.round(k * (score - expectedScore(mine, theirs)));
+  // 同格との引き分けは動かさない。丸めで生じる-0も0にそろえる。
+  if (draw) return gained || 0;
   // 差がつきすぎて増減が0になると、勝っても何も起きない。1は動かす
   if (gained === 0) return won ? 1 : -1;
   return gained;

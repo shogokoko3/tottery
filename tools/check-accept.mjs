@@ -18,6 +18,8 @@ const { reducer, autoArrange, autoPickKing } =
 const { cpuAction } = await import("../src/game/cpu.js");
 const { getLegalMoves, kingRankOf } = await import("../src/game/board.js");
 const { hasAnyMove } = await import("../src/game/reducer.js");
+const { ADJUDICATION_RULE_VERSION } =
+  await import("../src/game/adjudication.js");
 
 const here = dirname(fileURLToPath(import.meta.url));
 let ok = 0;
@@ -63,10 +65,28 @@ is(
   seatOf(asHost(act({ type: "RESIGN", player: 0 }))),
   1,
 );
+// 時間切れだけは書き換えない。「どちらの時計が尽きたか」を運ぶ手で、
+// 待っている側が相手について申告することがあるため。
+// 書き換えると、二人とも自分が勝者になってしまう
 is(
-  "時間切れも送り主のものになる",
+  "時間切れの申告は書き換えない",
   seatOf(asHost(act({ type: "CLOCK_TIMEOUT", player: 0 }))),
+  0,
+);
+is(
+  "相手の時間切れの申告もそのまま",
+  seatOf(asHost(act({ type: "CLOCK_TIMEOUT", player: 1 }))),
   1,
+);
+is(
+  "文字列でも数に直して通す",
+  seatOf(asHost(act({ type: "CLOCK_TIMEOUT", player: "1" }))),
+  1,
+);
+is(
+  "席番号が範囲外の時間切れは捨てる",
+  asHost(act({ type: "CLOCK_TIMEOUT", player: 2 })),
+  null,
 );
 is(
   "布陣の確定も送り主のものになる",
@@ -150,7 +170,13 @@ console.log("\n細工した手を盤にかける");
 function midGame(size = 5) {
   let s = reducer(
     { phase: "intro" },
-    { type: "START_SETUP", size, setupMode: "simultaneous", handSize: 13 },
+    {
+      type: "START_SETUP",
+      size,
+      setupMode: "simultaneous",
+      handSize: 13,
+      ruleVersion: ADJUDICATION_RULE_VERSION,
+    },
   );
   let guard = 0;
   while (s.phase !== "play" && guard++ < 400) {
@@ -409,7 +435,13 @@ console.log("\n布陣の確定");
   // 布陣の場面まで戻して、敵陣に置く布陣を送ってみる
   let s0 = reducer(
     { phase: "intro" },
-    { type: "START_SETUP", size: 5, setupMode: "simultaneous", handSize: 13 },
+    {
+      type: "START_SETUP",
+      size: 5,
+      setupMode: "simultaneous",
+      handSize: 13,
+      ruleVersion: ADJUDICATION_RULE_VERSION,
+    },
   );
   let guard = 0;
   while (s0.phase !== "setup" && guard++ < 60) {
@@ -647,6 +679,7 @@ console.log("\n取る駒の並びに同じマスを2度");
   const { emptyBoard } = await import("../src/game/board.js");
   const st = initialState();
   st.phase = "play";
+  st.ruleVersion = ADJUDICATION_RULE_VERSION;
   st.board = emptyBoard(9);
   st.boardSize = 9;
   st.currentTurn = 1;
@@ -752,6 +785,7 @@ console.log("\n跡継ぎが全滅したとき");
   const { emptyBoard } = await import("../src/game/board.js");
   const st = initialState();
   st.phase = "play";
+  st.ruleVersion = ADJUDICATION_RULE_VERSION;
   st.board = emptyBoard(9);
   st.boardSize = 9;
   st.currentTurn = 1;
@@ -807,6 +841,7 @@ console.log("\n指せる手が無いとき");
   const { emptyBoard } = await import("../src/game/board.js");
   const st = initialState();
   st.phase = "play";
+  st.ruleVersion = ADJUDICATION_RULE_VERSION;
   st.board = emptyBoard(5);
   st.boardSize = 5;
   st.currentTurn = 0;
@@ -832,13 +867,13 @@ console.log("\n指せる手が無いとき");
   put("f", "J", 1, 4, 4, true);
   const stuck = !hasAnyMove(st, 0);
   is("Aだけが残ると指せる手が無い", stuck, true);
-  if (stuck)
-    is(
-      "そのときは手番を渡せる",
-      reducer(st, { type: "SKIP_EXTRA_ACTION", player: 0 }).currentTurn,
-      1,
-    );
-  else ok++;
+  // そこは引き分け判定(adjudication)が引き取る。手番は渡せない
+  // (渡し合って永久に終わらないのを避けるため)
+  is(
+    "指せる手が無くても手番は渡せない",
+    reducer(st, { type: "SKIP_EXTRA_ACTION", player: 0 }) === st,
+    true,
+  );
 }
 
 console.log("\n王も空きマスへ動ける");
@@ -847,6 +882,7 @@ console.log("\n王も空きマスへ動ける");
   const { emptyBoard } = await import("../src/game/board.js");
   const st = initialState();
   st.phase = "play";
+  st.ruleVersion = ADJUDICATION_RULE_VERSION;
   st.board = emptyBoard(5);
   st.boardSize = 5;
   const put = (id, rank, owner, row, col, isKing) => {

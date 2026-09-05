@@ -60,7 +60,15 @@ export function progressOfXp(xp) {
   const have = Number.isFinite(xp) && xp > 0 ? xp : 0;
   const level = levelOfXp(have);
   if (level >= MAX_LEVEL)
-    return { level, xp: have, into: 0, need: 0, left: null, ratio: 1, done: true };
+    return {
+      level,
+      xp: have,
+      into: 0,
+      need: 0,
+      left: null,
+      ratio: 1,
+      done: true,
+    };
   const base = totalFor(level);
   const need = stepFor(level);
   const into = have - base;

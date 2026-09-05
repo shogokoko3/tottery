@@ -8,11 +8,38 @@ import { normalize } from "./battlepass.js";
 export const PASS_KEY = "tottery.battlepass.v1";
 const listeners = new Set();
 let snapshot;
+let unsaved = false;
+
+function save(next, serialized = JSON.stringify(next)) {
+  try {
+    localStorage.setItem(PASS_KEY, serialized);
+    unsaved = false;
+  } catch {
+    // 保存が戻るまでは、次の更新もこのタブの最新状態を基準にする。
+    unsaved = true;
+  }
+}
 
 function read() {
+  if (unsaved && snapshot) return snapshot;
   try {
-    return normalize(JSON.parse(localStorage.getItem(PASS_KEY) || "null"));
+    const stored = localStorage.getItem(PASS_KEY);
+    let raw;
+    try {
+      raw = JSON.parse(stored || "null");
+    } catch {
+      raw = snapshot || null;
+    }
+    const next = normalize(raw);
+    const serialized = JSON.stringify(next);
+    // 初回生成・旧版からの移行時に順序を保存し、再読込や別タブでも共有する。
+    if (serialized !== stored) {
+      snapshot = next;
+      save(next, serialized);
+    }
+    return next;
   } catch {
+    unsaved = true;
     return snapshot || normalize(null);
   }
 }
@@ -40,12 +67,8 @@ export function usePass() {
 /** 書き換える。保存できなくても遊びは止めない */
 export function updatePass(change) {
   const next = normalize(change(read()));
-  try {
-    localStorage.setItem(PASS_KEY, JSON.stringify(next));
-  } catch {
-    // 保存できなくても、この画面のあいだは進んだ形で見せる
-  }
   snapshot = next;
+  save(next);
   emit();
   return next;
 }

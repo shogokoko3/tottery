@@ -3,7 +3,9 @@ import {
   territoryRows,
   getLegalMoves,
   kingRankOf,
+  shuffle,
 } from "./board.js";
+import { ADJUDICATION_RULE_VERSION } from "./adjudication.js";
 
 /** ランクのざっくりした強さ。CPU の評価にだけ使う */
 const RANK_VALUE = {
@@ -119,7 +121,7 @@ export function bestMove(state, player) {
   return candidates[0];
 }
 
-/** Aの入れ替え候補。2駒とも敵に近いほど、包囲が決まりやすい */
+/** Aの入れ替え候補。味方2枚なら包囲を狙い、足りなければ敵も選べる。 */
 export function bestShuffle(state, player) {
   const ace = Object.values(state.pieces).find(
     (p) =>
@@ -133,10 +135,21 @@ export function bestShuffle(state, player) {
   const allies = Object.values(state.pieces).filter(
     (p) => p.alive && p.owner === player && p.id !== ace.id,
   );
-  if (allies.length < 2) return null;
   const foes = Object.values(state.pieces).filter(
     (p) => p.alive && p.owner !== player,
   );
+  if (allies.length < 2) {
+    const others = [...allies, ...foes];
+    if (others.length < 2) return null;
+    // 残ったAも敵を混ぜれば行動できる。伏せ札の数字や王かどうかは使わない。
+    return {
+      aceId: ace.id,
+      pickIds: shuffle(others)
+        .slice(0, 2)
+        .map((piece) => piece.id),
+      promising: false,
+    };
+  }
   if (!foes.length) return null;
 
   const pairs = [];
@@ -240,7 +253,9 @@ export function cpuAction(state, player) {
       };
     }
     if (swap) return { type: "__CPU_SHUFFLE", ...swap };
-    return { type: "SKIP_EXTRA_ACTION" };
+    if (state.extraMoveFor || state.ruleVersion !== ADJUDICATION_RULE_VERSION)
+      return { type: "SKIP_EXTRA_ACTION" };
+    return null;
   }
 
   return null;

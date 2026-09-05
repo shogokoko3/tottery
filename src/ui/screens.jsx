@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useScreenBgm } from "../audio/index.js";
 import { titleBgImg } from "../assets.js";
 import { VERSION } from "../game/constants.js";
@@ -39,6 +46,11 @@ import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
+import { nextTutorialAfter } from "../game/tutorial.js";
+import { XpGainToast } from "./xp-gain.jsx";
+import { getXpNotices, subscribeXpNotices } from "../game/xp-notices.js";
+import { ADJUDICATION_RULE_VERSION } from "../game/adjudication.js";
+import { roomRuleVersion } from "../net/sync.js";
 import { RankingScreen } from "./ranking.jsx";
 import {
   hasName,
@@ -431,6 +443,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               code: s,
               myPlayerIndex: 0,
               foeUid: foeOf(g.data.members, myUid()),
+              ruleVersion: roomRuleVersion(g.data),
               names: [myName(), safeName(g.data.guestName)],
               icons: [myIcon(), safeTag(g.data.guestIcon)],
               titles: [myTitle(), safeTag(g.data.guestTitle)],
@@ -542,6 +555,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
                 guestTitle: myTitle(),
                 guestRating: myRating(),
                 guestSkins: loadout,
+                guestRuleVersion: ADJUDICATION_RULE_VERSION,
               }),
               o.current)
             )
@@ -551,6 +565,10 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               code: z,
               myPlayerIndex: 1,
               foeUid: foeOf(b.data && b.data.members, myUid()),
+              ruleVersion: roomRuleVersion({
+                ...b.data,
+                guestRuleVersion: ADJUDICATION_RULE_VERSION,
+              }),
               names: [safeName(b.data && b.data.hostName), myName()],
               icons: [safeTag(b.data && b.data.hostIcon), myIcon()],
               titles: [safeTag(b.data && b.data.hostTitle), myTitle()],
@@ -569,6 +587,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
             hostTitle: myTitle(),
             hostRating: myRating(),
             hostSkins: loadout,
+            hostRuleVersion: ADJUDICATION_RULE_VERSION,
           });
         if (o.current) return;
         if (!p.ok) {
@@ -751,6 +770,7 @@ export function RoomScreen({
                 code: f,
                 myPlayerIndex: 0,
                 foeUid: foeOf(N.data.members, myUid()),
+                ruleVersion: roomRuleVersion(N.data),
                 names: [myName(), safeName(N.data.guestName)],
                 icons: [myIcon(), safeTag(N.data.guestIcon)],
                 titles: [myTitle(), safeTag(N.data.guestTitle)],
@@ -776,6 +796,7 @@ export function RoomScreen({
         hostTitle: myTitle(),
         hostRating: myRating(),
         hostSkins: loadout,
+        hostRuleVersion: ADJUDICATION_RULE_VERSION,
       });
     if ((p(!1), !x.ok)) {
       s(x.error);
@@ -822,6 +843,7 @@ export function RoomScreen({
       guestTitle: myTitle(),
       guestRating: myRating(),
       guestSkins: loadout,
+      guestRuleVersion: ADJUDICATION_RULE_VERSION,
     });
     if ((p(!1), !N.ok)) {
       (await leaveRoom(P), s(N.error));
@@ -836,6 +858,10 @@ export function RoomScreen({
       ratings: [safeRating(x.data.hostRating), myRating()],
       skins: [sanitizeLoadout(x.data.hostSkins), loadout],
       myPlayerIndex: 1,
+      ruleVersion: roomRuleVersion({
+        ...x.data,
+        guestRuleVersion: ADJUDICATION_RULE_VERSION,
+      }),
     });
   }
   function R() {
@@ -997,6 +1023,17 @@ export function RoomScreen({
   );
 }
 export function TotteryApp() {
+  // 獲得時はホームのレベル欄も新しい経験値へ更新する。
+  useSyncExternalStore(subscribeXpNotices, getXpNotices, getXpNotices);
+  return (
+    <>
+      <TotteryScreens />
+      <XpGainToast />
+    </>
+  );
+}
+
+function TotteryScreens() {
   const collection = useCollection();
   // はじめて遊ぶときは、まず名前を決めてもらう
   let [named, setNamed] = (0, useState)(() => hasName()),
@@ -1068,6 +1105,13 @@ export function TotteryApp() {
   function s() {
     (u(null), m(!1), setTut(null), t("home"));
   }
+  function startTutorial(chosen) {
+    (u(null), setTut(chosen), m(!0), r("game"), t("game"));
+    window.scrollTo(0, 0);
+  }
+  function showTutorials() {
+    (u(null), m(!1), setTut(null), t("tutorial"));
+  }
   // 上の「Tottery」から。ルーム作成の予約(p)も引きずらないように
   function goHome() {
     (w(!1), s());
@@ -1106,6 +1150,7 @@ export function TotteryApp() {
       </GameShell>
     );
   if (e === "game") {
+    const nextTutorial = tut ? nextTutorialAfter(tut.id) : null;
     // 対局中に出す名前。相手の名前が分からない席は色名のまま
     let mine = loadProfile(),
       me = mine.name || null,
@@ -1132,14 +1177,20 @@ export function TotteryApp() {
       <SeatsProvider value={{ names, icons, titles, skins }}>
         <GameCore
           // 再戦のたびに作り直す。見た手の控えも記録済みの印も、
-          // 前の対局のものを引きずらせない
-          key={round}
+          // 前の対局のものを引きずらせない。
+          // チュートリアルは話ごとに作り直す
+          key={tut ? tut.id : `battle-${round}`}
           round={round}
           onRematch={a ? () => setRound((n) => n + 1) : null}
           network={a}
           boardSize={tut ? tut.boardSize : i}
           cpu={d}
           tutorial={tut}
+          nextTutorial={nextTutorial}
+          onNextTutorial={
+            nextTutorial ? () => startTutorial(nextTutorial) : null
+          }
+          onTutorialList={showTutorials}
           onExit={s}
         />
       </SeatsProvider>
@@ -1164,9 +1215,7 @@ export function TotteryApp() {
           menu: (
             <MenuScreen
               onPlay={() => t("matching")}
-              onTutorial={() => {
-                (u(null), t("tutorial"));
-              }}
+              onTutorial={showTutorials}
               onSkins={() => t("skins")}
               onBattlePass={() => t("battlepass")}
               onMissions={() => t("missions")}
@@ -1207,12 +1256,7 @@ export function TotteryApp() {
           ),
           letters: <LettersScreen onBack={() => t("menu")} />,
           tutorial: (
-            <TutorialSelect
-              onBack={() => t("menu")}
-              onStart={(chosen) => {
-                (setTut(chosen), m(!0), r("game"), t("game"));
-              }}
-            />
+            <TutorialSelect onBack={() => t("menu")} onStart={startTutorial} />
           ),
           online: (
             <RandomMatchScreen onBack={() => t("matching")} onRoomReady={v} />

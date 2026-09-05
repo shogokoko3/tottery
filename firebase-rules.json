@@ -109,7 +109,8 @@
             "cardId": {
               ".validate": "newData.isString() && newData.val().length <= 16"
             }
-          }
+          },
+          ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('members').hasChild(auth.uid) && !newData.exists()"
         },
         "guestPresent": {
           ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('members').hasChild(auth.uid) && (!newData.exists() || newData.isBoolean())",
@@ -298,6 +299,32 @@
                     ".validate": false
                   }
                 }
+              }
+            }
+          }
+        },
+        "hostRuleVersion": {
+          ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('members').hasChild(auth.uid) && (!newData.exists() || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 999))",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999",
+          "$sa": {
+            ".validate": false,
+            "$sb": {
+              ".validate": false,
+              "$sc": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "guestRuleVersion": {
+          ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('members').hasChild(auth.uid) && (!newData.exists() || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 999))",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999",
+          "$sa": {
+            ".validate": false,
+            "$sb": {
+              ".validate": false,
+              "$sc": {
+                ".validate": false
               }
             }
           }

@@ -963,6 +963,14 @@ h3 {
 .gameover-panel {
   text-align: center;
 }
+.tutorial-complete {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.tutorial-king-card {
+  width: 80px;
+}
 .review-panel {
   max-width: 520px;
   text-align: center;
@@ -2928,10 +2936,10 @@ h3 {
   color: var(--text-dim);
 }
 
-/* 対局数・勝ち・勝率 */
+/* 対局数・勝ち・引き分け・勝率 */
 .stat-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   border-top: 1px solid var(--line);
   padding-top: 12px;
@@ -3471,6 +3479,38 @@ h3 {
   display: flex;
   justify-content: center;
   margin: 0 0 10px;
+}
+.pass-complete-art {
+  max-width: 420px;
+  margin: 0 auto 14px;
+  border: 2px solid var(--gold-soft);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 0 22px rgba(230, 198, 129, 0.18);
+}
+.pass-complete-art img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+.pass-earned {
+  text-align: center;
+  color: var(--gold-soft);
+  font-size: 17px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 18px rgba(238, 211, 138, 0.3);
+}
+.pass-earned svg {
+  vertical-align: middle;
+}
+.pass-earned strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+}
+.pass-cell:disabled {
+  cursor: default;
 }
 @media (max-width: 400px) {
   .pass-cell {
@@ -4279,4 +4319,55 @@ h3 {
   margin: 0 0 4px;
   font-family: "Shippori Mincho", serif;
   color: var(--gold);
+.adjudication-result {
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #102339;
+  text-align: center;
+}
+.adjudication-result p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.adjudication-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.adjudication-scores > div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 6px;
+}
+.adjudication-scores span,
+.adjudication-scores small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.adjudication-scores strong {
+  display: block;
+  font-size: 32px;
+  color: var(--gold-soft);
+}
+.adjudication-scores small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.adjudication-scores .adjudication-winner {
+  border-color: var(--gold);
+  background: #d5b86915;
+}
+.adjudication-draw-mark {
+  font-size: 34px;
+  color: var(--gold-soft);
+}
+.setup-adoption-total {
+  text-align: center;
+  font-size: 13px;
+  margin: 8px 0;
+}
+.setup-adoption-total strong {
+  color: var(--gold-soft);
 }

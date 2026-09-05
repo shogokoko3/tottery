@@ -106,7 +106,7 @@ export function isEndgame(state, clocks) {
  *   screen  画面(home / matching / tutorial / rules / online / room / game)
  *   phase   対局中の進み具合(intro / dice / mulligan / setup / play / gameover)
  *   endgame 終盤かどうか
- *   result  決着したときだけ "win" か "lose"
+ *   result  決着したときだけ "win" / "lose" / "draw"
  */
 export function trackForScene(scene) {
   if (!scene) return null;
@@ -118,7 +118,10 @@ export function trackForScene(scene) {
     return "title";
   }
 
-  if (phase === "gameover") return scene.result === "lose" ? "lose" : "win";
+  if (phase === "gameover") {
+    if (scene.result === "draw") return "waiting";
+    return scene.result === "lose" ? "lose" : "win";
+  }
   if (phase === "play") return scene.endgame ? "endgame" : "battle";
   // intro / dice / mulligan / setup。対局が始まるまでは1曲で通す
   return "setup";

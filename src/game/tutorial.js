@@ -250,7 +250,7 @@ const EP1 = {
     },
     {
       at: myTurn,
-      text: "ここでは教えます。2マス先が相手の王です。4♠ を c5 へ。",
+      text: "続けてプレイを進めてみましょう。4♠ を2マス先の c5 へ。",
       need: { type: "MOVE_PIECE", pieceId: "t2", row: 0, col: 2 },
       focus: {
         cells: [
@@ -429,7 +429,7 @@ const EP2 = {
     },
     {
       at: myTurn,
-      text: "2マス先が相手の王です。2♥ を c5 へ。",
+      text: "続けてプレイを進めてみましょう。2♥ を2マス先の c5 へ。",
       need: { type: "MOVE_PIECE", pieceId: "t1", row: 0, col: 2 },
       focus: {
         cells: [
@@ -600,7 +600,7 @@ const EP3 = {
       focus: { cells: [{ row: 4, col: 2 }] },
     },
     {
-      text: "王の 4♠ は2マスのまま。道は空きましたが、一気には届きません。c1 から c3 へ。",
+      text: "王の 4♠ は2マスのままです。道が空いたので、c1 から c3 へ進めてみましょう。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 2, col: 2 },
       focus: {
         cells: [
@@ -611,7 +611,7 @@ const EP3 = {
     },
     {
       at: myTurn,
-      text: "もう2マス。c3 から c5 へ。相手の王を討ちます。",
+      text: "続けてプレイを進めてみましょう。4♠ を c3 から c5 へ、もう2マス動かします。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
       focus: {
         cells: [
@@ -780,7 +780,7 @@ const EP4 = {
     },
     {
       at: myTurn,
-      text: "b5 の 8♠ で、隣の c5 にいる王を取ります。1マスも奇数です。",
+      text: "b5 の 8♠ で、隣の c5 にいる相手の駒を取ってみましょう。1マスも奇数です。",
       need: { type: "MOVE_PIECE", pieceId: "t1", row: 0, col: 2 },
       focus: { pieces: ["t1"], cells: [{ row: 0, col: 2 }] },
     },
@@ -1117,7 +1117,7 @@ const EP6 = {
     },
     {
       at: myTurn,
-      text: "2回目です。b3 から c5 へ跳んで、王を取ります。",
+      text: "2回目です。b3 から c5 へ跳んで、相手の駒を取ってみましょう。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
       focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
     },
@@ -1284,7 +1284,7 @@ const EP7 = {
     },
     {
       at: myTurn,
-      text: "a5 の J♠ を横に2マス。c5 の王を取ります。",
+      text: "a5 の J♠ を横に2マス。c5 の相手の駒を取ってみましょう。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
       focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
     },
@@ -1461,7 +1461,7 @@ const EP8 = {
     },
     {
       at: myTurn,
-      text: "そのまま c5 の王を取ります。縦にどこまでも走れます。",
+      text: "続けて c5 の相手の駒を取ってみましょう。縦にどこまでも走れます。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
       focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
     },
@@ -1606,7 +1606,7 @@ const EP9 = {
     },
     {
       at: myTurn,
-      text: "相手の王 c5 は、真下の c4 に守られています。d1 の 8♠ では届きません。",
+      text: "c5 に相手の駒があり、その手前の c4 にも別の駒があります。d1 の 8♠ では届きません。",
       focus: {
         cells: [
           { row: 0, col: 2 },
@@ -1617,7 +1617,7 @@ const EP9 = {
     },
     {
       at: myTurn,
-      text: "A♠ をタップして入れ替えを始めます。次に、守っている c4 の相手をタップ。",
+      text: "A♠ をタップして入れ替えを始めます。次に、手前の c4 にいる相手の駒をタップ。",
       need: { type: "TOGGLE_SHUFFLE_PICK", id: "t8" },
       focus: { pieces: ["t0", "t8"] },
     },
@@ -1635,12 +1635,12 @@ const EP9 = {
     },
     {
       at: myTurn,
-      text: "守っていた駒は b1 へ飛び、8♠ が c4 に立ちました。A♠ も d1 へ動いています。",
+      text: "c4 にいた相手の駒は b1 へ移り、8♠ が c4 に立ちました。A♠ も d1 へ動いています。",
       focus: { pieces: ["t2"] },
     },
     {
       at: myTurn,
-      text: "8♠ で、真上の c5 にいる王を取ります。",
+      text: "続けてプレイを進めてみましょう。8♠ で、真上の c5 にいる相手の駒を取ります。",
       need: { type: "MOVE_PIECE", pieceId: "t2", row: 0, col: 2 },
       focus: { pieces: ["t2"], cells: [{ row: 0, col: 2 }] },
     },
@@ -1787,7 +1787,7 @@ const EP10 = {
     },
     {
       at: myTurn,
-      text: "相手の王が c2 まで踏み込みました。A♠・4♠・5♠ が囲む三角形の内側です。",
+      text: "相手の駒が c2 まで進んできました。A♠・4♠・5♠ が囲む三角形の内側です。",
       focus: {
         cells: [{ row: 3, col: 2 }],
         pieces: ["t0", "t1", "t2"],
@@ -2002,7 +2002,7 @@ const EP11 = {
     },
     {
       at: myTurn,
-      text: "もう1マス先が相手の王です。8♣ を c5 へ。",
+      text: "続けてプレイを進めてみましょう。8♣ を、もう1マス先の c5 へ。",
       need: { type: "MOVE_PIECE", pieceId: "t2", row: 0, col: 2 },
       focus: {
         cells: [
@@ -2100,7 +2100,10 @@ const EP12 = {
       text: "また後手。相手の捨て札を先に見られます。",
     },
     {
-      text: "5枚とも同じマークならフラッシュ。対局前に、相手の駒が1枚めくれます。",
+      text: "5×5では、並べる5枚を同じマークでそろえるとフラッシュ。対局前に、相手の王以外の駒が1枚めくれます。",
+    },
+    {
+      text: "9×9では、並べる9枚を同じマークでそろえるとフラッシュ。相手の王以外の駒が3枚めくれます。",
     },
     {
       text: "捨てられたのは ♣ と ♦。♠ は1枚も出ていません。まだ場に残っています。",
@@ -2171,11 +2174,11 @@ const EP12 = {
       text: "めくれた駒だけは正体が分かります。伏せた駒とは違います。",
     },
     {
-      text: "めくれたのは 10♦。10 は縦2横1へしか跳べず、d4 には届きません。だから d4 は安全です。",
+      text: "めくれたのは 10♦。10 は縦2横1へしか跳べず、この駒から d4 には届きません。",
       focus: { cells: [{ row: 1, col: 3 }] },
     },
     {
-      text: "安全と分かった d4 へ。a1 の Q♠ を斜めに進めて相手を取ります。",
+      text: "見えた駒の動きを参考にしてみましょう。a1 の Q♠ を d4 へ斜めに進めて相手を取ります。",
       need: { type: "MOVE_PIECE", pieceId: "t3", row: 1, col: 3 },
       focus: {
         cells: [
@@ -2186,7 +2189,7 @@ const EP12 = {
     },
     {
       at: myTurn,
-      text: "そのまま斜め1マス先が相手の王です。Q♠ を e5 へ。",
+      text: "続けてプレイを進めてみましょう。Q♠ を斜め1マス先の e5 へ。",
       need: { type: "MOVE_PIECE", pieceId: "t3", row: 0, col: 4 },
       focus: {
         cells: [
@@ -2220,6 +2223,11 @@ export const TUTORIALS = [
 
 export function tutorialById(id) {
   return TUTORIALS.find((t) => t.id === id) || null;
+}
+
+export function nextTutorialAfter(id) {
+  const index = TUTORIALS.findIndex((t) => t.id === id);
+  return index >= 0 ? TUTORIALS[index + 1] || null : null;
 }
 
 /* =========================================================================
