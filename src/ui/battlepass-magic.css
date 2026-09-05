@@ -1,0 +1,40 @@
+.battlepass-magic {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  color: #eed38a;
+}
+.battlepass-magic-stage {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: 8px;
+  background: radial-gradient(ellipse at center, #28243e, #060f1c);
+}
+.battlepass-magic-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.battlepass-magic-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  font-size: 13px;
+}
+.battlepass-magic-status button {
+  min-height: 44px;
+  padding: 8px 0 8px 12px;
+  border: 0;
+  background: transparent;
+  color: #c9bfd7;
+  font: inherit;
+  cursor: pointer;
+}
+.battlepass-magic-status button:focus-visible {
+  outline: 2px solid #eed38a;
+  outline-offset: 2px;
+  border-radius: 4px;
+}

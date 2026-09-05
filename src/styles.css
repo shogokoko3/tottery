@@ -3462,6 +3462,38 @@ h3 {
   justify-content: center;
   margin: 0 0 10px;
 }
+.pass-complete-art {
+  max-width: 420px;
+  margin: 0 auto 14px;
+  border: 2px solid var(--gold-soft);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 0 22px rgba(230, 198, 129, 0.18);
+}
+.pass-complete-art img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+.pass-earned {
+  text-align: center;
+  color: var(--gold-soft);
+  font-size: 17px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 18px rgba(238, 211, 138, 0.3);
+}
+.pass-earned svg {
+  vertical-align: middle;
+}
+.pass-earned strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+}
+.pass-cell:disabled {
+  cursor: default;
+}
 @media (max-width: 400px) {
   .pass-cell {
     font-size: 8px;

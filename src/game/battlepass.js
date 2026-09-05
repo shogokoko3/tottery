@@ -5,7 +5,7 @@
  *   ・挑戦できるのは、クリア済みのマスに縦横で隣り合うマスだけ
  *   ・進むのは「相手の駒を取ったとき」。取った駒の中身でマスごとに数える
  *   ・クリアしたマスはひっくり返せる
- *   ・全部クリアして全部ひっくり返すと、裏に描かれた絵柄が現れて手に入る
+ *   ・裏の絵はばらばらの順序で現れ、全部めくって組み上がると手に入る
  *
  * マスの条件(CELLS の track と goal)は仮置き。中身が決まったらこの表だけ
  * 差し替えれば、進み方も画面もそのまま動く。
@@ -100,6 +100,27 @@ function buildCells() {
 export const CELLS = buildCells();
 export const cellById = (id) => CELLS.find((c) => c.id === id) || null;
 
+/** 1つの巡回置換にして、全片が元の位置と違う順序を必ず作る。 */
+function newPuzzleOrder() {
+  const order = CELLS.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * i);
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return order;
+}
+const validPuzzleOrder = (order) =>
+  Array.isArray(order) &&
+  order.length === CELLS.length &&
+  new Set(order).size === CELLS.length &&
+  order.every(
+    (piece, i) =>
+      Number.isSafeInteger(piece) &&
+      piece >= 0 &&
+      piece < CELLS.length &&
+      piece !== i,
+  );
+
 /** 保存の形をそろえる。知らない id や壊れた数は落とす */
 export function normalize(raw) {
   const v = raw && typeof raw === "object" ? raw : {};
@@ -112,15 +133,21 @@ export function normalize(raw) {
   // 真ん中は最初から空いている
   const cleared = new Set([centerId, ...keep(v.cleared)]);
   const flipped = new Set(keep(v.flipped).filter((id) => cleared.has(id)));
+  // 旧報酬(報酬IDの無いv1はKの天使)の受取済みでは、新報酬を塞がない。
+  const claimed = v.rewardId === REWARD_SKIN && v.claimed === true;
   return {
-    version: 2,
+    version: 3,
     rewardId: REWARD_SKIN,
     progress,
     cleared: [...cleared],
     flipped: [...flipped],
-    // 旧報酬(報酬IDの無いv1はKの天使)の受取済みでは、新報酬を塞がない。
-    // マスの進捗・めくりはそのまま引き継ぐ。
-    claimed: v.rewardId === REWARD_SKIN && v.claimed === true,
+    puzzleOrder: validPuzzleOrder(v.puzzleOrder)
+      ? [...v.puzzleOrder]
+      : newPuzzleOrder(),
+    // v2では受取後にも条件へ戻せた。受取済みならめくり数によらず完成扱い。
+    assembled:
+      claimed || (v.assembled === true && flipped.size === CELLS.length),
+    claimed,
   };
 }
 
@@ -175,11 +202,12 @@ export function applyCaptures(state, captured) {
 }
 
 /**
- * クリアしたマスをひっくり返す。もう一度押すと戻り、元の条件が読める。
- * クリアしていないマスは返せない。
+ * クリアしたマスをひっくり返す。全部開くまではもう一度押すと戻せる。
+ * クリアしていないマスと、全25片を開いた後の絵は返せない。
  */
 export function toggleFlip(state, id) {
-  if (!state.cleared.includes(id)) return state;
+  if (state.assembled || allFlipped(state) || !state.cleared.includes(id))
+    return state;
   const on = state.flipped.includes(id);
   return {
     ...state,
@@ -191,15 +219,23 @@ export function toggleFlip(state, id) {
 
 /** クリア済みをまとめて返す / まとめて戻す */
 export function flipAll(state, on) {
+  if (state.assembled || allFlipped(state)) return state;
   return { ...state, flipped: on ? [...state.cleared] : [] };
 }
 
 /** 全部クリアしたか */
 export const allCleared = (state) => state.cleared.length === CELLS.length;
-/** 全部ひっくり返したか。ここまで来ると絵柄が現れる */
+/** 全部ひっくり返したか。ここから絵の完成処理に進む */
 export const allFlipped = (state) => state.flipped.length === CELLS.length;
+/** 絵の完成処理が終わった。まだ開いていないマスがあれば変更しない。 */
+export function markAssembled(state) {
+  return allFlipped(state) && !state.assembled
+    ? { ...state, assembled: true }
+    : state;
+}
 /** 褒美を受け取れるか */
-export const canClaim = (state) => allFlipped(state) && !state.claimed;
+export const canClaim = (state) =>
+  allFlipped(state) && state.assembled === true && !state.claimed;
 
 /** 褒美のスキン。台帳に無ければ null */
 export const rewardSkin = () => byId(REWARD_SKIN);
