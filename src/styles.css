@@ -4371,3 +4371,9 @@ h3 {
 .setup-adoption-total strong {
   color: var(--gold-soft);
 }
+
+/* 持ち点が動くのは9×9だけ、と分かるように */
+.board-choice-ranked {
+  color: var(--gold);
+  font-size: 11px;
+}

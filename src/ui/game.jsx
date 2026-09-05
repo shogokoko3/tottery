@@ -1436,8 +1436,11 @@ export function GameCore({
     if (recordedRef.current) return;
     recordedRef.current = !0;
     const won = a.winner === null ? null : a.winner === (network ? p : 0);
-    const foeRating =
-      network && network.ratings ? network.ratings[1 - p] : null;
+    // 持ち点(とランキング)に数えるのは、**9×9のオンライン対戦だけ**。
+    // 5×5は短期戦で運の割合が大きく、同じ物差しに載せると持ち点が
+    // 実力を表さなくなる。CPU戦とチュートリアルは相手の強さが決まらない
+    const ranked = !!network && a.boardSize === 9;
+    const foeRating = ranked && network.ratings ? network.ratings[1 - p] : null;
     // チュートリアルは話ごとの経験値。対戦の数には数えない
     const after = recordGame(won, {
       deferXpNotice: true,

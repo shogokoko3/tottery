@@ -589,7 +589,7 @@ function AdminApp() {
           <p className="hint">
             <b>登録した人</b>は、名前を決めた端末すべて。
             <b>持ち点つきの成績</b>
-            は、オンラインの持ち点つき対局を終えた端末だけです。
+            は、9×9のオンライン対戦を終えた端末だけです（5×5は数えません）。
             「消す」はサーバーの記録を消すだけで、端末は次に開いたときにまた載ります。
             「使用停止」にすると、その口座は次に開いたときから遊べなくなります
             (理由を出して止まります)。解除すればまた遊べます。
@@ -666,7 +666,7 @@ function AdminApp() {
         <section className="admin-card">
           <h2>持ち点つきの成績</h2>
           <p className="hint">
-            オンラインの持ち点つき対局を終えた端末が置いた記録です。
+            9×9のオンライン対戦を終えた端末が置いた記録です（5×5は数えません）。
           </p>
           {ranksError && <p className="admin-error">{ranksError}</p>}
           {error && <p className="admin-error">{error}</p>}
