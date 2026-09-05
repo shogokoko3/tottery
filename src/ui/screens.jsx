@@ -102,7 +102,7 @@ export function GameShell({
   focusButton,
 }) {
   let [i, f] = (0, useState)(!1);
-  // 上の「トッタリー」を押すとタイトルへ。対局中は onBack と同じ扱いにして、
+  // 上の「Tottery」を押すとタイトルへ。対局中は onBack と同じ扱いにして、
   // 「対局をやめますか?」の確認を通す(黙って抜けると対局が飛ぶ)
   let goHome = onHome || onBack;
   return (
@@ -129,10 +129,10 @@ export function GameShell({
             onClick={goHome}
             aria-label="タイトルへ戻る"
           >
-            {title || "トッタリー"}
+            {title || "Tottery"}
           </button>
         ) : (
-          <span className="brand">{title || "トッタリー"}</span>
+          <span className="brand">{title || "Tottery"}</span>
         )}
         <div className="top-right">
           <button
@@ -943,7 +943,7 @@ export function TotteryApp() {
   function s() {
     (u(null), m(!1), setTut(null), t("home"));
   }
-  // 上の「トッタリー」から。ルーム作成の予約(p)も引きずらないように
+  // 上の「Tottery」から。ルーム作成の予約(p)も引きずらないように
   function goHome() {
     (w(!1), s());
   }

@@ -410,7 +410,7 @@ function AdminApp() {
       <style>{ADMIN_STYLES}</style>
       <header className="top-bar">
         <div className="top-left" />
-        <span className="brand">トッタリー 管理</span>
+        <span className="brand">Tottery 管理</span>
         <div className="top-right" />
       </header>
       <main className="stage admin-stage">
