@@ -14,10 +14,13 @@ import {
 } from "../skins/catalog.js";
 import {
   claimEarly,
+  claimFoilMilestone,
   craft,
   dismantle,
   dismantleAll,
   equip,
+  FOIL_MILESTONE,
+  foilMilestoneCheck,
   pull,
   unequip,
 } from "../skins/collection.js";
@@ -309,6 +312,12 @@ function ForgePanel({ collection, run, working, onPick, message, setMessage }) {
   const rows = spares(collection, ALL_SKINS);
   const bulk = totalOfSpares(collection, SKINS);
   const targets = SKINS.filter((s) => !isKeepsake(s) && s.rarity === pick);
+  const milestones = POOL.map((skin) => ({
+    skin,
+    check: foilMilestoneCheck(collection, skin.id),
+  }));
+  const readyCount = milestones.filter(({ check }) => check.ok).length;
+  const claimedCount = milestones.filter(({ check }) => check.claimed).length;
 
   const breakOne = async (skin) => {
     if (await run((c) => dismantle(c, skin.id))) {
@@ -333,6 +342,14 @@ function ForgePanel({ collection, run, working, onPick, message, setMessage }) {
       );
     }
   };
+  const finishFoil = async (skin) => {
+    const next = await run((c) => claimFoilMilestone(c, skin.id));
+    if (next) {
+      setMessage(
+        `通算${FOIL_MILESTONE}枚獲得の記念に「${byId(next.lastCraft.id).name}」を受け取りました。所持カードと${ETHER_NAME}は減りません。`,
+      );
+    }
+  };
 
   return (
     <div role="tabpanel" aria-label="錬成">
@@ -343,6 +360,90 @@ function ForgePanel({ collection, run, working, onPick, message, setMessage }) {
         </b>
         <p>ダブった札を崩すと貯まります。狙った1枚を作るのに使います。</p>
       </div>
+
+      <section
+        id="forge-foil-milestones"
+        className="forge-section forge-milestones"
+        aria-label="通算獲得でフォイル加工"
+      >
+        <div className="forge-head">
+          <h3>
+            <FoilBadge /> フォイル加工
+          </h3>
+          <span>
+            {readyCount > 0 ? `受取可能 ${readyCount}種 · ` : ""}受取済み{" "}
+            {claimedCount}/{POOL.length}種
+          </span>
+        </div>
+        <p className="forge-milestone-intro">
+          同じキャラを通算{FOIL_MILESTONE}
+          枚獲得すると、フォイル1枚を一度だけ受け取れます。
+          <strong>所持カード・エーテルの消費はありません。</strong>
+        </p>
+        <p className="skins-note">
+          通常版とフォイル版を合算します。カードを崩しても進捗は減りません。
+          ガチャ・錬成で1枚ごとに{foilPct}%のフォイル抽選も続きます。
+          加工で受け取る報酬は通算枚数に含みません。
+        </p>
+        <div className="forge-milestone-grid">
+          {milestones.map(({ skin, check }) => (
+            <article
+              key={skin.id}
+              className={`forge-milestone-card${check.ok ? " is-ready" : ""}${check.claimed ? " is-claimed" : ""}`}
+            >
+              <button
+                className="forge-milestone-thumb"
+                onClick={() => onPick(byId(foilId(skin.id)))}
+                aria-label={`${skin.name}のフォイル詳細`}
+              >
+                <FoilArtwork
+                  skin={byId(foilId(skin.id))}
+                  alt=""
+                  loading="lazy"
+                  animated={false}
+                />
+              </button>
+              <div className="forge-milestone-name">
+                <span>
+                  {skin.rank} · {rarityLabel(skin)}
+                </span>
+                <h4>{skin.name}</h4>
+              </div>
+              <div className="forge-milestone-progress">
+                <div>
+                  <span>
+                    通算 <b>{check.total.toLocaleString()}</b>/{check.target}枚
+                  </span>
+                  <span>
+                    {check.claimed
+                      ? "受取済み"
+                      : check.remaining
+                        ? `あと${check.remaining}枚`
+                        : "目標達成"}
+                  </span>
+                </div>
+                <progress
+                  max={check.target}
+                  value={Math.min(check.total, check.target)}
+                  aria-label={`${skin.name}の通算獲得`}
+                  aria-valuetext={`通算${check.total}枚、目標${check.target}枚${check.claimed ? "、受取済み" : ""}`}
+                />
+              </div>
+              <button
+                className={`skin-btn${check.ok ? " skin-btn-gold" : ""} forge-milestone-claim`}
+                disabled={working || !check.ok}
+                onClick={() => finishFoil(skin)}
+                aria-label={`${skin.name} ${check.claimed ? "フォイル受取済み" : "フォイル加工"}`}
+              >
+                {check.claimed ? "受取済み" : "フォイル加工"}
+              </button>
+            </article>
+          ))}
+        </div>
+        <p className="skins-note forge-milestone-migration">
+          以前のバージョンからは、現在の所持枚数を通算獲得の開始値として引き継ぎます。過去に崩した分は履歴がないため含められません。
+        </p>
+      </section>
 
       <section className="forge-section">
         <div className="forge-head">
@@ -583,6 +684,12 @@ export function SkinsScreen({ onBack, onBattlePass }) {
   ).length;
   const shine = !reduce && collection.motion !== "off";
   const craftResult = !collection.pending && collection.lastCraft;
+  const milestoneResult = craftResult?.source === "milestone";
+  const resultLabel = milestoneResult
+    ? "フォイル加工完了"
+    : craftResult
+      ? "錬成結果"
+      : "召喚結果";
   const results =
     collection.pending?.results || (craftResult ? [craftResult] : null);
   const magicianLocked = isBattlePassLocked(
@@ -1038,16 +1145,32 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           />
         ) : (
           <SkinModal
-            label={craftResult ? "錬成結果" : "召喚結果"}
+            label={resultLabel}
             onClose={closeResults}
             className="skins-results-overlay"
           >
             <div className="skin-modal-head">
               <div>
                 <span className="skins-eyebrow">
-                  {craftResult ? "FORGE COMPLETE" : "SUMMON COMPLETE"}
+                  {milestoneResult
+                    ? "MILESTONE COMPLETE"
+                    : craftResult
+                      ? "FORGE COMPLETE"
+                      : "SUMMON COMPLETE"}
                 </span>
-                <h2>{craftResult ? "錬成が完成しました" : "新たな出会い"}</h2>
+                <h2>
+                  {milestoneResult
+                    ? "フォイル加工完了"
+                    : craftResult
+                      ? "錬成が完成しました"
+                      : "新たな出会い"}
+                </h2>
+                {milestoneResult && (
+                  <p className="skins-note">
+                    通算{FOIL_MILESTONE}
+                    枚獲得の記念に1枚プレゼント。所持カード・エーテルの消費はありません。
+                  </p>
+                )}
                 {results.some((r) => byId(r.id).foil) && (
                   <p className="skins-foil-acquired">
                     <FoilBadge /> フォイルを獲得しました
@@ -1056,9 +1179,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               </div>
               <button
                 className="skin-close"
-                aria-label={
-                  craftResult ? "錬成結果を閉じる" : "召喚結果を閉じる"
-                }
+                aria-label={`${resultLabel}を閉じる`}
                 disabled={working}
                 onClick={closeResults}
               >
@@ -1177,10 +1298,27 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 </div>
               )}
               {selected.foil && (
-                <p className="skins-note">
-                  箔の部分だけが光るフォイル版。ガチャ・錬成で、このキャラを獲得したときに
-                  {foilPct}%の確率で手に入ります。
-                </p>
+                <>
+                  <p className="skins-note">
+                    箔の部分だけが光るフォイル版。ガチャ・錬成で、このキャラを獲得したときに
+                    {foilPct}%の確率で手に入ります。また、通算{FOIL_MILESTONE}
+                    枚獲得すると「フォイル加工」で一度だけ、所持カード・エーテルを消費せず1枚受け取れます。
+                  </p>
+                  <button
+                    className="skin-btn"
+                    onClick={() => {
+                      setSelected(null);
+                      setTab("forge");
+                      requestAnimationFrame(() =>
+                        document
+                          .getElementById("forge-foil-milestones")
+                          ?.scrollIntoView({ block: "start" }),
+                      );
+                    }}
+                  >
+                    フォイル加工の進捗を見る
+                  </button>
+                </>
               )}
               {selectedLocked ? (
                 <div className="skins-pass-unlock">
@@ -1256,7 +1394,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                   {selected.rarity === "LIMITED"
                     ? "早期特典で獲得"
                     : selected.foil
-                      ? `ガチャ・錬成でキャラ獲得時に${foilPct}%`
+                      ? `獲得時に${foilPct}%、または通算${FOIL_MILESTONE}枚でフォイル加工`
                       : "ガチャ・錬成から獲得できます"}
                 </p>
               )}

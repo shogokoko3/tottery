@@ -1995,7 +1995,148 @@
   background: #142336;
   border-radius: 6px;
 }
+
+/* Lifetime acquisition rewards have no material cost and are separate from dismantling. */
+.forge-milestones {
+  margin: 24px 0 30px;
+  padding: 18px;
+  border: 1px solid #aa9fca66;
+  border-radius: 12px;
+  background: linear-gradient(140deg, #25253d, #101d2c 65%);
+  scroll-margin-top: 12px;
+}
+.forge-milestones .forge-head {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.forge-milestones .forge-head h3 {
+  font-size: 17px;
+}
+.forge-milestone-intro {
+  margin: 12px 0 8px;
+  color: #d7dbe9;
+  font: 12px/1.9 sans-serif;
+}
+.forge-milestone-intro strong {
+  display: block;
+  color: #f0dbab;
+}
+.forge-milestone-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(225px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.forge-milestone-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 12px;
+  row-gap: 8px;
+  padding: 12px;
+  border: 1px solid #8295b13d;
+  border-radius: 9px;
+  background: #101e30;
+}
+.forge-milestone-card.is-ready {
+  border-color: #dbbd79;
+  background: linear-gradient(135deg, #333142, #192637);
+}
+.forge-milestone-card.is-claimed {
+  border-color: #8fae9d65;
+}
+.forge-milestone-thumb {
+  grid-row: 1 / 3;
+  width: 48px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid #abb1cf70;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #101929;
+  cursor: pointer;
+}
+.forge-milestone-name {
+  min-width: 0;
+}
+.forge-milestone-name > span {
+  color: #b5bfd0;
+  font: 10px/1.5 sans-serif;
+}
+.forge-milestone-name h4 {
+  margin: 2px 0 0;
+  color: #ecdfc9;
+  font:
+    600 13px/1.5 "Shippori Mincho",
+    serif;
+  overflow-wrap: anywhere;
+}
+.forge-milestone-progress {
+  grid-column: 2;
+  min-width: 0;
+}
+.forge-milestone-progress > div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 5px;
+  color: #bcc6d4;
+  font: 10px/1.7 sans-serif;
+}
+.forge-milestone-progress b {
+  color: #eee5cd;
+  font-size: 12px;
+}
+.forge-milestone-progress progress {
+  display: block;
+  width: 100%;
+  height: 7px;
+  margin-top: 5px;
+  border: none;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #354058;
+  appearance: none;
+}
+.forge-milestone-progress progress::-webkit-progress-bar {
+  border-radius: 5px;
+  background: #354058;
+}
+.forge-milestone-progress progress::-webkit-progress-value {
+  border-radius: 5px;
+  background: linear-gradient(90deg, #a8c9d5, #d5bcdc, #eed29a);
+}
+.forge-milestone-progress progress::-moz-progress-bar {
+  border-radius: 5px;
+  background: linear-gradient(90deg, #a8c9d5, #d5bcdc, #eed29a);
+}
+.forge-milestone-claim {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 10px;
+}
+.forge-milestone-card.is-claimed .forge-milestone-claim {
+  color: #adc8ba;
+  opacity: 0.85;
+}
+.forge-milestone-migration {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid #abb2ca30;
+}
 @media (max-width: 600px) {
+  .forge-milestones {
+    padding: 13px;
+  }
+  .forge-milestone-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .forge-milestone-progress > div {
+    font-size: 11px;
+  }
   .skins-heading {
     gap: 10px;
   }
