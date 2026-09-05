@@ -25,6 +25,61 @@ export const LOCAL_ONLY_ACTIONS = new Set([
 ]);
 
 /**
+ * 相手から届いてよい手。
+ *
+ * 届いた手は相手の端末が名乗っているだけで、何も保証がない。ここに無い
+ * 名前は捨てる。盤に関わらない手(LOCAL_ONLY_ACTIONS)はそもそも送らない
+ * ので、届いたなら細工されている。
+ */
+export const NET_ACTIONS = new Set([
+  "START_SETUP",
+  "ROLL_DICE_SINGLE",
+  "NEXT_DICE_STEP",
+  "REROLL_DICE",
+  "GOTO_MULLIGAN",
+  "CONFIRM_MULLIGAN",
+  "SETUP_CONFIRM",
+  "CLOCK_TIMEOUT",
+  "CONFIRM_SHUFFLE",
+  "MOVE_PIECE",
+  "CHOOSE_HEIR",
+  "PLACE_RESERVE_CARD",
+  "SKIP_RESERVE_PLACEMENT",
+  "SKIP_EXTRA_ACTION",
+  "RESIGN",
+  "NEW_GAME",
+]);
+
+/** ホストしか始められない手。ホスト側には届かないはず */
+export const HOST_ONLY_ACTIONS = new Set(["START_SETUP", "NEW_GAME"]);
+
+/**
+ * 届いた手を、そのまま使ってよい形に直す。使えないなら null。
+ *
+ * @param act   受け取ったもの
+ * @param me    自分の uid（無ければ null）
+ * @param seat  自分の席番号（0 か 1）
+ */
+export function acceptAct(act, me, seat) {
+  if (!act || typeof act !== "object") return null;
+  if (typeof act.__id !== "string" || !act.__id) return null;
+  if (typeof act.type !== "string" || !NET_ACTIONS.has(act.type)) return null;
+  // 自分が指した手は、手元でもう反映してある
+  if (me && act.by === me) return null;
+  // 始まりの合図はホストが出す。自分がホストなら、届くはずがない
+  if (seat === 0 && HOST_ONLY_ACTIONS.has(act.type)) return null;
+  if (act.player === undefined || act.player === null) return act;
+  // JSON は型を保つので、"0" のような文字列で送られると
+  // 厳密等価の照合をすり抜ける。数に直してから照らす
+  const who = Number(act.player);
+  if (who !== 0 && who !== 1) return null;
+  // 投了・時間切れ・布陣の確定は、どれも指した本人の席番号を名乗る。
+  // 自分の席番号で届いたなら細工されている
+  if (who === seat) return null;
+  return who === act.player ? act : { ...act, player: who };
+}
+
+/**
  * 送信前に、手元の選択状態をアクションへ畳み込む。
  * 受け手には選択途中の状態が無いので、確定操作は自己完結させる必要がある。
  */

@@ -277,6 +277,8 @@ function AdminApp() {
   const [players, setPlayers] = useState(null);
   const [playersError, setPlayersError] = useState(null);
   const [lettersError, setLettersError] = useState(null);
+  const [ranksError, setRanksError] = useState(null);
+  const [lobbyError, setLobbyError] = useState(null);
   const [lobby, setLobby] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -299,8 +301,16 @@ function AdminApp() {
     setError(null);
     try {
       const [r, l, p, m] = await Promise.all([
-        getJson("ranks"),
-        getJson("lobby"),
+        // 1つでも投げると Promise.all ごと落ち、他の一覧まで出なくなる。
+        // 「読めなかった」も画面に出したいので、全部に受け皿を付ける
+        getJson("ranks").then(
+          (rows) => ({ rows }),
+          (e) => ({ error: (e && e.message) || String(e) }),
+        ),
+        getJson("lobby").then(
+          (rows) => ({ rows }),
+          (e) => ({ error: (e && e.message) || String(e) }),
+        ),
         // 登録した人の台帳。ルールがまだなら、そこだけ知らせて他は出す
         readPlayers().then(
           (rows) => ({ rows }),
@@ -312,7 +322,14 @@ function AdminApp() {
           (e) => ({ error: (e && e.message) || String(e) }),
         ),
       ]);
-      setRanks(Object.entries(r || {}).map(([id, row]) => ({ id, ...row })));
+      setRanks(
+        Object.entries((r && r.rows) || {}).map(([id, row]) => ({
+          id,
+          ...row,
+        })),
+      );
+      setRanksError((r && r.error) || null);
+      setLobbyError((l && l.error) || null);
       // letters/all/<id> と letters/to/<uid>/<id> を1本にならす
       {
         const tree = (m && m.tree) || {};
@@ -332,7 +349,7 @@ function AdminApp() {
       setPlayersError(p.error || null);
       setLettersError((m && m.error) || null);
       setLobby(
-        Object.entries(l || {}).map(([code, row]) => ({
+        Object.entries((l && l.rows) || {}).map(([code, row]) => ({
           code,
           ...(row && typeof row === "object" ? row : { value: row }),
         })),
@@ -388,7 +405,7 @@ function AdminApp() {
     if (
       !window.confirm(
         on
-          ? `「${row.name || row.id}」を使用停止にします。\nその端末は次に開いたときに名前を失い、決め直しの画面になります。`
+          ? `「${row.name || row.id}」を使用停止にします。\nこの口座は次に開いたときから遊べなくなり、順位表からも消えます。\n端末のデータを消して新しく始め直されると、この停止は外れます。`
           : `「${row.name || row.id}」の使用停止を解きます。`,
       )
     )
@@ -651,6 +668,7 @@ function AdminApp() {
           <p className="hint">
             オンラインの持ち点つき対局を終えた端末が置いた記録です。
           </p>
+          {ranksError && <p className="admin-error">{ranksError}</p>}
           {error && <p className="admin-error">{error}</p>}
           <div className="admin-rows">
             {rows.map((r) => (
@@ -791,6 +809,7 @@ function AdminApp() {
           <p className="hint">
             相手を待っている部屋。対局が始まるか3分たつと消えます。
           </p>
+          {lobbyError && <p className="admin-error">{lobbyError}</p>}
           <div className="admin-rows">
             {(lobby || []).map((l) => (
               <Row

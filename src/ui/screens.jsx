@@ -367,33 +367,67 @@ export function MatchingScreen({ onOnline, onFriend, onCpu, onBack }) {
   );
 }
 
+/**
+ * 相手が部屋に書いた名乗りは、こちらでは何も保証できない。
+ * 物や桁外れの数がそのまま画面に届くと、描くところで落ちて真っ白になる。
+ * 受け取る側で必ず通す
+ */
+function safeName(v) {
+  return typeof v === "string" && v ? v.slice(0, 10) : null;
+}
+function safeTag(v) {
+  return typeof v === "string" && v ? v.slice(0, 40) : null;
+}
+function safeRating(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.min(4000, Math.round(n))) : null;
+}
+
 export function RandomMatchScreen({ onBack, onRoomReady }) {
   const loadout = useRef(mySkins()).current;
   let [l, n] = (0, useState)("searching"),
     [a, u] = (0, useState)(""),
     f = (0, useRef)(null),
+    // 掲示に名乗った合言葉。降りるときに下ろす
+    claimed = (0, useRef)(null),
     o = (0, useRef)(!1);
   return (
     (0, useEffect)(() => {
       if (l !== "waiting") return;
+      // 掲示に名乗りが立っただけでは始めない。
+      // 名乗りは席を取らなくても書けるので、それを合図にすると、
+      // 名乗るだけ名乗って来ない相手に永久に待たされる。
+      // 席についた相手が部屋へ書く guestPresent を合図にする
+      let claimedAt = null;
       let r = setInterval(async () => {
         let d = f.current;
         if (!d) return;
-        let m = await readLobbyPath(`/${d}/guest`);
-        if (!o.current && m.ok && m.data) {
-          clearInterval(r);
-          let s = f.current,
-            // 相手の名前は、参加時に部屋へ書き込まれている
-            g = await readRoom(s);
+        let g = await readRoom(d);
+        if (o.current || !g.ok) return;
+        if (!g.data || !g.data.guestPresent) {
+          // 名乗りだけ立って席が埋まらないまま経ったら、その名乗りを外す。
+          // 外せるのは掲示の持ち主(=自分)だけ
+          let m = await readLobbyPath(`/${d}/guest`);
           if (o.current) return;
+          if (m.ok && m.data) {
+            if (claimedAt === null) claimedAt = Date.now();
+            else if (Date.now() - claimedAt > 15e3) {
+              (deleteLobbyPath(`/${d}/guest`), (claimedAt = null));
+            }
+          } else claimedAt = null;
+          return;
+        }
+        {
+          clearInterval(r);
+          let s = d;
           (deleteLobbyPath(`/${d}`),
             onRoomReady({
               code: s,
               myPlayerIndex: 0,
-              names: [myName(), (g.data && g.data.guestName) || null],
-              icons: [myIcon(), (g.data && g.data.guestIcon) || null],
-              titles: [myTitle(), (g.data && g.data.guestTitle) || null],
-              ratings: [myRating(), (g.data && g.data.guestRating) || null],
+              names: [myName(), safeName(g.data.guestName)],
+              icons: [myIcon(), safeTag(g.data.guestIcon)],
+              titles: [myTitle(), safeTag(g.data.guestTitle)],
+              ratings: [myRating(), safeRating(g.data.guestRating)],
               skins: [
                 sanitizeLoadout(g.data?.hostSkins),
                 sanitizeLoadout(g.data?.guestSkins),
@@ -405,7 +439,12 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
     }, [l]),
     (0, useEffect)(
       () => () => {
-        ((o.current = !0), f.current && deleteLobbyPath(`/${f.current}`));
+        ((o.current = !0),
+          f.current && deleteLobbyPath(`/${f.current}`),
+          // 名乗ったまま抜けると、待っている人を固めてしまう
+          claimed.current &&
+            (deleteLobbyPath(`/${claimed.current}/guest`),
+            leaveRoom(claimed.current)));
       },
       [],
     ),
@@ -433,8 +472,13 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           all = Object.entries(d.data || {}),
           // 時間切れの掲載は誰も拾えない。見つけたついでに片付ける。
           // 部屋には手番の列がまるごと入っているので、残したままにしない
+          // 未来の日付を入れた掲示は、いつまでも「新しい」ままになる。
+          // 先の日付も古いものと同じく片付ける
           stale = all.filter(
-            ([, g]) => !g || m - (g.createdAt || 0) >= LOBBY_TTL,
+            ([, g]) =>
+              !g ||
+              m - (g.createdAt || 0) >= LOBBY_TTL ||
+              (g.createdAt || 0) > m + 60e3,
           );
         for (let [z] of stale) {
           deleteLobbyPath(`/${z}`);
@@ -446,36 +490,42 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               g &&
               !g.guest &&
               g.host !== r &&
-              m - (g.createdAt || 0) < LOBBY_TTL,
+              m - (g.createdAt || 0) < LOBBY_TTL &&
+              (g.createdAt || 0) <= m + 60e3,
           )
+          // 偽の掲示を撒かれても、往復に付き合うのは先頭の数件までにする
+          .slice(0, 6)
           .sort((z, g) => (g[1].createdAt || 0) - (z[1].createdAt || 0));
         for (let [z] of s) {
-          // 先に部屋の席をとる。部屋の中身は席についてからでないと読めないし、
-          // 取れなければ何も汚さずに次の掲示へ行ける。
-          // 逆に掲示へ先に名乗ると、席が取れなかったときに名乗りだけが残り、
-          // 待っている人は「来たのに始まらない」ことになる(掲示の名乗りは
-          // 一度きりで、こちらからは取り消せない)
-          let seat = await joinRoom(z);
-          if (o.current) return;
-          if (!seat.ok) continue;
+          // 先に掲示へ名乗る。ランダムマッチの部屋の席は「掲示で名乗った人」
+          // にしか開かないので、この順でないと座れない。
+          // 名乗りは自分で下ろせるので、途中で降りても持ち主を固めない
           let g = await writeLobby(`/${z}/guest`, r);
           if (o.current) return;
-          if (!g.ok) {
-            await leaveRoom(z);
-            continue;
-          }
+          if (!g.ok) continue;
+          claimed.current = z;
           let A = await readLobbyPath(`/${z}/guest`);
           if (o.current) return;
           if (!A.ok || A.data !== r) {
-            // 掲示は他の人に取られた。座った席は空けて次へ
-            await leaveRoom(z);
+            // 掲示は他の人に取られた
+            claimed.current = null;
+            continue;
+          }
+          let seat = await joinRoom(z);
+          if (o.current) return;
+          if (!seat.ok) {
+            (await deleteLobbyPath(`/${z}/guest`), (claimed.current = null));
             continue;
           }
           {
             let b = await readRoom(z);
             if (o.current) return;
             if (!b.ok) {
-              (await leaveRoom(z), u(b.error), n("error"));
+              (await leaveRoom(z),
+                await deleteLobbyPath(`/${z}/guest`),
+                (claimed.current = null),
+                u(b.error),
+                n("error"));
               return;
             }
             if (
@@ -490,13 +540,14 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               o.current)
             )
               return;
+            claimed.current = null;
             onRoomReady({
               code: z,
               myPlayerIndex: 1,
-              names: [(b.data && b.data.hostName) || null, myName()],
-              icons: [(b.data && b.data.hostIcon) || null, myIcon()],
-              titles: [(b.data && b.data.hostTitle) || null, myTitle()],
-              ratings: [(b.data && b.data.hostRating) || null, myRating()],
+              names: [safeName(b.data && b.data.hostName), myName()],
+              icons: [safeTag(b.data && b.data.hostIcon), myIcon()],
+              titles: [safeTag(b.data && b.data.hostTitle), myTitle()],
+              ratings: [safeRating(b.data && b.data.hostRating), myRating()],
               skins: [sanitizeLoadout(b.data?.hostSkins), loadout],
             });
             return;
@@ -652,9 +703,7 @@ export function RoomScreen({
     return (
       (async () => {
         let x = `diag${Date.now()}`,
-          N = await createRoom(x, {
-            test: !0,
-          });
+          N = await createRoom(x, {});
         if (P) return;
         if (!N.ok) {
           (z("fail"), A(N.error));
@@ -694,10 +743,10 @@ export function RoomScreen({
               onRoomReady({
                 code: f,
                 myPlayerIndex: 0,
-                names: [myName(), N.data.guestName || null],
-                icons: [myIcon(), N.data.guestIcon || null],
-                titles: [myTitle(), N.data.guestTitle || null],
-                ratings: [myRating(), N.data.guestRating || null],
+                names: [myName(), safeName(N.data.guestName)],
+                icons: [myIcon(), safeTag(N.data.guestIcon)],
+                titles: [myTitle(), safeTag(N.data.guestTitle)],
+                ratings: [myRating(), safeRating(N.data.guestRating)],
                 skins: [
                   sanitizeLoadout(N.data.hostSkins),
                   sanitizeLoadout(N.data.guestSkins),
@@ -711,7 +760,9 @@ export function RoomScreen({
     }, [u, f]));
   async function y() {
     (p(!0), s(""));
-    let P = generateRoomCode(),
+    // 合言葉そのものが鍵になる。4文字(約100万通り)では総当たりで
+    // 待機中の部屋に入り込まれ、伏せた王まで見えてしまう
+    let P = generateRoomCode() + generateRoomCode(),
       x = await createRoom(P, {
         guestPresent: !1,
         gameState: null,
@@ -729,8 +780,8 @@ export function RoomScreen({
   }
   async function T() {
     let P = r.trim().toUpperCase();
-    if (P.length < 4) {
-      s("4桁のコードを入力してください");
+    if (P.length < 8) {
+      s("8文字の合言葉を入力してください");
       return;
     }
     (p(!0), s(""));
@@ -773,10 +824,10 @@ export function RoomScreen({
     }
     onRoomReady({
       code: P,
-      names: [x.data.hostName || null, myName()],
-      icons: [x.data.hostIcon || null, myIcon()],
-      titles: [x.data.hostTitle || null, myTitle()],
-      ratings: [x.data.hostRating || null, myRating()],
+      names: [safeName(x.data.hostName), myName()],
+      icons: [safeTag(x.data.hostIcon), myIcon()],
+      titles: [safeTag(x.data.hostTitle), myTitle()],
+      ratings: [safeRating(x.data.hostRating), myRating()],
       skins: [sanitizeLoadout(x.data.hostSkins), loadout],
       myPlayerIndex: 1,
     });
@@ -790,7 +841,7 @@ export function RoomScreen({
       <h2>ルームを作成しました</h2>
       <div className="room-code">{f}</div>
       <p className="hint">
-        この4桁のコードを相手に伝えてください。相手が参加すると自動的に始まります。
+        この合言葉を相手に伝えてください。相手が参加すると自動的に始まります。
       </p>
       <Dice size={22} className="dim-icon spin-icon" />
       {m && (
@@ -883,7 +934,7 @@ export function RoomScreen({
             P && P.focus();
           }}
         >
-          {[0, 1, 2, 3].map((P) => (
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((P) => (
             <div
               className={`code-box ${r.length === P ? "code-box-active" : ""}`}
               key={P}
@@ -895,7 +946,7 @@ export function RoomScreen({
             id="code-input"
             className="code-hidden"
             value={r}
-            maxLength={4}
+            maxLength={8}
             onChange={(P) =>
               d(P.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
             }
@@ -912,7 +963,7 @@ export function RoomScreen({
         </button>
       </div>
       <p className="code-note">
-        <Info size={14} /> 4文字の合言葉を入力してください。
+        <Info size={14} /> 8文字の合言葉を入力してください。
       </p>
       {m && (
         <p

@@ -2,6 +2,7 @@ import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, SUIT_SYMBOL } from "./constants.js";
 import {
   buildDeck,
+  inBounds,
   shuffle,
   emptyBoard,
   totalSlots,
@@ -12,6 +13,15 @@ import {
   placedRankCounts,
   makePlayer,
 } from "./board.js";
+
+/** 盤の上のマスか。通信で届いた座標をそのまま添字に使わないための番人 */
+function onBoard(board, row, col) {
+  return (
+    Number.isInteger(row) &&
+    Number.isInteger(col) &&
+    inBounds(row, col, board.length)
+  );
+}
 
 /** 対局の記録に残す出来事かどうか */
 export function isNotableLog(line) {
@@ -972,6 +982,7 @@ function coreReducer(state, action) {
 
     case "CLOCK_TIMEOUT": {
       const loser = action.player;
+      if (loser !== 0 && loser !== 1) return state;
       if (state.winner !== null && state.winner !== undefined) return state;
       if (state.phase !== "play") return state;
       return {
@@ -1028,6 +1039,9 @@ function coreReducer(state, action) {
       if (!aId || picks.length !== 2) return state;
 
       const ids = [aId, ...picks];
+      // 知らない駒idが混ざっていると、ここで落ちて画面が消える
+      if (ids.some((id) => !state.pieces[id] || !state.pieces[id].alive))
+        return state;
       const cells = ids.map((id) => ({
         row: state.pieces[id].row,
         col: state.pieces[id].col,
@@ -1120,6 +1134,19 @@ function coreReducer(state, action) {
       if (state.winner) return state;
       const mover = state.pieces[action.pieceId || state.selectedId];
       if (!mover || !mover.alive) return state;
+      // 手は通信でも届く。届いた手を信じない。
+      // 番でない側の駒や、盤の外の座標をそのまま通すと、相手の盤で
+      // 好きな駒を取れてしまうし、盤の外を読んで画面ごと落ちる
+      if (mover.owner !== state.currentTurn) return state;
+      if (!onBoard(state.board, action.row, action.col)) return state;
+      if (
+        action.captures &&
+        (!Array.isArray(action.captures) ||
+          action.captures.some(
+            (at) => !at || !onBoard(state.board, at.row, at.col),
+          ))
+      )
+        return state;
       // 王の10は1ターンに2回動ける。どちらの手かを記録に添える
       const secondAction = state.extraMoveFor === mover.id;
       const twiceKing = mover.isKing && mover.rank === "10";
@@ -1323,7 +1350,8 @@ function coreReducer(state, action) {
 
     case "RESIGN": {
       const who = action.player;
-      if (who == null) return state;
+      // 文字列の "0" などを通すと 1 - who や配列の添字が思わぬ形になる
+      if (who !== 0 && who !== 1) return state;
       return {
         ...state,
         phase: "gameover",

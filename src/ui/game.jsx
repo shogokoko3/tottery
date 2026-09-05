@@ -40,7 +40,12 @@ import {
   pushAct,
   readActs,
 } from "../net/firebase.js";
-import { LOCAL_ONLY_ACTIONS, withLocalContext } from "../net/sync.js";
+import { myUid } from "../net/auth.js";
+import {
+  LOCAL_ONLY_ACTIONS,
+  acceptAct,
+  withLocalContext,
+} from "../net/sync.js";
 import { takePresentationBatch } from "../net/presentation.js";
 import { CardFace, Piece } from "./cards.jsx";
 import { useNames, useSeats } from "./names.jsx";
@@ -966,24 +971,29 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             v(be.error);
             return;
           }
-          const unseen = be.list.filter(
-            (ne) =>
-              ne &&
-              ne.__id &&
-              !g.current.has(ne.__id) &&
-              // 自分の名前で指された手は受け取らない。
-              // 投了・時間切れ・布陣の確定は、どれも指した本人の席番号を
-              // 名乗る。相手から自分の席番号で届くことはあり得ないので、
-              // 届いたなら細工されている(投了を代わりに宣言されるなど)
-              !(ne.player === p),
-          );
+          // 届いた手はそのまま信じない。acceptAct が形を確かめて直す
+          const me = myUid();
+          const unseen = be.list
+            .map((ne) => acceptAct(ne, me, p))
+            .filter((ne) => ne && !g.current.has(ne.__id));
           const { actions: at, consumedIds } = takePresentationBatch(unseen, {
             split:
               a.phase === "play" && (cinematic.enabled || aceMagic.enabled),
           });
           at.length !== 0 &&
             (consumedIds.forEach((id) => g.current.add(id)),
-            u((ne) => at.reduce((Me, ze) => reducer(Me, ze), ne)),
+            u((ne) =>
+              at.reduce((Me, ze) => {
+                // 壊れた手が1件混ざるだけで画面ごと落ちないようにする。
+                // 消したことは記録済みなので、落ちた手は捨てて先へ進む
+                try {
+                  return reducer(Me, ze);
+                } catch (err) {
+                  console.warn("受け取った手を適用できませんでした", ze, err);
+                  return Me;
+                }
+              }, ne),
+            ),
             b(be.list.length));
         }, 700);
       return () => {

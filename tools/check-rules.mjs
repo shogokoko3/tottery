@@ -2,12 +2,22 @@
  * データベースのルール(firebase-rules.json)を、実際に公開する前に検査する。
  *
  * Firebase の判定を丸ごと真似ることはできないので、要点だけを真似た小さな
- * 評価器で確かめる。真似ているのは次の三つ:
+ * 評価器で確かめる。真似ているのは次の四つ:
  *
  *   ・.read/.write は上から下へだけ効く。祖先のどれかが許せば通る。
  *     深いところに書いた規則で、浅いところの許可を取り消すことはできない。
- *   ・.validate は消すときには見ない。書くときだけ、書いた場所とその下を見る。
+ *   ・**.validate は書いた場所とその下しか見ない。祖先の .validate は
+ *     評価されない。** だから .validate は防壁にならない。書き込み位置を
+ *     1段下げれば素通りする。保証は .write に置くこと。
+ *   ・.validate は消すときには見ない。
  *   ・無いところの値を数と比べても真にならない(JS と違うので、ここを合わせる)。
+ *
+ * 検査は三つの口で行う:
+ *   canRead  … GET
+ *   canWrite … その場所へ値を丸ごと置く(PUT / DELETE / POST)
+ *   canPatch … PATCH。直下の子ごとに評価される。祖先の .write は効くが、
+ *              祖先の .validate は効かない。**.validate だけで守っている
+ *              条項は、ここで必ず破れる。**
  *
  * 通信はしない。公開する手順は firebase-rules.md にある。
  */
@@ -208,11 +218,30 @@ function validates(db, after, path, value, vars0) {
   return true;
 }
 
-/** .write が通り、.validate も通るか */
-export function canWrite(db, path, auth, value) {
-  const after = writtenTree(db, path, value);
+/** 木のコピーに、path の直下の子を patch の分だけ書いたもの */
+function patchedTree(db, path, patch) {
+  let out = structuredClone(db);
+  for (const [k, v] of Object.entries(patch))
+    out = writeInto(out, [...path, k], v);
+  return out;
+}
+
+function writeInto(tree, path, value) {
+  if (path.length === 0) return value;
+  let v = tree;
+  for (const seg of path.slice(0, -1)) {
+    if (v[seg] == null || typeof v[seg] !== "object") v[seg] = {};
+    v = v[seg];
+  }
+  const last = path[path.length - 1];
+  if (value === null) delete v[last];
+  else v[last] = value;
+  return tree;
+}
+
+/** 書いたあとの木を渡して、その1か所が通るか */
+function writeAllowed(db, after, path, auth) {
   const root = new Snap(db, []);
-  let allowed = false;
   for (const step of walk(path)) {
     if (!step.node || step.node[".write"] === undefined) continue;
     if (
@@ -224,13 +253,34 @@ export function canWrite(db, path, auth, value) {
         root,
         now: NOW,
       })
-    ) {
-      allowed = true;
-      break;
-    }
+    )
+      return true;
   }
-  if (!allowed) return false;
+  return false;
+}
+
+/** その場所へ値を丸ごと置けるか(PUT / DELETE / POST) */
+export function canWrite(db, path, auth, value) {
+  const after = writtenTree(db, path, value);
+  if (!writeAllowed(db, after, path, auth)) return false;
   return validates(db, after, path, value, { auth });
+}
+
+/**
+ * PATCH できるか。
+ *
+ * RTDB の PATCH は直下の子ごとの書き込みとして判定される。祖先の .write は
+ * 効くが、**祖先の .validate は評価されない**。.validate だけで守っている
+ * 条項は、ここで破れる。
+ */
+export function canPatch(db, path, auth, patch) {
+  const after = patchedTree(db, path, patch);
+  for (const [k, v] of Object.entries(patch)) {
+    const at = [...path, k];
+    if (!writeAllowed(db, after, at, auth)) return false;
+    if (!validates(db, after, at, v, { auth })) return false;
+  }
+  return true;
 }
 
 /* ------------------------- ここから検査 ------------------------- */
@@ -295,6 +345,7 @@ allow(
     type: "RESIGN",
     player: 0,
     by: "uidA",
+    __id: "a-1",
   }),
 );
 deny(
@@ -303,6 +354,7 @@ deny(
     type: "RESIGN",
     player: 1,
     by: "uidB",
+    __id: "a-1",
   }),
 );
 deny(
@@ -314,6 +366,7 @@ deny(
   canWrite(room, ["rooms", "ABCD", "acts", "-N1"], A, {
     type: "MOVE_PIECE",
     by: "uidA",
+    __id: "a-9",
   }),
 );
 deny(
@@ -420,16 +473,24 @@ allow(
 /* --- 待ち合わせ --- */
 console.log("\n待ち合わせの掲示");
 const lob = {
+  rooms: { ABCD: { members: { uidA: true }, createdAt: NOW - 30_000 } },
   lobby: { ABCD: { host: "uidA", createdAt: NOW - 30_000 } },
 };
 allow("掲示は誰でも見られる", canRead(lob, ["lobby"], X));
+const mine = {
+  rooms: { QQQQ: { members: { uidA: true }, createdAt: NOW - 1000 } },
+};
 allow(
-  "自分の名前で掲示できる",
-  canWrite({}, ["lobby", "QQQQ"], A, { host: "uidA", createdAt: NOW }),
+  "自分の部屋なら掲示できる",
+  canWrite(mine, ["lobby", "QQQQ"], A, { host: "uidA", createdAt: NOW }),
 );
 deny(
   "他人の名前では掲示できない",
-  canWrite({}, ["lobby", "QQQQ"], A, { host: "uidB", createdAt: NOW }),
+  canWrite(mine, ["lobby", "QQQQ"], A, { host: "uidB", createdAt: NOW }),
+);
+deny(
+  "部屋の無い掲示は出せない（空振りの掲示で埋められない）",
+  canWrite({}, ["lobby", "QQQQ"], A, { host: "uidA", createdAt: NOW }),
 );
 deny("他人の掲示は消せない", canWrite(lob, ["lobby", "ABCD"], X, null));
 allow("自分の掲示は消せる", canWrite(lob, ["lobby", "ABCD"], A, null));
@@ -443,6 +504,7 @@ deny(
   canWrite(lob, ["lobby", "ABCD", "guest"], B, "uidA"),
 );
 const taken = {
+  rooms: { ABCD: { members: { uidA: true }, createdAt: NOW - 30_000 } },
   lobby: { ABCD: { host: "uidA", guest: "uidB", createdAt: NOW - 30_000 } },
 };
 deny(
@@ -505,19 +567,266 @@ deny(
   "知らない項目は混ぜられない",
   canWrite(db, ["ranks", "uidX"], X, { name: "え", rating: 1500, admin: true }),
 );
-allow("ランキングは誰でも見られる", canRead(db, ["ranks"], none));
 deny(
   "素性の知れない人は何も書けない",
   canWrite(db, ["ranks", "uidX"], none, { name: "え", rating: 1500 }),
 );
 
+/* --- 1段下げた書き込みと PATCH（.validate は防壁にならない） --- */
+console.log("\n書き込む場所を1段下げても破れないか");
+deny(
+  "手番の名乗りを、1段下げて省けない",
+  canWrite(room, ["rooms", "ABCD", "acts", "-N9", "type"], A, "RESIGN"),
+);
+deny(
+  "手番の名乗りを、1段下げて騙れない",
+  canWrite(room, ["rooms", "ABCD", "acts", "-N9", "by"], A, "uidB"),
+);
+deny(
+  "自分の入らない部屋を PATCH で作れない",
+  canPatch({}, ["rooms", "NEW1"], A, {
+    members: { uidB: true },
+    createdAt: NOW,
+  }),
+);
+deny(
+  "成績の名前を、葉の下へ書いて壊せない",
+  canWrite(db, ["ranks", "uidX", "name", "x"], X, "boom"),
+);
+deny(
+  "成績の名前を、PATCH で物に変えられない",
+  canPatch(db, ["ranks", "uidX", "name"], X, { x: "boom" }),
+);
+deny(
+  "台帳の名前も、葉の下へ書けない",
+  canWrite(db, ["players", "uidX", "name", "x"], X, "boom"),
+);
+deny(
+  "知らない項目を、葉の下へ書いて混ぜられない",
+  canWrite(db, ["ranks", "uidX", "junk", "deep"], X, "x"),
+);
+
+console.log("\n部屋の埋め尽くし");
+deny(
+  "はじめから二人いる部屋は作れない",
+  canWrite({}, ["rooms", "SPAM"], X, {
+    members: { uidX: true, uidY: true },
+    createdAt: NOW,
+  }),
+);
+deny(
+  "未来の日付の部屋は作れない",
+  canWrite({}, ["rooms", "SPAM"], X, {
+    members: { uidX: true },
+    createdAt: NOW + 400 * 24 * 3600_000,
+  }),
+);
+allow(
+  "運営はどんな部屋も片付けられる",
+  canWrite(room, ["rooms", "ABCD"], op, null),
+);
+
+console.log("\n待っているだけの部屋を覗けないか");
+deny(
+  "掲示のある部屋(ランダムマッチ)は、名乗った人以外は座れない",
+  canWrite(
+    {
+      rooms: { RNDM: { members: { uidA: true }, createdAt: NOW - 10_000 } },
+      lobby: { RNDM: { host: "uidA", guest: "uidB", createdAt: NOW - 10_000 } },
+    },
+    ["rooms", "RNDM", "members", "uidX"],
+    X,
+    true,
+  ),
+);
+deny(
+  "座れないので、待機中の部屋の中身も読めない",
+  canRead(
+    {
+      rooms: { RNDM: { members: { uidA: true }, createdAt: NOW - 10_000 } },
+      lobby: { RNDM: { host: "uidA", guest: "uidB", createdAt: NOW - 10_000 } },
+    },
+    ["rooms", "RNDM"],
+    X,
+  ),
+);
+// 合言葉の部屋には掲示が無い。鍵は合言葉そのものなので、
+// 総当たりされない長さ(8文字)であることが前提になる。長さは check-account が見る
+allow(
+  "合言葉の部屋は、合言葉を知っていれば座れる",
+  canWrite(half, ["rooms", "EFGH", "members", "uidX"], X, true),
+);
+const posted = {
+  rooms: { EFGH: { members: { uidA: true }, createdAt: NOW - 10_000 } },
+  lobby: { EFGH: { host: "uidA", guest: "uidB", createdAt: NOW - 10_000 } },
+};
+allow(
+  "掲示で名乗った人だけが座れる",
+  canWrite(posted, ["rooms", "EFGH", "members", "uidB"], B, true),
+);
+deny(
+  "名乗っていない第三者は座れない",
+  canWrite(posted, ["rooms", "EFGH", "members", "uidX"], X, true),
+);
+
+console.log("\n待ち合わせの掲示");
+allow(
+  "掲示への名乗りは早い者勝ち（席はそのあと）",
+  canWrite(lob, ["lobby", "ABCD", "guest"], X, "uidX"),
+);
+allow(
+  "居座られたら、掲示の持ち主が名乗りを外せる",
+  canWrite(taken, ["lobby", "ABCD", "guest"], A, null),
+);
+allow(
+  "名乗った本人は取り下げられる",
+  canWrite(taken, ["lobby", "ABCD", "guest"], B, null),
+);
+deny(
+  "他人の名乗りは取り下げられない",
+  canWrite(taken, ["lobby", "ABCD", "guest"], X, null),
+);
+deny(
+  "未来の日付の掲示は作れない",
+  canWrite({}, ["lobby", "FAKE"], X, {
+    host: "uidX",
+    createdAt: NOW + 400 * 24 * 3600_000,
+  }),
+);
+deny(
+  "持ち主のいない掲示は作れない",
+  canWrite({}, ["lobby", "FAKE"], X, { createdAt: NOW }),
+);
+
+console.log("\n使用停止が実際に効くか");
+const stopped = {
+  bans: { uidX: { at: NOW } },
+  rooms: {
+    ABCD: { members: { uidA: true, uidX: true }, createdAt: NOW - 1000 },
+  },
+  lobby: {},
+  ranks: { uidX: { name: "と", rating: 1500 } },
+  players: { uidX: { name: "と" } },
+};
+deny(
+  "止められた人は成績を置けない",
+  canWrite(stopped, ["ranks", "uidX"], X, { name: "と", rating: 1600 }),
+);
+deny(
+  "止められた人は台帳に載せられない",
+  canWrite(stopped, ["players", "uidX"], X, { name: "と" }),
+);
+deny(
+  "止められた人は掲示を出せない",
+  canWrite(stopped, ["lobby", "QQ"], X, { host: "uidX", createdAt: NOW }),
+);
+deny(
+  "止められた人は手を指せない",
+  canWrite(stopped, ["rooms", "ABCD", "acts", "-Z"], X, {
+    type: "MOVE_PIECE",
+    by: "uidX",
+    __id: "z",
+  }),
+);
+deny(
+  "止められた人は部屋を作れない",
+  canWrite(stopped, ["rooms", "NEW"], X, {
+    members: { uidX: true },
+    createdAt: NOW,
+  }),
+);
+allow(
+  "止められていない人は今までどおり置ける",
+  canWrite(stopped, ["ranks", "uidA"], A, { name: "あ", rating: 1500 }),
+);
+
+console.log("\n通報の置き場");
+const rep = {
+  reports: { R1: { targetId: "uidA", reason: "暴言", at: NOW } },
+};
+allow(
+  "誰でも通報できる",
+  canWrite(rep, ["reports", "R2"], X, {
+    targetId: "uidA",
+    reason: "暴言",
+    at: NOW,
+    reporterId: "uidX",
+  }),
+);
+allow("運営は通報を消せる", canWrite(rep, ["reports", "R1"], op, null));
+allow(
+  "運営は処理の印を付けられる",
+  canWrite(rep, ["reports", "R1", "handled"], op, true),
+);
+deny("他人の通報は読めない", canRead(rep, ["reports", "R1"], X));
+deny(
+  "通報の体裁を欠いたものは置けない",
+  canWrite(rep, ["reports", "R3"], X, { junk: "x" }),
+);
+deny(
+  "1段下げて任意の中身を置けない",
+  canWrite(rep, ["reports", "R3", "junk"], X, "x"),
+);
+deny(
+  "通報者を騙れない",
+  canWrite(rep, ["reports", "R4"], X, {
+    targetId: "uidA",
+    reason: "暴言",
+    at: NOW,
+    reporterId: "uidB",
+  }),
+);
+deny(
+  "余計な項目は混ぜられない",
+  canWrite(rep, ["reports", "R5"], X, {
+    targetId: "uidA",
+    reason: "暴言",
+    at: NOW,
+    payload: "x".repeat(100),
+  }),
+);
+deny("自分の通報も消せない", canWrite(rep, ["reports", "R1"], X, null));
+
+console.log("\n名乗りの欄の中身");
+deny(
+  "相手の名前を物にして画面を壊せない",
+  canWrite(room, ["rooms", "ABCD", "guestName"], B, { evil: 1 }),
+);
+deny(
+  "持ち点を桁外れに偽れない",
+  canWrite(room, ["rooms", "ABCD", "guestRating"], B, 999999),
+);
+deny(
+  "知らない欄を部屋に生やせない",
+  canWrite(room, ["rooms", "ABCD", "payload"], B, "x"),
+);
+
+console.log("\nランキングの見え方");
+deny("未サインインではランキングを読めない", canRead(db, ["ranks"], none));
+allow("サインインしていれば読める", canRead(db, ["ranks"], X));
+
 /* --- 埋め込んだ uid がずれていないか --- */
 console.log("\n運営の uid のつじつま");
 const raw = readFileSync(join(here, "..", "firebase-rules.json"), "utf8");
+/** 式の中に現れる「uid らしい並び」を全部集める */
+function uidLiterals(node, out = new Set()) {
+  if (typeof node === "string") {
+    for (const m of node.matchAll(/'([A-Za-z0-9]{20,})'/g)) out.add(m[1]);
+  } else if (node && typeof node === "object") {
+    for (const v of Object.values(node)) uidLiterals(v, out);
+  }
+  return out;
+}
+const lits = [...uidLiterals(RULES)];
 is(
-  "ルールに書いてある uid が src/net/auth.js と同じ",
-  raw.includes(OP) && !/PUT-OPERATOR-UID-HERE/.test(raw),
+  `ルールに出てくる uid が全部 src/net/auth.js と同じ(${lits.length}か所)`,
+  lits.length > 0 && lits.every((u) => u === OP),
   true,
+);
+is(
+  "置き換え忘れの目印が残っていない",
+  /PUT-OPERATOR-UID-HERE/.test(raw),
+  false,
 );
 
 console.log(`\n${ok} 件 ok / ${fails.length} 件 NG`);

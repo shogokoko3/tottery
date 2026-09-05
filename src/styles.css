@@ -393,8 +393,11 @@ h3 {
 }
 .room-code {
   font-family: "Shippori Mincho", serif;
-  font-size: 44px;
-  letter-spacing: 0.2em;
+  /* 合言葉は8文字。狭い画面でもはみ出さない大きさに収める */
+  font-size: clamp(22px, 8vw, 38px);
+  letter-spacing: 0.12em;
+  max-width: 100%;
+  word-break: break-all;
   color: var(--gold-soft);
   border: 2px solid var(--gold);
   border-radius: 8px;
@@ -1237,21 +1240,28 @@ h3 {
   box-shadow: none;
 }
 .code-row {
+  /* 8文字ぶんの枠と「参加する」を横に並べると、狭い画面で枠が潰れる。
+     枠を1行いっぱいに使い、ボタンはその下に置く */
   display: flex;
+  flex-direction: column;
   gap: 10px;
   align-items: stretch;
   margin: 16px 0 8px;
 }
+.code-row .code-join {
+  width: 100%;
+}
 .code-boxes {
   display: flex;
-  gap: 8px;
+  gap: 5px;
   flex: 1;
   position: relative;
   cursor: text;
 }
 .code-box {
   flex: 1;
-  aspect-ratio: 0.85;
+  min-width: 0;
+  aspect-ratio: 0.72;
   background: var(--card-face);
   border: 1px solid var(--gold);
   border-radius: 6px;

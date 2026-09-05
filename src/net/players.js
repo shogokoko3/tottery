@@ -173,6 +173,17 @@ export async function deletePlayer(id) {
 }
 
 export async function setBanned(id, banned) {
+  // 停止したら順位表からも下ろす。ranks はサインインした人なら誰でも
+  // 読めるので、行が残っていると迷惑な名前がそのまま見え続ける
+  if (banned)
+    try {
+      await withTimeout(
+        authedFetch(`${DB_URL}/ranks/${id}.json`, { method: "DELETE" }),
+        TIMEOUT_MS,
+      );
+    } catch {
+      /* 消せなくても停止そのものは進める */
+    }
   const res = await withTimeout(
     authedFetch(
       `${DB_URL}/bans/${id}.json`,
