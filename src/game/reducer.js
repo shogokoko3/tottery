@@ -1264,6 +1264,9 @@ function coreReducer(state, action) {
       const { owner, card } = state.kPlacement;
       const board = state.board.map((r) => [...r]);
       const pieces = { ...state.pieces };
+      // 予備札から出る駒は表向き。どこからともなく1枚増えるので、
+      // 伏せたままだと相手には「何が増えたのか」がまるで読めない。
+      // Kの王の見返りは駒数そのものなので、正体は明かして出す
       const piece = {
         id: card.id,
         rank: card.rank,
@@ -1273,7 +1276,8 @@ function coreReducer(state, action) {
         row: action.row,
         col: action.col,
         alive: true,
-        history: ["予備札から出撃"],
+        revealed: true,
+        history: ["予備札から表向きに出撃"],
         everRevived: false,
       };
       pieces[piece.id] = piece;
@@ -1296,7 +1300,12 @@ function coreReducer(state, action) {
         pieces,
         players,
         kPlacement: null,
-        log: [...state.log, `${PLAYER_META[owner].name}が予備札から1枚を投入`],
+        // 盤でめくる演出に乗せる。表で出ることが目で分かるように
+        lastReveal: { id: piece.id, reason: "予備札から出た" },
+        log: [
+          ...state.log,
+          `${PLAYER_META[owner].name}が予備札から ${card.rank}${SUIT_SYMBOL[card.suit]} を投入(公開)`,
+        ],
       };
     }
 

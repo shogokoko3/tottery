@@ -460,5 +460,40 @@ console.log("\n2〜5 は取っても流さない(効果のときだけ)");
   );
 }
 
+console.log("\nKの王の予備札は表向きで出る");
+{
+  // 王がK。自分の J が取られると予備札を1枚引ける
+  const before = build([
+    ["k0", "K", 0, 4, 0, true],
+    ["jack", "J", 0, 3, 2, false],
+    ["k1", "K", 1, 0, 4, true],
+    ["foe", "8", 1, 2, 2, false],
+  ]);
+  before.reserve = [{ id: "spare", rank: "9", suit: "heart" }];
+  // 相手の番にして、こちらの J を取らせる
+  before.currentTurn = 1;
+  const taken = move(before, "foe", 3, 2);
+  t("予備札が来ている", taken.kPlacement?.owner === 0);
+  t("引いた札が控えている", taken.kPlacement?.card.id === "spare");
+  const placed = reducer(taken, { type: "PLACE_RESERVE_CARD", row: 4, col: 4 });
+  t("盤に出る", placed.pieces.spare?.alive === true);
+  t("表向きで出る", placed.pieces.spare?.revealed === true);
+  t("盤の上でも表", placed.board[4][4]?.revealed === true);
+  t("めくる演出に乗る", placed.lastReveal?.id === "spare");
+  t(
+    "行動の記録に残る",
+    placed.pieces.spare.history.includes("予備札から表向きに出撃"),
+  );
+  t(
+    "対局の記録に数字が出る",
+    placed.log.some((l) => l.includes("9♥") && l.includes("公開")),
+  );
+  t("他の駒は伏せたまま", placed.pieces.k0.revealed === false);
+  t(
+    "出さずに見送れる",
+    reducer(taken, { type: "SKIP_RESERVE_PLACEMENT" }).kPlacement === null,
+  );
+}
+
 console.log(`\n${ok} ok / ${fail} fail`);
 process.exit(fail ? 1 : 0);
