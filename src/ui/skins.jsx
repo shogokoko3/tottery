@@ -358,11 +358,6 @@ function SummonReveal({ results, onFinish, reduce }) {
               すべてめくる
             </button>
           )}
-          {!allComplete && (
-            <button className="skin-btn" onClick={onFinish}>
-              演出をスキップ
-            </button>
-          )}
           {allComplete && (
             <button className="skin-btn skin-btn-gold" onClick={onFinish}>
               結果へ →
