@@ -196,6 +196,7 @@ export const SKINS = [
   color,
   move,
   description,
+  acquisition: id === "genie-magician" ? "battlepass" : null,
   image: `skins/portraits/${id}.webp`,
   card: `skins/cards/${id}.webp`,
   // 小さな盤面では顔と帽子が見やすい専用絵を使う。

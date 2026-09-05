@@ -27,6 +27,10 @@ import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
 import { SkinFilm } from "./skin-film.jsx";
 import { ArrowLeft, Ether } from "../icons.jsx";
 import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
+import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
+
+const isBattlePassLocked = (skin, owned) =>
+  skin?.acquisition === "battlepass" && !owned[skin.id];
 
 const rarityLabel = (s) =>
   s.rarity === "LIMITED"
@@ -475,6 +479,11 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     [message, setMessage] = useState("");
   const busy = useRef(false);
   const ownedCount = Object.keys(collection.owned).length;
+  const magicianLocked = isBattlePassLocked(
+    byId("genie-magician"),
+    collection.owned,
+  );
+  const selectedLocked = isBattlePassLocked(selected, collection.owned);
   const run = async (change) => {
     if (busy.current) return false;
     busy.current = true;
@@ -607,14 +616,21 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               aria-label="A ランプのマジシャンの詳細"
               onClick={() => setSelected(byId("genie-magician"))}
             >
-              <img
-                src={byId("genie-magician").image}
-                alt="ランプのマジシャン"
-              />
+              {magicianLocked ? (
+                <BattlePassSkinLock />
+              ) : (
+                <img
+                  src={byId("genie-magician").image}
+                  alt="ランプのマジシャン"
+                />
+              )}
             </button>
             <div>
               <span className="skins-eyebrow">BATTLE PASS REWARD / A</span>
               <h3>ランプのマジシャン</h3>
+              {magicianLocked && (
+                <p className="skins-pass-hint">バトルパスクリアで獲得可能</p>
+              )}
               <p>
                 3つの帽子で入れ替え、包囲した相手は大きな帽子の中へ。
                 <br />
@@ -734,29 +750,40 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             ))}
           </div>
           <div className="skins-grid">
-            {shown.map((skin) => (
-              <button
-                className={`skins-tile rarity-${skin.rarity}`}
-                key={skin.id}
-                onClick={() => setSelected(skin)}
-                aria-label={`${skin.rank} ${skin.name} ${collection.owned[skin.id] ? "所持" : "未所持"}`}
-              >
-                <div className="skins-tile-art">
-                  <img src={skin.card} alt={skin.role} loading="lazy" />
-                  <span className="skins-tile-rank">{skin.rank}</span>
-                  <span className="skins-tile-rarity">{rarityLabel(skin)}</span>
-                  {collection.equipped[skin.rank] === skin.id && (
-                    <span className="skins-equipped">装備中</span>
-                  )}
-                </div>
-                <strong>{skin.name}</strong>
-                <span className="skins-tile-status">
-                  {collection.owned[skin.id]
-                    ? `所持 ×${collection.owned[skin.id]}`
-                    : "未所持"}
-                </span>
-              </button>
-            ))}
+            {shown.map((skin) => {
+              const locked = isBattlePassLocked(skin, collection.owned);
+              return (
+                <button
+                  className={`skins-tile rarity-${skin.rarity}${locked ? " is-pass-locked" : ""}`}
+                  key={skin.id}
+                  onClick={() => setSelected(skin)}
+                  aria-label={`${skin.rank} ${skin.name} ${locked ? "ロック中・バトルパスクリアで獲得可能" : collection.owned[skin.id] ? "所持" : "未所持"}`}
+                >
+                  <div className="skins-tile-art">
+                    {locked ? (
+                      <BattlePassSkinLock />
+                    ) : (
+                      <img src={skin.card} alt={skin.role} loading="lazy" />
+                    )}
+                    <span className="skins-tile-rank">{skin.rank}</span>
+                    <span className="skins-tile-rarity">
+                      {rarityLabel(skin)}
+                    </span>
+                    {collection.equipped[skin.rank] === skin.id && (
+                      <span className="skins-equipped">装備中</span>
+                    )}
+                  </div>
+                  <strong>{skin.name}</strong>
+                  <span className="skins-tile-status">
+                    {collection.owned[skin.id]
+                      ? `所持 ×${collection.owned[skin.id]}`
+                      : locked
+                        ? "バトルパスクリアで獲得可能"
+                        : "未所持"}
+                  </span>
+                </button>
+              );
+            })}
           </div>
           {!shown.length && (
             <p className="skins-empty">
@@ -917,47 +944,60 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             ×
           </button>
           <div className="skins-detail">
-            <img
-              className="skins-detail-portrait"
-              src={selected.image}
-              alt={selected.name}
-            />
+            {selectedLocked ? (
+              <BattlePassSkinLock className="skins-detail-portrait" />
+            ) : (
+              <img
+                className="skins-detail-portrait"
+                src={selected.image}
+                alt={selected.name}
+              />
+            )}
             <div className="skins-detail-info">
               <span className="skins-eyebrow">
                 {rarityLabel(selected)} / {selected.rank}
               </span>
               <h2>{selected.name}</h2>
               <p>{selected.role}</p>
-              <div className="skins-board-preview">
-                <div>
-                  <CardFace
-                    rank={selected.rank}
-                    suit="spade"
-                    size="md"
-                    skinId={selected.id}
-                  />
-                  <span>5マス盤</span>
+              {selectedLocked ? (
+                <div className="skins-pass-unlock">
+                  <strong>バトルパスクリアで獲得可能</strong>
+                  <p>
+                    すべてのマスをクリアしてめくり、報酬を受け取ると解放されます。
+                  </p>
                 </div>
-                <div>
-                  <CardFace
-                    rank={selected.rank}
-                    suit="heart"
-                    size="xs"
-                    skinId={selected.id}
-                  />
-                  <span>9マス盤</span>
+              ) : (
+                <div className="skins-board-preview">
+                  <div>
+                    <CardFace
+                      rank={selected.rank}
+                      suit="spade"
+                      size="md"
+                      skinId={selected.id}
+                    />
+                    <span>5マス盤</span>
+                  </div>
+                  <div>
+                    <CardFace
+                      rank={selected.rank}
+                      suit="heart"
+                      size="xs"
+                      skinId={selected.id}
+                    />
+                    <span>9マス盤</span>
+                  </div>
+                  <div>
+                    <CardFace
+                      rank={selected.rank}
+                      suit="club"
+                      size="sm"
+                      skinId={selected.id}
+                      isKing
+                    />
+                    <span>王カード</span>
+                  </div>
                 </div>
-                <div>
-                  <CardFace
-                    rank={selected.rank}
-                    suit="club"
-                    size="sm"
-                    skinId={selected.id}
-                    isKing
-                  />
-                  <span>王カード</span>
-                </div>
-              </div>
+              )}
               <p className="skins-note">
                 同じ数字の全スートに適用。
                 <br />
@@ -977,13 +1017,13 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                     ? "装備を外す"
                     : `${selected.rank}のカードに装備`}
                 </button>
-              ) : selected.rarity === "SPECIAL" ? (
+              ) : selected.acquisition === "battlepass" ? (
                 <button
                   className="skin-btn skin-btn-gold"
                   disabled={working || !onBattlePass}
                   onClick={onBattlePass}
                 >
-                  バトルパスで獲得
+                  バトルパスを見る
                 </button>
               ) : (
                 <p className="skins-locked">
@@ -992,7 +1032,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                     : "ガチャから獲得できます"}
                 </p>
               )}
-              {selected.videos && (
+              {!selectedLocked && selected.videos && (
                 <>
                   <p>{selected.description}</p>
                   <button
@@ -1013,7 +1053,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                   </button>
                 </>
               )}
-              {selected.video && (
+              {!selectedLocked && selected.video && (
                 <button className="skin-btn" onClick={() => setFilm(selected)}>
                   ▶ 5秒のバトル演出を見る
                 </button>

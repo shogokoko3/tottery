@@ -1783,3 +1783,60 @@
   color: #cbb5de;
   font-size: 10px;
 }
+
+/* An opaque seal replaces unowned battle-pass artwork in every preview shape. */
+.skin-pass-lock {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: inherit;
+  background: #101629;
+  isolation: isolate;
+}
+.skin-pass-lock > svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.skins-pass-hint,
+.skins-special .skins-pass-hint {
+  margin: 8px 0;
+  color: #f0d398;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.skins-pass-unlock {
+  margin: 22px 0;
+  padding: 16px;
+  border: 1px solid #b391595c;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #c29b4510, #65518512);
+}
+.skins-pass-unlock strong {
+  display: block;
+  color: #f0d398;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.skins-pass-unlock p {
+  margin: 7px 0 0;
+  color: #b8bccb;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.skins-tile.is-pass-locked .skins-tile-status {
+  display: block;
+  margin-top: 3px;
+  color: #e8ca8d;
+  font-weight: 600;
+  line-height: 1.7;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
