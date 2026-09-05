@@ -73,7 +73,7 @@ export function BattlePassScreen({ onBack, onSkins }) {
         {rows.map((c) => {
           // 絵柄の一片。5×5に切った札の、このマスの場所
           const art = {
-            backgroundImage: `url(${skin.card})`,
+            backgroundImage: `url(${skin.boardCard || skin.card})`,
             backgroundSize: `${SIZE * 100}% ${SIZE * 100}%`,
             backgroundPosition: `${(c.col / (SIZE - 1)) * 100}% ${
               (c.row / (SIZE - 1)) * 100
