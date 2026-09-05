@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cardBackImg } from "../assets.js";
 import {
   SKINS,
@@ -43,6 +43,7 @@ import { ArrowLeft, Ether } from "../icons.jsx";
 import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
+import { FoilAcquisition } from "./foil-acquisition.jsx";
 
 const foilPct = FOIL_CHANCE * 100;
 function FoilBadge({ className = "" }) {
@@ -72,23 +73,47 @@ const PROMOTE_HOLD_MS = 900;
 const PROMOTE_SPIN_MS = 1100;
 
 /** めくる1枚。指で引き寄せると角度がついてめくれ、半分を越えると裏返る */
-function RevealCard({ result, index, flipped, onFlip, reduce, seed }) {
+function RevealCard({
+  result,
+  index,
+  flipped,
+  onFlip,
+  onComplete,
+  reduce,
+  seed,
+}) {
   const skin = byId(result.id);
+  const base = byId(baseSkinId(skin.id));
   // 素で出るか、昇格を経るかは束と位置で決まる(再読み込みしても同じ)
-  const ladder = ladderFor(skin.rarity, `${seed}#${index}`);
+  const ladder = useMemo(
+    () => ladderFor(skin.rarity, `${seed}#${index}`),
+    [skin.rarity, seed, index],
+  );
   // -1 は伏せたまま。0 以降は ladder の段階(昇格の途中)
   const [stage, setStage] = useState(-1);
   // 次の格へ向けて回っている最中か。回っている間も今の格は見せたまま
   const [spinning, setSpinning] = useState(false);
   // 着地した瞬間だけ光る
   const [landing, setLanding] = useState(false);
+  const [settled, setSettled] = useState(false);
+  const [foilComplete, setFoilComplete] = useState(false);
+  const completeRef = useRef(onComplete);
+  const notified = useRef(false);
+  const promotionFinal = useRef(false);
+  completeRef.current = onComplete;
   const [angle, setAngle] = useState(0);
   const [dragging, setDragging] = useState(false);
   const drag = useRef(null);
   useEffect(() => {
     if (!flipped) return;
-    if (reduce || ladder.length === 1) {
+    if (reduce || promotionFinal.current || ladder.length === 1) {
       setStage(ladder.length - 1);
+      setSpinning(false);
+      if (reduce || promotionFinal.current) {
+        promotionFinal.current = true;
+        setLanding(false);
+        return;
+      }
       // 素で SR・SSR が出た札は、めくった瞬間に光る
       if (ladder[ladder.length - 1] !== "R") {
         setLanding(true);
@@ -107,6 +132,7 @@ function RevealCard({ result, index, flipped, onFlip, reduce, seed }) {
         setTimeout(() => {
           setSpinning(false);
           setStage(k); // 着地して昇格
+          if (k === ladder.length - 1) promotionFinal.current = true;
           setLanding(true);
         }, t),
       );
@@ -114,7 +140,7 @@ function RevealCard({ result, index, flipped, onFlip, reduce, seed }) {
       t += PROMOTE_HOLD_MS; // 上がった格を読ませてから次へ
     }
     return () => timers.forEach(clearTimeout);
-  }, [flipped]);
+  }, [flipped, reduce, ladder]);
   const down = (e) => {
     if (flipped) return;
     drag.current = {
@@ -142,7 +168,25 @@ function RevealCard({ result, index, flipped, onFlip, reduce, seed }) {
   };
   const shown = stage >= 0 ? ladder[stage] : null;
   const next = stage >= 0 ? ladder[stage + 1] : null;
-  const final = stage === ladder.length - 1;
+  const final = flipped && stage === ladder.length - 1;
+  // Complete the final rarity landing before starting the separate foil change.
+  useEffect(() => {
+    if (!final) return;
+    if (reduce) {
+      setSettled(true);
+      return;
+    }
+    const timer = setTimeout(() => setSettled(true), 650);
+    return () => clearTimeout(timer);
+  }, [final, reduce]);
+  const completeFoil = useCallback(() => setFoilComplete(true), []);
+  const finished = final && settled && (!skin.foil || foilComplete);
+  useEffect(() => {
+    if (!finished || notified.current) return;
+    notified.current = true;
+    completeRef.current?.();
+  }, [finished]);
+  const visibleSkin = skin.foil && !foilComplete ? base : skin;
   const label =
     shown === "SSR" && ["LIMITED", "SPECIAL"].includes(skin.rarity)
       ? rarityLabel(skin)
@@ -170,8 +214,10 @@ function RevealCard({ result, index, flipped, onFlip, reduce, seed }) {
       aria-label={
         flipped
           ? final
-            ? skin.name
-            : `${label}。${next}へ昇格中`
+            ? visibleSkin.name
+            : shown
+              ? `${label}。${next}へ昇格中`
+              : `${index + 1}枚目をめくっています`
           : `${index + 1}枚目をめくる`
       }
     >
@@ -184,20 +230,35 @@ function RevealCard({ result, index, flipped, onFlip, reduce, seed }) {
         />
         <span className="reveal-front">
           {final ? (
-            <FoilArtwork
-              skin={skin}
-              src={skin.card}
-              alt={skin.role}
-              animated={!reduce}
-            />
+            skin.foil && settled ? (
+              <FoilAcquisition
+                skin={skin}
+                play
+                reduce={reduce}
+                onComplete={completeFoil}
+                className="reveal-acquisition"
+                alt={visibleSkin.name}
+              />
+            ) : (
+              <FoilArtwork
+                skin={visibleSkin}
+                src={visibleSkin.card}
+                alt={visibleSkin.role}
+                animated={false}
+              />
+            )
           ) : (
             <span className="reveal-veil" />
           )}
           <span className="reveal-rarity">{label || ""}</span>
-          {final && skin.foil && <FoilBadge className="reveal-foil" />}
+          {final && skin.foil && foilComplete && (
+            <FoilBadge className="reveal-foil" />
+          )}
           {!final && spinning && <span className="reveal-promoting">昇格</span>}
-          {final && <strong className="reveal-name">{skin.name}</strong>}
-          {final && result.isNew && <span className="reveal-new">NEW</span>}
+          {final && <strong className="reveal-name">{visibleSkin.name}</strong>}
+          {final && (!skin.foil || foilComplete) && result.isNew && (
+            <span className="reveal-new">NEW</span>
+          )}
         </span>
       </span>
     </button>
@@ -211,9 +272,14 @@ function RevealCard({ result, index, flipped, onFlip, reduce, seed }) {
  */
 function SummonReveal({ results, onFinish, reduce }) {
   const [flipped, setFlipped] = useState(() => results.map(() => false));
+  const [completed, setCompleted] = useState(() => results.map(() => false));
   const omen = omenOf(results);
   const seed = seedOf(results);
   const all = flipped.every(Boolean);
+  const allComplete = completed.every(Boolean);
+  const completeAt = useCallback((i) => {
+    setCompleted((c) => (c[i] ? c : c.map((v, k) => (k === i ? true : v))));
+  }, []);
   const flipAt = (i) =>
     setFlipped((f) => (f[i] ? f : f.map((v, k) => (k === i ? true : v))));
   const cols = results.length === 1 ? 1 : results.length <= 4 ? 2 : 5;
@@ -249,7 +315,11 @@ function SummonReveal({ results, onFinish, reduce }) {
       <div className={`skin-reveal omen-${omen}`}>
         <div className="reveal-omen" aria-hidden="true" />
         <p className="reveal-caption" role="status">
-          {all ? "すべての札がめくれました。" : OMEN_TEXT[omen]}
+          {allComplete
+            ? "すべての札が現れました。"
+            : all
+              ? "札に宿る輝きをお待ちください。"
+              : OMEN_TEXT[omen]}
         </p>
         <div
           className={`reveal-grid ${results.length === 1 ? "single" : ""}`}
@@ -266,6 +336,7 @@ function SummonReveal({ results, onFinish, reduce }) {
               index={i}
               flipped={flipped[i]}
               onFlip={() => flipAt(i)}
+              onComplete={() => completeAt(i)}
               reduce={reduce}
               seed={seed}
             />
@@ -287,7 +358,12 @@ function SummonReveal({ results, onFinish, reduce }) {
               すべてめくる
             </button>
           )}
-          {all && (
+          {!allComplete && (
+            <button className="skin-btn" onClick={onFinish}>
+              演出をスキップ
+            </button>
+          )}
+          {allComplete && (
             <button className="skin-btn skin-btn-gold" onClick={onFinish}>
               結果へ →
             </button>
@@ -298,11 +374,60 @@ function SummonReveal({ results, onFinish, reduce }) {
   );
 }
 
+/** A new crafted reward changes once; restored saved results bypass this view. */
+function CraftedFoilReveal({ result, reduce, onFinish }) {
+  const skin = byId(result.id);
+  const base = byId(baseSkinId(skin.id));
+  return (
+    <SkinModal
+      label="カードの獲得演出"
+      onClose={onFinish}
+      className="skins-results-overlay"
+    >
+      <div className="skin-modal-head">
+        <div>
+          <span className="skins-eyebrow">
+            {rarityLabel(base)} / {base.rank}
+          </span>
+          <h2>カードに宿る輝き</h2>
+        </div>
+      </div>
+      <div className="skins-results-grid single-result">
+        <article className={`skins-result rarity-${skin.rarity}`}>
+          <div className="skins-result-art">
+            <FoilAcquisition
+              skin={skin}
+              play
+              reduce={reduce}
+              onComplete={onFinish}
+              alt={base.name}
+            />
+            <span className="skins-tile-rank">{base.rank}</span>
+            <span className="skins-tile-rarity">{base.rarity}</span>
+          </div>
+          <strong>{base.name}</strong>
+        </article>
+      </div>
+      <button className="skin-btn skins-result-done" onClick={onFinish}>
+        演出をスキップ
+      </button>
+    </SkinModal>
+  );
+}
+
 /**
  * 錬成。ダブった札を崩してエーテルにし、狙った1枚を作る。
  * 値づけの根拠は src/skins/ether.js に書いてある。
  */
-function ForgePanel({ collection, run, working, onPick, message, setMessage }) {
+function ForgePanel({
+  collection,
+  run,
+  acquire,
+  working,
+  onPick,
+  message,
+  setMessage,
+}) {
   const [pick, setPick] = useState("SSR");
   const [confirmBreak, setConfirmBreak] = useState(null);
   // 目安の数字は抽選の中身から引き直す。手で書くと片方だけ古くなる
@@ -334,19 +459,18 @@ function ForgePanel({ collection, run, working, onPick, message, setMessage }) {
       );
   };
   const make = async (skin) => {
-    const next = await run((c) => craft(c, skin.id));
+    const next = await acquire((c) => craft(c, skin.id));
     if (next) {
-      const made = byId(next.lastCraft.id);
       setMessage(
-        `${ETHER_NAME}を ${costOf(skin).toLocaleString()} 使って「${made.name}」を作りました。`,
+        `${ETHER_NAME}を ${costOf(skin).toLocaleString()} 使って、1枚を錬成しました。`,
       );
     }
   };
   const finishFoil = async (skin) => {
-    const next = await run((c) => claimFoilMilestone(c, skin.id));
+    const next = await acquire((c) => claimFoilMilestone(c, skin.id));
     if (next) {
       setMessage(
-        `通算${FOIL_MILESTONE}枚獲得の記念に「${byId(next.lastCraft.id).name}」を受け取りました。所持カードと${ETHER_NAME}は減りません。`,
+        `通算${FOIL_MILESTONE}枚獲得の記念に1枚を受け取りました。所持カードと${ETHER_NAME}は減りません。`,
       );
     }
   };
@@ -673,7 +797,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
   const [finish, setFinish] = useState("all");
   const [selected, setSelected] = useState(null),
     [odds, setOdds] = useState(false);
-  const [animating, setAnimating] = useState(false),
+  const [acquisitionMode, setAcquisitionMode] = useState(null),
     [film, setFilm] = useState(null);
   const [working, setWorking] = useState(false),
     [message, setMessage] = useState("");
@@ -712,19 +836,35 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       setWorking(false);
     }
   };
+  const acquire = async (change, kind = "forge") => {
+    if (busy.current || collection.pending || collection.lastCraft)
+      return false;
+    // Mark only local, fresh acquisitions before the store emits its saved result.
+    // A screen restored from storage starts with null and never replays this change.
+    setAcquisitionMode(
+      reduce || collection.motion !== "full"
+        ? null
+        : kind === "summon"
+          ? "summon"
+          : "foil",
+    );
+    const next = await run(change);
+    if (!next) setAcquisitionMode(null);
+    return next;
+  };
   const roll = async (amount) => {
-    if (busy.current || collection.pending || collection.lastCraft) return;
-    setAnimating(!reduce && collection.motion === "full");
-    if (!(await run((s) => pull(s, amount)))) setAnimating(false);
+    await acquire((s) => pull(s, amount), "summon");
   };
   const equipSkin = async (skin) => {
     if (await run((s) => equip(s, skin.id)))
       setMessage(`${skin.rank}のカードに「${skin.name}」を装備しました。`);
   };
-  const closeResults = () =>
-    run((s) =>
+  const closeResults = () => {
+    setAcquisitionMode(null);
+    return run((s) =>
       craftResult ? { ...s, lastCraft: null } : { ...s, pending: null },
     );
+  };
   const shown = SKINS.flatMap((s) => {
     const foil = byId(foilId(s.id));
     return foil ? [s, foil] : [s];
@@ -936,6 +1076,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         <ForgePanel
           collection={collection}
           run={run}
+          acquire={acquire}
           working={working}
           onPick={setSelected}
           message={message}
@@ -1137,11 +1278,19 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       )}
 
       {results &&
-        (animating && collection.pending ? (
+        (acquisitionMode === "summon" && collection.pending ? (
           <SummonReveal
             results={collection.pending.results}
-            onFinish={() => setAnimating(false)}
-            reduce={reduce}
+            onFinish={() => setAcquisitionMode(null)}
+            reduce={reduce || collection.motion !== "full"}
+          />
+        ) : acquisitionMode === "foil" &&
+          craftResult &&
+          byId(craftResult.id).foil ? (
+          <CraftedFoilReveal
+            result={craftResult}
+            onFinish={() => setAcquisitionMode(null)}
+            reduce={reduce || collection.motion !== "full"}
           />
         ) : (
           <SkinModal

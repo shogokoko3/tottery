@@ -1,0 +1,201 @@
+.foil-acquisition {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: inherit;
+  line-height: 0;
+}
+.reveal-front > .foil-acquisition {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.foil-acquisition > .foil-acquisition-base,
+.foil-acquisition > .foil-acquisition-coating {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  border-radius: inherit;
+}
+.foil-acquisition-base {
+  z-index: 0;
+}
+.foil-acquisition-coating {
+  z-index: 1;
+  clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+}
+.foil-acquisition-rim,
+.foil-acquisition-edge-light,
+.foil-acquisition-sweep,
+.foil-acquisition-glint {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2;
+}
+.foil-acquisition-rim {
+  inset: 1px;
+  border: 1px solid #fff0c2;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 7px #f5d79999,
+    0 0 5px #c8e9ff66;
+}
+.foil-acquisition-edge-light {
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 8% 24% at 0% 24%, #b6ebff88, transparent),
+    radial-gradient(ellipse 10% 28% at 100% 72%, #dcaeff77, transparent),
+    radial-gradient(ellipse 30% 6% at 64% 0%, #fff0aa88, transparent),
+    radial-gradient(ellipse 27% 7% at 26% 100%, #bde5ff77, transparent);
+}
+.foil-acquisition-sweep {
+  top: -20%;
+  left: -52%;
+  width: 34%;
+  height: 140%;
+  transform: translateX(0) rotate(16deg);
+  background: linear-gradient(
+    90deg,
+    transparent 15%,
+    #dccbff0a 31%,
+    #a5e8ff1a 40%,
+    #fff1c946 48%,
+    #fff9df73 50%,
+    #fff2c540 53%,
+    #eab9ff1a 63%,
+    transparent 82%
+  );
+  mix-blend-mode: screen;
+}
+.foil-acquisition-glint {
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse 1.1% 4% at 96% 9%,
+      #fff7dc 0,
+      #e8d9ad77 35%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 4% 0.85% at 96% 9%,
+      #fff7dc 0,
+      #e8d9ad66 35%,
+      transparent 100%
+    ),
+    radial-gradient(ellipse 0.8% 2.5% at 5% 91%, #d8f0ff 0, transparent 100%);
+}
+.foil-acquisition.is-running > .foil-acquisition-coating {
+  animation: foil-acquisition-coat 2350ms linear both;
+}
+.foil-acquisition.is-running > .foil-acquisition-rim {
+  animation: foil-acquisition-rim 2350ms ease-in-out both;
+}
+.foil-acquisition.is-running > .foil-acquisition-edge-light {
+  animation: foil-acquisition-gather 2350ms ease-in-out both;
+}
+.foil-acquisition.is-running > .foil-acquisition-sweep {
+  animation: foil-acquisition-sweep 2350ms linear both;
+}
+.foil-acquisition.is-running > .foil-acquisition-glint {
+  animation: foil-acquisition-glint 2350ms ease-in-out both;
+}
+@keyframes foil-acquisition-coat {
+  0%,
+  36.17% {
+    clip-path: polygon(0 0, -18% 0, -45% 100%, 0 100%);
+  }
+  80.85%,
+  100% {
+    clip-path: polygon(0 0, 135% 0, 108% 100%, 0 100%);
+  }
+}
+@keyframes foil-acquisition-rim {
+  0%,
+  11.06% {
+    opacity: 0;
+  }
+  32% {
+    opacity: 0.85;
+  }
+  68% {
+    opacity: 0.6;
+  }
+  86% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes foil-acquisition-gather {
+  0%,
+  11.06% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+  33% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  68%,
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes foil-acquisition-sweep {
+  0%,
+  36.17% {
+    opacity: 0;
+    transform: translateX(0) rotate(16deg);
+  }
+  43% {
+    opacity: 0.9;
+    transform: translateX(86%) rotate(16deg);
+  }
+  74% {
+    opacity: 0.75;
+    transform: translateX(400%) rotate(16deg);
+  }
+  80.85%,
+  100% {
+    opacity: 0;
+    transform: translateX(476%) rotate(16deg);
+  }
+}
+@keyframes foil-acquisition-glint {
+  0%,
+  75% {
+    opacity: 0;
+  }
+  86% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .foil-acquisition.is-running > * {
+    animation: none !important;
+  }
+  .foil-acquisition-coating {
+    clip-path: none;
+  }
+  .foil-acquisition-rim,
+  .foil-acquisition-edge-light,
+  .foil-acquisition-sweep,
+  .foil-acquisition-glint {
+    display: none;
+  }
+}
