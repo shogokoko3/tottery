@@ -36,7 +36,7 @@
         },
         "acts": {
           "$aid": {
-            ".write": "auth != null && !data.exists() && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('members').hasChild(auth.uid) && newData.hasChildren(['type','by','__id']) && newData.child('by').val() === auth.uid && newData.child('type').isString() && newData.child('type').val().length <= 40 && newData.numChildren() <= 24 && root.child('rooms').child($code).child('acts').numChildren() < 1000",
+            ".write": "auth != null && !data.exists() && $aid.matches(/^-[A-Za-z0-9_-]{19}$/) && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('members').hasChild(auth.uid) && newData.hasChildren(['type','by','__id']) && newData.child('by').val() === auth.uid && newData.child('type').isString() && newData.child('type').val().length <= 40 && newData.numChildren() <= 24 && root.child('rooms').child($code).child('acts').numChildren() < 1000",
             "by": {
               ".validate": "newData.val() === auth.uid",
               "$sa": {
@@ -72,6 +72,42 @@
                   }
                 }
               }
+            },
+            "deck": {
+              ".validate": "newData.numChildren() <= 64"
+            },
+            "placement": {
+              ".validate": "newData.numChildren() <= 32"
+            },
+            "captures": {
+              ".validate": "newData.numChildren() <= 16"
+            },
+            "pickIds": {
+              ".validate": "newData.numChildren() <= 4"
+            },
+            "discardIds": {
+              ".validate": "newData.numChildren() <= 32"
+            },
+            "reserveOrder": {
+              ".validate": "newData.numChildren() <= 64"
+            },
+            "order": {
+              ".validate": "newData.numChildren() <= 4"
+            },
+            "pieceId": {
+              ".validate": "newData.isString() && newData.val().length <= 16"
+            },
+            "aId": {
+              ".validate": "newData.isString() && newData.val().length <= 16"
+            },
+            "kingId": {
+              ".validate": "newData.isString() && newData.val().length <= 16"
+            },
+            "id": {
+              ".validate": "newData.isString() && newData.val().length <= 16"
+            },
+            "cardId": {
+              ".validate": "newData.isString() && newData.val().length <= 16"
             }
           }
         },

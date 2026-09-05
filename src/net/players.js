@@ -61,6 +61,11 @@ export async function readPlayer(id) {
 export async function publishPlayer(profile, extra) {
   const record = playerRecord(profile);
   if (!record) return { ok: false };
+  // ルールは台帳の欄がぴったりそろっていることを求める(知らない名前を
+  // 1つ足すだけで弾ける形にしてあるため)。行がまだ無い端末では、
+  // since を積まないと合流しても欄が足りず、書き込みごと断られる
+  if (!extra || extra.since === undefined)
+    extra = { ...(extra || {}), since: Number(profile.since) || Date.now() };
   try {
     const res = await withTimeout(
       authedFetch(url(profile.id), {

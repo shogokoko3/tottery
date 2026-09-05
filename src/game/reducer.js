@@ -1,5 +1,5 @@
 import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
-import { PLAYER_META, SUIT_SYMBOL } from "./constants.js";
+import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
 import {
   buildDeck,
   getLegalMoves,
@@ -167,8 +167,27 @@ function movePermitted(state, mover, action) {
       ? [key(action)]
       : [];
   if (got.length !== want.length) return false;
+  // 同じマスを2度書くと、集合としては合うのに枚数が足りる。
+  // それを許すと「まとめ取りの途中の1枚だけ取らずに通り抜ける」手が通り、
+  // 着地点にいた駒は撃破もされずに盤から消える(王でも決着しない)
+  if (new Set(got).size !== got.length) return false;
   const set = new Set(want);
   return got.every((k) => set.has(k));
+}
+
+/** その手で本当に取れるマスの並び。届いた並びは使わない */
+function capturesFor(state, mover, action) {
+  const moves = getLegalMoves(
+    mover,
+    state.board,
+    state.board.length,
+    state.players[mover.owner].armyRankCounts,
+    kingRankOf(state, mover.owner),
+  );
+  const mv = moves.find((m) => m.row === action.row && m.col === action.col);
+  if (!mv) return [];
+  if (mv.captures) return mv.captures.map((c) => ({ row: c.row, col: c.col }));
+  return mv.capture ? [{ row: mv.row, col: mv.col }] : [];
 }
 
 /**
@@ -187,11 +206,31 @@ function fromNetwork(action) {
  * 二人の盤が別々に決まって黙って食い違っていく。
  * **欄が無いことを「乱数で埋めてよい合図」にしない。**
  */
+/**
+ * 山札として使える形か。
+ *
+ * 配列かどうかだけでは足りない。同じ id を並べた山札を送ると、二人の駒が
+ * 同じ id を共有し、あとから布陣した側が相手の駒を台帳から追い出す。
+ * 中身が壊れていれば、受け取った側の画面が落ちる
+ */
+function deckOk(deck) {
+  if (!Array.isArray(deck) || deck.length < 2 || deck.length > 64) return false;
+  const ids = new Set();
+  for (const c of deck) {
+    if (!c || typeof c !== "object") return false;
+    if (typeof c.id !== "string" || !c.id || c.id.length > 16) return false;
+    if (!RANKS.includes(c.rank) || !SUITS.includes(c.suit)) return false;
+    if (ids.has(c.id)) return false;
+    ids.add(c.id);
+  }
+  return true;
+}
+
 function seedsPresent(state, action) {
   if (!fromNetwork(action)) return true;
   switch (action.type) {
     case "START_SETUP":
-      return Array.isArray(action.deck);
+      return deckOk(action.deck);
     case "ROLL_DICE_SINGLE":
       return (
         Number.isInteger(action.value) && action.value >= 1 && action.value <= 6
@@ -208,6 +247,28 @@ function seedsPresent(state, action) {
     default:
       return true;
   }
+}
+
+/**
+ * その側に、指せる手がひとつでもあるか。
+ *
+ * 6〜9の王は「取れるときしか動けない」ので、周りに敵がおらず他の駒も
+ * 塞がれていると合法手が0になる。手番を渡す手も無いと、持ち時間が
+ * 尽きるまで何も押せない(CPU 側で起きると CPU が固まる)
+ */
+export function hasAnyMove(state, player) {
+  return Object.values(state.pieces).some(
+    (p) =>
+      p.alive &&
+      p.owner === player &&
+      getLegalMoves(
+        p,
+        state.board,
+        state.board.length,
+        state.players[player].armyRankCounts,
+        kingRankOf(state, player),
+      ).length > 0,
+  );
 }
 
 /** 盤の上のマスか。通信で届いた座標をそのまま添字に使わないための番人 */
@@ -460,7 +521,15 @@ export function removePiece(state, pieceId, opts) {
   if (dead.rank === "J" || dead.rank === "Q") {
     const owner = next.players[dead.owner];
     const king = owner.kingId ? next.pieces[owner.kingId] : null;
-    if (king && king.rank === "K" && king.alive && next.reserve.length > 0) {
+    // 置き場は1枚ぶんしかない。まとめ取りで J と Q が同時に倒れると、
+    // 1枚目に引いた札が上書きされて山にも手札にも戻らず、黙って消える
+    if (
+      king &&
+      king.rank === "K" &&
+      king.alive &&
+      next.reserve.length > 0 &&
+      !next.kPlacement
+    ) {
       const reserve = [...next.reserve];
       const card = reserve.pop();
       next = { ...next, reserve, kPlacement: { owner: dead.owner, card } };
@@ -728,8 +797,59 @@ export function reducer(state, action) {
   if (!actorAllowed(state, action)) return state;
   // 乱数の結果を持たない手も受け取らない(盤が二人で食い違う)
   if (!seedsPresent(state, action)) return state;
-  const next = coreReducer(state, action);
+  const next = settleKingChoice(coreReducer(state, action));
   return afterAction(state, next, action);
+}
+
+/**
+ * 跡継ぎを選ぶ場面の後始末。
+ *
+ * 6〜9のまとめ取りやAの包囲では、王と跡継ぎの候補が同じ1手で全部倒れる
+ * ことがある。そうなると候補がひとりも生きていないので選びようが無く、
+ * その席は駒も動かせず手番も飛ばせない(選ぶまで他の手を出せない決まりの
+ * ため)。決着もしないので、降参するまで盤が止まる。細工は要らない、
+ * 素の対局で起きる
+ */
+function settleKingChoice(state) {
+  const pk = state.pendingKingChoice;
+  if (!pk) return state;
+  const alive = pk.candidateIds.filter(
+    (id) => state.pieces[id] && state.pieces[id].alive,
+  );
+  if (alive.length === pk.candidateIds.length) return state;
+  if (alive.length > 1)
+    return { ...state, pendingKingChoice: { ...pk, candidateIds: alive } };
+  if (alive.length === 1) {
+    // 残りが1枚なら選ぶまでもない
+    const heir = { ...state.pieces[alive[0]], isKing: true };
+    heir.history = [...heir.history, "王位を継承"];
+    const pieces = { ...state.pieces, [heir.id]: heir };
+    const board = state.board.map((r) => [...r]);
+    board[heir.row][heir.col] = heir;
+    const players = state.players.map((p, i) =>
+      i === pk.owner ? { ...p, kingId: heir.id } : p,
+    );
+    return {
+      ...state,
+      pieces,
+      board,
+      players,
+      pendingKingChoice: null,
+      log: [...state.log, `${PLAYER_META[pk.owner].name}に新しい王が立った!`],
+    };
+  }
+  // ひとりも残っていない。王を立てられない側の負け
+  const winner = 1 - pk.owner;
+  return {
+    ...state,
+    pendingKingChoice: null,
+    phase: "gameover",
+    winner,
+    log: [
+      ...state.log,
+      `${PLAYER_META[pk.owner].name}は王を立てられない…${PLAYER_META[winner].name}の勝利!`,
+    ],
+  };
 }
 
 /**
@@ -862,9 +982,8 @@ function coreReducer(state, action) {
       // size×size のマスを確保しようとして落ちる
       const size = action.size === 9 ? 9 : action.size === 5 ? 5 : null;
       if (size === null) return state;
-      const deck = Array.isArray(action.deck)
-        ? action.deck
-        : shuffle(buildDeck(action.pool));
+      if (action.deck !== undefined && !deckOk(action.deck)) return state;
+      const deck = action.deck || shuffle(buildDeck(action.pool));
       // 小さいカードプールでは手札も減らす。予備札が尽きると引き直せなくなる
       const wanted = Number(action.handSize);
       const handSize =
@@ -1442,12 +1561,9 @@ function coreReducer(state, action) {
         lastReveal: null,
       };
 
-      const targets =
-        action.captures && action.captures.length
-          ? action.captures
-          : board[action.row][action.col]
-            ? [{ row: action.row, col: action.col }]
-            : [];
+      // 届いた並びではなく、こちらで引き直した並びを使う。
+      // 照合を通っていても、並びそのものを盤の操作に使うと細工が効く
+      const targets = capturesFor(state, mover, action);
       const defeated = [];
 
       for (const at of targets) {
@@ -1633,8 +1749,11 @@ function coreReducer(state, action) {
 
     case "SKIP_EXTRA_ACTION":
       // 「王の2回目を使わずに終える」ためだけの手。これが無いと、
-      // 1手も指さずに手番を押し返せる(将棋やチェスで言えば手番の放棄)
-      if (!state.extraMoveFor) return state;
+      // 1手も指さずに手番を押し返せる(将棋やチェスで言えば手番の放棄)。
+      // ただし本当に指せる手がひとつも無いときは、渡せないと
+      // 持ち時間が尽きるまで何もできなくなる
+      if (!state.extraMoveFor && hasAnyMove(state, state.currentTurn))
+        return state;
       return endTurn(state);
 
     case "VIEW_LOG":

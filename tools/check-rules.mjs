@@ -110,6 +110,11 @@ function compile(src) {
 function evalExpr(expr, ctx) {
   if (typeof expr === "boolean") return expr;
   let src = expr;
+  // RTDB の X.matches(/re/) は JS に無い。/re/.test(X) に書き換えて評価する
+  src = src.replace(
+    /([A-Za-z0-9_$.()'[\]]+)\.matches\((\/[^/]*\/[a-z]*)\)/g,
+    "$2.test($1)",
+  );
   for (const [k, v] of Object.entries(ctx.vars))
     src = src.split("$" + k).join(JSON.stringify(v));
   try {
@@ -326,7 +331,7 @@ const room = {
       members: { uidA: true, uidB: true },
       createdAt: NOW - 60_000,
       hostName: "あ",
-      acts: { "-N1": { type: "MOVE_PIECE", by: "uidA" } },
+      acts: { "-NxxxxxxxxxxxxxxxxxB": { type: "MOVE_PIECE", by: "uidA" } },
     },
   },
 };
@@ -346,7 +351,7 @@ deny(
 );
 deny(
   "部外者は投了を差し込めない",
-  canWrite(room, ["rooms", "ABCD", "acts", "-N9"], X, {
+  canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], X, {
     type: "RESIGN",
     player: 0,
     by: "uidX",
@@ -354,7 +359,7 @@ deny(
 );
 allow(
   "当事者は自分の名前で手を指せる",
-  canWrite(room, ["rooms", "ABCD", "acts", "-N9"], A, {
+  canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, {
     type: "RESIGN",
     player: 0,
     by: "uidA",
@@ -363,7 +368,7 @@ allow(
 );
 deny(
   "当事者でも相手の名前は騙れない",
-  canWrite(room, ["rooms", "ABCD", "acts", "-N9"], A, {
+  canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, {
     type: "RESIGN",
     player: 1,
     by: "uidB",
@@ -372,11 +377,13 @@ deny(
 );
 deny(
   "名前を書かない手は通らない",
-  canWrite(room, ["rooms", "ABCD", "acts", "-N9"], A, { type: "RESIGN" }),
+  canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, {
+    type: "RESIGN",
+  }),
 );
 deny(
   "一度指した手は書き換えられない",
-  canWrite(room, ["rooms", "ABCD", "acts", "-N1"], A, {
+  canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxB"], A, {
     type: "MOVE_PIECE",
     by: "uidA",
     __id: "a-9",
@@ -603,11 +610,21 @@ deny(
 console.log("\n書き込む場所を1段下げても破れないか");
 deny(
   "手番の名乗りを、1段下げて省けない",
-  canWrite(room, ["rooms", "ABCD", "acts", "-N9", "type"], A, "RESIGN"),
+  canWrite(
+    room,
+    ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA", "type"],
+    A,
+    "RESIGN",
+  ),
 );
 deny(
   "手番の名乗りを、1段下げて騙れない",
-  canWrite(room, ["rooms", "ABCD", "acts", "-N9", "by"], A, "uidB"),
+  canWrite(
+    room,
+    ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA", "by"],
+    A,
+    "uidB",
+  ),
 );
 deny(
   "自分の入らない部屋を PATCH で作れない",
@@ -828,24 +845,59 @@ deny(
   canWrite(room, ["rooms", "ABCD", "payload"], B, "x"),
 );
 
+console.log("\n手番のキーと中身の大きさ");
+deny(
+  "自動キーでない名前では手を積めない",
+  canWrite(room, ["rooms", "ABCD", "acts", "!先頭に割り込む"], A, {
+    type: "MOVE_PIECE",
+    by: "uidA",
+    __id: "a-9",
+  }),
+);
+deny(
+  "取る駒を並べすぎた手は積めない",
+  canWrite(room, ["rooms", "ABCD", "acts", "-NyyyyyyyyyyyyyyyyyA"], A, {
+    type: "MOVE_PIECE",
+    by: "uidA",
+    __id: "a-9",
+    captures: Object.fromEntries(
+      Array.from({ length: 40 }, (_, i) => [i, { row: 0, col: 0 }]),
+    ),
+  }),
+);
+deny(
+  "山札を積みすぎた手は積めない",
+  canWrite(room, ["rooms", "ABCD", "acts", "-NyyyyyyyyyyyyyyyyyB"], A, {
+    type: "START_SETUP",
+    by: "uidA",
+    __id: "a-9",
+    deck: Object.fromEntries(
+      Array.from({ length: 200 }, (_, i) => [i, { id: "c" + i }]),
+    ),
+  }),
+);
+
 console.log("\n手番の中身と、止められた人の名乗り");
 // 手の中身は、入れ替えや布陣のように入れ子を持つので形を決められない。
 // 欄の数(24)と件数(1000)で抑えるところまでが限界で、
 // 1つの手をどれだけ大きくできるかはルールでは縛れていない
 deny(
   "欄を並べすぎた手は積めない",
-  canWrite(room, ["rooms", "ABCD", "acts", "-N9"], A, {
+  canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, {
     type: "MOVE_PIECE",
     by: "uidA",
     __id: "a-9",
-    ...Object.fromEntries(
-      Array.from({ length: 30 }, (_, i) => [`f${i}`, i]),
-    ),
+    ...Object.fromEntries(Array.from({ length: 30 }, (_, i) => [`f${i}`, i])),
   }),
 );
 deny(
   "席についていない人は手番の中へ1段下げても書けない",
-  canWrite(room, ["rooms", "ABCD", "acts", "-N9", "payload"], X, "x"),
+  canWrite(
+    room,
+    ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA", "payload"],
+    X,
+    "x",
+  ),
 );
 deny(
   "止められた人は名乗りの欄も書けない",

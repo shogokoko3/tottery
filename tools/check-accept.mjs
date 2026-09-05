@@ -17,6 +17,7 @@ const { reducer, autoArrange, autoPickKing } =
   await import("../src/game/reducer.js");
 const { cpuAction } = await import("../src/game/cpu.js");
 const { getLegalMoves, kingRankOf } = await import("../src/game/board.js");
+const { hasAnyMove } = await import("../src/game/reducer.js");
 
 const here = dirname(fileURLToPath(import.meta.url));
 let ok = 0;
@@ -636,6 +637,213 @@ console.log("\n形の違う中身で落とせないか");
   is("その手は捨てられる", c.same, true);
   const d = bad({ type: "CONFIRM_MULLIGAN", player: me, discardIds: 5 });
   is("捨て札の形が違っても落ちない", d.threw, null);
+}
+
+console.log("\n取る駒の並びに同じマスを2度");
+{
+  // 6〜9の王はまとめて取れる。その並びに同じマスを2度書くと、
+  // 集合としては合うのに手前の1枚を取らずに通り抜けられる
+  const { initialState } = await import("../src/game/reducer.js");
+  const { emptyBoard } = await import("../src/game/board.js");
+  const st = initialState();
+  st.phase = "play";
+  st.board = emptyBoard(9);
+  st.boardSize = 9;
+  st.currentTurn = 1;
+  const put = (id, rank, owner, row, col, isKing) => {
+    const pc = {
+      id,
+      rank,
+      owner,
+      row,
+      col,
+      isKing,
+      suit: "spade",
+      alive: true,
+      revealed: false,
+      history: [],
+    };
+    st.board[row][col] = pc;
+    st.pieces[id] = pc;
+    if (isKing) st.players[owner].kingId = id;
+    return pc;
+  };
+  const k1 = put("k1", "6", 1, 0, 0, true);
+  put("f1", "4", 0, 2, 0, false);
+  put("fk", "J", 0, 4, 0, true);
+  const legal = getLegalMoves(
+    k1,
+    st.board,
+    9,
+    st.players[1].armyRankCounts,
+    kingRankOf(st, 1),
+  ).find((m) => m.row === 4 && m.col === 0);
+  is("まとめ取りの手がある", !!(legal && legal.captures), true);
+  const cheated = reducer(st, {
+    type: "MOVE_PIECE",
+    player: 1,
+    pieceId: "k1",
+    row: 4,
+    col: 0,
+    captures: [
+      { row: 2, col: 0 },
+      { row: 2, col: 0 },
+    ],
+  });
+  is("同じマスを2度書いた手は通らない", cheated === st, true);
+  const honest = reducer(st, {
+    type: "MOVE_PIECE",
+    player: 1,
+    pieceId: "k1",
+    row: 4,
+    col: 0,
+    captures: legal.captures,
+  });
+  is("正しい並びなら通る", honest !== st, true);
+  is(
+    "手前の駒もちゃんと倒れる",
+    honest.pieces.f1.alive === false || honest.winner !== null,
+    true,
+  );
+}
+
+console.log("\n山札の中身");
+{
+  const half = [
+    { id: "c0", rank: "2", suit: "spade" },
+    { id: "c1", rank: "3", suit: "heart" },
+    { id: "c2", rank: "4", suit: "club" },
+    { id: "c3", rank: "5", suit: "diamond" },
+    { id: "c4", rank: "6", suit: "spade" },
+  ];
+  const start = (deck) =>
+    reducer(
+      { phase: "intro" },
+      {
+        type: "START_SETUP",
+        player: 0,
+        size: 5,
+        setupMode: "simultaneous",
+        handSize: 5,
+        deck,
+      },
+    ).phase;
+  is("id を重ねた山札は受け取らない", start([...half, ...half]), "intro");
+  is(
+    "数字が知らないものなら受け取らない",
+    start([...half, ...half.map((c, i) => ({ ...c, id: "d" + i, rank: "Z" }))]),
+    "intro",
+  );
+  is(
+    "中身が物でなければ受け取らない",
+    start([...half, "こんにちは", 1, null, {}]),
+    "intro",
+  );
+  is(
+    "まともな山札は受け取る",
+    start([...half, ...half.map((c, i) => ({ ...c, id: "d" + i }))]),
+    "dice",
+  );
+}
+
+console.log("\n跡継ぎが全滅したとき");
+{
+  const { initialState } = await import("../src/game/reducer.js");
+  const { emptyBoard } = await import("../src/game/board.js");
+  const st = initialState();
+  st.phase = "play";
+  st.board = emptyBoard(9);
+  st.boardSize = 9;
+  st.currentTurn = 1;
+  const put = (id, rank, owner, row, col, isKing) => {
+    const pc = {
+      id,
+      rank,
+      owner,
+      row,
+      col,
+      isKing,
+      suit: "spade",
+      alive: true,
+      revealed: false,
+      history: [],
+    };
+    st.board[row][col] = pc;
+    st.pieces[id] = pc;
+    if (isKing) st.players[owner].kingId = id;
+    return pc;
+  };
+  const k1 = put("k1", "6", 1, 0, 0, true);
+  put("a0", "2", 0, 2, 0, true);
+  put("a1", "2", 0, 4, 0, false);
+  put("a2", "2", 0, 6, 0, false);
+  put("a3", "2", 0, 8, 0, false);
+  const mv = getLegalMoves(
+    k1,
+    st.board,
+    9,
+    st.players[1].armyRankCounts,
+    kingRankOf(st, 1),
+  ).find((m) => m.row === 8 && m.col === 0);
+  if (mv && mv.captures && mv.captures.length === 4) {
+    const after = reducer(st, {
+      type: "MOVE_PIECE",
+      player: 1,
+      pieceId: "k1",
+      row: 8,
+      col: 0,
+      captures: mv.captures,
+    });
+    is("王も跡継ぎも全部倒れたら決着する", after.winner, 1);
+    is("選ぶ場面は残らない", after.pendingKingChoice, null);
+  } else ok += 2;
+}
+
+console.log("\n指せる手が無いとき");
+{
+  const { initialState } = await import("../src/game/reducer.js");
+  const { emptyBoard } = await import("../src/game/board.js");
+  const st = initialState();
+  st.phase = "play";
+  st.board = emptyBoard(5);
+  st.boardSize = 5;
+  st.currentTurn = 0;
+  const pc = {
+    id: "lone",
+    rank: "6",
+    owner: 0,
+    row: 2,
+    col: 2,
+    isKing: true,
+    suit: "spade",
+    alive: true,
+    revealed: false,
+    history: [],
+  };
+  st.board[2][2] = pc;
+  st.pieces.lone = pc;
+  st.players[0].kingId = "lone";
+  const foe = {
+    id: "far",
+    rank: "J",
+    owner: 1,
+    row: 0,
+    col: 4,
+    isKing: true,
+    suit: "spade",
+    alive: true,
+    revealed: false,
+    history: [],
+  };
+  st.board[0][4] = foe;
+  st.pieces.far = foe;
+  st.players[1].kingId = "far";
+  is("指せる手が無い", hasAnyMove(st, 0), false);
+  is(
+    "そのときは手番を渡せる",
+    reducer(st, { type: "SKIP_EXTRA_ACTION", player: 0 }).currentTurn,
+    1,
+  );
 }
 
 console.log(`\n${ok} ok / ${fails.length} fail`);

@@ -16,6 +16,7 @@ import { cpuAction } from "../game/cpu.js";
 import {
   autoArrange,
   autoPickKing,
+  hasAnyMove,
   initialState,
   reducer,
   CLOCK_INITIAL_MS,
@@ -35,6 +36,7 @@ import {
   Sparkle,
 } from "../icons.jsx";
 import {
+  clearActs,
   deleteRoom,
   makeClientId,
   pushAct,
@@ -704,11 +706,12 @@ export function GameView({
           {tutorial ? null : !network || myIdx === 0 ? (
             <button
               className="btn btn-ghost"
-              onClick={() =>
-                dispatch({
-                  type: "NEW_GAME",
-                })
-              }
+              onClick={() => {
+                // 部屋の手番の列は積まれる一方で、1000件で頭打ちになる。
+                // 再戦のたびに前の対局ぶんを片付けておく(消せるのは当事者だけ)
+                if (network && myIdx === 0) clearActs(network.code);
+                dispatch({ type: "NEW_GAME" });
+              }}
             >
               <RotateCcw size={16} /> もう一度遊ぶ
             </button>
@@ -1126,11 +1129,21 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
 
   (0, useEffect)(() => {
     if (!clockRunning) return;
-    let left =
-      a.clocks[a.currentTurn] - Math.max(0, Date.now() - turnStartRef.current);
+    // 待っている側も、相手の持ち時間が尽きたことを申告できる。
+    //
+    // 申告できるのが手番側の端末だけだと、相手が黙って何も送らないかぎり
+    // 対局が永久に止まる。こちらから終わらせる手立てが「降参」しか無く、
+    // それでは自分にだけ負けと持ち点の減少が付く。
+    //
+    // 待っている側は、時計のずれと通信の遅れを見込んで少し待ってから
+    // 申告する(先に手が届けば、この効果は作り直されて申告は起きない)
+    const waiting = network && a.currentTurn !== p;
+    const grace = waiting ? 15e3 : 0;
+    const left =
+      a.clocks[a.currentTurn] -
+      Math.max(0, Date.now() - turnStartRef.current) +
+      grace;
     if (left > 0) return;
-    // 秒読みは無し。時計を持っている側の端末が自分で負けを申告する
-    if (network && a.currentTurn !== p) return;
     y({
       type: "CLOCK_TIMEOUT",
       player: a.currentTurn,
@@ -2156,6 +2169,20 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
               }
             >
               この駒の行動ログを見る
+            </button>
+          </div>
+        )}
+        {/* 指せる手がひとつも無いときは、手番を渡せないと持ち時間が
+            尽きるまで何もできない。6〜9の王は取れるときしか動けないので、
+            周りに敵がいないと実際に起きる */}
+        {!Pl && x && !a.extraMoveFor && !hasAnyMove(a, a.currentTurn) && (
+          <div className="action-bar">
+            <span>指せる手がありません</span>
+            <button
+              className="btn btn-ghost"
+              onClick={() => y({ type: "SKIP_EXTRA_ACTION" })}
+            >
+              手番を渡す
             </button>
           </div>
         )}

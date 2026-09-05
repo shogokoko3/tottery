@@ -146,6 +146,15 @@ export async function leaveRoom(code) {
 export const deleteRoom = (code) => remove(roomUrl(code));
 
 /**
+ * 手番の列だけを片付ける。
+ *
+ * 部屋の手番は積まれる一方で、上限(1000件)に当たるとそこから先が
+ * 書けなくなる。再戦のたびに前の対局ぶんを消しておく。
+ * 消せるのは席についている当事者だけ
+ */
+export const clearActs = (code) => remove(actsUrl(code));
+
+/**
  * 手番を1件追記する。キーの昇順がそのまま再生順になる。
  * by には自分の uid を入れる。ルールがここを見て、他人になりすました
  * 手を弾く。

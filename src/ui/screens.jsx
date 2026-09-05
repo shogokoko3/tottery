@@ -435,10 +435,9 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
               icons: [myIcon(), safeTag(g.data.guestIcon)],
               titles: [myTitle(), safeTag(g.data.guestTitle)],
               ratings: [myRating(), safeRating(g.data.guestRating)],
-              skins: [
-                sanitizeLoadout(g.data?.hostSkins),
-                sanitizeLoadout(g.data?.guestSkins),
-              ],
+              // 自分の装備は手元のものを使う。部屋の欄は相手も書けるので、
+              // そこから読み直すと、持っていないスキンを着せられる
+              skins: [loadout, sanitizeLoadout(g.data?.guestSkins)],
             }));
         }
       }, 1500);
@@ -756,10 +755,7 @@ export function RoomScreen({
                 icons: [myIcon(), safeTag(N.data.guestIcon)],
                 titles: [myTitle(), safeTag(N.data.guestTitle)],
                 ratings: [myRating(), safeRating(N.data.guestRating)],
-                skins: [
-                  sanitizeLoadout(N.data.hostSkins),
-                  sanitizeLoadout(N.data.guestSkins),
-                ],
+                skins: [loadout, sanitizeLoadout(N.data.guestSkins)],
               }));
           }
         }, 1200);
