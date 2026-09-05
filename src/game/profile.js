@@ -59,6 +59,7 @@ const EMPTY = {
   // 対戦だけの数(チュートリアルを含めない)。ミッションの条件に使う
   battles: 0,
   wins: 0,
+  draws: 0,
   // 経験値。レベルはここから毎回導くので、レベルは保存しない
   xp: 0,
   // 使った日数。ミッションの「使用頻度」に使う
@@ -98,6 +99,7 @@ function read(key) {
 export function loadProfile() {
   const saved = read(KEY) || read(OLD_KEY);
   if (!saved) return { ...EMPTY };
+  const savedDraws = Number(saved.draws);
   return {
     id: typeof saved.id === "string" && saved.id ? saved.id : null,
     name: normalizeName(saved.name || ""),
@@ -114,6 +116,7 @@ export function loadProfile() {
     battles:
       Number(Number.isFinite(saved.battles) ? saved.battles : saved.plays) || 0,
     wins: Number(saved.wins) || 0,
+    draws: Number.isSafeInteger(savedDraws) && savedDraws > 0 ? savedDraws : 0,
     // 経験値を持たない古い保存は、それまでの対局数ぶんを配って引き継ぐ
     xp:
       Number(
@@ -241,9 +244,12 @@ export function grantIcon(id) {
  * 相手の持ち点が分かっているときだけ渡す。増減は戻り値の delta に入る。
  * opts.xp を渡すと、対戦ぶんの代わりにその経験値を配る(チュートリアル)。
  * opts.tutorial を立てた対局は、対戦の数に数えない。
+ * won は true が勝ち、false が負け、null が引き分け。
+ * 引き分けでも通常対局の経験値は入り、チュートリアルはクリアに数えない。
  */
 export function recordGame(won, opts) {
   const profile = loadProfile();
+  const draw = won === null;
   const foeRating = opts && opts.foeRating;
   const rated = typeof foeRating === "number";
   const before = profile.rating;
@@ -255,20 +261,23 @@ export function recordGame(won, opts) {
     opts &&
     opts.tutorialId != null &&
     profile.cleared.includes(opts.tutorialId);
-  const gained = again
-    ? 0
-    : opts && Number.isFinite(opts.xp) && opts.xp >= 0
-      ? opts.xp
-      : XP.BATTLE;
+  const tutorialDraw = draw && (opts?.tutorial || opts?.tutorialId != null);
+  const gained =
+    again || tutorialDraw
+      ? 0
+      : opts && Number.isFinite(opts.xp) && opts.xp >= 0
+        ? opts.xp
+        : XP.BATTLE;
   const levelBefore = levelProgress(profile).level;
   const next = {
     ...profile,
     plays: profile.plays + 1,
     battles: profile.battles + (opts && opts.tutorial ? 0 : 1),
     wins: profile.wins + (won ? 1 : 0),
+    draws: profile.draws + (draw ? 1 : 0),
     xp: profile.xp + gained,
     cleared:
-      opts && opts.tutorialId != null && !again
+      opts && opts.tutorialId != null && !again && !draw
         ? [...profile.cleared, opts.tutorialId]
         : profile.cleared,
     rating: after,
@@ -295,7 +304,7 @@ export function recordGame(won, opts) {
     before,
     earned,
     gained,
-    firstClear: !!(opts && opts.tutorialId != null) && !again,
+    firstClear: !!(opts && opts.tutorialId != null) && !again && !draw,
     levelBefore,
     levelAfter,
     leveledUp: levelAfter > levelBefore,

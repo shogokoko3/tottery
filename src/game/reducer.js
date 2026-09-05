@@ -1,6 +1,11 @@
 import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, SUIT_SYMBOL } from "./constants.js";
 import {
+  ADJUDICATION_RULE_VERSION,
+  adjudicatePosition,
+  withInitialArmies,
+} from "./adjudication.js";
+import {
   buildDeck,
   shuffle,
   emptyBoard,
@@ -23,7 +28,8 @@ export function isNotableLog(line) {
     line.includes("新しい王") ||
     line.includes("入れ替えた") ||
     line.includes("投入") ||
-    line.includes("降参")
+    line.includes("降参") ||
+    line.includes("布陣判定")
   );
 }
 
@@ -92,6 +98,12 @@ export function initialState() {
     lastReveal: null,
     lastRevenge: null,
     winner: null,
+    /** 開始アクションに版がない旧対局は、従来の終局ルールを使う。 */
+    ruleVersion: null,
+    initialArmyTotals: null,
+    initialArmyRanks: null,
+    endReason: null,
+    adjudication: null,
     seq: 0,
   };
 }
@@ -418,6 +430,7 @@ export function autoPickKing(state, idx, placement) {
  * ここで布陣ボーナス(ストレート・フラッシュ)を確かめて効果を出す。
  */
 function startPlay(base, log) {
+  base = withInitialArmies(base);
   if (base.scripted)
     return {
       ...base,
@@ -518,8 +531,44 @@ function startPlay(base, log) {
    ========================================================================= */
 
 export function reducer(state, action) {
+  // 合計同点の終局はwinner:null。winnerの真偽だけで対局を再開させない。
+  if (
+    state.phase === "gameover" &&
+    state.adjudication &&
+    ![
+      "NEW_GAME",
+      "START_SETUP",
+      "DISMISS_CAPTURE",
+      "DISMISS_SETUP_EFFECTS",
+      "DISMISS_INTERSTITIAL",
+      "VIEW_LOG",
+      "CLOSE_LOG",
+    ].includes(action.type)
+  )
+    return state;
   const next = coreReducer(state, action);
   return afterAction(state, next, action);
+}
+
+/** ローカルの札確認や画面操作を、対局の判定タイミングに使わない。 */
+function completedRuleAction(prev, next, action) {
+  if (prev === next || next.phase !== "play") return false;
+  if (action.type === "SETUP_CONFIRM") return prev.phase === "setup";
+  if (prev.phase !== "play") return false;
+  switch (action.type) {
+    case "MOVE_PIECE":
+    case "CONFIRM_SHUFFLE":
+      return true;
+    case "SKIP_EXTRA_ACTION":
+      return !!prev.extraMoveFor;
+    case "CHOOSE_HEIR":
+      return !!prev.pendingKingChoice && !next.pendingKingChoice;
+    case "PLACE_RESERVE_CARD":
+    case "SKIP_RESERVE_PLACEMENT":
+      return !!prev.kPlacement && !next.kPlacement;
+    default:
+      return false;
+  }
 }
 
 /**
@@ -527,7 +576,9 @@ export function reducer(state, action) {
  * 持ち時間の増減と、演出のための「倒れたマス」の取りまとめをここでやる。
  */
 function afterAction(prev, next, action) {
-  let out = next;
+  // 持ち時間を使い切っていた手は、布陣判定より時間切れを優先する。
+  let out = afterClock(prev, next, action);
+  if (completedRuleAction(prev, out, action)) out = adjudicatePosition(out);
 
   // 記録に残る出来事があったら、その時点の盤面を控えておく。
   // あとから「この時どうなっていたか」を見られるようにするため
@@ -594,7 +645,12 @@ function afterAction(prev, next, action) {
       };
   }
 
-  // 手番が移ったら、使った分を引いて、始まる側に加算する
+  return out;
+}
+
+/** 手番が移ったら、使った分を引いて、始まる側に加算する。 */
+function afterClock(prev, next, action) {
+  let out = next;
   if (
     prev.phase === "play" &&
     out.phase === "play" &&
@@ -651,6 +707,10 @@ function coreReducer(state, action) {
         reserve,
         setupMode:
           action.setupMode === "simultaneous" ? "simultaneous" : "sequential",
+        ruleVersion:
+          action.ruleVersion === ADJUDICATION_RULE_VERSION
+            ? ADJUDICATION_RULE_VERSION
+            : null,
         pool: action.pool || null,
         // 台本どおりに進めるチュートリアルでは布陣ボーナスを出さない。
         // 先手が入れ替わったり駒が公開されたりすると、案内と噛み合わなくなる
@@ -1313,6 +1373,11 @@ function coreReducer(state, action) {
       return { ...state, kPlacement: null };
 
     case "SKIP_EXTRA_ACTION":
+      if (
+        state.ruleVersion === ADJUDICATION_RULE_VERSION &&
+        !state.extraMoveFor
+      )
+        return state;
       return endTurn(state);
 
     case "VIEW_LOG":

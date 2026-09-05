@@ -3,6 +3,15 @@
  * 相手に送らなくてよい「自分の画面の中だけの操作」と、
  * 送る前にローカル状態を畳み込む必要があるアクションを定義する。
  */
+import { ADJUDICATION_RULE_VERSION } from "../game/adjudication.js";
+
+/** 古い画面が混ざる対局は、両者が理解できる従来ルールで開始する。 */
+export function roomRuleVersion(room) {
+  return room?.hostRuleVersion === ADJUDICATION_RULE_VERSION &&
+    room?.guestRuleVersion === ADJUDICATION_RULE_VERSION
+    ? ADJUDICATION_RULE_VERSION
+    : null;
+}
 
 /** 手元の表示が変わるだけで、盤面には影響しないアクション */
 export const LOCAL_ONLY_ACTIONS = new Set([

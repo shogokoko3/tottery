@@ -209,6 +209,10 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
           <span>勝ち</span>
         </div>
         <div className="stat">
+          <b>{profile.draws || 0}</b>
+          <span>引き分け</span>
+        </div>
+        <div className="stat">
           <b>{rate === null ? "—" : `${rate}%`}</b>
           <span>勝率</span>
         </div>

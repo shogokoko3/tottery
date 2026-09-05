@@ -2926,10 +2926,10 @@ h3 {
   color: var(--text-dim);
 }
 
-/* 対局数・勝ち・勝率 */
+/* 対局数・勝ち・引き分け・勝率 */
 .stat-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   border-top: 1px solid var(--line);
   padding-top: 12px;
@@ -4240,4 +4240,57 @@ h3 {
   border: 1px dashed var(--line);
   border-radius: 12px;
   opacity: 0.35;
+}
+
+.adjudication-result {
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #102339;
+  text-align: center;
+}
+.adjudication-result p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.adjudication-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.adjudication-scores > div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 6px;
+}
+.adjudication-scores span,
+.adjudication-scores small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.adjudication-scores strong {
+  display: block;
+  font-size: 32px;
+  color: var(--gold-soft);
+}
+.adjudication-scores small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.adjudication-scores .adjudication-winner {
+  border-color: var(--gold);
+  background: #d5b86915;
+}
+.adjudication-draw-mark {
+  font-size: 34px;
+  color: var(--gold-soft);
+}
+.setup-adoption-total {
+  text-align: center;
+  font-size: 13px;
+  margin: 8px 0;
+}
+.setup-adoption-total strong {
+  color: var(--gold-soft);
 }

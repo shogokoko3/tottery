@@ -9,6 +9,7 @@
  * これが通れば、誰が遊んでも同じ盤面・同じ順番になる。
  */
 import { reducer } from "../src/game/reducer.js";
+import { ADJUDICATION_RULE_VERSION } from "../src/game/adjudication.js";
 import { isFlush, isStraight } from "../src/game/bonus.js";
 import { SUIT_SYMBOL } from "../src/game/constants.js";
 
@@ -180,6 +181,7 @@ for (const tut of TUTORIALS) {
     { phase: "intro" },
     {
       type: "START_SETUP",
+      ruleVersion: ADJUDICATION_RULE_VERSION,
       size: tut.boardSize,
       setupMode: "simultaneous",
       deck: tut.deck.map((c) => ({ ...c })),
@@ -492,6 +494,7 @@ for (const tut of TUTORIALS) {
     { phase: "intro" },
     {
       type: "START_SETUP",
+      ruleVersion: ADJUDICATION_RULE_VERSION,
       size: tut.boardSize,
       setupMode: "simultaneous",
       deck: tut.deck.map((c) => ({ ...c })),

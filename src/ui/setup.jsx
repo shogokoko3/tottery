@@ -7,6 +7,7 @@ import {
 } from "../game/board.js";
 
 import { PLAYER_META, RANKS, SUITS, nameOf } from "../game/constants.js";
+import { ADJUDICATION_RULE_VERSION } from "../game/adjudication.js";
 import { useWindowWidth } from "../hooks.js";
 import { ArrowLeft, Crown, Dice, Grid } from "../icons.jsx";
 import { CardBack, CardFace } from "./cards.jsx";
@@ -420,6 +421,9 @@ export function PlaceStep({
   const placement = state.setupPlacements[pIdx];
   const placedIds = new Set(Object.keys(placement));
   const placedCount = placedIds.size;
+  const adoptionTotal = player.hand
+    .filter((c) => placedIds.has(c.id))
+    .reduce((sum, c) => sum + RANKS.indexOf(c.rank) + 1, 0);
   const flipped = pIdx === 1;
   const hand = player.hand
     .filter((c) => !placedIds.has(c.id))
@@ -573,6 +577,12 @@ export function PlaceStep({
           <strong className="hint-count">
             {placedCount}/{slots}
           </strong>
+        </p>
+      )}
+      {state.ruleVersion === ADJUDICATION_RULE_VERSION && !terse && (
+        <p className="setup-adoption-total">
+          採用合計：<strong>{adoptionTotal}</strong>{" "}
+          <span className="hint">終局不能の判定では低い側が勝ち</span>
         </p>
       )}
       <div className="arrange-layout">

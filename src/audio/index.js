@@ -61,9 +61,11 @@ export function useGameBgm({ state, clocks, self, tutorial }) {
   const finished = phase === "gameover";
   const result = !finished
     ? null
-    : self == null || state.winner === self
-      ? "win"
-      : "lose";
+    : state.winner === null
+      ? "draw"
+      : self == null || state.winner === self
+        ? "win"
+        : "lose";
 
   const id = trackForScene({
     screen: "game",

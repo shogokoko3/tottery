@@ -80,6 +80,7 @@ import {
 } from "../game/tutorial.js";
 import { isTestPlay, recordGame } from "../game/profile.js";
 import { releaseXpNotice } from "../game/xp-notices.js";
+import { ADJUDICATION_RULE_VERSION } from "../game/adjudication.js";
 import { titleNameOf } from "../game/titles.js";
 import { publishRank } from "../net/ranking.js";
 import { publishPlayer } from "../net/players.js";
@@ -279,6 +280,40 @@ export function CapturedRow({ players, dispatch, viewer }) {
     </>
   );
 }
+function AdjudicationResult({ state, names }) {
+  const result = state.adjudication;
+  if (!result) return null;
+  return (
+    <section className="adjudication-result" aria-label="判定結果の内訳">
+      <p>
+        {result.reason === "no-legal-action"
+          ? "手番側に合法な行動がなく、対局を進められないため判定しました。"
+          : "駒の動ける範囲から、どちらの王も討てない局面と判定しました。"}
+      </p>
+      <div className="adjudication-scores">
+        {result.totals.map((total, side) => (
+          <div
+            key={side}
+            className={state.winner === side ? "adjudication-winner" : ""}
+          >
+            <span>{nameOf(side, names)}</span>
+            <strong>{total}</strong>
+            <small>{result.ranks?.[side]?.join(" + ")}</small>
+          </div>
+        ))}
+      </div>
+      <p>
+        {state.winner == null
+          ? "採用合計が同じため、引き分けです。"
+          : "採用合計が低い側の勝ちです。"}
+      </p>
+      <p className="hint">
+        対局開始時に採用した全ての札を合計します。A=1、J=11、Q=12、K=13。倒れた駒も含み、途中で投入した予備札は含みません。
+      </p>
+    </section>
+  );
+}
+
 export function GameView({
   state,
   network,
@@ -301,9 +336,13 @@ export function GameView({
     // 動きの再生。押すたびに数が増え、それを鍵に演出をやり直させる
     [playSeq, setPlaySeq] = (0, useState)(0),
     [playing, setPlaying] = (0, useState)(!1),
-    r = PLAYER_META[state.winner],
+    drawn = state.winner === null,
+    r = drawn
+      ? { name: "引き分け", color: "var(--gold-soft)" }
+      : PLAYER_META[state.winner],
     // 1台で交互に指しているときは「あなた」が決まらないので、色名で伝える
-    lost = youAre !== null && youAre !== void 0 && state.winner !== youAre,
+    lost =
+      !drawn && youAre !== null && youAre !== void 0 && state.winner !== youAre,
     won = youAre !== null && youAre !== void 0 && state.winner === youAre;
   // 記録の行を選んだら、その手の動きを再生する
   (0, useEffect)(() => {
@@ -383,7 +422,8 @@ export function GameView({
           s.includes("新しい王") ||
           s.includes("入れ替えた") ||
           s.includes("投入") ||
-          s.includes("降参"),
+          s.includes("降参") ||
+          s.includes("判定"),
       );
     return (
       <div className="modal-overlay">
@@ -394,16 +434,19 @@ export function GameView({
                 color: r.color,
               }}
             >
-              {network
-                ? state.winner === myIdx
-                  ? "あなたの勝ち!"
-                  : "あなたの負け…"
-                : `${r.name}の勝利!`}
+              {drawn
+                ? "引き分け"
+                : network
+                  ? state.winner === myIdx
+                    ? "あなたの勝ち!"
+                    : "あなたの負け…"
+                  : `${r.name}の勝利!`}
             </h3>
             <button className="icon-btn" onClick={() => o(!1)}>
               <Close size={18} />
             </button>
           </div>
+          <AdjudicationResult state={state} names={names} />
           {state.resignedBy !== null && state.resignedBy !== void 0 && (
             <p
               className="hint"
@@ -632,7 +675,11 @@ export function GameView({
       <div
         className={`modal-panel gameover-panel ${lost ? "defeat-panel" : ""}`}
       >
-        {lost ? (
+        {drawn ? (
+          <span className="adjudication-draw-mark" aria-hidden="true">
+            ＝
+          </span>
+        ) : lost ? (
           <Flag size={34} className="defeat-mark" />
         ) : (
           <Crown
@@ -646,13 +693,15 @@ export function GameView({
           className={lost ? "defeat-title" : ""}
           style={lost ? void 0 : { color: r.color }}
         >
-          {tutorial && won
-            ? "チュートリアルクリア!"
-            : won
-              ? "あなたの勝ち!"
-              : lost
-                ? "敗北"
-                : `${r.name}の勝利!`}
+          {drawn
+            ? "引き分け"
+            : tutorial && won
+              ? "チュートリアルクリア!"
+              : won
+                ? "あなたの勝ち!"
+                : lost
+                  ? "敗北"
+                  : `${r.name}の勝利!`}
         </h2>
         {tutorial && won && (
           <>
@@ -662,11 +711,13 @@ export function GameView({
         )}
         {lost && (
           <p className="defeat-lead">
-            {state.timeoutBy === youAre
-              ? "持ち時間を使い切りました"
-              : state.resignedBy === youAre
-                ? "降参しました"
-                : "王を討たれました"}
+            {state.adjudication
+              ? "採用カードの合計による判定負けです"
+              : state.timeoutBy === youAre
+                ? "持ち時間を使い切りました"
+                : state.resignedBy === youAre
+                  ? "降参しました"
+                  : "王を討たれました"}
           </p>
         )}
         {state.resignedBy !== null && state.resignedBy !== void 0 && (
@@ -679,11 +730,14 @@ export function GameView({
             {nameOf(state.resignedBy, names)}が降参しました
           </p>
         )}
-        <div
-          className={`king-card ${lost ? "lose-card" : "win-card"} ${tutorial && won ? "tutorial-king-card" : ""}`}
-        >
-          <img src={winKingCardImg} alt="" />
-        </div>
+        <AdjudicationResult state={state} names={names} />
+        {!state.adjudication && (
+          <div
+            className={`king-card ${lost ? "lose-card" : "win-card"} ${tutorial && won ? "tutorial-king-card" : ""}`}
+          >
+            <img src={winKingCardImg} alt="" />
+          </div>
+        )}
         {rating && (
           <div className="rating-change">
             <span className="rating-label">レーティング</span>
@@ -946,6 +1000,9 @@ export function GameCore({
       ((network && p !== 0) ||
         y({
           type: "START_SETUP",
+          ruleVersion: network
+            ? network.ruleVersion
+            : ADJUDICATION_RULE_VERSION,
           size: boardSize || 5,
           setupMode: network || cpu ? "simultaneous" : "sequential",
           ...(tutorial
@@ -1236,7 +1293,7 @@ export function GameCore({
     }
     if (recordedRef.current) return;
     recordedRef.current = !0;
-    const won = a.winner === (network ? p : 0);
+    const won = a.winner === null ? null : a.winner === (network ? p : 0);
     const foeRating =
       network && network.ratings ? network.ratings[1 - p] : null;
     // チュートリアルは話ごとの経験値。対戦の数には数えない
@@ -1244,7 +1301,11 @@ export function GameCore({
       deferXpNotice: true,
       ...(typeof foeRating === "number" ? { foeRating } : null),
       ...(tutorial
-        ? { xp: tutorial.xp, tutorial: !0, tutorialId: tutorial.id }
+        ? {
+            xp: won ? tutorial.xp : 0,
+            tutorial: !0,
+            ...(won ? { tutorialId: tutorial.id } : {}),
+          }
         : null),
     });
     xpNoticeRef.current = after.xpNoticeId;
@@ -1932,6 +1993,11 @@ export function GameCore({
       }}
     >
       <div className="play-wrap">
+        {network && a.ruleVersion !== ADJUDICATION_RULE_VERSION && (
+          <p className="hint">
+            この対局は従来ルールで進行します。判定ルールを使うには、両者ともページを再読み込みして新しい対局を始めてください。
+          </p>
+        )}
         {!tutorial && (
           <ClockBar
             clocks={liveClocks}

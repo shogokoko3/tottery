@@ -47,6 +47,8 @@ import { TutorialSelect } from "./tutorial.jsx";
 import { nextTutorialAfter } from "../game/tutorial.js";
 import { XpGainToast } from "./xp-gain.jsx";
 import { getXpNotices, subscribeXpNotices } from "../game/xp-notices.js";
+import { ADJUDICATION_RULE_VERSION } from "../game/adjudication.js";
+import { roomRuleVersion } from "../net/sync.js";
 import { RankingScreen } from "./ranking.jsx";
 import {
   hasName,
@@ -390,15 +392,17 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
         if (!d) return;
         let m = await readLobbyPath(`/${d}/guest`);
         if (!o.current && m.ok && m.data) {
-          clearInterval(r);
           let s = f.current,
             // 相手の名前は、参加時に部屋へ書き込まれている
             g = await readRoom(s);
           if (o.current) return;
+          if (!g.ok || !g.data?.guestPresent) return;
+          clearInterval(r);
           (deleteLobbyPath(`/${d}`),
             onRoomReady({
               code: s,
               myPlayerIndex: 0,
+              ruleVersion: roomRuleVersion(g.data),
               names: [myName(), (g.data && g.data.guestName) || null],
               icons: [myIcon(), (g.data && g.data.guestIcon) || null],
               titles: [myTitle(), (g.data && g.data.guestTitle) || null],
@@ -469,6 +473,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
                 guestTitle: myTitle(),
                 guestRating: myRating(),
                 guestSkins: loadout,
+                guestRuleVersion: ADJUDICATION_RULE_VERSION,
               }),
               o.current)
             )
@@ -476,6 +481,10 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
             onRoomReady({
               code: z,
               myPlayerIndex: 1,
+              ruleVersion: roomRuleVersion({
+                ...b.data,
+                guestRuleVersion: ADJUDICATION_RULE_VERSION,
+              }),
               names: [(b.data && b.data.hostName) || null, myName()],
               icons: [(b.data && b.data.hostIcon) || null, myIcon()],
               titles: [(b.data && b.data.hostTitle) || null, myTitle()],
@@ -494,6 +503,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
             hostTitle: myTitle(),
             hostRating: myRating(),
             hostSkins: loadout,
+            hostRuleVersion: ADJUDICATION_RULE_VERSION,
           });
         if (o.current) return;
         if (!p.ok) {
@@ -677,6 +687,7 @@ export function RoomScreen({
               onRoomReady({
                 code: f,
                 myPlayerIndex: 0,
+                ruleVersion: roomRuleVersion(N.data),
                 names: [myName(), N.data.guestName || null],
                 icons: [myIcon(), N.data.guestIcon || null],
                 titles: [myTitle(), N.data.guestTitle || null],
@@ -703,6 +714,7 @@ export function RoomScreen({
         hostTitle: myTitle(),
         hostRating: myRating(),
         hostSkins: loadout,
+        hostRuleVersion: ADJUDICATION_RULE_VERSION,
       });
     if ((p(!1), !x.ok)) {
       s(x.error);
@@ -738,6 +750,7 @@ export function RoomScreen({
       guestTitle: myTitle(),
       guestRating: myRating(),
       guestSkins: loadout,
+      guestRuleVersion: ADJUDICATION_RULE_VERSION,
     });
     if ((p(!1), !N.ok)) {
       s(N.error);
@@ -751,6 +764,10 @@ export function RoomScreen({
       ratings: [x.data.hostRating || null, myRating()],
       skins: [sanitizeLoadout(x.data.hostSkins), loadout],
       myPlayerIndex: 1,
+      ruleVersion: roomRuleVersion({
+        ...x.data,
+        guestRuleVersion: ADJUDICATION_RULE_VERSION,
+      }),
     });
   }
   function R() {
