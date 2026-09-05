@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { cardBackImg } from "../assets.js";
-import { SKINS, POOL, ODDS, byId, rate } from "../skins/catalog.js";
+import {
+  SKINS,
+  ALL_SKINS,
+  FOIL_SKINS,
+  POOL,
+  ODDS,
+  FOIL_CHANCE,
+  byId,
+  rate,
+  foilId,
+  baseSkinId,
+} from "../skins/catalog.js";
 import {
   claimEarly,
   craft,
@@ -28,6 +39,12 @@ import { SkinFilm } from "./skin-film.jsx";
 import { ArrowLeft, Ether } from "../icons.jsx";
 import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
+import { FoilArtwork } from "./foil-artwork.jsx";
+
+const foilPct = FOIL_CHANCE * 100;
+function FoilBadge({ className = "" }) {
+  return <span className={`skins-foil-badge ${className}`}>FOIL</span>;
+}
 
 const isBattlePassLocked = (skin, owned) =>
   skin?.acquisition === "battlepass" && !owned[skin.id];
@@ -164,11 +181,17 @@ function RevealCard({ result, index, flipped, onFlip, reduce, seed }) {
         />
         <span className="reveal-front">
           {final ? (
-            <img src={skin.card} alt={skin.role} draggable="false" />
+            <FoilArtwork
+              skin={skin}
+              src={skin.card}
+              alt={skin.role}
+              animated={!reduce}
+            />
           ) : (
             <span className="reveal-veil" />
           )}
           <span className="reveal-rarity">{label || ""}</span>
+          {final && skin.foil && <FoilBadge className="reveal-foil" />}
           {!final && spinning && <span className="reveal-promoting">昇格</span>}
           {final && <strong className="reveal-name">{skin.name}</strong>}
           {final && result.isNew && <span className="reveal-new">NEW</span>}
@@ -276,31 +299,39 @@ function SummonReveal({ results, onFinish, reduce }) {
  * 錬成。ダブった札を崩してエーテルにし、狙った1枚を作る。
  * 値づけの根拠は src/skins/ether.js に書いてある。
  */
-function ForgePanel({ collection, run, working, onPick, setMessage }) {
+function ForgePanel({ collection, run, working, onPick, message, setMessage }) {
   const [pick, setPick] = useState("SSR");
+  const [confirmBreak, setConfirmBreak] = useState(null);
   // 目安の数字は抽選の中身から引き直す。手で書くと片方だけ古くなる
   const summary = forgeSummary();
   const top = summary.byId("SSR");
   const ether = etherOf(collection);
-  const rows = spares(collection, SKINS);
+  const rows = spares(collection, ALL_SKINS);
   const bulk = totalOfSpares(collection, SKINS);
   const targets = SKINS.filter((s) => !isKeepsake(s) && s.rarity === pick);
 
   const breakOne = async (skin) => {
-    if (await run((c) => dismantle(c, skin.id)))
+    if (await run((c) => dismantle(c, skin.id))) {
+      setConfirmBreak(null);
       setMessage(
         `「${skin.name}」を崩して ${ETHER_NAME}を ${dustOf(skin)} 得ました。`,
       );
+    }
   };
   const breakAll = async () => {
     if (await run((c) => dismantleAll(c)))
-      setMessage(`ダブりを全部崩して ${ETHER_NAME}を ${bulk} 得ました。`);
+      setMessage(
+        `通常版のダブりを崩して ${ETHER_NAME}を ${bulk} 得ました。フォイルは残しています。`,
+      );
   };
   const make = async (skin) => {
-    if (await run((c) => craft(c, skin.id)))
+    const next = await run((c) => craft(c, skin.id));
+    if (next) {
+      const made = byId(next.lastCraft.id);
       setMessage(
-        `${ETHER_NAME}を ${costOf(skin).toLocaleString()} 使って「${skin.name}」を作りました。`,
+        `${ETHER_NAME}を ${costOf(skin).toLocaleString()} 使って「${made.name}」を作りました。`,
       );
+    }
   };
 
   return (
@@ -337,7 +368,8 @@ function ForgePanel({ collection, run, working, onPick, setMessage }) {
                   <span className="forge-name">
                     <b>{skin.name}</b>
                     <small>
-                      {rarityLabel(skin)} ・ 余り {spare}枚
+                      {rarityLabel(skin)} ・ 余り {spare}枚{" "}
+                      {skin.foil && <FoilBadge />}
                     </small>
                   </span>
                   <span className="forge-gain">
@@ -346,7 +378,11 @@ function ForgePanel({ collection, run, working, onPick, setMessage }) {
                   <button
                     className="btn btn-ghost btn-small"
                     disabled={working}
-                    onClick={() => breakOne(skin)}
+                    onClick={() =>
+                      skin.foil
+                        ? (setMessage(""), setConfirmBreak(skin))
+                        : breakOne(skin)
+                    }
                   >
                     崩す
                   </button>
@@ -355,10 +391,10 @@ function ForgePanel({ collection, run, working, onPick, setMessage }) {
             </ul>
             <button
               className="btn btn-primary btn-wide"
-              disabled={working}
+              disabled={working || !bulk}
               onClick={breakAll}
             >
-              <Ether size={16} /> ダブりを全部崩す（+{bulk}）
+              <Ether size={16} /> 通常版のダブりを全部崩す（+{bulk}）
             </button>
           </>
         ) : (
@@ -367,13 +403,21 @@ function ForgePanel({ collection, run, working, onPick, setMessage }) {
             装備中の札が消えることはありません。
           </p>
         )}
+        <p className="skins-note forge-protection">
+          通常版とフォイルは別々に最後の1枚を保護します。一括で崩す対象は通常版だけです。
+          フォイルのダブりは、1枚ずつ確認して崩せます。
+        </p>
       </section>
 
       <section className="forge-section">
         <div className="forge-head">
           <h3>作る</h3>
-          <span>好きな1枚を選べます</span>
+          <span>好きなキャラを選べます</span>
         </div>
+        <p className="skins-foil-note">
+          錬成も1枚ごとに{foilPct}
+          %でフォイルになります。通常版とフォイルのどちらか1枚を獲得します。
+        </p>
         <div className="skins-filters" aria-label="作る札の絞り込み">
           {["R", "SR", "SSR"].map((r) => (
             <button
@@ -405,6 +449,12 @@ function ForgePanel({ collection, run, working, onPick, setMessage }) {
                 </button>
                 <b>{skin.name}</b>
                 <small>{held ? `所持 ×${held}` : "未所持"}</small>
+                <small className="forge-foil-held">
+                  フォイル{" "}
+                  {collection.owned[foilId(skin.id)]
+                    ? `×${collection.owned[foilId(skin.id)]}`
+                    : "未所持"}
+                </small>
                 <button
                   className={`btn ${can ? "btn-primary" : "btn-ghost"} btn-small`}
                   disabled={working || !can}
@@ -444,7 +494,8 @@ function ForgePanel({ collection, run, working, onPick, setMessage }) {
         </table>
         <p className="skins-note">
           崩してもらえる量は「その1枚の出にくさ」に比例させてあります。
-          作るのに要るのは、その4倍。つまり<b>同じ格ならダブり4枚で好きな1枚</b>
+          作るのに要るのは、その4倍。つまり
+          <b>同じ格ならダブり4枚で好きなキャラを1枚</b>
           。
           <br />
           SSR 1枚（{CRAFT.SSR.toLocaleString()}）は
@@ -460,8 +511,55 @@ function ForgePanel({ collection, run, working, onPick, setMessage }) {
           {summary.pullsIfAll}回ぶんになります。
           <br />
           早期特典・特別スキンは崩すことも作ることもできません。
+          フォイルも同じ格の通常版と同じ分解量です。上記の回数は重複したフォイルも個別に崩した場合の目安です。
         </p>
       </section>
+      {confirmBreak && (
+        <SkinModal
+          label="フォイルを崩す確認"
+          onClose={() => setConfirmBreak(null)}
+        >
+          <div className="skin-modal-head">
+            <h2>フォイルを1枚崩しますか？</h2>
+            <button
+              className="skin-close"
+              aria-label="確認を閉じる"
+              disabled={working}
+              onClick={() => setConfirmBreak(null)}
+            >
+              ×
+            </button>
+          </div>
+          <p>
+            「{confirmBreak.name}」のダブり1枚を、{ETHER_NAME}{" "}
+            {dustOf(confirmBreak)} に変えます。
+          </p>
+          <p className="skins-note">
+            所持 {collection.owned[confirmBreak.id] || 0}枚 →{" "}
+            {Math.max(0, (collection.owned[confirmBreak.id] || 0) - 1)}
+            枚。最後の1枚は残ります。
+          </p>
+          <div className="skins-confirm-actions">
+            <button
+              className="skin-btn"
+              disabled={working}
+              onClick={() => setConfirmBreak(null)}
+            >
+              残す
+            </button>
+            <button
+              className="skin-btn skin-btn-gold"
+              disabled={working || (collection.owned[confirmBreak.id] || 0) < 2}
+              onClick={() => breakOne(confirmBreak)}
+            >
+              1枚崩す（+{dustOf(confirmBreak)}）
+            </button>
+          </div>
+          <p className="skins-message" role="status">
+            {message}
+          </p>
+        </SkinModal>
+      )}
     </div>
   );
 }
@@ -471,6 +569,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     reduce = useReducedMotion();
   const [tab, setTab] = useState("gacha"),
     [filter, setFilter] = useState("all");
+  const [finish, setFinish] = useState("all");
   const [selected, setSelected] = useState(null),
     [odds, setOdds] = useState(false);
   const [animating, setAnimating] = useState(false),
@@ -479,6 +578,13 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     [message, setMessage] = useState("");
   const busy = useRef(false);
   const ownedCount = Object.keys(collection.owned).length;
+  const foilOwnedCount = FOIL_SKINS.filter(
+    (s) => collection.owned[s.id],
+  ).length;
+  const shine = !reduce && collection.motion !== "off";
+  const craftResult = !collection.pending && collection.lastCraft;
+  const results =
+    collection.pending?.results || (craftResult ? [craftResult] : null);
   const magicianLocked = isBattlePassLocked(
     byId("genie-magician"),
     collection.owned,
@@ -490,8 +596,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     setWorking(true);
     setMessage("");
     try {
-      await updateCollection(change);
-      return true;
+      return await updateCollection(change);
     } catch (e) {
       setMessage(e.message);
       return false;
@@ -501,7 +606,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     }
   };
   const roll = async (amount) => {
-    if (busy.current || collection.pending) return;
+    if (busy.current || collection.pending || collection.lastCraft) return;
     setAnimating(!reduce && collection.motion === "full");
     if (!(await run((s) => pull(s, amount)))) setAnimating(false);
   };
@@ -509,11 +614,18 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     if (await run((s) => equip(s, skin.id)))
       setMessage(`${skin.rank}のカードに「${skin.name}」を装備しました。`);
   };
-  const closeResults = () => run((s) => ({ ...s, pending: null }));
-  const shown = SKINS.filter(
+  const closeResults = () =>
+    run((s) =>
+      craftResult ? { ...s, lastCraft: null } : { ...s, pending: null },
+    );
+  const shown = SKINS.flatMap((s) => {
+    const foil = byId(foilId(s.id));
+    return foil ? [s, foil] : [s];
+  }).filter(
     (s) =>
-      filter === "all" ||
-      (filter === "owned" ? collection.owned[s.id] : s.rarity === filter),
+      (finish === "all" || (finish === "foil" ? s.foil : !s.foil)) &&
+      (filter === "all" ||
+        (filter === "owned" ? collection.owned[s.id] : s.rarity === filter)),
   );
   return (
     <div className="skins-page">
@@ -524,7 +636,11 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         </div>
         <p>
           所持 <strong>{ownedCount}</strong>
-          <span> / {SKINS.length}</span>
+          <span> / {ALL_SKINS.length}</span>
+          <small className="skins-owned-breakdown">
+            通常 {ownedCount - foilOwnedCount}/{SKINS.length} · フォイル{" "}
+            {foilOwnedCount}/{FOIL_SKINS.length}
+          </small>
         </p>
       </div>
       <div className="skins-tabs" role="tablist" aria-label="スキンメニュー">
@@ -554,11 +670,17 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         <div className="skins-gacha" role="tabpanel" aria-label="スキンガチャ">
           <section className="skins-banner">
             <div className="skins-banner-art" aria-hidden="true">
-              <img className="banner-left" src={byId("demon-q").image} alt="" />
-              <img
-                className="banner-right"
-                src={byId("angel-k").image}
+              <FoilArtwork
+                className="banner-left"
+                skin={byId(foilId("demon-q"))}
                 alt=""
+                animated={shine}
+              />
+              <FoilArtwork
+                className="banner-right"
+                skin={byId(foilId("angel-k"))}
+                alt=""
+                animated={shine}
               />
             </div>
             <div className="skins-banner-copy">
@@ -569,8 +691,10 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 手に。
               </h2>
               <p>カードに宿る、新たな姿。</p>
+              <FoilBadge />
+              <p className="skins-banner-foil">箔がきらめく、特別な一枚。</p>
               <span className="skins-banner-label">
-                全{POOL.length}種 · 同じ数字のカードに装備
+                {POOL.length}キャラ · 各キャラにフォイル版
               </span>
             </div>
           </section>
@@ -580,14 +704,14 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             </div>
             <div className="skins-pull-buttons">
               <button
-                disabled={working || !!collection.pending}
+                disabled={working || !!results}
                 className="skin-btn"
                 onClick={() => roll(1)}
               >
                 1回召喚<span>無料</span>
               </button>
               <button
-                disabled={working || !!collection.pending}
+                disabled={working || !!results}
                 className="skin-btn skin-btn-gold"
                 onClick={() => roll(10)}
               >
@@ -608,6 +732,10 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             </div>
             <p className="skins-note">
               1回ごとに同じ確率で抽選します。10回召喚の確定枠はありません。
+            </p>
+            <p className="skins-foil-note">
+              各キャラ獲得時に{foilPct}
+              %でフォイル。10連も1枚ごとに独立して判定します。
             </p>
           </div>
           <section className="skins-special">
@@ -683,6 +811,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                   if (await run(claimEarly)) {
                     setTab("collection");
                     setFilter("LIMITED");
+                    setFinish("all");
                     setMessage(
                       "早期特典を受け取りました。カードを選んで装備できます。",
                     );
@@ -702,6 +831,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           run={run}
           working={working}
           onPick={setSelected}
+          message={message}
           setMessage={setMessage}
         />
       ) : (
@@ -721,7 +851,15 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                       aria-label={`${skin.rank} ${skin.name}の装備詳細`}
                       onClick={() => setSelected(skin)}
                     >
-                      <CardFace rank={skin.rank} suit="spade" skinId={id} />
+                      <CardFace
+                        rank={skin.rank}
+                        suit="spade"
+                        skinId={id}
+                        animated={false}
+                      />
+                      {skin.foil && (
+                        <FoilBadge className="skins-loadout-foil" />
+                      )}
                     </button>
                   );
                 })
@@ -749,12 +887,30 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               </button>
             ))}
           </div>
+          <div
+            className="skins-filters skins-finish-filters"
+            aria-label="仕上げの絞り込み"
+          >
+            {[
+              ["all", "すべての仕上げ"],
+              ["normal", `通常版 ${SKINS.length}種`],
+              ["foil", `フォイル ${FOIL_SKINS.length}種`],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                aria-pressed={finish === id}
+                onClick={() => setFinish(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="skins-grid">
             {shown.map((skin) => {
               const locked = isBattlePassLocked(skin, collection.owned);
               return (
                 <button
-                  className={`skins-tile rarity-${skin.rarity}${locked ? " is-pass-locked" : ""}`}
+                  className={`skins-tile rarity-${skin.rarity}${locked ? " is-pass-locked" : ""}${skin.foil ? " is-foil" : ""}`}
                   key={skin.id}
                   onClick={() => setSelected(skin)}
                   aria-label={`${skin.rank} ${skin.name} ${locked ? "ロック中・バトルパスクリアで獲得可能" : collection.owned[skin.id] ? "所持" : "未所持"}`}
@@ -763,12 +919,19 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                     {locked ? (
                       <BattlePassSkinLock />
                     ) : (
-                      <img src={skin.card} alt={skin.role} loading="lazy" />
+                      <FoilArtwork
+                        skin={skin}
+                        src={skin.card}
+                        alt={skin.role}
+                        loading="lazy"
+                        animated={false}
+                      />
                     )}
                     <span className="skins-tile-rank">{skin.rank}</span>
                     <span className="skins-tile-rarity">
                       {rarityLabel(skin)}
                     </span>
+                    {skin.foil && <FoilBadge className="skins-art-foil" />}
                     {collection.equipped[skin.rank] === skin.id && (
                       <span className="skins-equipped">装備中</span>
                     )}
@@ -787,7 +950,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           </div>
           {!shown.length && (
             <p className="skins-empty">
-              まだスキンを所持していません。ガチャで英雄を迎えましょう。
+              この条件に当てはまるスキンはありません。
             </p>
           )}
         </div>
@@ -829,13 +992,20 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               ×
             </button>
           </div>
-          <p>R 65％ / SR 32％ / SSR 3％</p>
+          <p>
+            キャラの提供割合：R {ODDS.R}％ / SR {ODDS.SR}％ / SSR {ODDS.SSR}％
+          </p>
+          <p className="skins-foil-note">
+            キャラが決まったあと、{foilPct}
+            %でフォイルになります。下表は通常版とフォイルを合計したキャラごとの確率です。
+          </p>
           <table className="skins-rate-table">
             <thead>
               <tr>
                 <th>スキン</th>
                 <th>レア度</th>
-                <th>1回の確率</th>
+                <th>キャラ合計</th>
+                <th>うちフォイル</th>
               </tr>
             </thead>
             <tbody>
@@ -846,18 +1016,21 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                   </td>
                   <td>{s.rarity}</td>
                   <td>{ratePct(s)}％</td>
+                  <td>{Number((rate(s) * FOIL_CHANCE).toFixed(5))}％</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="skins-note">
             10回召喚も各回独立です。重複時は所持数が増えます。早期特典・特別スキンはガチャから出現しません。
+            通常版とフォイルは別々に所持・装備できます。錬成もキャラ1枚ごとに
+            {foilPct}%でフォイルです。
           </p>
         </SkinModal>
       )}
 
-      {collection.pending &&
-        (animating ? (
+      {results &&
+        (animating && collection.pending ? (
           <SummonReveal
             results={collection.pending.results}
             onFinish={() => setAnimating(false)}
@@ -865,18 +1038,27 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           />
         ) : (
           <SkinModal
-            label="召喚結果"
+            label={craftResult ? "錬成結果" : "召喚結果"}
             onClose={closeResults}
             className="skins-results-overlay"
           >
             <div className="skin-modal-head">
               <div>
-                <span className="skins-eyebrow">SUMMON COMPLETE</span>
-                <h2>新たな出会い</h2>
+                <span className="skins-eyebrow">
+                  {craftResult ? "FORGE COMPLETE" : "SUMMON COMPLETE"}
+                </span>
+                <h2>{craftResult ? "錬成が完成しました" : "新たな出会い"}</h2>
+                {results.some((r) => byId(r.id).foil) && (
+                  <p className="skins-foil-acquired">
+                    <FoilBadge /> フォイルを獲得しました
+                  </p>
+                )}
               </div>
               <button
                 className="skin-close"
-                aria-label="召喚結果を閉じる"
+                aria-label={
+                  craftResult ? "錬成結果を閉じる" : "召喚結果を閉じる"
+                }
                 disabled={working}
                 onClick={closeResults}
               >
@@ -884,19 +1066,25 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               </button>
             </div>
             <div
-              className={`skins-results-grid ${collection.pending.results.length === 1 ? "single-result" : ""}`}
+              className={`skins-results-grid ${results.length === 1 ? "single-result" : ""}`}
             >
-              {collection.pending.results.map((result, index) => {
+              {results.map((result, index) => {
                 const s = byId(result.id);
                 return (
                   <article
                     key={index}
-                    className={`skins-result rarity-${s.rarity}`}
+                    className={`skins-result rarity-${s.rarity}${s.foil ? " is-foil" : ""}`}
                   >
                     <div className="skins-result-art">
-                      <img src={s.card} alt={s.role} />
+                      <FoilArtwork
+                        skin={s}
+                        src={s.card}
+                        alt={s.role}
+                        animated={shine}
+                      />
                       <span className="skins-tile-rank">{s.rank}</span>
                       <span className="skins-tile-rarity">{s.rarity}</span>
+                      {s.foil && <FoilBadge className="skins-art-foil" />}
                       <span
                         className={result.isNew ? "skin-new" : "skin-duplicate"}
                       >
@@ -947,18 +1135,53 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             {selectedLocked ? (
               <BattlePassSkinLock className="skins-detail-portrait" />
             ) : (
-              <img
+              <FoilArtwork
                 className="skins-detail-portrait"
-                src={selected.image}
+                skin={selected}
                 alt={selected.name}
+                animated={shine}
               />
             )}
             <div className="skins-detail-info">
               <span className="skins-eyebrow">
                 {rarityLabel(selected)} / {selected.rank}
               </span>
+              {selected.foil && <FoilBadge className="skins-detail-foil" />}
               <h2>{selected.name}</h2>
               <p>{selected.role}</p>
+              {byId(foilId(baseSkinId(selected.id))) && (
+                <div
+                  className="skins-variant-switch"
+                  aria-label="このキャラの仕上げ"
+                >
+                  {[
+                    byId(baseSkinId(selected.id)),
+                    byId(foilId(baseSkinId(selected.id))),
+                  ].map((variant) => (
+                    <button
+                      key={variant.id}
+                      aria-pressed={selected.id === variant.id}
+                      onClick={() => setSelected(variant)}
+                    >
+                      {variant.foil ? "フォイル" : "通常版"}
+                      <small>
+                        {collection.owned[variant.id]
+                          ? `所持 ×${collection.owned[variant.id]}`
+                          : "未所持"}
+                        {collection.equipped[variant.rank] === variant.id
+                          ? " · 装備中"
+                          : ""}
+                      </small>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {selected.foil && (
+                <p className="skins-note">
+                  箔の部分だけが光るフォイル版。ガチャ・錬成で、このキャラを獲得したときに
+                  {foilPct}%の確率で手に入ります。
+                </p>
+              )}
               {selectedLocked ? (
                 <div className="skins-pass-unlock">
                   <strong>バトルパスクリアで獲得可能</strong>
@@ -974,6 +1197,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                       suit="spade"
                       size="md"
                       skinId={selected.id}
+                      animated={shine}
                     />
                     <span>5マス盤</span>
                   </div>
@@ -983,6 +1207,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                       suit="heart"
                       size="xs"
                       skinId={selected.id}
+                      animated={shine}
                     />
                     <span>9マス盤</span>
                   </div>
@@ -992,6 +1217,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                       suit="club"
                       size="sm"
                       skinId={selected.id}
+                      animated={shine}
                       isKing
                     />
                     <span>王カード</span>
@@ -1029,7 +1255,9 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 <p className="skins-locked">
                   {selected.rarity === "LIMITED"
                     ? "早期特典で獲得"
-                    : "ガチャから獲得できます"}
+                    : selected.foil
+                      ? `ガチャ・錬成でキャラ獲得時に${foilPct}%`
+                      : "ガチャ・錬成から獲得できます"}
                 </p>
               )}
               {!selectedLocked && selected.videos && (

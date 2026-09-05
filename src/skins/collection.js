@@ -1,11 +1,19 @@
-import { SKINS, byId, draw, sanitizeLoadout } from "./catalog.js";
+import {
+  SKINS,
+  ALL_SKINS,
+  FOIL_CHANCE,
+  byId,
+  draw,
+  foilId,
+  sanitizeLoadout,
+} from "./catalog.js";
 import { craftCheck, dismantleCheck } from "./ether.js";
 
 const count = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : 0);
 export function normalize(raw) {
   const value = raw && typeof raw === "object" ? raw : {};
   const owned = {};
-  for (const skin of SKINS) {
+  for (const skin of ALL_SKINS) {
     // 旧プレビューの所持リストも引き継ぐ。
     const n = Array.isArray(value.owned)
       ? Number(value.owned.includes(skin.id))
@@ -38,7 +46,19 @@ export function normalize(raw) {
       ? value.motion
       : "full",
     pending: results.length ? { results } : null,
+    lastCraft:
+      byId(value.lastCraft?.id) && owned[value.lastCraft.id]
+        ? { id: value.lastCraft.id, isNew: value.lastCraft.isNew === true }
+        : null,
   };
+}
+
+// 所持数や過去の当落に依存しない、キャラ決定後の独立した1%判定。
+function finishedId(baseId, random) {
+  const n = random();
+  if (!Number.isFinite(n) || n < 0 || n >= 1)
+    throw new Error("乱数の範囲が不正です");
+  return n < FOIL_CHANCE ? foilId(baseId) : baseId;
 }
 
 // 現在はテスト用の無料ガチャ。チケット数、購入、対局報酬には依存しない。
@@ -46,13 +66,14 @@ export function normalize(raw) {
 export function pull(state, amount, random = Math.random) {
   if (amount !== 1 && amount !== 10)
     throw new Error("1回または10回を選んでください");
-  if (state.pending) throw new Error("先にガチャの結果を確認してください");
+  if (state.pending || state.lastCraft)
+    throw new Error("先にガチャ・錬成の結果を確認してください");
   const owned = { ...state.owned };
   const results = Array.from({ length: amount }, () => {
-    const skin = draw(random);
-    const isNew = !owned[skin.id];
-    owned[skin.id] = (owned[skin.id] || 0) + 1;
-    return { id: skin.id, isNew };
+    const id = finishedId(draw(random).id, random);
+    const isNew = !owned[id];
+    owned[id] = (owned[id] || 0) + 1;
+    return { id, isNew };
   });
   return { ...state, owned, draws: state.draws + amount, pending: { results } };
 }
@@ -107,7 +128,7 @@ export function dismantle(state, id) {
   return { ...state, owned, ether: count(state.ether) + check.gain };
 }
 
-/** 崩せるダブりを、まとめて全部エーテルに変える */
+/** 通常版のダブりをまとめて崩す。フォイルは個別に選んだ場合だけ。 */
 export function dismantleAll(state) {
   let next = state;
   for (const skin of SKINS) {
@@ -118,11 +139,23 @@ export function dismantleAll(state) {
 }
 
 /** エーテルを払って、好きな1枚を作る。すでに持っている札なら枚数が増える */
-export function craft(state, id) {
+export function craft(state, id, random = Math.random) {
+  if (state.pending || state.lastCraft)
+    throw new Error("先にガチャ・錬成の結果を確認してください");
   const check = craftCheck(state, id);
   if (!check.ok) throw new Error(check.why);
-  const owned = { ...state.owned, [id]: (state.owned[id] || 0) + 1 };
-  return { ...state, owned, ether: count(state.ether) - check.cost };
+  const resultId = finishedId(id, random);
+  const isNew = !state.owned[resultId];
+  const owned = {
+    ...state.owned,
+    [resultId]: (state.owned[resultId] || 0) + 1,
+  };
+  return {
+    ...state,
+    owned,
+    ether: count(state.ether) - check.cost,
+    lastCraft: { id: resultId, isNew },
+  };
 }
 
 export function claimEarly(state) {
