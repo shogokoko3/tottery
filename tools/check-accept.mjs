@@ -324,6 +324,172 @@ const myPiece = alive(me)[0];
   } else ok++;
 }
 
+console.log("\n場面に合わない手");
+{
+  const t = (label, act) =>
+    is(label, reducer(g0, { ...act, player: foe }) === g0, true);
+  t("対局中にサイコロは振れない", { type: "ROLL_DICE_SINGLE", value: 6 });
+  t("対局中に目の確定は送れない", { type: "NEXT_DICE_STEP" });
+  t("対局中に振り直しは送れない", { type: "REROLL_DICE" });
+  t("対局中に引き直しへは戻せない", { type: "GOTO_MULLIGAN" });
+  t("対局中に引き直しの確定は送れない", { type: "CONFIRM_MULLIGAN" });
+  t("対局中に布陣の確定は送れない", { type: "SETUP_CONFIRM", placement: {} });
+  t("対局中に始まりの合図は送れない", { type: "START_SETUP", size: 5 });
+  t("終わっていないのに再戦は送れない", { type: "NEW_GAME" });
+}
+
+console.log("\n手番の横取りで時計が削られないか");
+{
+  const before = g0.clocks ? [...g0.clocks] : null;
+  const after = reducer(g0, {
+    type: "SKIP_EXTRA_ACTION",
+    player: foe,
+    elapsedMs: 999999999,
+  });
+  is("番でない側の手では時計は減らない", after === g0, true);
+  if (before) is("時計はそのまま", after.clocks[me], before[me]);
+  else ok++;
+}
+
+console.log("\n入れ替え(A の能力)");
+{
+  const mineAlive = alive(me);
+  const ace = mineAlive.find((x) => x.rank === "A");
+  const notAce = mineAlive.find((x) => x.rank !== "A");
+  if (notAce) {
+    const others = mineAlive.filter((x) => x.id !== notAce.id).slice(0, 2);
+    if (others.length === 2) {
+      const after = reducer(g0, {
+        type: "CONFIRM_SHUFFLE",
+        player: me,
+        aId: notAce.id,
+        pickIds: others.map((x) => x.id),
+      });
+      is("A でない駒では入れ替えられない", after === g0, true);
+    } else ok++;
+  } else ok++;
+  if (ace) {
+    const others = alive(me)
+      .filter((x) => x.id !== ace.id)
+      .slice(0, 2);
+    if (others.length === 2) {
+      const after = reducer(g0, {
+        type: "CONFIRM_SHUFFLE",
+        player: me,
+        aId: ace.id,
+        pickIds: [others[0].id, others[0].id],
+      });
+      is("同じ駒を2つ並べては入れ替えられない", after === g0, true);
+      const bad = reducer(g0, {
+        type: "CONFIRM_SHUFFLE",
+        player: me,
+        aId: ace.id,
+        pickIds: others.map((x) => x.id),
+        order: [0, 0, 0],
+      });
+      is("並べ替えでない順番は通らない", bad === g0, true);
+    } else ok += 2;
+  } else ok += 2;
+  const foeAce = alive(foe).find((x) => x.rank === "A");
+  if (foeAce) {
+    const others = alive(me).slice(0, 2);
+    const after = reducer(g0, {
+      type: "CONFIRM_SHUFFLE",
+      player: me,
+      aId: foeAce.id,
+      pickIds: others.map((x) => x.id),
+    });
+    is("相手の A では入れ替えられない", after === g0, true);
+  } else ok++;
+}
+
+console.log("\n布陣の確定");
+{
+  // 布陣の場面まで戻して、敵陣に置く布陣を送ってみる
+  let s0 = reducer(
+    { phase: "intro" },
+    { type: "START_SETUP", size: 5, setupMode: "simultaneous", handSize: 13 },
+  );
+  let guard = 0;
+  while (s0.phase !== "setup" && guard++ < 60) {
+    if (s0.interstitial) {
+      s0 = reducer(s0, { type: "DISMISS_INTERSTITIAL" });
+      continue;
+    }
+    if (s0.phase === "dice")
+      s0 = reducer(
+        s0,
+        s0.dice[s0.diceIdx] === null
+          ? { type: "ROLL_DICE_SINGLE", value: s0.diceIdx === 0 ? 6 : 1 }
+          : s0.diceIdx === 2
+            ? { type: "GOTO_MULLIGAN" }
+            : s0.diceIdx === 3
+              ? { type: "REROLL_DICE" }
+              : { type: "NEXT_DICE_STEP" },
+      );
+    else if (s0.phase === "mulligan")
+      s0 = reducer(s0, { type: "CONFIRM_MULLIGAN", discardIds: [] });
+    else break;
+  }
+  is("布陣の場面まで来た", s0.phase, "setup");
+  const good = autoArrange(s0, 1, null, null, null);
+  const ids = Object.keys(good);
+  const kingId = autoPickKing(s0, 1, good);
+  const enemy = Object.fromEntries(
+    ids.map((id, n) => [id, { row: 4, col: n % 5 }]),
+  );
+  is(
+    "敵陣に布陣できない",
+    reducer(s0, {
+      type: "SETUP_CONFIRM",
+      player: 1,
+      placement: enemy,
+      kingId,
+    }) === s0,
+    true,
+  );
+  const stacked = Object.fromEntries(ids.map((id) => [id, { row: 0, col: 0 }]));
+  is(
+    "同じマスに重ねられない",
+    reducer(s0, {
+      type: "SETUP_CONFIRM",
+      player: 1,
+      placement: stacked,
+      kingId,
+    }) === s0,
+    true,
+  );
+  const outside = Object.fromEntries(
+    ids.map((id) => [id, { row: 99, col: 0 }]),
+  );
+  let threw = null;
+  try {
+    is(
+      "盤の外には布陣できない",
+      reducer(s0, {
+        type: "SETUP_CONFIRM",
+        player: 1,
+        placement: outside,
+        kingId,
+      }) === s0,
+      true,
+    );
+  } catch (e) {
+    threw = e.message;
+  }
+  is("盤の外の布陣で落ちない", threw, null);
+  is(
+    "正しい布陣は通る",
+    reducer(s0, {
+      type: "SETUP_CONFIRM",
+      player: 1,
+      placement: good,
+      kingId,
+    }) !== s0,
+    true,
+  );
+}
+
 console.log(`\n${ok} ok / ${fails.length} fail`);
 if (fails.length) {
   for (const f of fails) console.log(`  - ${f}`);

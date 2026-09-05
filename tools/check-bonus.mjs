@@ -42,17 +42,53 @@ function stack(hand0, hand1, size) {
   return { deck: [...h0, ...h1, ...full], handSize, size };
 }
 
+/**
+ * サイコロと引き直しを通して、布陣の場面まで進める。
+ *
+ * reducer が「その手を受け取ってよい場面か」を見るようになったので、
+ * 途中を飛ばして布陣の確定だけ送ることはできない(通信で飛ばされると
+ * 相手の対局を巻き戻せてしまうため、わざと塞いである)。
+ * 目は 6 と 1 に固定する。乱数のままだと先手が毎回変わり、
+ * 「先手と後手が入れ替わる」の検査が当てにならない
+ */
+function toSetup(s) {
+  let guard = 0;
+  while (s.phase !== "setup" && guard++ < 60) {
+    if (s.interstitial) {
+      s = reducer(s, { type: "DISMISS_INTERSTITIAL" });
+      continue;
+    }
+    if (s.phase === "dice")
+      s = reducer(
+        s,
+        s.dice[s.diceIdx] === null
+          ? { type: "ROLL_DICE_SINGLE", value: s.diceIdx === 0 ? 6 : 1 }
+          : s.diceIdx === 2
+            ? { type: "GOTO_MULLIGAN" }
+            : s.diceIdx === 3
+              ? { type: "REROLL_DICE" }
+              : { type: "NEXT_DICE_STEP" },
+      );
+    else if (s.phase === "mulligan")
+      s = reducer(s, { type: "CONFIRM_MULLIGAN", discardIds: [] });
+    else break;
+  }
+  return s;
+}
+
 /** 山を積んで布陣まで進める。placeCount 枚を自陣に順に並べる */
 function play(setup, order = [0, 1]) {
-  let s = reducer(
-    { phase: "intro" },
-    {
-      type: "START_SETUP",
-      size: setup.size,
-      setupMode: "simultaneous",
-      deck: setup.deck,
-      handSize: setup.handSize,
-    },
+  let s = toSetup(
+    reducer(
+      { phase: "intro" },
+      {
+        type: "START_SETUP",
+        size: setup.size,
+        setupMode: "simultaneous",
+        deck: setup.deck,
+        handSize: setup.handSize,
+      },
+    ),
   );
   const slots = totalSlots(setup.size);
   const acts = [0, 1].map((i) => {

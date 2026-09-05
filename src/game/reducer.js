@@ -27,40 +27,103 @@ import {
  * 「誰が指したか」を手の中に持たず、受け取った側の state.currentTurn から
  * 決めているので、相手の番に1件送るだけで通ってしまう
  */
-const PLAY_ONLY = new Set([
-  "MOVE_PIECE",
-  "CONFIRM_SHUFFLE",
-  "SKIP_EXTRA_ACTION",
-  "SKIP_RESERVE_PLACEMENT",
-  "PLACE_RESERVE_CARD",
-  "CHOOSE_HEIR",
-]);
+/**
+ * その手を受け取ってよい場面。
+ *
+ * **両方向に効かせること。** 「対局中の手を対局中以外で止める」だけでは
+ * 足りない。逆に、準備段階の手が対局中に通ると、相手はサイコロの手ひとつで
+ * 手番を奪えるし、引き直しの場面まで盤を巻き戻せる
+ */
+const RECEIVABLE = {
+  START_SETUP: ["intro"],
+  ROLL_DICE_SINGLE: ["dice"],
+  NEXT_DICE_STEP: ["dice"],
+  REROLL_DICE: ["dice"],
+  GOTO_MULLIGAN: ["dice"],
+  CONFIRM_MULLIGAN: ["mulligan"],
+  SETUP_CONFIRM: ["setup"],
+  MOVE_PIECE: ["play"],
+  CONFIRM_SHUFFLE: ["play"],
+  SKIP_EXTRA_ACTION: ["play"],
+  SKIP_RESERVE_PLACEMENT: ["play"],
+  PLACE_RESERVE_CARD: ["play"],
+  CHOOSE_HEIR: ["play"],
+  RESIGN: ["setup", "play"],
+  CLOCK_TIMEOUT: ["setup", "play"],
+  NEW_GAME: ["gameover"],
+};
 
-function actorAllowed(state, action) {
-  // 場面に合わない手を通すと、盤の無い状態で決着したことになったり、
-  // サイコロの最中に手番が入れ替わったりして、描くところで落ちる。
-  // 相手はそれを1件送るだけで対局を壊せる
-  if (PLAY_ONLY.has(action.type) && state.phase !== "play") return false;
-  if (
-    (action.type === "RESIGN" || action.type === "CLOCK_TIMEOUT") &&
-    state.phase !== "play" &&
-    state.phase !== "setup"
-  )
-    return false;
-  const who = action.player;
-  if (who !== 0 && who !== 1) return true;
-  switch (action.type) {
+/** その手を出してよい席。縛らないものは null */
+function expectedActor(state, type) {
+  switch (type) {
     case "MOVE_PIECE":
     case "CONFIRM_SHUFFLE":
     case "SKIP_EXTRA_ACTION":
-    case "SKIP_RESERVE_PLACEMENT":
+      return state.currentTurn;
     case "PLACE_RESERVE_CARD":
-      return state.phase !== "play" || who === state.currentTurn;
+    case "SKIP_RESERVE_PLACEMENT":
+      return state.kPlacement ? state.kPlacement.owner : null;
+    case "CHOOSE_HEIR":
+      return state.pendingKingChoice ? state.pendingKingChoice.owner : null;
     case "CONFIRM_MULLIGAN":
-      return state.mulliganIdx == null || who === state.mulliganIdx;
+      return state.mulliganIdx;
+    case "ROLL_DICE_SINGLE":
+      // 自分の目は自分で振る
+      return state.diceIdx === 0 || state.diceIdx === 1 ? state.diceIdx : null;
     default:
-      return true;
+      return null;
   }
+}
+
+/**
+ * その手を、いまこの場面で、その席が出してよいか。
+ *
+ * 通信で届いた手には、受け取り側が「送り主の席」を必ず書き込む
+ * (src/net/sync.js の acceptAct)。名乗りが無いのは手元の操作なので通す
+ */
+function actorAllowed(state, action) {
+  const phases = RECEIVABLE[action.type];
+  if (phases && !phases.includes(state.phase)) return false;
+  const who = action.player;
+  if (who !== 0 && who !== 1) return true;
+  const want = expectedActor(state, action.type);
+  return want === null || want === undefined || who === want;
+}
+
+/**
+ * その布陣を受け付けてよいか。
+ *
+ * 1枚ずつ置くとき(SETUP_PLACE_CARD)には自陣・重なり・採用上限の関門があるのに、
+ * 確定の手はそれを丸ごと迂回していた。通信では確定の手だけが飛んでくるので、
+ * ここで同じことを確かめないと、相手はこちらの最奥の行に布陣できるし、
+ * 同じマスに駒を重ねて「盤に無いのに生きている駒」を作れる
+ */
+function placementOk(state, idx, placement, kingId) {
+  if (!placement || typeof placement !== "object") return false;
+  const ids = Object.keys(placement);
+  if (ids.length !== totalSlots(state.boardSize)) return false;
+  if (new Set(ids).size !== ids.length) return false;
+  const hand = state.players[idx].hand;
+  const king = hand.find((c) => c.id === kingId);
+  if (!king || !placement[kingId]) return false;
+  const size = state.boardSize;
+  const [lo, hi] = territoryRows(size, idx);
+  const seen = new Set();
+  for (const id of ids) {
+    if (!hand.some((c) => c.id === id)) return false;
+    const at = placement[id];
+    if (!at || !Number.isInteger(at.row) || !Number.isInteger(at.col))
+      return false;
+    if (!inBounds(at.row, at.col, size)) return false;
+    if (at.row < lo || at.row > hi) return false;
+    const key = `${at.row},${at.col}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+  }
+  const counts = placedRankCounts(placement, hand);
+  for (const rank of Object.keys(counts))
+    if (counts[rank] > maxAdopt(rank, king.rank)) return false;
+  return true;
 }
 
 /**
@@ -607,7 +670,7 @@ function startPlay(base, log) {
    ========================================================================= */
 
 export function reducer(state, action) {
-  // 名乗りが場に合わない手は、盤に触れさせない
+  // 場面にも席にも合わない手は、盤に触れさせない
   if (!actorAllowed(state, action)) return state;
   const next = coreReducer(state, action);
   return afterAction(state, next, action);
@@ -699,7 +762,14 @@ function afterAction(prev, next, action) {
     // 揃えても、持ち時間ぶん申告されれば同じことなので意味がない。
     // 「考えた時間を受け取る側で測る」まで、ここは自己申告のまま
     const raw = Number(action.elapsedMs);
-    const spent = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+    // 名乗りがあるなら、番だった側の手でなければ時間は引かない。
+    // これが無いと、相手が手番を横取りする手を送るだけで
+    // **こちらの**持ち時間が削られ、0になった時点で負けになる
+    const named = action.player === 0 || action.player === 1;
+    const spent =
+      Number.isFinite(raw) && (!named || action.player === prev.currentTurn)
+        ? Math.max(0, raw)
+        : 0;
     const mover = prev.currentTurn;
     const clocks = [...out.clocks];
     clocks[mover] = Math.max(0, clocks[mover] - spent);
@@ -840,11 +910,22 @@ function coreReducer(state, action) {
         .filter((c) => discardIds.has(c.id))
         .map((c) => ({ ...c, owner: idx }));
       const count = discarded.length;
-      const pool = action.reserveOrder
+      // 予備札は両者で1つしかない。並べ替えでない列を渡されると、
+      // 載らなかった札が黙って消える(空の列なら予備札が0枚になり、
+      // 後から引き直す側が1枚も選べなくなる)
+      const picked = Array.isArray(action.reserveOrder)
         ? action.reserveOrder
             .map((id) => state.reserve.find((c) => c.id === id))
             .filter(Boolean)
-        : shuffle(state.reserve);
+        : null;
+      // いま残っている予備札を、ちょうど1回ずつ並べたものでなければ使わない。
+      // (台本は最初の予備札ぜんぶの並びを渡してくるので、2人目のときは
+      //  もう配られた札が混ざる。それは落として数を合わせる)
+      const orderOk =
+        picked &&
+        picked.length === state.reserve.length &&
+        new Set(picked.map((c) => c.id)).size === picked.length;
+      const pool = orderOk ? picked : shuffle(state.reserve);
       const drawn = pool.slice(0, count);
       const rest = pool.slice(count);
 
@@ -997,14 +1078,14 @@ function coreReducer(state, action) {
       if (idx === null || state.setupDone[idx]) return state;
       const placement = action.placement || state.setupPlacements[idx];
       const kingId = action.kingId || state.setupPickKings[idx];
-      if (!kingId || !placement[kingId]) return state;
+      if (!kingId) return state;
+      // 自陣か・重なっていないか・採用上限を守っているか・自分の手札か。
+      // 1枚ずつ置くときと同じことを、確定の手にも課す
+      if (!placementOk(state, idx, placement, kingId)) return state;
       const ids = Object.keys(placement);
-      if (ids.length !== totalSlots(state.boardSize)) return state;
 
       const players = [...state.players];
       const me = { ...players[idx] };
-      // 自分の手札にない札が混じった布陣は受け付けない
-      if (ids.some((id) => !me.hand.some((c) => c.id === id))) return state;
       const rankCounts = {};
       const board = state.board.length
         ? state.board.map((r) => [...r])
@@ -1124,11 +1205,33 @@ function coreReducer(state, action) {
       const aId = action.aId || (state.shuffleMode && state.shuffleMode.aId);
       const picks =
         action.pickIds || (state.shuffleMode && state.shuffleMode.picks) || [];
-      if (!aId || picks.length !== 2) return state;
+      if (!aId || !Array.isArray(picks) || picks.length !== 2) return state;
 
       const ids = [aId, ...picks];
       // 知らない駒idが混ざっていると、ここで落ちて画面が消える
       if (ids.some((id) => !state.pieces[id] || !state.pieces[id].alive))
+        return state;
+      // 手元では SELECT_PIECE が「Aで、自分の駒」を強いている。
+      // 通信では確定の手だけが飛んでくるので、ここで同じことを課す。
+      // これが無いと、Aを1枚も持たない相手が包囲取りを使えるし、
+      // aId にこちらの王を指定して盤の反対側へ運べる
+      {
+        const ace = state.pieces[aId];
+        const actor =
+          action.player === 0 || action.player === 1
+            ? action.player
+            : state.currentTurn;
+        if (ace.rank !== "A" || ace.owner !== actor) return state;
+      }
+      // 同じ駒を並べると、3駒が同じマスに重なって「盤に無いのに生きている駒」ができる
+      if (new Set(ids).size !== 3) return state;
+      if (
+        action.order &&
+        (!Array.isArray(action.order) ||
+          action.order.length !== 3 ||
+          new Set(action.order).size !== 3 ||
+          action.order.some((i) => i !== 0 && i !== 1 && i !== 2))
+      )
         return state;
       const cells = ids.map((id) => ({
         row: state.pieces[id].row,
@@ -1378,6 +1481,14 @@ function coreReducer(state, action) {
     case "PLACE_RESERVE_CARD": {
       if (!state.kPlacement) return state;
       const { owner, card } = state.kPlacement;
+      // 盤の内側・自陣・空いているマス。どれも見ていないと、相手の駒の上に
+      // 置いて、撃破もせずに盤から消せる(取るより強い手になる)
+      if (!onBoard(state.board, action.row, action.col)) return state;
+      {
+        const [lo, hi] = territoryRows(state.boardSize, owner);
+        if (action.row < lo || action.row > hi) return state;
+        if (state.board[action.row][action.col]) return state;
+      }
       const board = state.board.map((r) => [...r]);
       const pieces = { ...state.pieces };
       // 予備札から出る駒は表向き。どこからともなく1枚増えるので、
