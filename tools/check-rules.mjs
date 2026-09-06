@@ -6,18 +6,26 @@
  *
  *   ・.read/.write は上から下へだけ効く。祖先のどれかが許せば通る。
  *     深いところに書いた規則で、浅いところの許可を取り消すことはできない。
- *   ・**.validate は書いた場所とその下しか見ない。祖先の .validate は
- *     評価されない。** だから .validate は防壁にならない。書き込み位置を
- *     1段下げれば素通りする。保証は .write に置くこと。
- *   ・.validate は消すときには見ない。
+ *   ・.validate は、書いた場所・その下・**祖先**のすべてで評価される。
+ *     祖先のぶんは合成後の木で見る(Firebase 本体で実測: 2026-09-07)。
+ *     以前ここに「祖先は評価されない。1段下げれば素通り」と書いていたが、
+ *     それは評価器自身で確かめた循環した所見で、**間違い**だった。
+ *   ・.validate は消すときには見ない(消した場所と、その下)。祖先は値が
+ *     残るので見る。だから「消せるか」の保証は .write に置くこと。
  *   ・無いところの値を数と比べても真にならない(JS と違うので、ここを合わせる)。
+ *
+ * それでも保証は .write に置く。.validate は消すときに見ないし、.write の
+ * 許可は深い側で取り消せないので、.write の条項に「合成後の形」を全部書く
+ * のがいちばん読みやすく、壊れにくい。
  *
  * 検査は三つの口で行う:
  *   canRead  … GET
  *   canWrite … その場所へ値を丸ごと置く(PUT / DELETE / POST)
- *   canPatch … PATCH。直下の子ごとに評価される。祖先の .write は効くが、
- *              祖先の .validate は効かない。**.validate だけで守っている
- *              条項は、ここで必ず破れる。**
+ *   canPatch … PATCH。直下の子ごとに評価される。祖先の .write も
+ *              祖先の .validate も効く。
+ *
+ * 評価器は Firebase と食い違うことがある(numChildren の件、祖先の件)。
+ * ルールを公開したら tools/replay-live.mjs で Firebase 本体の答えも見ること。
  *
  * 通信はしない。公開する手順は firebase-rules.md にある。
  */
@@ -179,14 +187,38 @@ export function canRead(db, path, auth) {
   return false;
 }
 
-/** 書いた後の木で .validate を回す。消すとき(値が null)は見ない */
+/**
+ * 書いた後の木で .validate を回す。
+ *
+ * 見るのは三つ: 書いた場所、その下(newData にある子)、そして**祖先**。
+ * 祖先の .validate は合成後の木(after)で評価される。Firebase 本体で実測して
+ * 確かめた(2026-09-07: ranks/自分/junk/a/b/c/d/e/f/g への PUT が、$other の
+ * .validate:false だけを理由に 401 になった)。書いた場所が null(消す)のときは
+ * その場所と下は見ないが、祖先は値が残るので見る。
+ */
 function validates(db, after, path, value, vars0) {
-  if (value === null) return true;
   const rootAfter = new Snap(after, []);
+  const steps = walk(path);
+  for (let d = 0; d < Math.min(steps.length, path.length); d++) {
+    const st = steps[d];
+    if (!st.node || st.node[".validate"] === undefined) continue;
+    const prefix = path.slice(0, d);
+    const snap = new Snap(after, prefix);
+    if (!snap.exists()) continue;
+    const ok = evalExpr(st.node[".validate"], {
+      auth: vars0.auth,
+      vars: st.vars,
+      data: new Snap(db, prefix),
+      newData: snap,
+      root: rootAfter,
+      now: NOW,
+    });
+    if (!ok) return false;
+  }
+  if (value === null) return true;
   const rootBefore = new Snap(db, []);
   const stack = [{ path, value, node: null }];
   // 書いた場所の規則の節を取る
-  const steps = walk(path);
   const start = steps[steps.length - 1];
   if (steps.length !== path.length + 1) return true; // 規則の無い深さ
   stack[0].node = start.node;
@@ -274,9 +306,8 @@ export function canWrite(db, path, auth, value) {
 /**
  * PATCH できるか。
  *
- * RTDB の PATCH は直下の子ごとの書き込みとして判定される。祖先の .write は
- * 効くが、**祖先の .validate は評価されない**。.validate だけで守っている
- * 条項は、ここで破れる。
+ * RTDB の PATCH は直下の子ごとの書き込みとして判定される。祖先の .write も
+ * 祖先の .validate も効く(子ごとに、合成後の木で)。
  */
 export function canPatch(db, path, auth, patch) {
   const after = patchedTree(db, path, patch);
@@ -663,6 +694,26 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   deny(
     "既にある行へ知らない名前を足せない",
     canWrite({ ranks: { uidX: rankRow() } }, ["ranks", "uidX", "junk"], X, "x"),
+  );
+  // 祖先の .validate は評価される(本番で実測)。欄の数を数えなくても、
+  // 既にある行へ深くゴミを生やすことはできない
+  deny(
+    "既にある行へ、8段深くてもゴミを生やせない",
+    canWrite(
+      { ranks: { uidX: rankRow() } },
+      ["ranks", "uidX", "junk", "a", "b", "c", "d", "e", "f", "g"],
+      X,
+      "x",
+    ),
+  );
+  deny(
+    "台帳の既にある行も同じ",
+    canWrite(
+      { players: { uidX: playerRow() } },
+      ["players", "uidX", "junk", "a", "b", "c", "d", "e", "f", "g"],
+      X,
+      "x",
+    ),
   );
   allow(
     "自分の台帳も置ける",

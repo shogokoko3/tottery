@@ -14,33 +14,21 @@ import { withLocalContext, LOCAL_ONLY_ACTIONS } from "../src/net/sync.js";
 import { ADJUDICATION_RULE_VERSION } from "../src/game/adjudication.js";
 import { territoryRows } from "../src/game/board.js";
 
-const NOW = 1_700_000_000_000;
-const ROOM = {
-  rooms: {
-    ABCD: { seats: { host: "uidA", guest: "uidB" }, createdAt: NOW - 60_000 },
-  },
-};
-const KEY = "-NxxxxxxxxxxxxxxxxxA";
-let ok = 0;
-const bad = [];
-let checked = 0;
-const seen = new Set();
-
-/** 送られる形にして、ルールを通るか見る */
-function fits(act, seat) {
-  if (LOCAL_ONLY_ACTIONS.has(act.type)) return;
-  const uid = seat === 0 ? "uidA" : "uidB";
-  const sent = { ...act, by: uid, __id: `${uid}-${++checked}` };
-  delete sent.__state;
-  delete sent.__foe;
-  for (const k of Object.keys(sent)) seen.add(k);
-  if (!canWrite(ROOM, ["rooms", "ABCD", "acts", KEY], { uid }, sent)) {
-    const key = `${act.type}: ${Object.keys(sent).sort().join(",")}`;
-    if (!bad.includes(key)) bad.push(key);
-  } else ok++;
-}
-
-for (let g = 0; g < 40; g++) {
+/**
+ * CPU 同士の対局を回し、通信に乗るはずの手を順に集める。
+ * 返すのは { act, seat }。act は送る直前の形(by / __id はまだ無い)。
+ * tools/replay-live.mjs が同じ手を本番のデータベースへ本当に書いて確かめる
+ */
+export function collectActs(games = 40) {
+  const out = [];
+  const fits = (act, seat) => {
+    if (LOCAL_ONLY_ACTIONS.has(act.type)) return;
+    const sent = { ...act };
+    delete sent.__state;
+    delete sent.__foe;
+    out.push({ act: sent, seat });
+  };
+  for (let g = 0; g < games; g++) {
   const size = g % 2 === 0 ? 9 : 5;
   const start = {
     type: "START_SETUP",
@@ -156,6 +144,31 @@ for (let g = 0; g < 40; g++) {
   fits({ type: "RESIGN", player: 0 }, 0);
   fits({ type: "CLOCK_TIMEOUT", player: 1 }, 1);
   fits({ type: "NEW_GAME" }, 0);
+  }
+  return out;
+}
+
+// 評価器にかける検査は、直接動かしたときだけ
+if (process.argv[1] && process.argv[1].endsWith("check-acts-fit.mjs")) {
+const NOW = 1_700_000_000_000;
+const ROOM = {
+  rooms: {
+    ABCD: { seats: { host: "uidA", guest: "uidB" }, createdAt: NOW - 60_000 },
+  },
+};
+const KEY = "-NxxxxxxxxxxxxxxxxxA";
+let ok = 0;
+const bad = [];
+let checked = 0;
+const seen = new Set();
+for (const { act, seat } of collectActs()) {
+  const uid = seat === 0 ? "uidA" : "uidB";
+  const sent = { ...act, by: uid, __id: `${uid}-${++checked}` };
+  for (const k of Object.keys(sent)) seen.add(k);
+  if (!canWrite(ROOM, ["rooms", "ABCD", "acts", KEY], { uid }, sent)) {
+    const key = `${act.type}: ${Object.keys(sent).sort().join(",")}`;
+    if (!bad.includes(key)) bad.push(key);
+  } else ok++;
 }
 
 console.log(`本物の対局で出た手 ${checked} 件をルールにかけた`);
@@ -167,3 +180,4 @@ if (bad.length) {
   process.exit(1);
 }
 console.log(`\n${ok} ok / 0 fail`);
+}
