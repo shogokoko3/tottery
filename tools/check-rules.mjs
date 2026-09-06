@@ -525,6 +525,27 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
     "名乗りの欄から席をこじ開けられない",
     canWrite(room, ["rooms", "ABCD", "seats"], X, { guest: "uidX" }),
   );
+  // 監査[2]: 相手の席の欄は書けない(ホストの名前・持ち点を客が詐称できてはいけない)
+  deny(
+    "客はホストの名前を書けない",
+    canWrite(room, ["rooms", "ABCD", "hostName"], B, "spoof"),
+  );
+  deny(
+    "客はホストの持ち点を詐称できない",
+    canWrite(room, ["rooms", "ABCD", "hostRating"], B, 4000),
+  );
+  deny(
+    "ホストは客の名前を書けない",
+    canWrite(room, ["rooms", "ABCD", "guestName"], A, "spoof"),
+  );
+  allow(
+    "ホストは自分の名前を書ける",
+    canWrite(room, ["rooms", "ABCD", "hostName"], A, "ほ"),
+  );
+  deny(
+    "客はホストの装備も書けない",
+    canWrite(room, ["rooms", "ABCD", "hostSkins", "A"], B, "skin-x"),
+  );
   allow(
     "座った席は自分で立てる",
     canWrite(room, ["rooms", "ABCD", "seats", "guest"], B, null),
@@ -1041,6 +1062,32 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
     "布陣の札は c0〜c63 の名前でしか置けない",
     canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, actWith({
       placement: { zzz: { row: 0, col: 0 } },
+    })),
+  );
+  // 監査[1]: 添字だけ縛っても葉の中身が野放しだと、巨大文字列や別の型で
+  // 相手の画面を落とせる。エントリは正しい形(オブジェクト)でないと置けない
+  deny(
+    "山札の枠にただの文字列は置けない(巨大文字列で相手を落とせない)",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, actWith({
+      deck: { 0: "x".repeat(1000) },
+    })),
+  );
+  deny(
+    "布陣の枠に数値は置けない(型を取り違えさせられない)",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, actWith({
+      placement: { c0: 12345 },
+    })),
+  );
+  deny(
+    "取りの枠に真偽値は置けない",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, actWith({
+      captures: { 0: true },
+    })),
+  );
+  allow(
+    "取りの枠は {row,col} なら置ける",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, actWith({
+      captures: { 0: { row: 1, col: 2 } },
     })),
   );
   deny(
