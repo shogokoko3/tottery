@@ -17,7 +17,7 @@ import { territoryRows } from "../src/game/board.js";
 const NOW = 1_700_000_000_000;
 const ROOM = {
   rooms: {
-    ABCD: { members: { uidA: true, uidB: true }, createdAt: NOW - 60_000 },
+    ABCD: { seats: { host: "uidA", guest: "uidB" }, createdAt: NOW - 60_000 },
   },
 };
 const KEY = "-NxxxxxxxxxxxxxxxxxA";

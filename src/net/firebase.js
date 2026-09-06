@@ -87,7 +87,8 @@ async function remove(url) {
 
 /* ---------------------------- ルーム ---------------------------- */
 
-const memberUrl = (code, uid) => `${DB_URL}/rooms/${code}/members/${uid}.json`;
+/** 客の席。席は host と guest の2つしか無く、数えずに満室が決まる */
+const guestSeatUrl = (code) => `${DB_URL}/rooms/${code}/seats/guest.json`;
 
 /** サインインが通っていれば uid。通らなければ null */
 async function whoAmI() {
@@ -110,7 +111,7 @@ export async function createRoom(code, data) {
   const base = data && typeof data === "object" ? data : {};
   return sendJson(roomUrl(code), "PUT", {
     ...base,
-    members: { ...(base.members || {}), [uid]: true },
+    seats: { host: uid },
     createdAt: Number(base.createdAt) || Date.now(),
   });
 }
@@ -134,13 +135,13 @@ export const updateRoom = (code, patch) =>
 export async function joinRoom(code) {
   const uid = await whoAmI();
   if (!uid) return { ok: false, error: "サインインできていません" };
-  return sendJson(memberUrl(code, uid), "PUT", true);
+  return sendJson(guestSeatUrl(code), "PUT", uid);
 }
 
 /** 座った席を空ける(参加をやめたとき) */
 export async function leaveRoom(code) {
   const uid = await whoAmI();
-  if (uid) await remove(memberUrl(code, uid));
+  if (uid) await remove(guestSeatUrl(code));
 }
 
 export const deleteRoom = (code) => remove(roomUrl(code));

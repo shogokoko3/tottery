@@ -288,7 +288,40 @@ export function canPatch(db, path, auth, patch) {
   return true;
 }
 
+/* ------------------- ルール言語として正しいか ------------------- */
+
+/**
+ * Firebase のルール言語に**実在する**もの。
+ *
+ * ここに無いものを書くと、公開のときに構文エラーで弾かれる。
+ * 一度 numChildren() で弾かれた。クライアント側の DataSnapshot にはあるが、
+ * ルールの RuleDataSnapshot には無い。評価器(この道具)は JavaScript で
+ * 動くので、書けてしまっても気づけない。だからここで名前を照らす。
+ *
+ * 出典: Realtime Database のルールの RuleDataSnapshot / String / auth / now
+ */
+const ALLOWED_METHODS = new Set([
+  // RuleDataSnapshot
+  "val", "child", "parent", "hasChild", "hasChildren", "exists",
+  "getPriority", "hasChildren", "isNumber", "isString", "isBoolean",
+  // String
+  "length", "contains", "beginsWith", "endsWith", "replace",
+  "toLowerCase", "toUpperCase", "matches",
+]);
+
+function lintRules(node, path = [], out = []) {
+  if (typeof node === "string" && path.length && String(path[path.length - 1]).startsWith(".")) {
+    for (const m of node.matchAll(/\.([A-Za-z_][A-Za-z0-9_]*)\s*\(/g))
+      if (!ALLOWED_METHODS.has(m[1]))
+        out.push(`${path.join("/")}: ${m[1]}() はルール言語に無い`);
+  } else if (node && typeof node === "object") {
+    for (const [k, v] of Object.entries(node)) lintRules(v, [...path, k], out);
+  }
+  return out;
+}
+
 /* ------------------------- ここから検査 ------------------------- */
+
 
 // 評価器だけを借りたいときのために、検査は直接動かしたときだけ回す
 // (tools/check-acts-fit.mjs が canWrite を使う)
@@ -306,6 +339,13 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   }
   const allow = (l, g) => is(l, g, true);
   const deny = (l, g) => is(l, g, false);
+
+  console.log("ルール言語として正しいか");
+  {
+    const bad = lintRules(RULES);
+    for (const b of bad) console.log(`       ${b}`);
+    is("知らない関数を使っていない", bad.length, 0);
+  }
 
   const op = { uid: OP };
   /** 実際にクライアントが置く形。欄が1つでも欠けると弾かれる */
@@ -331,7 +371,7 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   const room = {
     rooms: {
       ABCD: {
-        members: { uidA: true, uidB: true },
+        seats: { host: "uidA", guest: "uidB" },
         createdAt: NOW - 60_000,
         hostName: "あ",
         acts: { "-NxxxxxxxxxxxxxxxxxB": { type: "MOVE_PIECE", by: "uidA" } },
@@ -394,7 +434,7 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   );
   deny(
     "部外者は部屋を丸ごと上書きできない",
-    canWrite(room, ["rooms", "ABCD"], X, { members: { uidX: true } }),
+    canWrite(room, ["rooms", "ABCD"], X, { seats: { host: "uidX" } }),
   );
   deny(
     "部外者は対局中の部屋を消せない",
@@ -408,35 +448,35 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   console.log("\n席の取り合い");
   deny(
     "二人そろった部屋には割り込めない",
-    canWrite(room, ["rooms", "ABCD", "members", "uidX"], X, true),
+    canWrite(room, ["rooms", "ABCD", "seats", "guest"], X, "uidX"),
   );
   deny(
     "他人を席に着かせることはできない",
-    canWrite(room, ["rooms", "ABCD", "members", "uidB"], X, true),
+    canWrite(room, ["rooms", "ABCD", "seats", "guest"], X, "uidB"),
   );
   const half = {
-    rooms: { EFGH: { members: { uidA: true }, createdAt: NOW - 10_000 } },
+    rooms: { EFGH: { seats: { host: "uidA" }, createdAt: NOW - 10_000 } },
   };
   allow(
     "空いている席には座れる",
-    canWrite(half, ["rooms", "EFGH", "members", "uidB"], B, true),
+    canWrite(half, ["rooms", "EFGH", "seats", "guest"], B, "uidB"),
   );
   deny(
     "無い部屋の席には座れない",
-    canWrite(half, ["rooms", "ZZZZ", "members", "uidB"], B, true),
+    canWrite(half, ["rooms", "ZZZZ", "seats", "guest"], B, "uidB"),
   );
   deny("座る前に部屋の中身は読めない", canRead(half, ["rooms", "EFGH"], B));
   allow(
     "部屋を作れる",
     canWrite({}, ["rooms", "WXYZ"], A, {
-      members: { uidA: true },
+      seats: { host: "uidA" },
       createdAt: NOW,
     }),
   );
   deny(
     "自分の入らない部屋は作れない",
     canWrite({}, ["rooms", "WXYZ"], A, {
-      members: { uidB: true },
+      seats: { host: "uidB" },
       createdAt: NOW,
     }),
   );
@@ -452,20 +492,32 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   );
   deny(
     "名乗りの欄から席をこじ開けられない",
-    canWrite(room, ["rooms", "ABCD", "members"], X, { uidX: true }),
+    canWrite(room, ["rooms", "ABCD", "seats"], X, { guest: "uidX" }),
   );
   allow(
     "座った席は自分で立てる",
-    canWrite(room, ["rooms", "ABCD", "members", "uidA"], A, null),
+    canWrite(room, ["rooms", "ABCD", "seats", "guest"], B, null),
   );
   deny(
     "相手を席から降ろせない",
-    canWrite(room, ["rooms", "ABCD", "members", "uidB"], A, null),
+    canWrite(room, ["rooms", "ABCD", "seats", "guest"], A, null),
+  );
+  deny(
+    "ホストの席は立てない(部屋ごと片付ける)",
+    canWrite(room, ["rooms", "ABCD", "seats", "host"], A, null),
+  );
+  deny(
+    "第三の席は作れない",
+    canWrite(room, ["rooms", "ABCD", "seats", "third"], X, "uidX"),
+  );
+  deny(
+    "客の席に座ったまま、ホストの席を書き換えられない",
+    canWrite(room, ["rooms", "ABCD", "seats", "host"], B, "uidB"),
   );
 
   console.log("\n放り出された部屋の片付け");
   const stale = {
-    rooms: { OLD1: { members: { uidA: true }, createdAt: NOW - 10 * 60_000 } },
+    rooms: { OLD1: { seats: { host: "uidA" }, createdAt: NOW - 10 * 60_000 } },
   };
   allow(
     "相手が来ないまま古くなった部屋は誰でも片付けられる",
@@ -474,7 +526,7 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   const playing = {
     rooms: {
       PLAY: {
-        members: { uidA: true, uidB: true },
+        seats: { host: "uidA", guest: "uidB" },
         createdAt: NOW - 10 * 60_000,
       },
     },
@@ -486,7 +538,7 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   const veryOld = {
     rooms: {
       OLD2: {
-        members: { uidA: true, uidB: true },
+        seats: { host: "uidA", guest: "uidB" },
         createdAt: NOW - 25 * 3600_000,
       },
     },
@@ -499,12 +551,12 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   /* --- 待ち合わせ --- */
   console.log("\n待ち合わせの掲示");
   const lob = {
-    rooms: { ABCD: { members: { uidA: true }, createdAt: NOW - 30_000 } },
+    rooms: { ABCD: { seats: { host: "uidA" }, createdAt: NOW - 30_000 } },
     lobby: { ABCD: { host: "uidA", createdAt: NOW - 30_000 } },
   };
   allow("掲示は誰でも見られる", canRead(lob, ["lobby"], X));
   const mine = {
-    rooms: { QQQQ: { members: { uidA: true }, createdAt: NOW - 1000 } },
+    rooms: { QQQQ: { seats: { host: "uidA" }, createdAt: NOW - 1000 } },
   };
   allow(
     "自分の部屋なら掲示できる",
@@ -530,7 +582,7 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
     canWrite(lob, ["lobby", "ABCD", "guest"], B, "uidA"),
   );
   const taken = {
-    rooms: { ABCD: { members: { uidA: true }, createdAt: NOW - 30_000 } },
+    rooms: { ABCD: { seats: { host: "uidA" }, createdAt: NOW - 30_000 } },
     lobby: { ABCD: { host: "uidA", guest: "uidB", createdAt: NOW - 30_000 } },
   };
   deny(
@@ -644,7 +696,7 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   deny(
     "自分の入らない部屋を PATCH で作れない",
     canPatch({}, ["rooms", "NEW1"], A, {
-      members: { uidB: true },
+      seats: { host: "uidB" },
       createdAt: NOW,
     }),
   );
@@ -669,14 +721,14 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   deny(
     "はじめから二人いる部屋は作れない",
     canWrite({}, ["rooms", "SPAM"], X, {
-      members: { uidX: true, uidY: true },
+      seats: { host: "uidX", guest: "uidY" },
       createdAt: NOW,
     }),
   );
   deny(
     "未来の日付の部屋は作れない",
     canWrite({}, ["rooms", "SPAM"], X, {
-      members: { uidX: true },
+      seats: { host: "uidX" },
       createdAt: NOW + 400 * 24 * 3600_000,
     }),
   );
@@ -690,21 +742,21 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
     "掲示のある部屋(ランダムマッチ)は、名乗った人以外は座れない",
     canWrite(
       {
-        rooms: { RNDM: { members: { uidA: true }, createdAt: NOW - 10_000 } },
+        rooms: { RNDM: { seats: { host: "uidA" }, createdAt: NOW - 10_000 } },
         lobby: {
           RNDM: { host: "uidA", guest: "uidB", createdAt: NOW - 10_000 },
         },
       },
-      ["rooms", "RNDM", "members", "uidX"],
+      ["rooms", "RNDM", "seats", "guest"],
       X,
-      true,
+      "uidX",
     ),
   );
   deny(
     "座れないので、待機中の部屋の中身も読めない",
     canRead(
       {
-        rooms: { RNDM: { members: { uidA: true }, createdAt: NOW - 10_000 } },
+        rooms: { RNDM: { seats: { host: "uidA" }, createdAt: NOW - 10_000 } },
         lobby: {
           RNDM: { host: "uidA", guest: "uidB", createdAt: NOW - 10_000 },
         },
@@ -717,19 +769,19 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   // 総当たりされない長さ(8文字)であることが前提になる。長さは check-account が見る
   allow(
     "合言葉の部屋は、合言葉を知っていれば座れる",
-    canWrite(half, ["rooms", "EFGH", "members", "uidX"], X, true),
+    canWrite(half, ["rooms", "EFGH", "seats", "guest"], X, "uidX"),
   );
   const posted = {
-    rooms: { EFGH: { members: { uidA: true }, createdAt: NOW - 10_000 } },
+    rooms: { EFGH: { seats: { host: "uidA" }, createdAt: NOW - 10_000 } },
     lobby: { EFGH: { host: "uidA", guest: "uidB", createdAt: NOW - 10_000 } },
   };
   allow(
     "掲示で名乗った人だけが座れる",
-    canWrite(posted, ["rooms", "EFGH", "members", "uidB"], B, true),
+    canWrite(posted, ["rooms", "EFGH", "seats", "guest"], B, "uidB"),
   );
   deny(
     "名乗っていない第三者は座れない",
-    canWrite(posted, ["rooms", "EFGH", "members", "uidX"], X, true),
+    canWrite(posted, ["rooms", "EFGH", "seats", "guest"], X, "uidX"),
   );
 
   console.log("\n待ち合わせの掲示");
@@ -765,7 +817,7 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   const stopped = {
     bans: { uidX: { at: NOW } },
     rooms: {
-      ABCD: { members: { uidA: true, uidX: true }, createdAt: NOW - 1000 },
+      ABCD: { seats: { host: "uidA", guest: "uidX" }, createdAt: NOW - 1000 },
     },
     lobby: {},
     ranks: { uidX: { name: "と", rating: 1500 } },
@@ -794,7 +846,7 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   deny(
     "止められた人は部屋を作れない",
     canWrite(stopped, ["rooms", "NEW"], X, {
-      members: { uidX: true },
+      seats: { host: "uidX" },
       createdAt: NOW,
     }),
   );
@@ -909,6 +961,45 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
       ...Object.fromEntries(Array.from({ length: 30 }, (_, i) => [`f${i}`, i])),
     }),
   );
+  // 配列の長さは数えられない(numChildren は無い)ので、添字の形で抑えている
+  const actWith = (extra) => ({
+    type: "SET_DECK",
+    by: "uidA",
+    __id: "a-9",
+    ...extra,
+  });
+  allow(
+    "63番目までの札は積める",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, actWith({
+      deck: Object.fromEntries(Array.from({ length: 64 }, (_, i) => [String(i), { id: `c${i}`, rank: "A", suit: "S" }])),
+    })),
+  );
+  deny(
+    "64番目の札は積めない(山札は64枚まで)",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, actWith({
+      deck: { 64: { id: "c64", rank: "A", suit: "S" } },
+    })),
+  );
+  deny(
+    "添字でない名前で札を紛れ込ませられない",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, actWith({
+      deck: { abc: { id: "c1", rank: "A", suit: "S" } },
+    })),
+  );
+  deny(
+    "布陣の札は c0〜c63 の名前でしか置けない",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NxxxxxxxxxxxxxxxxxA"], A, actWith({
+      placement: { zzz: { row: 0, col: 0 } },
+    })),
+  );
+  deny(
+    "手番の名前は push id の形(20文字)でないと積めない",
+    canWrite(room, ["rooms", "ABCD", "acts", "-Nshort"], A, actWith({})),
+  );
+  deny(
+    "装備は札の数字(A〜K)でしか置けない",
+    canWrite(room, ["rooms", "ABCD", "guestSkins", "joker"], B, "skin-x"),
+  );
   deny(
     "席についていない人は手番の中へ1段下げても書けない",
     canWrite(
@@ -924,7 +1015,7 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
       {
         bans: { uidB: { at: NOW } },
         rooms: {
-          ABCD: { members: { uidA: true, uidB: true }, createdAt: NOW - 1000 },
+          ABCD: { seats: { host: "uidA", guest: "uidB" }, createdAt: NOW - 1000 },
         },
       },
       ["rooms", "ABCD", "guestName"],
@@ -945,7 +1036,7 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   deny(
     "掲示の無い部屋(合言葉の部屋)に名乗りを生やせない",
     canWrite(
-      { rooms: { EFGH: { members: { uidA: true }, createdAt: NOW - 1000 } } },
+      { rooms: { EFGH: { seats: { host: "uidA" }, createdAt: NOW - 1000 } } },
       ["lobby", "EFGH", "guest"],
       X,
       "uidX",
