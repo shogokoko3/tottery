@@ -268,6 +268,103 @@ export async function signInAsOperator(email, password) {
   return held;
 }
 
+/**
+ * いまの合言葉が「本人確認済み(匿名でない)」か。
+ *
+ * ランダムマッチの横取り対策で、待ち合わせに入れるのは本人確認済みだけに
+ * する。idToken の中の firebase.sign_in_provider を見る(Firebase が署名して
+ * 入れる欄なので、端末では詐称できない)。まだ通っていなければ false。
+ */
+export function providerOf(idToken) {
+  try {
+    const payload = JSON.parse(
+      atob((idToken.split(".")[1] || "").replace(/-/g, "+").replace(/_/g, "/")),
+    );
+    const fb = payload.firebase || {};
+    // sign_in_provider が本命。取り直しで匿名に戻る端があっても、
+    // identities に apple.com が残っていれば本人確認済みとみなす
+    if (fb.sign_in_provider && fb.sign_in_provider !== "anonymous") return fb.sign_in_provider;
+    if (fb.identities && fb.identities["apple.com"]) return "apple.com";
+    return "anonymous";
+  } catch {
+    return "anonymous";
+  }
+}
+
+/** いまの合言葉が本人確認済みか(匿名でない) */
+export function isVerified() {
+  const a = usable();
+  return !!a && providerOf(a.idToken) !== "anonymous";
+}
+
+/**
+ * いまの匿名の口座に Apple の本人確認を紐づける(アップグレード)。
+ *
+ * ネイティブの「Sign in with Apple」から受け取った identityToken と、
+ * その署名につかった rawNonce を渡す。Firebase の signInWithIdp に、いまの
+ * 匿名 idToken を添えて送ると、**同じ uid のまま** Apple に紐づく。uid が
+ * 変わらないので、これまでの持ち点・称号(端末id側)もそのまま続く。
+ *
+ * もしその Apple id が別の口座に既に紐づいていたら(再インストールなど)、
+ * 紐づけは競合する。そのときは添え物なしでサインインし直し、前の口座に戻す。
+ *
+ * 返り値は新しい held。失敗したら投げる。
+ */
+export async function linkAppleIdentity({ identityToken, rawNonce }) {
+  if (!API_KEY) throw new Error("API キーが入っていません");
+  if (!identityToken) throw new Error("Apple のトークンがありません");
+  const cur = await ensureAuth();
+  const post = (withCurrent) => {
+    const body = {
+      postBody: `id_token=${encodeURIComponent(identityToken)}&providerId=apple.com${
+        rawNonce ? `&nonce=${encodeURIComponent(rawNonce)}` : ""
+      }`,
+      requestUri: "https://tottery-66e0f.firebaseapp.com",
+      returnSecureToken: true,
+    };
+    // 現在の匿名 idToken を添えると「紐づけ」になる(uid を保つ)
+    if (withCurrent && cur && cur.idToken) body.idToken = cur.idToken;
+    return withTimeout(
+      fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      ),
+      TIMEOUT_MS,
+    );
+  };
+  let res = await post(true);
+  let d = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const why = (d.error || {}).message || `HTTP ${res.status}`;
+    // その Apple id が別の口座に既にある。添え物なしでその口座へ入り直す
+    if (
+      why.includes("FEDERATED_USER_ID_ALREADY_LINKED") ||
+      why.includes("EMAIL_EXISTS")
+    ) {
+      res = await post(false);
+      d = await res.json().catch(() => ({}));
+    }
+    if (!res.ok) {
+      const w2 = (d.error || {}).message || `HTTP ${res.status}`;
+      throw new Error(`Apple の本人確認につなげませんでした(${w2})`);
+    }
+  }
+  // 返ってきた refreshToken を控える。以後の取り直しはこれを使うので、
+  // 取り直した合言葉も apple.com のままになる(匿名に戻らない)
+  save(d.refreshToken, d.localId);
+  held = {
+    idToken: d.idToken,
+    uid: d.localId,
+    expiresAt: Date.now() + Number(d.expiresIn || 3600) * 1000,
+  };
+  quietUntil = 0;
+  return held;
+}
+
 /** サインインしていた状態を捨てる(管理画面のサインアウト) */
 export function signOut() {
   held = null;
