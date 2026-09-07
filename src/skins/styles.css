@@ -1863,7 +1863,7 @@
   overflow-wrap: anywhere;
 }
 
-/* The foil finish is separate from rarity and ownership. Lists stay still. */
+/* The foil finish is separate from rarity and ownership. Visible cards shimmer. */
 .skins-foil-badge {
   display: inline-flex;
   align-items: center;

@@ -519,7 +519,7 @@ function ForgePanel({
                   skin={byId(foilId(skin.id))}
                   alt=""
                   loading="lazy"
-                  animated={false}
+                  animated={true}
                 />
               </button>
               <div className="forge-milestone-name">
@@ -801,7 +801,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
   const foilOwnedCount = FOIL_SKINS.filter(
     (s) => collection.owned[s.id],
   ).length;
-  const shine = !reduce && collection.motion !== "off";
+  const shine = !reduce;
   const craftResult = !collection.pending && collection.lastCraft;
   const milestoneResult = craftResult?.source === "milestone";
   const resultLabel = milestoneResult
@@ -1098,7 +1098,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                         rank={skin.rank}
                         suit="spade"
                         skinId={id}
-                        animated={false}
+                        animated={shine}
                       />
                       {skin.foil && (
                         <FoilBadge className="skins-loadout-foil" />
@@ -1167,7 +1167,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                         src={skin.card}
                         alt={skin.role}
                         loading="lazy"
-                        animated={false}
+                        animated={shine}
                       />
                     )}
                     <span className="skins-tile-rank">{skin.rank}</span>
