@@ -203,7 +203,12 @@ export const SKINS = [
   boardCard:
     id === "genie-magician" ? "skins/board/genie-magician-v1.png" : null,
   // 既存16種の動画は維持。Aは入れ替え/包囲撃破を使い分ける。
-  video: id === "genie-magician" ? null : `skins/videos/${id}.mp4`,
+  video:
+    id === "genie-magician"
+      ? null
+      : id === "pegasus-knight"
+        ? "skins/videos/pegasus-knight-natural-impact.mp4"
+        : `skins/videos/${id}.mp4`,
   videos:
     id === "genie-magician"
       ? {
