@@ -930,7 +930,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               <h2>
                 運命の一枚を、
                 <br />
-                手に。
+                この手に。
               </h2>
               <p>カードに宿る、新たな姿。</p>
               <FoilBadge />
