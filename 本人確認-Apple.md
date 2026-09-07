@@ -23,28 +23,90 @@
 
 ### A. ご本人 — Apple と Firebase の設定（これが無いと一切動かない）
 
-1. **Apple Developer**（developer.apple.com → Certificates, IDs & Profiles）
-   - App ID `com.shogokoko.tottery` を開き、**Sign in with Apple** を有効にする。
-   - Firebase 連携用に **Services ID** と **Sign in with Apple 用のキー（.p8）** を作る。
-     作成時に **Key ID** が出る。**Team ID** は右上のアカウント情報にある。
-2. **Firebase コンソール**（console.firebase.google.com → プロジェクト tottery-66e0f）
-   - Authentication → Sign-in method → **Apple** を「有効」にする。
-   - 求められる値：Services ID / Apple Team ID / Key ID / 秘密鍵（.p8 の中身）。
-     上の1で作ったものを貼る。
-   - ここまでで、Apple のトークンを Firebase が受け付けるようになる。
-3. **ルールの公開**（私が用意する。**いちばん最後**。手順は下の「公開の順番」）。
+**先に Apple Developer で値を作り、あとで Firebase に貼る**、という順番。
+
+#### A-1. Apple Developer で「Sign in with Apple」を有効化（App ID）
+
+1. developer.apple.com/account → 「Certificates, Identifiers & Profiles」。
+2. 左メニュー **Identifiers** → 一覧から App ID **`com.shogokoko.tottery`** をクリック。
+3. Capabilities の一覧で **Sign In with Apple** にチェック → 右上 **Save**。
+   （「Enable as a primary App ID」を聞かれたらそのまま Continue で可。）
+
+#### A-2. Services ID を作る（Web からの本人確認に使う）
+
+トッタリーは iOS と Web の両方で配っている。Web でも本人確認できるように、
+Services ID を1つ作る（iOS だけなら省けるが、Web の人がランダムマッチに入れなく
+なるので作っておく）。
+
+1. **Identifiers** → 右上の **＋** → **Services IDs** を選んで Continue。
+2. Description（例：Tottery Sign In）と Identifier を入れる。Identifier は
+   **App ID とは別**にする。例：**`com.shogokoko.tottery.signin`**。Register。
+3. 作った Services ID をクリック → **Sign In with Apple** にチェック → **Configure**：
+   - **Primary App ID**：`com.shogokoko.tottery`
+   - **Domains and Subdomains**：`tottery-66e0f.firebaseapp.com`
+   - **Return URLs**：`https://tottery-66e0f.firebaseapp.com/__/auth/handler`
+   - Next → Done → **Save**。
+
+#### A-3. 秘密鍵（.p8）を作る
+
+1. 左メニュー **Keys** → 右上の **＋**。
+2. Key Name（例：Tottery Apple Sign In）を入れ、**Sign in with Apple** にチェック
+   → その行の **Configure** → Primary App ID を `com.shogokoko.tottery` → Save。
+3. Continue → **Register**。
+4. **Download** で `.p8` ファイルを落とす。**ダウンロードは一度きり**なので必ず保存。
+5. この鍵の **Key ID**（10桁の英数字）を控える。
+
+#### A-4. Team ID を控える
+
+画面右上のアカウント名 → **Membership details** に **Team ID**（10桁）がある。
+
+#### A-5. Firebase コンソールに貼る
+
+1. console.firebase.google.com → プロジェクト **tottery-66e0f**。
+2. 左メニュー **Authentication** → **Sign-in method** タブ → **Add new provider**
+   （既にあれば一覧の）→ **Apple** → 右上のトグルで **有効**。
+3. 欄を埋める：
+   - **Services ID**：A-2 で作った `com.shogokoko.tottery.signin`。
+   - 「OAuth code flow configuration」を開いて：
+     - **Apple team ID**：A-4 の Team ID。
+     - **Key ID**：A-3 の Key ID。
+     - **Private key**：A-3 の `.p8` をテキストエディタで開き、
+       `-----BEGIN PRIVATE KEY-----` から `-----END PRIVATE KEY-----` まで丸ごと貼る。
+   - **Save**。
+4. 念のため、**Project settings → Your apps** に iOS アプリ（Bundle ID
+   `com.shogokoko.tottery`）が登録されているか確認。無ければ「アプリを追加 → iOS」で
+   Bundle ID を登録する（Apple のトークンの宛先(aud)を Firebase が照合するため）。
+
+これで Apple のトークンを Firebase が受け付けるようになる。
 
 ### B. iOS セッション — ネイティブ（本体ツリー `~/Desktop/トッタリー/tottery`）
 
-1. Capacitor プラグインを入れる：`npm i @capacitor-community/apple-sign-in`
-2. Xcode で App ターゲットに **Sign in with Apple** の capability（entitlement）を足す。
+1. プラグインを入れる：`npm i @capacitor-community/apple-sign-in`
+2. Xcode で App ターゲット → **Signing & Capabilities** → **＋ Capability** →
+   **Sign in with Apple** を足す。
 3. `npx cap sync ios`
-4. UI から次の形で呼び、`identityToken` と `rawNonce` を私の `linkAppleIdentity` に渡す：
-   - ランダムな `rawNonce` を作る → その **SHA-256** を `nonce` としてプラグインに渡す
-   - プラグインが返す `response.identityToken` と、作った `rawNonce` を私の関数へ
+4. ランダムマッチに入る操作のところで、次の流れで呼ぶ：
 
-   （Apple は「rawNonce のハッシュ」を id_token に埋めて返し、Firebase は rawNonce を
-   受け取って照合する。だから両方を渡す。）
+```js
+import { SignInWithApple } from "@capacitor-community/apple-sign-in";
+import { linkAppleIdentity } from "../net/auth.js";
+import { sha256hex } from "…"; // rawNonce の SHA-256(16進)。無ければ Web Crypto で
+
+const rawNonce = crypto.randomUUID() + crypto.randomUUID();
+const res = await SignInWithApple.authorize({
+  clientId: "com.shogokoko.tottery",     // Bundle ID
+  scopes: "name email",
+  nonce: await sha256hex(rawNonce),        // Apple には「ハッシュ」を渡す
+});
+const identityToken = res.response.identityToken;
+await linkAppleIdentity({ identityToken, rawNonce }); // Firebase には「素の」nonce
+```
+
+**nonce の要点**：Apple には `SHA-256(rawNonce)` を渡し、Firebase には `rawNonce`
+そのものを渡す（Firebase が突き合わせる）。私の `linkAppleIdentity` は
+`nonce=rawNonce` を送るので、上の渡し方でつながる。**プラグインの版によっては
+nonce を内部でハッシュするものもある**ので、実機で一度「本人確認が通るか」を
+確かめてほしい（通らなければ、ハッシュを二重にかけていないかを見る）。
 
 ### C. 私（Claude）— コード
 
