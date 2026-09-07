@@ -1,4 +1,4 @@
-import { useInsertionEffect, useLayoutEffect, useRef, useId } from "react";
+import { useInsertionEffect, useLayoutEffect, useRef } from "react";
 import { attachFoilMaterial } from "../skins/foil-material.js";
 import styles from "./foil-artwork.css";
 
@@ -22,7 +22,6 @@ export function FoilArtwork({
   style,
   ...imageProps
 }) {
-  const waveId = `foil-background-${useId().replace(/:/g, "")}`;
   const image = useRef(null);
   const canvas = useRef(null);
   const foil = !!skin?.foil;
@@ -75,54 +74,11 @@ export function FoilArtwork({
     >
       {artwork}
       {animated && (
-        <>
-          <svg
-            className="foil-wave-definition"
-            aria-hidden="true"
-            width="0"
-            height="0"
-          >
-            <defs>
-              <filter id={waveId} x="-10%" y="-10%" width="120%" height="120%">
-                <feTurbulence
-                  type="fractalNoise"
-                  baseFrequency="0.012 0.026"
-                  numOctaves="1"
-                  seed="8"
-                  result="wave"
-                >
-                  <animate
-                    attributeName="baseFrequency"
-                    values="0.012 0.026;0.019 0.038;0.012 0.026"
-                    dur="4.5s"
-                    repeatCount="indefinite"
-                  />
-                </feTurbulence>
-                <feDisplacementMap
-                  in="SourceGraphic"
-                  in2="wave"
-                  scale="8"
-                  xChannelSelector="R"
-                  yChannelSelector="G"
-                />
-              </filter>
-            </defs>
-          </svg>
-          <span className="foil-existing-background" aria-hidden="true">
-            <img
-              src={source}
-              alt=""
-              loading={loading}
-              draggable={false}
-              style={{ objectFit, objectPosition, filter: `url(#${waveId})` }}
-            />
-          </span>
-          <canvas
-            ref={canvas}
-            className="foil-artwork-light"
-            aria-hidden="true"
-          />
-        </>
+        <canvas
+          ref={canvas}
+          className="foil-artwork-light"
+          aria-hidden="true"
+        />
       )}
     </span>
   );

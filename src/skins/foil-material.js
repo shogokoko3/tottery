@@ -13,9 +13,12 @@ export function loadFoilMasks() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
     // Like all skin URLs, resolve next to index.html, including subdirectory hosting.
-    masksPromise = fetch(new URL("skins/foils/masks.json", document.baseURI), {
-      signal: controller.signal,
-    })
+    masksPromise = fetch(
+      new URL("skins/foils/masks.json?v=background-glints-1", document.baseURI),
+      {
+        signal: controller.signal,
+      },
+    )
       .then((response) => {
         if (!response.ok) throw new Error("Foil masks unavailable");
         return response.json();
@@ -73,6 +76,12 @@ export function decodeFoilMask(entry, targetWidth = entry.width) {
     width,
     height,
     active,
+    background: entry.background
+      ? decodeFoilMask(
+          { ...entry, alpha: entry.background, background: undefined },
+          targetWidth,
+        ).active
+      : [],
     wx: new Float32Array(width),
     wy: new Float32Array(height),
     pixels: new Uint8ClampedArray(width * height * 4),
@@ -108,6 +117,30 @@ export function renderFoilFrame(mask, seconds, pixels = mask.pixels) {
     pixels[k + 1] = green + (255 - green) * crest;
     pixels[k + 2] = blue + (255 - blue) * crest;
     pixels[k + 3] = alpha;
+  }
+  // Twinkle only on sampled foil flecks already present in the background.
+  // Positions never move, and no new star shapes or background artwork are drawn.
+  for (const point of mask.background || []) {
+    const grain = ((point.i * 16807) % 101) / 101;
+    const pulse = Math.pow(
+      0.5 + 0.5 * Math.sin(seconds * 3.4 + grain * Math.PI * 2),
+      9,
+    );
+    const glow =
+      0.5 +
+      0.5 *
+        Math.sin(
+          (point.x / mask.width) * 7 +
+            (point.y / mask.height) * 5 -
+            seconds * 1.6,
+        );
+    const strength = (0.1 * glow + 0.86 * pulse) * Math.sqrt(point.weight);
+    const k = point.i * 4;
+    if (pixels[k + 3]) continue;
+    pixels[k] = 246;
+    pixels[k + 1] = 243 + Math.round(12 * glow);
+    pixels[k + 2] = 220 + Math.round(35 * glow);
+    pixels[k + 3] = Math.round(strength * 255);
   }
   return pixels;
 }
