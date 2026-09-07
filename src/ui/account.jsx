@@ -286,7 +286,7 @@ export function IconPickModal({ onClose, onSaved }) {
 /**
  * 称号を選ぶ画面。
  *
- * まだ手に入れていないものも並べて、手に入れ方を見せる。
+ * シークレット以外は、まだ手に入れていないものも並べて、手に入れ方を見せる。
  * 対局数などで決まるものは、条件を満たした時点で自動で使えるようになる。
  */
 export function TitlePickModal({ onClose, onSaved }) {
@@ -313,7 +313,7 @@ export function TitlePickModal({ onClose, onSaved }) {
         <div className="title-list">
           {TITLES.map((t) => {
             const owned = hasTitle(profile, t.id);
-            const hidden = t.secret && !owned;
+            if (t.secret && !owned) return null;
             return (
               <button
                 className={`title-choice ${picked === t.id ? "title-choice-on" : ""} ${
@@ -323,15 +323,9 @@ export function TitlePickModal({ onClose, onSaved }) {
                 onClick={() => owned && setPicked(t.id)}
                 key={t.id}
               >
-                <b>{hidden ? "？？？" : t.name}</b>
+                <b>{t.name}</b>
                 <small>
-                  {hidden
-                    ? "シークレット"
-                    : owned
-                      ? t.free
-                        ? "最初から"
-                        : "手に入れた"
-                      : t.how}
+                  {owned ? (t.free ? "最初から" : "手に入れた") : t.how}
                 </small>
               </button>
             );
