@@ -1,4 +1,4 @@
-import { useInsertionEffect, useLayoutEffect, useRef } from "react";
+import { useInsertionEffect, useLayoutEffect, useRef, useId } from "react";
 import { attachFoilMaterial } from "../skins/foil-material.js";
 import styles from "./foil-artwork.css";
 
@@ -22,6 +22,7 @@ export function FoilArtwork({
   style,
   ...imageProps
 }) {
+  const waveId = `foil-background-${useId().replace(/:/g, "")}`;
   const image = useRef(null);
   const canvas = useRef(null);
   const foil = !!skin?.foil;
@@ -75,27 +76,46 @@ export function FoilArtwork({
       {artwork}
       {animated && (
         <>
-          <span className="foil-background" aria-hidden="true" />
-          <span className="foil-sparkles" aria-hidden="true">
-            {[
-              [8, 14],
-              [88, 10],
-              [15, 39],
-              [92, 34],
-              [7, 66],
-              [87, 61],
-              [18, 87],
-              [79, 89],
-            ].map(([x, y], i) => (
-              <i
-                key={i}
-                style={{
-                  left: `${x}%`,
-                  top: `${y}%`,
-                  "--spark-delay": `${-i * 0.37}s`,
-                }}
-              />
-            ))}
+          <svg
+            className="foil-wave-definition"
+            aria-hidden="true"
+            width="0"
+            height="0"
+          >
+            <defs>
+              <filter id={waveId} x="-10%" y="-10%" width="120%" height="120%">
+                <feTurbulence
+                  type="fractalNoise"
+                  baseFrequency="0.012 0.026"
+                  numOctaves="1"
+                  seed="8"
+                  result="wave"
+                >
+                  <animate
+                    attributeName="baseFrequency"
+                    values="0.012 0.026;0.019 0.038;0.012 0.026"
+                    dur="6s"
+                    repeatCount="indefinite"
+                  />
+                </feTurbulence>
+                <feDisplacementMap
+                  in="SourceGraphic"
+                  in2="wave"
+                  scale="5"
+                  xChannelSelector="R"
+                  yChannelSelector="G"
+                />
+              </filter>
+            </defs>
+          </svg>
+          <span className="foil-existing-background" aria-hidden="true">
+            <img
+              src={source}
+              alt=""
+              loading={loading}
+              draggable={false}
+              style={{ objectFit, objectPosition, filter: `url(#${waveId})` }}
+            />
           </span>
           <canvas
             ref={canvas}

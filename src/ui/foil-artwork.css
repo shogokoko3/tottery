@@ -39,111 +39,55 @@
   }
 }
 
-/* A broad finish around the artwork makes foil recognizable at card size.
-   The transparent centre keeps portraits readable; rank/suit marks sit above it. */
-.foil-background,
-.foil-sparkles {
+/* Sample the existing illustration itself: no generated stars or rainbow layer.
+   Only the outer background is exposed; the central character stays still. */
+.foil-wave-definition {
   position: absolute;
-  inset: 0;
-  z-index: 1;
+  width: 0;
+  height: 0;
   pointer-events: none;
 }
-.foil-background {
+.foil-existing-background {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
   -webkit-mask-image: radial-gradient(
-    ellipse 43% 49% at 50% 43%,
-    transparent 45%,
-    #0009 76%,
+    ellipse 52% 60% at 50% 64%,
+    transparent 67%,
+    #0006 85%,
     #000 100%
   );
   mask-image: radial-gradient(
-    ellipse 43% 49% at 50% 43%,
-    transparent 45%,
-    #0009 76%,
+    ellipse 52% 60% at 50% 64%,
+    transparent 67%,
+    #0006 85%,
     #000 100%
   );
-  mix-blend-mode: screen;
 }
-.foil-background::before,
-.foil-background::after {
-  content: "";
-  position: absolute;
-  inset: -70%;
-  background: repeating-conic-gradient(
-    from 15deg at 50% 50%,
-    transparent 0deg 20deg,
-    #63e7ff99 35deg,
-    #bc78ffc9 50deg,
-    #ffeaa8db 66deg,
-    transparent 85deg 120deg
-  );
-  filter: blur(5px);
-  animation: foil-background-wave 5s linear infinite;
+.foil-existing-background > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+  animation: foil-existing-texture 6s ease-in-out infinite;
+  transform-origin: 50% 35%;
 }
-.foil-background::after {
-  background: repeating-radial-gradient(
-    ellipse at 30% 45%,
-    transparent 0 9%,
-    #fff2be88 10%,
-    #a3faff99 12%,
-    transparent 16% 23%
-  );
-  animation: foil-background-ripple 3.6s ease-in-out infinite alternate;
-  opacity: 0.65;
-}
-.foil-sparkles > i {
-  position: absolute;
-  width: clamp(6px, 7%, 22px);
-  aspect-ratio: 1;
-  background: #fff6cd;
-  clip-path: polygon(
-    50% 0,
-    61% 37%,
-    100% 50%,
-    61% 62%,
-    50% 100%,
-    38% 62%,
-    0 50%,
-    38% 37%
-  );
-  animation: foil-background-sparkle 2.4s ease-in-out infinite;
-  animation-delay: var(--spark-delay);
-}
-@keyframes foil-background-wave {
-  from {
-    transform: rotate(0deg) scale(1);
-  }
-  to {
-    transform: rotate(360deg) scale(1);
-  }
-}
-@keyframes foil-background-ripple {
-  from {
-    transform: translate(-7%, -5%) rotate(-12deg) scale(0.88);
-  }
-  to {
-    transform: translate(7%, 5%) rotate(12deg) scale(1.12);
-  }
-}
-@keyframes foil-background-sparkle {
+@keyframes foil-existing-texture {
   0%,
   100% {
-    opacity: 0.15;
-    transform: translateY(4px) scale(0.35) rotate(0deg);
+    transform: scale(1.008) translate(-0.1%, -0.1%);
+    opacity: 1;
   }
   50% {
+    transform: scale(1.008) translate(0.1%, 0.1%);
     opacity: 1;
-    transform: translateY(-5px) scale(1.15) rotate(90deg);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .foil-background::before,
-  .foil-background::after,
-  .foil-sparkles > i {
-    animation: none;
-  }
-  .foil-sparkles > i {
-    opacity: 0.6;
+  .foil-existing-background,
+  .foil-wave-definition {
+    display: none;
   }
 }
