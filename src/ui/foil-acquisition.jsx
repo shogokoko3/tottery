@@ -170,6 +170,8 @@ function Acquisition({
             aria-hidden="true"
             draggable={false}
           />
+          <span className="foil-acquisition-rays" aria-hidden="true" />
+          <span className="foil-acquisition-halo" aria-hidden="true" />
           <span className="foil-acquisition-rim" aria-hidden="true" />
           <span className="foil-acquisition-edge-light" aria-hidden="true" />
           <span className="foil-acquisition-sparks" aria-hidden="true">
@@ -181,6 +183,14 @@ function Acquisition({
           <span className="foil-acquisition-sweep" aria-hidden="true" />
           <span className="foil-acquisition-burst" aria-hidden="true" />
           <span className="foil-acquisition-glint" aria-hidden="true" />
+          <span className="foil-acquisition-confetti" aria-hidden="true">
+            {Array.from({ length: 12 }, (_, i) => (
+              <i key={i} style={{ "--foil-angle": `${i * 30}deg` }} />
+            ))}
+          </span>
+          <span className="foil-acquisition-caption" aria-hidden="true">
+            FOIL
+          </span>
         </>
       )}
     </span>

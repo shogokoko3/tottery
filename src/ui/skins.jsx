@@ -176,9 +176,13 @@ function RevealCard({
       setSettled(true);
       return;
     }
-    const timer = setTimeout(() => setSettled(true), 650);
+    // Let the rarity landing finish, then hold the normal card for one beat.
+    const timer = setTimeout(
+      () => setSettled(true),
+      650 + (skin.foil ? 800 : 0),
+    );
     return () => clearTimeout(timer);
-  }, [final, reduce]);
+  }, [final, reduce, skin.foil]);
   const completeFoil = useCallback(() => setFoilComplete(true), []);
   const finished = final && settled && (!skin.foil || foilComplete);
   useEffect(() => {

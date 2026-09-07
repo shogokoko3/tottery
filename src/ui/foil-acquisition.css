@@ -25,7 +25,9 @@
   display: block;
   border-radius: inherit;
 }
-.foil-acquisition-base { z-index: 0; }
+.foil-acquisition-base {
+  z-index: 0;
+}
 .foil-acquisition-coating {
   z-index: 1;
   clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
@@ -68,28 +70,57 @@
     radial-gradient(ellipse 50% 10% at 63% 0%, #fff1b8cc, transparent),
     radial-gradient(ellipse 48% 14% at 28% 100%, #c0ebffbb, transparent);
 }
-.foil-acquisition-sparks { inset: 0; }
+.foil-acquisition-sparks {
+  inset: 0;
+}
 .foil-acquisition-sparks > i {
   position: absolute;
   width: 17%;
   aspect-ratio: 1;
   opacity: 0;
   background:
-    radial-gradient(ellipse 7% 49% at 50% 50%, #fffbed 0 28%, #fff0b677 50%, transparent 100%),
-    radial-gradient(ellipse 49% 7% at 50% 50%, #fffbed 0 28%, #d2edff88 50%, transparent 100%),
-    radial-gradient(circle at 50% 50%, #fffbe7 0 5%, #fff0bb55 13%, transparent 40%);
+    radial-gradient(
+      ellipse 7% 49% at 50% 50%,
+      #fffbed 0 28%,
+      #fff0b677 50%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 49% 7% at 50% 50%,
+      #fffbed 0 28%,
+      #d2edff88 50%,
+      transparent 100%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      #fffbe7 0 5%,
+      #fff0bb55 13%,
+      transparent 40%
+    );
 }
 .foil-acquisition-sparks > i:nth-child(1) {
-  left: -3%; top: 12%; --spark-x: -80%; --spark-y: -160%;
+  left: -3%;
+  top: 12%;
+  --spark-x: -80%;
+  --spark-y: -160%;
 }
 .foil-acquisition-sparks > i:nth-child(2) {
-  right: -3%; top: 48%; --spark-x: 140%; --spark-y: -90%;
+  right: -3%;
+  top: 48%;
+  --spark-x: 140%;
+  --spark-y: -90%;
 }
 .foil-acquisition-sparks > i:nth-child(3) {
-  left: 8%; bottom: -4%; --spark-x: -130%; --spark-y: 180%;
+  left: 8%;
+  bottom: -4%;
+  --spark-x: -130%;
+  --spark-y: 180%;
 }
 .foil-acquisition-sparks > i:nth-child(4) {
-  right: 5%; top: -5%; --spark-x: 100%; --spark-y: -190%;
+  right: 5%;
+  top: -5%;
+  --spark-x: 100%;
+  --spark-y: -190%;
 }
 
 /* A luminous moving seam lays the foil down once, instead of washing out the image. */
@@ -118,106 +149,417 @@
   content: "";
   position: absolute;
   inset: 0 43%;
-  background: linear-gradient(180deg, transparent 3%, #fff9df77 28%, #fffdf5 62%, #e7d1ff99 85%, transparent);
-  clip-path: polygon(44% 0, 55% 0, 40% 20%, 65% 41%, 39% 64%, 55% 83%, 39% 100%, 29% 100%, 45% 83%, 29% 64%, 55% 41%, 30% 20%);
+  background: linear-gradient(
+    180deg,
+    transparent 3%,
+    #fff9df77 28%,
+    #fffdf5 62%,
+    #e7d1ff99 85%,
+    transparent
+  );
+  clip-path: polygon(
+    44% 0,
+    55% 0,
+    40% 20%,
+    65% 41%,
+    39% 64%,
+    55% 83%,
+    39% 100%,
+    29% 100%,
+    45% 83%,
+    29% 64%,
+    55% 41%,
+    30% 20%
+  );
 }
 .foil-acquisition-burst {
   inset: -12%;
   transform-origin: 50% 72%;
   background:
-    radial-gradient(ellipse 59% 47% at 50% 72%, transparent 64%, #fff2c400 67%, #fff2c4bb 70%, #d8beff66 72%, transparent 77%),
-    radial-gradient(ellipse 65% 52% at 50% 72%, transparent 64%, #c3efff66 69%, transparent 73%);
+    radial-gradient(
+      ellipse 59% 47% at 50% 72%,
+      transparent 64%,
+      #fff2c400 67%,
+      #fff2c4bb 70%,
+      #d8beff66 72%,
+      transparent 77%
+    ),
+    radial-gradient(
+      ellipse 65% 52% at 50% 72%,
+      transparent 64%,
+      #c3efff66 69%,
+      transparent 73%
+    );
   mix-blend-mode: screen;
 }
 .foil-acquisition-glint {
   inset: 0;
   background:
-    radial-gradient(ellipse 1.2% 6% at 94% 11%, #fffbe9 0 18%, #fff0afbb 36%, transparent 100%),
-    radial-gradient(ellipse 6% 1% at 94% 11%, #fffbe9 0 18%, #d9e5ff99 36%, transparent 100%),
-    radial-gradient(ellipse 1% 4% at 7% 85%, #fffbe9 0 18%, #c9e6ff99 36%, transparent 100%),
-    radial-gradient(ellipse 4% 0.8% at 7% 85%, #fffbe9 0 18%, #c9e6ff99 36%, transparent 100%),
+    radial-gradient(
+      ellipse 1.2% 6% at 94% 11%,
+      #fffbe9 0 18%,
+      #fff0afbb 36%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 6% 1% at 94% 11%,
+      #fffbe9 0 18%,
+      #d9e5ff99 36%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 1% 4% at 7% 85%,
+      #fffbe9 0 18%,
+      #c9e6ff99 36%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 4% 0.8% at 7% 85%,
+      #fffbe9 0 18%,
+      #c9e6ff99 36%,
+      transparent 100%
+    ),
     radial-gradient(circle at 91% 78%, #fff8d4 0 0.5%, transparent 1.4%),
     radial-gradient(circle at 19% 94%, #ecddff 0 0.4%, transparent 1.2%);
 }
 
 .foil-acquisition.is-running > .foil-acquisition-coating {
-  animation: foil-acquisition-coat var(--foil-acquisition-duration) cubic-bezier(.22,.65,.35,1) both;
+  animation: foil-acquisition-coat var(--foil-acquisition-duration)
+    cubic-bezier(0.22, 0.65, 0.35, 1) both;
 }
 .foil-acquisition.is-running > .foil-acquisition-rim {
-  animation: foil-acquisition-rim var(--foil-acquisition-duration) ease-in-out both;
+  animation: foil-acquisition-rim var(--foil-acquisition-duration) ease-in-out
+    both;
 }
 .foil-acquisition.is-running > .foil-acquisition-edge-light {
-  animation: foil-acquisition-gather var(--foil-acquisition-duration) ease-in-out both;
+  animation: foil-acquisition-gather var(--foil-acquisition-duration)
+    ease-in-out both;
 }
-.foil-acquisition.is-running > .foil-acquisition-sparks { opacity: 1; }
+.foil-acquisition.is-running > .foil-acquisition-sparks {
+  opacity: 1;
+}
 .foil-acquisition.is-running > .foil-acquisition-sparks > i {
-  animation: foil-acquisition-spark var(--foil-acquisition-duration) ease-in-out both;
+  animation: foil-acquisition-spark var(--foil-acquisition-duration) ease-in-out
+    both;
 }
 .foil-acquisition.is-running > .foil-acquisition-sweep {
-  animation: foil-acquisition-sweep var(--foil-acquisition-duration) cubic-bezier(.22,.65,.35,1) both;
+  animation: foil-acquisition-sweep var(--foil-acquisition-duration)
+    cubic-bezier(0.22, 0.65, 0.35, 1) both;
 }
 .foil-acquisition.is-running > .foil-acquisition-burst {
-  animation: foil-acquisition-burst var(--foil-acquisition-duration) ease-out both;
+  animation: foil-acquisition-burst var(--foil-acquisition-duration) ease-out
+    both;
 }
 .foil-acquisition.is-running > .foil-acquisition-glint {
-  animation: foil-acquisition-glint var(--foil-acquisition-duration) ease-in-out both;
+  animation: foil-acquisition-glint var(--foil-acquisition-duration) ease-in-out
+    both;
 }
 
 @keyframes foil-acquisition-coat {
-  0%, 36.667% {
-    clip-path: polygon(0 0, -12% 0, -16% 20%, -19% 40%, -16% 60%, -24% 80%, -34% 100%, 0 100%);
+  0%,
+  36.667% {
+    clip-path: polygon(
+      0 0,
+      -12% 0,
+      -16% 20%,
+      -19% 40%,
+      -16% 60%,
+      -24% 80%,
+      -34% 100%,
+      0 100%
+    );
   }
-  73.333%, 100% {
-    clip-path: polygon(0 0, 134% 0, 130% 20%, 127% 40%, 130% 60%, 122% 80%, 112% 100%, 0 100%);
+  73.333%,
+  100% {
+    clip-path: polygon(
+      0 0,
+      134% 0,
+      130% 20%,
+      127% 40%,
+      130% 60%,
+      122% 80%,
+      112% 100%,
+      0 100%
+    );
   }
 }
 @keyframes foil-acquisition-rim {
-  0%, 10.667% { opacity: 0; }
-  31% { opacity: .65; }
-  36.667%, 60% { opacity: 1; }
-  76% { opacity: .85; }
-  91% { opacity: .45; }
-  100% { opacity: 0; }
+  0%,
+  10.667% {
+    opacity: 0;
+  }
+  31% {
+    opacity: 0.65;
+  }
+  36.667%,
+  60% {
+    opacity: 1;
+  }
+  76% {
+    opacity: 0.85;
+  }
+  91% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 @keyframes foil-acquisition-gather {
-  0%, 10.667% { opacity: 0; transform: scale(1.14); }
-  33% { opacity: .95; transform: scale(1); }
-  39% { opacity: 1; transform: scale(.98); }
-  58%, 100% { opacity: 0; transform: scale(1.05); }
+  0%,
+  10.667% {
+    opacity: 0;
+    transform: scale(1.14);
+  }
+  33% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+  39% {
+    opacity: 1;
+    transform: scale(0.98);
+  }
+  58%,
+  100% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
 }
 @keyframes foil-acquisition-spark {
-  0%, 13% { opacity: 0; transform: translate(var(--spark-x),var(--spark-y)) scale(.25); }
-  25% { opacity: .8; }
-  35% { opacity: 1; transform: translate(0,0) scale(1.2); }
-  42%, 100% { opacity: 0; transform: translate(0,0) scale(.35); }
+  0%,
+  13% {
+    opacity: 0;
+    transform: translate(var(--spark-x), var(--spark-y)) scale(0.25);
+  }
+  25% {
+    opacity: 0.8;
+  }
+  35% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1.2);
+  }
+  42%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.35);
+  }
 }
 @keyframes foil-acquisition-sweep {
-  0%, 36.667% { opacity: 0; transform: translateX(0) rotate(16deg); }
-  37% { opacity: 1; transform: translateX(0) rotate(16deg); }
-  70% { opacity: .85; transform: translateX(360%) rotate(16deg); }
-  75%, 100% { opacity: 0; transform: translateX(390%) rotate(16deg); }
+  0%,
+  36.667% {
+    opacity: 0;
+    transform: translateX(0) rotate(16deg);
+  }
+  37% {
+    opacity: 1;
+    transform: translateX(0) rotate(16deg);
+  }
+  70% {
+    opacity: 0.85;
+    transform: translateX(360%) rotate(16deg);
+  }
+  75%,
+  100% {
+    opacity: 0;
+    transform: translateX(390%) rotate(16deg);
+  }
 }
 @keyframes foil-acquisition-burst {
-  0%, 57% { opacity: 0; transform: scale(.55); }
-  66% { opacity: .6; }
-  86%, 100% { opacity: 0; transform: scale(1.4); }
+  0%,
+  57% {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  66% {
+    opacity: 0.6;
+  }
+  86%,
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
 }
 @keyframes foil-acquisition-glint {
-  0%, 69% { opacity: 0; transform: scale(.98); }
-  79% { opacity: 1; transform: scale(1); }
-  91% { opacity: .6; }
-  100% { opacity: 0; transform: scale(1.025); }
+  0%,
+  69% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  79% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  91% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.025);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .foil-acquisition.is-running > *,
   .foil-acquisition.is-running > .foil-acquisition-sparks > i {
     animation: none !important;
   }
-  .foil-acquisition-coating { clip-path: none; }
+  .foil-acquisition-coating {
+    clip-path: none;
+  }
   .foil-acquisition-rim,
   .foil-acquisition-edge-light,
   .foil-acquisition-sparks,
   .foil-acquisition-sweep,
   .foil-acquisition-burst,
-  .foil-acquisition-glint { display: none; }
+  .foil-acquisition-glint {
+    display: none;
+  }
+}
+
+/* Acquisition-only celebration. The permanent artwork stays untouched. */
+.foil-acquisition-rays,
+.foil-acquisition-halo,
+.foil-acquisition-confetti,
+.foil-acquisition-caption {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+}
+.foil-acquisition-rays {
+  inset: -50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    transparent 0deg 13deg,
+    #fff1bb99 15deg,
+    #bdf3ff66 19deg,
+    transparent 23deg 30deg
+  );
+  mix-blend-mode: screen;
+}
+.foil-acquisition-halo {
+  inset: 18% -12%;
+  border: 5px solid #fff5d0;
+  border-radius: 50%;
+  box-shadow:
+    0 0 18px #fff0bf,
+    inset 0 0 24px #e1baff,
+    0 0 40px #77eaff;
+}
+.foil-acquisition-confetti > i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5%;
+  aspect-ratio: 1;
+  background: linear-gradient(45deg, #a6eaff, #fff4c5, #ebaaff);
+  box-shadow: 0 0 9px #fff4d0;
+  transform: rotate(var(--foil-angle)) translateY(0) scale(0);
+}
+.foil-acquisition-caption {
+  inset: auto 0 12%;
+  text-align: center;
+  font: 800 clamp(14px, 3vw, 32px)/1.2 serif;
+  letter-spacing: 0.25em;
+  color: #fff5ce;
+  text-shadow:
+    0 2px 6px #000,
+    0 0 12px #edbe56,
+    0 0 24px #ffe09c;
+}
+.foil-acquisition.is-running > .foil-acquisition-rays {
+  animation: foil-rare-rays var(--foil-acquisition-duration) ease-out both;
+}
+.foil-acquisition.is-running > .foil-acquisition-halo {
+  animation: foil-rare-halo var(--foil-acquisition-duration) ease-out both;
+}
+.foil-acquisition.is-running > .foil-acquisition-confetti {
+  opacity: 1;
+}
+.foil-acquisition.is-running > .foil-acquisition-confetti > i {
+  animation: foil-rare-confetti var(--foil-acquisition-duration) ease-out both;
+}
+.foil-acquisition.is-running > .foil-acquisition-caption {
+  animation: foil-rare-caption var(--foil-acquisition-duration) ease-out both;
+}
+@keyframes foil-rare-rays {
+  0%,
+  12% {
+    opacity: 0;
+    transform: rotate(-20deg) scale(0.6);
+  }
+  36% {
+    opacity: 0.35;
+    transform: rotate(0deg) scale(0.8);
+  }
+  58% {
+    opacity: 0.8;
+  }
+  78% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(45deg) scale(1.2);
+  }
+}
+@keyframes foil-rare-halo {
+  0%,
+  35% {
+    opacity: 0;
+    transform: scale(0.1);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+  76%,
+  100% {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+@keyframes foil-rare-confetti {
+  0%,
+  54% {
+    opacity: 0;
+    transform: rotate(var(--foil-angle)) translateY(0) scale(0);
+  }
+  60% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--foil-angle)) translateY(-550%) scale(1.1);
+  }
+}
+@keyframes foil-rare-caption {
+  0%,
+  73% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+  85%,
+  94% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .foil-acquisition-rays,
+  .foil-acquisition-halo,
+  .foil-acquisition-confetti,
+  .foil-acquisition-caption {
+    display: none;
+  }
+  .foil-acquisition-confetti > i {
+    animation: none !important;
+  }
 }
