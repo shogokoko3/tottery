@@ -44,6 +44,7 @@ import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { FoilAcquisition } from "./foil-acquisition.jsx";
+import { FOIL_INITIAL_HOLD_MS } from "../skins/foil-acquisition.js";
 
 const foilPct = FOIL_CHANCE * 100;
 function FoilBadge({ className = "" }) {
@@ -176,10 +177,10 @@ function RevealCard({
       setSettled(true);
       return;
     }
-    // Let the rarity landing finish, then hold the normal card for one beat.
+    // Total quiet beat is 500ms, including the acquisition timeline's normal phase.
     const timer = setTimeout(
       () => setSettled(true),
-      650 + (skin.foil ? 800 : 0),
+      650 + (skin.foil ? 500 - FOIL_INITIAL_HOLD_MS : 0),
     );
     return () => clearTimeout(timer);
   }, [final, reduce, skin.foil]);

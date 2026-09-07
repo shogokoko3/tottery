@@ -1,7 +1,8 @@
 export const FOIL_ACQUISITION_MS = 3000;
+export const FOIL_INITIAL_HOLD_MS = 320;
 export const FOIL_IMAGE_TIMEOUT_MS = 2500;
 export const FOIL_ACQUISITION_STEPS = Object.freeze([
-  320,
+  FOIL_INITIAL_HOLD_MS,
   1100,
   2200,
   FOIL_ACQUISITION_MS,
@@ -30,7 +31,7 @@ export function foilAcquisitionFrame(
     return { phase: "waiting", progress: 0, complete: false, reason: null };
   const elapsed = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs) : 0;
   const phase =
-    elapsed < 320
+    elapsed < FOIL_INITIAL_HOLD_MS
       ? "normal"
       : elapsed < 1100
         ? "gather"
