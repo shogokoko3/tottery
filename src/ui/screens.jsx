@@ -690,6 +690,7 @@ export function RulesSelectScreen({
   backLabel,
   note,
   initialSize = 5,
+  ranked = false,
 }) {
   let [a, u] = (0, useState)(initialSize);
   return (
@@ -737,7 +738,7 @@ export function RulesSelectScreen({
               <small>
                 {i === 5 ? "5枚で戦う短期戦" : "9枚で戦う本格戦"}
                 {/* 持ち点が動くのは9×9だけ。選ぶ前に分かるようにしておく */}
-                {i === 9 && (
+                {ranked && i === 9 && (
                   <>
                     <br />
                     <b className="board-choice-ranked">ランキングに載ります</b>
@@ -1341,6 +1342,7 @@ function TotteryScreens() {
           ),
           rules: (
             <RulesSelectScreen
+              ranked={o === "online" || o === "room"}
               initialSize={o === "online" ? loadOnlineSize() : 5}
               onStart={z}
               onBack={() => t(rulesFrom)}
