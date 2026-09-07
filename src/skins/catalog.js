@@ -207,7 +207,7 @@ export const SKINS = [
     id === "genie-magician"
       ? null
       : id === "pegasus-knight"
-        ? "skins/videos/pegasus-knight-natural-impact.mp4"
+        ? "skins/videos/pegasus-knight-continuous-v2.mp4"
         : `skins/videos/${id}.mp4`,
   videos:
     id === "genie-magician"
