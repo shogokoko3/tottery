@@ -74,11 +74,35 @@ export function FoilArtwork({
     >
       {artwork}
       {animated && (
-        <canvas
-          ref={canvas}
-          className="foil-artwork-light"
-          aria-hidden="true"
-        />
+        <>
+          <span className="foil-background" aria-hidden="true" />
+          <span className="foil-sparkles" aria-hidden="true">
+            {[
+              [8, 14],
+              [88, 10],
+              [15, 39],
+              [92, 34],
+              [7, 66],
+              [87, 61],
+              [18, 87],
+              [79, 89],
+            ].map(([x, y], i) => (
+              <i
+                key={i}
+                style={{
+                  left: `${x}%`,
+                  top: `${y}%`,
+                  "--spark-delay": `${-i * 0.37}s`,
+                }}
+              />
+            ))}
+          </span>
+          <canvas
+            ref={canvas}
+            className="foil-artwork-light"
+            aria-hidden="true"
+          />
+        </>
       )}
     </span>
   );
