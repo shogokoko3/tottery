@@ -52,9 +52,6 @@ export function RankingScreen({ onBack }) {
       <h2>ランキング</h2>
       <p className="hint">
         9×9のオンライン対戦の成績で並びます。5×5とCPU戦は数えません。
-        <br />
-        持ち点は勝率から決まり、みんなが遊ぶほど全員が少しずつ上がります。
-        相手の申告した持ち点は使わないので、偽られても動きません。
       </p>
 
       <div className="rank-me">
