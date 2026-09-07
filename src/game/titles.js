@@ -50,6 +50,7 @@ export const TITLES = [
     id: "court-heavy",
     name: "国士無双",
     how: "シークレット「手札が絵札に偏りすぎて配り直された」",
+    secret: true,
   },
   // ミッションの褒美。条件では自動で開かず、受け取ったときに配られる
   { id: "regular", name: "常連", how: "ミッション「3日あそぶ」" },

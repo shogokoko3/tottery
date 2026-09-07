@@ -313,6 +313,7 @@ export function TitlePickModal({ onClose, onSaved }) {
         <div className="title-list">
           {TITLES.map((t) => {
             const owned = hasTitle(profile, t.id);
+            const hidden = t.secret && !owned;
             return (
               <button
                 className={`title-choice ${picked === t.id ? "title-choice-on" : ""} ${
@@ -322,9 +323,15 @@ export function TitlePickModal({ onClose, onSaved }) {
                 onClick={() => owned && setPicked(t.id)}
                 key={t.id}
               >
-                <b>{t.name}</b>
+                <b>{hidden ? "？？？" : t.name}</b>
                 <small>
-                  {owned ? (t.free ? "最初から" : "手に入れた") : t.how}
+                  {hidden
+                    ? "シークレット"
+                    : owned
+                      ? t.free
+                        ? "最初から"
+                        : "手に入れた"
+                      : t.how}
                 </small>
               </button>
             );
