@@ -83,22 +83,27 @@ export function decodeFoilMask(entry, targetWidth = entry.width) {
 
 export function renderFoilFrame(mask, seconds, pixels = mask.pixels) {
   pixels.fill(0);
-  const center = -0.2 + ((seconds % 6.8) / 6.8) * 1.85;
+  const center = -0.3 + ((seconds % 4.2) / 4.2) * 1.95;
   for (let x = 0; x < mask.width; x++)
-    mask.wx[x] = 0.018 * Math.sin((x / mask.width) * 13 + seconds * 0.85);
+    mask.wx[x] = 0.055 * Math.sin((x / mask.width) * 11 + seconds * 1.8);
   for (let y = 0; y < mask.height; y++)
-    mask.wy[y] = 0.032 * Math.sin((y / mask.height) * 17 - seconds * 1.25);
+    mask.wy[y] = 0.095 * Math.sin((y / mask.height) * 12 - seconds * 2.1);
   for (const point of mask.active) {
     const x = point.x / mask.width,
       y = point.y / mask.height;
     const distance =
       0.48 * x + 0.81 * y - center + mask.wx[point.x] + mask.wy[point.y];
-    if (Math.abs(distance) > 0.13) continue;
-    const wide = Math.exp(-Math.pow(distance / 0.062, 2));
-    const fine = Math.exp(-Math.pow(distance / 0.014, 2));
+    const echo = distance + 0.28;
+    if (Math.abs(distance) > 0.2 && Math.abs(echo) > 0.15) continue;
+    const wide = Math.exp(-Math.pow(distance / 0.105, 2));
+    const ripple = Math.exp(-Math.pow(echo / 0.045, 2));
+    const fine = Math.exp(-Math.pow(distance / 0.025, 2));
     const micro = (point.i * 16807) % 101 > 94 ? fine * 0.2 : 0;
     const alpha = Math.round(
-      Math.min(0.78, (0.12 * wide + 0.64 * fine + micro) * point.weight) * 255,
+      Math.min(
+        0.9,
+        (0.3 * wide + 0.66 * fine + 0.38 * ripple + micro) * point.weight,
+      ) * 255,
     );
     if (!alpha) continue;
     const k = point.i * 4;

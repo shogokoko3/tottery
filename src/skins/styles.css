@@ -646,14 +646,27 @@
   min-width: 180px;
   margin: 26px auto 0;
 }
+.skins-detail-overlay {
+  padding: max(12px, env(safe-area-inset-top))
+    max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+}
 .skins-detail-overlay .skin-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(
+    100dvh - max(12px, env(safe-area-inset-top)) -
+      max(12px, env(safe-area-inset-bottom))
+  );
+  overflow: hidden;
+  min-height: 0;
   width: min(840px, 100%);
   position: relative;
   padding: 0;
 }
 .skins-detail-nav {
-  position: sticky;
-  top: 0;
+  flex: 0 0 auto;
+  position: relative;
   z-index: 3;
   display: flex;
   align-items: center;
@@ -678,6 +691,9 @@
   font: 12px/1.6 sans-serif;
 }
 .skins-detail {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: grid;
   grid-template-columns: 1fr 1fr;
 }

@@ -79,7 +79,7 @@ Object.defineProperty(window,'localStorage',{value:{getItem:k=>memory.get(k)??nu
 localStorage.setItem('tottery.skins.v1',JSON.stringify({ether:10000,owned:{'elf-male':2},motion:'full'}));
 localStorage.setItem('tottery.audio.v1',JSON.stringify({muted:true}));
 window.__foilFixture={foil:true,sample:'SSR',n:0,gachaRandom(){const f=window.__foilFixture;const step=f.n++;const card=Math.floor(step/2);if(step%2===0)return f.sample==='mixed'?[.972,.2,.83,.45,.78,.99,.96,.1,.978,.995][card%10]:f.sample==='SSR'?.972:f.sample==='SR'?.85:.2;return f.sample==='mixed'?(card%3===0?.005:.5):f.foil?.005:.5;},craftRandom(){return window.__foilFixture.foil?.005:.5;}};
-const localFetch=window.fetch.bind(window);window.fetch=(input,init)=>{const url=new URL(typeof input==='string'?input:input.url,location.href);return url.origin===location.origin?localFetch(input,init):Promise.resolve(new Response('{}',{headers:{'Content-Type':'application/json'}}));};
+const localFetch=window.fetch.bind(window);window.fetch=(input,init)=>{const url=new URL(typeof input==='string'||input instanceof URL?input:input.url,location.href);return url.origin===location.origin?localFetch(input,init):Promise.resolve(new Response('{}',{headers:{'Content-Type':'application/json'}}));};
 history.replaceState(null,'',location.pathname+'?test=1');
 `;
 fs.writeFileSync(path.join(root,'index.html'),`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>フォイル実装確認</title><body style="margin:0"><div id="root"></div><script>${bootstrap}</script><script>${result.outputFiles[0].text}</script></body></html>`);
