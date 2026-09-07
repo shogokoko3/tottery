@@ -80,6 +80,8 @@ function RevealCard({
   flipped,
   onFlip,
   onComplete,
+  onRarityComplete,
+  foilStart,
   reduce,
   seed,
 }) {
@@ -98,6 +100,8 @@ function RevealCard({
   const [landing, setLanding] = useState(false);
   const [settled, setSettled] = useState(false);
   const [foilComplete, setFoilComplete] = useState(false);
+  const rarityRef = useRef(onRarityComplete);
+  rarityRef.current = onRarityComplete;
   const completeRef = useRef(onComplete);
   const notified = useRef(false);
   const promotionFinal = useRef(false);
@@ -177,13 +181,12 @@ function RevealCard({
       setSettled(true);
       return;
     }
-    // Total quiet beat is 500ms, including the acquisition timeline's normal phase.
-    const timer = setTimeout(
-      () => setSettled(true),
-      650 + (skin.foil ? 500 - FOIL_INITIAL_HOLD_MS : 0),
-    );
+    const timer = setTimeout(() => setSettled(true), 650);
     return () => clearTimeout(timer);
-  }, [final, reduce, skin.foil]);
+  }, [final, reduce]);
+  useEffect(() => {
+    if (settled) rarityRef.current?.();
+  }, [settled]);
   const completeFoil = useCallback(() => setFoilComplete(true), []);
   const finished = final && settled && (!skin.foil || foilComplete);
   useEffect(() => {
@@ -235,7 +238,7 @@ function RevealCard({
         />
         <span className="reveal-front">
           {final ? (
-            skin.foil && settled ? (
+            skin.foil && settled && foilStart ? (
               <FoilAcquisition
                 skin={skin}
                 play
@@ -278,6 +281,26 @@ function RevealCard({
 function SummonReveal({ results, onFinish, reduce }) {
   const [flipped, setFlipped] = useState(() => results.map(() => false));
   const [completed, setCompleted] = useState(() => results.map(() => false));
+  const [raritiesReady, setRaritiesReady] = useState(() =>
+    results.map(() => false),
+  );
+  const [foilStart, setFoilStart] = useState(false);
+  const allRaritiesReady = raritiesReady.every(Boolean);
+  const rarityAt = useCallback((i) => {
+    setRaritiesReady((ready) =>
+      ready[i] ? ready : ready.map((v, k) => (k === i ? true : v)),
+    );
+  }, []);
+  useEffect(() => {
+    if (!allRaritiesReady) return;
+    // Share one gate across the entire draw. The acquisition's initial normal
+    // phase supplies the remaining 320ms of the half-second quiet beat.
+    const timer = setTimeout(
+      () => setFoilStart(true),
+      reduce ? 0 : 500 - FOIL_INITIAL_HOLD_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [allRaritiesReady, reduce]);
   const omen = omenOf(results);
   const seed = seedOf(results);
   const all = flipped.every(Boolean);
@@ -342,6 +365,8 @@ function SummonReveal({ results, onFinish, reduce }) {
               flipped={flipped[i]}
               onFlip={() => flipAt(i)}
               onComplete={() => completeAt(i)}
+              onRarityComplete={() => rarityAt(i)}
+              foilStart={foilStart}
               reduce={reduce}
               seed={seed}
             />
