@@ -83,34 +83,30 @@ export function decodeFoilMask(entry, targetWidth = entry.width) {
 
 export function renderFoilFrame(mask, seconds, pixels = mask.pixels) {
   pixels.fill(0);
-  const center = -0.3 + ((seconds % 4.2) / 4.2) * 1.95;
+  // Continuous curved bands: every foil region changes throughout the cycle,
+  // including tiny board cards. There is no off-screen sweep/wait interval.
+  const time = seconds * ((Math.PI * 2) / 2.8);
   for (let x = 0; x < mask.width; x++)
-    mask.wx[x] = 0.055 * Math.sin((x / mask.width) * 11 + seconds * 1.8);
+    mask.wx[x] = 0.1 * Math.sin((x / mask.width) * 9 + time);
   for (let y = 0; y < mask.height; y++)
-    mask.wy[y] = 0.095 * Math.sin((y / mask.height) * 12 - seconds * 2.1);
+    mask.wy[y] = 0.2 * Math.sin((y / mask.height) * 10 - time * 0.8);
   for (const point of mask.active) {
     const x = point.x / mask.width,
       y = point.y / mask.height;
-    const distance =
-      0.48 * x + 0.81 * y - center + mask.wx[point.x] + mask.wy[point.y];
-    const echo = distance + 0.28;
-    if (Math.abs(distance) > 0.2 && Math.abs(echo) > 0.15) continue;
-    const wide = Math.exp(-Math.pow(distance / 0.105, 2));
-    const ripple = Math.exp(-Math.pow(echo / 0.045, 2));
-    const fine = Math.exp(-Math.pow(distance / 0.025, 2));
-    const micro = (point.i * 16807) % 101 > 94 ? fine * 0.2 : 0;
-    const alpha = Math.round(
-      Math.min(
-        0.9,
-        (0.3 * wide + 0.66 * fine + 0.38 * ripple + micro) * point.weight,
-      ) * 255,
-    );
-    if (!alpha) continue;
+    const phase =
+      (0.55 * x + y + mask.wx[point.x] + mask.wy[point.y]) * Math.PI * 4 - time;
+    const wave = 0.5 + 0.5 * Math.cos(phase);
+    const crest = Math.pow(wave, 7);
+    const weight = Math.sqrt(point.weight);
+    const alpha = Math.round((0.12 + 0.83 * wave) * weight * 255);
     const k = point.i * 4;
-    pixels[k] = 235 + Math.round(20 * (0.5 + 0.5 * Math.sin(y * 8 + seconds)));
-    pixels[k + 1] = 241;
-    pixels[k + 2] =
-      220 + Math.round(35 * (0.5 + 0.5 * Math.cos(x * 9 - seconds * 0.7)));
+    // Gold, cyan and violet travel with the bend; white crests read as metal.
+    const red = 155 + 100 * (0.5 + 0.5 * Math.sin(phase + 0.8));
+    const green = 100 + 135 * (0.5 + 0.5 * Math.sin(phase + 2.9));
+    const blue = 120 + 135 * (0.5 + 0.5 * Math.sin(phase + 4.6));
+    pixels[k] = red + (255 - red) * crest;
+    pixels[k + 1] = green + (255 - green) * crest;
+    pixels[k + 2] = blue + (255 - blue) * crest;
     pixels[k + 3] = alpha;
   }
   return pixels;
