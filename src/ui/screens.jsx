@@ -82,6 +82,7 @@ import { LoginBonus } from "./loginbonus.jsx";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 import { sanitizeLoadout } from "../skins/catalog.js";
+import { createCpuLoadout } from "../skins/cpu-loadout.js";
 
 const mySkins = () => sanitizeLoadout(getCollection().equipped);
 
@@ -1089,6 +1090,7 @@ export function TotteryApp() {
 
 function TotteryScreens() {
   const collection = useCollection();
+  const [cpuSkins, setCpuSkins] = useState({});
   // はじめて遊ぶときは、まず名前を決めてもらう
   let [named, setNamed] = (0, useState)(() => hasName()),
     [e, t] = (0, useState)("home"),
@@ -1226,7 +1228,7 @@ function TotteryScreens() {
         : tut
           ? [{}, {}]
           : d
-            ? [collection.equipped, {}]
+            ? [collection.equipped, cpuSkins]
             : [collection.equipped, collection.equipped];
     return (
       <SeatsProvider value={{ names, icons, titles, skins }}>
@@ -1292,6 +1294,7 @@ function TotteryScreens() {
                 (u(null), m(!1), t("room"));
               }}
               onCpu={() => {
+                setCpuSkins(createCpuLoadout());
                 (u(null),
                   m(!0),
                   setTut(null),
