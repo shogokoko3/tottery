@@ -76,7 +76,7 @@ export const TITLES = [
   ...FOIL_MISSION_DEFS.map((entry) => ({
     id: entry.titleId,
     name: entry.titleName,
-    how: `${entry.missionName}（ミッション報酬を受け取る）`,
+    how: `${entry.missionName}\n（ミッション報酬を受け取る）`,
   })),
 ];
 

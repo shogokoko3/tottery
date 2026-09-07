@@ -2272,8 +2272,21 @@ h3 {
   color: var(--gold-soft);
 }
 .title-choice-locked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   opacity: 0.45;
   cursor: default;
+}
+.title-choice-locked b,
+.title-choice-locked small {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.title-choice-locked small {
+  white-space: pre-line;
 }
 /* 時計の欄: 名前の下に称号 */
 .clock-name {
