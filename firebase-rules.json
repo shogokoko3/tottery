@@ -549,6 +549,13 @@
               }
             }
           }
+        },
+        "matchSize": {
+          ".validate": "newData.val() === 5 || newData.val() === 9"
+        },
+        "guestMatchSize": {
+          ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('seats').child('guest').val() === auth.uid && newData.val() === root.child('rooms').child($code).child('matchSize').val() && (newData.val() === 5 || newData.val() === 9)",
+          ".validate": "newData.val() === 5 || newData.val() === 9"
         }
       }
     },
@@ -604,6 +611,9 @@
               }
             }
           }
+        },
+        "matchSize": {
+          ".validate": "(newData.val() === 5 || newData.val() === 9) && newData.val() === root.child('rooms').child($code).child('matchSize').val()"
         }
       }
     },

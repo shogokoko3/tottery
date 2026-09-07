@@ -42,6 +42,11 @@ import {
   writeLobby,
   updateRoom,
 } from "../net/firebase.js";
+import {
+  loadOnlineSize,
+  saveOnlineSize,
+  matchesOnlineSize,
+} from "../net/match-settings.js";
 import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
@@ -402,7 +407,7 @@ function safeRating(v) {
   return Number.isFinite(n) ? Math.max(0, Math.min(4000, Math.round(n))) : null;
 }
 
-export function RandomMatchScreen({ onBack, onRoomReady }) {
+export function RandomMatchScreen({ onBack, onRoomReady, boardSize }) {
   const loadout = useRef(mySkins()).current;
   let [l, n] = (0, useState)("searching"),
     [a, u] = (0, useState)(""),
@@ -437,6 +442,18 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           return;
         }
         {
+          if (
+            !matchesOnlineSize(g.data, boardSize) ||
+            g.data.guestMatchSize !== boardSize
+          ) {
+            clearInterval(r);
+            deleteLobbyPath(`/${d}`);
+            u(
+              "対戦相手のルール設定を確認できませんでした。もう一度お探しください。",
+            );
+            n("error");
+            return;
+          }
           clearInterval(r);
           let s = d;
           (deleteLobbyPath(`/${d}`),
@@ -509,6 +526,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           .filter(
             ([z, g]) =>
               g &&
+              matchesOnlineSize(g, boardSize) &&
               !g.guest &&
               g.host !== r &&
               m - (g.createdAt || 0) < LOBBY_TTL &&
@@ -549,19 +567,31 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
                 n("error"));
               return;
             }
-            if (
-              (await updateRoom(z, {
-                guestPresent: !0,
-                guestName: myName(),
-                guestIcon: myIcon(),
-                guestTitle: myTitle(),
-                guestRating: myRating(),
-                guestSkins: loadout,
-                guestRuleVersion: ADJUDICATION_RULE_VERSION,
-              }),
-              o.current)
-            )
+            if (!matchesOnlineSize(b.data, boardSize)) {
+              await leaveRoom(z);
+              await deleteLobbyPath(`/${z}/guest`);
+              claimed.current = null;
+              continue;
+            }
+            const ready = await updateRoom(z, {
+              guestPresent: !0,
+              guestName: myName(),
+              guestIcon: myIcon(),
+              guestTitle: myTitle(),
+              guestRating: myRating(),
+              guestSkins: loadout,
+              guestRuleVersion: ADJUDICATION_RULE_VERSION,
+              guestMatchSize: boardSize,
+            });
+            if (o.current) return;
+            if (!ready.ok) {
+              await leaveRoom(z);
+              await deleteLobbyPath(`/${z}/guest`);
+              claimed.current = null;
+              u(ready.error);
+              n("error");
               return;
+            }
             claimed.current = null;
             onRoomReady({
               code: z,
@@ -583,6 +613,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
         }
         let v = generateRoomCode() + generateRoomCode(),
           p = await createRoom(v, {
+            matchSize: boardSize,
             guestPresent: !1,
             gameState: null,
             hostName: myName(),
@@ -598,6 +629,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           return;
         }
         let w = await writeLobby(`/${v}`, {
+          matchSize: boardSize,
           host: r,
           guest: null,
           createdAt: Date.now(),
@@ -652,8 +684,14 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
     )
   );
 }
-export function RulesSelectScreen({ onStart, onBack, backLabel, note }) {
-  let [a, u] = (0, useState)(5);
+export function RulesSelectScreen({
+  onStart,
+  onBack,
+  backLabel,
+  note,
+  initialSize = 5,
+}) {
+  let [a, u] = (0, useState)(initialSize);
   return (
     <div className="setup-wrap">
       <h2>ルール設定</h2>
@@ -678,6 +716,7 @@ export function RulesSelectScreen({ onStart, onBack, backLabel, note }) {
             <button
               className={`board-choice ${a === i ? "active" : ""}`}
               onClick={() => u(i)}
+              aria-pressed={a === i}
               key={i}
             >
               <div
@@ -1135,6 +1174,7 @@ function TotteryScreens() {
   }
   let [p, w] = (0, useState)(!1);
   function z(b) {
+    if (o === "online") saveOnlineSize(b);
     (f(b), o === "room" && w(!0), t(o));
   }
   // 画面の枠(背景や上のバー)は GameShell が出すので、その中に入れる
@@ -1273,7 +1313,11 @@ function TotteryScreens() {
             <TutorialSelect onBack={() => t("menu")} onStart={startTutorial} />
           ),
           online: (
-            <RandomMatchScreen onBack={() => t("matching")} onRoomReady={v} />
+            <RandomMatchScreen
+              boardSize={i}
+              onBack={() => t("matching")}
+              onRoomReady={v}
+            />
           ),
           room: (
             <RoomScreen
@@ -1297,6 +1341,7 @@ function TotteryScreens() {
           ),
           rules: (
             <RulesSelectScreen
+              initialSize={o === "online" ? loadOnlineSize() : 5}
               onStart={z}
               onBack={() => t(rulesFrom)}
               backLabel={
@@ -1304,13 +1349,7 @@ function TotteryScreens() {
                   ? "フレンド対戦に戻る"
                   : "対戦相手を選ぶに戻る"
               }
-              note={
-                o === "online"
-                  ? "この設定で対戦相手を探します。相手が先に待っていた場合は、相手の設定が使われます。"
-                  : o === "room"
-                    ? "この設定でルームを作ります。"
-                    : null
-              }
+              note={o === "room" ? "この設定でルームを作ります。" : null}
             />
           ),
         }[e]

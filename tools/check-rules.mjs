@@ -1145,6 +1145,17 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
   deny("未サインインではランキングを読めない", canRead(db, ["ranks"], none));
   allow("サインインしていれば読める", canRead(db, ["ranks"], X));
 
+  console.log("\nオンラインの盤面サイズ一致");
+  const matching = { rooms: { ABCD: { seats: {host: "uidA", guest: "uidB"}, createdAt: NOW, matchSize: 9 } } };
+  allow("部屋作成時に9×9を指定できる", canWrite({}, ["rooms", "ABCD"], A, {seats:{host:"uidA"}, createdAt:NOW, matchSize:9}));
+  deny("不正なサイズで作れない", canWrite({}, ["rooms", "ABCD"], A, {seats:{host:"uidA"}, createdAt:NOW, matchSize:7}));
+  allow("部屋と同じサイズを掲示できる", canWrite(matching, ["lobby", "ABCD"], A, {host:"uidA", createdAt:NOW, matchSize:9}));
+  deny("部屋と違うサイズを掲示できない", canWrite(matching, ["lobby", "ABCD"], A, {host:"uidA", createdAt:NOW, matchSize:5}));
+  allow("参加者が同じサイズで合意できる", canWrite(matching, ["rooms", "ABCD", "guestMatchSize"], B, 9));
+  deny("参加者は違うサイズで合意できない", canWrite(matching, ["rooms", "ABCD", "guestMatchSize"], B, 5));
+  deny("主催者が参加者の合意を代筆できない", canWrite(matching, ["rooms", "ABCD", "guestMatchSize"], A, 9));
+  deny("部屋作成後は主催者もサイズを書き換えられない", canWrite(matching, ["rooms", "ABCD", "matchSize"], A, 5));
+
   /* --- 埋め込んだ uid がずれていないか --- */
   console.log("\n運営の uid のつじつま");
   const raw = readFileSync(join(here, "..", "firebase-rules.json"), "utf8");
