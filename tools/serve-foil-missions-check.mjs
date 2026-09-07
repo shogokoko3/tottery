@@ -43,7 +43,7 @@ const result = await build({
 import {useEffect,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {MissionsScreen} from './src/ui/missions.jsx';
-import {MenuScreen} from './src/ui/screens.jsx';
+import {MenuScreen,GameShell} from './src/ui/screens.jsx';
 import {AccountCard,TitlePickModal} from './src/ui/account.jsx';
 import {FoilArtwork} from './src/ui/foil-artwork.jsx';
 import {loadProfile,dayKey} from './src/game/profile.js';
@@ -117,9 +117,17 @@ function App(){
  }
  const ownedFoils=POOL.filter(skin=>collection.owned[foilId(skin.id)]>0);
  const sample=byId(collection.owned[foilId(selected)]?foilId(selected):selected);
+ if(${process.argv.includes("--layout")}) return <GameShell onHome={()=>setPage('home')} setShowRules={()=>{}}>
+  {page==='missions'?<MissionsScreen key={revision} onBack={()=>setPage('home')}/>:
+   <section className="setup-wrap"><h2>ホーム（確認用）</h2>
+    <p>仮データでミッション画面を確認できます。</p>
+    <button className="btn" onClick={()=>setPage('missions')}>ミッションを開く</button>
+    <button className="btn" onClick={()=>scenario('all')}>全15フォイルで受取を確認</button>
+   </section>}
+ </GameShell>;
  return <div className="tottery-root foil-missions-fixture">
   <style>{styles+skinStyles}</style>
-  <style>{'.foil-missions-stage{position:relative;width:100%;margin:0 auto}.foil-missions-stage.is-narrow{width:390px;max-width:100%;border-inline:1px dashed #687693}.foil-missions-stage.is-narrow .modal-panel{max-width:362px}.foil-missions-stage .home-wrap{padding:20px}'}</style>
+  <style>{'.foil-missions-fixture:has(.missions-screen){height:auto;min-height:100vh}.foil-missions-stage:has(.missions-screen){height:85dvh}.foil-missions-stage{position:relative;width:100%;margin:0 auto}.foil-missions-stage.is-narrow{width:390px;max-width:100%;border-inline:1px dashed #687693}.foil-missions-stage.is-narrow .modal-panel{max-width:362px}.foil-missions-stage .home-wrap{padding:20px}'}</style>
   <style>{'.foil-missions-tools{padding:14px;background:#10192a;color:#e5eaf3;border-bottom:1px solid #a18a5c;font:13px/1.6 system-ui}.foil-missions-tools h1{font-size:17px;margin:0 0 4px}.foil-missions-tools p{margin:4px 0}.foil-missions-tools nav{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.foil-missions-tools button,.foil-missions-tools select{font:inherit;border:1px solid #768096;color:#edf1fb;background:#24334b;border-radius:5px;padding:6px 9px}.foil-missions-tools button:disabled{opacity:.5}.foil-missions-tools button[aria-pressed=true]{border-color:#edd299;color:#edd299}.foil-missions-tools select{max-width:100%}.foil-missions-fixture-summary{display:flex;gap:12px;align-items:center;margin-top:12px}.foil-missions-fixture-art{width:48px;height:64px;flex:none;border-radius:5px;overflow:hidden}.foil-missions-fixture-art>img{width:100%;height:100%;object-fit:cover}.foil-missions-tools output{display:block;overflow-wrap:anywhere}.foil-missions-tools details{margin-top:8px}.foil-missions-tools pre{max-height:180px;overflow:auto;white-space:pre-wrap;font:11px/1.5 monospace}.foil-missions-account{max-width:580px;margin:auto;padding:20px}.foil-missions-account h2{margin-top:0}.foil-missions-title-status{margin:14px 0;padding:12px;background:#152236;border:1px solid #64728a;border-radius:6px;overflow-wrap:anywhere}.foil-missions-fixture .setup-wrap{padding-top:24px}'}</style>
   <header className="foil-missions-tools">
    <h1>フォイル獲得ミッション・称号の実UI確認</h1>

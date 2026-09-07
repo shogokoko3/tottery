@@ -5,7 +5,7 @@
  * ガチャチケットの4種で、配る先が2か所(アカウントとスキンの持ち物)に
  * 分かれているので、受け取りはここでまとめている。
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, Crown } from "../icons.jsx";
 import {
   grantMissionTitle,
@@ -19,6 +19,14 @@ import { getCollection, useCollection } from "../skins/store.js";
 
 /** 褒美の呼び名。手紙の添付と同じ形なので、共通のものを使う */
 export const rewardLabel = giftLabel;
+const TABS = [
+  { id: "daily", label: "デイリー" },
+  { id: "weekly", label: "ウィークリー" },
+  { id: "normal", label: "ノーマル" },
+  { id: "event", label: "イベント" },
+];
+// Existing lifetime missions belong to Normal; period missions need their own definitions.
+const categoryOf = (mission) => mission.category || "normal";
 
 export function MissionsScreen({ onBack }) {
   const collection = useCollection();
@@ -26,9 +34,15 @@ export function MissionsScreen({ onBack }) {
   const [busy, setBusy] = useState(false);
   const claiming = useRef(false);
   const [message, setMessage] = useState("");
+  const [category, setCategory] = useState("normal");
+  const scrollArea = useRef(null);
   const rows = listMissions(profile, collection);
+  const visibleRows = rows.filter((m) => categoryOf(m) === category);
   const secrets = listSecrets(profile);
-  const ready = rows.filter((m) => m.done && !m.claimed);
+  const ready = visibleRows.filter((m) => m.done && !m.claimed);
+  useEffect(() => {
+    if (scrollArea.current) scrollArea.current.scrollTop = 0;
+  }, [category]);
 
   /** 1件ぶんを配る。控えるのは配り終えてから(途中で失敗しても二重取りにならない) */
   async function give(mission) {
@@ -90,78 +104,146 @@ export function MissionsScreen({ onBack }) {
   }
 
   return (
-    <div className="setup-wrap">
-      <h2>ミッション</h2>
-      <div className="level-badge">
-        <Crown size={16} />
-        <span>ガチャチケット {collection.tickets}枚</span>
-        <small>条件を満たすと受け取れます</small>
+    <div className="setup-wrap missions-screen">
+      <header className="missions-heading">
+        <h2>ミッション</h2>
+        <div className="level-badge">
+          <Crown size={16} />
+          <span>ガチャチケット {collection.tickets}枚</span>
+          <small>条件を満たすと受け取れます</small>
+        </div>
+      </header>
+      <div
+        className="missions-tabs"
+        role="tablist"
+        aria-label="ミッションの種類"
+      >
+        {TABS.map((tab, index) => {
+          const count = rows.filter(
+            (m) => categoryOf(m) === tab.id && m.done && !m.claimed,
+          ).length;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={`mission-tab-${tab.id}`}
+              aria-controls="missions-panel"
+              aria-selected={category === tab.id}
+              tabIndex={category === tab.id ? 0 : -1}
+              onClick={() => setCategory(tab.id)}
+              onKeyDown={(event) => {
+                const next =
+                  event.key === "ArrowRight"
+                    ? (index + 1) % TABS.length
+                    : event.key === "ArrowLeft"
+                      ? (index + TABS.length - 1) % TABS.length
+                      : event.key === "Home"
+                        ? 0
+                        : event.key === "End"
+                          ? TABS.length - 1
+                          : null;
+                if (next === null) return;
+                event.preventDefault();
+                setCategory(TABS[next].id);
+                event.currentTarget.parentElement
+                  .querySelectorAll('[role="tab"]')
+                  [next].focus();
+              }}
+            >
+              {tab.label}
+              {count > 0 && (
+                <span
+                  className="missions-tab-count"
+                  aria-label={`受取可能${count}件`}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
-      <p className="mission-message" role="status">
-        {message}
-      </p>
-      {/* シークレットは条件を伏せておく。出くわして初めて名前が出る */}
-      {secrets.found.length > 0 && (
-        <div className="mission-secrets">
-          {secrets.found.map((sc) => (
-            <div className="secret-row" key={sc.id}>
-              <h4>{sc.name}</h4>
-              <p className="hint">{sc.how}</p>
-              <p className="secret-chance">{chanceLabel(sc.chance)}</p>
-              {sc.like && <p className="hint">{sc.like}</p>}
+      <div
+        className="missions-scroll"
+        id="missions-panel"
+        role="tabpanel"
+        aria-labelledby={`mission-tab-${category}`}
+        tabIndex={0}
+        ref={scrollArea}
+      >
+        {/* シークレットは条件を伏せておく。出くわして初めて名前が出る */}
+        {category === "normal" && secrets.found.length > 0 && (
+          <div className="mission-secrets">
+            {secrets.found.map((sc) => (
+              <div className="secret-row" key={sc.id}>
+                <h4>{sc.name}</h4>
+                <p className="hint">{sc.how}</p>
+                <p className="secret-chance">{chanceLabel(sc.chance)}</p>
+                {sc.like && <p className="hint">{sc.like}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+        {visibleRows.length === 0 && (
+          <div className="missions-empty">ミッションはありません。</div>
+        )}
+        <div className="mission-list">
+          {visibleRows.map((m) => (
+            <div
+              className={`mission ${m.claimed ? "is-claimed" : ""} ${
+                m.done && !m.claimed ? "is-ready" : ""
+              }`}
+              key={m.id}
+            >
+              <div className="mission-head">
+                <span className="mission-kind">{KINDS[m.kind].label}</span>
+                <b>{m.name}</b>
+              </div>
+              <div className="mission-bar">
+                <span style={{ width: `${Math.round(m.ratio * 100)}%` }} />
+              </div>
+              <div className="mission-foot">
+                <small>
+                  {m.now}
+                  {KINDS[m.kind].unit} / {m.goal}
+                  {KINDS[m.kind].unit} · {rewardLabel(m.reward)}
+                </small>
+                {m.claimed ? (
+                  <span className="mission-done">受け取り済み</span>
+                ) : (
+                  <button
+                    className="btn btn-primary btn-small"
+                    disabled={!m.done || busy}
+                    onClick={() => claim(m)}
+                  >
+                    <Check size={14} /> 受け取る
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
-      )}
-      {ready.length > 0 && (
-        <button
-          className="btn btn-primary btn-wide"
-          disabled={busy}
-          onClick={claimAll}
-        >
-          <Check size={16} /> {ready.length}件をまとめて受け取る
-        </button>
-      )}
-      <div className="mission-list">
-        {rows.map((m) => (
-          <div
-            className={`mission ${m.claimed ? "is-claimed" : ""} ${
-              m.done && !m.claimed ? "is-ready" : ""
-            }`}
-            key={m.id}
-          >
-            <div className="mission-head">
-              <span className="mission-kind">{KINDS[m.kind].label}</span>
-              <b>{m.name}</b>
-            </div>
-            <div className="mission-bar">
-              <span style={{ width: `${Math.round(m.ratio * 100)}%` }} />
-            </div>
-            <div className="mission-foot">
-              <small>
-                {m.now}
-                {KINDS[m.kind].unit} / {m.goal}
-                {KINDS[m.kind].unit} · {rewardLabel(m.reward)}
-              </small>
-              {m.claimed ? (
-                <span className="mission-done">受け取り済み</span>
-              ) : (
-                <button
-                  className="btn btn-primary btn-small"
-                  disabled={!m.done || busy}
-                  onClick={() => claim(m)}
-                >
-                  <Check size={14} /> 受け取る
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
       </div>
-      <p className="hint">条件は今後も増やします。</p>
-      <button className="btn btn-ghost btn-home" onClick={onBack}>
-        <ArrowLeft size={16} /> ホームに戻る
-      </button>
+      <footer className="missions-footer">
+        <p className="mission-message" role="status">
+          {message}
+        </p>
+        <div className="missions-actions">
+          <button type="button" className="btn btn-ghost" onClick={onBack}>
+            <ArrowLeft size={16} /> ホームに戻る
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={busy || !ready.length}
+            onClick={claimAll}
+          >
+            <Check size={16} />{" "}
+            {ready.length > 0 ? `一括受取（${ready.length}）` : "一括受取"}
+          </button>
+        </div>
+      </footer>
     </div>
   );
 }
