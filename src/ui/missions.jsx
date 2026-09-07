@@ -97,33 +97,22 @@ export function MissionsScreen({ onBack }) {
         <span>ガチャチケット {collection.tickets}枚</span>
         <small>条件を満たすと受け取れます</small>
       </div>
-      <p className="hint">
-        各キャラのフォイルを獲得すると、専用の称号を受け取れます。
-        ガチャ・錬成・通算100回の加工報酬が対象です。すでに所持しているフォイルも達成になります。
-        受け取った称号は設定で選べます。
-      </p>
       <p className="mission-message" role="status">
         {message}
       </p>
       {/* シークレットは条件を伏せておく。出くわして初めて名前が出る */}
-      <div className="mission-secrets">
-        <h3>シークレット</h3>
-        {secrets.found.map((sc) => (
-          <div className="secret-row" key={sc.id}>
-            <h4>{sc.name}</h4>
-            <p className="hint">{sc.how}</p>
-            <p className="secret-chance">{chanceLabel(sc.chance)}</p>
-            {sc.like && <p className="hint">{sc.like}</p>}
-          </div>
-        ))}
-        {secrets.hidden > 0 && (
-          <p className="hint">
-            まだ見つかっていないもの: {secrets.hidden} 件
-            <br />
-            めったに起きない場面に出くわすと達成になります。条件は伏せてあります。
-          </p>
-        )}
-      </div>
+      {secrets.found.length > 0 && (
+        <div className="mission-secrets">
+          {secrets.found.map((sc) => (
+            <div className="secret-row" key={sc.id}>
+              <h4>{sc.name}</h4>
+              <p className="hint">{sc.how}</p>
+              <p className="secret-chance">{chanceLabel(sc.chance)}</p>
+              {sc.like && <p className="hint">{sc.like}</p>}
+            </div>
+          ))}
+        </div>
+      )}
       {ready.length > 0 && (
         <button
           className="btn btn-primary btn-wide"
