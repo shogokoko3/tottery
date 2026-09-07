@@ -121,20 +121,22 @@ export function renderFoilFrame(mask, seconds, pixels = mask.pixels) {
   // Twinkle only on sampled foil flecks already present in the background.
   // Positions never move, and no new star shapes or background artwork are drawn.
   for (const point of mask.background || []) {
+    const x = point.x / mask.width,
+      y = point.y / mask.height;
     const grain = ((point.i * 16807) % 101) / 101;
+    // Neighbouring flecks brighten together in travelling groups. Individual
+    // pinpricks alone disappear at phone/card sizes, even at high peak opacity.
+    const phase = (0.8 * x + y) * Math.PI * 4 - seconds * 2.7;
+    const glow = 0.5 + 0.5 * Math.cos(phase);
+    const sweep = Math.pow(glow, 3);
     const pulse = Math.pow(
-      0.5 + 0.5 * Math.sin(seconds * 3.4 + grain * Math.PI * 2),
-      9,
+      0.5 + 0.5 * Math.sin(seconds * 3.6 + grain * Math.PI * 2),
+      5,
     );
-    const glow =
-      0.5 +
-      0.5 *
-        Math.sin(
-          (point.x / mask.width) * 7 +
-            (point.y / mask.height) * 5 -
-            seconds * 1.6,
-        );
-    const strength = (0.1 * glow + 0.86 * pulse) * Math.sqrt(point.weight);
+    const strength = Math.min(
+      0.98,
+      (0.12 + 0.84 * sweep + 0.36 * pulse) * Math.pow(point.weight, 0.32),
+    );
     const k = point.i * 4;
     if (pixels[k + 3]) continue;
     pixels[k] = 246;
