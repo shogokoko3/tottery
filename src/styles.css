@@ -3418,6 +3418,27 @@ h3 {
   gap: 10px;
   margin: 14px 0;
 }
+.missions-reset {
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  font: 11px/1.5 sans-serif;
+}
+.mission-segments {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+  margin: 10px 0;
+}
+.mission-segments span {
+  height: 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #071323;
+}
+.mission-segments .is-filled {
+  background: linear-gradient(180deg, var(--gold-soft), var(--gold-deep));
+  border-color: var(--gold);
+}
 .mission {
   border: 1px solid var(--line);
   border-radius: 10px;

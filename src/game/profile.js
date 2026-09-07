@@ -16,6 +16,11 @@ import { findTitle, hasTitle, newlyEarned } from "./titles.js";
 import { SECRETS } from "./secrets.js";
 import { MAX_LEVEL, XP, levelOfXp, progressOfXp } from "./level.js";
 import { publishXpNotice } from "./xp-notices.js";
+import {
+  sanitizeMissionProgress,
+  recordMissionLogin,
+  recordMissionGame,
+} from "./periodic-missions.js";
 
 export { MAX_LEVEL };
 import {
@@ -80,6 +85,7 @@ const EMPTY = {
   bonusTaken: 0,
   // 褒美を受け取り済みのミッション
   missions: [],
+  missionProgress: null,
   // 一度クリアしたチュートリアル。2回目からは経験値を配らない
   cleared: [],
   // 受け取り済みの手紙。二重取りを防ぐ
@@ -148,6 +154,7 @@ export function loadProfile() {
     missions: Array.isArray(saved.missions)
       ? saved.missions.filter((x) => typeof x === "string")
       : [],
+    missionProgress: sanitizeMissionProgress(saved.missionProgress),
     cleared: Array.isArray(saved.cleared)
       ? saved.cleared.filter((x) => Number.isInteger(x))
       : [],
@@ -314,6 +321,17 @@ export function recordGame(won, opts) {
   const next = {
     ...profile,
     plays: profile.plays + 1,
+    missionProgress: recordMissionGame(
+      profile.missionProgress,
+      {
+        online: opts?.online === true,
+        tutorial: !!opts?.tutorial || opts?.tutorialId != null,
+        won,
+        ranks: opts?.adoptedRanks || [],
+        matchId: opts?.matchId,
+      },
+      opts?.at,
+    ),
     battles: profile.battles + (opts && opts.tutorial ? 0 : 1),
     wins: profile.wins + (won ? 1 : 0),
     draws: profile.draws + (draw ? 1 : 0),
@@ -390,13 +408,24 @@ export function touchDay(at) {
   const profile = loadProfile();
   const now = at == null ? Date.now() : at;
   const today = dayKey(now);
-  if (profile.lastDay === today) return profile;
+  const missionProgress = recordMissionLogin(profile.missionProgress, now);
+  if (profile.lastDay === today) {
+    if (
+      JSON.stringify(profile.missionProgress) ===
+      JSON.stringify(missionProgress)
+    )
+      return profile;
+    const next = { ...profile, missionProgress };
+    saveProfile(next);
+    return next;
+  }
   const yesterday = dayKey(now - 24 * 60 * 60 * 1000);
   const next = {
     ...profile,
     days: profile.days + 1,
     streak: profile.lastDay === yesterday ? profile.streak + 1 : 1,
     lastDay: today,
+    missionProgress,
   };
   saveProfile(next);
   return next;

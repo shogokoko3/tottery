@@ -46,7 +46,8 @@ import {MissionsScreen} from './src/ui/missions.jsx';
 import {MenuScreen,GameShell} from './src/ui/screens.jsx';
 import {AccountCard,TitlePickModal} from './src/ui/account.jsx';
 import {FoilArtwork} from './src/ui/foil-artwork.jsx';
-import {loadProfile,dayKey} from './src/game/profile.js';
+import {loadProfile,dayKey,touchDay,recordGame} from './src/game/profile.js';
+import {missionPeriods} from './src/game/periodic-missions.js';
 import {titleOf,ownedTitles} from './src/game/titles.js';
 import {useCollection,getCollection,updateCollection,COLLECTION_KEY} from './src/skins/store.js';
 import {normalize,grantSkin,pull,craft,claimFoilMilestone,FOIL_MILESTONE} from './src/skins/collection.js';
@@ -117,12 +118,33 @@ function App(){
  }
  const ownedFoils=POOL.filter(skin=>collection.owned[foilId(skin.id)]>0);
  const sample=byId(collection.owned[foilId(selected)]?foilId(selected):selected);
+ async function periodicScenario(kind){
+  profileSeed(); await updateCollection(()=>empty());
+  const end=Date.now(), weekStart=missionPeriods(end).nextWeek-7*86400000;
+  if(kind==='daily'){
+   touchDay(end);recordGame(true,{online:true,matchId:'fixture-daily:'+end,adoptedRanks:['K','10','4','2'],at:end});
+   await updateCollection(s=>pull(s,1,()=>.5));
+  }else{
+   const count=kind==='five'?5:3;
+   for(let n=0;n<count-1;n++)touchDay(weekStart+n*86400000);
+   touchDay(end);
+   for(let n=0;n<(kind==='five'?5:2);n++)recordGame(true,{online:true,matchId:'fixture-week:'+end+':'+n,adoptedRanks:['K','10','4','2'],at:end});
+  }
+  setPage('missions');setRevision(n=>n+1);
+ }
  if(${process.argv.includes("--layout")}) return <GameShell onHome={()=>setPage('home')} setShowRules={()=>{}}>
   {page==='missions'?<MissionsScreen key={revision} onBack={()=>setPage('home')}/>:
    <section className="setup-wrap"><h2>ホーム（確認用）</h2>
     <p>仮データでミッション画面を確認できます。</p>
     <button className="btn" onClick={()=>setPage('missions')}>ミッションを開く</button>
     <button className="btn" onClick={()=>scenario('all')}>全15フォイルで受取を確認</button>
+    {${process.argv.includes("--periodic")}&&<>
+     <button className="btn" onClick={()=>periodicScenario('daily')}>デイリー3件を達成</button>
+     <button className="btn" onClick={()=>periodicScenario('partial')}>週間3日・2勝</button>
+     <button className="btn" onClick={()=>periodicScenario('five')}>週間5日・5勝</button>
+     <button className="btn" onClick={()=>{window.__missionTime=missionPeriods().nextDay;setPage('missions');setRevision(n=>n+1);}}>翌朝5時へ</button>
+     <button className="btn" onClick={()=>{window.__missionTime=missionPeriods().nextWeek;setPage('missions');setRevision(n=>n+1);}}>月曜5時へ</button>
+    </>}
    </section>}
  </GameShell>;
  return <div className="tottery-root foil-missions-fixture">
@@ -180,6 +202,7 @@ if (process.argv.includes("--build-only")) {
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "tottery-foil-missions-check-"));
 const bootstrap = `
+${process.argv.includes("--periodic") ? "window.__missionTime=Date.parse('2026-09-11T12:00:00+09:00');Date.now=()=>window.__missionTime;" : ""}
 const memory=new Map();
 const changed=()=>window.dispatchEvent(new Event('foil-missions-memory-change'));
 Object.defineProperty(window,'localStorage',{value:{

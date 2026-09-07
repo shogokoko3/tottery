@@ -1443,6 +1443,13 @@ export function GameCore({
     const foeRating = ranked && network.ratings ? network.ratings[1 - p] : null;
     // チュートリアルは話ごとの経験値。対戦の数には数えない
     const after = recordGame(won, {
+      online: !!network && !tutorial,
+      matchId: network
+        ? `${network.code}:${network.createdAt || 0}:${round}`
+        : null,
+      adoptedRanks: Object.keys(
+        a.players[network ? p : 0]?.armyRankCounts || {},
+      ),
       deferXpNotice: true,
       ...(typeof foeRating === "number" ? { foeRating } : null),
       ...(tutorial

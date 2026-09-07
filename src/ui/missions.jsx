@@ -11,11 +11,18 @@ import {
   grantMissionTitle,
   loadProfile,
   markMissionClaimed,
+  touchDay,
 } from "../game/profile.js";
 import { KINDS, listMissions, statusOf } from "../game/missions.js";
 import { chanceLabel, listSecrets } from "../game/secrets.js";
 import { giftLabel, giveGift } from "../game/gifts.js";
-import { getCollection, useCollection } from "../skins/store.js";
+import {
+  getCollection,
+  useCollection,
+  updateCollection,
+} from "../skins/store.js";
+import { claimPeriodicMission } from "../game/periodic-missions.js";
+import { useMissionProfile } from "./mission-profile.js";
 
 /** 褒美の呼び名。手紙の添付と同じ形なので、共通のものを使う */
 export const rewardLabel = giftLabel;
@@ -25,16 +32,16 @@ const TABS = [
   { id: "normal", label: "ノーマル" },
   { id: "event", label: "イベント" },
 ];
-// Existing lifetime missions belong to Normal; period missions need their own definitions.
+// Existing lifetime missions belong to Normal.
 const categoryOf = (mission) => mission.category || "normal";
 
 export function MissionsScreen({ onBack }) {
   const collection = useCollection();
-  const [profile, setProfile] = useState(() => loadProfile());
+  const [profile, setProfile] = useMissionProfile();
   const [busy, setBusy] = useState(false);
   const claiming = useRef(false);
   const [message, setMessage] = useState("");
-  const [category, setCategory] = useState("normal");
+  const [category, setCategory] = useState("daily");
   const scrollArea = useRef(null);
   const rows = listMissions(profile, collection);
   const visibleRows = rows.filter((m) => categoryOf(m) === category);
@@ -46,6 +53,12 @@ export function MissionsScreen({ onBack }) {
 
   /** 1件ぶんを配る。控えるのは配り終えてから(途中で失敗しても二重取りにならない) */
   async function give(mission) {
+    if (mission.periodic) {
+      await updateCollection((collection) =>
+        claimPeriodicMission(collection, touchDay(), mission.id),
+      );
+      return loadProfile();
+    }
     const current = loadProfile();
     const latest = statusOf(mission, current, getCollection());
     if (latest.claimed) return current;
@@ -112,6 +125,12 @@ export function MissionsScreen({ onBack }) {
           <span>ガチャチケット {collection.tickets}枚</span>
           <small>条件を満たすと受け取れます</small>
         </div>
+        {category === "daily" && (
+          <p className="missions-reset">毎日 朝5:00更新（日本時間）</p>
+        )}
+        {category === "weekly" && (
+          <p className="missions-reset">毎週月曜 朝5:00更新（日本時間）</p>
+        )}
       </header>
       <div
         className="missions-tabs"
@@ -197,17 +216,36 @@ export function MissionsScreen({ onBack }) {
               key={m.id}
             >
               <div className="mission-head">
-                <span className="mission-kind">{KINDS[m.kind].label}</span>
+                <span className="mission-kind">
+                  {m.kindLabel || KINDS[m.kind]?.label}
+                </span>
                 <b>{m.name}</b>
               </div>
-              <div className="mission-bar">
-                <span style={{ width: `${Math.round(m.ratio * 100)}%` }} />
+              <div
+                className={m.segments ? "mission-segments" : "mission-bar"}
+                role="progressbar"
+                aria-label={m.name}
+                aria-valuemin={0}
+                aria-valuemax={m.goal}
+                aria-valuenow={m.now}
+              >
+                {m.segments ? (
+                  Array.from({ length: m.goal }, (_, index) => (
+                    <span
+                      key={index}
+                      className={index < m.now ? "is-filled" : ""}
+                      aria-hidden="true"
+                    />
+                  ))
+                ) : (
+                  <span style={{ width: `${Math.round(m.ratio * 100)}%` }} />
+                )}
               </div>
               <div className="mission-foot">
                 <small>
                   {m.now}
-                  {KINDS[m.kind].unit} / {m.goal}
-                  {KINDS[m.kind].unit} · {rewardLabel(m.reward)}
+                  {m.unit ?? KINDS[m.kind]?.unit} / {m.goal}
+                  {m.unit ?? KINDS[m.kind]?.unit} · {rewardLabel(m.reward)}
                 </small>
                 {m.claimed ? (
                   <span className="mission-done">受け取り済み</span>

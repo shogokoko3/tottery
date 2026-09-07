@@ -69,6 +69,7 @@ import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
 import SKIN_STYLES from "../skins/styles.css";
 import { SkinsScreen } from "./skins.jsx";
+import { useMissionProfile } from "./mission-profile.js";
 import { MissionsScreen } from "./missions.jsx";
 import { BattlePassScreen } from "./battlepass.jsx";
 import { LettersScreen, useUnreadLetters } from "./letters.jsx";
@@ -269,7 +270,7 @@ export function MenuScreen({
   onRanking,
   onLetters,
 }) {
-  const profile = loadProfile();
+  const [profile] = useMissionProfile();
   // 受け取れるミッションの数と、未読のお知らせ。入り口に印を出す
   const unread = useUnreadLetters();
   const collection = useCollection();
@@ -441,6 +442,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           (deleteLobbyPath(`/${d}`),
             onRoomReady({
               code: s,
+              createdAt: g.data.createdAt,
               myPlayerIndex: 0,
               foeUid: foeOf(g.data.seats, myUid()),
               ruleVersion: roomRuleVersion(g.data),
@@ -563,6 +565,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
             claimed.current = null;
             onRoomReady({
               code: z,
+              createdAt: b.data?.createdAt,
               myPlayerIndex: 1,
               foeUid: foeOf(b.data && b.data.seats, myUid()),
               ruleVersion: roomRuleVersion({
@@ -777,6 +780,7 @@ export function RoomScreen({
               (clearInterval(x),
               onRoomReady({
                 code: f,
+                createdAt: N.data.createdAt,
                 myPlayerIndex: 0,
                 foeUid: foeOf(N.data.seats, myUid()),
                 ruleVersion: roomRuleVersion(N.data),
@@ -860,6 +864,7 @@ export function RoomScreen({
     }
     onRoomReady({
       code: P,
+      createdAt: x.data.createdAt,
       foeUid: foeOf(x.data.seats, myUid()),
       names: [safeName(x.data.hostName), myName()],
       icons: [safeTag(x.data.hostIcon), myIcon()],

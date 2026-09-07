@@ -10,6 +10,10 @@ import {
   sanitizeLoadout,
 } from "./catalog.js";
 import { craftCheck, dismantleCheck } from "./ether.js";
+import {
+  missionPeriods,
+  sanitizeMissionClaims,
+} from "../game/periodic-missions.js";
 
 const count = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : 0);
 const addCount = (a, b) => Math.min(Number.MAX_SAFE_INTEGER, a + b);
@@ -114,6 +118,12 @@ export function normalize(raw) {
     // ガチャチケット。ミッションの褒美で増える。
     // いまのガチャは無料のテスト版なので、まだ減らない
     tickets: count(value.tickets),
+    missionClaims: sanitizeMissionClaims(value.missionClaims),
+    missionDrawDay:
+      typeof value.missionDrawDay === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(value.missionDrawDay)
+        ? value.missionDrawDay
+        : null,
     // エーテル。ダブりを崩すと増え、狙った1枚を作ると減る
     ether: count(value.ether),
     owned,
@@ -170,6 +180,7 @@ export function pull(state, amount, random = Math.random) {
     owned,
     acquired,
     draws: state.draws + amount,
+    missionDrawDay: missionPeriods().day,
     pending: { results },
   };
 }

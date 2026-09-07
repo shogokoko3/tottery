@@ -16,6 +16,7 @@
  */
 import { levelOf } from "./profile.js";
 import { FOIL_MISSION_DEFS } from "./foil-missions.js";
+import { periodicMissionRows } from "./periodic-missions.js";
 
 /** 条件ごとの、いまの数字の読み方 */
 export const STATS = {
@@ -137,6 +138,12 @@ export const byId = (id) => MISSIONS.find((m) => m.id === id) || null;
  * now が goal に届いていれば done、受け取り済みなら claimed。
  */
 export function statusOf(mission, profile, collection) {
+  if (mission.periodic)
+    return (
+      periodicMissionRows(profile, collection).find(
+        (m) => m.id === mission.id,
+      ) || { ...mission, done: false, claimed: false, now: 0, ratio: 0 }
+    );
   const read = STATS[mission.kind];
   const raw = read ? read(profile, collection, mission) : 0;
   const claimed = (profile.missions || []).includes(mission.id);
@@ -160,15 +167,14 @@ export function statusOf(mission, profile, collection) {
  */
 export function listMissions(profile, collection) {
   const rank = (s) => (s.done && !s.claimed ? 0 : s.claimed ? 2 : 1);
-  return MISSIONS.map((m) => statusOf(m, profile, collection)).sort(
-    (a, b) => rank(a) - rank(b) || a.goal - b.goal,
-  );
+  return [
+    ...MISSIONS.map((m) => statusOf(m, profile, collection)),
+    ...periodicMissionRows(profile, collection),
+  ].sort((a, b) => rank(a) - rank(b) || a.goal - b.goal);
 }
 
 /** 受け取れるものの数。入り口に出す印に使う */
 export function claimableCount(profile, collection) {
-  return MISSIONS.filter((m) => {
-    const s = statusOf(m, profile, collection);
-    return s.done && !s.claimed;
-  }).length;
+  return listMissions(profile, collection).filter((m) => m.done && !m.claimed)
+    .length;
 }
