@@ -94,14 +94,14 @@ export function FoilArtwork({
                   <animate
                     attributeName="baseFrequency"
                     values="0.012 0.026;0.019 0.038;0.012 0.026"
-                    dur="6s"
+                    dur="4.5s"
                     repeatCount="indefinite"
                   />
                 </feTurbulence>
                 <feDisplacementMap
                   in="SourceGraphic"
                   in2="wave"
-                  scale="5"
+                  scale="8"
                   xChannelSelector="R"
                   yChannelSelector="G"
                 />

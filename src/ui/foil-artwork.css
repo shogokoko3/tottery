@@ -71,17 +71,17 @@
   height: 100%;
   object-fit: cover;
   object-position: 50% 50%;
-  animation: foil-existing-texture 6s ease-in-out infinite;
+  animation: foil-existing-texture 4.5s ease-in-out infinite;
   transform-origin: 50% 35%;
 }
 @keyframes foil-existing-texture {
   0%,
   100% {
-    transform: scale(1.008) translate(-0.1%, -0.1%);
+    transform: scale(1.008) translate(-0.2%, -0.2%);
     opacity: 1;
   }
   50% {
-    transform: scale(1.008) translate(0.1%, 0.1%);
+    transform: scale(1.008) translate(0.2%, 0.2%);
     opacity: 1;
   }
 }
