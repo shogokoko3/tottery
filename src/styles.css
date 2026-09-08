@@ -4870,3 +4870,161 @@ h3 {
   border: 0;
   border-radius: 6px;
 }
+
+/* ===== 盤面エリア(src/game/areas.js / src/ui/areas.jsx) =====
+   自陣の色に、エリアごとの薄い色を重ねる。駒の見え方を邪魔しない程度 */
+.cell.area-earth {
+  background-image: radial-gradient(circle at 50% 60%, rgba(139, 94, 50, 0.32), rgba(139, 94, 50, 0.1));
+}
+.cell.area-sea {
+  background-image: radial-gradient(circle at 50% 40%, rgba(46, 126, 196, 0.32), rgba(46, 126, 196, 0.1));
+}
+.cell.area-forest {
+  background-image: radial-gradient(circle at 50% 60%, rgba(52, 140, 78, 0.32), rgba(52, 140, 78, 0.1));
+}
+.cell.area-ice {
+  background-image: radial-gradient(circle at 50% 40%, rgba(160, 220, 255, 0.34), rgba(160, 220, 255, 0.1));
+}
+.cell.area-sky {
+  background-image: radial-gradient(circle at 50% 30%, rgba(150, 130, 230, 0.34), rgba(150, 130, 230, 0.1));
+}
+.cell.area-palace {
+  background-image: radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.34), rgba(212, 175, 55, 0.1));
+}
+
+/* 自分と相手のエリアの札。自分の番なら「発動」 */
+.area-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+.area-bar-picking {
+  color: var(--gold-soft);
+  font-size: 13px;
+}
+.area-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--btn-edge);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+}
+.area-chip b {
+  color: var(--gold-soft);
+  font-weight: 600;
+}
+.area-chip small {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.area-chip-earth { border-color: rgba(139, 94, 50, 0.7); }
+.area-chip-sea { border-color: rgba(46, 126, 196, 0.7); }
+.area-chip-forest { border-color: rgba(52, 140, 78, 0.7); }
+.area-chip-ice { border-color: rgba(160, 220, 255, 0.7); }
+.area-chip-sky { border-color: rgba(150, 130, 230, 0.7); }
+.area-chip-palace { border-color: rgba(212, 175, 55, 0.7); }
+.area-why {
+  width: 100%;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+/* 発動の帯。盤の上に重ねて 1.8 秒 */
+.board-outer {
+  position: relative;
+}
+.area-flash {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--gold);
+  background: rgba(8, 17, 32, 0.92);
+  color: var(--ink);
+  text-align: center;
+  pointer-events: none;
+  animation: area-flash-in 1.8s ease-out forwards;
+}
+.area-flash b {
+  color: var(--gold-soft);
+  font-size: 16px;
+}
+.area-flash span {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.area-flash-ice { border-color: rgba(160, 220, 255, 0.9); }
+.area-flash-sea { border-color: rgba(46, 126, 196, 0.9); }
+.area-flash-forest { border-color: rgba(52, 140, 78, 0.9); }
+.area-flash-earth { border-color: rgba(139, 94, 50, 0.9); }
+.area-flash-sky { border-color: rgba(150, 130, 230, 0.9); }
+@keyframes area-flash-in {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.92); }
+  12% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 凍った駒: 青白く、上に氷のしるし */
+.piece-frozen .card-face,
+.piece-frozen .card-back {
+  filter: saturate(0.4) brightness(1.15) hue-rotate(160deg);
+}
+.frozen-badge {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  font-size: 12px;
+  line-height: 1;
+  color: #cbefff;
+  text-shadow: 0 0 6px rgba(120, 200, 255, 0.9);
+}
+/* 見抜いた駒(自分にだけ表向き) */
+.known-badge {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2f6b3a;
+  color: #eaffef;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+/* 空・宮殿で現れた札の専用のしるし */
+.mark-badge {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+.mark-sky {
+  background: #5a48b8;
+  color: #f1edff;
+}
+.mark-palace {
+  background: var(--gold);
+  color: #1b1405;
+}

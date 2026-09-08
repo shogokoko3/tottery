@@ -10,6 +10,13 @@ import { useEffect, useRef, useState } from "react";
 import { useGameBgm, useGameSounds } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
 import { enrichAction } from "../game/actions.js";
+import {
+  isFrozen,
+  isKnownTo,
+  palaceCandidates,
+  skyCandidates,
+} from "../game/areas.js";
+import { AreaBar, AreaFlash } from "./areas.jsx";
 import { getLegalMoves, kingRankOf, squareName } from "../game/board.js";
 import {
   PLAYER_META,
@@ -973,6 +980,8 @@ export function GameCore({
     xpNoticeRef = (0, useRef)(null),
     mountedRef = (0, useRef)(false),
     [ratingResult, setRatingResult] = (0, useState)(null),
+    // 盤面エリア: 空・宮殿で「どの駒か」を選んでいる最中
+    [areaPick, setAreaPick] = (0, useState)(false),
     // テストプレイ中は、布陣の1分も対局の持ち時間も止める
     testPlay = (0, useRef)(isTestPlay()).current;
   // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない
@@ -1069,7 +1078,21 @@ export function GameCore({
           E = { ...E, order: [...tutorial.shuffleOrder] };
       }
       if (network && LOCAL_ONLY_ACTIONS.has(E.type)) return reducer(U, E);
-      let be = network ? enrichAction(withLocalContext(E, U), U) : E;
+      // 手元の対局でも、席を名乗る手には乱数を焼き込む。
+      // 名乗りのある手は reducer が「通信で届いた手」として扱い、乱数の結果
+      // (サイコロの目・引き直しの並び・入れ替えの並び・エリアの当たり外れ)が
+      // 無ければ捨てる。名乗り無しなら reducer が自分で振る。
+      // チュートリアルの目は上ですでに入っているので、ここでは上書きしない
+      const seedMissing =
+        (E.type === "ROLL_DICE_SINGLE" && E.value == null) ||
+        (E.type === "CONFIRM_MULLIGAN" && !E.reserveOrder) ||
+        (E.type === "CONFIRM_SHUFFLE" && !E.order) ||
+        E.type === "USE_AREA";
+      let be = network
+        ? enrichAction(withLocalContext(E, U), U)
+        : seedMissing
+          ? enrichAction(E, U)
+          : E;
       if (network) {
         let at = `${w.current}-${++z.current}`,
           ne = {
@@ -1103,6 +1126,11 @@ export function GameCore({
           ruleVersion: network ? network.ruleVersion : GAME_RULE_VERSION,
           size: boardSize || 5,
           setupMode: network || cpu ? "simultaneous" : "sequential",
+          // 盤面エリア(試験ルール、src/game/areas.js)。手元の対局(CPU・同じ端末)の
+          // 9×9 だけ。オンラインは GAME_RULE_VERSION を上げてから
+          ...(!network && !tutorial && (boardSize || 5) === 9
+            ? { areas: true, loadouts: skins }
+            : null),
           ...(tutorial
             ? {
                 deck: tutorial.deck.map((c) => ({ ...c })),
@@ -1114,6 +1142,10 @@ export function GameCore({
             : null),
         }));
   }, [a.phase, boardSize, matchRatings.ready]);
+  // 盤面エリアの駒選びは、手番が変わったらやめる
+  (0, useEffect)(() => {
+    setAreaPick(false);
+  }, [a.currentTurn, a.phase]);
   // チュートリアルの相手は考えない。台本の手だけをそのまま指す。
   //
   // CPU に肩代わりさせない。1手でも CPU が指すと、そこから先は
@@ -2218,6 +2250,13 @@ export function GameCore({
       : [],
     Jl = P === 1,
     Pl = x && a.shuffleMode;
+  // 盤面エリアで選べる駒(空: 変身、宮殿: 昇格)
+  const areaCands =
+    areaPick && a.areas && a.areas[P]
+      ? a.areas[P].type === "sky"
+        ? skyCandidates(a, P)
+        : palaceCandidates(a, P)
+      : [];
   return (
     <GameShell
       sheet={presentationSheet}
@@ -2245,6 +2284,18 @@ export function GameCore({
           />
         )}
         <TurnBar state={displayed} viewer={P} />
+        {a.phase === "play" && (
+          <AreaBar
+            state={a}
+            viewer={P}
+            myTurn={!!x}
+            dispatch={y}
+            picking={areaPick}
+            setPicking={setAreaPick}
+            busy={fxBusy || !!a.captureReveal || !!Pl || !!a.selectedId}
+            names={names}
+          />
+        )}
         {aceMagic.controls}
         {pendingCapture && (
           <CaptureConfirm
@@ -2299,6 +2350,7 @@ export function GameCore({
           </p>
         )}
         <div className="board-outer">
+          <AreaFlash state={a} viewer={P} names={names} />
           <div
             className="board-frame"
             style={{
@@ -2395,7 +2447,7 @@ export function GameCore({
                               }
                             : void 0
                       }
-                      className={`cell ${aceMagic.mask.has(`${ne},${Me}`) ? "ace-magic-masked" : ""} ${Zt ? (Zt.capture ? "cell-capture" : "cell-move") : ""} ${Zo !== null ? `zone-${Zo}` : ""} ${S0} ${focusCell(ne, Me) ? "guide-target" : ""}`}
+                      className={`cell ${aceMagic.mask.has(`${ne},${Me}`) ? "ace-magic-masked" : ""} ${Zt ? (Zt.capture ? "cell-capture" : "cell-move") : ""} ${Zo !== null ? `zone-${Zo}` : ""} ${Zo !== null && a.areas && a.areas[Zo] ? `area-${a.areas[Zo].type}` : ""} ${S0} ${focusCell(ne, Me) ? "guide-target" : ""}`}
                       onClick={() => {
                         Pl ||
                           ze ||
@@ -2436,6 +2488,15 @@ export function GameCore({
                               : void 0
                           }
                           onClick={(wl) => {
+                            // 盤面エリアの駒選び(空・宮殿)
+                            if (areaPick) {
+                              wl.stopPropagation();
+                              if (areaCands.includes(ze.id)) {
+                                y({ type: "USE_AREA", pieceId: ze.id });
+                                setAreaPick(false);
+                              }
+                              return;
+                            }
                             if ((wl.stopPropagation(), Pl)) {
                               y({
                                 type: "TOGGLE_SHUFFLE_PICK",
@@ -2470,9 +2531,14 @@ export function GameCore({
                                 (a.shuffleMode.aId === ze.id ||
                                   a.shuffleMode.picks.includes(ze.id)))
                             }
-                            isPickable={!!Pl && ze.id !== a.shuffleMode.aId}
+                            isPickable={
+                              (!!Pl && ze.id !== a.shuffleMode.aId) ||
+                              (areaPick && areaCands.includes(ze.id))
+                            }
                             isGuided={focusPiece(ze.id)}
                             justRevealed={displayed.lastReveal?.id === ze.id}
+                            known={isKnownTo(a, P, ze)}
+                            frozen={isFrozen(a, ze)}
                           />
                           {privateNotes.marker(ze)}
                         </div>

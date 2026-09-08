@@ -131,15 +131,19 @@ export function Piece({
   isPickable,
   isGuided,
   justRevealed,
+  // 盤面エリア(src/game/areas.js): 見抜いた駒は自分にだけ表向き、凍った駒は青く
+  known = false,
+  frozen = false,
   size = "md",
 }) {
   let u = PLAYER_META[piece.owner],
     // フラッシュで公開された駒と、王を討って名乗りを上げた駒は、
-    // 持ち主でなくても表向きに見える
-    i = piece.owner === viewer || !!piece.revealed;
+    // 持ち主でなくても表向きに見える。土・森で見抜いた駒は自分だけに
+    i = piece.owner === viewer || !!piece.revealed || !!known;
+  const mark = piece.mark === "sky" ? "空" : piece.mark === "palace" ? "宮" : null;
   return (
     <div
-      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""} ${justRevealed ? "piece-unveiled" : ""}`}
+      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""} ${justRevealed ? "piece-unveiled" : ""} ${frozen ? "piece-frozen" : ""}`}
     >
       {i ? (
         <CardFace
@@ -152,7 +156,16 @@ export function Piece({
       ) : (
         <CardBack colorHex={u.color} size={size} owner={piece.owner} />
       )}
-      {piece.revealed && <span className="revealed-badge">公開</span>}
+      {piece.revealed && !mark && <span className="revealed-badge">公開</span>}
+      {mark && (
+        <span className={`mark-badge mark-${piece.mark}`} aria-label={piece.mark === "sky" ? "空のエリアで変身" : "宮殿で昇格"}>
+          {mark}
+        </span>
+      )}
+      {known && !piece.revealed && piece.owner !== viewer && (
+        <span className="known-badge">見抜</span>
+      )}
+      {frozen && <span className="frozen-badge" aria-label="凍結">❄</span>}
       {piece.isKing && i && (
         <Crown
           size={size === "xs" ? 10 : size === "sm" ? 12 : 16}
