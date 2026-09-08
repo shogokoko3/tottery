@@ -8,7 +8,7 @@
  *   2・3  土   直前に動いた相手の駒の足跡を読み、50% で正体を見抜く。
  *              当たったか外れたかは相手にも分かる。正体は自分だけが知る
  *   4・5  海   盤上の全ての駒を中央へ引き寄せる
- *   6・7  森   相手の王以外の駒を1体見抜く(自分だけが知る)
+ *   6・7  森   相手の王以外の駒を2体見抜く(自分だけが知る)
  *   8・9  氷   相手の王以外の駒を1体(乱数で選ぶ)凍らせ、相手の3手番のあいだ動けなくする。
  *              凍った駒を A の入れ替えに使うと氷は解ける。凍った A 自身は入れ替えを使えない。
  *              凍らされて何も指せなければ負け
@@ -63,7 +63,7 @@ export const AREA_INFO = Object.freeze({
   },
   forest: {
     name: "森のエリア",
-    text: "相手の王以外の駒を1体見抜く(自分だけが知る)",
+    text: "相手の王以外の駒をランダムで2体見抜く(自分だけが知る)",
     usesTurn: false,
     needsPiece: false,
   },
@@ -97,7 +97,7 @@ export const AREA_TUNING = Object.freeze({
   /** 土: 見抜ける確率(0〜1)。enrichAction がこの確率で hit を焼き込む */
   earthOdds: 0.5,
   /** 森: 見抜く駒の数 */
-  forestReveals: 1,
+  forestReveals: 2,
   /** 氷: 凍らせる駒の数 */
   iceTargets: 1,
   /** 氷: 相手が動けない手番の数 */
@@ -382,7 +382,10 @@ export function useArea(state, action) {
       // 手に書かれていない候補は、並びを固定して後ろに足す(手が欠けていても両者で揃う)
       for (const id of [...candidates].sort())
         if (!picks.includes(id)) picks.push(id);
-      const chosen = picks.slice(0, AREA_TUNING.forestReveals);
+      const chosen = picks.slice(
+        0,
+        state.ruleVersion >= 6 ? AREA_TUNING.forestReveals : 1,
+      );
       const known = state.known.map((k) => ({ ...k }));
       for (const id of chosen) known[player][id] = true;
       const next = {

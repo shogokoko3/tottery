@@ -20,7 +20,7 @@ for (const type of ["earth", "sea", "forest", "ice"]) {
   assert.equal(areaEvent(s, next, 0).type, type);
   assert.equal(s.areas[0].uses, 0, "no mutation");
   if (type === "forest") {
-    assert.equal(areaEvent(s, next, 0).targets.length, 1);
+    assert.equal(areaEvent(s, next, 0).targets.length, 2);
     assert.deepEqual(
       areaEvent(s, next, 1).targets,
       [],
@@ -228,4 +228,38 @@ for (const type of ["earth", "sea", "forest", "sky", "palace"]) {
 }
 console.log(
   "All areas: every-turn availability, same-turn guard, optional sky/palace, skipped turns and old-match compatibility passed",
+);
+
+// 森2体: 重複・王・既知を除外し、残り1体なら1体だけ。
+const woods = areaFixture("forest");
+const two = reducer(woods, {
+  type: "USE_AREA",
+  picks: ["fx4", "fx5", "fx5", "fx6"],
+});
+assert.deepEqual(Object.keys(two.known[0]).sort(), ["fx5", "fx6"]);
+assert.deepEqual(two.known[1], {});
+assert.equal(two.pieces.fx5.revealed, false);
+assert.equal(two.pieces.fx6.revealed, false);
+const one = reducer(
+  { ...two, turnNo: 4 },
+  { type: "USE_AREA", picks: ["fx5", "fx6", "fx7"] },
+);
+assert.deepEqual(one.lastArea.pieceIds, ["fx7"]);
+assert.equal(automaticAreaAction({ ...one, turnNo: 6 }), null);
+const legacy = reducer(
+  { ...woods, ruleVersion: 5 },
+  { type: "USE_AREA", picks: ["fx5", "fx6"] },
+);
+assert.equal(
+  Object.keys(legacy.known[0]).length,
+  1,
+  "old match retains one target",
+);
+assert.deepEqual(
+  areaEvent(woods, two, 1).targets,
+  [],
+  "opponent does not see chosen squares",
+);
+console.log(
+  "Forest two targets: uniqueness, king exclusion, privacy, single remaining target and old-match compatibility passed",
 );
