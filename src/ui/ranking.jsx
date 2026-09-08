@@ -10,7 +10,7 @@ import { SeasonScreen } from "./season.jsx";
  */
 import { useEffect, useState } from "react";
 import { loadProfile } from "../game/profile.js";
-import { rankTitle, ratingWithWorld } from "../game/rating.js";
+import { rankTitle } from "../game/rating.js";
 import { readRanks } from "../net/ranking.js";
 import { ArrowLeft } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
@@ -20,9 +20,6 @@ function LifetimeRanking() {
   const [state, setState] = useState("loading");
   const [list, setList] = useState([]);
   const [error, setError] = useState("");
-  // 段位は「1局あたりどれだけ積み上げたか」で決まる。
-  // それを持ち点から戻すのに、全体の総対局数が要る
-  const [world, setWorld] = useState(0);
 
   useEffect(() => {
     let gone = false;
@@ -36,7 +33,6 @@ function LifetimeRanking() {
       }
       setList(res.list);
       setState("done");
-      setWorld(res.world);
     };
     refresh();
     const onSaved = (event) => {
@@ -67,7 +63,7 @@ function LifetimeRanking() {
           </span>
         </div>
         <div className="rank-me-score">
-          <b>{ratingWithWorld(me.rating, world)}</b>
+          <b>{me.rating}</b>
           <span>{myPlace >= 0 ? `${myPlace + 1}位` : "未掲載"}</span>
         </div>
       </div>
@@ -91,7 +87,7 @@ function LifetimeRanking() {
               <span className="rank-title">
                 {rankTitle(row.rating, row.rated)}
               </span>
-              <b className="rank-score">{ratingWithWorld(row.rating, world)}</b>
+              <b className="rank-score">{row.rating}</b>
             </li>
           ))}
         </ol>

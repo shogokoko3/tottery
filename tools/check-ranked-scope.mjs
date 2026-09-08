@@ -47,8 +47,7 @@ console.log("持ち点が動く条件");
   };
   fresh();
   const ranked = recordGame(true, { foeRating: START_RATING });
-  // 相手の値そのものは使わないが、「渡ってきたかどうか」で
-  // 持ち点つきの対局か否かを見分けている
+  // 対戦前の相手レートを渡した場合だけ、Elo対象として記録する。
   is("持ち点つきの対局なら動く", ranked.rating > START_RATING, true);
   is("そのとき対局数も数える", ranked.rated, 1);
 
@@ -71,7 +70,7 @@ console.log("\n画面の作り(9×9のオンラインだけに渡している)")
   }
   is(
     "相手の持ち点は、その条件のときだけ渡す",
-    /const foeRating =\s*ranked && network\.ratings/.test(src),
+    /const foeRating =\s*ranked && matchRatings\.ratings/.test(src),
     true,
   );
   is(

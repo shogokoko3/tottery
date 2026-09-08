@@ -25,7 +25,9 @@ import {
 export { MAX_LEVEL };
 import {
   START_RATING,
-  displayRating,
+  ratingFromProfile,
+  normalizeRating,
+  RATING_VERSION,
   nextRating,
   wrFromProfile,
 } from "./rating.js";
@@ -92,7 +94,7 @@ const EMPTY = {
   letters: [],
   // レーティングと、その対象になった対局数(オンラインだけ)
   rating: START_RATING,
-  // 勝率の見積もり。見える持ち点は毎回ここから作り直す
+  // 旧保存の引き継ぎ用。Elo移行後の持ち点計算には使わない
   wr: 0.5,
   // 持ち点つき対局の勝ち数・引き分け数(勝率の見積もりを復元するのに使う)
   ratedWins: 0,
@@ -161,9 +163,9 @@ export function loadProfile() {
     letters: Array.isArray(saved.letters)
       ? saved.letters.filter((x) => typeof x === "string")
       : [],
-    // **保存の rating は信用しない。** 毎回 wr から作り直す。
-    // localStorage の rating だけを書き換えても、ここで元へ戻る
-    rating: displayRating(wrFromProfile(saved)),
+    // 旧方式の点数は初回だけ移行し、以降はEloの点数を保持する。
+    rating: ratingFromProfile(saved),
+    ratingVersion: RATING_VERSION,
     wr: wrFromProfile(saved),
     ratedWins: Number(saved.ratedWins) || 0,
     ratedDraws: Number(saved.ratedDraws) || 0,
@@ -300,11 +302,12 @@ export function recordGame(won, opts) {
   const draw = won === null;
   const foeRating = opts && opts.foeRating;
   const rated = typeof foeRating === "number";
-  const before = displayRating(profile.wr);
-  // 持ち点は足し引きしない。勝率の見積もりを更新して、そこから作り直す。
-  // **相手の持ち点(foeRating)は使わない。** 相手の言い値では動かさない
-  const step = rated ? nextRating(profile.wr, profile.rated, won) : null;
-  const after = step ? displayRating(step.wr) : before;
+  const before =
+    rated && Number.isFinite(opts?.startRating)
+      ? normalizeRating(opts.startRating)
+      : profile.rating;
+  const step = rated ? nextRating(before, foeRating, won) : null;
+  const after = step ? step.rating : before;
   // チュートリアルは初回だけ経験値が入る。2回目からは0
   const again =
     opts &&
@@ -341,7 +344,8 @@ export function recordGame(won, opts) {
         ? [...profile.cleared, opts.tutorialId]
         : profile.cleared,
     rating: after,
-    wr: step ? step.wr : profile.wr,
+    ratingVersion: RATING_VERSION,
+    wr: profile.wr,
     ratedWins: profile.ratedWins + (rated && won === true ? 1 : 0),
     ratedDraws: profile.ratedDraws + (rated && draw ? 1 : 0),
     rated: profile.rated + (rated ? 1 : 0),

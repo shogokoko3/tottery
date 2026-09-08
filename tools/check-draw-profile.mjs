@@ -9,8 +9,7 @@ globalThis.localStorage = {
 };
 
 const { loadProfile, recordGame } = await import("../src/game/profile.js");
-const { nextRating, displayRating, skillPart, MIN_RATING } =
-  await import("../src/game/rating.js");
+const { nextRating } = await import("../src/game/rating.js");
 const { XP } = await import("../src/game/level.js");
 const { hasTitle } = await import("../src/game/titles.js");
 const { MISSIONS, statusOf } = await import("../src/game/missions.js");
@@ -48,35 +47,16 @@ function fixture(extra = {}) {
     assert.equal(fixture({ draws }).draws, 0);
 }
 
-// 引き分けは、勝率の見積もりを五分へ寄せる。持ち点は毎回そこから作り直す
-assert.ok(displayRating(0.5, 0) >= MIN_RATING);
-assert.ok(skillPart(0.7) > skillPart(0.5));
-assert.ok(skillPart(0.3) < skillPart(0.5));
-{
-  // 五分の人が引き分けを重ねても動かない
-  let wr = 0.5,
-    n = 0,
-    prev = displayRating(wr, 0);
-  for (let i = 1; i <= 30; i++) {
-    const o = nextRating(wr, n, null);
-    wr = o.wr;
-    n = o.rated;
-    assert.equal(displayRating(wr, 0), prev, "五分の引き分けでは動かない");
-  }
-  // 勝ち越している人が引き分けると、少し下がる(五分へ寄る)
-  let w2 = 0.7,
-    m = 40;
-  const b = displayRating(w2, 0);
-  const o2 = nextRating(w2, m, null);
-  assert.ok(displayRating(o2.wr, 0) < b, "勝ち越しての引き分けは少し下がる");
-}
+// Eloの引き分けは同格で変動なし。相手より低ければ上がり、高ければ下がる。
+assert.equal(nextRating(1500, 1500, null).rating, 1500);
+assert.equal(nextRating(1500, 1700, null).delta, 8);
+assert.equal(nextRating(1500, 1300, null).delta, -8);
 
 {
   const before = fixture();
   const after = recordGame(null, { foeRating: 1500, deferXpNotice: true });
-  // 持ち点は積み上げ式。引き分けでも下がらず、少しだけ伸びる
-  assert.ok(after.rating >= before.rating, "引き分けで下がらない");
-  assert.ok(after.delta >= 0, "引き分けの増減は負にならない");
+  assert.equal(after.rating, before.rating, "同格の引き分けは変動なし");
+  assert.equal(after.delta, 0);
   assert.equal(after.rated, 51);
   assert.deepEqual(
     [after.plays, after.battles, after.wins, after.draws],

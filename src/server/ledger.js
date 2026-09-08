@@ -20,6 +20,20 @@ export class Ledger {
       "CREATE TABLE IF NOT EXISTS players (season TEXT, uid TEXT, name TEXT, icon TEXT, wr REAL, rated INTEGER, wins INTEGER, draws INTEGER, highest INTEGER, best INTEGER, PRIMARY KEY(season, uid))",
     );
     sql("CREATE INDEX IF NOT EXISTS player_history ON players(uid, season)");
+    // 旧テーブルの列数を変えずに、既存の点数を一度だけEloへ移行する。
+    sql(
+      "CREATE TABLE IF NOT EXISTS elo_ratings (season TEXT, uid TEXT, rating INTEGER, PRIMARY KEY(season, uid))",
+    );
+    for (const p of sql(
+      "SELECT p.* FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid WHERE e.uid IS NULL",
+    )) {
+      sql(
+        "INSERT OR IGNORE INTO elo_ratings VALUES (?,?,?)",
+        p.season,
+        p.uid,
+        displayRating(p.wr),
+      );
+    }
     sql(
       "CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, season TEXT, host TEXT, guest TEXT, winner INTEGER, finished INTEGER)",
     );
@@ -42,14 +56,14 @@ export class Ledger {
   }
   list(id) {
     const rows = this.sql(
-      "SELECT * FROM players WHERE season=? ORDER BY wr DESC, uid ASC",
+      "SELECT p.*, e.rating FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid WHERE p.season=? ORDER BY e.rating DESC, p.uid ASC",
       id,
     );
     let previous = null,
       place = 0,
       index = 0;
     return rows.map((p) => {
-      const rating = displayRating(p.wr);
+      const rating = p.rating ?? displayRating(p.wr);
       if (p.rated >= 10) {
         index++;
         if (rating !== previous) place = index;
@@ -67,15 +81,34 @@ export class Ledger {
   record(match, now) {
     if (this.result(match.host, match.id)) return;
     const season = this.current(now);
-    for (const [seat, uid] of [match.host, match.guest].entries()) {
+    const before = [match.host, match.guest].map((uid) => {
       const p = this.sql(
-        "SELECT * FROM players WHERE season=? AND uid=?",
+        "SELECT p.*, e.rating FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid WHERE p.season=? AND p.uid=?",
         season.id,
         uid,
       )[0] || { wr: 0.5, rated: 0, wins: 0, draws: 0, highest: 0, best: null };
+      return { ...p, rating: p.rating ?? displayRating(p.wr) };
+    });
+    for (const [seat, uid] of [match.host, match.guest].entries()) {
+      const p = before[seat];
       const won = match.winner === null ? null : seat === match.winner;
-      const next = { ...p, ...nextRating(p.wr, p.rated, won) };
+      const next = {
+        ...p,
+        ...nextRating(p.rating, before[1 - seat].rating, won),
+        rated: p.rated + 1,
+      };
+      next.wr =
+        (p.wins +
+          Number(won === true) +
+          (p.draws + Number(won === null)) * 0.5) /
+        next.rated;
       next.highest = Math.max(p.highest, tierOf(next));
+      this.sql(
+        "INSERT OR REPLACE INTO elo_ratings VALUES (?,?,?)",
+        season.id,
+        uid,
+        next.rating,
+      );
       this.sql(
         "INSERT OR REPLACE INTO players VALUES (?,?,?,?,?,?,?,?,?,?)",
         season.id,

@@ -1,3 +1,4 @@
+import { useMatchRatings } from "./match-rating.jsx";
 import { useSeasonMatch, SeasonMatchNotice } from "./season.jsx";
 import { usePrivateNotes } from "./private-notes.jsx";
 import { useAceMagic } from "./ace-magic.jsx";
@@ -939,6 +940,11 @@ export function GameCore({
 }) {
   const names = useNames();
   const { skins } = useSeats();
+  const matchRatings = useMatchRatings(
+    network,
+    round,
+    !!network && boardSize === 9 && !tutorial,
+  );
   const pausedAt = useRef(null);
   let [a, u] = (0, useState)(initialState),
     [i, f] = (0, useState)(!1),
@@ -1090,6 +1096,7 @@ export function GameCore({
   }
   (0, useEffect)(() => {
     a.phase === "intro" &&
+      matchRatings.ready &&
       ((network && p !== 0) ||
         y({
           type: "START_SETUP",
@@ -1106,7 +1113,7 @@ export function GameCore({
               }
             : null),
         }));
-  }, [a.phase, boardSize]);
+  }, [a.phase, boardSize, matchRatings.ready]);
   // チュートリアルの相手は考えない。台本の手だけをそのまま指す。
   //
   // CPU に肩代わりさせない。1手でも CPU が指すと、そこから先は
@@ -1507,14 +1514,15 @@ export function GameCore({
       recordedRef.current = false;
       return;
     }
-    if (recordedRef.current) return;
+    if (recordedRef.current || !matchRatings.ready) return;
     recordedRef.current = !0;
     const won = a.winner === null ? null : a.winner === (network ? p : 0);
     // 持ち点(とランキング)に数えるのは、**9×9のオンライン対戦だけ**。
     // 5×5は短期戦で運の割合が大きく、同じ物差しに載せると持ち点が
     // 実力を表さなくなる。CPU戦とチュートリアルは相手の強さが決まらない
     const ranked = !!network && a.boardSize === 9;
-    const foeRating = ranked && network.ratings ? network.ratings[1 - p] : null;
+    const foeRating =
+      ranked && matchRatings.ratings ? matchRatings.ratings[1 - p] : null;
     // チュートリアルは話ごとの経験値。対戦の数には数えない
     const after = recordGame(won, {
       online: !!network && !tutorial,
@@ -1525,7 +1533,9 @@ export function GameCore({
         a.players[network ? p : 0]?.armyRankCounts || {},
       ),
       deferXpNotice: true,
-      ...(typeof foeRating === "number" ? { foeRating } : null),
+      ...(typeof foeRating === "number"
+        ? { foeRating, startRating: matchRatings.ratings[p] }
+        : null),
       ...(tutorial
         ? {
             xp: won ? tutorial.xp : 0,
@@ -1537,7 +1547,7 @@ export function GameCore({
     xpNoticeRef.current = after.xpNoticeId;
     setRatingResult(after.delta === null ? null : after);
     publishPlayer(after);
-  }, [a.phase, a.winner]);
+  }, [a.phase, a.winner, matchRatings.ready]);
 
   // 経験値で先に決着を知らせない。撃破札と映像の後でゲージを出す。
   (0, useEffect)(() => {
@@ -1733,7 +1743,7 @@ export function GameCore({
         />
       </GameShell>
     );
-  if (a.phase === "intro")
+  if (a.phase === "intro" || !matchRatings.ready)
     return (
       <GameShell
         sheet={presentationSheet}
@@ -1747,9 +1757,11 @@ export function GameCore({
       >
         <WaitingScreen
           text={
-            network && p !== 0
-              ? "相手の準備を待っています…"
-              : "対局の準備をしています…"
+            !matchRatings.ready
+              ? matchRatings.error || "対戦前のレートを確認しています…"
+              : network && p !== 0
+                ? "相手の準備を待っています…"
+                : "対局の準備をしています…"
           }
         />
       </GameShell>

@@ -23,7 +23,9 @@ export const SEASON_TIERS = [
 ];
 export const tierOf = (p) =>
   SEASON_TIERS.findIndex(
-    (t) => t.name === rankTitle(displayRating(p?.wr ?? 0.5), p?.rated || 0),
+    (t) =>
+      t.name ===
+      rankTitle(p?.rating ?? displayRating(p?.wr ?? 0.5), p?.rated || 0),
   );
 export const SEASON_BACK = "moon-crest";
 export const SEASON_FRAME = "gold-laurel";

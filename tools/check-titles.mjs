@@ -96,10 +96,11 @@ is(
 console.log("持ち点が下がっても失わない");
 {
   // 1600 に届いて「士の位」を選んだあと、負けて 1600 を割る。
-  // 持ち点は勝率の見積もり(wr)から作り直すので、保存する値も wr にする
+  // Elo移行後の保存済みレートから、称号の獲得・維持を確認する。
   store["tottery.account.v1"] = JSON.stringify({
     ...loadProfile(),
-    wr: 0.638,
+    rating: 1598,
+    ratingVersion: 2,
     rated: 12,
     title: "novice",
     titles: [],
