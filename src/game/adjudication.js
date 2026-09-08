@@ -45,6 +45,9 @@ export function hasLegalAction(state) {
   const living = Object.values(state.pieces).filter((piece) => piece.alive);
   return living.some((piece) => {
     if (piece.owner !== state.currentTurn) return false;
+    // 氷のエリアで凍った駒は指せない(src/game/areas.js)
+    if (piece.frozenUntil != null && (state.turnNo || 0) < piece.frozenUntil)
+      return false;
     if (piece.rank === "A") return living.length >= 3;
     return (
       getLegalMoves(
@@ -65,7 +68,8 @@ export function hasLegalAction(state) {
  * 実際より広い領域同士さえ届かなければ、遮蔽物や捕獲順に依存しない。
  */
 function reachSteps(piece) {
-  switch (piece.rank) {
+  // 空のエリアで変身した駒は 10 として届く範囲を見る
+  switch (piece.moveAs || piece.rank) {
     case "A":
       return [];
     case "2":

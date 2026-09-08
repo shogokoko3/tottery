@@ -216,7 +216,8 @@ export function kingRankOf(state, owner) {
  */
 export function getLegalMoves(piece, board, size, armyRankCounts, kingRank) {
   const bonus = rangeBonus(piece, armyRankCounts, kingRank);
-  switch (piece.rank) {
+  // 空のエリアで変身した駒は、本来のランクではなく 10 として動く
+  switch (piece.moveAs || piece.rank) {
     case "A":
       return [];
     case "2":

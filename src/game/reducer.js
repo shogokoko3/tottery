@@ -3,6 +3,14 @@ import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
 import { adjudicatePosition, withInitialArmies } from "./adjudication.js";
 import { hasAdjudicationRules } from "./rule-version.js";
 import { CLOCK_INITIAL_MS, grantTurnTime } from "./clock.js";
+import {
+  AREA_INFO,
+  initAreas,
+  isFrozen,
+  sanitizeLoadouts,
+  skipIfFrozen,
+  useArea,
+} from "./areas.js";
 export { CLOCK_INITIAL_MS, CLOCK_INCREMENT_MS } from "./clock.js";
 import {
   buildDeck,
@@ -47,6 +55,7 @@ const RECEIVABLE = {
   CONFIRM_MULLIGAN: ["mulligan"],
   SETUP_CONFIRM: ["setup"],
   MOVE_PIECE: ["play"],
+  USE_AREA: ["play"],
   CONFIRM_SHUFFLE: ["play"],
   SKIP_EXTRA_ACTION: ["play"],
   SKIP_RESERVE_PLACEMENT: ["play"],
@@ -61,6 +70,7 @@ const RECEIVABLE = {
 function expectedActor(state, type) {
   switch (type) {
     case "MOVE_PIECE":
+    case "USE_AREA":
     case "CONFIRM_SHUFFLE":
     case "SKIP_EXTRA_ACTION":
       return state.currentTurn;
@@ -326,6 +336,18 @@ function seedsPresent(state, action) {
         new Set(action.order).size === 3 &&
         action.order.every((i) => i === 0 || i === 1 || i === 2)
       );
+    case "USE_AREA": {
+      // 土の50%と森の3体は、送り主が焼き込んだ結果を使う(両者で揃える)
+      const area = state.areas && state.areas[state.currentTurn];
+      if (!area) return true;
+      if (area.type === "earth") return typeof action.hit === "boolean";
+      if (area.type === "forest")
+        return (
+          Array.isArray(action.picks) &&
+          action.picks.every((id) => typeof id === "string")
+        );
+      return true;
+    }
     default:
       return true;
   }
@@ -373,7 +395,9 @@ export function isNotableLog(line) {
     line.includes("入れ替えた") ||
     line.includes("投入") ||
     line.includes("降参") ||
-    line.includes("布陣判定")
+    line.includes("布陣判定") ||
+    line.includes("エリア") ||
+    line.includes("宮殿")
   );
 }
 
@@ -448,6 +472,15 @@ export function initialState() {
     initialArmyRanks: null,
     endReason: null,
     adjudication: null,
+    /** 盤面エリア(試験ルール、src/game/areas.js)。START_SETUP の areas で入る */
+    areasEnabled: false,
+    areaLoadouts: null,
+    areas: [null, null],
+    /** プレイヤーごとに、見抜いた相手の駒(id → true)。本人にしか見せない */
+    known: [{}, {}],
+    /** 手番の通し番号。氷の解ける時期を数える */
+    turnNo: 0,
+    lastArea: null,
     seq: 0,
   };
 }
@@ -640,7 +673,10 @@ export function endAction(state, pieceId) {
   if (state.winner !== null && state.winner !== undefined)
     return { ...state, phase: "gameover" };
   const piece = pieceId ? state.pieces[pieceId] : null;
-  const extraMove = piece && piece.alive && piece.isKing && piece.rank === "10";
+  const extraMove =
+    piece &&
+    piece.alive &&
+    ((piece.isKing && piece.rank === "10") || !!piece.skyTwice);
   const extraSwap = piece && piece.alive && piece.isKing && piece.rank === "A";
   if ((extraMove || extraSwap) && !state.extraUsed) {
     return {
@@ -656,15 +692,16 @@ export function endAction(state, pieceId) {
 
 export function endTurn(state) {
   const next = 1 - state.currentTurn;
-  return {
+  return skipIfFrozen({
     ...state,
     currentTurn: next,
+    turnNo: (state.turnNo || 0) + 1,
     selectedId: null,
     shuffleMode: null,
     extraMoveFor: null,
     extraUsed: false,
     interstitial: { forPlayer: next, kind: "turn" },
-  };
+  });
 }
 
 /* =========================================================================
@@ -787,7 +824,7 @@ export function autoPickKing(state, idx, placement) {
 function startPlay(base, log) {
   base = withInitialArmies(base);
   if (base.scripted)
-    return {
+    return initAreas({
       ...grantTurnTime(base, base.firstPlayer),
       phase: "play",
       currentTurn: base.firstPlayer,
@@ -796,7 +833,7 @@ function startPlay(base, log) {
         `--- 対局開始:${PLAYER_META[base.firstPlayer].name}の番 ---`,
       ],
       interstitial: { forPlayer: base.firstPlayer, kind: "turn" },
-    };
+    });
 
   const army = (i) =>
     Object.values(base.pieces).filter((p) => p.owner === i && p.alive);
@@ -858,7 +895,7 @@ function startPlay(base, log) {
         }
       : null;
 
-  return {
+  return initAreas({
     ...grantTurnTime(base, first),
     pieces,
     board,
@@ -868,7 +905,7 @@ function startPlay(base, log) {
     log: [...nextLog, `--- 対局開始:${PLAYER_META[first].name}の番 ---`],
     setupEffects: effects,
     interstitial: { forPlayer: first, kind: "turn" },
-  };
+  });
 }
 
 /* =========================================================================
@@ -910,6 +947,10 @@ function completedRuleAction(prev, next, action) {
       return true;
     case "SKIP_EXTRA_ACTION":
       return !!prev.extraMoveFor;
+    case "USE_AREA":
+      // 手番を使う宮殿だけが「1手」。ほかは同じ手番のまま続くので、
+      // そのあとの手で判定する
+      return prev.currentTurn !== next.currentTurn;
     case "CHOOSE_HEIR":
       return !!prev.pendingKingChoice && !next.pendingKingChoice;
     case "PLACE_RESERVE_CARD":
@@ -1128,6 +1169,9 @@ function coreReducer(state, action) {
       return {
         ...initialState(),
         boardSize: size,
+        // 盤面エリアは 9×9 で、始める側が明示したときだけ
+        areasEnabled: action.areas === true && size === 9,
+        areaLoadouts: sanitizeLoadouts(action.loadouts),
         players,
         reserve,
         // 通信の対局は必ず同時配置。順番配置を送られると、先手でない側は
@@ -1518,6 +1562,8 @@ function coreReducer(state, action) {
       const piece = state.pieces[action.id];
       if (!piece || !piece.alive || piece.owner !== state.currentTurn)
         return state;
+      // 氷のエリアで凍った駒は選べない
+      if (isFrozen(state, piece)) return state;
       if (state.extraMoveFor && piece.id !== state.extraMoveFor) return state;
       if (piece.rank === "A") {
         return {
@@ -1554,6 +1600,8 @@ function coreReducer(state, action) {
       // 知らない駒idが混ざっていると、ここで落ちて画面が消える
       if (ids.some((id) => !state.pieces[id] || !state.pieces[id].alive))
         return state;
+      // 氷のエリアで凍った A は入れ替えも使えない
+      if (isFrozen(state, state.pieces[aId])) return state;
       // 手元では SELECT_PIECE が「Aで、自分の駒」を強いている。
       // 通信では確定の手だけが飛んでくるので、ここで同じことを課す。
       // これが無いと、Aを1枚も持たない相手が包囲取りを使えるし、
@@ -1673,6 +1721,8 @@ function coreReducer(state, action) {
       // 番でない側の駒や、盤の外の座標をそのまま通すと、相手の盤で
       // 好きな駒を取れてしまうし、盤の外を読んで画面ごと落ちる
       if (mover.owner !== state.currentTurn) return state;
+      // 氷のエリアで凍った駒は動けない(届いた手にも同じ縛り)
+      if (isFrozen(state, mover)) return state;
       // 王の10とAの「もう一度」の枠は、その駒のためのもの。
       // 手元では SELECT_PIECE が縛っているが、届いた手にも同じ縛りが要る
       if (state.extraMoveFor && state.extraMoveFor !== mover.id) return state;
@@ -1688,7 +1738,8 @@ function coreReducer(state, action) {
         return state;
       // 王の10は1ターンに2回動ける。どちらの手かを記録に添える
       const secondAction = state.extraMoveFor === mover.id;
-      const twiceKing = mover.isKing && mover.rank === "10";
+      const twiceKing =
+        (mover.isKing && mover.rank === "10") || !!mover.skyTwice;
       const nth = secondAction ? "2回目" : "1回目";
 
       const board = state.board.map((r) => [...r]);
@@ -1898,6 +1949,15 @@ function coreReducer(state, action) {
       if (!state.kPlacement || state.currentTurn !== state.kPlacement.owner)
         return state;
       return { ...state, kPlacement: null };
+
+    case "USE_AREA": {
+      // 盤面エリアの発動(src/game/areas.js)。使えなければ何も起きない
+      if (state.winner) return state;
+      const next = useArea(state, action);
+      if (next === state) return state;
+      const area = next.areas[state.currentTurn];
+      return AREA_INFO[area.type].usesTurn ? endTurn(next) : next;
+    }
 
     case "SKIP_EXTRA_ACTION":
       // 「王の2回目を使わずに終える」ためだけの手。これが無いと、

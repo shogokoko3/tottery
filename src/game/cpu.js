@@ -6,6 +6,13 @@ import {
   shuffle,
 } from "./board.js";
 import { hasAdjudicationRules } from "./rule-version.js";
+import {
+  canUseArea,
+  isFrozen,
+  palaceCandidates,
+  skyCandidates,
+  promotedRank,
+} from "./areas.js";
 
 /** ランクのざっくりした強さ。CPU の評価にだけ使う */
 const RANK_VALUE = {
@@ -85,6 +92,8 @@ export function bestMove(state, player) {
   for (const piece of mine) {
     if (piece.rank === "A") continue;
     if (state.extraMoveFor && piece.id !== state.extraMoveFor) continue;
+    // 氷のエリアで凍った駒は動かせない
+    if (isFrozen(state, piece)) continue;
 
     for (const move of getLegalMoves(
       piece,
@@ -121,6 +130,38 @@ export function bestMove(state, player) {
   return candidates[0];
 }
 
+/**
+ * 盤面エリア(src/game/areas.js)を使うか。使えるなら、ためらわずに使う。
+ * 空は一番強い駒を変身させ、宮殿は取れる手が無い序盤にだけ使う(手番を使うため)。
+ */
+export function bestAreaUse(state, player, move) {
+  const can = canUseArea(state, player);
+  if (!can.ok) return null;
+  const value = (id) => RANK_VALUE[state.pieces[id].rank] || 0;
+  switch (can.type) {
+    case "sky": {
+      const ids = skyCandidates(state, player);
+      if (!ids.length) return null;
+      ids.sort((a, b) => value(b) - value(a));
+      return { type: "USE_AREA", pieceId: ids[0] };
+    }
+    case "palace": {
+      if ((move && move.score >= 12) || (state.turnNo || 0) > 6) return null;
+      const ids = palaceCandidates(state, player);
+      if (!ids.length) return null;
+      // 上がり幅の大きい駒(9→10)から
+      ids.sort(
+        (a, b) =>
+          (RANK_VALUE[promotedRank(state.pieces[b].rank)] || 0) -
+          (RANK_VALUE[promotedRank(state.pieces[a].rank)] || 0),
+      );
+      return { type: "USE_AREA", pieceId: ids[0] };
+    }
+    default:
+      return { type: "USE_AREA" };
+  }
+}
+
 /** Aの入れ替え候補。味方2枚なら包囲を狙い、足りなければ敵も選べる。 */
 export function bestShuffle(state, player) {
   const ace = Object.values(state.pieces).find(
@@ -128,6 +169,7 @@ export function bestShuffle(state, player) {
       p.alive &&
       p.owner === player &&
       p.rank === "A" &&
+      !isFrozen(state, p) &&
       (!state.extraMoveFor || state.extraMoveFor === p.id),
   );
   if (!ace) return null;
@@ -234,12 +276,18 @@ export function cpuAction(state, player) {
               type: "PLACE_RESERVE_CARD",
               row: r,
               col: c,
-              cardId: state.kPlacement.cards[0].id,
+              // 旧形(card 1枚)の状態が照合(parity)で回ってくるので両方読む
+              cardId: (state.kPlacement.cards
+                ? state.kPlacement.cards[0]
+                : state.kPlacement.card
+              ).id,
             };
       return { type: "SKIP_RESERVE_PLACEMENT" };
     }
 
     const move = bestMove(state, player);
+    const area = bestAreaUse(state, player, move);
+    if (area) return area;
     const swap = bestShuffle(state, player);
     if (swap && swap.promising && (!move || move.score < 12))
       return { type: "__CPU_SHUFFLE", ...swap };

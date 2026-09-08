@@ -1,4 +1,5 @@
 import { shuffle, buildDeck } from "./board.js";
+import { forestCandidates } from "./areas.js";
 
 /**
  * 手番の乱数をアクション側に焼き込む。
@@ -21,6 +22,19 @@ export function enrichAction(action, state) {
       };
     case "CONFIRM_SHUFFLE":
       return { ...action, order: shuffle([0, 1, 2]) };
+    case "USE_AREA": {
+      // 盤面エリアの乱数。土は当たり外れ、森は見抜く駒の並び
+      const area = state.areas && state.areas[state.currentTurn];
+      if (!area) return action;
+      if (area.type === "earth")
+        return { ...action, hit: Math.random() < 0.5 };
+      if (area.type === "forest")
+        return {
+          ...action,
+          picks: shuffle(forestCandidates(state, state.currentTurn)),
+        };
+      return action;
+    }
     default:
       return action;
   }
