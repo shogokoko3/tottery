@@ -903,7 +903,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     <div className="skins-page">
       <div className="skins-heading">
         <div>
-          <span className="skins-eyebrow">TOTTERY / CARD SKINS</span>
+          <span className="skins-eyebrow">トッタリー / CARD SKINS</span>
           <h1>英雄の召喚</h1>
         </div>
         <p>

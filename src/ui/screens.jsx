@@ -127,7 +127,7 @@ export function GameShell({
   focusButton,
 }) {
   let [i, f] = (0, useState)(!1);
-  // 上の「Tottery」を押すとタイトルへ。対局中は onBack と同じ扱いにして、
+  // 上の「トッタリー」を押すとタイトルへ。対局中は onBack と同じ扱いにして、
   // 「対局をやめますか?」の確認を通す(黙って抜けると対局が飛ぶ)
   let goHome = onHome || onBack;
   return (
@@ -154,10 +154,10 @@ export function GameShell({
             onClick={goHome}
             aria-label="タイトルへ戻る"
           >
-            {title || "Tottery"}
+            {title || "トッタリー"}
           </button>
         ) : (
-          <span className="brand">{title || "Tottery"}</span>
+          <span className="brand">{title || "トッタリー"}</span>
         )}
         <div className="top-right">
           <button
@@ -1176,7 +1176,7 @@ function TotteryScreens() {
   function showTutorials() {
     (u(null), m(!1), setTut(null), t("tutorial"));
   }
-  // 上の「Tottery」から。ルーム作成の予約(p)も引きずらないように
+  // 上の「トッタリー」から。ルーム作成の予約(p)も引きずらないように
   function goHome() {
     (w(!1), s());
   }
@@ -1198,8 +1198,7 @@ function TotteryScreens() {
         <div className="center-stage">
           <h2>ご利用を停止しています</h2>
           <p className="hint">
-            他の方への迷惑行為が確認されたため、このアカウントでは Tottery
-            をご利用いただけません。
+            他の方への迷惑行為が確認されたため、このアカウントではトッタリーをご利用いただけません。
           </p>
           <p className="hint">
             心当たりがない場合や、内容についてのお問い合わせは、
