@@ -1,3 +1,4 @@
+import { sanitizeSeasonCache } from "../game/season.js";
 import {
   SKINS,
   ALL_SKINS,
@@ -119,6 +120,7 @@ export function normalize(raw) {
     // ガチャチケット。ミッションの褒美で増える。
     // いまのガチャは無料のテスト版なので、まだ減らない
     tickets: count(value.tickets),
+    season: sanitizeSeasonCache(value.season),
     tsume: sanitizeTsumeProgress(value.tsume),
     missionClaims: sanitizeMissionClaims(value.missionClaims),
     missionDrawDay:

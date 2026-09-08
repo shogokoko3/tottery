@@ -80,7 +80,9 @@ export function CardFace({
     </div>
   );
 }
-export function CardBack({ colorHex, size = "md" }) {
+export function CardBack({ colorHex, size = "md", backId, owner }) {
+  const seats = useSeats();
+  const moon = (backId ?? seats.backs?.[owner]) === "moon-crest";
   let l =
     size === "xs"
       ? {
@@ -103,14 +105,22 @@ export function CardBack({ colorHex, size = "md" }) {
             };
   return (
     <div
-      className="card-back"
+      className={moon ? "card-back card-back-moon" : "card-back"}
       style={{
         width: l.w,
         height: l.h,
         "--pc": colorHex,
       }}
     >
-      <img src={cardBackImg} alt="" draggable="false" />
+      {moon ? (
+        <span className="moon-crest-art" aria-hidden="true">
+          <i>✦</i>
+          <b>☾</b>
+          <i>✦</i>
+        </span>
+      ) : (
+        <img src={cardBackImg} alt="" draggable="false" />
+      )}
     </div>
   );
 }
@@ -140,7 +150,7 @@ export function Piece({
           isKing={piece.isKing}
         />
       ) : (
-        <CardBack colorHex={u.color} size={size} />
+        <CardBack colorHex={u.color} size={size} owner={piece.owner} />
       )}
       {piece.revealed && <span className="revealed-badge">公開</span>}
       {piece.isKing && i && (

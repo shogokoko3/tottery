@@ -1,3 +1,4 @@
+import { SeasonScreen } from "./season.jsx";
 /**
  * ランキング。持ち点の高い順に並べる。
  *
@@ -15,7 +16,7 @@ import { readRanks } from "../net/ranking.js";
 import { ArrowLeft } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
 
-export function RankingScreen({ onBack }) {
+function LifetimeRanking() {
   const me = loadProfile();
   const [state, setState] = useState("loading");
   const [list, setList] = useState([]);
@@ -49,7 +50,7 @@ export function RankingScreen({ onBack }) {
 
   return (
     <div className="rank-wrap">
-      <h2>ランキング</h2>
+      <h3>通算ランキング</h3>
       <p className="hint">
         9×9のオンライン対戦の成績で並びます。5×5とCPU戦は数えません。
       </p>
@@ -97,9 +98,43 @@ export function RankingScreen({ onBack }) {
         いまの本人確認は端末ごとの目印だけです。アプリを消して入れ直すと
         別人として載ります。端末を替えても続くアカウントは今後入れる予定です。
       </p>
-      <button className="btn btn-ghost btn-home" onClick={onBack}>
-        <ArrowLeft size={16} /> ホームに戻る
-      </button>
+    </div>
+  );
+}
+
+export function RankingScreen({ onBack }) {
+  const [tab, setTab] = useState("season");
+  return (
+    <div className="season-screen">
+      <header className="season-header">
+        <h2>ランキング</h2>
+        <button className="btn btn-ghost" onClick={onBack}>
+          <ArrowLeft size={16} /> 戻る
+        </button>
+      </header>
+      <nav className="season-tabs" aria-label="ランキングの種類">
+        {[
+          ["season", "今シーズン"],
+          ["lifetime", "通算"],
+          ["history", "歴代記録"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            className="btn btn-ghost"
+            aria-pressed={tab === id}
+            onClick={() => setTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+      <div className="season-scroll">
+        {tab === "lifetime" ? (
+          <LifetimeRanking />
+        ) : (
+          <SeasonScreen key={tab} historyOnly={tab === "history"} />
+        )}
+      </div>
     </div>
   );
 }

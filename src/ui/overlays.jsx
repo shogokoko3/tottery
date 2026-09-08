@@ -1,3 +1,4 @@
+import { AppearanceSettings } from "./season.jsx";
 import { useEffect, useState } from "react";
 import {
   MUSIC_CREDIT,
@@ -323,7 +324,7 @@ export function CaptureRevealModal({ reveal, onClose, viewer, final }) {
   );
 }
 
-export function LogViewer({ piece, viewer, onClose, revealAll }) {
+export function LogViewer({ piece, viewer, onClose, revealAll, onMemo }) {
   let a = PLAYER_META[piece.owner],
     u = piece.owner === viewer || !piece.alive || revealAll,
     i = sanitizeHistory(piece, viewer, revealAll);
@@ -342,6 +343,11 @@ export function LogViewer({ piece, viewer, onClose, revealAll }) {
             <Close size={18} />
           </button>
         </div>
+        {onMemo && (
+          <button className="btn btn-ghost" onClick={onMemo}>
+            ✎ 自分だけの推理メモ
+          </button>
+        )}
         {u && (
           <CardGuide
             rank={piece.rank}
@@ -476,6 +482,7 @@ export function SettingsModal({ onClose }) {
           onEditTitle={() => setEditing("title")}
         />
 
+        <AppearanceSettings />
         <p className="settings-head">音</p>
         <SoundSettings />
 

@@ -1,3 +1,5 @@
+import { seasonRequest, retrySeasonMatches } from "../net/season.js";
+import { AppearanceSeats } from "./season.jsx";
 import {
   createContext,
   useContext,
@@ -74,6 +76,7 @@ import { ensureAuth, myUid } from "../net/auth.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
 import SKIN_STYLES from "../skins/styles.css";
+import SEASON_STYLES from "./season.css";
 import TSUME_STYLES from "./tsume.css";
 import { SkinsScreen } from "./skins.jsx";
 import { useMissionProfile } from "./mission-profile.js";
@@ -132,7 +135,7 @@ export function GameShell({
   let goHome = onHome || onBack;
   return (
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
-      <style>{STYLES + SKIN_STYLES + TSUME_STYLES}</style>
+      <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES}</style>
       <header className="top-bar">
         {/* 戻る釦が無いときは空のまま。飾りの王冠を置いていたが、
             押せそうに見えて何も起きないので外した。
@@ -217,6 +220,7 @@ export function HomeScreen({ onStart }) {
  * 押すと設定が開く。名前やアイコンを変えるのはそこ。
  */
 function HomeSelf({ profile, tickets }) {
+  const { season } = useCollection();
   const openSettings = useOpenSettings();
   const progress = levelProgress(profile);
   return (
@@ -225,7 +229,12 @@ function HomeSelf({ profile, tickets }) {
       onClick={openSettings || void 0}
       aria-label="自分の設定を開く"
     >
-      <PlayerIcon icon={profile.icon} name={profile.name} size="md" />
+      <PlayerIcon
+        icon={profile.icon}
+        name={profile.name}
+        size="md"
+        frame={season.frame}
+      />
       <span className="home-self-id">
         <b>{profile.name || "名無し"}</b>
         <small>{titleOf(profile).name}</small>
@@ -1148,6 +1157,8 @@ function TotteryScreens() {
       }
       const now = loadProfile();
       if (!now.id || !now.name) return;
+      retrySeasonMatches().catch(() => {});
+      seasonRequest("summary").catch(() => {});
       // 使用頻度のミッション用に、1日1回だけ数える
       touchDay();
       if (gone) return;
@@ -1239,24 +1250,26 @@ function TotteryScreens() {
             : [collection.equipped, collection.equipped];
     return (
       <SeatsProvider value={{ names, icons, titles, skins }}>
-        <GameCore
-          // 再戦のたびに作り直す。見た手の控えも記録済みの印も、
-          // 前の対局のものを引きずらせない。
-          // チュートリアルは話ごとに作り直す
-          key={tut ? tut.id : `battle-${round}`}
-          round={round}
-          onRematch={a ? () => setRound((n) => n + 1) : null}
-          network={a}
-          boardSize={tut ? tut.boardSize : i}
-          cpu={d}
-          tutorial={tut}
-          nextTutorial={nextTutorial}
-          onNextTutorial={
-            nextTutorial ? () => startTutorial(nextTutorial) : null
-          }
-          onTutorialList={showTutorials}
-          onExit={s}
-        />
+        <AppearanceSeats network={a} cpu={d} tutorial={tut}>
+          <GameCore
+            // 再戦のたびに作り直す。見た手の控えも記録済みの印も、
+            // 前の対局のものを引きずらせない。
+            // チュートリアルは話ごとに作り直す
+            key={tut ? tut.id : `battle-${round}`}
+            round={round}
+            onRematch={a ? () => setRound((n) => n + 1) : null}
+            network={a}
+            boardSize={tut ? tut.boardSize : i}
+            cpu={d}
+            tutorial={tut}
+            nextTutorial={nextTutorial}
+            onNextTutorial={
+              nextTutorial ? () => startTutorial(nextTutorial) : null
+            }
+            onTutorialList={showTutorials}
+            onExit={s}
+          />
+        </AppearanceSeats>
       </SeatsProvider>
     );
   }

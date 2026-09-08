@@ -1,3 +1,4 @@
+import { useCollection } from "../skins/store.js";
 /**
  * プレイヤーのアカウント画面。
  *
@@ -17,7 +18,7 @@ import {
   saveName,
   levelProgress,
 } from "../game/profile.js";
-import { TITLES, hasTitle, titleOf } from "../game/titles.js";
+import { availableTitles, hasTitle, titleOf } from "../game/titles.js";
 import { publishPlayer } from "../net/players.js";
 import { ICONS, hasIcon } from "../game/icons.js";
 import { Check, Close, Sparkle } from "../icons.jsx";
@@ -149,6 +150,7 @@ export function NameEditModal({ onClose, onSaved }) {
  * 「いまの自分」がひと目で分かる形にした。
  */
 export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
+  const { season } = useCollection();
   const progress = levelProgress(profile);
   const level = progress.level;
   const rate = profile.plays
@@ -163,7 +165,12 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
           onClick={onEditIcon}
           title="アイコンを選ぶ"
         >
-          <PlayerIcon icon={profile.icon} name={profile.name} size="lg" />
+          <PlayerIcon
+            icon={profile.icon}
+            name={profile.name}
+            size="lg"
+            frame={season.frame}
+          />
           <span className="account-mark-edit">変える</span>
         </button>
         <div className="account-id">
@@ -311,7 +318,7 @@ export function TitlePickModal({ onClose, onSaved }) {
         </div>
         <p className="hint">名前の横に付きます。対戦相手にも見えます。</p>
         <div className="title-list">
-          {TITLES.map((t) => {
+          {availableTitles(profile).map((t) => {
             const owned = hasTitle(profile, t.id);
             if (t.secret && !owned) return null;
             return (

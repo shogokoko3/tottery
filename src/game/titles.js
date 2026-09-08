@@ -1,3 +1,4 @@
+import { seasonTitle } from "./season.js";
 /**
  * アカウントの称号。名前の横に添える飾り。
  *
@@ -86,7 +87,7 @@ export const DEFAULT_TITLE = "novice";
 
 /** id から称号を引く。知らない id なら null */
 export function findTitle(id) {
-  return TITLES.find((t) => t.id === id) || null;
+  return TITLES.find((t) => t.id === id) || seasonTitle(id);
 }
 
 /** その人が使える称号か */
@@ -101,7 +102,7 @@ export function hasTitle(profile, id) {
 
 /** いま使える称号の一覧 */
 export function ownedTitles(profile) {
-  return TITLES.filter((t) => hasTitle(profile, t.id));
+  return availableTitles(profile).filter((t) => hasTitle(profile, t.id));
 }
 
 /**
@@ -123,4 +124,11 @@ export function titleNameOf(id) {
 export function newlyEarned(before, after) {
   const had = new Set(ownedTitles(before).map((t) => t.id));
   return ownedTitles(after).filter((t) => !had.has(t.id));
+}
+
+export function availableTitles(profile) {
+  return [
+    ...TITLES,
+    ...[...new Set(profile?.titles || [])].map(seasonTitle).filter(Boolean),
+  ];
 }

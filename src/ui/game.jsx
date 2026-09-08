@@ -1,3 +1,5 @@
+import { useSeasonMatch, SeasonMatchNotice } from "./season.jsx";
+import { usePrivateNotes } from "./private-notes.jsx";
 import { useAceMagic } from "./ace-magic.jsx";
 import { useBattleFilm } from "./skin-film.jsx";
 import { useBattlePass } from "./battlepass-track.jsx";
@@ -99,7 +101,7 @@ import { publishPlayer } from "../net/players.js";
 
 /** 持ち時間の表示。自分の時計は下、相手の時計は上に置く */
 export function ClockBar({ clocks, currentTurn, viewer }) {
-  const { names, icons, titles } = useSeats();
+  const { names, icons, titles, frames } = useSeats();
   const fmt = (ms) => {
     const total = Math.max(0, Math.ceil(ms / 1000));
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
@@ -121,6 +123,7 @@ export function ClockBar({ clocks, currentTurn, viewer }) {
             <span className="clock-who">
               <PlayerIcon
                 icon={icons && icons[idx]}
+                frame={frames && frames[idx]}
                 name={names && names[idx]}
                 side={idx}
                 size="sm"
@@ -341,6 +344,7 @@ export function GameView({
   youAre,
   rating,
   rematch,
+  seasonResult,
 }) {
   const names = useNames();
   let [f, o] = (0, useState)(!1),
@@ -751,6 +755,7 @@ export function GameView({
             <img src={winKingCardImg} alt="" />
           </div>
         )}
+        <SeasonMatchNotice result={seasonResult} />
         {rating && (
           <div className="rating-change">
             <span className="rating-label">レーティング</span>
@@ -829,7 +834,11 @@ export function GameView({
                 {rematch.foeAsked && (
                   <p className="hint">相手はもう一度遊びたいようです</p>
                 )}
-                <button className="btn btn-ghost" onClick={rematch.ask}>
+                <button
+                  className="btn btn-ghost"
+                  onClick={rematch.ask}
+                  disabled={seasonResult?.status === "saving"}
+                >
                   <RotateCcw size={16} /> もう一度遊ぶ
                 </button>
               </>
@@ -914,6 +923,7 @@ export function GameCore({
   // 自分が取った駒をバトルパスへ。チュートリアルでは進めない
   useBattlePass(a, network ? p : cpu ? 0 : a.currentTurn, !!tutorial);
 
+  const seasonResult = useSeasonMatch(a, network, round, !!tutorial);
   const boardRef = useRef(null);
   const aceMagic = useAceMagic(a, skins, {
     disabled: !!tutorial,
@@ -932,6 +942,11 @@ export function GameCore({
   const pauseClock = fxBusy || !!a.captureReveal;
   const captureDisplayed = useCapturePresentation(a);
   const displayed = aceMagic.busy ? aceMagic.displayState : captureDisplayed;
+  const privateNotes = usePrivateNotes(
+    a,
+    tutorial ? null : network ? p : cpu ? 0 : null,
+    fxBusy || !!a.captureReveal,
+  );
   const holdFx =
     !!a.captureReveal &&
     !aceMagic.captureHandled &&
@@ -1332,7 +1347,10 @@ export function GameCore({
    * ゲストが先に抜けて部屋を消すと、ホストの再戦が壊れる。
    */
   function leaveGame() {
-    if (network && p === 0) deleteRoom(network.code);
+    // ホームへはすぐ戻す。記録が届くまで部屋の手順を残しておく。
+    seasonResult.submit().then((saved) => {
+      if (network && p === 0 && saved) deleteRoom(network.code);
+    });
     onExit();
   }
 
@@ -1392,7 +1410,14 @@ export function GameCore({
 
   // 両方そろったら、ホストが片付けて局を進める
   (0, useEffect)(() => {
-    if (!network || p !== 0 || !askedRematch || !foeAsked) return;
+    if (
+      !network ||
+      p !== 0 ||
+      !askedRematch ||
+      !foeAsked ||
+      (seasonResult.active && seasonResult.status !== "done")
+    )
+      return;
     let stop = !1;
     (async () => {
       await clearActs(network.code);
@@ -1401,7 +1426,7 @@ export function GameCore({
     return () => {
       stop = !0;
     };
-  }, [network, p, askedRematch, foeAsked, round]);
+  }, [network, p, askedRematch, foeAsked, round, seasonResult.status]);
 
   /**
    * シークレットミッションの達成。
@@ -2335,6 +2360,7 @@ export function GameCore({
                       )}
                       {ze && (
                         <div
+                          {...privateNotes.handlers(ze)}
                           className={`piece-slot ${stepIn ? "piece-stepping" : ""}`}
                           key={stepIn ? `mv${stepIn.seq}` : "piece"}
                           style={
@@ -2386,6 +2412,7 @@ export function GameCore({
                             isGuided={focusPiece(ze.id)}
                             justRevealed={displayed.lastReveal?.id === ze.id}
                           />
+                          {privateNotes.marker(ze)}
                         </div>
                       )}
                     </div>
@@ -2501,6 +2528,9 @@ export function GameCore({
             </div>
           </div>
         )}
+        {!tutorial && (network || cpu) && a.phase === "play" && (
+          <p className="private-note-hint">✎ 相手の伏せ札を長押しで推理メモ</p>
+        )}
         <CapturedRow players={displayed.players} dispatch={y} viewer={P} />
         <div className="resign-row">
           <button
@@ -2511,9 +2541,18 @@ export function GameCore({
             <Flag size={16} /> 降参する
           </button>
         </div>
+        {privateNotes.editor}
         {!a.captureReveal && a.logViewerId && a.pieces[a.logViewerId] && (
           <LogViewer
             piece={a.pieces[a.logViewerId]}
+            onMemo={
+              privateNotes.can(a.pieces[a.logViewerId])
+                ? () => {
+                    privateNotes.open(a.pieces[a.logViewerId]);
+                    y({ type: "CLOSE_LOG" });
+                  }
+                : null
+            }
             viewer={P}
             revealAll={a.phase === "gameover"}
             onClose={() =>
@@ -2539,13 +2578,17 @@ export function GameCore({
             onTutorialList={onTutorialList}
             youAre={network ? p : cpu ? 0 : null}
             rating={ratingResult}
+            seasonResult={seasonResult}
             rematch={
               network && onRematch
                 ? {
                     asked: askedRematch,
                     foeAsked,
-                    ask: () => {
-                      (setAskedRematch(!0), wantRematch(network.code, round));
+                    ask: async () => {
+                      if (await seasonResult.submit()) {
+                        setAskedRematch(true);
+                        wantRematch(network.code, round);
+                      }
                     },
                   }
                 : null
