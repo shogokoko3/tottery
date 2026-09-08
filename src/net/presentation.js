@@ -1,4 +1,4 @@
-const PRESENTATION_ACTIONS = new Set(["CONFIRM_SHUFFLE", "MOVE_PIECE"]);
+const PRESENTATION_ACTIONS = new Set(["CONFIRM_SHUFFLE", "MOVE_PIECE", "USE_AREA"]);
 
 /**
  * 未受信の手を、盤面演出を始められる最初の手まで取り込む。

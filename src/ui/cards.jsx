@@ -134,13 +134,17 @@ export function Piece({
   // 盤面エリア(src/game/areas.js): 見抜いた駒は自分にだけ表向き、凍った駒は青く
   known = false,
   frozen = false,
+  frozenTurns = 0,
+  skyBonus = false,
+  extraReady = false,
   size = "md",
 }) {
   let u = PLAYER_META[piece.owner],
     // フラッシュで公開された駒と、王を討って名乗りを上げた駒は、
     // 持ち主でなくても表向きに見える。土・森で見抜いた駒は自分だけに
     i = piece.owner === viewer || !!piece.revealed || !!known;
-  const mark = piece.mark === "sky" ? "空" : piece.mark === "palace" ? "宮" : null;
+  const mark =
+    piece.mark === "sky" ? "空" : piece.mark === "palace" ? "宮" : null;
   return (
     <div
       className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""} ${justRevealed ? "piece-unveiled" : ""} ${frozen ? "piece-frozen" : ""}`}
@@ -158,14 +162,32 @@ export function Piece({
       )}
       {piece.revealed && !mark && <span className="revealed-badge">公開</span>}
       {mark && (
-        <span className={`mark-badge mark-${piece.mark}`} aria-label={piece.mark === "sky" ? "空のエリアで変身" : "宮殿で昇格"}>
+        <span
+          className={`mark-badge mark-${piece.mark}`}
+          aria-label={piece.mark === "sky" ? "空のエリアで変身" : "宮殿で昇格"}
+        >
           {mark}
         </span>
       )}
       {known && !piece.revealed && piece.owner !== viewer && (
         <span className="known-badge">見抜</span>
       )}
-      {frozen && <span className="frozen-badge" aria-label="凍結">❄</span>}
+      {frozen && (
+        <span
+          className="frozen-badge"
+          aria-label={`凍結・残り${frozenTurns}手番`}
+        >
+          ❄<b>{frozenTurns || ""}</b>
+        </span>
+      )}
+      {skyBonus && i && (
+        <span
+          className={`sky-action-badge ${extraReady ? "sky-action-ready" : ""}`}
+          aria-label={extraReady ? "追加行動・残り1回" : "空の力・2回行動"}
+        >
+          {extraReady ? "あと1" : "×2"}
+        </span>
+      )}
       {piece.isKing && i && (
         <Crown
           size={size === "xs" ? 10 : size === "sm" ? 12 : 16}

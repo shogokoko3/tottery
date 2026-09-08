@@ -16,7 +16,17 @@ import {
   palaceCandidates,
   skyCandidates,
 } from "../game/areas.js";
-import { AreaBar, AreaFlash } from "./areas.jsx";
+import { AreaBar } from "./areas.jsx";
+import {
+  AreaEffects,
+  AreaEffectNotice,
+  useAreaEffects,
+} from "./area-effects.jsx";
+import {
+  automaticAreaAction,
+  frozenTurnsLeft,
+  hasVisibleSkyBonus,
+} from "../game/area-presentation.js";
 import { getLegalMoves, kingRankOf, squareName } from "../game/board.js";
 import {
   PLAYER_META,
@@ -26,6 +36,7 @@ import {
 } from "../game/constants.js";
 import { cpuAction } from "../game/cpu.js";
 import {
+  isNotableLog,
   autoArrange,
   autoPickKing,
   initialState,
@@ -490,17 +501,7 @@ export function GameView({
         if (hit(mark.taken, row, col)) out += " trace-taken";
         return out;
       },
-      m = state.log.filter(
-        (s) =>
-          s.includes("撃破") ||
-          s.includes("王が倒された") ||
-          s.includes("道連れ") ||
-          s.includes("新しい王") ||
-          s.includes("入れ替えた") ||
-          s.includes("投入") ||
-          s.includes("降参") ||
-          s.includes("判定"),
-      );
+      m = state.log.filter(isNotableLog);
     return (
       <div className="modal-overlay">
         <div className="modal-panel review-panel">
@@ -522,6 +523,13 @@ export function GameView({
               <Close size={18} />
             </button>
           </div>
+          {state.endReason === "frozen" && (
+            <div className="area-frozen-result">
+              <span aria-hidden="true">❄</span>
+              <b>氷のエリアによる決着</b>
+              <p>凍結により指せる手がなくなったため、対局が終了しました。</p>
+            </div>
+          )}
           <AdjudicationResult state={state} names={names} />
           {state.resignedBy !== null && state.resignedBy !== void 0 && (
             <p
@@ -575,11 +583,21 @@ export function GameView({
           )}
           <div className="board-outer">
             <div
-              className="board-grid"
+              className="board-grid area-board"
               style={{
                 gridTemplateColumns: `repeat(${size},1fr)`,
               }}
             >
+              {playing && at !== null && replay[at]?.areaEffects?.[mySide] && (
+                <AreaEffects
+                  key={`${at}-${playSeq}`}
+                  effect={{
+                    event: replay[at].areaEffects[mySide],
+                    stage: "release",
+                  }}
+                  flipped={d}
+                />
+              )}
               {Array.from({
                 length: size,
               }).map((s, v) =>
@@ -682,8 +700,11 @@ export function GameView({
                                     <span className="known-badge">見抜</span>
                                   )}
                                 {A.frozen && (
-                                  <span className="frozen-badge" aria-label="凍結">
-                                    ❄
+                                  <span
+                                    className="frozen-badge"
+                                    aria-label="凍結"
+                                  >
+                                    ❄{A.frozenTurns || ""}
                                   </span>
                                 )}
                               </div>
@@ -805,13 +826,15 @@ export function GameView({
         )}
         {lost && (
           <p className="defeat-lead">
-            {state.adjudication
-              ? "採用カードの合計による判定負けです"
-              : state.timeoutBy === youAre
-                ? "持ち時間を使い切りました"
-                : state.resignedBy === youAre
-                  ? "降参しました"
-                  : "王を討たれました"}
+            {state.endReason === "frozen"
+              ? "凍結によって動ける駒がなくなりました"
+              : state.adjudication
+                ? "採用カードの合計による判定負けです"
+                : state.timeoutBy === youAre
+                  ? "持ち時間を使い切りました"
+                  : state.resignedBy === youAre
+                    ? "降参しました"
+                    : "王を討たれました"}
           </p>
         )}
         {state.resignedBy !== null && state.resignedBy !== void 0 && (
@@ -824,8 +847,15 @@ export function GameView({
             {nameOf(state.resignedBy, names)}が降参しました
           </p>
         )}
+        {state.endReason === "frozen" && (
+          <div className="area-frozen-result">
+            <span aria-hidden="true">❄</span>
+            <b>氷のエリアによる決着</b>
+            <p>凍結により指せる手がなくなったため、対局が終了しました。</p>
+          </div>
+        )}
         <AdjudicationResult state={state} names={names} />
-        {!state.adjudication && (
+        {!state.adjudication && state.endReason !== "frozen" && (
           <div
             className={`king-card ${lost ? "lose-card" : "win-card"} ${tutorial && won ? "tutorial-king-card" : ""}`}
           >
@@ -1022,10 +1052,21 @@ export function GameCore({
     network ? p : cpu ? 0 : null,
     aceMagic.busy,
   );
-  const fxBusy = cinematic.busy || aceMagic.busy;
+  const areaFx = useAreaEffects(
+    a,
+    network ? p : cpu ? 0 : null,
+    cinematic.busy || aceMagic.busy || !!a.captureReveal || !!a.setupEffects,
+  );
+  const fxBusy = cinematic.busy || aceMagic.busy || areaFx.busy;
+  const autoArea = automaticAreaAction(a);
+  const autoIssued = useRef(null);
   const pauseClock = fxBusy || !!a.captureReveal;
   const captureDisplayed = useCapturePresentation(a);
-  const displayed = aceMagic.busy ? aceMagic.displayState : captureDisplayed;
+  const displayed = aceMagic.busy
+    ? aceMagic.displayState
+    : areaFx.busy
+      ? areaFx.displayState
+      : captureDisplayed;
   const privateNotes = usePrivateNotes(
     a,
     tutorial ? null : network ? p : cpu ? 0 : null,
@@ -1135,6 +1176,25 @@ export function GameCore({
       return reducer(U, be);
     });
   }
+  useEffect(() => {
+    if (!autoArea) {
+      autoIssued.current = null;
+      return;
+    }
+    if (
+      fxBusy ||
+      a.captureReveal ||
+      a.setupEffects ||
+      a.kPlacement ||
+      (!network && !cpu && a.interstitial) ||
+      (network && a.currentTurn !== p)
+    )
+      return;
+    const key = `${a.turnNo}:${a.areas[a.currentTurn].type}:${a.areas[a.currentTurn].uses || 0}`;
+    if (autoIssued.current === key) return;
+    autoIssued.current = key;
+    y(autoArea);
+  }, [a, fxBusy, network, cpu]);
   (0, useEffect)(() => {
     a.phase === "intro" &&
       matchRatings.ready &&
@@ -1203,7 +1263,7 @@ export function GameCore({
 
   let T = 1;
   ((0, useEffect)(() => {
-    if (!cpu || network || tutorial || fxBusy) return;
+    if (!cpu || network || tutorial || fxBusy || autoArea) return;
     let E = cpuAction(a, T);
     if (!E) return;
     let U = foeWait(a, E, 1000),
@@ -1719,9 +1779,14 @@ export function GameCore({
     </>
   );
   let R = a.boardSize,
-    P = network ? p : cpu ? 0 : (aceMagic.viewer ?? displayed.currentTurn),
+    P = network
+      ? p
+      : cpu
+        ? 0
+        : (aceMagic.viewer ?? areaFx.viewer ?? displayed.currentTurn),
     x =
       !fxBusy &&
+      !autoArea &&
       !a.captureReveal &&
       (network ? a.currentTurn === p : cpu ? a.currentTurn === 0 : !0),
     N = network
@@ -2370,8 +2435,8 @@ export function GameCore({
             {tutorial ? "相手の番です" : "CPUが考えています…"}
           </p>
         )}
+        <AreaEffectNotice effect={areaFx} names={names} />
         <div className="board-outer">
-          <AreaFlash state={a} viewer={P} names={names} />
           <div
             className="board-frame"
             style={{
@@ -2387,12 +2452,13 @@ export function GameCore({
               })}
             </div>
             <div
-              className="board-grid"
+              className="board-grid area-board"
               ref={boardRef}
               style={{
                 gridTemplateColumns: `repeat(${R},1fr)`,
               }}
             >
+              <AreaEffects effect={areaFx} flipped={Jl} />
               {Array.from({
                 length: R,
               }).map((E, U) =>
@@ -2451,10 +2517,18 @@ export function GameCore({
                     // 海のエリアで引き寄せられた駒。出発点から到着点へ滑らせる
                     seaStep = (() => {
                       const la = a.lastArea;
-                      if (!la || la.type !== "sea" || !la.moves || !ze)
+                      if (
+                        !la ||
+                        la.type !== "sea" ||
+                        !la.moves ||
+                        !ze ||
+                        areaFx.event?.type !== "sea" ||
+                        areaFx.stage !== "release"
+                      )
                         return null;
                       const mv = la.moves.find(
-                        (m) => m.id === ze.id && m.to.row === ne && m.to.col === Me,
+                        (m) =>
+                          m.id === ze.id && m.to.row === ne && m.to.col === Me,
                       );
                       if (!mv) return null;
                       const dc = mv.from.col - mv.to.col;
@@ -2513,6 +2587,12 @@ export function GameCore({
                               ? "fx-defeat-surround"
                               : ""
                           }`}
+                        />
+                      )}
+                      {Zo !== null && a.areas?.[Zo] && (
+                        <span
+                          className={`area-terrain area-terrain-${a.areas[Zo].type}`}
+                          aria-hidden="true"
                         />
                       )}
                       {ze && (
@@ -2580,8 +2660,11 @@ export function GameCore({
                             }
                             isGuided={focusPiece(ze.id)}
                             justRevealed={displayed.lastReveal?.id === ze.id}
-                            known={isKnownTo(a, P, ze)}
-                            frozen={isFrozen(a, ze)}
+                            known={isKnownTo(displayed, P, ze)}
+                            frozen={isFrozen(displayed, ze)}
+                            frozenTurns={frozenTurnsLeft(displayed, ze)}
+                            skyBonus={hasVisibleSkyBonus(displayed, ze, P)}
+                            extraReady={displayed.extraMoveFor === ze.id}
                           />
                           {privateNotes.marker(ze)}
                         </div>
@@ -2658,7 +2741,9 @@ export function GameCore({
                 <span>
                   {U
                     ? "王(A)はもう一度入れ替えられます"
-                    : "王(10)はもう一度動けます"}
+                    : E?.isKing
+                      ? "王(10)はもう一度動けます"
+                      : "空の力でもう一度動けます（残り1回）"}
                 </span>
                 <button
                   className="btn btn-ghost"

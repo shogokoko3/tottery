@@ -18,6 +18,7 @@ export {
   connectFilmSound,
   duckMusic,
   playSound,
+  playAreaSound,
   setBgmVolume,
   setMuted,
   setSeVolume,

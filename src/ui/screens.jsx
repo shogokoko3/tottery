@@ -78,6 +78,7 @@ import { ensureAuth, myUid } from "../net/auth.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
 import SKIN_STYLES from "../skins/styles.css";
+import AREA_STYLES from "./area-effects.css";
 import SEASON_STYLES from "./season.css";
 import TSUME_STYLES from "./tsume.css";
 import { SkinsScreen } from "./skins.jsx";
@@ -137,7 +138,7 @@ export function GameShell({
   let goHome = onHome || onBack;
   return (
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
-      <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES}</style>
+      <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES + AREA_STYLES}</style>
       <header className="top-bar">
         {/* 戻る釦が無いときは空のまま。飾りの王冠を置いていたが、
             押せそうに見えて何も起きないので外した。

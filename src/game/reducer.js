@@ -1,3 +1,4 @@
+import { areaEvent } from "./area-presentation.js";
 import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
 import { adjudicatePosition, withInitialArmies } from "./adjudication.js";
@@ -679,9 +680,7 @@ export function endAction(state, pieceId) {
     piece &&
     piece.alive &&
     piece.rank === "10" &&
-    (piece.isKing ||
-      !!piece.skyTwice ||
-      !!state.players[piece.owner].skyTwice);
+    (piece.isKing || !!piece.skyTwice || !!state.players[piece.owner].skyTwice);
   const extraSwap = piece && piece.alive && piece.isKing && piece.rank === "A";
   if ((extraMove || extraSwap) && !state.extraUsed) {
     return {
@@ -1046,7 +1045,14 @@ function afterAction(prev, next, action) {
                 owner: piece.owner,
                 isKing: !!piece.isKing,
                 ...(piece.mark ? { mark: piece.mark } : null),
-                ...(frozenNow(piece) ? { frozen: true } : null),
+                ...(frozenNow(piece)
+                  ? {
+                      frozen: true,
+                      frozenTurns: Math.ceil(
+                        (piece.frozenUntil - (out.turnNo || 0)) / 2,
+                      ),
+                    }
+                  : null),
                 ...(piece.revealed ? { revealed: true } : null),
                 ...(out.known &&
                 (out.known[0][piece.id] || out.known[1][piece.id])
@@ -1087,7 +1093,12 @@ function afterAction(prev, next, action) {
         ...out,
         replay: [
           ...(out.replay || []),
-          ...added.map((line) => ({ line, board: snapshot, mark })),
+          ...added.map((line) => ({
+            line,
+            board: snapshot,
+            mark,
+            areaEffects: [areaEvent(prev, out, 0), areaEvent(prev, out, 1)],
+          })),
         ],
       };
     }

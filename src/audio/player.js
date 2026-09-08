@@ -20,6 +20,7 @@
  */
 
 import { SOUNDS } from "./sounds.js";
+import { areaSoundSamples } from "./area-sounds.js";
 import { TRACKS, audioUrl } from "./tracks.js";
 import { isTestPlay } from "../game/profile.js";
 import { loadAudioSettings, saveAudioSettings } from "./settings.js";
@@ -232,6 +233,35 @@ export function playSound(id, { rate = 1 } = {}) {
   return () => {
     try {
       src.stop();
+    } catch {}
+  };
+}
+
+export function playAreaSound(type, { hit = true } = {}) {
+  if (
+    !unlocked ||
+    conf().muted ||
+    !ensureGraph() ||
+    !seBus ||
+    ctx.state !== "running"
+  )
+    return;
+  const id = `area:${type}:${hit}`;
+  if (!buffers.has(id)) {
+    const samples = areaSoundSamples(type, ctx.sampleRate, hit);
+    const buffer = ctx.createBuffer(1, samples.length, ctx.sampleRate);
+    buffer.copyToChannel(samples, 0);
+    buffers.set(id, buffer);
+  }
+  const source = ctx.createBufferSource();
+  source.buffer = buffers.get(id);
+  source.connect(seBus);
+  source.start();
+  source.onended = () => source.disconnect();
+  if (played) played.push(id);
+  return () => {
+    try {
+      source.stop();
     } catch {}
   };
 }
