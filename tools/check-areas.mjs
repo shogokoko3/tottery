@@ -185,7 +185,7 @@ console.log("土: 足跡を読む");
   const hit = reducer(s, { type: "USE_AREA", hit: true });
   is("当たり: 自分だけが知る", [isKnownTo(hit, 0, hit.pieces[target.id]), isKnownTo(hit, 1, hit.pieces[target.id]) === true && hit.pieces[target.id].owner === 1], [true, true]);
   is("公開(revealed)にはならない", !!hit.pieces[target.id].revealed, false);
-  is("記録に残る", hit.log.at(-1).includes("土のエリア"), true);
+  is("記録に残り、当たり外れは相手にも分かる", [hit.log.at(-1).includes("見抜いた"), miss.log.at(-1).includes("読み違えた")], [true, true]);
   is("2回目は使えない", reducer(hit, { type: "USE_AREA", hit: true }) === hit, true);
   is("通信で届く手に hit が無ければ捨てる", reducer(s, { type: "USE_AREA", player: 0 }) === s, true);
   is("enrichAction が hit を焼き込む", typeof enrichAction({ type: "USE_AREA" }, s).hit, "boolean");
@@ -222,7 +222,7 @@ console.log("海: 中央へ引き寄せる");
   is("直前の手は消える(演出の誤発火を防ぐ)", t.lastMove, null);
 }
 
-console.log("森: 3体見抜く");
+console.log("森: 1体見抜く");
 {
   let s = startGame({ kings: ["6", "7"] });
   if (s.currentTurn !== 0) s = playQuiet(s);
@@ -232,29 +232,36 @@ console.log("森: 3体見抜く");
   if (!act.picks) { console.log("  (森が立っていないので以降を飛ばす)", s.areas); process.exit(1); }
   const t = reducer(s, act);
   const known = Object.keys(t.known[0]);
-  is("3体", known.length, 3);
-  is("全部相手の駒で王ではない", known.every((id) => t.pieces[id].owner === 1 && !t.pieces[id].isKing), true);
+  is("1体", known.length, 1);
+  is("相手の駒で王ではない", known.every((id) => t.pieces[id].owner === 1 && !t.pieces[id].isKing), true);
   is("相手には何も分からない", Object.keys(t.known[1]).length, 0);
-  is("手に書かれた順に選ぶ", known.sort(), act.picks.slice(0, 3).sort());
+  is("手に書かれた先頭を選ぶ", known, [act.picks[0]]);
+  is("公開(revealed)にはならない", !!t.pieces[known[0]].revealed, false);
   // 手に無い id や相手の王を書いても通らない
   const kingId = s.players[1].kingId;
-  const bad = reducer(s, { type: "USE_AREA", picks: [kingId, "nope", act.picks[0]] });
-  is("王や知らない id は無視され、残りは固定の並びで補う", Object.keys(bad.known[0]).length === 3 && !bad.known[0][kingId], true);
+  const bad = reducer(s, { type: "USE_AREA", picks: [kingId, "nope"] });
+  is("王や知らない id は無視され、固定の並びで補う", Object.keys(bad.known[0]).length === 1 && !bad.known[0][kingId], true);
 }
 
-console.log("氷: 3手番動けない");
+console.log("氷: 1体を選んで3手番動けなくする");
 {
   let s = startGame({ kings: ["8", "9"] });
   if (s.currentTurn !== 0) s = playQuiet(s);
-  const t = reducer(s, { type: "USE_AREA" });
-  const foe = mine(t, 1);
-  is("相手の王以外が全部凍る", foe.filter((p) => !p.isKing).every((p) => isFrozen(t, p)), true);
-  is("相手の王は凍らない", isFrozen(t, t.pieces[t.players[1].kingId]), false);
+  const foeKing = s.players[1].kingId;
+  is("相手の王は選べない", reducer(s, { type: "USE_AREA", pieceId: foeKing }) === s, true);
+  const own = mine(s, 0).find((p) => !p.isKing);
+  is("自分の駒は選べない", reducer(s, { type: "USE_AREA", pieceId: own.id }) === s, true);
+  is("駒を選ばないと何も起きない", reducer(s, { type: "USE_AREA" }) === s, true);
+  const target = mine(s, 1).find((p) => !p.isKing);
+  const t = reducer(s, { type: "USE_AREA", pieceId: target.id });
+  is("選んだ1体だけが凍る", mine(t, 1).filter((p) => isFrozen(t, p)).map((p) => p.id), [target.id]);
+  is("相手の王は凍らない", isFrozen(t, t.pieces[foeKing]), false);
   is("自分の駒は凍らない", mine(t, 0).some((p) => isFrozen(t, p)), false);
+  is("記録に残る", t.log.at(-1).includes("氷のエリア"), true);
   // 自分が1手指して相手の番に
   let u = playQuiet(t);
   is("相手の番", u.currentTurn, 1);
-  const frozenPiece = mine(u, 1).find((p) => !p.isKing);
+  const frozenPiece = u.pieces[target.id];
   const moves = getLegalMoves(frozenPiece, u.board, u.boardSize, u.players[1].armyRankCounts, kingRankOf(u, 1));
   if (moves.length) {
     const m = moves[0];
@@ -278,14 +285,16 @@ console.log("氷: 王も動けなければ手番を飛ばす");
 {
   let s = startGame({ kings: ["8", "2"] });
   if (s.currentTurn !== 0) s = playQuiet(s);
-  const t = reducer(s, { type: "USE_AREA" });
-  // 相手(1)の王2を、凍った味方4体で囲む盤を組む(検査のためだけの細工)
+  const t = s;
+  // 相手(1)の王2を、凍った味方4体で囲む盤を組む(検査のためだけの細工。
+  // 実際の氷は1体しか凍らせないが、飛ばしの決まり自体はこれで確かめられる)
   const u = { ...t, pieces: { ...t.pieces }, board: t.board.map((r) => r.map(() => null)) };
   const foe = mine(t, 1);
   const king = foe.find((p) => p.isKing);
   const others = foe.filter((p) => !p.isKing);
+  const until = (t.turnNo || 0) + FREEZE_TURNS * 2;
   const place = (p, row, col) => {
-    const q = { ...p, row, col };
+    const q = { ...p, row, col, frozenUntil: p.isKing ? undefined : until };
     u.pieces[p.id] = q;
     u.board[row][col] = q;
   };
@@ -303,16 +312,22 @@ console.log("氷: 王も動けなければ手番を飛ばす");
   is("手番の通し番号は2つ進む", v.turnNo, u.turnNo + 2);
 }
 
-console.log("空: 10に変身、2回動く");
+console.log("空: 本物の10に変身(公開)、軍の10は全て2回動く");
 {
-  let s = startGame({ kings: ["10", "2"] });
+  let s = startGame({ kings: ["J", "2"] });
   if (s.currentTurn !== 0) s = playQuiet(s);
+  // 王が J でも、ここでは空を試すために areas を差し替える(検査の細工)
+  s = { ...s, areas: [{ type: "sky", used: false, rank: "J", skin: "x" }, null] };
   const target = mine(s, 0).find((p) => !p.isKing && p.rank !== "10" && p.rank !== "A");
+  const before = s.players[0].armyRankCounts;
   is("王は候補にならない", reducer(s, { type: "USE_AREA", pieceId: s.players[0].kingId }) === s, true);
   const t = reducer(s, { type: "USE_AREA", pieceId: target.id });
   const piece = t.pieces[target.id];
-  is("ランクは変わらない(正体は元のまま)", piece.rank, target.rank);
-  is("10として動く", piece.moveAs, "10");
+  is("本物の10になる", piece.rank, "10");
+  is("公開され、専用のしるしが付く", [piece.revealed, piece.mark], [true, "sky"]);
+  is("採用枚数の表も追いかける", [t.players[0].armyRankCounts[target.rank] || 0, t.players[0].armyRankCounts["10"] || 0], [(before[target.rank] || 0) - 1, (before["10"] || 0) + 1]);
+  is("軍に「10は2回」の印が立つ", t.players[0].skyTwice, true);
+  is("相手の軍には立たない", !!t.players[1].skyTwice, false);
   const moves = getLegalMoves(piece, t.board, 9, t.players[0].armyRankCounts, kingRankOf(t, 0));
   is("桂馬跳びになる", moves.every((m) => Math.abs(m.row - piece.row) + Math.abs(m.col - piece.col) === 3), true);
   is("手番は消費しない", t.currentTurn, 0);
@@ -324,6 +339,15 @@ console.log("空: 10に変身、2回動く");
   u = reducer(u, { type: "MOVE_PIECE", pieceId: piece.id, row: again.row, col: again.col });
   is("2回目のあと手番が渡る", u.currentTurn, 1);
   is("記録に2回目が残る", u.log.some((l) => l.includes("2回目に移動")), true);
+  // 元からいる10も2回動ける
+  const other10 = mine(t, 0).find((p) => p.rank === "10" && p.id !== piece.id && !p.isKing);
+  if (other10) {
+    const mv = getLegalMoves(other10, t.board, 9, t.players[0].armyRankCounts, kingRankOf(t, 0)).find((m) => !t.board[m.row][m.col]);
+    if (mv) {
+      const w = reducer(t, { type: "MOVE_PIECE", pieceId: other10.id, row: mv.row, col: mv.col });
+      is("元からいる10も2回動ける", w.extraMoveFor, other10.id);
+    }
+  }
 }
 
 console.log("宮殿: 昇格は手番を使う");
@@ -331,17 +355,23 @@ console.log("宮殿: 昇格は手番を使う");
   let s = startGame({ kings: ["K", "3"] });
   is("Kの王は宮殿", s.areas[0].type, "palace");
   if (s.currentTurn !== 0) s = playQuiet(s);
-  is("promotedRank", ["2", "9", "10", "J", "A"].map(promotedRank), ["3", "10", null, null, null]);
+  is("promotedRank は K まで", ["2", "9", "10", "J", "Q", "K", "A"].map(promotedRank), ["3", "10", "J", "Q", "K", null, null]);
   const nine = mine(s, 0).find((p) => !p.isKing && promotedRank(p.rank));
   const before = s.players[0].armyRankCounts;
   const t = reducer(s, { type: "USE_AREA", pieceId: nine.id });
   const up = promotedRank(nine.rank);
   is("1段上がる", t.pieces[nine.id].rank, up);
+  is("公開され、専用のしるしが付く", [t.pieces[nine.id].revealed, t.pieces[nine.id].mark], [true, "palace"]);
   is("採用枚数の表も追いかける", [t.players[0].armyRankCounts[nine.rank] || 0, t.players[0].armyRankCounts[up] || 0], [(before[nine.rank] || 0) - 1, (before[up] || 0) + 1]);
   is("手番が渡る", t.currentTurn, 1);
   is("最初の採用合計(合計判定)は変えない", t.initialArmyTotals, s.initialArmyTotals);
   const ten = mine(s, 0).find((p) => p.rank === "10" || p.rank === "J" || p.rank === "Q");
-  if (ten) is("10 以上は昇格できない", reducer(s, { type: "USE_AREA", pieceId: ten.id }) === s, true);
+  if (ten) {
+    const w = reducer(s, { type: "USE_AREA", pieceId: ten.id });
+    is("10 以上も1段上がる(採用枚数の制限は見ない)", w.pieces[ten.id].rank, promotedRank(ten.rank));
+  }
+  const kk = mine(s, 0).find((p) => p.rank === "K" && !p.isKing);
+  if (kk) is("K はもう上がらない", reducer(s, { type: "USE_AREA", pieceId: kk.id }) === s, true);
   is("王は昇格できない", reducer(s, { type: "USE_AREA", pieceId: s.players[0].kingId }) === s, true);
 }
 

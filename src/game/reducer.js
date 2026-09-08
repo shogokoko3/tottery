@@ -673,10 +673,12 @@ export function endAction(state, pieceId) {
   if (state.winner !== null && state.winner !== undefined)
     return { ...state, phase: "gameover" };
   const piece = pieceId ? state.pieces[pieceId] : null;
+  // 空のエリアを使った軍は、10が全て2回動ける(src/game/areas.js)
   const extraMove =
     piece &&
     piece.alive &&
-    ((piece.isKing && piece.rank === "10") || !!piece.skyTwice);
+    piece.rank === "10" &&
+    (piece.isKing || !!state.players[piece.owner].skyTwice);
   const extraSwap = piece && piece.alive && piece.isKing && piece.rank === "A";
   if ((extraMove || extraSwap) && !state.extraUsed) {
     return {
@@ -1739,7 +1741,8 @@ function coreReducer(state, action) {
       // 王の10は1ターンに2回動ける。どちらの手かを記録に添える
       const secondAction = state.extraMoveFor === mover.id;
       const twiceKing =
-        (mover.isKing && mover.rank === "10") || !!mover.skyTwice;
+        mover.rank === "10" &&
+        (mover.isKing || !!state.players[mover.owner].skyTwice);
       const nth = secondAction ? "2回目" : "1回目";
 
       const board = state.board.map((r) => [...r]);

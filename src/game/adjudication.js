@@ -68,8 +68,7 @@ export function hasLegalAction(state) {
  * 実際より広い領域同士さえ届かなければ、遮蔽物や捕獲順に依存しない。
  */
 function reachSteps(piece) {
-  // 空のエリアで変身した駒は 10 として届く範囲を見る
-  switch (piece.moveAs || piece.rank) {
+  switch (piece.rank) {
     case "A":
       return [];
     case "2":

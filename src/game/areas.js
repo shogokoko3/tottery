@@ -5,13 +5,17 @@
  * 盤に立ち、1局に1回だけ効果を使える。9×9 だけ。5×5 には無い
  * (駒が5体しかなく、帯が分かると王の候補が絞れてしまうため)。
  *
- *   2・3  土   直前に動いた相手の駒の足跡を読み、50% で正体を見抜く(自分だけが知る)
+ *   2・3  土   直前に動いた相手の駒の足跡を読み、50% で正体を見抜く。
+ *              当たったか外れたかは相手にも分かる。正体は自分だけが知る
  *   4・5  海   盤上の全ての駒を中央へ引き寄せる
- *   6・7  森   相手の王以外の駒を3体まで見抜く(自分だけが知る)
- *   8・9  氷   相手の王以外の駒を凍らせ、相手の3手番のあいだ動けなくする
- *   10    空   自分の駒1体をこの局のあいだ10に変身させる。その駒は1手番に2回動ける
- *   J〜K  宮殿 手番を使い、自分の駒1体を1段昇格させる(10まで)
+ *   6・7  森   相手の王以外の駒を1体見抜く(自分だけが知る)
+ *   8・9  氷   相手の王以外の駒を1体選んで凍らせ、相手の3手番のあいだ動けなくする
+ *   10    空   自分の駒1体を10に変身させる(本物の10になり、公開される)。
+ *              以後、自軍の10は全て1手番に2回動ける
+ *   J〜K  宮殿 手番を使い、自分の駒1体を1段昇格させる(K まで。上限なし)。
+ *              昇格した駒は公開される
  *
+ * 空と宮殿で現れた札は公開(revealed)になり、専用のしるし(piece.mark)が付く。
  * 発動は自分の手番の初め(まだ何もしていないとき)。宮殿以外は手番を消費しない。
  * 発動は相手にも見える。見抜いた正体だけは自分にしか見えない(state.known)。
  *
@@ -44,7 +48,7 @@ export const AREA_BY_RANK = Object.freeze({
 export const AREA_INFO = Object.freeze({
   earth: {
     name: "土のエリア",
-    text: "直前に動いた相手の駒の足跡を読み、50%で正体を見抜く(自分だけが知る)",
+    text: "直前に動いた相手の駒の足跡を読み、50%で正体を見抜く(正体は自分だけが知る)",
     usesTurn: false,
     needsPiece: false,
   },
@@ -56,25 +60,25 @@ export const AREA_INFO = Object.freeze({
   },
   forest: {
     name: "森のエリア",
-    text: "相手の王以外の駒を3体まで見抜く(自分だけが知る)",
+    text: "相手の王以外の駒を1体見抜く(自分だけが知る)",
     usesTurn: false,
     needsPiece: false,
   },
   ice: {
     name: "氷のエリア",
-    text: "相手の王以外の駒を凍らせ、相手の3手番のあいだ動けなくする",
+    text: "相手の王以外の駒を1体選んで凍らせ、相手の3手番のあいだ動けなくする",
     usesTurn: false,
-    needsPiece: false,
+    needsPiece: true,
   },
   sky: {
     name: "空のエリア",
-    text: "自分の駒1体をこの局のあいだ10に変身させる。その駒は1手番に2回動ける",
+    text: "自分の駒1体を10に変身させる(公開)。以後、自軍の10は全て1手番に2回動ける",
     usesTurn: false,
     needsPiece: true,
   },
   palace: {
     name: "宮殿",
-    text: "手番を使い、自分の駒1体を1段昇格させる(10まで)",
+    text: "手番を使い、自分の駒1体を1段昇格させる(Kまで。昇格した駒は公開)",
     usesTurn: true,
     needsPiece: true,
   },
@@ -83,15 +87,10 @@ export const AREA_INFO = Object.freeze({
 /** 氷で動けなくなる相手の手番の数 */
 export const FREEZE_TURNS = 3;
 /** 森で見抜く駒の数 */
-export const FOREST_REVEALS = 3;
+export const FOREST_REVEALS = 1;
 
 export function areaForKing(rank) {
   return AREA_BY_RANK[rank] || null;
-}
-
-/** その駒がいま何の動きをするか。空で変身した駒は 10 */
-export function moveRankOf(piece) {
-  return (piece && piece.moveAs) || (piece && piece.rank);
 }
 
 /** 凍っているか。turnNo が frozenUntil に届くと解ける */
@@ -176,28 +175,44 @@ export function forestCandidates(state, player) {
     .sort();
 }
 
-/** 空: 変身させられる自分の駒(王と10、すでに変身した駒は除く) */
+/** 氷: 凍らせられる相手の駒(王以外。すでに凍っている駒は除く) */
+export function iceCandidates(state, player) {
+  return alivePieces(state, 1 - player)
+    .filter((p) => !p.isKing && !isFrozen(state, p))
+    .map((p) => p.id)
+    .sort();
+}
+
+/** 空: 変身させられる自分の駒(王と10は除く) */
 export function skyCandidates(state, player) {
   return alivePieces(state, player)
-    .filter((p) => !p.isKing && p.rank !== "10" && !p.moveAs)
+    .filter((p) => !p.isKing && p.rank !== "10")
     .map((p) => p.id)
     .sort();
 }
 
-/** 宮殿: 昇格させられる自分の駒(王以外の 2〜9) */
+/** 宮殿: 昇格させられる自分の駒(王以外。K はもう上がらない) */
 export function palaceCandidates(state, player) {
   return alivePieces(state, player)
-    .filter((p) => !p.isKing && !p.moveAs && promotedRank(p.rank) !== null)
+    .filter((p) => !p.isKing && promotedRank(p.rank) !== null)
     .map((p) => p.id)
     .sort();
 }
 
-/** 1段上のランク。2〜9 だけ。10 より上には上げない */
+/** 1段上のランク。2→3 … 9→10→J→Q→K。A と K は上がらない */
 export function promotedRank(rank) {
   const i = RANKS.indexOf(rank);
-  if (i < 1 || rank === "10" || i + 1 >= RANKS.length) return null;
-  const next = RANKS[i + 1];
-  return ["J", "Q", "K"].includes(next) ? null : next;
+  if (i < 1 || i + 1 >= RANKS.length) return null;
+  return RANKS[i + 1];
+}
+
+/** 採用枚数の表を、ランクが変わった駒に合わせて動かす */
+function recount(counts, from, to) {
+  const next = { ...counts };
+  if (next[from] > 1) next[from] -= 1;
+  else delete next[from];
+  next[to] = (next[to] || 0) + 1;
+  return next;
 }
 
 /**
@@ -221,6 +236,10 @@ export function canUseArea(state, player) {
     case "forest":
       if (!forestCandidates(state, player).length)
         return { ok: false, why: "見抜ける駒がありません" };
+      break;
+    case "ice":
+      if (!iceCandidates(state, player).length)
+        return { ok: false, why: "凍らせられる駒がありません" };
       break;
     case "sky":
       if (!skyCandidates(state, player).length)
@@ -281,9 +300,13 @@ export function useArea(state, action) {
         known[player][target.id] = true;
         next = { ...state, known };
       }
+      // 当たったか外れたかは相手にも分かる。正体は自分だけ
       next = {
         ...next,
-        log: [...state.log, `${name}が土のエリアで足跡を読んだ`],
+        log: [
+          ...state.log,
+          `${name}が土のエリアで足跡を読んだ…${hit ? "正体を見抜いた!" : "読み違えた"}`,
+        ],
       };
       return markUsed(next, player, { hit, pieceId: target.id });
     }
@@ -312,46 +335,62 @@ export function useArea(state, action) {
       return markUsed(next, player, { pieceIds: chosen });
     }
     case "ice": {
-      const until = (state.turnNo || 0) + FREEZE_TURNS * 2;
-      let next = state;
-      const frozen = [];
-      for (const p of alivePieces(state, 1 - player)) {
-        if (p.isKing) continue;
-        next = withPiece(next, {
-          ...p,
-          frozenUntil: until,
-          history: [...p.history, "氷のエリアで凍りついた"],
-        });
-        frozen.push(p.id);
-      }
-      next = {
-        ...next,
-        log: [
-          ...state.log,
-          `${name}が氷のエリアで${foeName}の駒${frozen.length}体を凍らせた`,
-        ],
-      };
-      return markUsed(next, player, { pieceIds: frozen, until });
-    }
-    case "sky": {
       const piece = state.pieces[action.pieceId];
-      if (!piece || !skyCandidates(state, player).includes(piece.id)) return state;
+      if (!piece || !iceCandidates(state, player).includes(piece.id))
+        return state;
+      const until = (state.turnNo || 0) + FREEZE_TURNS * 2;
       const next = withPiece(state, {
         ...piece,
-        moveAs: "10",
-        skyTwice: true,
-        history: [...piece.history, "空のエリアで10に変身した"],
+        frozenUntil: until,
+        history: [...piece.history, "氷のエリアで凍りついた"],
       });
       return markUsed(
         {
           ...next,
           log: [
             ...state.log,
-            `${name}が空のエリアで${squareName(piece.row, piece.col, state.boardSize)}の駒を10に変身させた`,
+            `${name}が氷のエリアで${squareName(piece.row, piece.col, state.boardSize)}の${foeName}の駒を凍らせた`,
           ],
         },
         player,
-        { pieceId: piece.id },
+        { pieceId: piece.id, until },
+      );
+    }
+    case "sky": {
+      const piece = state.pieces[action.pieceId];
+      if (!piece || !skyCandidates(state, player).includes(piece.id)) return state;
+      // 本物の10になる。正体が変わるので公開し、専用のしるしを付ける
+      const players = state.players.map((p, i) =>
+        i === player
+          ? {
+              ...p,
+              armyRankCounts: recount(p.armyRankCounts, piece.rank, "10"),
+              // 以後、この軍の10は全て1手番に2回動ける
+              skyTwice: true,
+            }
+          : p,
+      );
+      const next = withPiece(
+        { ...state, players },
+        {
+          ...piece,
+          rank: "10",
+          revealed: true,
+          mark: "sky",
+          history: [...piece.history, `空のエリアで${piece.rank}から10に変身した(公開)`],
+        },
+      );
+      return markUsed(
+        {
+          ...next,
+          lastReveal: { id: piece.id, reason: "空のエリアで変身した" },
+          log: [
+            ...state.log,
+            `${name}が空のエリアで${squareName(piece.row, piece.col, state.boardSize)}の駒を10に変身させた(公開)。${name}の10は全て2回動ける`,
+          ],
+        },
+        player,
+        { pieceId: piece.id, from: piece.rank, to: "10" },
       );
     }
     case "palace": {
@@ -359,27 +398,29 @@ export function useArea(state, action) {
       if (!piece || !palaceCandidates(state, player).includes(piece.id))
         return state;
       const rank = promotedRank(piece.rank);
-      const counts = { ...state.players[player].armyRankCounts };
-      if (counts[piece.rank] > 1) counts[piece.rank] -= 1;
-      else delete counts[piece.rank];
-      counts[rank] = (counts[rank] || 0) + 1;
       const players = state.players.map((p, i) =>
-        i === player ? { ...p, armyRankCounts: counts } : p,
+        i === player
+          ? { ...p, armyRankCounts: recount(p.armyRankCounts, piece.rank, rank) }
+          : p,
       );
+      // 正体が変わるので公開し、専用のしるしを付ける
       const next = withPiece(
         { ...state, players },
         {
           ...piece,
           rank,
-          history: [...piece.history, `宮殿で${piece.rank}から${rank}へ昇格した`],
+          revealed: true,
+          mark: "palace",
+          history: [...piece.history, `宮殿で${piece.rank}から${rank}へ昇格した(公開)`],
         },
       );
       return markUsed(
         {
           ...next,
+          lastReveal: { id: piece.id, reason: "宮殿で昇格した" },
           log: [
             ...state.log,
-            `${name}が宮殿で${squareName(piece.row, piece.col, state.boardSize)}の駒を昇格させた`,
+            `${name}が宮殿で${squareName(piece.row, piece.col, state.boardSize)}の駒を${rank}に昇格させた(公開)`,
           ],
         },
         player,
