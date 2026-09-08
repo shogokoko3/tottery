@@ -16,6 +16,7 @@
 import { build } from "esbuild";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
+import { SUPPORT_EMAIL } from "./src/game/support.js";
 
 const dev = process.argv.includes("--dev");
 
@@ -85,6 +86,16 @@ const admin = await bundleInto("src/admin/admin.jsx", "admin.template.html");
 fs.writeFileSync("admin.html", admin.html);
 fs.writeFileSync("dist/admin.html", admin.html);
 
+// プライバシーポリシー。プライバシーポリシー.md を HTML にして privacy.html と
+// dist/privacy.html に置く。本番では /privacy で開ける(Cloudflare の静的配信は
+// 拡張子無しの要求に .html を当てる)。連絡先は src/game/support.js から埋める
+const privacy = renderPrivacy(
+  fs.readFileSync("プライバシーポリシー.md", "utf8"),
+  fs.readFileSync("privacy.template.html", "utf8"),
+);
+fs.writeFileSync("privacy.html", privacy);
+fs.writeFileSync("dist/privacy.html", privacy);
+
 // 配信側の設定。Cloudflare Pages と Netlify のどちらも、この2ファイルを
 // 公開フォルダに置くだけで読む(キャッシュの期限・セキュリティ用のヘッダー)
 for (const name of ["_headers", "_redirects"])
@@ -98,3 +109,133 @@ console.log(`audio/ と dist/audio/ に曲を写しました: ${kb(audioKb)}`);
 console.log(
   `admin.html と dist/admin.html を書き出しました: ${kb(Buffer.byteLength(admin.html))}`,
 );
+console.log(
+  `privacy.html と dist/privacy.html を書き出しました: ${kb(Buffer.byteLength(privacy))}` +
+    (SUPPORT_EMAIL ? "" : " (連絡先が未設定)"),
+);
+
+/**
+ * プライバシーポリシー.md を HTML にする。
+ *
+ * 外の Markdown 処理系を入れずに済むよう、あの文書で使っている書き方だけを扱う:
+ * 見出し(# / ##)、段落、箇条書き(- )、表(| |)、区切り(---)、
+ * 「**用語**」の次の行が「: 説明」の定義、太字(**)、コード(`)、URL。
+ * {{SUPPORT_EMAIL}} と {{UPDATED}} は support.js と今日の日付で埋める。
+ */
+function renderPrivacy(md, template) {
+  const esc = (s) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = (s) =>
+    esc(s)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(
+        /(https?:\/\/[^\s)]+)/g,
+        '<a href="$1" rel="noopener noreferrer">$1</a>',
+      );
+  const lines = md.replace(/\r/g, "").split("\n");
+  const out = [];
+  let i = 0;
+  const para = [];
+  const flush = () => {
+    if (para.length) out.push(`<p>${inline(para.join(" "))}</p>`);
+    para.length = 0;
+  };
+  while (i < lines.length) {
+    const line = lines[i];
+    if (!line.trim()) {
+      flush();
+      i++;
+      continue;
+    }
+    if (line === "---") {
+      flush();
+      out.push("<hr>");
+      i++;
+      continue;
+    }
+    let m;
+    if ((m = line.match(/^(#{1,3}) (.+)$/))) {
+      flush();
+      out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`);
+      i++;
+      continue;
+    }
+    if (line.startsWith("|")) {
+      flush();
+      const rows = [];
+      while (i < lines.length && lines[i].startsWith("|")) rows.push(lines[i++]);
+      const cells = (r) =>
+        r
+          .replace(/^\||\|$/g, "")
+          .split("|")
+          .map((c) => c.trim());
+      const [head, , ...body] = rows;
+      out.push(
+        "<table><thead><tr>" +
+          cells(head)
+            .map((c) => `<th>${inline(c)}</th>`)
+            .join("") +
+          "</tr></thead><tbody>" +
+          body
+            .map(
+              (r) =>
+                "<tr>" +
+                cells(r)
+                  .map((c) => `<td>${inline(c)}</td>`)
+                  .join("") +
+                "</tr>",
+            )
+            .join("") +
+          "</tbody></table>",
+      );
+      continue;
+    }
+    if (line.startsWith("- ")) {
+      flush();
+      const items = [];
+      while (i < lines.length && lines[i].startsWith("- ")) {
+        let item = lines[i++].slice(2);
+        while (i < lines.length && /^ {2,}\S/.test(lines[i]))
+          item += " " + lines[i++].trim();
+        items.push(item);
+      }
+      out.push(
+        `<ul>${items.map((t) => `<li>${inline(t)}</li>`).join("")}</ul>`,
+      );
+      continue;
+    }
+    if (
+      /^\*\*.+\*\*$/.test(line) &&
+      i + 1 < lines.length &&
+      lines[i + 1].startsWith(": ")
+    ) {
+      flush();
+      const items = [];
+      while (
+        i + 1 < lines.length &&
+        /^\*\*.+\*\*$/.test(lines[i]) &&
+        lines[i + 1].startsWith(": ")
+      ) {
+        const term = lines[i].slice(2, -2);
+        i++;
+        let desc = lines[i++].slice(2);
+        while (i < lines.length && /^ {2,}\S/.test(lines[i]))
+          desc += " " + lines[i++].trim();
+        items.push(`<dt>${inline(term)}</dt><dd>${inline(desc)}</dd>`);
+        while (i < lines.length && !lines[i].trim()) i++;
+      }
+      out.push(`<dl>${items.join("")}</dl>`);
+      continue;
+    }
+    para.push(line.trim());
+    i++;
+  }
+  flush();
+  const contact = SUPPORT_EMAIL
+    ? `<a href="mailto:${esc(SUPPORT_EMAIL)}">${esc(SUPPORT_EMAIL)}</a>`
+    : "（準備中）";
+  return template
+    .replace("__BODY__", () => out.join("\n"))
+    .replace(/\{\{SUPPORT_EMAIL\}\}/g, () => contact);
+}

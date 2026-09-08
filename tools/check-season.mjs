@@ -422,3 +422,37 @@ try {
 console.log(
   "PASS: authenticated API boundary, actual ledger transactions, retry after room deletion, and identical backs for all hidden ranks",
 );
+
+// ---- 自分の記録を消す(forget) ----
+{
+  const db2 = new DatabaseSync(":memory:");
+  const sql2 = (q, ...args) => db2.prepare(q).all(...args);
+  const l2 = new Ledger(sql2);
+  const t = Date.parse("2026-09-10T12:00:00+09:00");
+  const game = recordedGame();
+  const match = verifyMatch(game.room, game.request, "host");
+  l2.record(match, t);
+  l2.record(
+    verifyMatch(
+      { ...game.room, createdAt: game.room.createdAt + 1 },
+      { ...game.request, createdAt: game.request.createdAt + 1 },
+      "host",
+    ),
+    t,
+  );
+  l2.sql("INSERT OR IGNORE INTO claims VALUES (?,?,?,?)", "host", "x", "2026-09", t);
+  l2.equip("host", null, null, t);
+  assert.ok(l2.summary("host", t).player, "消す前は載っている");
+  assert.deepEqual(l2.forget("host"), { ok: true });
+  assert.equal(l2.summary("host", t).player, null, "成績が消えた");
+  assert.equal(l2.claims("host").length, 0, "報酬の受取が消えた");
+  assert.equal(l2.sql("SELECT COUNT(*) AS n FROM elo_ratings WHERE uid=?", "host")[0].n, 0);
+  assert.equal(l2.sql("SELECT COUNT(*) AS n FROM appearance WHERE uid=?", "host")[0].n, 0);
+  // 相手の成績と対局の記録は残る。本人の目印だけ外れる
+  assert.ok(l2.summary(match.guest, t).player, "相手の成績は残る");
+  assert.equal(l2.sql("SELECT COUNT(*) AS n FROM matches WHERE host=? OR guest=?", "host", "host")[0].n, 0);
+  assert.equal(l2.sql("SELECT COUNT(*) AS n FROM matches WHERE host=?", "forgotten")[0].n, 2);
+  // 相手は同じ対局を二重に記録できない(鍵が残っているため)
+  assert.ok(l2.result(match.guest, match.id), "対局の鍵は相手から引ける");
+  console.log("forget: 本人の行が消え、相手と対局の鍵は残る OK");
+}

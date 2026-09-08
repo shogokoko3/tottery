@@ -87,6 +87,8 @@ export default {
         return call("record", { room: await res.json(), request: body });
       }
       if (op === "summary") return call("summary");
+      // 自分のシーズン記録を消す(5.1.1(v))。本文は要らない
+      if (op === "forget") return call("forget");
       if (op === "claim" && typeof body.id === "string")
         return call("claim", { id: body.id });
       if (op === "equip")
@@ -138,6 +140,7 @@ export class SeasonLedger {
         if (op === "summary") return l.summary(uid, now);
         if (op === "admin-summary" && uid === OPERATOR_UID)
           return l.adminSummary(now);
+        if (op === "forget") return l.forget(uid);
         if (op === "claim") return l.claim(uid, args.id, now);
         if (op === "equip") return l.equip(uid, args.back, args.frame, now);
         if (op === "appearance")

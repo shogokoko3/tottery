@@ -34,7 +34,24 @@ export async function seasonRequest(op, body = {}) {
   }
   return data;
 }
+/**
+ * 自分のシーズン記録をサーバーから消す。「自分の記録を消す」から呼ぶ。
+ * 通信できないときは投げる(消せていないのに消したことにしない)
+ */
+export function forgetSeason() {
+  return seasonRequest("forget");
+}
+
 const QUEUE = "tottery.season.pending.v1";
+
+/** 送り待ちの対局を捨てる。記録を消したあとに再送されて戻らないように */
+export function clearSeasonQueue() {
+  try {
+    localStorage.removeItem(QUEUE);
+  } catch {
+    /* 消せなくても、uid が違えば再送はされない */
+  }
+}
 function pending() {
   try {
     const list = JSON.parse(localStorage.getItem(QUEUE) || "[]");

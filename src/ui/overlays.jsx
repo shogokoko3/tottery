@@ -32,6 +32,7 @@ import { forgetMe, loadProfile } from "../game/profile.js";
 import { loadBlocked, unblock } from "../game/blocked.js";
 import { deleteRank } from "../net/ranking.js";
 import { clearProfileSync } from "../net/profile-sync.js";
+import { forgetSeason, clearSeasonQueue } from "../net/season.js";
 import {
   PRIVACY_URL,
   hasPrivacyUrl,
@@ -493,7 +494,8 @@ function BlockedListModal({ onClose }) {
 
 /**
  * 自分の記録を消す。ガイドライン 5.1.1(v)。
- * 端末の中(profile.js の forgetMe)と、サーバー(ranks/<uid>・players/<uid>)の両方を消す。
+ * 端末の中(profile.js の forgetMe)と、サーバー(Firebase の ranks/<uid>・players/<uid>、
+ * Cloudflare のシーズン台帳)の両方を消す。
  */
 function DeleteMeModal({ onClose, onDeleted }) {
   const me = loadProfile();
@@ -504,7 +506,19 @@ function DeleteMeModal({ onClose, onDeleted }) {
     setStep("running");
     // 送り待ちの成績があると、消したあとに再送されて戻ってしまうので先に捨てる
     await clearProfileSync();
-    // 先に公開されている側を消す。端末の中を先に消すと id を見失う
+    clearSeasonQueue();
+    // 先にサーバー側を消す。端末の中を先に消すと id を見失う。
+    // シーズン(Cloudflare の台帳) → ランキングと台帳(Firebase) の順。
+    // どちらかが消せなければ止まり、端末の中は消さない
+    if (me.id) {
+      try {
+        await forgetSeason();
+      } catch (err) {
+        setError(`シーズンの記録を消せませんでした: ${err.message}`);
+        setStep("error");
+        return;
+      }
+    }
     const res = me.id ? await deleteRank(me.id) : { ok: true };
     if (!res.ok) {
       setError(res.error);

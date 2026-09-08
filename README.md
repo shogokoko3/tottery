@@ -381,7 +381,11 @@ R から 0.65×10 = 6.5、SR から 0.32×20 = 6.4、SSR から 0.03×375 = 11.2
 
 - [法務メモ.md](法務メモ.md) — 商標の調査結果、出願の案、素材の権利、懸念と対策
 - [THIRD-PARTY.md](THIRD-PARTY.md) — 同梱している第三者ソフトウェアの表示
-- [プライバシーポリシー.md](プライバシーポリシー.md) — App Store 提出用の下書き
+- [プライバシーポリシー.md](プライバシーポリシー.md) — 公開している本文。`npm run build` が
+  [privacy.template.html](privacy.template.html) に流し込んで `privacy.html` と `dist/privacy.html` を作り、
+  本番では **https://tottery.shogokoko3.workers.dev/privacy** で開ける(手元は `/privacy`)。
+  連絡先は [src/game/support.js](src/game/support.js) の `SUPPORT_EMAIL` から埋まる。
+  アプリの設定の「プライバシーポリシー」も同じ URL(`PRIVACY_URL`)を指す
 
 ## 配信 (Cloudflare / Netlify)
 
@@ -544,14 +548,17 @@ tools/               復元と検証に使ったスクリプト
 
 ### テストプレイ用モード
 
-`TEST_BUILD` が真のあいだだけ、URL に `?test=1` を付けると
-布陣の1分と対局の持ち時間が止まる。画面をゆっくり確かめたいときに使う。
+URL に `?test=1` を付けると布陣の1分と対局の持ち時間が止まる。
+画面をゆっくり確かめたいときに使う。効くのは **`TEST_BUILD` が真のとき**か、
+**手元の `http://localhost`** で開いているとき。配信ビルドは `TEST_BUILD = false`
+だが、手元では戻さなくても `?test=1` が効く。
 
 ```
 http://localhost:4199/?test=1
 ```
 
-配信ビルド(`TEST_BUILD = false`)では、何を付けても有効にならない。
+本番(`TEST_BUILD = false`、localhost 以外)では、何を付けても有効にならない。
+iOS のアプリは `capacitor://localhost` なので手元扱いにはならない。
 
 ## このソースの出どころ
 

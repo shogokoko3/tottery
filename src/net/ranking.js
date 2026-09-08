@@ -62,7 +62,7 @@ export async function readWorldGames() {
  * App Store のガイドライン 5.1.1(v) は、アカウントを作れるアプリに
  * 「アプリの中から自分の記録を消せること」を求めている。その消す側。
  * 端末の中の記録を消すのは profile.js の forgetMe()。
- * シーズンの成績(Cloudflare Worker の台帳)はここでは消えない。
+ * シーズンの成績(Cloudflare Worker の台帳)は src/net/season.js の forgetSeason()。
  */
 export async function deleteRank(id) {
   if (!id) return { ok: false, error: "記録が見つかりません" };

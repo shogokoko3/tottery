@@ -21,7 +21,8 @@ export const SUPPORT_EMAIL = null; // 例: "support@tottery.example"
  * プライバシーポリシーを置く場所。誰でも読める URL でなければならない。
  * 配信先は Cloudflare Workers(tottery.shogokoko3.workers.dev)。
  */
-export const PRIVACY_URL = null; // 例: "https://tottery.shogokoko3.workers.dev/privacy"
+// build.mjs が プライバシーポリシー.md から privacy.html を作り、dist/ に置く
+export const PRIVACY_URL = "https://tottery.shogokoko3.workers.dev/privacy";
 
 /** 連絡先が決まっているか。画面はこれを見て出し分ける */
 export function hasSupportContact() {

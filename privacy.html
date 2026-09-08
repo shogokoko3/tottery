@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#081120">
+<meta name="robots" content="noindex">
+<title>トッタリー プライバシーポリシー</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; padding: 0; background: #071120; color: #e9e2cf; }
+  body { font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; line-height: 1.8; -webkit-text-size-adjust: 100%; }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 26px; color: #d4af37; margin: 0 0 8px; }
+  h2 { font-size: 19px; color: #d4af37; margin: 36px 0 10px; padding-bottom: 6px; border-bottom: 1px solid rgba(212, 175, 55, 0.35); }
+  h3 { font-size: 16px; color: #e9e2cf; margin: 24px 0 6px; }
+  p { margin: 0 0 12px; }
+  hr { border: none; border-top: 1px solid rgba(212, 175, 55, 0.25); margin: 24px 0; }
+  a { color: #f0d27a; overflow-wrap: anywhere; }
+  code { font-family: "IBM Plex Mono", Menlo, monospace; font-size: 0.9em; color: #f0d27a; }
+  dl { margin: 0 0 12px; }
+  dt { font-weight: 700; margin-top: 10px; }
+  dd { margin: 2px 0 0 1em; color: #d8d0bc; }
+  ul { padding-left: 1.4em; margin: 0 0 12px; }
+  li { margin: 4px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 14px; font-size: 14px; display: block; overflow-x: auto; }
+  th, td { border: 1px solid rgba(212, 175, 55, 0.3); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: rgba(212, 175, 55, 0.12); }
+  .home { display: inline-block; margin-top: 32px; color: #d8d0bc; font-size: 14px; }
+</style>
+</head><body><main>
+<h1>トッタリー プライバシーポリシー</h1>
+<p>最終更新: 2026年9月8日</p>
+<p>トッタリー（以下「本アプリ」）で、どんな情報を、何のために扱っているかを説明します。</p>
+<hr>
+<h2>集めているもの</h2>
+<dl><dt>プレイヤー名</dt><dd>あなたが自分で決めた名前です。本名である必要はありません。10文字までで、 露骨な語や、運営になりすます名前は使えません。</dd><dt>アイコン・称号・レベル・対局数・勝数・持ち点（レーティング）</dt><dd>遊んだ結果として自動で記録されます。</dd><dt>端末ごとの目印（ID）</dt><dd>同じ名前の人と区別するために、端末の中で作る文字列です。 お客様の氏名・メールアドレス・電話番号とは結びついていません。 アプリを削除して入れ直すと、別の目印になります。</dd><dt>シーズンの成績</dt><dd>9×9のオンライン対戦を遊ぶと、月ごとのランキングのために、対局数・勝数・ 引き分け数・持ち点・到達した段位・最高順位と、受け取った報酬、選んだ裏面と枠を 記録します。対局そのものについても、対局の目印・両者の目印・勝敗・時刻を 記録します。</dd><dt>通報の内容</dt><dd>あなたが誰かを通報したときだけ、通報された相手の目印と名前、選んだ理由、 通報した時刻、そしてあなたの目印を記録します。</dd></dl>
+<p>集めていないもの: 氏名、住所、電話番号、メールアドレス、生年月日、位置情報、 連絡先、写真、広告識別子、端末の広告用ID。</p>
+<h2>どこに置いているか</h2>
+<dl><dt>端末の中</dt><dd>プレイヤー名・アイコン・称号・レベル・対局数・勝数・持ち点・音量の設定・ 手に入れたスキンと装備・ミッションの進み具合・見えなくした相手の一覧。 これらのうち、次に挙げるもの以外は端末から出ません。</dd></dl>
+<p><strong>当方のサーバー（Google Firebase Realtime Database）</strong></p>
+<table><thead><tr><th>置くもの</th><th>中身</th><th>誰が読めるか</th></tr></thead><tbody><tr><td>ランキング</td><td>名前・アイコン・称号・持ち点・対戦数・勝数・対局数・更新時刻</td><td><strong>アプリを使う人なら誰でも</strong></td></tr><tr><td>登録した人の台帳</td><td>ランキングと同じ項目と、登録日</td><td>本人と運営</td></tr><tr><td>対戦中の部屋</td><td>名前・アイコン・持ち点と、その対局の指し手</td><td>席についている二人</td></tr><tr><td>待ち合わせ</td><td>相手を探している間だけ、名前と合言葉</td><td>アプリを使う人なら誰でも</td></tr><tr><td>通報</td><td>上に書いた通報の内容</td><td>運営のみ</td></tr><tr><td>運営からのお知らせの受取</td><td>受け取った手紙の目印</td><td>本人と運営</td></tr></tbody></table>
+<p><strong>当方のサーバー（Cloudflare, Inc. の Workers と Durable Objects）</strong></p>
+<table><thead><tr><th>置くもの</th><th>中身</th><th>誰が読めるか</th></tr></thead><tbody><tr><td>シーズンの成績</td><td>上に書いたシーズンの成績</td><td>上位100人の名前・アイコン・持ち点は<strong>アプリを使う人なら誰でも</strong>。それ以外は本人と運営</td></tr><tr><td>対局の記録</td><td>対局の目印・両者の目印・勝敗・時刻</td><td>運営のみ</td></tr></tbody></table>
+<p><strong>対戦中の部屋について</strong>: 部屋を立てた側が対局の画面を離れたときに消します。 アプリを強制終了したときなど、消えずに残ることがあります。残ったものは運営が まとめて削除します。</p>
+<h2>どれくらいの期間、置いておくか</h2>
+<ul><li><strong>対戦中の部屋</strong> … 対局が終わるまで</li><li><strong>待ち合わせ</strong> … 相手が見つかるまで。見つからなければ3分</li><li><strong>ランキング・登録した人の台帳・シーズンの成績・対局の記録</strong> … あなたが 「自分の記録を消す」で消すまで。シーズンの成績は月が替わっても歴代の記録として残ります</li><li><strong>通報</strong> … 対応を終えてから1年以内に消します</li><li><strong>端末の中の記録</strong> … アプリを削除するまで</li></ul>
+<h2>誰に見えるか</h2>
+<ul><li><strong>対戦相手</strong> … あなたの名前・アイコン・称号・持ち点が見えます</li><li><strong>ランキングを開いた人すべて</strong> … あなたの名前・アイコン・称号・持ち点が見えます</li></ul>
+<p><strong>本名や、知られたくない名前を入れないでください。</strong> 名前は設定からいつでも 変えられます。</p>
+<h2>外部への通信</h2>
+<p>本アプリは、次の4つ以外に通信しません。</p>
+<ul><li><strong>Google Firebase</strong>（上の表のとおり）</li><li><strong>Cloudflare</strong>（tottery.shogokoko3.workers.dev）… シーズンの成績を記録・表示する ために接続します。このとき通信元のIPアドレスが Cloudflare に渡ります</li><li><strong>Google Fonts</strong>（fonts.googleapis.com / fonts.gstatic.com）… 画面の書体を 取得するために、起動時に接続します。このとき通信元のIPアドレスが Google に 渡ります。接続できないときは、端末に入っている書体で表示します。</li><li><strong>App Store</strong>（Apple による配信と更新）</li></ul>
+<h2>使いみち</h2>
+<p>対戦の成立、対局の進行、ランキングの表示、通報への対応のためだけに使います。 広告には使いません。第三者に売ることもありません。</p>
+<h2>預けている先</h2>
+<ul><li><strong>Google LLC</strong>（Firebase Realtime Database。データの保管先はシンガポール） <a href="https://policies.google.com/privacy" rel="noopener noreferrer">https://policies.google.com/privacy</a></li><li><strong>Cloudflare, Inc.</strong>（Workers と Durable Objects。データの保管先は Cloudflare が 接続元に近い拠点を選びます） <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener noreferrer">https://www.cloudflare.com/privacypolicy/</a></li></ul>
+<p>どちらの会社も、当方との契約（それぞれのデータ処理に関する条件）に基づいて このポリシーと同じ水準でデータを保護し、当方の指示以外の目的には使いません。</p>
+<h2>消し方</h2>
+<p><strong>アプリの中から、いつでもご自身で消せます。</strong> 設定 →「自分の記録を消す」→「消す」</p>
+<p>これで次のすべてが消えます。</p>
+<ul><li>端末の中の記録（名前・アイコン・称号・戦績・持ち点・見えなくした相手の一覧）</li><li>公開ランキングと、登録した人の台帳に載っているあなたの行</li><li>シーズンの成績（過去の月のぶんも含む）と、受け取った報酬の記録</li></ul>
+<p>対局の記録は、対戦相手の成績の根拠になるため残りますが、あなたの目印は外され、 あなたと結びつかなくなります。</p>
+<p>消したあとは元に戻せません。名前を決めるところからやり直しになります。 手に入れたスキンやミッションの進み具合は端末の中に残り、アプリを削除すると消えます。</p>
+<p><strong>同意の撤回</strong>: 本アプリは、利用を始めた時点で上に書いた扱いに同意いただいた ものとします。同意を取り下げたいときは、上の手順で記録を消し、アプリを 削除してください。それ以降、当方があなたの情報を扱うことはありません。</p>
+<p>なお、アプリを削除するだけでは、公開ランキングに載った記録は残ります。 先に上の手順で消してください。消し忘れた場合は、下記の連絡先までご連絡ください。</p>
+<h2>不快な相手への対処</h2>
+<p>ランキングの各行の右端「⋯」から、次のことができます。</p>
+<ul><li><strong>通報する</strong> … 運営に知らせます。内容を確かめ、24時間以内に対応します</li><li><strong>見えなくする</strong> … その相手がランキングと待ち合わせに出なくなります。 相手には伝わりません。設定の「見えなくした人」から戻せます</li></ul>
+<h2>年齢について</h2>
+<p>13歳未満の方から、意図して情報を集めることはありません。</p>
+<h2>変更</h2>
+<p>内容を変えるときは、このページを更新し、最終更新の日付を改めます。</p>
+<h2>連絡先</h2>
+<p>このポリシーや、ご自身の情報の扱いについてのお問い合わせは、次のメールアドレスまで お願いします。</p>
+<p>メール: （準備中）</p>
+<a class="home" href="/">← トッタリーへ戻る</a>
+</main></body></html>

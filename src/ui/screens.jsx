@@ -72,6 +72,7 @@ import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { titleOf } from "../game/titles.js";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
+import { isBlocked } from "../game/blocked.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
 import { ensureAuth, myUid } from "../net/auth.js";
 import { SeatsProvider } from "./names.jsx";
@@ -486,6 +487,15 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize }) {
           return;
         }
         {
+          // 見えなくした相手(ランキングの「⋯」)が席に着いたら、この掲示は畳む。
+          // 相手には理由を伝えない
+          if (isBlocked(g.data.seats && g.data.seats.guest)) {
+            clearInterval(r);
+            deleteLobbyPath(`/${d}`);
+            u("相手が見つかりませんでした。もう一度お探しください。");
+            n("error");
+            return;
+          }
           if (
             !matchesOnlineSize(g.data, boardSize) ||
             g.data.guestMatchSize !== boardSize
@@ -573,6 +583,8 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize }) {
               matchesOnlineSize(g, boardSize) &&
               !g.guest &&
               g.host !== r &&
+              // 見えなくした相手の掲示は拾わない(ランキングの「⋯」)
+              !isBlocked(g.host) &&
               m - (g.createdAt || 0) < LOBBY_TTL &&
               (g.createdAt || 0) <= m + 60e3,
           )

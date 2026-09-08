@@ -62,6 +62,12 @@ const support = read("src/game/support.js") || "";
   "設定から forgetMe() と deleteRank() の両方を呼ぶ導線を出す",
 );
 見る(
+  "記録の削除がシーズンの台帳にも及ぶ(5.1.1(v))",
+  /forgetSeason/.test(read("src/ui/overlays.jsx") || "") &&
+    /op === "forget"/.test(read("src/server/worker.js") || ""),
+  "src/net/season.js の forgetSeason() を「自分の記録を消す」から呼び、worker.js で forget を受ける",
+);
+見る(
   "Firebase のルールに reports がある",
   /"reports"/.test(read("firebase-rules.json") || ""),
   "firebase-rules.json に reports を足し、Firebase のコンソールで公開する",
@@ -71,7 +77,7 @@ const support = read("src/game/support.js") || "";
 見る(
   "TEST_BUILD が false になっている",
   /export const TEST_BUILD = false/.test(read("src/game/profile.js") || ""),
-  "src/game/profile.js の TEST_BUILD を false にする。true のままだと全員がレベル10で始まる",
+  "src/game/profile.js の TEST_BUILD を false にする。true のままだと本番でも ?test=1 で時計が止まる",
 );
 
 // ---- iOS の見た目と設定 ----

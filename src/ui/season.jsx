@@ -99,10 +99,14 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
       setBusy("");
     }
   }
+  // 到達報酬は上の段(王)から並べる。最終順位の称号は 1位から
+  const rewardsOf = (id, closed) => {
+    const list = seasonRewards(id).filter((r) => !!r.place === closed);
+    return closed ? list : list.reverse();
+  };
   const rewards = (id, player, closed) => (
     <div className="season-rewards">
-      {seasonRewards(id)
-        .filter((r) => !!r.place === closed)
+      {rewardsOf(id, closed)
         .map((reward) => {
           const claimed = data.claims.some((c) => c.id === reward.id),
             ready = rewardReady(reward, player, closed);

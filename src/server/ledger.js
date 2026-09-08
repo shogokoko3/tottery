@@ -9,6 +9,9 @@ import {
 } from "../game/season.js";
 import { displayRating, nextRating } from "../game/rating.js";
 
+/** 記録を消した人の目印の代わり。matches に残る */
+export const FORGOTTEN = "forgotten";
+
 // Cloudflare SQLite と検証用 node:sqlite で同じ SQL を実行する。
 export class Ledger {
   constructor(sql) {
@@ -173,6 +176,20 @@ export class Ledger {
   appearance(uid) {
     const a = this.sql("SELECT back,frame FROM appearance WHERE uid=?", uid)[0];
     return a || { back: null, frame: null };
+  }
+  /**
+   * 本人のシーズン記録を消す(アプリの「自分の記録を消す」から)。
+   *
+   * 成績・持ち点・受け取った報酬・裏面と枠は行ごと消す。
+   * 対局の記録(matches)は相手の成績の根拠であり、同じ対局の二重記録を
+   * 防ぐ鍵でもあるので残し、本人の目印だけ外す。
+   */
+  forget(uid) {
+    for (const table of ["players", "elo_ratings", "claims", "appearance"])
+      this.sql(`DELETE FROM ${table} WHERE uid=?`, uid);
+    this.sql("UPDATE matches SET host=? WHERE host=?", FORGOTTEN, uid);
+    this.sql("UPDATE matches SET guest=? WHERE guest=?", FORGOTTEN, uid);
+    return { ok: true };
   }
   adminSummary(now) {
     const season = this.current(now);

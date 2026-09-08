@@ -1,4 +1,12 @@
-/** 動作確認用の素朴な静的サーバ。index.html を配るだけ。 */
+/**
+ * 動作確認用の素朴な静的サーバ。index.html を配る。
+ *
+ * 本番ではシーズン(月間ランキング)を Cloudflare Worker(src/server/worker.js)が
+ * 返すが、ここには無い。何も返さないと画面が「読み込めませんでした」で止まり、
+ * ランキングの行(通報の「⋯」など)を確かめられないので、/api/season/summary
+ * にだけ**見本の一覧**を返す。名前に「見本」と入れてあり、対局を記録したり
+ * 報酬を配ったりはしない(finish / claim / equip は断る)。
+ */
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
@@ -18,9 +26,64 @@ const types = {
   ".mp4": "video/mp4",
 };
 
+/** シーズン API の見本。summary と forget だけ答える */
+function fakeSeason(req, res, path) {
+  const send = (status, data) => {
+    res.writeHead(status, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    });
+    res.end(JSON.stringify(data));
+  };
+  const op = path.slice("/api/season/".length);
+  if (op === "health") return send(200, { ok: true, version: 0, local: true });
+  if (req.method !== "POST") return send(405, { error: "POSTを使用してください。" });
+  if (op === "forget") return send(200, { ok: true });
+  if (op !== "summary")
+    return send(404, {
+      error: `手元のサーバー(tools/serve.mjs)にシーズンの台帳はありません(${op})。一覧は見本です。`,
+    });
+  const now = Date.now();
+  const d = new Date(now + 9 * 3600e3);
+  const y = d.getUTCFullYear(),
+    m = d.getUTCMonth();
+  const id = `${y}-${String(m + 1).padStart(2, "0")}`;
+  const start = Date.UTC(y, m, 1, 5 - 9),
+    end = Date.UTC(y, m + 1, 1, 5 - 9);
+  const row = (uid, name, rating, place) => ({
+    uid,
+    name,
+    icon: "",
+    rating,
+    rated: 12,
+    place,
+    frame: null,
+  });
+  send(200, {
+    uid: null,
+    now,
+    season: { id, start, end },
+    player: null,
+    list: [
+      row("sample-1", "見本の一", 1680, 1),
+      row("sample-2", "見本の二", 1590, 2),
+      row("sample-3", "見本の三", 1520, 3),
+    ],
+    history: [],
+    claims: [],
+    owned: { backs: [], frames: [], titles: [] },
+    appearance: { back: null, frame: null },
+  });
+}
+
 const server = createServer(async (req, res) => {
   const path = decodeURIComponent(req.url.split("?")[0]);
-  const rel = normalize(path === "/" ? "/index.html" : path).replace(
+  if (path.startsWith("/api/season/")) return fakeSeason(req, res, path);
+  // 本番は /privacy で privacy.html が出る(Cloudflare の静的配信の既定)。手元でも同じに
+  if (path === "/privacy") req.url = "/privacy.html";
+  const rel = normalize(
+    path === "/" ? "/index.html" : path === "/privacy" ? "/privacy.html" : path,
+  ).replace(
     /^(\.\.[/\\])+/,
     "",
   );

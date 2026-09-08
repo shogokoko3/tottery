@@ -188,10 +188,11 @@ is(
   [levelOfXp(50), levelOfXp(r.xp)],
   [1, 2],
 );
+// TEST_BUILD の真偽に関わらず同じ(配信ビルドでは false)
 is(
-  "テストビルドでも獲得前後の表示レベルは実経験値",
-  [TEST_BUILD, r.levelBefore, r.levelAfter],
-  [true, 1, 2],
+  "テストビルドでも配信ビルドでも獲得前後の表示レベルは実経験値",
+  [typeof TEST_BUILD, r.levelBefore, r.levelAfter],
+  ["boolean", 1, 2],
 );
 r = addXp(XP.PAID_GACHA);
 is("有償ガチャの経験値を足せる", r.xp, 50 + TUTORIALS[0].xp + 150);

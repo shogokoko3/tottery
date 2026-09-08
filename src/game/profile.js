@@ -44,8 +44,27 @@ export const MAX_NAME_LEN = 10;
 /**
  * テストプレイ用の時計停止を許可する。?test= を付けた場合だけ働く。
  * レベルはテスト環境でも実際の経験値で決まり、0XPならレベル1から始まる。
+ *
+ * 配信ビルドでは false。手元の `npm run serve`(http://localhost)だけは
+ * この旗に関わらず ?test=1 が効く(下の isTestPlay を見る)ので、
+ * 動作確認のためにここを true に戻す必要はない。
  */
-export const TEST_BUILD = true;
+export const TEST_BUILD = false;
+
+/**
+ * 手元のサーバーで開いているか。http の localhost だけを手元とみなす。
+ * iOS のアプリは capacitor://localhost なので当てはまらない
+ */
+function isLocalhost() {
+  try {
+    return (
+      location.protocol === "http:" &&
+      (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    );
+  } catch {
+    return false;
+  }
+}
 
 /**
  * テストプレイ用モード。URL に ?test=1 を付けたときだけ有効になる。
@@ -53,7 +72,7 @@ export const TEST_BUILD = true;
  * TEST_BUILD が false の配信ビルドでは、何を付けても有効にならない。
  */
 export function isTestPlay() {
-  if (!TEST_BUILD) return false;
+  if (!TEST_BUILD && !isLocalhost()) return false;
   try {
     return new URLSearchParams(location.search).has("test");
   } catch {
