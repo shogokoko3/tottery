@@ -86,10 +86,30 @@ export const AREA_INFO = Object.freeze({
   },
 });
 
-/** 氷で動けなくなる相手の手番の数 */
-export const FREEZE_TURNS = 3;
-/** 森で見抜く駒の数 */
-export const FOREST_REVEALS = 1;
+/**
+ * 調整用の数字。効果の強さはここだけで変える(本人が後で差し替える前提)。
+ * 変えたら `node tools/check-areas.mjs` と `node tools/area-lab.mjs` で確かめる。
+ */
+export const AREA_TUNING = Object.freeze({
+  /** 1局に使える回数(全エリア共通) */
+  usesPerGame: 1,
+  /** 土: 見抜ける確率(0〜1)。enrichAction がこの確率で hit を焼き込む */
+  earthOdds: 0.5,
+  /** 森: 見抜く駒の数 */
+  forestReveals: 1,
+  /** 氷: 凍らせる駒の数 */
+  iceTargets: 1,
+  /** 氷: 相手が動けない手番の数 */
+  freezeTurns: 3,
+  /** 空: 変身させたあと、その軍の10全部が2回動けるようにするか */
+  skyAllTens: true,
+  /** 宮殿: これより上には昇格できない("K" なら上限なし) */
+  palaceCap: "K",
+});
+/** 氷で動けなくなる相手の手番の数(互換用。AREA_TUNING.freezeTurns を見る) */
+export const FREEZE_TURNS = AREA_TUNING.freezeTurns;
+/** 森で見抜く駒の数(互換用) */
+export const FOREST_REVEALS = AREA_TUNING.forestReveals;
 
 export function areaForKing(rank) {
   return AREA_BY_RANK[rank] || null;
@@ -145,7 +165,7 @@ export function initAreas(state) {
     const rank = kingRankOf(state, i);
     const type = areaForKing(rank);
     const skin = loadouts && loadouts[i] ? loadouts[i][rank] : null;
-    return type && skin ? { type, used: false, rank, skin } : null;
+    return type && skin ? { type, used: false, uses: 0, rank, skin } : null;
   });
   const log = [...(state.log || [])];
   for (const i of [0, 1])
@@ -201,10 +221,11 @@ export function palaceCandidates(state, player) {
     .sort();
 }
 
-/** 1段上のランク。2→3 … 9→10→J→Q→K。A と K は上がらない */
+/** 1段上のランク。2→3 … 9→10→J→Q→K。A と、上限(AREA_TUNING.palaceCap)は上がらない */
 export function promotedRank(rank) {
   const i = RANKS.indexOf(rank);
   if (i < 1 || i + 1 >= RANKS.length) return null;
+  if (RANKS.indexOf(AREA_TUNING.palaceCap) <= i) return null;
   return RANKS[i + 1];
 }
 
@@ -226,7 +247,8 @@ export function canUseArea(state, player) {
     return { ok: false, why: "対局中ではありません" };
   const area = state.areas && state.areas[player];
   if (!area) return { ok: false, why: "エリアがありません" };
-  if (area.used) return { ok: false, why: "この局ではもう使いました" };
+  if ((area.uses || 0) >= AREA_TUNING.usesPerGame)
+    return { ok: false, why: "この局ではもう使いました" };
   if (state.currentTurn !== player) return { ok: false, why: "相手の番です" };
   if (state.extraMoveFor || state.extraUsed || state.pendingKingChoice)
     return { ok: false, why: "手番の初めにだけ使えます" };
@@ -268,7 +290,13 @@ function withPiece(state, piece) {
 
 function markUsed(state, player, detail) {
   const areas = [...state.areas];
-  areas[player] = { ...areas[player], used: true };
+  const uses = (areas[player].uses || 0) + 1;
+  areas[player] = {
+    ...areas[player],
+    uses,
+    // used は画面と旧い検査の互換。usesPerGame に達したら真
+    used: uses >= AREA_TUNING.usesPerGame,
+  };
   return {
     ...state,
     areas,
@@ -312,8 +340,11 @@ export function useArea(state, action) {
       };
       return markUsed(next, player, { hit, pieceId: target.id });
     }
-    case "sea":
-      return markUsed(seaPull(state), player, {});
+    case "sea": {
+      const pulled = seaPull(state);
+      const { _seaMoves, ...rest } = pulled;
+      return markUsed(rest, player, { moves: _seaMoves });
+    }
     case "forest": {
       const candidates = new Set(forestCandidates(state, player));
       const order = Array.isArray(action.picks) ? action.picks : [];
@@ -323,7 +354,7 @@ export function useArea(state, action) {
       // 手に書かれていない候補は、並びを固定して後ろに足す(手が欠けていても両者で揃う)
       for (const id of [...candidates].sort())
         if (!picks.includes(id)) picks.push(id);
-      const chosen = picks.slice(0, FOREST_REVEALS);
+      const chosen = picks.slice(0, AREA_TUNING.forestReveals);
       const known = state.known.map((k) => ({ ...k }));
       for (const id of chosen) known[player][id] = true;
       const next = {
@@ -337,29 +368,36 @@ export function useArea(state, action) {
       return markUsed(next, player, { pieceIds: chosen });
     }
     case "ice": {
-      // 誰を凍らせるかは手に焼き込まれた並び(picks)の先頭。無ければ固定の並び
+      // 誰を凍らせるかは手に焼き込まれた並び(picks)の先頭から。無ければ固定の並び
       const candidates = iceCandidates(state, player);
       const order = Array.isArray(action.picks) ? action.picks : [];
-      const chosen =
-        order.find((id) => candidates.includes(id)) || candidates[0];
-      const piece = state.pieces[chosen];
-      if (!piece) return state;
-      const until = (state.turnNo || 0) + FREEZE_TURNS * 2;
-      const next = withPiece(state, {
-        ...piece,
-        frozenUntil: until,
-        history: [...piece.history, "氷のエリアで凍りついた"],
-      });
+      const chosen = [];
+      for (const id of order)
+        if (candidates.includes(id) && !chosen.includes(id)) chosen.push(id);
+      for (const id of candidates) if (!chosen.includes(id)) chosen.push(id);
+      const targets = chosen.slice(0, AREA_TUNING.iceTargets);
+      if (!targets.length) return state;
+      const until = (state.turnNo || 0) + AREA_TUNING.freezeTurns * 2;
+      let next = state;
+      for (const id of targets)
+        next = withPiece(next, {
+          ...next.pieces[id],
+          frozenUntil: until,
+          history: [...next.pieces[id].history, "氷のエリアで凍りついた"],
+        });
+      const squares = targets
+        .map((id) => squareName(state.pieces[id].row, state.pieces[id].col, state.boardSize))
+        .join("・");
       return markUsed(
         {
           ...next,
           log: [
             ...state.log,
-            `${name}が氷のエリアで${squareName(piece.row, piece.col, state.boardSize)}の${foeName}の駒を凍らせた`,
+            `${name}が氷のエリアで${squares}の${foeName}の駒を凍らせた`,
           ],
         },
         player,
-        { pieceId: piece.id, until },
+        { pieceId: targets[0], pieceIds: targets, until },
       );
     }
     case "sky": {
@@ -371,8 +409,8 @@ export function useArea(state, action) {
           ? {
               ...p,
               armyRankCounts: recount(p.armyRankCounts, piece.rank, "10"),
-              // 以後、この軍の10は全て1手番に2回動ける
-              skyTwice: true,
+              // 以後、この軍の10は全て1手番に2回動ける(AREA_TUNING.skyAllTens)
+              skyTwice: AREA_TUNING.skyAllTens,
             }
           : p,
       );
@@ -383,6 +421,8 @@ export function useArea(state, action) {
           rank: "10",
           revealed: true,
           mark: "sky",
+          // 軍全体を2回にしない設定でも、変身した駒自身は2回動ける
+          skyTwice: true,
           history: [...piece.history, `空のエリアで${piece.rank}から10に変身した(公開)`],
         },
       );
@@ -461,6 +501,7 @@ export function seaPull(state) {
   const board = state.board.map((row) => row.map(() => null));
   const pieces = { ...state.pieces };
   let moved = 0;
+  const moves = [];
   for (const p of order) {
     let best = null;
     for (let r = 0; r < size; r++)
@@ -487,7 +528,14 @@ export function seaPull(state) {
             `${squareName(p.row, p.col, size)} → ${squareName(at.r, at.col, size)} へ移動(海の引き寄せ)`,
           ],
         };
-    if (!same) moved++;
+    if (!same) {
+      moved++;
+      moves.push({
+        id: p.id,
+        from: { row: p.row, col: p.col },
+        to: { row: at.r, col: at.col },
+      });
+    }
     pieces[p.id] = placed;
     board[at.r][at.col] = placed;
   }
@@ -495,6 +543,7 @@ export function seaPull(state) {
     ...state,
     board,
     pieces,
+    _seaMoves: moves,
     lastMove: null,
     selectedId: null,
     shuffleMode: null,

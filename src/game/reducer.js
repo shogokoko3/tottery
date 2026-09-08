@@ -679,7 +679,9 @@ export function endAction(state, pieceId) {
     piece &&
     piece.alive &&
     piece.rank === "10" &&
-    (piece.isKing || !!state.players[piece.owner].skyTwice);
+    (piece.isKing ||
+      !!piece.skyTwice ||
+      !!state.players[piece.owner].skyTwice);
   const extraSwap = piece && piece.alive && piece.isKing && piece.rank === "A";
   if ((extraMove || extraSwap) && !state.extraUsed) {
     return {
@@ -1031,6 +1033,10 @@ function afterAction(prev, next, action) {
   if (out.log && out.log.length > hadLogs && out.board && out.board.length) {
     const added = out.log.slice(hadLogs).filter(isNotableLog);
     if (added.length) {
+      // 盤面エリアの見た目(しるし・凍結・見抜き)も控える。再生で同じに出すため。
+      // known は「その時点で誰が知っていたか」を [先手, 後手] で持つ
+      const frozenNow = (piece) =>
+        piece.frozenUntil != null && (out.turnNo || 0) < piece.frozenUntil;
       const snapshot = out.board.map((row) =>
         row.map((piece) =>
           piece
@@ -1039,6 +1045,18 @@ function afterAction(prev, next, action) {
                 suit: piece.suit,
                 owner: piece.owner,
                 isKing: !!piece.isKing,
+                ...(piece.mark ? { mark: piece.mark } : null),
+                ...(frozenNow(piece) ? { frozen: true } : null),
+                ...(piece.revealed ? { revealed: true } : null),
+                ...(out.known &&
+                (out.known[0][piece.id] || out.known[1][piece.id])
+                  ? {
+                      known: [
+                        !!out.known[0][piece.id],
+                        !!out.known[1][piece.id],
+                      ],
+                    }
+                  : null),
               }
             : null,
         ),
@@ -1745,7 +1763,9 @@ function coreReducer(state, action) {
       const secondAction = state.extraMoveFor === mover.id;
       const twiceKing =
         mover.rank === "10" &&
-        (mover.isKing || !!state.players[mover.owner].skyTwice);
+        (mover.isKing ||
+          !!mover.skyTwice ||
+          !!state.players[mover.owner].skyTwice);
       const nth = secondAction ? "2回目" : "1回目";
 
       const board = state.board.map((r) => [...r]);

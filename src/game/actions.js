@@ -1,5 +1,5 @@
 import { shuffle, buildDeck } from "./board.js";
-import { forestCandidates, iceCandidates } from "./areas.js";
+import { AREA_TUNING, forestCandidates, iceCandidates } from "./areas.js";
 
 /**
  * 手番の乱数をアクション側に焼き込む。
@@ -27,7 +27,7 @@ export function enrichAction(action, state) {
       const area = state.areas && state.areas[state.currentTurn];
       if (!area) return action;
       if (area.type === "earth")
-        return { ...action, hit: Math.random() < 0.5 };
+        return { ...action, hit: Math.random() < AREA_TUNING.earthOdds };
       if (area.type === "forest")
         return {
           ...action,

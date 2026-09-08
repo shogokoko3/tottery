@@ -490,7 +490,8 @@ tools/               復元と検証に使ったスクリプト
 王のランクにスキンを装備していると、9×9 の対局でそのランク帯のエリアが立ち、
 1局に1回だけ効果を使える（土・海・森・氷・空・宮殿）。決まりと作りは
 [盤面エリア.md](盤面エリア.md)。ルール層は `src/game/areas.js`、検査は
-`node tools/check-areas.mjs`。START_SETUP に `areas: true` を渡した対局だけで働く。
+`node tools/check-areas.mjs`、強さの目安は `node tools/area-lab.mjs`。効果の数字は
+`src/game/areas.js` の `AREA_TUNING` で変える。
 
 ## v49 で入れたもの
 

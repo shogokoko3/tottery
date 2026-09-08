@@ -5028,3 +5028,8 @@ h3 {
   background: var(--gold);
   color: #1b1405;
 }
+
+/* 海のエリア: 引き寄せは跳ばずに滑らせる(通常の移動は1マスずつ止まる) */
+.piece-slot.piece-sea {
+  animation-timing-function: ease-in-out;
+}

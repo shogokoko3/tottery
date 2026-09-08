@@ -649,7 +649,7 @@ export function GameView({
                               }
                             >
                               <div
-                                className="piece-wrap side-ring"
+                                className={`piece-wrap side-ring ${A.frozen ? "piece-frozen" : ""}`}
                                 style={{ "--who": PLAYER_META[A.owner].color }}
                               >
                                 <CardFace
@@ -667,6 +667,24 @@ export function GameView({
                                       color: PLAYER_META[A.owner].color,
                                     }}
                                   />
+                                )}
+                                {/* 盤面エリアの見た目。控え(replay)に入っているものをそのまま */}
+                                {A.mark && (
+                                  <span className={`mark-badge mark-${A.mark}`}>
+                                    {A.mark === "sky" ? "空" : "宮"}
+                                  </span>
+                                )}
+                                {!A.mark &&
+                                  !A.revealed &&
+                                  A.known &&
+                                  A.known[mySide] &&
+                                  A.owner !== mySide && (
+                                    <span className="known-badge">見抜</span>
+                                  )}
+                                {A.frozen && (
+                                  <span className="frozen-badge" aria-label="凍結">
+                                    ❄
+                                  </span>
                                 )}
                               </div>
                             </div>
@@ -2430,6 +2448,28 @@ export function GameCore({
                             };
                           })()
                         : null,
+                    // 海のエリアで引き寄せられた駒。出発点から到着点へ滑らせる
+                    seaStep = (() => {
+                      const la = a.lastArea;
+                      if (!la || la.type !== "sea" || !la.moves || !ze)
+                        return null;
+                      const mv = la.moves.find(
+                        (m) => m.id === ze.id && m.to.row === ne && m.to.col === Me,
+                      );
+                      if (!mv) return null;
+                      const dc = mv.from.col - mv.to.col;
+                      const dr = mv.from.row - mv.to.row;
+                      const n = Math.max(Math.abs(dr), Math.abs(dc));
+                      if (!n) return null;
+                      return {
+                        sx: Jl ? -dc : dc,
+                        sy: Jl ? -dr : dr,
+                        stops: n + 1,
+                        ms: 160 + n * 120,
+                        seq: `sea${la.seq}`,
+                      };
+                    })(),
+                    anyStep = stepIn || seaStep,
                     S0 = Vo
                       ? "cell-from"
                       : Go
@@ -2478,15 +2518,15 @@ export function GameCore({
                       {ze && (
                         <div
                           {...privateNotes.handlers(ze)}
-                          className={`piece-slot ${stepIn ? "piece-stepping" : ""}`}
-                          key={stepIn ? `mv${stepIn.seq}` : "piece"}
+                          className={`piece-slot ${anyStep ? "piece-stepping" : ""} ${seaStep ? "piece-sea" : ""}`}
+                          key={anyStep ? `mv${anyStep.seq}` : "piece"}
                           style={
-                            stepIn
+                            anyStep
                               ? {
-                                  "--sx": stepIn.sx,
-                                  "--sy": stepIn.sy,
-                                  "--stops": stepIn.stops,
-                                  "--ms": `${stepIn.ms}ms`,
+                                  "--sx": anyStep.sx,
+                                  "--sy": anyStep.sy,
+                                  "--stops": anyStep.stops,
+                                  "--ms": `${anyStep.ms}ms`,
                                 }
                               : void 0
                           }
