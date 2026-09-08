@@ -35,7 +35,11 @@ assert.equal(seasonAt(end - 1).id, "2026-09");
 assert.equal(seasonAt(end).id, "2026-10");
 assert.equal(seasonAt(Date.parse("2027-01-01T04:59:59+09:00")).id, "2026-12");
 assert.equal(seasonAt(Date.parse("2028-03-01T04:59:59+09:00")).id, "2028-02");
-function recordedGame(round = 0, size = 9) {
+function recordedGame(
+  round = 0,
+  size = 9,
+  ruleVersion = ADJUDICATION_RULE_VERSION,
+) {
   let s = initialState(),
     acts = {},
     n = 0;
@@ -56,7 +60,7 @@ function recordedGame(round = 0, size = 9) {
       a,
     );
   }
-  act({ type: "START_SETUP", size, ruleVersion: ADJUDICATION_RULE_VERSION }, 0);
+  act({ type: "START_SETUP", size, ruleVersion }, 0);
   act({ type: "ROLL_DICE_SINGLE" }, 0);
   act({ type: "NEXT_DICE_STEP" }, 0);
   act({ type: "ROLL_DICE_SINGLE" }, 1);
@@ -112,6 +116,11 @@ function recordedGame(round = 0, size = 9) {
     request: { code: "ABCD", createdAt: start + 1000, round, winner: s.winner },
   };
 }
+const clockGame = recordedGame(0, 9, 2);
+assert.deepEqual(
+  verifyMatch(clockGame.room, clockGame.request, "host"),
+  verifyMatch(clockGame.room, clockGame.request, "guest"),
+);
 const game = recordedGame();
 const verified = verifyMatch(game.room, game.request, "host");
 assert.deepEqual(verifyMatch(game.room, game.request, "guest"), verified);

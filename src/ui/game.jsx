@@ -94,13 +94,26 @@ import {
 } from "../game/tutorial.js";
 import { isTestPlay, recordGame } from "../game/profile.js";
 import { releaseXpNotice } from "../game/xp-notices.js";
-import { ADJUDICATION_RULE_VERSION } from "../game/adjudication.js";
+import { GAME_RULE_VERSION } from "../game/rule-version.js";
+import {
+  CLOCK_EXTENSION_LIMIT,
+  CLOCK_EXTENSION_THRESHOLD_MS,
+  clockExtensionsRemaining,
+  hasLimitedClock,
+} from "../game/clock.js";
 import { titleNameOf } from "../game/titles.js";
 import { publishRank } from "../net/ranking.js";
 import { publishPlayer } from "../net/players.js";
 
 /** 持ち時間の表示。自分の時計は下、相手の時計は上に置く */
-export function ClockBar({ clocks, currentTurn, viewer }) {
+export function ClockBar({
+  clocks,
+  currentTurn,
+  viewer,
+  extensionUses = [0, 0],
+  ruleVersion,
+}) {
+  const limited = hasLimitedClock(ruleVersion);
   const { names, icons, titles, frames } = useSeats();
   const fmt = (ms) => {
     const total = Math.max(0, Math.ceil(ms / 1000));
@@ -108,37 +121,76 @@ export function ClockBar({ clocks, currentTurn, viewer }) {
   };
   const order = viewer === 1 ? [0, 1] : [1, 0];
   return (
-    <div className="clock-bar">
-      {order.map((idx) => {
-        const active = currentTurn === idx;
-        const ms = clocks[idx];
-        return (
-          <div
-            className={`clock-cell ${active ? "clock-active" : ""} ${
-              ms <= 30000 ? "clock-low" : ""
-            }`}
-            style={{ "--pc": PLAYER_META[idx].color }}
-            key={idx}
-          >
-            <span className="clock-who">
-              <PlayerIcon
-                icon={icons && icons[idx]}
-                frame={frames && frames[idx]}
-                name={names && names[idx]}
-                side={idx}
-                size="sm"
-              />
-              <span className="clock-name">
-                {shortPlayerLabel(idx, viewer, names)}({PLAYER_META[idx].name})
-                {titles && titleNameOf(titles[idx]) && (
-                  <em className="seat-title">{titleNameOf(titles[idx])}</em>
-                )}
+    <div className="clock-panel">
+      <div className="clock-bar">
+        {order.map((idx) => {
+          const active = currentTurn === idx;
+          const ms = clocks[idx];
+          const remaining = clockExtensionsRemaining(extensionUses[idx]);
+          const warning = limited && remaining <= 3;
+          return (
+            <div
+              className={`clock-cell ${active ? "clock-active" : ""} ${
+                ms <= CLOCK_EXTENSION_THRESHOLD_MS ? "clock-low" : ""
+              } ${limited ? "clock-limited" : ""}`}
+              style={{ "--pc": PLAYER_META[idx].color }}
+              key={idx}
+            >
+              <span className="clock-who">
+                <PlayerIcon
+                  icon={icons && icons[idx]}
+                  frame={frames && frames[idx]}
+                  name={names && names[idx]}
+                  side={idx}
+                  size="sm"
+                />
+                <span className="clock-name">
+                  {shortPlayerLabel(idx, viewer, names)}({PLAYER_META[idx].name}
+                  )
+                  {titles && titleNameOf(titles[idx]) && (
+                    <em className="seat-title">{titleNameOf(titles[idx])}</em>
+                  )}
+                </span>
               </span>
-            </span>
-            <strong className="clock-time">{fmt(ms)}</strong>
-          </div>
-        );
-      })}
+              <strong className="clock-time">{fmt(ms)}</strong>
+              {limited && (
+                <div
+                  className={`clock-extension ${warning ? "clock-extension-warning" : ""} ${remaining === 0 ? "clock-extension-empty" : ""}`}
+                >
+                  <div className="clock-extension-count">
+                    <span>
+                      追加 あと<strong>{remaining}</strong>回
+                    </span>
+                    <span className="clock-extension-pips" aria-hidden="true">
+                      {Array.from({ length: CLOCK_EXTENSION_LIMIT }, (_, n) => (
+                        <i
+                          key={n}
+                          className={n < remaining ? "available" : ""}
+                        />
+                      ))}
+                    </span>
+                  </div>
+                  <div
+                    className="clock-extension-alert"
+                    role="status"
+                    aria-atomic="true"
+                  >
+                    {warning &&
+                      (remaining === 0
+                        ? "次の手番から追加なし"
+                        : `⚠ 追加は残り${remaining}回`)}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {limited && (
+        <p className="clock-rule-hint">
+          手番開始時に30秒以下なら＋10秒・各6回まで
+        </p>
+      )}
     </div>
   );
 }
@@ -1042,9 +1094,7 @@ export function GameCore({
       ((network && p !== 0) ||
         y({
           type: "START_SETUP",
-          ruleVersion: network
-            ? network.ruleVersion
-            : ADJUDICATION_RULE_VERSION,
+          ruleVersion: network ? network.ruleVersion : GAME_RULE_VERSION,
           size: boardSize || 5,
           setupMode: network || cpu ? "simultaneous" : "sequential",
           ...(tutorial
@@ -2170,14 +2220,16 @@ export function GameCore({
       }}
     >
       <div className="play-wrap">
-        {network && a.ruleVersion !== ADJUDICATION_RULE_VERSION && (
+        {network && a.ruleVersion !== GAME_RULE_VERSION && (
           <p className="hint">
-            この対局は従来ルールで進行します。判定ルールを使うには、両者ともページを再読み込みして新しい対局を始めてください。
+            この対局は従来ルールで進行します。新しい持ち時間・判定ルールを使うには、両者ともページを再読み込みして新しい対局を始めてください。
           </p>
         )}
         {!tutorial && (
           <ClockBar
             clocks={liveClocks}
+            extensionUses={displayed.clockExtensionUses}
+            ruleVersion={a.ruleVersion}
             currentTurn={displayed.currentTurn}
             viewer={P}
           />

@@ -7,7 +7,7 @@ import {
 } from "../game/board.js";
 
 import { PLAYER_META, RANKS, SUITS, nameOf } from "../game/constants.js";
-import { ADJUDICATION_RULE_VERSION } from "../game/adjudication.js";
+import { hasAdjudicationRules } from "../game/rule-version.js";
 import { useWindowWidth } from "../hooks.js";
 import { ArrowLeft, Crown, Dice, Grid } from "../icons.jsx";
 import { CardBack, CardFace } from "./cards.jsx";
@@ -589,7 +589,7 @@ export function PlaceStep({
           </strong>
         </p>
       )}
-      {state.ruleVersion === ADJUDICATION_RULE_VERSION && !terse && (
+      {hasAdjudicationRules(state.ruleVersion) && !terse && (
         <p className="setup-adoption-total">
           採用合計：<strong>{adoptionTotal}</strong>{" "}
           <span className="hint">終局不能の判定では低い側が勝ち</span>

@@ -5,7 +5,7 @@ import {
   kingRankOf,
   shuffle,
 } from "./board.js";
-import { ADJUDICATION_RULE_VERSION } from "./adjudication.js";
+import { hasAdjudicationRules } from "./rule-version.js";
 
 /** ランクのざっくりした強さ。CPU の評価にだけ使う */
 const RANK_VALUE = {
@@ -253,7 +253,7 @@ export function cpuAction(state, player) {
       };
     }
     if (swap) return { type: "__CPU_SHUFFLE", ...swap };
-    if (state.extraMoveFor || state.ruleVersion !== ADJUDICATION_RULE_VERSION)
+    if (state.extraMoveFor || !hasAdjudicationRules(state.ruleVersion))
       return { type: "SKIP_EXTRA_ACTION" };
     return null;
   }

@@ -1,8 +1,8 @@
 import { RANKS, ORTH, DIAG, KNIGHT_OFFSETS } from "./constants.js";
 import { getLegalMoves, inBounds, kingRankOf } from "./board.js";
 
-// START_SETUP に記録する。指定のない旧アクション列では従来のルールを保つ。
-export const ADJUDICATION_RULE_VERSION = 1;
+import { hasAdjudicationRules } from "./rule-version.js";
+export { ADJUDICATION_RULE_VERSION } from "./rule-version.js";
 
 export function rankValue(rank) {
   return RANKS.indexOf(rank) + 1;
@@ -156,7 +156,7 @@ export function isDeadPosition(state) {
 /** 同期された手が完了したときだけ呼ぶ。表示用dismissには依存しない。 */
 export function adjudicatePosition(state) {
   if (
-    state.ruleVersion !== ADJUDICATION_RULE_VERSION ||
+    !hasAdjudicationRules(state.ruleVersion) ||
     !isAdjudicationBoundary(state) ||
     !Array.isArray(state.initialArmyTotals) ||
     state.initialArmyTotals.length !== 2 ||

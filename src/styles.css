@@ -1733,6 +1733,9 @@ h3 {
 }
 
 /* --- 持ち時間 --- */
+.clock-panel {
+  width: 100%;
+}
 .clock-bar {
   display: flex;
   gap: 8px;
@@ -1769,6 +1772,74 @@ h3 {
 }
 .clock-active.clock-low {
   animation: clock-pulse 1s ease-in-out infinite;
+}
+.clock-limited {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+}
+.clock-extension {
+  grid-column: 1 / -1;
+  border-top: 1px solid rgba(212, 175, 55, 0.18);
+  padding-top: 5px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.clock-extension-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  white-space: nowrap;
+}
+.clock-extension-count strong {
+  margin: 0 2px;
+  font-size: 13px;
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+.clock-extension-pips {
+  display: flex;
+  gap: 3px;
+}
+.clock-extension-pips i {
+  width: 5px;
+  height: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 2px;
+}
+.clock-extension-pips .available {
+  background: linear-gradient(#f8e3a1, #b78739);
+  box-shadow: 0 0 4px #e2b85655;
+}
+.clock-extension-alert:not(:empty) {
+  margin-top: 3px;
+  padding: 3px 2px;
+  border-radius: 3px;
+  color: #ffe0a0;
+  background: #d99c2520;
+  text-align: center;
+  font-weight: 700;
+}
+.clock-extension-warning {
+  border-top-color: #e8b05077;
+}
+.clock-extension-empty .clock-extension-alert {
+  background: #d4553a26;
+  color: #ffb7a3;
+}
+.clock-extension-empty .clock-extension-count strong {
+  color: #ffb7a3;
+}
+.clock-rule-hint {
+  margin: 0 0 7px;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-dim);
 }
 @keyframes clock-pulse {
   50% {

@@ -1,10 +1,9 @@
 import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
-import {
-  ADJUDICATION_RULE_VERSION,
-  adjudicatePosition,
-  withInitialArmies,
-} from "./adjudication.js";
+import { adjudicatePosition, withInitialArmies } from "./adjudication.js";
+import { hasAdjudicationRules } from "./rule-version.js";
+import { CLOCK_INITIAL_MS, grantTurnTime } from "./clock.js";
+export { CLOCK_INITIAL_MS, CLOCK_INCREMENT_MS } from "./clock.js";
 import {
   buildDeck,
   getLegalMoves,
@@ -378,10 +377,6 @@ export function isNotableLog(line) {
   );
 }
 
-/** 対局の持ち時間 */
-export const CLOCK_INITIAL_MS = 5 * 60 * 1000;
-/** 自分の手番が始まるたびに加算される時間 */
-export const CLOCK_INCREMENT_MS = 10 * 1000;
 /**
  * 駒を並べるのに使える時間。9×9 は置く枚数が多いので長くとる。
  * 王を選ぶ時間は別に数える。
@@ -417,6 +412,8 @@ export function initialState() {
     setupDone: [false, false],
     /** 持ち時間(ミリ秒)。対局開始時に5分ずつ */
     clocks: [CLOCK_INITIAL_MS, CLOCK_INITIAL_MS],
+    /** プレイヤーごとの10秒加算済み回数。新しい対局でリセット。 */
+    clockExtensionUses: [0, 0],
     timeoutBy: null,
     /** 直前に駒が倒れたマス。演出のためだけに持つ */
     lastDefeat: null,
@@ -791,14 +788,9 @@ function startPlay(base, log) {
   base = withInitialArmies(base);
   if (base.scripted)
     return {
-      ...base,
+      ...grantTurnTime(base, base.firstPlayer),
       phase: "play",
       currentTurn: base.firstPlayer,
-      clocks: replaceAt(
-        base.clocks,
-        base.firstPlayer,
-        base.clocks[base.firstPlayer] + CLOCK_INCREMENT_MS,
-      ),
       log: [
         ...log,
         `--- 対局開始:${PLAYER_META[base.firstPlayer].name}の番 ---`,
@@ -867,17 +859,12 @@ function startPlay(base, log) {
       : null;
 
   return {
-    ...base,
+    ...grantTurnTime(base, first),
     pieces,
     board,
     phase: "play",
     currentTurn: first,
     firstPlayer: first,
-    clocks: replaceAt(
-      base.clocks,
-      first,
-      base.clocks[first] + CLOCK_INCREMENT_MS,
-    ),
     log: [...nextLog, `--- 対局開始:${PLAYER_META[first].name}の番 ---`],
     setupEffects: effects,
     interstitial: { forPlayer: first, kind: "turn" },
@@ -1104,8 +1091,7 @@ function afterClock(prev, next, action) {
         ],
       };
     } else {
-      clocks[out.currentTurn] = clocks[out.currentTurn] + CLOCK_INCREMENT_MS;
-      out = { ...out, clocks };
+      out = grantTurnTime({ ...out, clocks }, out.currentTurn);
     }
   }
 
@@ -1150,10 +1136,9 @@ function coreReducer(state, action) {
           fromNetwork(action) || action.setupMode === "simultaneous"
             ? "simultaneous"
             : "sequential",
-        ruleVersion:
-          action.ruleVersion === ADJUDICATION_RULE_VERSION
-            ? ADJUDICATION_RULE_VERSION
-            : null,
+        ruleVersion: hasAdjudicationRules(action.ruleVersion)
+          ? action.ruleVersion
+          : null,
         pool: action.pool || null,
         // 台本どおりに進めるチュートリアルでは布陣ボーナスを出さない。
         // 先手が入れ替わったり駒が公開されたりすると、案内と噛み合わなくなる
@@ -1925,10 +1910,7 @@ function coreReducer(state, action) {
       // 旧版とつないだ対局(ruleVersion が揃わない)だけは、相手の盤と
       // 食い違わせないために従来どおり渡せる。その対局では手番の放棄も
       // 止められないが、どのみち相手の端末には他の守りも入っていない
-      if (
-        state.ruleVersion === ADJUDICATION_RULE_VERSION &&
-        !state.extraMoveFor
-      )
+      if (hasAdjudicationRules(state.ruleVersion) && !state.extraMoveFor)
         return state;
       return endTurn(state);
 

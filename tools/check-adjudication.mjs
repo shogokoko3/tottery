@@ -398,6 +398,9 @@ assert.equal(
 // 対戦相手が旧画面なら、ホスト/ゲストどちらから見ても旧ルールへ揃える。
 for (const [hostRuleVersion, guestRuleVersion, expected] of [
   [1, 1, 1],
+  [2, 2, 2],
+  [2, 1, null],
+  [1, 2, null],
   [1, undefined, null],
   [undefined, 1, null],
   [1, 999, null],
@@ -416,7 +419,7 @@ for (const [hostRuleVersion, guestRuleVersion, expected] of [
     ...splitKings,
     ruleVersion: started.ruleVersion,
   });
-  assert.equal(done.phase, expected === 1 ? "gameover" : "play");
+  assert.equal(done.phase, expected != null ? "gameover" : "play");
 }
 assert.equal(roomRuleVersion(null), null);
 

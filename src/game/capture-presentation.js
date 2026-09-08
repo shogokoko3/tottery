@@ -52,6 +52,8 @@ export function captureDisplayState(state, before) {
     })),
     currentTurn:
       prior?.currentTurn ?? state.captureReveal.capturedBy ?? state.currentTurn,
+    // 次の手番の加算回数を、撃破札を開く前に先出ししない。
+    clockExtensionUses: prior?.clockExtensionUses ?? state.clockExtensionUses,
     log: prior?.log || [],
   };
 }

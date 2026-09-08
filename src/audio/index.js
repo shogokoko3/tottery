@@ -50,7 +50,7 @@ export function useScreenBgm(screen) {
 export function useGameBgm({ state, clocks, self, tutorial }) {
   const phase = state ? state.phase : null;
 
-  // 終盤に入ったら戻らない。持ち時間は手番ごとに10秒足されるので、
+  // 終盤に入ったら戻らない。持ち時間は残り30秒以下の手番開始時に10秒足されるので、
   // その場で判定すると境目で曲が行ったり来たりする
   const late = (0, useRef)(false);
   if (phase === "intro" || phase === "dice" || phase === "mulligan")

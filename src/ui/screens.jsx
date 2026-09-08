@@ -57,7 +57,7 @@ import { TsumeScreen } from "./tsume.jsx";
 import { nextTutorialAfter } from "../game/tutorial.js";
 import { XpGainToast } from "./xp-gain.jsx";
 import { getXpNotices, subscribeXpNotices } from "../game/xp-notices.js";
-import { ADJUDICATION_RULE_VERSION } from "../game/adjudication.js";
+import { GAME_RULE_VERSION } from "../game/rule-version.js";
 import { roomRuleVersion } from "../net/sync.js";
 import { RankingScreen } from "./ranking.jsx";
 import {
@@ -598,7 +598,7 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize }) {
               guestTitle: myTitle(),
               guestRating: myRating(),
               guestSkins: loadout,
-              guestRuleVersion: ADJUDICATION_RULE_VERSION,
+              guestRuleVersion: GAME_RULE_VERSION,
               guestMatchSize: boardSize,
             });
             if (o.current) return;
@@ -618,7 +618,7 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize }) {
               foeUid: foeOf(b.data && b.data.seats, myUid()),
               ruleVersion: roomRuleVersion({
                 ...b.data,
-                guestRuleVersion: ADJUDICATION_RULE_VERSION,
+                guestRuleVersion: GAME_RULE_VERSION,
               }),
               names: [safeName(b.data && b.data.hostName), myName()],
               icons: [safeTag(b.data && b.data.hostIcon), myIcon()],
@@ -639,7 +639,7 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize }) {
             hostTitle: myTitle(),
             hostRating: myRating(),
             hostSkins: loadout,
-            hostRuleVersion: ADJUDICATION_RULE_VERSION,
+            hostRuleVersion: GAME_RULE_VERSION,
           });
         if (o.current) return;
         if (!p.ok) {
@@ -867,7 +867,7 @@ export function RoomScreen({
         hostTitle: myTitle(),
         hostRating: myRating(),
         hostSkins: loadout,
-        hostRuleVersion: ADJUDICATION_RULE_VERSION,
+        hostRuleVersion: GAME_RULE_VERSION,
       });
     if ((p(!1), !x.ok)) {
       s(x.error);
@@ -914,7 +914,7 @@ export function RoomScreen({
       guestTitle: myTitle(),
       guestRating: myRating(),
       guestSkins: loadout,
-      guestRuleVersion: ADJUDICATION_RULE_VERSION,
+      guestRuleVersion: GAME_RULE_VERSION,
     });
     if ((p(!1), !N.ok)) {
       (await leaveRoom(P), s(N.error));
@@ -932,7 +932,7 @@ export function RoomScreen({
       myPlayerIndex: 1,
       ruleVersion: roomRuleVersion({
         ...x.data,
-        guestRuleVersion: ADJUDICATION_RULE_VERSION,
+        guestRuleVersion: GAME_RULE_VERSION,
       }),
     });
   }
