@@ -41,7 +41,7 @@ import {dailyTsume} from './src/game/tsume-daily.js';
 import {TSUME_QUESTIONS} from './src/game/tsume.js';
 if(!localStorage.getItem('tottery.account.v1'))localStorage.setItem('tottery.account.v1',JSON.stringify({...loadProfile(),id:'tsume-local-check',name:'確認プレイヤー',bonusDay:dayKey()}));
 const first=Date.parse('2026-09-08T06:00:00+09:00');
-const days=Array.from({length:30},(_,i)=>first+i*86400000);
+const days=Array.from({length:365},(_,i)=>first+i*86400000);
 function App(){
  const [page,setPage]=useState('menu'),[rules,setRules]=useState(false),[clock,setClock]=useState({at:first,base:Date.now()});
  const now=useCallback(()=>clock.at+Date.now()-clock.base,[clock]);

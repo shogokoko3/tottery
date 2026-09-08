@@ -15,6 +15,7 @@ import {
   joinDailyTsume,
   tsumeReceipt,
   sanitizeTsumeProgress,
+  tsumeCandidates,
 } from "../src/game/tsume-daily.js";
 import {
   squareName,
@@ -26,12 +27,46 @@ import { RANKS } from "../src/game/constants.js";
 import { endAction, initialState } from "../src/game/reducer.js";
 
 const start = Date.parse("2026-09-08T06:00:00+09:00");
-const times = new Map(
-  Array.from({ length: 30 }, (_, i) => {
-    const at = start + i * 86400000;
-    return [dailyTsume(at).questionId, at];
-  }),
+const dayAt = (i) => start + i * 86400000;
+const sequence = Array.from(
+  { length: 3650 },
+  (_, i) => dailyTsume(dayAt(i)).questionId,
 );
+assert.equal(sequence[0], 1, "公開済みの9/8の問題は変わらない");
+assert.equal(new Set(sequence).size, 30, "全30問が抽選対象");
+for (let i = 0; i < sequence.length; i++) {
+  assert.ok(sequence[i] >= 1 && sequence[i] <= 30);
+  assert.ok(
+    !sequence.slice(Math.max(0, i - 15), i).includes(sequence[i]),
+    `日${i}: 直近15問を再出題しない`,
+  );
+}
+assert.equal(tsumeCandidates([]).length, 30);
+assert.equal(tsumeCandidates([1]).length, 29);
+assert.deepEqual(
+  tsumeCandidates(Array.from({ length: 15 }, (_, i) => i + 1)),
+  Array.from({ length: 15 }, (_, i) => i + 16),
+);
+assert.deepEqual(
+  tsumeCandidates(Array.from({ length: 16 }, (_, i) => i + 1)),
+  [1, ...Array.from({ length: 14 }, (_, i) => i + 17)],
+  "16問前の問題は抽選に戻る",
+);
+assert.notDeepEqual(
+  sequence.slice(0, 30),
+  sequence.slice(30, 60),
+  "30日周期の繰り返しにしない",
+);
+const fresh = await import("../src/game/tsume-daily.js?fresh-random-schedule");
+for (const i of [3649, 16, 15, 1, 0, 366, 29, 500])
+  assert.deepEqual(
+    fresh.dailyTsume(dayAt(i)),
+    dailyTsume(dayAt(i)),
+    "別の起動・日付を飛ばす・過去に戻る場合も出題は一致する",
+  );
+const times = new Map();
+for (let i = 0; i < 365; i++)
+  if (!times.has(sequence[i])) times.set(sequence[i], dayAt(i));
 assert.equal(times.size, 30);
 assert.equal(
   dailyTsume(Date.parse("2026-09-08T04:59:59.999+09:00")).day,
@@ -42,8 +77,18 @@ assert.equal(
   "2026-09-08",
 );
 assert.equal(
-  dailyTsume(start).questionId,
-  dailyTsume(start + 30 * 86400000).questionId,
+  dailyTsume(Date.parse("2026-09-09T04:59:59.999+09:00")).questionId,
+  1,
+);
+assert.equal(
+  dailyTsume(Date.parse("2026-09-09T05:00:00+09:00")).questionId,
+  sequence[1],
+);
+assert.notEqual(sequence[1], 1);
+assert.equal(
+  dailyTsume(Date.parse("2026-09-09T20:00:00+09:00")).questionId,
+  sequence[1],
+  "同じ日は何度起動しても同じ問題",
 );
 assert.equal(TSUME_QUESTIONS.filter((q) => q.kind === "inference").length, 20);
 const coord = (at, size) => ({
@@ -307,4 +352,6 @@ await updateCollection((c) =>
 );
 assert.equal(getCollection().ether, 100);
 assert.equal(getCollection().tickets, 1);
-console.log("全30問・朝5時更新・参加50/クリア1枚・保存失敗と連打の検証 OK");
+console.log(
+  "10年分の直近15問除外・ランダム出題の再現性・全30問・朝5時更新・報酬保存の検証 OK",
+);

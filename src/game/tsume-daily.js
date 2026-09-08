@@ -2,17 +2,42 @@ import { missionPeriods } from "./periodic-missions.js";
 
 export const TSUME_PARTICIPATION_ETHER = 50;
 export const TSUME_CLEAR_TICKETS = 1;
-// 推理2問、王を取る問題1問の順に、30日で一巡する。全員が同じ問題。
-const ORDER = Array.from({ length: 10 }, (_, i) => [
+// 導入前の日付だけは旧方式を維持する。
+const LEGACY_ORDER = Array.from({ length: 10 }, (_, i) => [
   i * 2 + 1,
   i * 2 + 2,
   i + 21,
 ]).flat();
 const START = Date.UTC(2026, 8, 8);
+const QUESTION_IDS = Array.from({ length: 30 }, (_, i) => i + 1);
+export function tsumeCandidates(history) {
+  const recent = new Set(history.slice(-15));
+  return QUESTION_IDS.filter((id) => !recent.has(id));
+}
+
+// 公開初日（9/8）の問題を維持し、9/9からランダム出題する。
+// 共通の乱数シードから履歴を再現することで、全員・再読み込み・未参加の日も
+// 同じ出題にする。シードと初日の問題は今後も変更しない。
+let randomState = 2717676261;
+const schedule = [1];
+function random() {
+  randomState = (randomState + 0x6d2b79f5) | 0;
+  let value = Math.imul(randomState ^ (randomState >>> 15), randomState | 1);
+  value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+  return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+}
+
 export function dailyTsume(at = Date.now()) {
   const period = missionPeriods(at);
   const n = Math.floor((Date.parse(period.day) - START) / 86400000);
-  return { ...period, questionId: ORDER[((n % 30) + 30) % 30] };
+  if (n < 0)
+    return { ...period, questionId: LEGACY_ORDER[((n % 30) + 30) % 30] };
+  // 日付を飛ばして起動しても、間の出題を含む直近15問を除外する。
+  while (schedule.length <= n) {
+    const candidates = tsumeCandidates(schedule);
+    schedule.push(candidates[Math.floor(random() * candidates.length)]);
+  }
+  return { ...period, questionId: schedule[n] };
 }
 
 export function sanitizeTsumeProgress(raw) {
