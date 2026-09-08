@@ -30,12 +30,20 @@ export function collectActs(games = 40) {
   };
   for (let g = 0; g < games; g++) {
   const size = g % 2 === 0 ? 9 : 5;
+  // 9×9 は盤面エリアつき(USE_AREA と START_SETUP の areas / loadouts も通ること)
+  const loadout = Object.fromEntries(
+    ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"].map((r) => [
+      r,
+      `skin-${r}`,
+    ]),
+  );
   const start = {
     type: "START_SETUP",
     size,
     setupMode: "simultaneous",
     handSize: 13,
     ruleVersion: ADJUDICATION_RULE_VERSION,
+    ...(size === 9 ? { areas: true, loadouts: [loadout, loadout] } : null),
   };
   let s = reducer({ phase: "intro" }, enrichAction(start, {}));
   fits(enrichAction(start, {}), 0);
@@ -134,7 +142,8 @@ export function collectActs(games = 40) {
       fits(sent, s.currentTurn);
       s = reducer(s, sent);
     } else {
-      const sent = { ...act, elapsedMs: 1000 };
+      // 送る側は enrichAction を通す(盤面エリアの hit / picks が付く)
+      const sent = enrichAction({ ...act, elapsedMs: 1000 }, s);
       fits(sent, s.currentTurn);
       s = reducer(s, sent);
     }

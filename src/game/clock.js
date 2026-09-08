@@ -1,4 +1,4 @@
-import { GAME_RULE_VERSION } from "./rule-version.js";
+import { CLOCK_RULE_VERSION, hasAdjudicationRules } from "./rule-version.js";
 
 export const CLOCK_INITIAL_MS = 5 * 60 * 1000;
 export const CLOCK_INCREMENT_MS = 10 * 1000;
@@ -6,7 +6,7 @@ export const CLOCK_EXTENSION_THRESHOLD_MS = 30 * 1000;
 export const CLOCK_EXTENSION_LIMIT = 6;
 
 export function hasLimitedClock(version) {
-  return version === GAME_RULE_VERSION;
+  return hasAdjudicationRules(version) && version >= CLOCK_RULE_VERSION;
 }
 
 export function clockExtensionsRemaining(used = 0) {

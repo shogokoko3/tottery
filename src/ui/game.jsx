@@ -102,7 +102,7 @@ import {
 } from "../game/tutorial.js";
 import { isTestPlay, recordGame } from "../game/profile.js";
 import { releaseXpNotice } from "../game/xp-notices.js";
-import { GAME_RULE_VERSION } from "../game/rule-version.js";
+import { GAME_RULE_VERSION, hasAreaRules } from "../game/rule-version.js";
 import {
   CLOCK_EXTENSION_LIMIT,
   CLOCK_EXTENSION_THRESHOLD_MS,
@@ -1126,9 +1126,12 @@ export function GameCore({
           ruleVersion: network ? network.ruleVersion : GAME_RULE_VERSION,
           size: boardSize || 5,
           setupMode: network || cpu ? "simultaneous" : "sequential",
-          // 盤面エリア(試験ルール、src/game/areas.js)。手元の対局(CPU・同じ端末)の
-          // 9×9 だけ。オンラインは GAME_RULE_VERSION を上げてから
-          ...(!network && !tutorial && (boardSize || 5) === 9
+          // 盤面エリア(試験ルール、src/game/areas.js)。9×9 だけ。
+          // 手元の対局(CPU・同じ端末)は常に。オンラインは部屋の版が
+          // AREA_RULE_VERSION 以上(両者が新しい端末)のときだけ
+          ...(!tutorial &&
+          (boardSize || 5) === 9 &&
+          (!network || hasAreaRules(network.ruleVersion))
             ? { areas: true, loadouts: skins }
             : null),
           ...(tutorial

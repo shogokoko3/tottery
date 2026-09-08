@@ -318,6 +318,52 @@
                 }
               }
             },
+            "hit": {
+              ".validate": "newData.isBoolean()",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
+            "picks": {
+              "$i": {
+                ".validate": "$i.matches(/^([0-9]|1[0-5])$/) && newData.isString() && newData.val().length <= 16"
+              }
+            },
+            "areas": {
+              ".validate": "newData.isBoolean()",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
+            "loadouts": {
+              "$i": {
+                ".validate": "$i.matches(/^[01]$/)",
+                "$rank": {
+                  ".validate": "$rank.matches(/^(A|[2-9]|10|J|Q|K)$/) && newData.isString() && newData.val().length <= 40",
+                  "$sa": {
+                    ".validate": false,
+                    "$sb": {
+                      ".validate": false,
+                      "$sc": {
+                        ".validate": false
+                      }
+                    }
+                  }
+                }
+              }
+            },
             "$other": {
               ".validate": false,
               "$sa": {
