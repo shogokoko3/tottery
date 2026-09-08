@@ -10,7 +10,7 @@ import { SeasonScreen } from "./season.jsx";
  */
 import { useEffect, useState } from "react";
 import { loadProfile } from "../game/profile.js";
-import { rankTitle } from "../game/rating.js";
+import { rankTitle, RANK_TIERS } from "../game/rating.js";
 import { readRanks } from "../net/ranking.js";
 import { ArrowLeft } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
@@ -101,6 +101,52 @@ function LifetimeRanking() {
   );
 }
 
+function RankGuide() {
+  return (
+    <section className="rank-guide" aria-labelledby="rank-guide-title">
+      <h3 id="rank-guide-title">段位と到達条件</h3>
+      <p className="rank-guide-intro">
+        現在のレートで段位が決まります。対戦数の条件はありません。
+      </p>
+      <table className="rank-guide-table" aria-label="段位ごとのレート範囲">
+        <thead>
+          <tr>
+            <th scope="col">段位</th>
+            <th scope="col">レート</th>
+          </tr>
+        </thead>
+        <tbody>
+          {RANK_TIERS.map((tier, index) => (
+            <tr key={tier.name}>
+              <th scope="row">
+                <span className={`rank-guide-emblem rank-guide-tier-${index}`}>
+                  {tier.name}
+                </span>
+              </th>
+              <td>
+                <b>
+                  {index === 0
+                    ? RANK_TIERS[1].rating - 1
+                    : RANK_TIERS[index + 1]
+                      ? `${tier.rating}〜${RANK_TIERS[index + 1].rating - 1}`
+                      : tier.rating}
+                </b>
+                {index === 0 && <small>以下</small>}
+                {index === RANK_TIERS.length - 1 && <small>以上</small>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="rank-guide-note">
+        <b>対象は9×9のオンライン対戦</b>
+        <p>通算と今シーズン、それぞれのレートで判定します。</p>
+        <p>初期レートは1500。「兵」からスタートします。</p>
+      </div>
+    </section>
+  );
+}
+
 export function RankingScreen({ onBack }) {
   const [tab, setTab] = useState("season");
   return (
@@ -116,6 +162,7 @@ export function RankingScreen({ onBack }) {
           ["season", "今シーズン"],
           ["lifetime", "通算"],
           ["history", "歴代記録"],
+          ["ranks", "段位一覧"],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -127,8 +174,10 @@ export function RankingScreen({ onBack }) {
           </button>
         ))}
       </nav>
-      <div className="season-scroll">
-        {tab === "lifetime" ? (
+      <div className="season-scroll" key={tab}>
+        {tab === "ranks" ? (
+          <RankGuide />
+        ) : tab === "lifetime" ? (
           <LifetimeRanking />
         ) : (
           <SeasonScreen key={tab} historyOnly={tab === "history"} />

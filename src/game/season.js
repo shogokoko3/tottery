@@ -1,4 +1,4 @@
-import { displayRating, rankTitle } from "./rating.js";
+import { displayRating, rankTitle, RANK_TIERS } from "./rating.js";
 
 // JST 05:00 は前日の UTC 20:00。月の境界は必ずサーバー時計で決める。
 export function seasonAt(now = Date.now()) {
@@ -14,13 +14,7 @@ export function seasonAt(now = Date.now()) {
 export const validSeason = (id) =>
   typeof id === "string" && /^20\d{2}-(0[1-9]|1[0-2])$/.test(id);
 export const seasonName = (id) => `${id.slice(0, 4)}年${Number(id.slice(5))}月`;
-export const SEASON_TIERS = [
-  { name: "見習い", rating: 0, games: 0 },
-  { name: "兵", rating: 1450, games: 10 },
-  { name: "士", rating: 1550, games: 10 },
-  { name: "将", rating: 1650, games: 20 },
-  { name: "王", rating: 1750, games: 50 },
-];
+export const SEASON_TIERS = RANK_TIERS;
 export const tierOf = (p) =>
   SEASON_TIERS.findIndex(
     (t) =>

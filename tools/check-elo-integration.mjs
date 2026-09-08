@@ -115,3 +115,40 @@ assert.notEqual(
 console.log(
   "Elo integration: legacy SQLite migration, pair result, deduplication, restart, retained rewards, saved opponent ratings, reload/rematch and offline handling: OK",
 );
+
+// 対局数条件の廃止は今季の既存プレイヤーにも適用し、到達報酬を受け取れる。
+const ranksDb = new DatabaseSync(":memory:"),
+  ranksSql = (q, ...args) => ranksDb.prepare(q).all(...args),
+  ranksLedger = new Ledger(ranksSql);
+for (const [season, uid, rating, highest] of [
+  ["2026-09", "short-general", 1650, 2],
+  ["2026-09", "short-king", 1750, 3],
+  ["2026-09", "former-king", 1400, 4],
+  ["2026-08", "closed-season", 1750, 2],
+]) {
+  ranksSql(
+    "INSERT INTO players VALUES (?,?,?,NULL,0.5,2,1,0,?,NULL)",
+    season,
+    uid,
+    uid,
+    highest,
+  );
+  ranksSql("INSERT INTO elo_ratings VALUES (?,?,?)", season, uid, rating);
+}
+assert.equal(ranksLedger.summary("short-general", now).player.highest, 3);
+assert.equal(ranksLedger.summary("short-king", now).player.highest, 4);
+assert.equal(ranksLedger.summary("former-king", now).player.highest, 4);
+assert.equal(ranksLedger.list("2026-08")[0].highest, 2);
+assert(
+  ranksLedger
+    .claim("short-general", "2026-09:general", now)
+    .owned.frames.includes("gold-laurel"),
+);
+assert(
+  ranksLedger
+    .claim("short-king", "2026-09:king", now)
+    .owned.titles.includes("season:2026-09:king"),
+);
+console.log(
+  "レートのみの段位: 今季の既存記録・少ない対戦数での到達報酬・過去の達成保持: OK",
+);

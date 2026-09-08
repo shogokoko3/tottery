@@ -363,6 +363,99 @@
 .season-scroll .rank-wrap {
   padding-top: 10px;
 }
+.rank-guide {
+  padding-top: 18px;
+  text-align: left;
+}
+.rank-guide h3 {
+  margin: 0 0 10px;
+  color: var(--gold-soft);
+  font-size: 20px;
+}
+.rank-guide-intro {
+  margin: 0 0 18px;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.rank-guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: linear-gradient(130deg, #1c2b42, #102039);
+  border: 1px solid var(--gold-deep);
+}
+.rank-guide-table thead th {
+  padding: 12px 4px;
+  color: var(--gold-soft);
+  font-size: 12px;
+  font-weight: 500;
+  background: #0d1b30;
+}
+.rank-guide-table th:first-child {
+  width: 30%;
+}
+.rank-guide-table th,
+.rank-guide-table td {
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+.rank-guide-table tbody th,
+.rank-guide-table td {
+  padding: 12px 4px;
+}
+.rank-guide-table td b {
+  color: var(--gold-soft);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+}
+.rank-guide-table td small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.rank-guide-emblem {
+  display: grid;
+  place-content: center;
+  width: 54px;
+  height: 54px;
+  margin: auto;
+  border: 1px solid #9d8351;
+  border-radius: 7px 7px 18px 18px;
+  color: var(--gold-soft);
+  background: linear-gradient(145deg, #53472e, #15253b 80%);
+  font-size: 24px;
+}
+.rank-guide-tier-0 {
+  font-size: 14px;
+  color: var(--text-dim);
+  border-color: var(--line);
+  background: #18263a;
+}
+.rank-guide-tier-4 {
+  color: #fff0bd;
+  border-color: #ebce7c;
+  background: linear-gradient(145deg, #977433, #3a342a 70%);
+  box-shadow: 0 0 16px #dfbb4825;
+}
+.rank-guide-note {
+  margin-top: 16px;
+  padding: 13px;
+  border-left: 2px solid var(--gold-deep);
+  background: #19283d;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.rank-guide-note b {
+  color: var(--gold-soft);
+  font-weight: 500;
+}
+.rank-guide-note p {
+  margin: 7px 0 0;
+}
 .appearance-settings {
   text-align: left;
 }

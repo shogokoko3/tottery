@@ -52,6 +52,18 @@ export class Ledger {
       season.start,
       season.end,
     );
+    // 対局数の段位条件を廃止。今季の既存プレイヤーも現在レートで到達扱いにする。
+    // 過去に獲得した段位と終了済みシーズンの記録は保持する。
+    for (const p of this.list(season.id)) {
+      const highest = Math.max(p.highest, tierOf(p));
+      if (highest !== p.highest)
+        this.sql(
+          "UPDATE players SET highest=? WHERE season=? AND uid=?",
+          highest,
+          season.id,
+          p.uid,
+        );
+    }
     return season;
   }
   list(id) {

@@ -129,7 +129,12 @@ export function SeasonScreen({ historyOnly = false }) {
         })}
     </div>
   );
-  const p = data?.player || { wr: 0.5, rating: 1500, rated: 0, highest: 0 },
+  const p = data?.player || {
+      wr: 0.5,
+      rating: 1500,
+      rated: 0,
+      highest: tierOf({ rating: 1500 }),
+    },
     next = SEASON_TIERS[tierOf(p) + 1];
   return (
     <section className="season-content">
@@ -196,10 +201,7 @@ export function SeasonScreen({ historyOnly = false }) {
                     }}
                   />
                 </div>
-                <p>
-                  持ち点 あと{Math.max(0, next.rating - p.rating)}点 · 対局 あと
-                  {Math.max(0, next.games - p.rated)}戦
-                </p>
+                <p>レート あと{Math.max(0, next.rating - p.rating)}点</p>
               </>
             )}
             {p.rated < 10 && (

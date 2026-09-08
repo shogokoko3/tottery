@@ -8,7 +8,22 @@ import {
   RATING_VERSION,
   MIN_RATING,
   MAX_RATING,
+  rankTitle,
 } from "../src/game/rating.js";
+// 段位は対戦数によらずレートのみ。各境界の直前・到達時と新規1500を確認。
+for (const games of [0, 1, 9, 10, 19, 20, 49, 50, 500])
+  for (const [rating, title] of [
+    [1449, "見習い"],
+    [1450, "兵"],
+    [1500, "兵"],
+    [1549, "兵"],
+    [1550, "士"],
+    [1649, "士"],
+    [1650, "将"],
+    [1749, "将"],
+    [1750, "王"],
+  ])
+    assert.equal(rankTitle(rating, games), title);
 const store = new Map();
 globalThis.localStorage = {
   getItem: (k) => store.get(k) ?? null,

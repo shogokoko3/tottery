@@ -74,21 +74,19 @@ export function wrFromProfile(saved) {
   return 0.5;
 }
 
-/**
- * 段位のような呼び名。
- *
- * **全体分は入れない。** 全体分はみんなに等しく乗るので、入れると
- * 遊ばれた年数だけで段位が上がってしまう。実力の分だけで決める。
- * 数局の勝ち運で上がらないよう、局数の下限も置く。
- */
-export function rankTitle(rating, rated) {
-  const n = Math.max(0, num(rated, 0));
-  if (n < 10) return "見習い";
-  // 渡ってくるのは実力の持ち点(全体分は入っていない)
-  const skill = num(rating, START_RATING);
-  if (skill >= 1750 && n >= 50) return "王";
-  if (skill >= 1650 && n >= 20) return "将";
-  if (skill >= 1550) return "士";
-  if (skill >= 1450) return "兵";
-  return "見習い";
+/** 判定・シーズン報酬・段位一覧で同じ到達条件を使う。 */
+export const RANK_TIERS = [
+  { name: "見習い", rating: 0 },
+  { name: "兵", rating: 1450 },
+  { name: "士", rating: 1550 },
+  { name: "将", rating: 1650 },
+  { name: "王", rating: 1750 },
+];
+export function rankTitle(rating) {
+  const score = num(rating, START_RATING);
+  for (let i = RANK_TIERS.length - 1; i > 0; i--) {
+    const tier = RANK_TIERS[i];
+    if (score >= tier.rating) return tier.name;
+  }
+  return RANK_TIERS[0].name;
 }
