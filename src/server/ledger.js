@@ -158,7 +158,7 @@ export class Ledger {
       player: rows.find((p) => p.uid === uid) || null,
       list: rows
         .filter((p) => p.place)
-        .slice(0, 50)
+        .slice(0, 100)
         .map((p) => ({
           uid: p.uid,
           name: p.name,

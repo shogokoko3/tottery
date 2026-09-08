@@ -13,7 +13,7 @@ import { authedFetch } from "./auth.js";
 
 const TIMEOUT_MS = 8000;
 /** 一覧に出す人数 */
-export const RANK_LIMIT = 50;
+export const RANK_LIMIT = 100;
 
 function withTimeout(promise, ms) {
   return Promise.race([
