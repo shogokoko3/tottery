@@ -5,7 +5,7 @@
 // **3 に上げるのは、Firebase のルールに acts の hit / picks / areas / loadouts を
 // 足して公開してから。** 先にクライアントを 3 にすると、エリアの手が
 // データベースに弾かれて二人の盤がずれる(firebase-rules.json は足してある)。
-export const GAME_RULE_VERSION = 2;
+export const GAME_RULE_VERSION = 3; // 2026-09-08 にルールを公開して 3 へ
 export const ADJUDICATION_RULE_VERSION = 1;
 export const CLOCK_RULE_VERSION = 2;
 export const AREA_RULE_VERSION = 3;
