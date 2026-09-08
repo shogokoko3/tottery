@@ -55,12 +55,13 @@ export function bestEncirclement(s, player, moved = null) {
   }
   return best;
 }
-export function palacePromotion(s, player, bestMoveScore) {
+export function palacePromotion(s, player, bestMoveScore, bestMove = null) {
   const king = Object.values(s.pieces).find(
     (p) => p.alive && p.owner === player && p.isKing,
   );
   const threats = knownThreats(s, player);
-  if (king && threats.has(`${king.row}/${king.col}`)) return null;
+  const free = s.ruleVersion >= 7;
+  if (!free && king && threats.has(`${king.row}/${king.col}`)) return null;
   const replacement = king?.rank === "K" && (s.reserve?.length || 0) > 0;
   let best = null;
   for (const id of palaceCandidates(s, player)) {
@@ -84,6 +85,13 @@ export function palacePromotion(s, player, bestMoveScore) {
       s.players[player].armyRankCounts,
       kingRankOf(s, player),
     );
+    if (
+      free &&
+      bestMove?.pieceId === id &&
+      bestMoveScore >= 12 &&
+      !attacks.some((m) => m.row === bestMove.row && m.col === bestMove.col)
+    )
+      continue;
     score +=
       8 *
       belief.weight *
@@ -92,7 +100,7 @@ export function palacePromotion(s, player, bestMoveScore) {
       best = { score, type: "USE_AREA", pieceId: id };
   }
   // 即時の撃破・包囲より優先しない。静かな手より育成を優先。
-  return best && bestMoveScore < 12 ? best : null;
+  return best && (free || bestMoveScore < 12) ? best : null;
 }
 export function reserveDeployment(s, player) {
   if (s.kPlacement?.owner !== player || s.currentTurn !== player) return null;

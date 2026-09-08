@@ -8,7 +8,12 @@
  */
 import { PLAYER_META } from "../game/constants.js";
 import { AUTO_AREAS } from "../game/area-presentation.js";
-import { AREA_INFO, canUseArea, recurringArea } from "../game/areas.js";
+import {
+  AREA_INFO,
+  canUseArea,
+  recurringArea,
+  areaUsesTurn,
+} from "../game/areas.js";
 
 /** エリアの札に出す短い名前 */
 export function areaLabel(area) {
@@ -31,7 +36,14 @@ export function AreaBar({
   const foe = 1 - viewer;
   const mine = areas[me];
   const can = mine && myTurn && !busy ? canUseArea(state, me) : { ok: false };
-  const info = mine ? AREA_INFO[mine.type] : null;
+  const info = mine
+    ? {
+        ...AREA_INFO[mine.type],
+        ...(areaUsesTurn(state, mine.type)
+          ? { text: "手番を使い、自分の駒1体を1段昇格させる(Kまで・公開)" }
+          : {}),
+      }
+    : null;
   const label = (i) => (names && names[i] ? names[i] : PLAYER_META[i].name);
 
   if (picking && mine) {

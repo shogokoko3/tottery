@@ -5,7 +5,7 @@ import { adjudicatePosition, withInitialArmies } from "./adjudication.js";
 import { hasAdjudicationRules } from "./rule-version.js";
 import { CLOCK_INITIAL_MS, grantTurnTime } from "./clock.js";
 import {
-  AREA_INFO,
+  areaUsesTurn,
   initAreas,
   isFrozen,
   loseIfFrozen,
@@ -1993,7 +1993,7 @@ function coreReducer(state, action) {
       const next = useArea(state, action);
       if (next === state) return state;
       const area = next.areas[state.currentTurn];
-      return AREA_INFO[area.type].usesTurn ? endTurn(next) : next;
+      return areaUsesTurn(state, area.type) ? endTurn(next) : next;
     }
 
     case "SKIP_EXTRA_ACTION":

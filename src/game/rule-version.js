@@ -8,7 +8,8 @@
 // 4: 氷を毎手番発動・凍結中も抽選し残り期間に加算。通信の手の形式は3と共通。
 // 5: 全エリアを毎手番1回に。空・宮殿のみ任意発動。
 // 6: 森で毎手番見抜く対象を2体へ。
-export const GAME_RULE_VERSION = 6;
+// 7: 宮殿の昇格後も同じ手番で通常の移動ができる。
+export const GAME_RULE_VERSION = 7;
 export const ADJUDICATION_RULE_VERSION = 1;
 export const CLOCK_RULE_VERSION = 2;
 export const AREA_RULE_VERSION = 3;

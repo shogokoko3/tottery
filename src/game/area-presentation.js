@@ -53,6 +53,7 @@ export function areaEvent(before, after, viewer) {
         last.type === "ice"
           ? frozenTurnsLeft(after, after.pieces[last.pieceId])
           : null,
+      usesTurn: last.usesTurn ?? !(after.ruleVersion >= 7),
       from: last.from,
       to: last.to,
       moves:
@@ -120,7 +121,7 @@ export function areaEventText(event, stage) {
         ? `凍結期間を追加・残り${event.frozenTurns}手番`
         : `凍結・相手の${event.frozenTurns}手番は移動できない`,
       sky: "10へ変身・自軍の10は2回行動",
-      palace: `${event.from} → ${event.to} に昇格・相手の手番へ`,
+      palace: `${event.from} → ${event.to} に昇格・${event.usesTurn === false ? "続けて駒を動かせる" : "相手の手番へ"}`,
       thaw: "再び動けるようになった",
       birth: "陣地にエリアの力が宿った",
     }[event.type] || ""

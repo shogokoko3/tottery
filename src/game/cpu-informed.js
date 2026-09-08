@@ -230,6 +230,7 @@ export function informedPlay(s) {
       s,
       player,
       Math.max(best?.score || 0, enclosure?.score || 0),
+      best,
     );
     if (promotion) return { type: "USE_AREA", pieceId: promotion.pieceId };
   }

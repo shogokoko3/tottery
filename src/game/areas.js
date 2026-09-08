@@ -14,12 +14,12 @@
  *              凍らされて何も指せなければ負け
  *   10    空   自分の駒1体を10に変身させる(本物の10になり、公開される)。
  *              以後、自軍の10は全て1手番に2回動ける
- *   J〜K  宮殿 手番を使い、自分の駒1体を1段昇格させる(K まで。上限なし)。
+ *   J〜K  宮殿 手番を使わず、自分の駒1体を1段昇格させる(K まで。上限なし)。
  *              昇格した駒は公開される
  *
  * 空と宮殿で現れた札は公開(revealed)になり、専用のしるし(piece.mark)が付く。
  * 土・海・森・氷は発動可能な自分の手番の初めに自動発動する。
- * 空・宮殿は任意発動で対象を選ぶ。宮殿以外は手番を消費しない。
+ * 空・宮殿は任意発動で対象を選ぶ。全エリアとも手番を消費しない(旧版の宮殿を除く)。
  * 発動は相手にも見える。見抜いた正体だけは自分にしか見えない(state.known)。
  *
  * 乱数(土の50%、森・氷の対象の選び方)は src/game/actions.js の enrichAction で
@@ -81,8 +81,8 @@ export const AREA_INFO = Object.freeze({
   },
   palace: {
     name: "宮殿",
-    text: "手番を使い、自分の駒1体を1段昇格させる(Kまで。昇格した駒は公開)",
-    usesTurn: true,
+    text: "自分の駒1体を1段昇格させる(Kまで・公開)。昇格後も駒を動かせる",
+    usesTurn: false,
     needsPiece: true,
   },
 });
@@ -333,6 +333,7 @@ function markUsed(state, player, detail) {
       type: areas[player].type,
       seq: (state.lastArea ? state.lastArea.seq : 0) + 1,
       ...detail,
+      usesTurn: areaUsesTurn(state, areas[player].type),
     },
   };
 }
@@ -340,7 +341,7 @@ function markUsed(state, player, detail) {
 /**
  * エリアを使う。使えなければ state をそのまま返す。
  * action: { type: "USE_AREA", pieceId?, hit?(土), picks?(森) }
- * 手番を消費する宮殿は、呼び出し側(reducer)が endTurn する。
+ * 旧版で手番を消費する宮殿は、呼び出し側(reducer)が endTurn する。
  */
 export function useArea(state, action) {
   const player = state.currentTurn;
@@ -677,4 +678,9 @@ export function thaw(piece) {
   if (!piece || piece.frozenUntil == null) return piece;
   const { frozenUntil, ...rest } = piece;
   return { ...rest, history: [...rest.history, "入れ替えで氷が解けた"] };
+}
+
+/** 旧対局・リプレイでは従来の手番消費を保持する。 */
+export function areaUsesTurn(state, type) {
+  return type === "palace" && !(state.ruleVersion >= 7);
 }
