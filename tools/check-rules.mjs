@@ -259,7 +259,7 @@ function validates(db, after, path, value, vars0) {
 function patchedTree(db, path, patch) {
   let out = structuredClone(db);
   for (const [k, v] of Object.entries(patch))
-    out = writeInto(out, [...path, k], v);
+    out = writeInto(out, [...path, ...k.split("/")], v);
   return out;
 }
 
@@ -312,7 +312,7 @@ export function canWrite(db, path, auth, value) {
 export function canPatch(db, path, auth, patch) {
   const after = patchedTree(db, path, patch);
   for (const [k, v] of Object.entries(patch)) {
-    const at = [...path, k];
+    const at = [...path, ...k.split("/")];
     if (!writeAllowed(db, after, at, auth)) return false;
     if (!validates(db, after, at, v, { auth })) return false;
   }

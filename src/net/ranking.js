@@ -28,32 +28,9 @@ function withTimeout(promise, ms) {
   ]);
 }
 
-/** 自分の成績を載せる。失敗しても対局には影響しないので黙って諦める */
-export async function publishRank(profile) {
-  if (!profile || !profile.id || !profile.name) return { ok: false };
-  try {
-    await withTimeout(
-      authedFetch(`${DB_URL}/ranks/${profile.id}.json`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: profile.name,
-          icon: profile.icon || "",
-          title: profile.title || "",
-          rating: profile.rating,
-          rated: profile.rated,
-          wins: profile.wins,
-          plays: profile.plays,
-          at: Date.now(),
-        }),
-      }),
-      TIMEOUT_MS,
-    );
-    return { ok: true };
-  } catch {
-    return { ok: false };
-  }
-}
+// 互換用の入口も同じ保存処理を使う。ランキングだけを更新しない。
+export { publishProfile as publishRank } from "./profile-sync.js";
+import { isRankedRecord, worldGamesOf } from "./profile-record.js";
 
 /**
  * 全体の総対局数。持ち点の「全体分」に使う。
@@ -73,12 +50,7 @@ export async function readWorldGames() {
     );
     if (!res.ok) return 0;
     const data = await res.json();
-    let total = 0;
-    for (const row of Object.values(data || {})) {
-      const n = Number(row && row.rated);
-      if (Number.isFinite(n) && n > 0) total += n;
-    }
-    return total;
+    return worldGamesOf(Object.values(data || {}));
   } catch {
     return 0;
   }
@@ -86,7 +58,7 @@ export async function readWorldGames() {
 
 /** 持ち点の高い順に読み出す */
 export async function readRanks(limit = RANK_LIMIT) {
-  const url = `${DB_URL}/ranks.json?orderBy=%22rating%22&limitToLast=${limit}`;
+  const url = `${DB_URL}/ranks.json`;
   try {
     const res = await withTimeout(authedFetch(url), TIMEOUT_MS);
     // 401 は ranks の読み書きを許すルールがまだ公開されていないとき
@@ -101,9 +73,15 @@ export async function readRanks(limit = RANK_LIMIT) {
     const data = await res.json();
     const list = Object.entries(data || {})
       .map(([id, row]) => ({ id, ...row }))
-      .filter((r) => r && typeof r.rating === "number" && r.name)
-      .sort((a, b) => b.rating - a.rating);
-    return { ok: true, list, error: null };
+      .filter(isRankedRecord)
+      .sort((a, b) => b.rating - a.rating || a.id.localeCompare(b.id))
+      .slice(0, limit);
+    return {
+      ok: true,
+      list,
+      world: worldGamesOf(Object.values(data || {})),
+      error: null,
+    };
   } catch (err) {
     return {
       ok: false,

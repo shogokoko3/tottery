@@ -30,20 +30,8 @@ function withTimeout(promise, ms) {
 
 const url = (id) => `${DB_URL}/players/${id}.json`;
 
-/** サーバーに置く形。名前が無い人は置かない */
-export function playerRecord(profile) {
-  if (!profile || !profile.id || !profile.name) return null;
-  return {
-    name: String(profile.name).slice(0, 10),
-    icon: profile.icon || "",
-    title: profile.title || "",
-    plays: Number(profile.plays) || 0,
-    wins: Number(profile.wins) || 0,
-    rating: Number(profile.rating) || 0,
-    rated: Number(profile.rated) || 0,
-    at: Date.now(),
-  };
-}
+export { profileRecord as playerRecord } from "./profile-record.js";
+import { publishProfile } from "./profile-sync.js";
 
 /** 自分の記録を読む。無ければ data は null */
 export async function readPlayer(id) {
@@ -57,29 +45,8 @@ export async function readPlayer(id) {
   }
 }
 
-/** 自分の記録を置き直す。失敗しても遊びには影響しないので黙って諦める */
-export async function publishPlayer(profile, extra) {
-  const record = playerRecord(profile);
-  if (!record) return { ok: false };
-  // ルールは台帳の欄がぴったりそろっていることを求める(知らない名前を
-  // 1つ足すだけで弾ける形にしてあるため)。行がまだ無い端末では、
-  // since を積まないと合流しても欄が足りず、書き込みごと断られる
-  if (!extra || extra.since === undefined)
-    extra = { ...(extra || {}), since: Number(profile.since) || Date.now() };
-  try {
-    const res = await withTimeout(
-      authedFetch(url(profile.id), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...record, ...(extra || {}) }),
-      }),
-      TIMEOUT_MS,
-    );
-    return { ok: res.ok };
-  } catch {
-    return { ok: false };
-  }
-}
+/** 成績とプロフィールを一つの更新として保存する。 */
+export const publishPlayer = publishProfile;
 
 /** 起動時: 記録を確かめ、使用停止なら true を返す。そうでなければ置き直す */
 /**

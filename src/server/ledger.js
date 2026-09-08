@@ -129,6 +129,17 @@ export class Ledger {
     const a = this.sql("SELECT back,frame FROM appearance WHERE uid=?", uid)[0];
     return a || { back: null, frame: null };
   }
+  adminSummary(now) {
+    const season = this.current(now);
+    return {
+      season,
+      players: this.list(season.id),
+      matches: this.sql(
+        "SELECT COUNT(*) AS total FROM matches WHERE season=?",
+        season.id,
+      )[0].total,
+    };
+  }
   summary(uid, now) {
     const season = this.current(now),
       rows = this.list(season.id);

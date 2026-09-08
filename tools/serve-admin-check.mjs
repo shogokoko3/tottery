@@ -70,6 +70,25 @@ http
       res.end(JSON.stringify(body));
     };
     if (url.pathname === "/fixture/stats") return reply(stats);
+    if (url.pathname === "/api/admin/season") {
+      if (req.headers.authorization !== "Bearer operator-token")
+        return reply({ error: "denied" }, 403);
+      return reply({
+        season: { id: "2026-09" },
+        matches: 1,
+        players: [
+          {
+            uid: "fixture",
+            name: row.name,
+            rating: 1511,
+            rated: 1,
+            wins: 1,
+            draws: 0,
+            place: null,
+          },
+        ],
+      });
+    }
     if (url.pathname === "/api/admin/session") {
       let body = "";
       for await (const chunk of req) body += chunk;

@@ -56,6 +56,7 @@ import { TutorialSelect } from "./tutorial.jsx";
 import { TsumeScreen, useTsumeDay } from "./tsume.jsx";
 import { tsumeReceipt } from "../game/tsume-daily.js";
 import { nextTutorialAfter } from "../game/tutorial.js";
+import { ProfileSyncNotice } from "./profile-sync.jsx";
 import { XpGainToast } from "./xp-gain.jsx";
 import { getXpNotices, subscribeXpNotices } from "../game/xp-notices.js";
 import { GAME_RULE_VERSION } from "../game/rule-version.js";
@@ -72,7 +73,6 @@ import { titleOf } from "../game/titles.js";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
-import { publishRank } from "../net/ranking.js";
 import { ensureAuth, myUid } from "../net/auth.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
@@ -1127,6 +1127,7 @@ export function TotteryApp() {
     <>
       <TotteryScreens />
       <XpGainToast />
+      <ProfileSyncNotice />
     </>
   );
 }
@@ -1176,7 +1177,6 @@ function TotteryScreens() {
         // 逆順だと、途中で落ちたときランキングから消えたままになる
         if (now.name) {
           await syncPlayer(now);
-          publishRank(now);
         }
         dropOldRows(oldId);
         if (gone) return;

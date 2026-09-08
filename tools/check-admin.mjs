@@ -35,6 +35,37 @@ try {
     403,
     "a claimed operator UID is ignored",
   );
+  assert.equal(
+    (await worker.fetch(request(playerToken, {}, "/api/admin/season"), {}))
+      .status,
+    403,
+  );
+  assert.equal(
+    (await worker.fetch(request(null, {}, "/api/admin/season"), {})).status,
+    401,
+  );
+  let monthlyOp;
+  const monthly = await worker.fetch(
+    request(dataToken, {}, "/api/admin/season"),
+    {
+      SEASONS: {
+        idFromName: (n) => n,
+        get: () => ({
+          fetch: async (r) => {
+            monthlyOp = await r.json();
+            return Response.json({
+              season: { id: "2026-09" },
+              players: [],
+              matches: 0,
+            });
+          },
+        }),
+      },
+    },
+  );
+  assert.equal(monthly.status, 200);
+  assert.equal(monthlyOp.op, "admin-summary");
+  assert.equal(monthlyOp.uid, OPERATOR_UID);
   const ok = await worker.fetch(request(dataToken), {});
   assert.equal(ok.status, 200);
   assert.deepEqual(await ok.json(), { uid: OPERATOR_UID });

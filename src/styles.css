@@ -4640,3 +4640,32 @@ h3 {
   color: var(--gold);
   font-size: 11px;
 }
+
+.profile-sync-notice {
+  position: fixed;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 24px);
+  width: 430px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  color: #f3dfb3;
+  background: #241d19;
+  border: 1px solid #ad8140;
+  border-radius: 10px;
+  font: 12px/1.6 sans-serif;
+  box-shadow: 0 4px 20px #0008;
+}
+.profile-sync-notice button {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  color: #241d19;
+  background: #dfbe73;
+  border: 0;
+  border-radius: 6px;
+}

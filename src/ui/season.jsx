@@ -17,6 +17,7 @@ import {
   SEASON_FRAME,
 } from "../game/season.js";
 import { loadProfile } from "../game/profile.js";
+import { readRanks } from "../net/ranking.js";
 import { PlayerIcon } from "./playericon.jsx";
 import { CardBack } from "./cards.jsx";
 import { SeatsProvider, useSeats } from "./names.jsx";
@@ -35,6 +36,7 @@ export function SeasonScreen({ historyOnly = false }) {
     [error, setError] = useState(""),
     [busy, setBusy] = useState("load"),
     [notice, setNotice] = useState("");
+  const [identities, setIdentities] = useState({});
   const mounted = useRef(true);
   async function refresh() {
     setBusy("load");
@@ -48,7 +50,12 @@ export function SeasonScreen({ historyOnly = false }) {
         );
     }
     try {
-      const next = await seasonRequest("summary");
+      const [next, names] = await Promise.all([
+        seasonRequest("summary"),
+        readRanks(Number.MAX_SAFE_INTEGER),
+      ]);
+      if (mounted.current && names.ok)
+        setIdentities(Object.fromEntries(names.list.map((r) => [r.id, r])));
       if (mounted.current) setData(next);
     } catch (e) {
       if (mounted.current) setError(e.message);
@@ -214,12 +221,14 @@ export function SeasonScreen({ historyOnly = false }) {
                 >
                   <span className="rank-place">{row.place}</span>
                   <PlayerIcon
-                    name={row.name}
-                    icon={row.icon}
+                    name={identities[row.uid]?.name || row.name}
+                    icon={identities[row.uid]?.icon ?? row.icon}
                     frame={row.frame}
                     size="sm"
                   />
-                  <span className="rank-name">{row.name}</span>
+                  <span className="rank-name">
+                    {identities[row.uid]?.name || row.name}
+                  </span>
                   <b className="rank-score">{row.rating}</b>
                 </li>
               ))}

@@ -15,7 +15,12 @@ export default {
     if (url.pathname === "/api/season/health" && request.method === "GET")
       return json({ ok: true, version: 1, season: seasonAt() });
     const adminSession = url.pathname === "/api/admin/session";
-    if (!adminSession && !url.pathname.startsWith("/api/season/"))
+    const adminSeason = url.pathname === "/api/admin/season";
+    if (
+      !adminSession &&
+      !adminSeason &&
+      !url.pathname.startsWith("/api/season/")
+    )
       return json({ error: "見つかりません。" }, 404);
     if (request.method !== "POST")
       return json({ error: "POSTを使用してください。" }, 405);
@@ -47,6 +52,8 @@ export default {
         return uid === OPERATOR_UID
           ? json({ uid })
           : json({ error: "運営権限がありません。" }, 403);
+      if (adminSeason && uid !== OPERATOR_UID)
+        return json({ error: "運営権限がありません。" }, 403);
       const ledger = env.SEASONS.get(env.SEASONS.idFromName("monthly-v1"));
       const call = (op, args = {}) =>
         ledger.fetch(
@@ -55,6 +62,9 @@ export default {
             body: JSON.stringify({ op, uid, ...args }),
           }),
         );
+      if (adminSeason) {
+        return call("admin-summary");
+      }
       const op = url.pathname.slice("/api/season/".length);
       if (op === "finish") {
         if (
@@ -126,6 +136,8 @@ export class SeasonLedger {
           return l.summary(uid, now);
         }
         if (op === "summary") return l.summary(uid, now);
+        if (op === "admin-summary" && uid === OPERATOR_UID)
+          return l.adminSummary(now);
         if (op === "claim") return l.claim(uid, args.id, now);
         if (op === "equip") return l.equip(uid, args.back, args.frame, now);
         if (op === "appearance")

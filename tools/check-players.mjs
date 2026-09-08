@@ -83,7 +83,7 @@ console.log("起動時の同期(通信は偽物)");
   const serve = ({ ban = null, row = null, status = 200 } = {}) => {
     globalThis.fetch = async (url, opt) => {
       const method = (opt && opt.method) || "GET";
-      if (method === "PATCH") sent.push(JSON.parse(opt.body));
+      if (method === "PATCH") sent.push(JSON.parse(opt.body)["players/p1"]);
       const isBan = String(url).includes("/bans/");
       return {
         ok: status < 400,

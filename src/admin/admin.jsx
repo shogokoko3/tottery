@@ -17,7 +17,7 @@ import STYLES from "../styles.css";
 import ADMIN_STYLES from "./admin.css";
 import { DB_URL } from "../net/firebase.js";
 import { findIcon } from "../game/icons.js";
-import { rankTitle } from "../game/rating.js";
+import { rankTitle, ratingWithWorld } from "../game/rating.js";
 import { titleNameOf } from "../game/titles.js";
 import { deletePlayer, readPlayers, setBanned } from "../net/players.js";
 import { deleteLetter, normalizeLetter, sendLetter } from "../net/letters.js";
@@ -25,7 +25,13 @@ import { giftsLabel } from "../game/gifts.js";
 import { TITLES } from "../game/titles.js";
 import { ICONS } from "../game/icons.js";
 import { SKINS } from "../skins/catalog.js";
-import { verifyOperatorSession } from "./session.js";
+import { verifyOperatorSession, readAdminSeason } from "./session.js";
+import {
+  isRankedRecord,
+  worldGamesOf,
+  reconciliationPlan,
+} from "../net/profile-record.js";
+import { seasonName } from "../game/season.js";
 
 const TIMEOUT_MS = 8000;
 
@@ -321,6 +327,8 @@ function AdminApp() {
 
 function AdminDashboard({ onSignOut }) {
   const [ranks, setRanks] = useState(null);
+  const [season, setSeason] = useState(null);
+  const [seasonError, setSeasonError] = useState(null);
   const [players, setPlayers] = useState(null);
   const [playersError, setPlayersError] = useState(null);
   const [lettersError, setLettersError] = useState(null);
@@ -347,7 +355,7 @@ function AdminDashboard({ onSignOut }) {
     setBusy(true);
     setError(null);
     try {
-      const [r, l, p, m] = await Promise.all([
+      const [r, l, p, m, monthly] = await Promise.all([
         // 1つでも投げると Promise.all ごと落ち、他の一覧まで出なくなる。
         // 「読めなかった」も画面に出したいので、全部に受け皿を付ける
         getJson("ranks").then(
@@ -368,7 +376,13 @@ function AdminDashboard({ onSignOut }) {
           (tree) => ({ tree }),
           (e) => ({ error: (e && e.message) || String(e) }),
         ),
+        readAdminSeason().then(
+          (data) => ({ data }),
+          (e) => ({ error: e.message }),
+        ),
       ]);
+      setSeason(monthly.data || null);
+      setSeasonError(monthly.error || null);
       setRanks(
         Object.entries((r && r.rows) || {}).map(([id, row]) => ({
           id,
@@ -528,6 +542,7 @@ function AdminDashboard({ onSignOut }) {
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return (ranks || [])
+      .filter(isRankedRecord)
       .filter(
         (r) =>
           !needle ||
@@ -557,7 +572,14 @@ function AdminDashboard({ onSignOut }) {
   const active7p = (players || []).filter(
     (r) => r.at && Date.now() - r.at < 7 * DAY,
   ).length;
-  const total = (ranks || []).length;
+  const world = worldGamesOf(ranks || []);
+  const differences = reconciliationPlan(
+    Object.fromEntries(
+      (players || []).filter((p) => !p.banned).map((p) => [p.id, p]),
+    ),
+    Object.fromEntries((ranks || []).map((r) => [r.id, r])),
+  );
+  const total = (ranks || []).filter(isRankedRecord).length;
   const active7 = (ranks || []).filter(
     (r) => r.at && Date.now() - r.at < 7 * DAY,
   ).length;
@@ -620,7 +642,8 @@ function AdminDashboard({ onSignOut }) {
           </p>
           <nav className="admin-nav" aria-label="管理メニュー">
             <a href="#admin-players">プレイヤー</a>
-            <a href="#admin-ranks">通算成績</a>
+            <a href="#admin-ranks">9×9通算</a>
+            <a href="#admin-season">月間成績</a>
             <a href="#admin-letters">お知らせ・補填</a>
             <a href="#admin-lobby">待ち合わせ</a>
           </nav>
@@ -630,7 +653,7 @@ function AdminDashboard({ onSignOut }) {
               「使用停止」はそのアカウントの利用を止めます。「消す」は台帳の行だけを削除し、本人が起動すると再登録される場合があります。
             </p>
             <p>
-              所持品と進捗の多くはプレイヤーの端末内に保存されています。この画面での全データ復元と、月間シーズン記録の管理には対応していません。
+              所持品と進捗の多くはプレイヤーの端末内に保存されています。所持品・進捗の全データ復元には対応していません。月間成績はサーバーで確認済みの対局だけを表示します。
             </p>
           </details>
         </section>
@@ -703,11 +726,17 @@ function AdminDashboard({ onSignOut }) {
         </section>
 
         <section className="admin-card" id="admin-ranks">
-          <h2>持ち点つきの成績</h2>
+          <h2>9×9オンライン・通算成績</h2>
           <p className="hint">
-            9×9のオンライン対戦を終えた端末が置いた記録です（5×5は数えません）。
+            9×9オンライン対戦が1戦以上あるプレイヤーを掲載します。持ち点はゲームの通算ランキングと同じ表示です。
           </p>
           {ranksError && <p className="admin-error">{ranksError}</p>}
+          {!playersError && !ranksError && differences.length > 0 && (
+            <p className="admin-error">
+              同期が必要な記録が{differences.length}
+              件あります。対象プレイヤーのゲーム再起動時に再送されます。
+            </p>
+          )}
           {error && <p className="admin-error">{error}</p>}
           <div className="admin-rows">
             {rows.map((r) => (
@@ -716,7 +745,7 @@ function AdminDashboard({ onSignOut }) {
                 id={r.id}
                 kind="rank"
                 name={r.name || "(名無し)"}
-                sub={`持ち点 ${typeof r.rating === "number" ? r.rating : "—"} · ${ago(r.at)}`}
+                sub={`持ち点 ${ratingWithWorld(r.rating, world)} · 9×9オンライン ${r.rated}戦 · ${ago(r.at)}`}
               />
             ))}
             {ranks && rows.length === 0 && (
@@ -725,6 +754,45 @@ function AdminDashboard({ onSignOut }) {
               </p>
             )}
           </div>
+        </section>
+
+        <section className="admin-card" id="admin-season">
+          <h2>月間シーズン成績</h2>
+          <p className="hint">
+            今月の9×9オンライン対戦のみ。10戦で順位が付きます。全対戦・通算の成績とは別集計です。
+          </p>
+          {seasonError && <p className="admin-error">{seasonError}</p>}
+          {season && (
+            <>
+              <p>
+                {seasonName(season.season.id)} · 確認済み対局 {season.matches}局
+              </p>
+              <div className="admin-rows">
+                {season.players
+                  .filter((r) => !q || r.name.includes(q) || r.uid.includes(q))
+                  .map((r) => (
+                    <div className="admin-row" key={r.uid}>
+                      <span className="admin-row-main">
+                        <b>
+                          {(players || []).find((p) => p.id === r.uid)?.name ||
+                            r.name}
+                        </b>
+                        <small>
+                          {r.place
+                            ? `${r.place}位`
+                            : `順位確定まで${Math.max(0, 10 - r.rated)}戦`}{" "}
+                          · 持ち点 {r.rating} · {r.rated}戦 {r.wins}勝 {r.draws}
+                          分
+                        </small>
+                      </span>
+                    </div>
+                  ))}
+              </div>
+              {!season.players.length && (
+                <p className="hint">今月の対象対局はまだありません。</p>
+              )}
+            </>
+          )}
         </section>
 
         <section className="admin-card" id="admin-letters">
@@ -921,18 +989,23 @@ function AdminDashboard({ onSignOut }) {
               </>
             ) : (
               <>
+                <p className="hint">
+                  全対戦はCPU・5×5・チュートリアルを含みます。通算の持ち点に反映するのは9×9オンライン対戦だけです。
+                </p>
                 <Line label="称号">
                   {titleNameOf(opened.title) ||
                     (opened.title ? `? ${opened.title}` : "—")}
                 </Line>
-                <Line label="持ち点">
+                <Line label="通算ランキングの持ち点">
                   {typeof opened.rating === "number"
-                    ? `${opened.rating}(${rankTitle(opened.rating, opened.rated, 0)})`
+                    ? `${ratingWithWorld(opened.rating, world)} (${rankTitle(opened.rating, opened.rated)})`
                     : "—"}
                 </Line>
-                <Line label="持ち点つき対局">{opened.rated ?? "—"}</Line>
-                <Line label="対局">{opened.plays ?? "—"}</Line>
-                <Line label="勝ち">
+                <Line label="9×9オンライン・通算対局">
+                  {opened.rated ?? "—"}
+                </Line>
+                <Line label="全対戦・対局">{opened.plays ?? "—"}</Line>
+                <Line label="全対戦・勝利">
                   {opened.wins ?? "—"}
                   {opened.plays
                     ? `(${Math.round((opened.wins / opened.plays) * 100)}%)`

@@ -1,5 +1,22 @@
 import { ensureAuth, OPERATOR_UID } from "../net/auth.js";
 
+export async function readAdminSeason() {
+  const auth = await ensureAuth();
+  if (!auth) throw new Error("もう一度サインインしてください。");
+  const res = await fetch("/api/admin/season", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${auth.idToken}`,
+    },
+    body: "{}",
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok)
+    throw new Error("月間成績を読み込めませんでした。更新してください。");
+  return res.json();
+}
+
 /** 保存されているUIDだけで入場せず、認証済みトークンをサーバーで照合する。 */
 export async function verifyOperatorSession() {
   const auth = await ensureAuth();

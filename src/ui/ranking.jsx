@@ -11,7 +11,6 @@ import { SeasonScreen } from "./season.jsx";
 import { useEffect, useState } from "react";
 import { loadProfile } from "../game/profile.js";
 import { rankTitle, ratingWithWorld } from "../game/rating.js";
-import { readWorldGames } from "../net/ranking.js";
 import { readRanks } from "../net/ranking.js";
 import { ArrowLeft } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
@@ -27,7 +26,7 @@ function LifetimeRanking() {
 
   useEffect(() => {
     let gone = false;
-    (async () => {
+    const refresh = async () => {
       const res = await readRanks();
       if (gone) return;
       if (!res.ok) {
@@ -37,12 +36,16 @@ function LifetimeRanking() {
       }
       setList(res.list);
       setState("done");
-      readWorldGames().then((n) => {
-        if (!gone) setWorld(n);
-      });
-    })();
+      setWorld(res.world);
+    };
+    refresh();
+    const onSaved = (event) => {
+      if (event.detail === "saved") refresh();
+    };
+    window.addEventListener("tottery:profile-sync", onSaved);
     return () => {
       gone = true;
+      window.removeEventListener("tottery:profile-sync", onSaved);
     };
   }, []);
 
