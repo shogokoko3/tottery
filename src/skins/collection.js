@@ -10,6 +10,7 @@ import {
   sanitizeLoadout,
 } from "./catalog.js";
 import { craftCheck, dismantleCheck } from "./ether.js";
+import { sanitizeTsumeProgress } from "../game/tsume-daily.js";
 import {
   missionPeriods,
   sanitizeMissionClaims,
@@ -118,6 +119,7 @@ export function normalize(raw) {
     // ガチャチケット。ミッションの褒美で増える。
     // いまのガチャは無料のテスト版なので、まだ減らない
     tickets: count(value.tickets),
+    tsume: sanitizeTsumeProgress(value.tsume),
     missionClaims: sanitizeMissionClaims(value.missionClaims),
     missionDrawDay:
       typeof value.missionDrawDay === "string" &&

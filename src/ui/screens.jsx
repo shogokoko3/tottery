@@ -51,6 +51,7 @@ import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
+import { TsumeScreen } from "./tsume.jsx";
 import { nextTutorialAfter } from "../game/tutorial.js";
 import { XpGainToast } from "./xp-gain.jsx";
 import { getXpNotices, subscribeXpNotices } from "../game/xp-notices.js";
@@ -73,6 +74,7 @@ import { ensureAuth, myUid } from "../net/auth.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
 import SKIN_STYLES from "../skins/styles.css";
+import TSUME_STYLES from "./tsume.css";
 import { SkinsScreen } from "./skins.jsx";
 import { useMissionProfile } from "./mission-profile.js";
 import { MissionsScreen } from "./missions.jsx";
@@ -130,7 +132,7 @@ export function GameShell({
   let goHome = onHome || onBack;
   return (
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
-      <style>{STYLES + SKIN_STYLES}</style>
+      <style>{STYLES + SKIN_STYLES + TSUME_STYLES}</style>
       <header className="top-bar">
         {/* 戻る釦が無いときは空のまま。飾りの王冠を置いていたが、
             押せそうに見えて何も起きないので外した。
@@ -270,6 +272,7 @@ function HomeTile({ tone, icon, label, note, badge, onClick }) {
 export function MenuScreen({
   onPlay,
   onTutorial,
+  onTsume,
   onSkins,
   onBattlePass,
   onMissions,
@@ -318,9 +321,14 @@ export function MenuScreen({
         <ArrowRight size={16} className="home-wide-arrow" />
       </button>
 
-      {/* 左上は次に増やすものの席。空けたままにしてある */}
       <div className="home-grid">
-        <div className="home-slot" aria-hidden="true" />
+        <HomeTile
+          tone="tsume"
+          icon={<Crown size={26} />}
+          label="詰めトッタリー"
+          note="一日一問、王を読む"
+          onClick={onTsume}
+        />
         <HomeTile
           tone="missions"
           icon={<Check size={26} />}
@@ -1258,7 +1266,7 @@ function TotteryScreens() {
       showRules={l}
       setShowRules={n}
       onHome={e === "home" ? null : goHome}
-      onBack={e === "skins" ? () => t("menu") : undefined}
+      onBack={e === "skins" || e === "tsume" ? () => t("menu") : undefined}
     >
       {
         {
@@ -1273,6 +1281,7 @@ function TotteryScreens() {
             <MenuScreen
               onPlay={() => t("matching")}
               onTutorial={showTutorials}
+              onTsume={() => t("tsume")}
               onSkins={() => t("skins")}
               onBattlePass={() => t("battlepass")}
               onMissions={() => t("missions")}
@@ -1305,6 +1314,7 @@ function TotteryScreens() {
             />
           ),
           ranking: <RankingScreen onBack={() => t("menu")} />,
+          tsume: <TsumeScreen onBack={() => t("menu")} />,
           missions: <MissionsScreen onBack={() => t("menu")} />,
           battlepass: (
             <BattlePassScreen
