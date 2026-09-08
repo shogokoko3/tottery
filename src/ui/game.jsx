@@ -1,3 +1,9 @@
+import { FieldBackdrop } from "./fields/backdrop.jsx";
+import {
+  boardFieldTheme,
+  areaDuration,
+  areaTransformClass,
+} from "../game/field-presentation.js";
 import { useMatchRatings } from "./match-rating.jsx";
 import { useSeasonMatch, SeasonMatchNotice } from "./season.jsx";
 import { usePrivateNotes } from "./private-notes.jsx";
@@ -445,7 +451,10 @@ export function GameView({
           )
         : 0;
     const taken = mark && mark.taken ? mark.taken.length : 0;
-    const ms = (dist + 1) * 190 + 1400 + Math.max(0, taken - 1) * 440;
+    const area = entry?.areaEffects?.[viewer];
+    const ms = area
+      ? areaDuration(area)
+      : (dist + 1) * 190 + 1400 + Math.max(0, taken - 1) * 440;
     const id = setTimeout(() => setPlaying(!1), ms);
     return () => clearTimeout(id);
   }, [f, at, playSeq]);
@@ -583,11 +592,18 @@ export function GameView({
           )}
           <div className="board-outer">
             <div
-              className="board-grid area-board"
+              className={`board-grid area-board ${boardFieldTheme(state) ? "area-illustrated" : ""}`}
               style={{
                 gridTemplateColumns: `repeat(${size},1fr)`,
               }}
             >
+              <FieldBackdrop
+                theme={
+                  (at !== null && replay[at]?.fieldTheme) ||
+                  boardFieldTheme(state)
+                }
+                areas={state.areas}
+              />
               {playing && at !== null && replay[at]?.areaEffects?.[mySide] && (
                 <AreaEffects
                   key={`${at}-${playSeq}`}
@@ -1067,6 +1083,7 @@ export function GameCore({
     : areaFx.busy
       ? areaFx.displayState
       : captureDisplayed;
+  const fieldTheme = boardFieldTheme(displayed);
   const privateNotes = usePrivateNotes(
     a,
     tutorial ? null : network ? p : cpu ? 0 : null,
@@ -2452,12 +2469,13 @@ export function GameCore({
               })}
             </div>
             <div
-              className="board-grid area-board"
+              className={`board-grid area-board ${fieldTheme ? "area-illustrated" : ""}`}
               ref={boardRef}
               style={{
                 gridTemplateColumns: `repeat(${R},1fr)`,
               }}
             >
+              <FieldBackdrop theme={fieldTheme} areas={displayed.areas} />
               <AreaEffects effect={areaFx} flipped={Jl} />
               {Array.from({
                 length: R,
@@ -2539,7 +2557,7 @@ export function GameCore({
                         sx: Jl ? -dc : dc,
                         sy: Jl ? -dr : dr,
                         stops: n + 1,
-                        ms: 160 + n * 120,
+                        ms: 2700,
                         seq: `sea${la.seq}`,
                       };
                     })(),
@@ -2589,16 +2607,10 @@ export function GameCore({
                           }`}
                         />
                       )}
-                      {Zo !== null && a.areas?.[Zo] && (
-                        <span
-                          className={`area-terrain area-terrain-${a.areas[Zo].type}`}
-                          aria-hidden="true"
-                        />
-                      )}
                       {ze && (
                         <div
                           {...privateNotes.handlers(ze)}
-                          className={`piece-slot ${anyStep ? "piece-stepping" : ""} ${seaStep ? "piece-sea" : ""}`}
+                          className={`piece-slot ${anyStep ? "piece-stepping" : ""} ${seaStep ? "piece-sea" : ""}${areaTransformClass(areaFx, ze)}`}
                           key={anyStep ? `mv${anyStep.seq}` : "piece"}
                           style={
                             anyStep

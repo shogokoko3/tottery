@@ -1,10 +1,7 @@
+import { areaApplyMs, areaDuration } from "../game/field-presentation.js";
+import { FieldAbilityCanvas } from "./fields/ability-canvas.jsx";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import {
-  AREA_EFFECT_MS,
-  AREA_GATHER_MS,
-  areaEvent,
-  areaEventText,
-} from "../game/area-presentation.js";
+import { areaEvent, areaEventText } from "../game/area-presentation.js";
 import { duckMusic, playAreaSound } from "../audio/index.js";
 
 export function useAreaEffects(state, viewer, blocked = false) {
@@ -24,20 +21,23 @@ export function useAreaEffects(state, viewer, blocked = false) {
   }, [state, fresh]);
   useEffect(() => {
     if (!running || blocked) return;
-    duckMusic(AREA_EFFECT_MS);
-    const stop = playAreaSound(running.event.type, { hit: running.event.hit });
+    const duration = areaDuration(running.event);
+    const unduck = duckMusic(duration);
+    const startedAt = performance.now();
+    setRunning((r) => r && { ...r, startedAt });
+    const stop = playAreaSound(running.event.theme || running.event.type, {
+      hit: running.event.hit,
+    });
     const release = setTimeout(
       () => setRunning((r) => r && { ...r, stage: "release" }),
-      AREA_GATHER_MS,
+      areaApplyMs(running.event),
     );
-    const finish = setTimeout(
-      () => setRunning(null),
-      running.event.type === "thaw" ? 1000 : AREA_EFFECT_MS,
-    );
+    const finish = setTimeout(() => setRunning(null), duration);
     return () => {
       clearTimeout(release);
       clearTimeout(finish);
       stop?.();
+      unduck?.();
     };
   }, [running?.event.id, blocked]);
   const active = (previous.current !== state ? fresh : null) || running;
@@ -82,6 +82,16 @@ export function AreaEffectNotice({ effect, names }) {
 export function AreaEffects({ effect, flipped = false }) {
   if (!effect.event) return null;
   const { event, stage } = effect;
+  if (!["birth", "thaw"].includes(event.type))
+    return (
+      <FieldAbilityCanvas
+        key={event.id}
+        theme={event.theme || (event.type === "palace" ? "heaven" : event.type)}
+        event={event}
+        startedAt={effect.startedAt}
+        flipped={flipped}
+      />
+    );
   const at = (p) => ({
     left: `${(((flipped ? 8 - p.col : p.col) + 0.5) / 9) * 100}%`,
     top: `${(((flipped ? 8 - p.row : p.row) + 0.5) / 9) * 100}%`,

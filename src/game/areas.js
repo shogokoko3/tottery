@@ -57,7 +57,7 @@ export const AREA_INFO = Object.freeze({
   },
   sea: {
     name: "海のエリア",
-    text: "盤上の全ての駒を中央へ引き寄せる",
+    text: "盤上の全ての駒を中央方向へ最大1マスずつ引き寄せる。行き先が埋まっている駒はその場に留まる",
     usesTurn: false,
     needsPiece: false,
   },
@@ -547,10 +547,65 @@ export function useArea(state, action) {
 /**
  * 海: 全ての駒を中央へ引き寄せる。
  * 中央に近い駒から順に(同じ距離なら手番側の駒、次に行・列の順)、
- * 「中央にいちばん近い空きマス」へ置く。同じ近さなら元の位置に近いマス。
- * 取りは起きない。自分のいたマスも空きなので、遠ざかることはない。
+ * 中央方向へ縦・横・斜めに最大1マス進める。進み先が埋まっていれば動かさない。
+ * 取りは起きない。版7以前の対局には旧処理を適用する。
  */
 export function seaPull(state) {
+  if (!(state.ruleVersion >= 8)) return seaPullLegacy(state);
+  const c = (state.boardSize - 1) / 2;
+  const distance = (p) => Math.max(Math.abs(p.row - c), Math.abs(p.col - c));
+  const order = Object.values(state.pieces)
+    .filter((p) => p.alive)
+    .sort(
+      (a, b) =>
+        distance(a) - distance(b) ||
+        Number(b.owner === state.currentTurn) -
+          Number(a.owner === state.currentTurn) ||
+        a.row - b.row ||
+        a.col - b.col,
+    );
+  const board = state.board.map((row) => [...row]),
+    pieces = { ...state.pieces },
+    moves = [];
+  for (const p of order) {
+    const row = p.row + Math.sign(c - p.row),
+      col = p.col + Math.sign(c - p.col);
+    if ((row === p.row && col === p.col) || board[row][col]) continue;
+    const q = {
+      ...p,
+      row,
+      col,
+      history: [
+        ...p.history,
+        `${squareName(p.row, p.col, state.boardSize)} → ${squareName(row, col, state.boardSize)} へ移動(海の引き寄せ)`,
+      ],
+    };
+    board[p.row][p.col] = null;
+    board[row][col] = q;
+    pieces[p.id] = q;
+    moves.push({
+      id: p.id,
+      from: { row: p.row, col: p.col },
+      to: { row, col },
+    });
+  }
+  return {
+    ...state,
+    board,
+    pieces,
+    _seaMoves: moves,
+    lastMove: null,
+    selectedId: null,
+    shuffleMode: null,
+    log: [
+      ...state.log,
+      `${PLAYER_META[state.currentTurn].name}が海のエリアで駒を中央へ1マスずつ引き寄せた(${moves.length}体が動いた)`,
+    ],
+  };
+}
+
+// 開始済みの旧版対局は、中央へまとめて詰める元の処理を再生する。
+function seaPullLegacy(state) {
   const size = state.boardSize;
   const c = (size - 1) / 2;
   const cheb = (r, col) => Math.max(Math.abs(r - c), Math.abs(col - c));

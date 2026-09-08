@@ -40,6 +40,22 @@ if (fs.existsSync("assets/audio"))
       fs.writeFileSync(`${dir}/${hashed}`, data);
   }
 
+// 盤面画像は使うエリアだけ読み込む。画像更新時はハッシュでキャッシュを更新。
+const fieldFiles = {};
+for (const dir of ["fields", "dist/fields"]) {
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+}
+for (const name of fs.readdirSync("assets/fields")) {
+  if (!name.endsWith(".png")) continue;
+  const data = fs.readFileSync(`assets/fields/${name}`);
+  const hash = createHash("sha256").update(data).digest("hex").slice(0, 8);
+  const hashed = name.replace(".png", `.${hash}.png`);
+  fieldFiles[name.slice(0, -4)] = hashed;
+  for (const dir of ["fields", "dist/fields"])
+    fs.writeFileSync(`${dir}/${hashed}`, data);
+}
+
 /** 束ね方。本体と管理画面で同じ */
 const bundleOptions = {
   bundle: true,
@@ -56,7 +72,10 @@ const bundleOptions = {
   },
   write: false,
   logLevel: "info",
-  define: { __AUDIO_FILES__: JSON.stringify(audioFiles) },
+  define: {
+    __AUDIO_FILES__: JSON.stringify(audioFiles),
+    __FIELD_FILES__: JSON.stringify(fieldFiles),
+  },
 };
 
 /** 入口と枠を渡して、1枚の HTML にする */
@@ -164,7 +183,8 @@ function renderPrivacy(md, template) {
     if (line.startsWith("|")) {
       flush();
       const rows = [];
-      while (i < lines.length && lines[i].startsWith("|")) rows.push(lines[i++]);
+      while (i < lines.length && lines[i].startsWith("|"))
+        rows.push(lines[i++]);
       const cells = (r) =>
         r
           .replace(/^\||\|$/g, "")

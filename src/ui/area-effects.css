@@ -565,3 +565,133 @@
     opacity: 0.8;
   }
 }
+
+/* Approved illustrated fields. Only selected objects move; the board stays fixed. */
+.area-illustrated {
+  --field-inset: 12%;
+  padding: var(--field-inset);
+  overflow: hidden;
+}
+.field-scenery,
+.field-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 6px;
+}
+.field-scenery {
+  z-index: 0;
+  overflow: hidden;
+  background: #101b28;
+}
+.field-layer {
+  background-size: 100% 100%;
+}
+.field-current {
+  animation: field-crossfade 0.4s ease-out both;
+}
+.field-scenery .background-objects {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.area-illustrated > .cell {
+  background-image: none;
+  background-color: #15202722;
+  border-color: #e3e4d44a;
+}
+.area-illustrated > .cell:nth-child(even of .cell) {
+  background-color: #f7eed51c;
+}
+.area-illustrated > .cell.zone-0 {
+  box-shadow: inset 0 0 0 1px #c85a4240;
+}
+.area-illustrated > .cell.zone-1 {
+  box-shadow: inset 0 0 0 1px #4f9cd940;
+}
+.area-illustrated > .cell.cell-capture {
+  box-shadow:
+    inset 0 0 0 3px #d0483a,
+    0 0 12px #d0483a60;
+}
+.area-illustrated > .cell.cell-move {
+  background-color: #d9b95533;
+}
+.field-ability-canvas {
+  position: absolute;
+  inset: 7px;
+  width: calc(100% - 14px);
+  height: calc(100% - 14px);
+  z-index: 8;
+  pointer-events: none;
+}
+.area-illustrated > .field-ability-canvas {
+  inset: var(--field-inset);
+  width: calc(100% - var(--field-inset) * 2);
+  height: calc(100% - var(--field-inset) * 2);
+}
+.area-illustrated > .area-effects {
+  inset: var(--field-inset);
+}
+.piece-area-transform {
+  animation: field-transform-cover 6s linear both;
+}
+.piece-area-transform.piece-area-sky {
+  animation-name: field-sky-dive;
+}
+@keyframes field-crossfade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes field-transform-cover {
+  0%,
+  20% {
+    opacity: 1;
+  }
+  28%,
+  70% {
+    opacity: 0;
+  }
+  82%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes field-sky-dive {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  28% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.8);
+  }
+  70% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.85);
+  }
+  87%,
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .field-current {
+    animation: none;
+  }
+}
+.board-frame:has(> .area-illustrated) .rank-labels {
+  padding-top: calc(var(--field-label-inset, 0px) + 2px);
+  padding-bottom: calc(var(--field-label-inset, 0px) + 2px);
+}
+.board-frame:has(> .area-illustrated) .file-labels {
+  padding-left: calc(var(--field-label-inset, 0px) + 2px);
+  padding-right: calc(var(--field-label-inset, 0px) + 2px);
+}

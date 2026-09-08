@@ -1,3 +1,4 @@
+import { boardFieldTheme } from "./field-presentation.js";
 import { areaEvent } from "./area-presentation.js";
 import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
@@ -1098,6 +1099,7 @@ function afterAction(prev, next, action) {
             board: snapshot,
             mark,
             areaEffects: [areaEvent(prev, out, 0), areaEvent(prev, out, 1)],
+            fieldTheme: boardFieldTheme(out),
           })),
         ],
       };

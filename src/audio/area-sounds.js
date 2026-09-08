@@ -1,6 +1,6 @@
 // 盤面エリア専用のオリジナル合成音。既存の効果音用バスで音量・ミュートを共有する。
 export function areaSoundSamples(type, sampleRate = 24000, hit = true) {
-  const seconds = type === "thaw" ? 1 : 1.8;
+  const seconds = type === "thaw" ? 1 : type === "birth" ? 1.8 : 6;
   const out = new Float32Array(Math.ceil(sampleRate * seconds));
   let seed = 1747,
     smooth = 0;
@@ -24,7 +24,7 @@ export function areaSoundSamples(type, sampleRate = 24000, hit = true) {
         v =
           smooth * env * 0.8 +
           noise * Math.exp(-t * 7) * 0.08 +
-          (hit ? bell(t, 0.48, 740) * 0.17 : bell(t, 0.48, 150) * 0.14);
+          (hit ? bell(t, 3.05, 740) * 0.17 : bell(t, 3.05, 150) * 0.14);
         break;
       case "sea":
         v =
@@ -35,15 +35,15 @@ export function areaSoundSamples(type, sampleRate = 24000, hit = true) {
       case "forest":
         v =
           noise * env * 0.04 +
-          bell(t, 0.15, 660) * 0.12 +
-          bell(t, 0.48, 990) * 0.16 +
-          bell(t, 0.7, 1320) * 0.08;
+          bell(t, 1.05, 660) * 0.12 +
+          bell(t, 1.65, 990) * 0.16 +
+          bell(t, 2.1, 1320) * 0.08;
         break;
       case "ice":
         v =
-          noise * Math.exp(-Math.abs(t - 0.48) * 16) * 0.13 +
+          noise * Math.exp(-Math.abs(t - 4.35) * 16) * 0.13 +
           [1174, 1760, 2349].reduce(
-            (n, h, j) => n + bell(t, 0.3 + j * 0.13, h, 7) * 0.13,
+            (n, h, j) => n + bell(t, 4.05 + j * 0.15, h, 7) * 0.13,
             0,
           );
         break;
@@ -51,13 +51,21 @@ export function areaSoundSamples(type, sampleRate = 24000, hit = true) {
         v =
           smooth * env * 0.6 +
           Math.sin(2 * Math.PI * (180 * t + 160 * t * t)) * env * 0.09 +
-          bell(t, 0.48, 1046) * 0.14;
+          bell(t, 4.25, 1046) * 0.14;
         break;
+      case "heaven":
       case "palace":
         v = [523.25, 659.25, 783.99, 1046.5].reduce(
-          (n, h, j) => n + bell(t, 0.12 + j * 0.12, h, 2.8) * 0.12,
+          (n, h, j) => n + bell(t, 2.8 + j * 0.4, h, 2.8) * 0.12,
           0,
         );
+        break;
+      case "hell":
+        v =
+          smooth * env * 0.95 +
+          noise * env * 0.06 +
+          bell(t, 3.1, 98, 2) * 0.14 +
+          bell(t, 4.25, 196, 3) * 0.12;
         break;
       case "thaw":
         v =

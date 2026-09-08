@@ -9,7 +9,8 @@
 // 5: 全エリアを毎手番1回に。空・宮殿のみ任意発動。
 // 6: 森で毎手番見抜く対象を2体へ。
 // 7: 宮殿の昇格後も同じ手番で通常の移動ができる。
-export const GAME_RULE_VERSION = 7;
+// 8: 海は各駒を中央方向へ最大1マスずつ引き寄せる。
+export const GAME_RULE_VERSION = 8;
 export const ADJUDICATION_RULE_VERSION = 1;
 export const CLOCK_RULE_VERSION = 2;
 export const AREA_RULE_VERSION = 3;

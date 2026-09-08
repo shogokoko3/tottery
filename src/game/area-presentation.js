@@ -1,7 +1,8 @@
+import { areaTheme } from "./field-presentation.js";
 import { AREA_INFO, canUseArea, isFrozen, isKnownTo } from "./areas.js";
 
 export const AREA_GATHER_MS = 480;
-export const AREA_EFFECT_MS = 1800;
+export const AREA_EFFECT_MS = 6000;
 export const AUTO_AREAS = new Set(["earth", "sea", "forest", "ice"]);
 export function automaticAreaAction(state) {
   if (
@@ -45,6 +46,7 @@ export function areaEvent(before, after, viewer) {
     return {
       id: `area-${last.seq}`,
       type: last.type,
+      theme: areaTheme(after.areas?.[last.player]),
       player: last.player,
       targets,
       hit: last.hit,
@@ -98,12 +100,13 @@ export function areaEventText(event, stage) {
   if (stage === "gather")
     return (
       {
-        earth: "足跡をたどっている…",
+        earth: "鬼火が気配をたどっている…",
         sea: "中央に潮流が集まる…",
         forest: "森の気配を探っている…",
         ice: "冷気が集まる…",
         sky: "風が駒を包み込む…",
-        palace: "昇格の光が集まる…",
+        palace:
+          event.theme === "hell" ? "昇格の炎が集まる…" : "昇格の光が集まる…",
       }[event.type] || ""
     );
   return (
@@ -112,7 +115,7 @@ export function areaEventText(event, stage) {
         ? event.own
           ? "正体を見抜いた"
           : "正体を見抜かれた"
-        : "足跡は砂に消えた・読み違えた",
+        : "鬼火が静かに消えた・読み違えた",
       sea: "水流が駒を中央へ引き寄せた",
       forest: event.own
         ? "森が正体を知らせた・自分だけに表示"

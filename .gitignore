@@ -13,3 +13,6 @@ assets/audio/原曲/
 
 # スキン素材のビルド先。元ファイルは assets/skins/
 /skins/
+
+# 盤面画像の配信先。元画像は assets/fields/
+/fields/
