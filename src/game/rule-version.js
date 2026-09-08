@@ -5,7 +5,8 @@
 // **3 に上げるのは、Firebase のルールに acts の hit / picks / areas / loadouts を
 // 足して公開してから。** 先にクライアントを 3 にすると、エリアの手が
 // データベースに弾かれて二人の盤がずれる(firebase-rules.json は足してある)。
-export const GAME_RULE_VERSION = 3; // 2026-09-08 にルールを公開して 3 へ
+// 4: 氷を毎手番発動・凍結中も抽選し残り期間に加算。通信の手の形式は3と共通。
+export const GAME_RULE_VERSION = 4;
 export const ADJUDICATION_RULE_VERSION = 1;
 export const CLOCK_RULE_VERSION = 2;
 export const AREA_RULE_VERSION = 3;

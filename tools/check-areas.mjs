@@ -80,7 +80,7 @@ function startGame({ kings = ["2", "2"], size = 9, areas = true, loadouts = LOAD
     if (s.phase === "dice") {
       step(
         s.dice[s.diceIdx] === null && s.diceIdx <= 1
-          ? { type: "ROLL_DICE_SINGLE" }
+          ? { type: "ROLL_DICE_SINGLE", value: s.diceIdx === 0 ? 6 : 1 }
           : s.diceIdx === 2 ? { type: "GOTO_MULLIGAN" }
           : s.diceIdx === 3 ? { type: "REROLL_DICE" }
           : { type: "NEXT_DICE_STEP" },

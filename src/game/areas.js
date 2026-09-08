@@ -2,7 +2,7 @@
  * 盤面エリア(試験ルール)。
  *
  * 王にした札のランクにスキンを装備していると、そのランク帯の「エリア」が
- * 盤に立ち、1局に1回だけ効果を使える。9×9 だけ。5×5 には無い
+ * 盤に立つ。氷は毎手番、ほかは1局に1回だけ効果を使える。9×9 だけ。5×5 には無い
  * (駒が5体しかなく、帯が分かると王の候補が絞れてしまうため)。
  *
  *   2・3  土   直前に動いた相手の駒の足跡を読み、50% で正体を見抜く。
@@ -69,7 +69,7 @@ export const AREA_INFO = Object.freeze({
   },
   ice: {
     name: "氷のエリア",
-    text: "相手の王以外の駒を1体凍らせ、相手の3手番のあいだ動けなくする(誰かは運しだい)",
+    text: "毎回の自分の手番開始時、相手の王以外をランダムで1体凍結。凍結中なら残り期間に3手番追加",
     usesTurn: false,
     needsPiece: false,
   },
@@ -129,7 +129,11 @@ export function isFrozen(state, piece) {
 export function isKnownTo(state, viewer, piece) {
   if (!piece) return false;
   if (piece.owner === viewer || piece.revealed) return true;
-  return !!(state.known && state.known[viewer] && state.known[viewer][piece.id]);
+  return !!(
+    state.known &&
+    state.known[viewer] &&
+    state.known[viewer][piece.id]
+  );
 }
 
 /** START_SETUP に添えられた装備の形を確かめる。[{rank: skinId}, {…}] 以外は null */
@@ -171,7 +175,9 @@ export function initAreas(state) {
   const log = [...(state.log || [])];
   for (const i of [0, 1])
     if (areas[i])
-      log.push(`${PLAYER_META[i].name}の盤に${AREA_INFO[areas[i].type].name}が立った`);
+      log.push(
+        `${PLAYER_META[i].name}の盤に${AREA_INFO[areas[i].type].name}が立った`,
+      );
   return { ...base, areas, log };
 }
 
@@ -198,10 +204,14 @@ export function forestCandidates(state, player) {
     .sort();
 }
 
-/** 氷: 凍らせられる相手の駒(王以外。すでに凍っている駒は除く)。どれかは乱数(picks) */
+/** 氷: 相手の王以外。版4から凍結中も抽選に含める。 */
+export function recurringIce(state) {
+  return state.ruleVersion >= 4;
+}
+
 export function iceCandidates(state, player) {
   return alivePieces(state, 1 - player)
-    .filter((p) => !p.isKing && !isFrozen(state, p))
+    .filter((p) => !p.isKing && (recurringIce(state) || !isFrozen(state, p)))
     .map((p) => p.id)
     .sort();
 }
@@ -248,8 +258,18 @@ export function canUseArea(state, player) {
     return { ok: false, why: "対局中ではありません" };
   const area = state.areas && state.areas[player];
   if (!area) return { ok: false, why: "エリアがありません" };
-  if ((area.uses || 0) >= AREA_TUNING.usesPerGame)
-    return { ok: false, why: "この局ではもう使いました" };
+  if (
+    area.type === "ice" && recurringIce(state)
+      ? area.lastUsedTurn === (state.turnNo || 0)
+      : (area.uses || 0) >= AREA_TUNING.usesPerGame
+  )
+    return {
+      ok: false,
+      why:
+        area.type === "ice" && recurringIce(state)
+          ? "この手番では発動済みです"
+          : "この局ではもう使いました",
+    };
   if (state.currentTurn !== player) return { ok: false, why: "相手の番です" };
   if (state.extraMoveFor || state.extraUsed || state.pendingKingChoice)
     return { ok: false, why: "手番の初めにだけ使えます" };
@@ -296,7 +316,11 @@ function markUsed(state, player, detail) {
     ...areas[player],
     uses,
     // used は画面と旧い検査の互換。usesPerGame に達したら真
-    used: uses >= AREA_TUNING.usesPerGame,
+    used:
+      areas[player].type === "ice" && recurringIce(state)
+        ? false
+        : uses >= AREA_TUNING.usesPerGame,
+    lastUsedTurn: state.turnNo || 0,
   };
   return {
     ...state,
@@ -378,32 +402,57 @@ export function useArea(state, action) {
       for (const id of candidates) if (!chosen.includes(id)) chosen.push(id);
       const targets = chosen.slice(0, AREA_TUNING.iceTargets);
       if (!targets.length) return state;
-      const until = (state.turnNo || 0) + AREA_TUNING.freezeTurns * 2;
+      const untilFor = (id) =>
+        Math.max(
+          state.turnNo || 0,
+          recurringIce(state) ? state.pieces[id].frozenUntil || 0 : 0,
+        ) +
+        AREA_TUNING.freezeTurns * 2;
+      const extended = targets.some(
+        (id) => recurringIce(state) && isFrozen(state, state.pieces[id]),
+      );
       let next = state;
       for (const id of targets)
         next = withPiece(next, {
           ...next.pieces[id],
-          frozenUntil: until,
-          history: [...next.pieces[id].history, "氷のエリアで凍りついた"],
+          frozenUntil: untilFor(id),
+          history: [
+            ...next.pieces[id].history,
+            recurringIce(state) && isFrozen(state, next.pieces[id])
+              ? `氷のエリアで凍結が${AREA_TUNING.freezeTurns}手番延長された`
+              : "氷のエリアで凍りついた",
+          ],
         });
       const squares = targets
-        .map((id) => squareName(state.pieces[id].row, state.pieces[id].col, state.boardSize))
+        .map((id) =>
+          squareName(
+            state.pieces[id].row,
+            state.pieces[id].col,
+            state.boardSize,
+          ),
+        )
         .join("・");
       return markUsed(
         {
           ...next,
           log: [
             ...state.log,
-            `${name}が氷のエリアで${squares}の${foeName}の駒を凍らせた`,
+            `${name}が氷のエリアで${squares}の${foeName}の駒${extended ? `の凍結を${AREA_TUNING.freezeTurns}手番延長した` : "を凍らせた"}`,
           ],
         },
         player,
-        { pieceId: targets[0], pieceIds: targets, until },
+        {
+          pieceId: targets[0],
+          pieceIds: targets,
+          until: untilFor(targets[0]),
+          extended,
+        },
       );
     }
     case "sky": {
       const piece = state.pieces[action.pieceId];
-      if (!piece || !skyCandidates(state, player).includes(piece.id)) return state;
+      if (!piece || !skyCandidates(state, player).includes(piece.id))
+        return state;
       // 本物の10になる。正体が変わるので公開し、専用のしるしを付ける
       const players = state.players.map((p, i) =>
         i === player
@@ -424,7 +473,10 @@ export function useArea(state, action) {
           mark: "sky",
           // 軍全体を2回にしない設定でも、変身した駒自身は2回動ける
           skyTwice: true,
-          history: [...piece.history, `空のエリアで${piece.rank}から10に変身した(公開)`],
+          history: [
+            ...piece.history,
+            `空のエリアで${piece.rank}から10に変身した(公開)`,
+          ],
         },
       );
       return markUsed(
@@ -447,7 +499,10 @@ export function useArea(state, action) {
       const rank = promotedRank(piece.rank);
       const players = state.players.map((p, i) =>
         i === player
-          ? { ...p, armyRankCounts: recount(p.armyRankCounts, piece.rank, rank) }
+          ? {
+              ...p,
+              armyRankCounts: recount(p.armyRankCounts, piece.rank, rank),
+            }
           : p,
       );
       // 正体が変わるので公開し、専用のしるしを付ける
@@ -458,7 +513,10 @@ export function useArea(state, action) {
           rank,
           revealed: true,
           mark: "palace",
-          history: [...piece.history, `宮殿で${piece.rank}から${rank}へ昇格した(公開)`],
+          history: [
+            ...piece.history,
+            `宮殿で${piece.rank}から${rank}へ昇格した(公開)`,
+          ],
         },
       );
       return markUsed(

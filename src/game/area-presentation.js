@@ -48,6 +48,11 @@ export function areaEvent(before, after, viewer) {
       player: last.player,
       targets,
       hit: last.hit,
+      extended: last.extended,
+      frozenTurns:
+        last.type === "ice"
+          ? frozenTurnsLeft(after, after.pieces[last.pieceId])
+          : null,
       from: last.from,
       to: last.to,
       moves:
@@ -111,7 +116,9 @@ export function areaEventText(event, stage) {
       forest: event.own
         ? "森が正体を知らせた・自分だけに表示"
         : "森の力で駒を見抜かれた",
-      ice: "凍結・相手の3手番は移動できない",
+      ice: event.extended
+        ? `凍結期間を追加・残り${event.frozenTurns}手番`
+        : `凍結・相手の${event.frozenTurns}手番は移動できない`,
       sky: "10へ変身・自軍の10は2回行動",
       palace: `${event.from} → ${event.to} に昇格・相手の手番へ`,
       thaw: "再び動けるようになった",
