@@ -21,6 +21,8 @@ import {
   promotedRank,
 } from "../src/game/areas.js";
 import { GAME_RULE_VERSION } from "../src/game/rule-version.js";
+const RULE_VERSION = Number(process.env.RULE_VERSION || GAME_RULE_VERSION);
+assert(RULE_VERSION >= 5 && RULE_VERSION <= GAME_RULE_VERSION);
 const groups = {
   earth: ["2", "3"],
   sea: ["4", "5"],
@@ -68,7 +70,7 @@ function setup(seed, kings) {
       deck: [a, ...rest.slice(0, 12), b, ...rest.slice(12)],
       areas: true,
       loadouts: [all, all],
-      ruleVersion: GAME_RULE_VERSION,
+      ruleVersion: RULE_VERSION,
     },
   );
   for (let guard = 0; s.phase !== "play" && guard < 120; guard++) {
@@ -294,7 +296,7 @@ try {
             {
               started,
               updated: new Date().toISOString(),
-              ruleVersion: GAME_RULE_VERSION,
+              ruleVersion: RULE_VERSION,
               seeds,
               cap,
               setupResamples,

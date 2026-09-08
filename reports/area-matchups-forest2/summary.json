@@ -1,0 +1,711 @@
+{
+  "matrix": {
+    "stock": {
+      "earth": {
+        "sea": {
+          "wins": 352,
+          "losses": 244,
+          "draws": 0,
+          "unfinished": 4,
+          "rate": 59.060402684563755
+        },
+        "forest": {
+          "wins": 347,
+          "losses": 240,
+          "draws": 0,
+          "unfinished": 13,
+          "rate": 59.114139693356044
+        },
+        "ice": {
+          "wins": 272,
+          "losses": 320,
+          "draws": 0,
+          "unfinished": 8,
+          "rate": 45.945945945945944
+        },
+        "sky": {
+          "wins": 271,
+          "losses": 317,
+          "draws": 0,
+          "unfinished": 12,
+          "rate": 46.08843537414966
+        },
+        "palace": {
+          "wins": 307,
+          "losses": 292,
+          "draws": 0,
+          "unfinished": 1,
+          "rate": 51.25208681135226
+        }
+      },
+      "sea": {
+        "earth": {
+          "wins": 244,
+          "losses": 352,
+          "draws": 0,
+          "unfinished": 4,
+          "rate": 40.939597315436245
+        },
+        "forest": {
+          "wins": 297,
+          "losses": 302,
+          "draws": 0,
+          "unfinished": 1,
+          "rate": 49.58263772954925
+        },
+        "ice": {
+          "wins": 295,
+          "losses": 304,
+          "draws": 1,
+          "unfinished": 0,
+          "rate": 49.248747913188645
+        },
+        "sky": {
+          "wins": 240,
+          "losses": 360,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 40.0
+        },
+        "palace": {
+          "wins": 291,
+          "losses": 302,
+          "draws": 0,
+          "unfinished": 7,
+          "rate": 49.07251264755481
+        }
+      },
+      "forest": {
+        "earth": {
+          "wins": 240,
+          "losses": 347,
+          "draws": 0,
+          "unfinished": 13,
+          "rate": 40.885860306643956
+        },
+        "sea": {
+          "wins": 302,
+          "losses": 297,
+          "draws": 0,
+          "unfinished": 1,
+          "rate": 50.41736227045075
+        },
+        "ice": {
+          "wins": 236,
+          "losses": 354,
+          "draws": 0,
+          "unfinished": 10,
+          "rate": 40.0
+        },
+        "sky": {
+          "wins": 222,
+          "losses": 378,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 37.0
+        },
+        "palace": {
+          "wins": 248,
+          "losses": 349,
+          "draws": 0,
+          "unfinished": 3,
+          "rate": 41.54103852596315
+        }
+      },
+      "ice": {
+        "earth": {
+          "wins": 320,
+          "losses": 272,
+          "draws": 0,
+          "unfinished": 8,
+          "rate": 54.054054054054056
+        },
+        "sea": {
+          "wins": 304,
+          "losses": 295,
+          "draws": 1,
+          "unfinished": 0,
+          "rate": 50.751252086811355
+        },
+        "forest": {
+          "wins": 354,
+          "losses": 236,
+          "draws": 0,
+          "unfinished": 10,
+          "rate": 60.0
+        },
+        "sky": {
+          "wins": 307,
+          "losses": 293,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 51.166666666666664
+        },
+        "palace": {
+          "wins": 286,
+          "losses": 314,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 47.666666666666664
+        }
+      },
+      "sky": {
+        "earth": {
+          "wins": 317,
+          "losses": 271,
+          "draws": 0,
+          "unfinished": 12,
+          "rate": 53.91156462585034
+        },
+        "sea": {
+          "wins": 360,
+          "losses": 240,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 60.0
+        },
+        "forest": {
+          "wins": 378,
+          "losses": 222,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 63.0
+        },
+        "ice": {
+          "wins": 293,
+          "losses": 307,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 48.833333333333336
+        },
+        "palace": {
+          "wins": 299,
+          "losses": 255,
+          "draws": 0,
+          "unfinished": 46,
+          "rate": 53.97111913357401
+        }
+      },
+      "palace": {
+        "earth": {
+          "wins": 292,
+          "losses": 307,
+          "draws": 0,
+          "unfinished": 1,
+          "rate": 48.74791318864774
+        },
+        "sea": {
+          "wins": 302,
+          "losses": 291,
+          "draws": 0,
+          "unfinished": 7,
+          "rate": 50.92748735244519
+        },
+        "forest": {
+          "wins": 349,
+          "losses": 248,
+          "draws": 0,
+          "unfinished": 3,
+          "rate": 58.45896147403685
+        },
+        "ice": {
+          "wins": 314,
+          "losses": 286,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 52.333333333333336
+        },
+        "sky": {
+          "wins": 255,
+          "losses": 299,
+          "draws": 0,
+          "unfinished": 46,
+          "rate": 46.02888086642599
+        }
+      }
+    },
+    "informed": {
+      "earth": {
+        "sea": {
+          "wins": 334,
+          "losses": 259,
+          "draws": 0,
+          "unfinished": 7,
+          "rate": 56.323777403035415
+        },
+        "forest": {
+          "wins": 374,
+          "losses": 202,
+          "draws": 0,
+          "unfinished": 24,
+          "rate": 64.93055555555556
+        },
+        "ice": {
+          "wins": 272,
+          "losses": 323,
+          "draws": 0,
+          "unfinished": 5,
+          "rate": 45.714285714285715
+        },
+        "sky": {
+          "wins": 267,
+          "losses": 328,
+          "draws": 0,
+          "unfinished": 5,
+          "rate": 44.87394957983193
+        },
+        "palace": {
+          "wins": 311,
+          "losses": 289,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 51.833333333333336
+        }
+      },
+      "sea": {
+        "earth": {
+          "wins": 259,
+          "losses": 334,
+          "draws": 0,
+          "unfinished": 7,
+          "rate": 43.676222596964585
+        },
+        "forest": {
+          "wins": 386,
+          "losses": 209,
+          "draws": 0,
+          "unfinished": 5,
+          "rate": 64.87394957983193
+        },
+        "ice": {
+          "wins": 290,
+          "losses": 307,
+          "draws": 1,
+          "unfinished": 2,
+          "rate": 48.57621440536013
+        },
+        "sky": {
+          "wins": 161,
+          "losses": 439,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 26.833333333333332
+        },
+        "palace": {
+          "wins": 281,
+          "losses": 312,
+          "draws": 0,
+          "unfinished": 7,
+          "rate": 47.38617200674536
+        }
+      },
+      "forest": {
+        "earth": {
+          "wins": 202,
+          "losses": 374,
+          "draws": 0,
+          "unfinished": 24,
+          "rate": 35.06944444444444
+        },
+        "sea": {
+          "wins": 209,
+          "losses": 386,
+          "draws": 0,
+          "unfinished": 5,
+          "rate": 35.12605042016807
+        },
+        "ice": {
+          "wins": 215,
+          "losses": 378,
+          "draws": 0,
+          "unfinished": 7,
+          "rate": 36.25632377740303
+        },
+        "sky": {
+          "wins": 200,
+          "losses": 398,
+          "draws": 0,
+          "unfinished": 2,
+          "rate": 33.44481605351171
+        },
+        "palace": {
+          "wins": 234,
+          "losses": 366,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 39.0
+        }
+      },
+      "ice": {
+        "earth": {
+          "wins": 323,
+          "losses": 272,
+          "draws": 0,
+          "unfinished": 5,
+          "rate": 54.285714285714285
+        },
+        "sea": {
+          "wins": 307,
+          "losses": 290,
+          "draws": 1,
+          "unfinished": 2,
+          "rate": 51.42378559463987
+        },
+        "forest": {
+          "wins": 378,
+          "losses": 215,
+          "draws": 0,
+          "unfinished": 7,
+          "rate": 63.74367622259697
+        },
+        "sky": {
+          "wins": 273,
+          "losses": 325,
+          "draws": 0,
+          "unfinished": 2,
+          "rate": 45.65217391304348
+        },
+        "palace": {
+          "wins": 309,
+          "losses": 291,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 51.5
+        }
+      },
+      "sky": {
+        "earth": {
+          "wins": 328,
+          "losses": 267,
+          "draws": 0,
+          "unfinished": 5,
+          "rate": 55.12605042016807
+        },
+        "sea": {
+          "wins": 439,
+          "losses": 161,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 73.16666666666667
+        },
+        "forest": {
+          "wins": 398,
+          "losses": 200,
+          "draws": 0,
+          "unfinished": 2,
+          "rate": 66.5551839464883
+        },
+        "ice": {
+          "wins": 325,
+          "losses": 273,
+          "draws": 0,
+          "unfinished": 2,
+          "rate": 54.34782608695652
+        },
+        "palace": {
+          "wins": 361,
+          "losses": 201,
+          "draws": 0,
+          "unfinished": 38,
+          "rate": 64.23487544483986
+        }
+      },
+      "palace": {
+        "earth": {
+          "wins": 289,
+          "losses": 311,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 48.166666666666664
+        },
+        "sea": {
+          "wins": 312,
+          "losses": 281,
+          "draws": 0,
+          "unfinished": 7,
+          "rate": 52.61382799325464
+        },
+        "forest": {
+          "wins": 366,
+          "losses": 234,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 61.0
+        },
+        "ice": {
+          "wins": 291,
+          "losses": 309,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 48.5
+        },
+        "sky": {
+          "wins": 201,
+          "losses": 361,
+          "draws": 0,
+          "unfinished": 38,
+          "rate": 35.76512455516014
+        }
+      }
+    }
+  },
+  "forest_changes": {
+    "stock": {
+      "earth": {
+        "before": {
+          "wins": 252,
+          "losses": 335,
+          "draws": 0,
+          "unfinished": 13,
+          "rate": 42.93015332197615
+        },
+        "after": {
+          "wins": 240,
+          "losses": 347,
+          "draws": 0,
+          "unfinished": 13,
+          "rate": 40.885860306643956
+        },
+        "difference": -2.044293015332194,
+        "difference_ci95": [
+          -6.0,
+          2.1
+        ]
+      },
+      "sea": {
+        "before": {
+          "wins": 287,
+          "losses": 308,
+          "draws": 1,
+          "unfinished": 4,
+          "rate": 48.23529411764706
+        },
+        "after": {
+          "wins": 302,
+          "losses": 297,
+          "draws": 0,
+          "unfinished": 1,
+          "rate": 50.41736227045075
+        },
+        "difference": 2.1820681528036943,
+        "difference_ci95": [
+          -1.6,
+          6.3
+        ]
+      },
+      "ice": {
+        "before": {
+          "wins": 234,
+          "losses": 356,
+          "draws": 0,
+          "unfinished": 10,
+          "rate": 39.66101694915254
+        },
+        "after": {
+          "wins": 236,
+          "losses": 354,
+          "draws": 0,
+          "unfinished": 10,
+          "rate": 40.0
+        },
+        "difference": 0.3389830508474603,
+        "difference_ci95": [
+          -3.6,
+          4.2
+        ]
+      },
+      "sky": {
+        "before": {
+          "wins": 224,
+          "losses": 376,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 37.333333333333336
+        },
+        "after": {
+          "wins": 222,
+          "losses": 378,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 37.0
+        },
+        "difference": -0.3333333333333357,
+        "difference_ci95": [
+          -3.5,
+          3.2
+        ]
+      },
+      "palace": {
+        "before": {
+          "wins": 251,
+          "losses": 348,
+          "draws": 0,
+          "unfinished": 1,
+          "rate": 41.90317195325542
+        },
+        "after": {
+          "wins": 248,
+          "losses": 349,
+          "draws": 0,
+          "unfinished": 3,
+          "rate": 41.54103852596315
+        },
+        "difference": -0.36213342729227094,
+        "difference_ci95": [
+          -3.8,
+          3.2
+        ]
+      },
+      "all": {
+        "before": {
+          "wins": 1248,
+          "losses": 1723,
+          "draws": 1,
+          "unfinished": 28,
+          "rate": 42.006058566139345
+        },
+        "after": {
+          "wins": 1248,
+          "losses": 1725,
+          "draws": 0,
+          "unfinished": 27,
+          "rate": 41.97780020181635
+        },
+        "difference": -0.02825836432299411,
+        "difference_ci95": [
+          -1.8,
+          1.7
+        ]
+      }
+    },
+    "informed": {
+      "earth": {
+        "before": {
+          "wins": 211,
+          "losses": 380,
+          "draws": 0,
+          "unfinished": 9,
+          "rate": 35.70219966159053
+        },
+        "after": {
+          "wins": 202,
+          "losses": 374,
+          "draws": 0,
+          "unfinished": 24,
+          "rate": 35.06944444444444
+        },
+        "difference": -0.6327552171460837,
+        "difference_ci95": [
+          -4.7,
+          3.3
+        ]
+      },
+      "sea": {
+        "before": {
+          "wins": 235,
+          "losses": 356,
+          "draws": 1,
+          "unfinished": 8,
+          "rate": 39.76311336717428
+        },
+        "after": {
+          "wins": 209,
+          "losses": 386,
+          "draws": 0,
+          "unfinished": 5,
+          "rate": 35.12605042016807
+        },
+        "difference": -4.637062947006207,
+        "difference_ci95": [
+          -8.8,
+          -0.1
+        ]
+      },
+      "ice": {
+        "before": {
+          "wins": 216,
+          "losses": 374,
+          "draws": 0,
+          "unfinished": 10,
+          "rate": 36.610169491525426
+        },
+        "after": {
+          "wins": 215,
+          "losses": 378,
+          "draws": 0,
+          "unfinished": 7,
+          "rate": 36.25632377740303
+        },
+        "difference": -0.35384571412239296,
+        "difference_ci95": [
+          -4.6,
+          3.7
+        ]
+      },
+      "sky": {
+        "before": {
+          "wins": 200,
+          "losses": 400,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 33.333333333333336
+        },
+        "after": {
+          "wins": 200,
+          "losses": 398,
+          "draws": 0,
+          "unfinished": 2,
+          "rate": 33.44481605351171
+        },
+        "difference": 0.11148272017837257,
+        "difference_ci95": [
+          -3.7,
+          3.9
+        ]
+      },
+      "palace": {
+        "before": {
+          "wins": 240,
+          "losses": 360,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 40.0
+        },
+        "after": {
+          "wins": 234,
+          "losses": 366,
+          "draws": 0,
+          "unfinished": 0,
+          "rate": 39.0
+        },
+        "difference": -1.0,
+        "difference_ci95": [
+          -4.7,
+          2.7
+        ]
+      },
+      "all": {
+        "before": {
+          "wins": 1102,
+          "losses": 1870,
+          "draws": 1,
+          "unfinished": 27,
+          "rate": 37.079407806191114
+        },
+        "after": {
+          "wins": 1060,
+          "losses": 1902,
+          "draws": 0,
+          "unfinished": 38,
+          "rate": 35.78663065496286
+        },
+        "difference": -1.2927771512282504,
+        "difference_ci95": [
+          -3.1,
+          0.5
+        ]
+      }
+    }
+  },
+  "identical_nonforest_games": 12000
+}
