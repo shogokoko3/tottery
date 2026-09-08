@@ -91,8 +91,10 @@ function startGame({ kings = ["2", "2"], size = 9, areas = true, loadouts = LOAD
     if (s.phase === "setup") {
       for (const idx of [0, 1]) {
         if (s.setupDone[idx]) continue;
-        const placement = autoArrange(s, idx, null, null, null);
         const me = s.players[idx];
+        // Kを採用すると王がKになるため、指定した王と矛盾しない手札で布陣する。
+        const handOrder = me.hand.filter(c => c.rank !== "K" || kings[idx] === "K").sort((a,b) => Number(b.rank === kings[idx]) - Number(a.rank === kings[idx])).map(c => c.id);
+        const placement = autoArrange(s, idx, null, handOrder, null);
         let wanted = Object.keys(placement)
           .map((id) => me.hand.find((c) => c.id === id))
           .find((c) => c && c.rank === kings[idx]);

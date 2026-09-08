@@ -163,3 +163,69 @@ assert.equal(
 console.log(
   "Recurring ice: per-turn guard, cumulative duration, full random pool, king exclusion, version compatibility passed",
 );
+
+// 版5: 全6種が毎手番1回。空と宮殿は自動では選ばない。
+const { canUseArea } = await import("../src/game/areas.js");
+for (const type of ["earth", "sea", "forest", "ice", "sky", "palace"]) {
+  const s = areaFixture(type);
+  const act = { type: "USE_AREA", hit: false, picks: ["fx5"], pieceId: "fx1" };
+  const used = reducer(s, act);
+  assert.equal(used.areas[0].uses, 1, type + " first use");
+  assert.equal(used.areas[0].used, false, type + " not exhausted for match");
+  const sameTurn = {
+    ...used,
+    currentTurn: 0,
+    turnNo: s.turnNo,
+    interstitial: null,
+  };
+  assert.equal(
+    canUseArea(sameTurn, 0).ok,
+    false,
+    type + " cannot use twice in same turn",
+  );
+  const following = {
+    ...used,
+    currentTurn: 0,
+    turnNo: s.turnNo + 2,
+    interstitial: null,
+  };
+  assert.equal(
+    canUseArea(following, 0).ok,
+    true,
+    type + " available next own turn",
+  );
+  assert.equal(
+    automaticAreaAction(following)?.type || null,
+    ["sky", "palace"].includes(type) ? null : "USE_AREA",
+    type + " auto/optional",
+  );
+  const twice = reducer(following, {
+    ...act,
+    picks: ["fx6"],
+    pieceId: type === "palace" ? "fx1" : "fx3",
+  });
+  assert.equal(twice.areas[0].uses, 2, type + " second turn use");
+  const skipped = { ...s, turnNo: s.turnNo + 2 };
+  assert.equal(
+    canUseArea(skipped, 0).ok,
+    true,
+    type + " skipping does not lose future use",
+  );
+}
+for (const type of ["earth", "sea", "forest", "sky", "palace"]) {
+  const s = { ...areaFixture(type), ruleVersion: 4 };
+  const used = reducer(s, {
+    type: "USE_AREA",
+    hit: false,
+    picks: ["fx5"],
+    pieceId: "fx1",
+  });
+  assert.equal(
+    canUseArea({ ...used, currentTurn: 0, turnNo: 4 }, 0).ok,
+    false,
+    "old version 4 remains once per match: " + type,
+  );
+}
+console.log(
+  "All areas: every-turn availability, same-turn guard, optional sky/palace, skipped turns and old-match compatibility passed",
+);

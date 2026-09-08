@@ -41,7 +41,7 @@ export function areaFixture(type = "ice") {
     setupMode: "simultaneous",
     interstitial: null,
     areasEnabled: true,
-    ruleVersion: 4,
+    ruleVersion: 5,
     areas: [{ type, uses: 0, used: false }, null],
     known: [{}, {}],
     lastMove: {

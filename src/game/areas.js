@@ -2,7 +2,7 @@
  * 盤面エリア(試験ルール)。
  *
  * 王にした札のランクにスキンを装備していると、そのランク帯の「エリア」が
- * 盤に立つ。氷は毎手番、ほかは1局に1回だけ効果を使える。9×9 だけ。5×5 には無い
+ * 盤に立つ。全エリアが毎手番1回だけ効果を使える。9×9 だけ。5×5 には無い
  * (駒が5体しかなく、帯が分かると王の候補が絞れてしまうため)。
  *
  *   2・3  土   直前に動いた相手の駒の足跡を読み、50% で正体を見抜く。
@@ -92,7 +92,7 @@ export const AREA_INFO = Object.freeze({
  * 変えたら `node tools/check-areas.mjs` と `node tools/area-lab.mjs` で確かめる。
  */
 export const AREA_TUNING = Object.freeze({
-  /** 1局に使える回数(全エリア共通) */
+  /** 旧ルール版の1局あたり回数 */
   usesPerGame: 1,
   /** 土: 見抜ける確率(0〜1)。enrichAction がこの確率で hit を焼き込む */
   earthOdds: 0.5,
@@ -209,6 +209,11 @@ export function recurringIce(state) {
   return state.ruleVersion >= 4;
 }
 
+/** 版5は全種類、版4は氷だけ毎手番。開始済みの旧対局は元の回数を保つ。 */
+export function recurringArea(state, type) {
+  return state.ruleVersion >= 5 || (type === "ice" && recurringIce(state));
+}
+
 export function iceCandidates(state, player) {
   return alivePieces(state, 1 - player)
     .filter((p) => !p.isKing && (recurringIce(state) || !isFrozen(state, p)))
@@ -259,16 +264,15 @@ export function canUseArea(state, player) {
   const area = state.areas && state.areas[player];
   if (!area) return { ok: false, why: "エリアがありません" };
   if (
-    area.type === "ice" && recurringIce(state)
+    recurringArea(state, area.type)
       ? area.lastUsedTurn === (state.turnNo || 0)
       : (area.uses || 0) >= AREA_TUNING.usesPerGame
   )
     return {
       ok: false,
-      why:
-        area.type === "ice" && recurringIce(state)
-          ? "この手番では発動済みです"
-          : "この局ではもう使いました",
+      why: recurringArea(state, area.type)
+        ? "この手番では発動済みです"
+        : "この局ではもう使いました",
     };
   if (state.currentTurn !== player) return { ok: false, why: "相手の番です" };
   if (state.extraMoveFor || state.extraUsed || state.pendingKingChoice)
@@ -316,10 +320,9 @@ function markUsed(state, player, detail) {
     ...areas[player],
     uses,
     // used は画面と旧い検査の互換。usesPerGame に達したら真
-    used:
-      areas[player].type === "ice" && recurringIce(state)
-        ? false
-        : uses >= AREA_TUNING.usesPerGame,
+    used: recurringArea(state, areas[player].type)
+      ? false
+      : uses >= AREA_TUNING.usesPerGame,
     lastUsedTurn: state.turnNo || 0,
   };
   return {

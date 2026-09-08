@@ -8,7 +8,7 @@
  */
 import { PLAYER_META } from "../game/constants.js";
 import { AUTO_AREAS } from "../game/area-presentation.js";
-import { AREA_INFO, canUseArea, recurringIce } from "../game/areas.js";
+import { AREA_INFO, canUseArea, recurringArea } from "../game/areas.js";
 
 /** エリアの札に出す短い名前 */
 export function areaLabel(area) {
@@ -59,7 +59,7 @@ export function AreaBar({
           <>
             {info.name}
             <small>
-              {mine.type === "ice" && recurringIce(state)
+              {recurringArea(state, mine.type)
                 ? "毎手番"
                 : mine.used
                   ? "使用済み"
@@ -92,7 +92,7 @@ export function AreaBar({
           <>
             {AREA_INFO[areas[foe].type].name}
             <small>
-              {areas[foe].type === "ice" && recurringIce(state)
+              {recurringArea(state, areas[foe].type)
                 ? "毎手番"
                 : areas[foe].used
                   ? "使用済み"
