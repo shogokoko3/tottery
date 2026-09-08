@@ -1,3 +1,4 @@
+import { RankGuide } from "./rank-guide.jsx";
 import { useEffect, useRef, useState } from "react";
 import {
   seasonRequest,
@@ -31,7 +32,7 @@ const dateLabel = (n) =>
     minute: "2-digit",
     hour12: false,
   }).format(n);
-export function SeasonScreen({ historyOnly = false }) {
+export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
   const [data, setData] = useState(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState("load"),
@@ -159,7 +160,7 @@ export function SeasonScreen({ historyOnly = false }) {
           {busy ? "シーズンを読み込んでいます…" : "「更新」で読み直せます。"}
         </p>
       )}
-      {data && !historyOnly && (
+      {data && !historyOnly && !rankingOnly && (
         <>
           <div className="season-hero">
             <span className="season-eyebrow">月 間 シ ー ズ ン</span>
@@ -213,7 +214,16 @@ export function SeasonScreen({ historyOnly = false }) {
           <p className="hint">
             一度到達した報酬は、段階が下がっても受け取れます。裏面と枠は設定で着脱できます。
           </p>
-          <h4>今シーズンの順位</h4>
+          <RankGuide />
+          <h4>月末の記念称号</h4>
+          <p className="hint">
+            最終1位は「覇者」、3位以内は「三傑」、10位以内は「十傑」。翌月1日5時に確定します。同じ持ち点は同順位です。
+          </p>
+        </>
+      )}
+      {data && rankingOnly && (
+        <>
+          <h3>{seasonName(data.season.id)}のランキング</h3>
           {data.list.length ? (
             <ol className="rank-list">
               {data.list.map((row) => (
@@ -238,10 +248,6 @@ export function SeasonScreen({ historyOnly = false }) {
           ) : (
             <p className="hint">10戦を達成したプレイヤーから掲載されます。</p>
           )}
-          <h4>月末の記念称号</h4>
-          <p className="hint">
-            最終1位は「覇者」、3位以内は「三傑」、10位以内は「十傑」。翌月1日5時に確定します。同じ持ち点は同順位です。
-          </p>
         </>
       )}
       {data && historyOnly && (
