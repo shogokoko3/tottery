@@ -34,7 +34,7 @@ import {
   playerLabel,
   shortPlayerLabel,
 } from "../game/constants.js";
-import { cpuAction } from "../game/cpu.js";
+import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import {
   isNotableLog,
   autoArrange,

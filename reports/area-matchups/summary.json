@@ -1,0 +1,690 @@
+{
+  "stock": {
+    "earth": {
+      "sea": {
+        "wins": 352,
+        "losses": 244,
+        "draws": 0,
+        "unfinished": 4,
+        "rate": 59.1,
+        "ci": [
+          55.1,
+          63.3
+        ]
+      },
+      "forest": {
+        "wins": 335,
+        "losses": 252,
+        "draws": 0,
+        "unfinished": 13,
+        "rate": 57.1,
+        "ci": [
+          52.4,
+          61.7
+        ]
+      },
+      "ice": {
+        "wins": 272,
+        "losses": 320,
+        "draws": 0,
+        "unfinished": 8,
+        "rate": 45.9,
+        "ci": [
+          41.3,
+          50.7
+        ]
+      },
+      "sky": {
+        "wins": 271,
+        "losses": 317,
+        "draws": 0,
+        "unfinished": 12,
+        "rate": 46.1,
+        "ci": [
+          41.3,
+          50.9
+        ]
+      },
+      "palace": {
+        "wins": 307,
+        "losses": 292,
+        "draws": 0,
+        "unfinished": 1,
+        "rate": 51.3,
+        "ci": [
+          46.6,
+          56.1
+        ]
+      }
+    },
+    "sea": {
+      "earth": {
+        "wins": 244,
+        "losses": 352,
+        "draws": 0,
+        "unfinished": 4,
+        "rate": 40.9,
+        "ci": [
+          36.7,
+          44.9
+        ]
+      },
+      "forest": {
+        "wins": 308,
+        "losses": 287,
+        "draws": 1,
+        "unfinished": 4,
+        "rate": 51.8,
+        "ci": [
+          47.6,
+          55.9
+        ]
+      },
+      "ice": {
+        "wins": 295,
+        "losses": 304,
+        "draws": 1,
+        "unfinished": 0,
+        "rate": 49.2,
+        "ci": [
+          44.9,
+          53.4
+        ]
+      },
+      "sky": {
+        "wins": 240,
+        "losses": 360,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 40.0,
+        "ci": [
+          36.0,
+          44.2
+        ]
+      },
+      "palace": {
+        "wins": 291,
+        "losses": 302,
+        "draws": 0,
+        "unfinished": 7,
+        "rate": 49.1,
+        "ci": [
+          45.1,
+          53.2
+        ]
+      }
+    },
+    "forest": {
+      "earth": {
+        "wins": 252,
+        "losses": 335,
+        "draws": 0,
+        "unfinished": 13,
+        "rate": 42.9,
+        "ci": [
+          38.3,
+          47.6
+        ]
+      },
+      "sea": {
+        "wins": 287,
+        "losses": 308,
+        "draws": 1,
+        "unfinished": 4,
+        "rate": 48.2,
+        "ci": [
+          44.2,
+          52.4
+        ]
+      },
+      "ice": {
+        "wins": 234,
+        "losses": 356,
+        "draws": 0,
+        "unfinished": 10,
+        "rate": 39.7,
+        "ci": [
+          35.4,
+          44.1
+        ]
+      },
+      "sky": {
+        "wins": 224,
+        "losses": 376,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 37.3,
+        "ci": [
+          32.7,
+          42.0
+        ]
+      },
+      "palace": {
+        "wins": 251,
+        "losses": 348,
+        "draws": 0,
+        "unfinished": 1,
+        "rate": 41.9,
+        "ci": [
+          37.3,
+          46.7
+        ]
+      }
+    },
+    "ice": {
+      "earth": {
+        "wins": 320,
+        "losses": 272,
+        "draws": 0,
+        "unfinished": 8,
+        "rate": 54.1,
+        "ci": [
+          49.3,
+          58.7
+        ]
+      },
+      "sea": {
+        "wins": 304,
+        "losses": 295,
+        "draws": 1,
+        "unfinished": 0,
+        "rate": 50.8,
+        "ci": [
+          46.6,
+          55.1
+        ]
+      },
+      "forest": {
+        "wins": 356,
+        "losses": 234,
+        "draws": 0,
+        "unfinished": 10,
+        "rate": 60.3,
+        "ci": [
+          55.9,
+          64.7
+        ]
+      },
+      "sky": {
+        "wins": 307,
+        "losses": 293,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 51.2,
+        "ci": [
+          46.8,
+          55.7
+        ]
+      },
+      "palace": {
+        "wins": 286,
+        "losses": 314,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 47.7,
+        "ci": [
+          43.2,
+          52.3
+        ]
+      }
+    },
+    "sky": {
+      "earth": {
+        "wins": 317,
+        "losses": 271,
+        "draws": 0,
+        "unfinished": 12,
+        "rate": 53.9,
+        "ci": [
+          49.1,
+          58.7
+        ]
+      },
+      "sea": {
+        "wins": 360,
+        "losses": 240,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 60.0,
+        "ci": [
+          55.8,
+          64.0
+        ]
+      },
+      "forest": {
+        "wins": 376,
+        "losses": 224,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 62.7,
+        "ci": [
+          58.0,
+          67.3
+        ]
+      },
+      "ice": {
+        "wins": 293,
+        "losses": 307,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 48.8,
+        "ci": [
+          44.3,
+          53.3
+        ]
+      },
+      "palace": {
+        "wins": 299,
+        "losses": 255,
+        "draws": 0,
+        "unfinished": 46,
+        "rate": 54.0,
+        "ci": [
+          49.6,
+          58.5
+        ]
+      }
+    },
+    "palace": {
+      "earth": {
+        "wins": 292,
+        "losses": 307,
+        "draws": 0,
+        "unfinished": 1,
+        "rate": 48.7,
+        "ci": [
+          44.0,
+          53.4
+        ]
+      },
+      "sea": {
+        "wins": 302,
+        "losses": 291,
+        "draws": 0,
+        "unfinished": 7,
+        "rate": 50.9,
+        "ci": [
+          46.9,
+          54.9
+        ]
+      },
+      "forest": {
+        "wins": 348,
+        "losses": 251,
+        "draws": 0,
+        "unfinished": 1,
+        "rate": 58.1,
+        "ci": [
+          53.3,
+          62.7
+        ]
+      },
+      "ice": {
+        "wins": 314,
+        "losses": 286,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 52.3,
+        "ci": [
+          47.7,
+          56.8
+        ]
+      },
+      "sky": {
+        "wins": 255,
+        "losses": 299,
+        "draws": 0,
+        "unfinished": 46,
+        "rate": 46.0,
+        "ci": [
+          41.6,
+          50.4
+        ]
+      }
+    }
+  },
+  "informed": {
+    "earth": {
+      "sea": {
+        "wins": 334,
+        "losses": 260,
+        "draws": 0,
+        "unfinished": 6,
+        "rate": 56.2,
+        "ci": [
+          52.0,
+          60.5
+        ]
+      },
+      "forest": {
+        "wins": 368,
+        "losses": 228,
+        "draws": 0,
+        "unfinished": 4,
+        "rate": 61.7,
+        "ci": [
+          57.4,
+          66.1
+        ]
+      },
+      "ice": {
+        "wins": 275,
+        "losses": 318,
+        "draws": 0,
+        "unfinished": 7,
+        "rate": 46.4,
+        "ci": [
+          41.7,
+          51.0
+        ]
+      },
+      "sky": {
+        "wins": 259,
+        "losses": 338,
+        "draws": 0,
+        "unfinished": 3,
+        "rate": 43.4,
+        "ci": [
+          38.9,
+          48.1
+        ]
+      },
+      "palace": {
+        "wins": 312,
+        "losses": 288,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 52.0,
+        "ci": [
+          47.3,
+          56.7
+        ]
+      }
+    },
+    "sea": {
+      "earth": {
+        "wins": 260,
+        "losses": 334,
+        "draws": 0,
+        "unfinished": 6,
+        "rate": 43.8,
+        "ci": [
+          39.5,
+          48.1
+        ]
+      },
+      "forest": {
+        "wins": 358,
+        "losses": 238,
+        "draws": 1,
+        "unfinished": 3,
+        "rate": 60.1,
+        "ci": [
+          55.9,
+          64.4
+        ]
+      },
+      "ice": {
+        "wins": 289,
+        "losses": 308,
+        "draws": 1,
+        "unfinished": 2,
+        "rate": 48.4,
+        "ci": [
+          44.2,
+          52.5
+        ]
+      },
+      "sky": {
+        "wins": 170,
+        "losses": 430,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 28.3,
+        "ci": [
+          24.7,
+          32.0
+        ]
+      },
+      "palace": {
+        "wins": 281,
+        "losses": 312,
+        "draws": 0,
+        "unfinished": 7,
+        "rate": 47.4,
+        "ci": [
+          43.3,
+          51.7
+        ]
+      }
+    },
+    "forest": {
+      "earth": {
+        "wins": 228,
+        "losses": 368,
+        "draws": 0,
+        "unfinished": 4,
+        "rate": 38.3,
+        "ci": [
+          33.9,
+          42.6
+        ]
+      },
+      "sea": {
+        "wins": 238,
+        "losses": 358,
+        "draws": 1,
+        "unfinished": 3,
+        "rate": 39.9,
+        "ci": [
+          35.6,
+          44.1
+        ]
+      },
+      "ice": {
+        "wins": 226,
+        "losses": 368,
+        "draws": 0,
+        "unfinished": 6,
+        "rate": 38.0,
+        "ci": [
+          33.7,
+          42.5
+        ]
+      },
+      "sky": {
+        "wins": 198,
+        "losses": 402,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 33.0,
+        "ci": [
+          28.8,
+          37.3
+        ]
+      },
+      "palace": {
+        "wins": 234,
+        "losses": 366,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 39.0,
+        "ci": [
+          34.3,
+          43.8
+        ]
+      }
+    },
+    "ice": {
+      "earth": {
+        "wins": 318,
+        "losses": 275,
+        "draws": 0,
+        "unfinished": 7,
+        "rate": 53.6,
+        "ci": [
+          49.0,
+          58.3
+        ]
+      },
+      "sea": {
+        "wins": 308,
+        "losses": 289,
+        "draws": 1,
+        "unfinished": 2,
+        "rate": 51.6,
+        "ci": [
+          47.5,
+          55.8
+        ]
+      },
+      "forest": {
+        "wins": 368,
+        "losses": 226,
+        "draws": 0,
+        "unfinished": 6,
+        "rate": 62.0,
+        "ci": [
+          57.6,
+          66.3
+        ]
+      },
+      "sky": {
+        "wins": 263,
+        "losses": 337,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 43.8,
+        "ci": [
+          39.0,
+          48.7
+        ]
+      },
+      "palace": {
+        "wins": 302,
+        "losses": 298,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 50.3,
+        "ci": [
+          45.7,
+          55.0
+        ]
+      }
+    },
+    "sky": {
+      "earth": {
+        "wins": 338,
+        "losses": 259,
+        "draws": 0,
+        "unfinished": 3,
+        "rate": 56.6,
+        "ci": [
+          52.0,
+          61.1
+        ]
+      },
+      "sea": {
+        "wins": 430,
+        "losses": 170,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 71.7,
+        "ci": [
+          68.0,
+          75.3
+        ]
+      },
+      "forest": {
+        "wins": 402,
+        "losses": 198,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 67.0,
+        "ci": [
+          62.7,
+          71.2
+        ]
+      },
+      "ice": {
+        "wins": 337,
+        "losses": 263,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 56.2,
+        "ci": [
+          51.3,
+          61.0
+        ]
+      },
+      "palace": {
+        "wins": 352,
+        "losses": 205,
+        "draws": 0,
+        "unfinished": 43,
+        "rate": 63.2,
+        "ci": [
+          58.9,
+          67.6
+        ]
+      }
+    },
+    "palace": {
+      "earth": {
+        "wins": 288,
+        "losses": 312,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 48.0,
+        "ci": [
+          43.3,
+          52.7
+        ]
+      },
+      "sea": {
+        "wins": 312,
+        "losses": 281,
+        "draws": 0,
+        "unfinished": 7,
+        "rate": 52.6,
+        "ci": [
+          48.4,
+          56.7
+        ]
+      },
+      "forest": {
+        "wins": 366,
+        "losses": 234,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 61.0,
+        "ci": [
+          56.2,
+          65.7
+        ]
+      },
+      "ice": {
+        "wins": 298,
+        "losses": 302,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 49.7,
+        "ci": [
+          45.2,
+          54.3
+        ]
+      },
+      "sky": {
+        "wins": 205,
+        "losses": 352,
+        "draws": 0,
+        "unfinished": 43,
+        "rate": 36.8,
+        "ci": [
+          32.4,
+          41.1
+        ]
+      }
+    }
+  }
+}
