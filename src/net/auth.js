@@ -186,6 +186,8 @@ export async function ensureAuth() {
   if (!API_KEY) return null;
   if (held && held.expiresAt - EARLY_MS > Date.now()) return held;
   if (inflight) return inflight;
+  // 運営画面は明示的なサインインだけ。未ログイン時に匿名口座を作らない。
+  if (KEY === "tottery.auth.op.v1" && !readSaved()) return null;
   // 直前に失敗しているあいだは、待たずにすぐ諦める。
   // ただし手持ちの合言葉がまだ本当に切れていないなら、それを使う。
   // 早めの取り直し(5分前)にしくじっただけで捨てると、まだ使えるものを
@@ -202,7 +204,7 @@ export async function ensureAuth() {
     } catch (err) {
       // 作り直してよいのは「控えが死んでいる」と Firebase が言ったときだけ。
       // 圏外や 5xx で作り直すと uid が変わり、その人の記録が別人になる
-      if (err && err.__dead) {
+      if (err && err.__dead && KEY !== "tottery.auth.op.v1") {
         try {
           held = await signUp();
           quietUntil = 0;
@@ -228,8 +230,7 @@ export async function ensureAuth() {
  * 消したとたんに何もできなくなり、ルールを書き直すことになる。
  * メール+パスワードなら端末を替えても同じ uid のまま。
  *
- * この口は管理画面からしか呼ばない。管理画面は配信していないので、
- * パスワードを打つのは運営自身の端末だけ。
+ * この口は管理画面からだけ呼ぶ。ゲームの匿名認証とは保存先を分ける。
  */
 export async function signInAsOperator(email, password) {
   if (!API_KEY) throw new Error("API キーが入っていません");

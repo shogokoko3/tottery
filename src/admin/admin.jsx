@@ -1,24 +1,10 @@
-/**
- * 管理画面。/admin.html で開く。
- *
- * アカウントは各端末の中(localStorage)にだけあり、サーバーに本人確認の
- * 仕組みは無い。サーバーに載るのは、オンラインの持ち点つき対局を終えた
- * 端末が置いていく成績(ranks/<端末id>)だけ。ここではそれと、待ち合わせ
- * (lobby)を一覧にして、探す・並べ替える・消すができる。
- *
- * 消しても本人の端末の記録は消えない(次の持ち点でまた載る)。
- *
- * 読み書きの権限はデータベースのルールが決める。台帳の一覧や停止の印を
- * 触れるのは、ルールに書いてある運営の uid で通ったときだけ。この頁を
- * 開いただけでは何もできない。頁そのものも配信していない。
- */
+/** 運営専用の管理画面。入場時のサーバー照合とFirebaseの権限でデータを保護する。 */
 import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   API_KEY,
   OPERATOR_UID,
   authedFetch,
-  myUid,
   signInAsOperator,
   signOut,
   useOperatorSlot,
@@ -39,6 +25,7 @@ import { giftsLabel } from "../game/gifts.js";
 import { TITLES } from "../game/titles.js";
 import { ICONS } from "../game/icons.js";
 import { SKINS } from "../skins/catalog.js";
+import { verifyOperatorSession } from "./session.js";
 
 const TIMEOUT_MS = 8000;
 
@@ -175,18 +162,12 @@ function GiftPicker({ gift, onChange, onRemove }) {
   );
 }
 
-/**
- * 運営としてのサインイン。
- *
- * この画面は配信していない(手元でしか開かない)ので、パスワードを打つのは
- * 運営自身の端末だけ。匿名の口座だと端末のデータを消した時点で運営権限ごと
- * 失われるため、メール+パスワードにしてある。
- */
-function OperatorGate({ onDone }) {
+/** 運営用のメールアドレスとパスワードで入場する。 */
+function OperatorGate({ onDone, notice }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(notice || null);
 
   async function submit(e) {
     e.preventDefault();
@@ -200,11 +181,13 @@ function OperatorGate({ onDone }) {
       if (a.uid !== OPERATOR_UID) {
         signOut();
         setError(
-          `この口座(${a.uid})は運営として登録されていません。firebase-rules.json に書いてある uid でサインインしてください。`,
+          "このアカウントには運営権限がありません。運営用のメールアドレスでサインインしてください。",
         );
         return;
       }
-      onDone(a.uid);
+      const uid = await verifyOperatorSession();
+      if (!uid) throw new Error("もう一度サインインしてください。");
+      onDone(uid);
     } catch (err) {
       setError((err && err.message) || String(err));
     } finally {
@@ -221,12 +204,12 @@ function OperatorGate({ onDone }) {
         <span className="brand">トッタリー 管理</span>
         <div className="top-right" />
       </header>
-      <main className="stage admin-stage">
+      <main className="stage admin-stage admin-login">
         <section className="admin-card">
           <h2>運営としてサインイン</h2>
           <p className="hint">
-            台帳を読んだり、お知らせを出したりするのに要ります。 Firebase
-            に登録した運営用のアドレスを入れてください。
+            プレイヤーの確認・利用停止・お知らせ配信を行えます。
+            登録済みの運営用メールアドレスとパスワードを入力してください。
           </p>
           {!API_KEY && (
             <p className="admin-warn">
@@ -238,7 +221,11 @@ function OperatorGate({ onDone }) {
             <label className="letter-field">
               <span>メールアドレス</span>
               <input
+                className="admin-input"
                 type="email"
+                required
+                autoCapitalize="none"
+                spellCheck={false}
                 autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -247,7 +234,9 @@ function OperatorGate({ onDone }) {
             <label className="letter-field">
               <span>パスワード</span>
               <input
+                className="admin-input"
                 type="password"
+                required
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -260,7 +249,14 @@ function OperatorGate({ onDone }) {
               {busy ? "確かめています…" : "サインイン"}
             </button>
           </form>
-          {error && <p className="admin-warn">{error}</p>}
+          {error && (
+            <p className="admin-error" role="alert">
+              {error}
+            </p>
+          )}
+          <a className="admin-game-link" href="/">
+            ゲームへ戻る
+          </a>
         </section>
       </main>
     </div>
@@ -268,11 +264,62 @@ function OperatorGate({ onDone }) {
 }
 
 function AdminApp() {
-  // 運営として通っているか。通るまで台帳には触らせない
-  // 前に運営で通っていたときだけ、そのまま入る
-  const [uid, setUid] = useState(() =>
-    myUid() === OPERATOR_UID ? OPERATOR_UID : null,
+  const [uid, setUid] = useState(null);
+  const [checking, setChecking] = useState(true);
+  const [notice, setNotice] = useState(null);
+  useEffect(() => {
+    let gone = false;
+    verifyOperatorSession()
+      .then(
+        (id) => {
+          if (!gone) setUid(id);
+        },
+        () => {
+          if (!gone)
+            setNotice(
+              "セッションを確認できませんでした。もう一度サインインしてください。",
+            );
+        },
+      )
+      .finally(() => {
+        if (!gone) setChecking(false);
+      });
+    return () => {
+      gone = true;
+    };
+  }, []);
+  if (checking)
+    return (
+      <div className="tottery-root admin-root">
+        <style>{STYLES + ADMIN_STYLES}</style>
+        <main className="stage admin-login">
+          <p role="status">運営のログイン状態を確認しています…</p>
+        </main>
+      </div>
+    );
+  if (!uid)
+    return (
+      <OperatorGate
+        notice={notice}
+        onDone={(id) => {
+          setNotice(null);
+          setUid(id);
+        }}
+      />
+    );
+  return (
+    <AdminDashboard
+      key={uid}
+      onSignOut={() => {
+        signOut();
+        setUid(null);
+        setNotice(null);
+      }}
+    />
   );
+}
+
+function AdminDashboard({ onSignOut }) {
   const [ranks, setRanks] = useState(null);
   const [players, setPlayers] = useState(null);
   const [playersError, setPlayersError] = useState(null);
@@ -552,8 +599,6 @@ function AdminApp() {
     </div>
   );
 
-  if (!uid) return <OperatorGate onDone={setUid} />;
-
   return (
     <div className="tottery-root admin-root">
       <style>{STYLES}</style>
@@ -562,41 +607,35 @@ function AdminApp() {
         <div className="top-left" />
         <span className="brand">トッタリー 管理</span>
         <div className="top-right">
-          <button
-            className="btn btn-ghost btn-small"
-            onClick={() => {
-              signOut();
-              setUid(null);
-            }}
-          >
+          <button className="btn btn-ghost btn-small" onClick={onSignOut}>
             サインアウト
           </button>
         </div>
       </header>
       <main className="stage admin-stage">
         <section className="admin-card">
-          <h2>アカウントの持ち方</h2>
-          <p className="hint admin-uid">
-            運営としてのあなたの uid: <code>{uid}</code>
-            <br />
-            firebase-rules.json にもこの uid が書いてあります。作り直したときは
-            両方そろえてください(ずれていれば npm run check が知らせます)。
-          </p>
+          <h2>運営管理</h2>
           <p className="hint">
-            アカウントは各端末の中にだけあります(名前・アイコン・称号・対局数・勝数・持ち点)。
-            サーバーに本人確認の仕組みは無く、端末を替えると別の人として数えられます。
+            プレイヤーを選ぶと戦績や登録日を確認できます。お知らせは全員または指定した相手に配信できます。
           </p>
-          <p className="hint">
-            <b>登録した人</b>は、名前を決めた端末すべて。
-            <b>持ち点つきの成績</b>
-            は、9×9のオンライン対戦を終えた端末だけです（5×5は数えません）。
-            「消す」はサーバーの記録を消すだけで、端末は次に開いたときにまた載ります。
-            「使用停止」にすると、その口座は次に開いたときから遊べなくなります
-            (理由を出して止まります)。解除すればまた遊べます。
-          </p>
+          <nav className="admin-nav" aria-label="管理メニュー">
+            <a href="#admin-players">プレイヤー</a>
+            <a href="#admin-ranks">通算成績</a>
+            <a href="#admin-letters">お知らせ・補填</a>
+            <a href="#admin-lobby">待ち合わせ</a>
+          </nav>
+          <details className="admin-help">
+            <summary>操作とデータについて</summary>
+            <p>
+              「使用停止」はそのアカウントの利用を止めます。「消す」は台帳の行だけを削除し、本人が起動すると再登録される場合があります。
+            </p>
+            <p>
+              所持品と進捗の多くはプレイヤーの端末内に保存されています。この画面での全データ復元と、月間シーズン記録の管理には対応していません。
+            </p>
+          </details>
         </section>
 
-        <section className="admin-card">
+        <section className="admin-card" id="admin-players">
           <div className="admin-head">
             <h2>登録した人</h2>
             <button
@@ -663,7 +702,7 @@ function AdminApp() {
           </div>
         </section>
 
-        <section className="admin-card">
+        <section className="admin-card" id="admin-ranks">
           <h2>持ち点つきの成績</h2>
           <p className="hint">
             9×9のオンライン対戦を終えた端末が置いた記録です（5×5は数えません）。
@@ -688,7 +727,7 @@ function AdminApp() {
           </div>
         </section>
 
-        <section className="admin-card">
+        <section className="admin-card" id="admin-letters">
           <h2>運営からのお知らせ</h2>
           <p className="hint">
             補填やプレゼントを渡します。受け取ると添付がその場で配られます。
@@ -804,7 +843,7 @@ function AdminApp() {
           </div>
         </section>
 
-        <section className="admin-card">
+        <section className="admin-card" id="admin-lobby">
           <h2>待ち合わせ</h2>
           <p className="hint">
             相手を待っている部屋。対局が始まるか3分たつと消えます。
@@ -827,7 +866,7 @@ function AdminApp() {
         </section>
 
         <p className="hint admin-foot">
-          {loadedAt ? `${when(loadedAt)} に読み込み` : ""} ・ 宛先 {DB_URL}
+          {loadedAt ? `${when(loadedAt)} に読み込み` : ""}
         </p>
       </main>
 

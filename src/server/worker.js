@@ -1,4 +1,4 @@
-import { API_KEY } from "../net/auth.js";
+import { API_KEY, OPERATOR_UID } from "../net/auth.js";
 import { DB_URL } from "../net/firebase.js";
 import { Ledger } from "./ledger.js";
 import { verifyMatch } from "./verify-match.js";
@@ -14,7 +14,8 @@ export default {
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
     if (url.pathname === "/api/season/health" && request.method === "GET")
       return json({ ok: true, version: 1, season: seasonAt() });
-    if (!url.pathname.startsWith("/api/season/"))
+    const adminSession = url.pathname === "/api/admin/session";
+    if (!adminSession && !url.pathname.startsWith("/api/season/"))
       return json({ error: "見つかりません。" }, 404);
     if (request.method !== "POST")
       return json({ error: "POSTを使用してください。" }, 405);
@@ -42,6 +43,10 @@ export default {
         return json({ error: "本人確認をやり直してください。" }, 401);
       const uid = (await auth.json()).users?.[0]?.localId;
       if (!uid) return json({ error: "本人確認ができませんでした。" }, 401);
+      if (adminSession)
+        return uid === OPERATOR_UID
+          ? json({ uid })
+          : json({ error: "運営権限がありません。" }, 403);
       const ledger = env.SEASONS.get(env.SEASONS.idFromName("monthly-v1"));
       const call = (op, args = {}) =>
         ledger.fetch(

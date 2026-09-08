@@ -1,4 +1,58 @@
 /* 管理画面だけの見た目。本体の styles.css の上に重ねる */
+.admin-root > .top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+}
+.admin-root > .top-bar > .top-left:empty {
+  display: none;
+}
+.admin-root .brand {
+  font-size: 19px;
+  letter-spacing: 0.08em;
+}
+.admin-login {
+  width: 100%;
+  max-width: 480px;
+  padding-top: 40px;
+}
+.admin-login .admin-input {
+  min-width: 0;
+  font-size: 16px;
+}
+.admin-game-link {
+  display: block;
+  text-align: center;
+  color: var(--gold-soft);
+  padding: 10px;
+}
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+.admin-nav a {
+  padding: 9px 12px;
+  border: 1px solid var(--btn-edge);
+  border-radius: 8px;
+  color: var(--gold-soft);
+  text-decoration: none;
+  font-size: 13px;
+}
+.admin-help {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.admin-help summary {
+  cursor: pointer;
+  padding: 6px 0;
+}
+.admin-card[id] {
+  scroll-margin-top: 16px;
+}
 .admin-stage {
   /* 本体の .stage は flex。そのままだと欄が縮まず、
      中の広い表が画面の外へはみ出す */
@@ -139,6 +193,11 @@
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
+  position: sticky;
+  top: -16px;
+  background: #16294a;
+  padding: 10px 0;
+  z-index: 1;
 }
 .admin-panel-head b {
   font-family: "Shippori Mincho", serif;

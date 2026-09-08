@@ -10,7 +10,8 @@
     "parity": "node tools/parity.mjs ./restored-logic.mjs",
     "serve": "node tools/serve.mjs",
     "format": "prettier --write \"src/**/*.{js,jsx,css}\"",
-    "check:season": "node tools/check-season.mjs"
+    "check:season": "node tools/check-season.mjs",
+    "check:admin": "node tools/check-admin.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",
