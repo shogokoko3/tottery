@@ -1,4 +1,9 @@
-import { moveSafety, knownThreats, transformationGain } from "./cpu-tactics.js";
+import {
+  palacePromotion,
+  reserveDeployment,
+  bestEncirclement,
+} from "./cpu-palace.js";
+import { moveSafety, transformationGain } from "./cpu-tactics.js";
 import {
   chooseArmyPlan,
   strategicDiscards,
@@ -8,16 +13,20 @@ import { opponentKingBelief } from "./king-belief.js";
 // 公開情報と自分だけが見抜いた情報を使うCPU。伏せ札の数字・王かどうかは評価に使わない。
 import { cpuAction, bestShuffle } from "./cpu.js";
 import { getLegalMoves, kingRankOf, territoryRows } from "./board.js";
-import {
-  canUseArea,
-  isFrozen,
-  isKnownTo,
-  skyCandidates,
-  palaceCandidates,
-  promotedRank,
-} from "./areas.js";
+import { canUseArea, isFrozen, isKnownTo, skyCandidates } from "./areas.js";
 import { automaticAreaAction } from "./area-presentation.js";
 export function cpuInformedAction(state, player) {
+  if (
+    !state.captureReveal &&
+    state.kPlacement?.owner === player &&
+    state.currentTurn === player
+  ) {
+    const act = reserveDeployment(state, player);
+    if (act) {
+      const { score, ...action } = act;
+      return action;
+    }
+  }
   if (state.phase === "mulligan" && state.mulliganIdx === player)
     return {
       type: "CONFIRM_MULLIGAN",
@@ -70,6 +79,7 @@ export function informedPlay(s) {
   if (s.pendingKingChoice || s.kPlacement) return cpuAction(s, player);
   const belief = opponentKingBelief(s, player);
   const candidateIds = new Set(belief.candidates.map((p) => p.id));
+  const enclosure = bestEncirclement(s, player);
   let moves = [];
   for (const p of Object.values(s.pieces)) {
     if (
@@ -167,6 +177,17 @@ export function informedPlay(s) {
                 attacks.some((n) => candidateIds.has(board[n.row][n.col].id)),
               );
       }
+      if (["J", "Q", "K", "10"].includes(p.rank)) {
+        const future = bestEncirclement(s, player, {
+          ...p,
+          row: m.row,
+          col: m.col,
+        });
+        score += Math.min(
+          6,
+          Math.max(0, (future?.score || 0) - (enclosure?.score || 0)) * 0.2,
+        );
+      }
       moves.push({
         score,
         type: "MOVE_PIECE",
@@ -198,22 +219,19 @@ export function informedPlay(s) {
     );
     if (chosen) return { type: "USE_AREA", pieceId: chosen };
   }
-  if (can.ok && can.type === "palace" && (!best || best.score < 12)) {
-    // Continue promoting beyond opening, but do not skip an available capture.
-    const ids = palaceCandidates(s, player).filter(
-      (id) => !isFrozen(s, s.pieces[id]),
+  if (enclosure && enclosure.score > (best?.score || 0))
+    return {
+      type: "__CPU_SHUFFLE",
+      aceId: enclosure.aceId,
+      pickIds: enclosure.pickIds,
+    };
+  if (can.ok && can.type === "palace") {
+    const promotion = palacePromotion(
+      s,
+      player,
+      Math.max(best?.score || 0, enclosure?.score || 0),
     );
-    ids.sort(
-      (a, b) =>
-        transformationGain(s, player, b, promotedRank(s.pieces[b].rank)) -
-        transformationGain(s, player, a, promotedRank(s.pieces[a].rank)),
-    );
-    const threats = knownThreats(s, player);
-    const king = Object.values(s.pieces).find(
-      (p) => p.alive && p.owner === player && p.isKing,
-    );
-    if (king && threats.has(`${king.row}/${king.col}`)) ids.length = 0;
-    if (ids.length) return { type: "USE_AREA", pieceId: ids[0] };
+    if (promotion) return { type: "USE_AREA", pieceId: promotion.pieceId };
   }
   const swap = bestShuffle(s, player);
   if (swap && (!best || best.score < 12)) {

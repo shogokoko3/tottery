@@ -23,7 +23,7 @@ const affinity = {
   forest: { J: 2, Q: 2, 6: 1, 7: 1, 10: 2 },
   ice: { J: 2, Q: 2, 8: 2, 9: 2, 10: 1 },
   sky: { 2: 2, 3: 2, 10: 4, A: 1 },
-  palace: { 9: 2, J: 2, Q: 3, 4: 1, 5: 1 },
+  palace: { A: 3, 9: 4.2, 10: 5, J: 3, Q: 3 },
 };
 export function chooseArmyPlan(state, player, preferredKingRank = null) {
   const hand = state.players[player].hand,
@@ -43,13 +43,15 @@ export function chooseArmyPlan(state, player, preferredKingRank = null) {
         : null;
     const cards = [king],
       counts = { [king.rank]: 1 };
-    let score = CARD_VALUE[king.rank];
+    let score =
+      CARD_VALUE[king.rank] + (area === "palace" && king.rank === "K" ? 4 : 0);
     const marginal = (c) => {
       let n = CARD_VALUE[c.rank] + (affinity[area]?.[c.rank] || 0);
       // 後継者と王の射程、海賊王と同数字の射程を構成に織り込む。
       if (["2", "3", "4", "5"].includes(king.rank) && c.rank === king.rank)
         n += 3;
-      if (c.rank === "A" && counts.A) n -= 4;
+      if (c.rank === "A" && counts.A)
+        n -= area === "palace" && counts.A < 2 ? 1 : 4;
       // 一方向・一種類だけに偏るより、代わりに働ける役割を残す。
       n -= (counts[c.rank] || 0) * 0.65;
       return n;

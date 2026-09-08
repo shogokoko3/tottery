@@ -140,7 +140,7 @@ const anyMove = (s, p, filter = () => true) => {
     if (piece.rank === "A" || !filter(piece)) continue;
     const moves = getLegalMoves(piece, s.board, s.boardSize, s.players[p].armyRankCounts, kingRankOf(s, p));
     // 取りは避ける(盤を単純に保つ)
-    const quiet = moves.find((m) => !s.board[m.row][m.col]);
+    const quiet = moves.find((m) => !s.board[m.row][m.col] && !m.captures?.length);
     if (quiet) return { type: "MOVE_PIECE", pieceId: piece.id, row: quiet.row, col: quiet.col };
   }
   return null;
@@ -349,7 +349,10 @@ console.log("空: 本物の10に変身(公開)、軍の10は全て2回動く");
   if (s.currentTurn !== 0) s = playQuiet(s);
   // 王が J でも、ここでは空を試すために areas を差し替える(検査の細工)
   s = { ...s, areas: [{ type: "sky", used: false, rank: "J", skin: "x" }, null] };
-  const target = mine(s, 0).find((p) => !p.isKing && p.rank !== "10" && p.rank !== "A");
+  // ランダム布陣で最初の駒の跳躍先が全て味方に埋まる場合がある。
+  // 2回移動の検査には、空きマスへ跳べる変身対象を選ぶ。
+  const target = mine(s, 0).find((p) => !p.isKing && p.rank !== "10" && p.rank !== "A" &&
+    getLegalMoves({ ...p, rank: "10" }, s.board, 9, s.players[0].armyRankCounts, kingRankOf(s, 0)).some(m => !s.board[m.row][m.col]));
   const before = s.players[0].armyRankCounts;
   is("王は候補にならない", reducer(s, { type: "USE_AREA", pieceId: s.players[0].kingId }) === s, true);
   const t = reducer(s, { type: "USE_AREA", pieceId: target.id });

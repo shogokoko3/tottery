@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import {
   chooseArmyPlan,
   strategicDiscards,
@@ -29,6 +30,21 @@ import {
   promotedRank,
 } from "../src/game/areas.js";
 import { GAME_RULE_VERSION } from "../src/game/rule-version.js";
+const baselineDir = process.env.BASELINE_PALACE_DIR;
+const baselineStrategy = baselineDir
+  ? await import(
+      pathToFileURL(path.resolve(baselineDir, "src/game/cpu-strategy.js"))
+    )
+  : null;
+const baselineCpu = baselineDir
+  ? await import(
+      pathToFileURL(path.resolve(baselineDir, "src/game/cpu-informed.js"))
+    )
+  : null;
+const setupStrategy = (rank) =>
+  baselineStrategy && ["J", "Q", "K"].includes(rank)
+    ? baselineStrategy
+    : { chooseArmyPlan, strategicDiscards, arrangeArmy };
 const RULE_VERSION = Number(process.env.RULE_VERSION || GAME_RULE_VERSION);
 assert(RULE_VERSION >= 5 && RULE_VERSION <= GAME_RULE_VERSION);
 const groups = {
@@ -108,7 +124,11 @@ function setup(seed, kings) {
           {
             type: "CONFIRM_MULLIGAN",
             discardIds: strategicSetup
-              ? strategicDiscards(s, s.mulliganIdx, kings[s.mulliganIdx])
+              ? setupStrategy(kings[s.mulliganIdx]).strategicDiscards(
+                  s,
+                  s.mulliganIdx,
+                  kings[s.mulliganIdx],
+                )
               : [],
           },
           s,
@@ -120,7 +140,8 @@ function setup(seed, kings) {
       for (const player of [0, 1]) {
         if (s.setupDone[player]) continue;
         if (strategicSetup) {
-          const plan = chooseArmyPlan(s, player, kings[player]);
+          const strategy = setupStrategy(kings[player]);
+          const plan = strategy.chooseArmyPlan(s, player, kings[player]);
           assert(
             plan,
             JSON.stringify({
@@ -130,7 +151,7 @@ function setup(seed, kings) {
               seed,
             }),
           );
-          const placement = arrangeArmy(s, player, plan);
+          const placement = strategy.arrangeArmy(s, player, plan);
           formations[player] = formationMetrics(plan, placement, 9, player);
           s = reducer(s, {
             type: "SETUP_CONFIRM",
@@ -198,6 +219,14 @@ function play(base, first, seed, policy) {
     steps = 0,
     extensions = 0,
     stopped = null;
+  const palaceStats = [0, 1].map(() => ({
+    toJ: 0,
+    toQ: 0,
+    toK: 0,
+    reservePlaced: 0,
+    surrounds: 0,
+    surroundKills: 0,
+  }));
   const deduction = [0, 1].map(() => ({
     moves: 0,
     narrowed: 0,
@@ -232,7 +261,9 @@ function play(base, first, seed, policy) {
       automaticAreaAction(s) ||
       (policy === "stock"
         ? cpuAction(s, s.currentTurn)
-        : cpuInformedAction(s, s.currentTurn));
+        : (baselineCpu && s.areas[s.currentTurn]?.type === "palace"
+            ? baselineCpu.cpuInformedAction
+            : cpuInformedAction)(s, s.currentTurn));
     if (!act) {
       stopped = "no_action";
       break;
@@ -258,10 +289,28 @@ function play(base, first, seed, policy) {
       act = { type: "CONFIRM_SHUFFLE", aId: act.aceId, pickIds: act.pickIds };
     }
     const prior = s;
+    const actor = s.currentTurn;
+    const priorEnemies = Object.values(s.pieces).filter(
+      (p) => p.alive && p.owner !== actor,
+    ).length;
     const next = reducer(s, enrichAction({ ...act, elapsedMs: 0 }, s));
     if (next === prior) {
       stopped = "rejected:" + act.type;
       break;
+    }
+    if (act.type === "PLACE_RESERVE_CARD") palaceStats[actor].reservePlaced++;
+    if (act.type === "USE_AREA" && next.lastArea?.type === "palace") {
+      const rank = next.pieces[act.pieceId]?.rank;
+      if (["J", "Q", "K"].includes(rank)) palaceStats[actor]["to" + rank]++;
+    }
+    if (act.type === "CONFIRM_SHUFFLE") {
+      palaceStats[actor].surrounds++;
+      palaceStats[actor].surroundKills += Math.max(
+        0,
+        priorEnemies -
+          Object.values(next.pieces).filter((p) => p.alive && p.owner !== actor)
+            .length,
+      );
     }
     s = { ...next, replay: [] };
     if (act.type === "USE_AREA" && s.lastArea?.extended) extensions++;
@@ -282,6 +331,7 @@ function play(base, first, seed, policy) {
     uses: s.areas.map((a) => a?.uses || 0),
     extensions,
     deduction,
+    palaceStats,
   };
 }
 const results = [];
@@ -291,6 +341,11 @@ try {
   for (const policy of policies)
     for (let i = 0; i < types.length; i++)
       for (let j = i + 1; j < types.length; j++) {
+        if (
+          process.env.ONLY_AREA &&
+          ![types[i], types[j]].includes(process.env.ONLY_AREA)
+        )
+          continue;
         const pair = [types[i], types[j]],
           t0 = Date.now();
         for (let n = 0; n < seeds; n++) {
@@ -363,6 +418,7 @@ try {
               updated: new Date().toISOString(),
               ruleVersion: RULE_VERSION,
               strategicSetup,
+              baselinePalace: !!baselineDir,
               seeds,
               cap,
               setupResamples,
