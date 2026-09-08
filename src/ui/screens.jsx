@@ -53,7 +53,8 @@ import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
-import { TsumeScreen } from "./tsume.jsx";
+import { TsumeScreen, useTsumeDay } from "./tsume.jsx";
+import { tsumeReceipt } from "../game/tsume-daily.js";
 import { nextTutorialAfter } from "../game/tutorial.js";
 import { XpGainToast } from "./xp-gain.jsx";
 import { getXpNotices, subscribeXpNotices } from "../game/xp-notices.js";
@@ -287,12 +288,20 @@ export function MenuScreen({
   onMissions,
   onRanking,
   onLetters,
+  now = Date.now,
 }) {
   const [profile] = useMissionProfile();
   // 受け取れるミッションの数と、未読のお知らせ。入り口に印を出す
   const unread = useUnreadLetters();
   const collection = useCollection();
   const ready = claimableCount(profile, collection);
+  const today = useTsumeDay(now);
+  const receipt = tsumeReceipt(collection, today.day);
+  const tsumeStatus = receipt?.cleared
+    ? "cleared"
+    : receipt?.joined
+      ? "joined"
+      : "new";
   return (
     <div className="home-wrap">
       {/* その日のぶんがまだなら、ここに着いたときに札が出る */}
@@ -335,7 +344,24 @@ export function MenuScreen({
           tone="tsume"
           icon={<Crown size={26} />}
           label="詰めトッタリー"
-          note="一日一問、王を読む"
+          note={
+            <span
+              className={`home-tsume-status is-${tsumeStatus}`}
+              role="status"
+            >
+              {receipt?.joined ? (
+                <Check size={12} />
+              ) : (
+                <span className="home-tsume-dot" aria-hidden="true" />
+              )}
+              本日{" "}
+              {receipt?.cleared
+                ? "クリア済み"
+                : receipt?.joined
+                  ? "挑戦済み"
+                  : "未挑戦"}
+            </span>
+          }
           onClick={onTsume}
         />
         <HomeTile

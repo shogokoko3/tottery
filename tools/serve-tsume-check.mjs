@@ -47,7 +47,7 @@ function App(){
  const now=useCallback(()=>clock.at+Date.now()-clock.base,[clock]);
  const collection=useCollection();
  const home=()=>setPage('menu');
- return <><aside className="qa-toolbar"><label>検証する問題 <select aria-label="検証する問題" value={dailyTsume(clock.at).questionId} onChange={e=>setClock({at:days.find(at=>dailyTsume(at).questionId===Number(e.target.value)),base:Date.now()})}>{TSUME_QUESTIONS.map(q=><option key={q.id} value={q.id}>{q.id} {q.title}</option>)}</select></label><output aria-label="検証用の所持数">エーテル {collection.ether} / チケット {collection.tickets}</output></aside><GameShell showRules={rules} setShowRules={setRules} onHome={home} onBack={page==='tsume'?home:undefined}>{page==='menu'?<MenuScreen onTsume={()=>setPage('tsume')} onPlay={()=>{}} onTutorial={()=>{}} onMissions={()=>{}} onBattlePass={()=>{}} onSkins={()=>{}} onLetters={()=>{}} onRanking={()=>{}}/>:<TsumeScreen onBack={home} now={now}/>}</GameShell></>;
+ return <><aside className="qa-toolbar"><label>検証する問題 <select aria-label="検証する問題" value={dailyTsume(clock.at).questionId} onChange={e=>setClock({at:days.find(at=>dailyTsume(at).questionId===Number(e.target.value)),base:Date.now()})}>{TSUME_QUESTIONS.map(q=><option key={q.id} value={q.id}>{q.id} {q.title}</option>)}</select></label><button onClick={()=>setClock({at:dailyTsume(now()).nextDay-1000,base:Date.now()})}>朝5時の1秒前へ</button><output aria-label="検証用の所持数">エーテル {collection.ether} / チケット {collection.tickets}</output></aside><GameShell showRules={rules} setShowRules={setRules} onHome={home} onBack={page==='tsume'?home:undefined}>{page==='menu'?<MenuScreen now={now} onTsume={()=>setPage('tsume')} onPlay={()=>{}} onTutorial={()=>{}} onMissions={()=>{}} onBattlePass={()=>{}} onSkins={()=>{}} onLetters={()=>{}} onRanking={()=>{}}/>:<TsumeScreen onBack={home} now={now}/>}</GameShell></>;
 }
 createRoot(document.getElementById('root')).render(<App/>);
 `,
@@ -58,7 +58,7 @@ const html = template
   .replace("__BUNDLE__", () => result.outputFiles[0].text)
   .replace(
     "</head>",
-    "<style>.qa-toolbar{height:64px;padding:5px 8px;box-sizing:border-box;font:12px system-ui;color:#eee;display:flex;flex-direction:column;gap:4px}.qa-toolbar select{max-width:250px;font-size:12px}.tottery-root:has(.tsume-screen){height:calc(100dvh - 64px)}</style></head>",
+    "<style>.qa-toolbar{height:92px;padding:5px 8px;box-sizing:border-box;font:12px system-ui;color:#eee;display:flex;flex-direction:column;gap:4px}.qa-toolbar select{max-width:250px;font-size:12px}.tottery-root:has(.tsume-screen){height:calc(100dvh - 92px)}</style></head>",
   );
 http
   .createServer((req, res) => {

@@ -20,7 +20,7 @@ import {
   TSUME_ORDERS,
 } from "../game/tsume.js";
 
-function useToday(now) {
+export function useTsumeDay(now = Date.now) {
   const [today, setToday] = useState(() => dailyTsume(now()));
   useEffect(() => {
     let timer;
@@ -46,7 +46,7 @@ function useToday(now) {
 }
 
 export function TsumeScreen({ onBack, now = Date.now }) {
-  const today = useToday(now);
+  const today = useTsumeDay(now);
   return (
     <DailyPuzzle key={today.day} today={today} now={now} onBack={onBack} />
   );
