@@ -34,7 +34,7 @@ export function RankGuide() {
                 {index === RANK_TIERS.length - 1 && <small>以上</small>}
               </td>
             </tr>
-          ))}
+          )).reverse()}
         </tbody>
       </table>
       <div className="rank-guide-note">
