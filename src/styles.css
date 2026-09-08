@@ -3526,6 +3526,7 @@ h3 {
   align-items: flex-start;
   gap: 4px;
   min-width: 0;
+}
 
 /* 名前を決め直す画面に出す、運営からの一言 */
 .name-notice {
