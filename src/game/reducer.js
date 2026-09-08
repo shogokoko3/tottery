@@ -7,8 +7,9 @@ import {
   AREA_INFO,
   initAreas,
   isFrozen,
+  loseIfFrozen,
   sanitizeLoadouts,
-  skipIfFrozen,
+  thaw,
   useArea,
 } from "./areas.js";
 export { CLOCK_INITIAL_MS, CLOCK_INCREMENT_MS } from "./clock.js";
@@ -341,7 +342,7 @@ function seedsPresent(state, action) {
       const area = state.areas && state.areas[state.currentTurn];
       if (!area) return true;
       if (area.type === "earth") return typeof action.hit === "boolean";
-      if (area.type === "forest")
+      if (area.type === "forest" || area.type === "ice")
         return (
           Array.isArray(action.picks) &&
           action.picks.every((id) => typeof id === "string")
@@ -694,7 +695,7 @@ export function endAction(state, pieceId) {
 
 export function endTurn(state) {
   const next = 1 - state.currentTurn;
-  return skipIfFrozen({
+  return loseIfFrozen({
     ...state,
     currentTurn: next,
     turnNo: (state.turnNo || 0) + 1,
@@ -1644,12 +1645,14 @@ function coreReducer(state, action) {
       const secondSwap = state.extraMoveFor === aId;
       ids.forEach((id, i) => {
         const at = shuffled[i];
+        // 氷のエリアで凍った駒も入れ替えには使え、使われると氷が解ける
+        const base = thaw(pieces[id]);
         pieces[id] = {
-          ...pieces[id],
+          ...base,
           row: at.row,
           col: at.col,
           history: [
-            ...pieces[id].history,
+            ...base.history,
             `周囲の駒と位置を入れ替えた${secondSwap && id === aId ? "(2回目)" : ""}`,
           ],
         };

@@ -9,7 +9,9 @@
  *              当たったか外れたかは相手にも分かる。正体は自分だけが知る
  *   4・5  海   盤上の全ての駒を中央へ引き寄せる
  *   6・7  森   相手の王以外の駒を1体見抜く(自分だけが知る)
- *   8・9  氷   相手の王以外の駒を1体選んで凍らせ、相手の3手番のあいだ動けなくする
+ *   8・9  氷   相手の王以外の駒を1体(乱数で選ぶ)凍らせ、相手の3手番のあいだ動けなくする。
+ *              凍った駒を A の入れ替えに使うと氷は解ける。凍った A 自身は入れ替えを使えない。
+ *              凍らされて何も指せなければ負け
  *   10    空   自分の駒1体を10に変身させる(本物の10になり、公開される)。
  *              以後、自軍の10は全て1手番に2回動ける
  *   J〜K  宮殿 手番を使い、自分の駒1体を1段昇格させる(K まで。上限なし)。
@@ -66,9 +68,9 @@ export const AREA_INFO = Object.freeze({
   },
   ice: {
     name: "氷のエリア",
-    text: "相手の王以外の駒を1体選んで凍らせ、相手の3手番のあいだ動けなくする",
+    text: "相手の王以外の駒を1体凍らせ、相手の3手番のあいだ動けなくする(誰かは運しだい)",
     usesTurn: false,
-    needsPiece: true,
+    needsPiece: false,
   },
   sky: {
     name: "空のエリア",
@@ -175,7 +177,7 @@ export function forestCandidates(state, player) {
     .sort();
 }
 
-/** 氷: 凍らせられる相手の駒(王以外。すでに凍っている駒は除く) */
+/** 氷: 凍らせられる相手の駒(王以外。すでに凍っている駒は除く)。どれかは乱数(picks) */
 export function iceCandidates(state, player) {
   return alivePieces(state, 1 - player)
     .filter((p) => !p.isKing && !isFrozen(state, p))
@@ -335,9 +337,13 @@ export function useArea(state, action) {
       return markUsed(next, player, { pieceIds: chosen });
     }
     case "ice": {
-      const piece = state.pieces[action.pieceId];
-      if (!piece || !iceCandidates(state, player).includes(piece.id))
-        return state;
+      // 誰を凍らせるかは手に焼き込まれた並び(picks)の先頭。無ければ固定の並び
+      const candidates = iceCandidates(state, player);
+      const order = Array.isArray(action.picks) ? action.picks : [];
+      const chosen =
+        order.find((id) => candidates.includes(id)) || candidates[0];
+      const piece = state.pieces[chosen];
+      if (!piece) return state;
       const until = (state.turnNo || 0) + FREEZE_TURNS * 2;
       const next = withPiece(state, {
         ...piece,
@@ -528,27 +534,33 @@ export function hasAction(state, player) {
 }
 
 /**
- * 手番が回ってきた側が、凍った駒のせいで何も指せないなら手番を飛ばす。
- * 飛ばすのは1回だけ(相手も指せないなら、引き分け判定に任せる)。
- * endTurn から呼ぶ。
+ * 手番が回ってきた側が、凍った駒のせいで何も指せないなら、その側の負け。
+ * (本人の決め: 凍らされて動かせる駒がなければ負け)。endTurn から呼ぶ。
  */
-export function skipIfFrozen(state) {
-  if (!state.areasEnabled) return state;
+export function loseIfFrozen(state) {
+  if (!state.areasEnabled || state.winner != null) return state;
   const player = state.currentTurn;
   const frozen = Object.values(state.pieces).some(
     (p) => p.alive && p.owner === player && isFrozen(state, p),
   );
   if (!frozen || hasAction(state, player)) return state;
-  const other = 1 - player;
-  if (!hasAction(state, other)) return state;
+  const winner = 1 - player;
   return {
     ...state,
-    currentTurn: other,
-    turnNo: (state.turnNo || 0) + 1,
-    interstitial: { forPlayer: other, kind: "turn" },
+    phase: "gameover",
+    winner,
+    interstitial: null,
+    endReason: "frozen",
     log: [
       ...state.log,
-      `${PLAYER_META[player].name}の駒は凍りついて動けない…手番を飛ばした(氷のエリア)`,
+      `${PLAYER_META[player].name}の駒は凍りついて動けない…${PLAYER_META[winner].name}の勝利!(氷のエリア)`,
     ],
   };
+}
+
+/** A の入れ替えに使われた駒の氷を解く(凍った A 自身は使えないので、ここには来ない) */
+export function thaw(piece) {
+  if (!piece || piece.frozenUntil == null) return piece;
+  const { frozenUntil, ...rest } = piece;
+  return { ...rest, history: [...rest.history, "入れ替えで氷が解けた"] };
 }

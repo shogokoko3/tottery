@@ -1,5 +1,5 @@
 import { shuffle, buildDeck } from "./board.js";
-import { forestCandidates } from "./areas.js";
+import { forestCandidates, iceCandidates } from "./areas.js";
 
 /**
  * 手番の乱数をアクション側に焼き込む。
@@ -32,6 +32,11 @@ export function enrichAction(action, state) {
         return {
           ...action,
           picks: shuffle(forestCandidates(state, state.currentTurn)),
+        };
+      if (area.type === "ice")
+        return {
+          ...action,
+          picks: shuffle(iceCandidates(state, state.currentTurn)),
         };
       return action;
     }

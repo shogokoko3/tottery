@@ -8,7 +8,6 @@ import {
 import { hasAdjudicationRules } from "./rule-version.js";
 import {
   canUseArea,
-  iceCandidates,
   isFrozen,
   palaceCandidates,
   skyCandidates,
@@ -144,19 +143,6 @@ export function bestAreaUse(state, player, move) {
       const ids = skyCandidates(state, player);
       if (!ids.length) return null;
       ids.sort((a, b) => value(b) - value(a));
-      return { type: "USE_AREA", pieceId: ids[0] };
-    }
-    case "ice": {
-      // 自陣にいちばん近い(攻めてきている)相手の駒を止める
-      const ids = iceCandidates(state, player);
-      if (!ids.length) return null;
-      const [lo, hi] = territoryRows(state.boardSize, player);
-      const home = player === 0 ? lo : hi;
-      ids.sort(
-        (a, b) =>
-          Math.abs(state.pieces[a].row - home) -
-          Math.abs(state.pieces[b].row - home),
-      );
       return { type: "USE_AREA", pieceId: ids[0] };
     }
     case "palace": {

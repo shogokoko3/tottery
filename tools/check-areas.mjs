@@ -243,21 +243,24 @@ console.log("森: 1体見抜く");
   is("王や知らない id は無視され、固定の並びで補う", Object.keys(bad.known[0]).length === 1 && !bad.known[0][kingId], true);
 }
 
-console.log("氷: 1体を選んで3手番動けなくする");
+console.log("氷: 乱数で1体、3手番動けない");
 {
   let s = startGame({ kings: ["8", "9"] });
   if (s.currentTurn !== 0) s = playQuiet(s);
   const foeKing = s.players[1].kingId;
-  is("相手の王は選べない", reducer(s, { type: "USE_AREA", pieceId: foeKing }) === s, true);
-  const own = mine(s, 0).find((p) => !p.isKing);
-  is("自分の駒は選べない", reducer(s, { type: "USE_AREA", pieceId: own.id }) === s, true);
-  is("駒を選ばないと何も起きない", reducer(s, { type: "USE_AREA" }) === s, true);
-  const target = mine(s, 1).find((p) => !p.isKing);
-  const t = reducer(s, { type: "USE_AREA", pieceId: target.id });
-  is("選んだ1体だけが凍る", mine(t, 1).filter((p) => isFrozen(t, p)).map((p) => p.id), [target.id]);
+  const act = enrichAction({ type: "USE_AREA" }, s);
+  is("enrichAction が並びを焼き込む", Array.isArray(act.picks) && act.picks.length, 8);
+  is("並びに王は入らない", act.picks.includes(foeKing), false);
+  is("通信で届く手に picks が無ければ捨てる", reducer(s, { type: "USE_AREA", player: 0 }) === s, true);
+  const t = reducer(s, act);
+  const target = t.pieces[act.picks[0]];
+  is("並びの先頭の1体だけが凍る", mine(t, 1).filter((p) => isFrozen(t, p)).map((p) => p.id), [target.id]);
   is("相手の王は凍らない", isFrozen(t, t.pieces[foeKing]), false);
   is("自分の駒は凍らない", mine(t, 0).some((p) => isFrozen(t, p)), false);
   is("記録に残る", t.log.at(-1).includes("氷のエリア"), true);
+  // 王を指定しても通らない(固定の並びで補う)
+  const forced = reducer(s, { type: "USE_AREA", picks: [foeKing, "nope"] });
+  is("王や知らない id は無視され、固定の並びで補う", mine(forced, 1).filter((p) => isFrozen(forced, p)).length === 1 && !isFrozen(forced, forced.pieces[foeKing]), true);
   // 自分が1手指して相手の番に
   let u = playQuiet(t);
   is("相手の番", u.currentTurn, 1);
@@ -268,7 +271,7 @@ console.log("氷: 1体を選んで3手番動けなくする");
     is("凍った駒は動かせない", reducer(u, { type: "MOVE_PIECE", pieceId: frozenPiece.id, row: m.row, col: m.col }) === u, true);
     is("凍った駒は選べない", reducer(u, { type: "SELECT_PIECE", id: frozenPiece.id }) === u, true);
   }
-  // 相手の手番を3回数える。王だけで指す
+  // 相手の手番を3回数える
   let foeTurns = 0, guard = 0;
   while (foeTurns < FREEZE_TURNS && guard++ < 20) {
     if (u.currentTurn === 1) {
@@ -281,13 +284,40 @@ console.log("氷: 1体を選んで3手番動けなくする");
   is("4手番目には解けている", isFrozen(u, u.pieces[frozenPiece.id]), false);
 }
 
-console.log("氷: 王も動けなければ手番を飛ばす");
+console.log("氷: A の入れ替えで解ける。凍った A は使えない");
+{
+  let s = startGame({ kings: ["8", "9"] });
+  if (s.currentTurn !== 0) s = playQuiet(s);
+  // 相手(1)に王でない A を確保する(無ければ細工で1体を A にする)
+  let ace = mine(s, 1).find((p) => p.rank === "A" && !p.isKing);
+  if (!ace) {
+    const victim = mine(s, 1).find((p) => !p.isKing);
+    const q = { ...victim, rank: "A" };
+    s = { ...s, pieces: { ...s.pieces, [q.id]: q }, board: s.board.map((r) => [...r]) };
+    s.board[q.row][q.col] = q;
+    ace = q;
+  }
+  const target = mine(s, 1).find((p) => !p.isKing && p.id !== ace.id);
+  const other = mine(s, 1).find((p) => !p.isKing && p.id !== ace.id && p.id !== target.id);
+  let t = reducer(s, { type: "USE_AREA", picks: [target.id] });
+  is("狙いの駒が凍った", isFrozen(t, t.pieces[target.id]), true);
+  t = playQuiet(t);
+  is("相手の番", t.currentTurn, 1);
+  const swapped = reducer(t, { type: "CONFIRM_SHUFFLE", aId: ace.id, pickIds: [target.id, other.id], order: [1, 2, 0] });
+  is("凍った駒も入れ替えに使える", swapped !== t, true);
+  is("入れ替えで氷が解ける", isFrozen(swapped, swapped.pieces[target.id]), false);
+  is("履歴に残る", swapped.pieces[target.id].history.includes("入れ替えで氷が解けた"), true);
+  // 凍った A 自身は入れ替えを使えない
+  const frozenAce = { ...t, pieces: { ...t.pieces, [ace.id]: { ...t.pieces[ace.id], frozenUntil: t.turnNo + 6 } } };
+  is("凍った A は入れ替えを使えない", reducer(frozenAce, { type: "CONFIRM_SHUFFLE", aId: ace.id, pickIds: [target.id, other.id], order: [1, 2, 0] }) === frozenAce, true);
+}
+
+console.log("氷: 凍らされて何も指せなければ負け");
 {
   let s = startGame({ kings: ["8", "2"] });
   if (s.currentTurn !== 0) s = playQuiet(s);
   const t = s;
-  // 相手(1)の王2を、凍った味方4体で囲む盤を組む(検査のためだけの細工。
-  // 実際の氷は1体しか凍らせないが、飛ばしの決まり自体はこれで確かめられる)
+  // 相手(1)の王2を、凍った味方4体で囲む盤を組む(検査のためだけの細工)
   const u = { ...t, pieces: { ...t.pieces }, board: t.board.map((r) => r.map(() => null)) };
   const foe = mine(t, 1);
   const king = foe.find((p) => p.isKing);
@@ -307,9 +337,8 @@ console.log("氷: 王も動けなければ手番を飛ばす");
   is("囲まれた王2には手が無い(凍った駒は数えない)", hasAction(u, 1), false);
   is("凍っていなければ手はある", hasAction({ ...u, turnNo: 999 }, 1), true);
   const v = playQuiet(u);
-  is("手番が飛ばされて自分に戻る", v.currentTurn, 0);
-  is("記録に残る", v.log.some((l) => l.includes("手番を飛ばした")), true);
-  is("手番の通し番号は2つ進む", v.turnNo, u.turnNo + 2);
+  is("手番が回った時点で負け", [v.phase, v.winner, v.endReason], ["gameover", 0, "frozen"]);
+  is("記録に残る", v.log.some((l) => l.includes("凍りついて動けない")), true);
 }
 
 console.log("空: 本物の10に変身(公開)、軍の10は全て2回動く");
