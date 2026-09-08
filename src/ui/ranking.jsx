@@ -12,7 +12,7 @@ export function RankingScreen({ onBack }) {
           <ArrowLeft size={16} /> 戻る
         </button>
       </header>
-      <p className="hint">
+      <p className="hint ranking-scope">
         9×9のオンライン対戦の成績で並びます。CPU戦と5×5は数えません。
       </p>
       <nav className="season-tabs" aria-label="ランキングの種類">

@@ -118,6 +118,11 @@
   min-height: 44px;
   padding: 8px 12px;
 }
+/* 見出しの下の一文。左端にくっつくと読みにくいので、1文字ぶん右へ */
+.season-screen > .ranking-scope {
+  padding-left: 1em;
+  padding-right: 1em;
+}
 .season-tabs {
   display: flex;
   gap: 1px;
