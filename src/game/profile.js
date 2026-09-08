@@ -14,6 +14,8 @@
 import { hasIcon } from "./icons.js";
 import { hasTitle, newlyEarned } from "./titles.js";
 import { START_RATING, applyRating } from "./rating.js";
+import { findBadWord } from "./badwords.js";
+import { clearBlocked } from "./blocked.js";
 
 const KEY = "tottery.account.v1";
 /** 名前を持たなかった頃の保存先。1度だけ読み込んで引き継ぐ */
@@ -109,28 +111,41 @@ export function hasName(profile) {
 /**
  * 入力された名前を整える。
  * 前後の空白を落とし、途中の空白は1つにまとめ、長すぎる分は切る。
+ *
+ * 切るときは [...s] で符号点ごとに数える。slice() だと絵文字などの
+ * サロゲートペアを途中で割ってしまい、壊れた文字が相手の画面に出る。
  */
 export function normalizeName(raw) {
-  return String(raw == null ? "" : raw)
+  const s = String(raw == null ? "" : raw)
     .replace(/[\r\n\t]/g, " ")
     .trim()
-    .replace(/\s+/g, " ")
-    .slice(0, MAX_NAME_LEN);
+    .replace(/\s+/g, " ");
+  return [...s].slice(0, MAX_NAME_LEN).join("");
 }
 
 /** 名前として使えるか。使えないときは理由を返す */
 export function nameError(raw) {
   const name = normalizeName(raw);
   if (!name) return "名前を入力してください";
-  if (String(raw).trim().length > MAX_NAME_LEN)
+  // 整えたあとの長さで見る。生の文字列を見ると、前後に空白を付けただけで
+  // 10文字以内の名前を断ってしまう
+  const trimmed = String(raw == null ? "" : raw).trim().replace(/\s+/g, " ");
+  if ([...trimmed].length > MAX_NAME_LEN)
     return `名前は${MAX_NAME_LEN}文字までです`;
+  // 他人の画面と公開ランキングに出るので、露骨な語は断る(ガイドライン 1.2)
+  if (findBadWord(name)) return "その名前は使えません。別の名前にしてください";
   return null;
 }
 
-/** 名前を決める。はじめて決めたときに id も作る */
+/**
+ * 名前を決める。はじめて決めたときに id も作る。
+ *
+ * 画面側でも nameError() を見ているが、ここでも断る。
+ * 呼び出しが1つ増えたときに検査を飛ばしてしまわないようにするため。
+ */
 export function saveName(raw) {
   const name = normalizeName(raw);
-  if (!name) return loadProfile();
+  if (!name || findBadWord(name)) return loadProfile();
   const profile = loadProfile();
   const next = { ...profile, name, id: profile.id || makeId() };
   saveProfile(next);
@@ -143,6 +158,24 @@ function saveProfile(profile) {
   } catch {
     // 保存できなくても遊べる方を優先する
   }
+}
+
+/**
+ * 端末に残っている自分の記録を全部消す。
+ *
+ * ガイドライン 5.1.1(v)。サーバー側(ranks/<id>)を消すのは
+ * src/net/ranking.js の deleteRank() で、画面側が両方を呼ぶ。
+ * 消したあとは名前を決める画面からやり直しになる。
+ */
+export function forgetMe() {
+  try {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(OLD_KEY);
+  } catch {
+    // 消せなくても続ける。呼び出し側が改めて空の状態を描く
+  }
+  clearBlocked();
+  return { ...EMPTY };
 }
 
 /** 使うアイコンを選ぶ。持っていないものは受け付けない */

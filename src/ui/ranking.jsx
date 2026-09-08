@@ -8,14 +8,20 @@ import { useEffect, useState } from "react";
 import { loadProfile } from "../game/profile.js";
 import { rankTitle } from "../game/rating.js";
 import { readRanks } from "../net/ranking.js";
+import { withoutBlocked } from "../game/blocked.js";
 import { ArrowLeft } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
+import { PlayerActionModal } from "./report.jsx";
 
 export function RankingScreen({ onBack }) {
   const me = loadProfile();
   const [state, setState] = useState("loading");
   const [list, setList] = useState([]);
   const [error, setError] = useState("");
+  // 通報・ブロックの画面を出している相手
+  const [acting, setActing] = useState(null);
+  // 見えなくした直後に一覧から消すための数え札
+  const [hidden, setHidden] = useState(0);
 
   useEffect(() => {
     let gone = false;
@@ -35,10 +41,21 @@ export function RankingScreen({ onBack }) {
     };
   }, []);
 
-  const myPlace = list.findIndex((r) => r.id === me.id);
+  // 見えなくした相手は並びから外す。順位は外したあとで数え直す。
+  // hidden が変わると描き直され、そのとき端末の一覧を読み直す
+  void hidden;
+  const shown = withoutBlocked(list);
+  const myPlace = shown.findIndex((r) => r.id === me.id);
 
   return (
     <div className="rank-wrap">
+      {acting && (
+        <PlayerActionModal
+          target={acting}
+          onClose={() => setActing(null)}
+          onChanged={() => setHidden((n) => n + 1)}
+        />
+      )}
       <h2>ランキング</h2>
       <p className="hint">
         オンライン対戦の成績で並びます。CPU戦は数えません。
@@ -60,13 +77,13 @@ export function RankingScreen({ onBack }) {
 
       {state === "loading" && <p className="hint">読み込んでいます…</p>}
       {state === "error" && <p className="error-text">{error}</p>}
-      {state === "done" && list.length === 0 && (
+      {state === "done" && shown.length === 0 && (
         <p className="hint">まだ誰も載っていません。</p>
       )}
 
-      {state === "done" && list.length > 0 && (
+      {state === "done" && shown.length > 0 && (
         <ol className="rank-list">
-          {list.map((row, i) => (
+          {shown.map((row, i) => (
             <li
               className={`rank-row ${row.id === me.id ? "rank-row-me" : ""}`}
               key={row.id}
@@ -76,6 +93,15 @@ export function RankingScreen({ onBack }) {
               <span className="rank-name">{row.name}</span>
               <span className="rank-title">{rankTitle(row.rating)}</span>
               <b className="rank-score">{row.rating}</b>
+              {row.id !== me.id && (
+                <button
+                  className="rank-more"
+                  onClick={() => setActing({ id: row.id, name: row.name })}
+                  aria-label={`${row.name} を通報する、または見えなくする`}
+                >
+                  ⋯
+                </button>
+              )}
             </li>
           ))}
         </ol>

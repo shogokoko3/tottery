@@ -54,6 +54,33 @@ export async function publishRank(profile) {
   }
 }
 
+/**
+ * 公開しているランキングの記録を消す。
+ *
+ * App Store のガイドライン 5.1.1(v) は、アカウントを作れるアプリに
+ * 「アプリの中から自分の記録を消せること」を求めている。その消す側。
+ * 端末の中の記録を消すのは profile.js の forgetMe()。
+ */
+export async function deleteRank(id) {
+  if (!id) return { ok: false, error: "記録が見つかりません" };
+  try {
+    const res = await withTimeout(
+      fetch(`${DB_URL}/ranks/${id}.json`, { method: "DELETE" }),
+      TIMEOUT_MS,
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return { ok: true, error: null };
+  } catch (err) {
+    return {
+      ok: false,
+      error:
+        err && err.__timeout
+          ? "通信が8秒以内に応答しませんでした。もう一度お試しください。"
+          : `記録を消せませんでした: ${(err && err.message) || "不明なエラー"}`,
+    };
+  }
+}
+
 /** 持ち点の高い順に読み出す */
 export async function readRanks(limit = RANK_LIMIT) {
   const url = `${DB_URL}/ranks.json?orderBy=%22rating%22&limitToLast=${limit}`;

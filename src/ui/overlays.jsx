@@ -27,7 +27,16 @@ import {
   NameEditModal,
   TitlePickModal,
 } from "./account.jsx";
-import { loadProfile } from "../game/profile.js";
+import { forgetMe, loadProfile } from "../game/profile.js";
+import { loadBlocked, unblock } from "../game/blocked.js";
+import { deleteRank } from "../net/ranking.js";
+import {
+  PRIVACY_URL,
+  hasPrivacyUrl,
+  hasSupportContact,
+  SUPPORT_EMAIL,
+  supportMailto,
+} from "../game/support.js";
 
 export function Interstitial({ forPlayer, kind, onReady }) {
   let n = PLAYER_META[forPlayer],
@@ -429,6 +438,139 @@ function SoundSettings() {
   );
 }
 
+/**
+ * 見えなくした人の一覧と、戻す手立て。
+ * ガイドライン 1.2 が求める blocking の、解除側にあたる。
+ */
+function BlockedListModal({ onClose }) {
+  const [list, setList] = useState(() => loadBlocked());
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-panel settings-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-head">
+          <h3>見えなくした人</h3>
+          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+            <Close size={18} />
+          </button>
+        </div>
+        {list.length === 0 ? (
+          <p className="hint">
+            いません。ランキングの右端の「⋯」から、見たくない相手を隠せます。
+          </p>
+        ) : (
+          <div className="settings-list">
+            {list.map((b) => (
+              <div className="settings-row" key={b.id}>
+                <span>{b.name || "(名前なし)"}</span>
+                <button
+                  className="btn btn-ghost btn-small"
+                  onClick={() => setList(unblock(b.id))}
+                >
+                  戻す
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <button className="btn btn-primary btn-wide" onClick={onClose}>
+          閉じる
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 自分の記録を消す。ガイドライン 5.1.1(v)。
+ * 端末の中(profile.js の forgetMe)と、公開ランキング(ranks/<id>)の両方を消す。
+ */
+function DeleteMeModal({ onClose, onDeleted }) {
+  const me = loadProfile();
+  const [step, setStep] = useState("ask");
+  const [error, setError] = useState("");
+
+  async function run() {
+    setStep("running");
+    // 先に公開されている側を消す。端末の中を先に消すと id を見失う
+    const res = me.id ? await deleteRank(me.id) : { ok: true };
+    if (!res.ok) {
+      setError(res.error);
+      setStep("error");
+      return;
+    }
+    forgetMe();
+    setStep("done");
+  }
+
+  return (
+    <div className="modal-overlay" onClick={step === "running" ? undefined : onClose}>
+      <div
+        className="modal-panel settings-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-head">
+          <h3>記録を消す</h3>
+          {step !== "running" && (
+            <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+              <Close size={18} />
+            </button>
+          )}
+        </div>
+
+        {step === "ask" && (
+          <>
+            <p className="hint">
+              名前・アイコン・称号・戦績・持ち点と、公開ランキングに載っている
+              あなたの行を消します。見えなくした人の一覧も消えます。
+              <b>元には戻せません。</b>
+            </p>
+            <p className="hint">
+              消したあとは、名前を決めるところからやり直しになります。
+            </p>
+            <div className="settings-actions">
+              <button className="btn btn-primary btn-wide" onClick={onClose}>
+                やめる
+              </button>
+              <button className="btn btn-ghost btn-wide btn-danger" onClick={run}>
+                消す
+              </button>
+            </div>
+          </>
+        )}
+        {step === "running" && <p className="hint">消しています…</p>}
+        {step === "error" && (
+          <>
+            <p className="error-text">{error}</p>
+            <p className="hint">
+              通信できないと、公開されている記録を消せません。
+              電波の届くところでもう一度お試しください。
+            </p>
+            <div className="settings-actions">
+              <button className="btn btn-primary btn-wide" onClick={onClose}>
+                閉じる
+              </button>
+              <button className="btn btn-ghost btn-wide" onClick={run}>
+                もう一度
+              </button>
+            </div>
+          </>
+        )}
+        {step === "done" && (
+          <>
+            <p className="report-done">消しました。</p>
+            <button className="btn btn-primary btn-wide" onClick={onDeleted}>
+              最初から始める
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function SettingsModal({ onClose }) {
   const [profile, setProfile] = useState(() => loadProfile());
   // "name" は名前を変える画面、"icon" はアイコンを選ぶ画面
@@ -452,6 +594,17 @@ export function SettingsModal({ onClose }) {
       <TitlePickModal
         onClose={() => setEditing(null)}
         onSaved={(next) => setProfile(next)}
+      />
+    );
+  if (editing === "blocked")
+    return <BlockedListModal onClose={() => setEditing(null)} />;
+  if (editing === "delete")
+    return (
+      <DeleteMeModal
+        onClose={() => setEditing(null)}
+        // 名前を決める画面から出し直す。TotteryApp は起動時に
+        // hasName() を読むので、読み込み直せばそこへ戻る
+        onDeleted={() => location.reload()}
       />
     );
   return (
@@ -496,7 +649,62 @@ export function SettingsModal({ onClose }) {
             <span>通信</span>
             <b>オンライン対戦に対応</b>
           </div>
+          <div className="settings-row">
+            <span>お問い合わせ</span>
+            {hasSupportContact() ? (
+              <a
+                className="settings-link"
+                href={supportMailto(VERSION)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {SUPPORT_EMAIL}
+              </a>
+            ) : (
+              <b className="settings-todo">未設定</b>
+            )}
+          </div>
+          <div className="settings-row">
+            <span>プライバシーポリシー</span>
+            {hasPrivacyUrl() ? (
+              <a
+                className="settings-link"
+                href={PRIVACY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                開く
+              </a>
+            ) : (
+              <b className="settings-todo">未設定</b>
+            )}
+          </div>
         </div>
+
+        <p className="settings-head">安心して遊ぶために</p>
+        <div className="settings-list">
+          <div className="settings-row">
+            <span>見えなくした人</span>
+            <button
+              className="btn btn-ghost btn-small"
+              onClick={() => setEditing("blocked")}
+            >
+              {loadBlocked().length}人
+            </button>
+          </div>
+          <div className="settings-row">
+            <span>自分の記録を消す</span>
+            <button
+              className="btn btn-ghost btn-small btn-danger"
+              onClick={() => setEditing("delete")}
+            >
+              消す
+            </button>
+          </div>
+        </div>
+        <p className="settings-note">
+          ランキングの右端の「⋯」から、その人を通報したり、見えなくしたりできます。
+        </p>
 
         <p className="settings-note">
           レーティングとランキング、表示の調整は今後追加する予定です。

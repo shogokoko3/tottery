@@ -1,4 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap");
+/* 書体は index.template.html から描画を止めない形で読む。
+   ここに @import を書くと CSS が描画をブロックし、圏外や低速な回線で
+   画面が出るまで数十秒待たされる(iOS の WebView で約90秒を実測) */
 
 .tottery-root {
   /* 深い紺と金を基調にした、重厚な意匠 */
@@ -14,6 +16,8 @@
   --card-red: #b0202f;
   --text: #f2ead9;
   --text-dim: #a9b4cc;
+  /* 濃色パネルの上で目立たせたい文字。名前・順位・持ち点に使う */
+  --ink: #f2ead9;
   --p0: #c0392b;
   --p1: #2a6f9e;
   /* 入れ替え(A)専用の色。取れる駒の赤と混ざらないよう紫にしてある */
@@ -2798,6 +2802,9 @@ h3 {
 }
 .name-input {
   width: 100%;
+  /* input はフォントを継承しない。指定しないと WebKit の既定が当たり、
+     iOS の WebView で日本語の名前が豆腐(□)になる。ブラウザでは再現しない */
+  font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
   margin: 16px 0 6px;
   padding: 14px 12px;
   font-size: 18px;
@@ -3223,4 +3230,198 @@ h3 {
 .tutorial-sheet-front .tutorial-next {
   width: 100%;
   margin-top: 12px;
+}
+
+/* ===== 通報・ブロック・記録の削除 =====
+   App Store のガイドライン 1.2(利用者が作った文章)と 5.1.1(v)(記録の削除)
+   のために足した画面。src/ui/report.jsx と overlays.jsx から使う */
+
+/* ランキングの行から「⋯」で開く。指が届くよう 44px 四方を確保する */
+.rank-more {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -8px -6px -8px 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.rank-more:hover {
+  color: var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+}
+.rank-more:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
+
+.report-panel {
+  max-width: 420px;
+}
+.report-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* 選択肢は「見出し + 補足」の2段。押せる高さを十分に取る */
+.report-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 56px;
+  padding: 12px 14px;
+  text-align: left;
+  white-space: normal;
+}
+.report-choice b {
+  color: var(--ink);
+  font-size: 15px;
+}
+.report-choice span {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.report-back {
+  align-self: center;
+  min-height: 44px;
+}
+.report-done {
+  margin: 0;
+  color: var(--gold-soft);
+  font-size: 16px;
+}
+
+/* 設定に足した行 */
+.settings-link {
+  color: var(--gold);
+  text-decoration: underline;
+  /* 指が届く高さにする */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+.settings-todo {
+  color: #d63c46;
+}
+.settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+/* 元に戻せない操作。押し間違いを減らすため色で分ける */
+.btn-danger {
+  color: #e0707a;
+  border-color: rgba(224, 112, 122, 0.5);
+}
+.btn-danger:hover {
+  color: #ff8a93;
+  border-color: rgba(224, 112, 122, 0.8);
+}
+
+/* ===== iPad と、横に広い画面 =====
+   ここまでの指定は幅しか見ておらず(.board-frame は min(94vw,500px))、
+   iPad では盤が伸びずに左右が余り、横向きでは縦にはみ出して
+   「降参する」が画面外へ落ちていた。幅と高さの両方から決め直す。
+
+   区切りは 768px(iPad の短辺)と、横向きの 900px。
+   iPhone の横向き(最大 956px)にも掛かるが、iPhone は縦固定なので届かない。 */
+
+/* --- 盤の大きさ。幅と高さのうち小さい方で決める --- */
+@media (min-width: 768px) {
+  .board-frame {
+    /* 68vh は、上の帯・手番・手札・操作列を残した高さの目安 */
+    width: min(88vw, 68vh, 660px);
+  }
+  .play-wrap {
+    max-width: 720px;
+  }
+  .stage {
+    padding: 28px 24px;
+  }
+  /* チュートリアルの帯。画面の下端に貼ると盤から遠く離れるので、
+     真ん中にある盤の少し下で止める */
+  .tutorial-sheet {
+    bottom: max(12px, calc(50vh - 380px));
+  }
+  .tutorial-sheet-inner {
+    max-width: 560px;
+  }
+}
+
+/* --- 横向きの2カラム。盤を左、それ以外を右へ --- */
+@media (orientation: landscape) and (min-width: 900px) {
+  .play-wrap {
+    display: grid;
+    /* 盤の幅は中身に任せ、右の列は読める幅で固定する */
+    grid-template-columns: auto minmax(300px, 380px);
+    align-items: start;
+    gap: 24px;
+    max-width: none;
+    width: auto;
+  }
+  /* 既定は右の列。DOM の並びを変えずに振り分ける */
+  .play-wrap > * {
+    grid-column: 2;
+    min-width: 0;
+  }
+  /* 盤だけ左の列に置き、縦に貫いて中央に据える */
+  .play-wrap > .board-outer {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    align-self: center;
+  }
+  .board-frame {
+    /* 横向きは高さが足りない。高さを主にして決める */
+    width: min(52vw, 76vh, 620px);
+  }
+  .stage {
+    /* 2カラムは上から積む。中央寄せだと右の列が上下に泳ぐ */
+    justify-content: flex-start;
+    padding-top: 20px;
+  }
+  /* 横向きでは帯を盤の外(右下)に出さず、画面下端のままでよい。
+     縦の余白が少ないので離れない */
+  .tutorial-sheet {
+    bottom: 0;
+  }
+}
+
+/* ===== フォームの部品に書体を継がせる =====
+   button・input・select・textarea は font-family を継承しない。
+   指定が無いと WebKit の既定(Arial 系)が当たり、iOS の WebView では
+   **日本語が豆腐(□)になる**。デスクトップのブラウザには日本語書体が
+   あるため再現せず、実機で初めて出る。
+
+   実際に .account-mark(アイコン)と .title-tag(称号)がこれで壊れていて、
+   「変える」が □□□ に、頭文字が □ になっていた。
+   .btn には指定があるので無事だったが、.btn を持たないボタンは全滅していた。
+
+   継承にしておけば、.tottery-root の
+   "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif
+   がそのまま届く。.btn の指定には Hiragino が無いので、
+   ここで上書きすることで圏外(Google Fonts が来ない)でも日本語が出る。 */
+.tottery-root button,
+.tottery-root input,
+.tottery-root select,
+.tottery-root textarea {
+  font-family: inherit;
+}
+
+/* 称号と「レベル10(最高)」が同じ行に流れて折り返し、
+   称号の札に文言が重なっていた。縦に積んで重なりを解く */
+.account-id {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
 }

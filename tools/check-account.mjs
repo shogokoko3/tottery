@@ -103,5 +103,35 @@ is(
 );
 is("名前が無ければ相手", shortPlayerLabel(1, 0, null), "相手");
 
+console.log("名前に使えない語(ガイドライン 1.2)");
+{
+  // 断るべきもの。全角・伏せ字・繰り返し・カタカナでの回避も含む
+  for (const n of [
+    "FUCK", "ＦＵＣＫ", "f*u*c*k", "fuuuuck", "sh1t", "n1gger",
+    "ちんこ", "チンコ", "ﾁﾝｺ", "死ね", "しね", "シネ", "殺す",
+    "ばか", "うんこ", "ﾚｲﾌﾟ", "運営", "管理人", "admin", "Official",
+  ])
+    is(`断る: ${n}`, typeof nameError(n) === "string", true);
+
+  // 通すべきもの。まっとうな名前を巻き込んでいないか
+  for (const n of [
+    "つしま", "Shogo", "太郎", "ねこ丸", "王将", "ABC", "しんじ",
+    "かしね", "あきら", "せいこう", "正孝", "はげまる", "えたじま",
+    "くそげ職人", "🐱ねこ",
+  ])
+    is(`通す: ${n}`, nameError(n), null);
+
+  is("使えない名前は保存もされない", saveName("ちんこ").name !== "ちんこ", true);
+}
+
+console.log("名前の整え方");
+is(
+  "絵文字を割らずに切る",
+  [...normalizeName("🐱".repeat(12))].length,
+  MAX_NAME_LEN,
+);
+is("前後の空白は字数に数えない", nameError("  あいうえおかきくけこ  "), null);
+is("整えても10文字を超えるなら断る", typeof nameError("あいうえおかきくけこさ") === "string", true);
+
 console.log(`\n${ok} ok / ${fails.length} fail`);
 if (fails.length) process.exit(1);
