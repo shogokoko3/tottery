@@ -1,6 +1,14 @@
+import {
+  chooseArmyPlan,
+  strategicDiscards,
+  arrangeArmy,
+  formationMetrics,
+} from "../src/game/cpu-strategy.js";
+import { opponentKingBelief } from "../src/game/king-belief.js";
 import { cpuInformedAction } from "../src/game/cpu-informed.js";
 // Offline experiment only. Uses the real reducer; never connects to production.
 import fs from "node:fs";
+import path from "node:path";
 import assert from "node:assert/strict";
 import { reducer, autoArrange } from "../src/game/reducer.js";
 import { enrichAction } from "../src/game/actions.js";
@@ -35,7 +43,9 @@ const types = Object.keys(groups),
   seeds = Number(process.env.SEEDS || 60),
   cap = Number(process.env.TURN_CAP || 160);
 const policies = (process.env.POLICIES || "stock,informed").split(",");
+const strategicSetup = process.env.STRATEGIC_SETUP === "1";
 const output = process.env.OUTPUT || "reports/area-matchups/results.json";
+fs.mkdirSync(path.dirname(output), { recursive: true });
 const realRandom = Math.random;
 function rng(seed) {
   let n = seed >>> 0;
@@ -73,6 +83,7 @@ function setup(seed, kings) {
       ruleVersion: RULE_VERSION,
     },
   );
+  const formations = [];
   for (let guard = 0; s.phase !== "play" && guard < 120; guard++) {
     if (s.interstitial) {
       s = reducer(s, { type: "DISMISS_INTERSTITIAL" });
@@ -93,13 +104,43 @@ function setup(seed, kings) {
     if (s.phase === "mulligan") {
       s = reducer(
         s,
-        enrichAction({ type: "CONFIRM_MULLIGAN", discardIds: [] }, s),
+        enrichAction(
+          {
+            type: "CONFIRM_MULLIGAN",
+            discardIds: strategicSetup
+              ? strategicDiscards(s, s.mulliganIdx, kings[s.mulliganIdx])
+              : [],
+          },
+          s,
+        ),
       );
       continue;
     }
     if (s.phase === "setup") {
       for (const player of [0, 1]) {
         if (s.setupDone[player]) continue;
+        if (strategicSetup) {
+          const plan = chooseArmyPlan(s, player, kings[player]);
+          assert(
+            plan,
+            JSON.stringify({
+              hand: s.players[player].hand,
+              kings,
+              player,
+              seed,
+            }),
+          );
+          const placement = arrangeArmy(s, player, plan);
+          formations[player] = formationMetrics(plan, placement, 9, player);
+          s = reducer(s, {
+            type: "SETUP_CONFIRM",
+            player,
+            kingId: plan.kingId,
+            placement,
+          });
+          assert(s.setupDone[player], "strategic setup accepted");
+          continue;
+        }
         const hand = s.players[player].hand;
         const order = shuffle(hand)
           .filter((c) => c.rank !== "K" || kings[player] === "K")
@@ -143,7 +184,7 @@ function setup(seed, kings) {
   if (s.interstitial) s = reducer(s, { type: "DISMISS_INTERSTITIAL" });
   assert.equal(s.phase, "play");
   kings.forEach((k, i) => assert.equal(kingRankOf(s, i), k));
-  return s;
+  return { ...s, experimentFormations: formations };
 }
 
 function play(base, first, seed, policy) {
@@ -157,6 +198,13 @@ function play(base, first, seed, policy) {
     steps = 0,
     extensions = 0,
     stopped = null;
+  const deduction = [0, 1].map(() => ({
+    moves: 0,
+    narrowed: 0,
+    inferred: 0,
+    candidateAttacks: 0,
+    inferredAttacks: 0,
+  }));
   const step = (act) => {
     const prior = s;
     s = reducer(s, act);
@@ -189,6 +237,21 @@ function play(base, first, seed, policy) {
       stopped = "no_action";
       break;
     }
+    if (act.type === "MOVE_PIECE") {
+      const b = opponentKingBelief(s, s.currentTurn),
+        d = deduction[s.currentTurn];
+      d.moves++;
+      if (b.excluded > 0) d.narrowed++;
+      if (b.inferred) d.inferred++;
+      const captured = new Set(
+        (act.captures || []).map((c) => s.board[c.row]?.[c.col]?.id),
+      );
+      captured.add(s.board[act.row]?.[act.col]?.id);
+      if (b.candidates.some((c) => captured.has(c.id))) {
+        d.candidateAttacks++;
+        if (b.inferred) d.inferredAttacks++;
+      }
+    }
     if (act.type === "__CPU_SHUFFLE") {
       step({ type: "SELECT_PIECE", id: act.aceId });
       for (const id of act.pickIds) step({ type: "TOGGLE_SHUFFLE_PICK", id });
@@ -218,6 +281,7 @@ function play(base, first, seed, policy) {
     turns: s.turnNo,
     uses: s.areas.map((a) => a?.uses || 0),
     extensions,
+    deduction,
   };
 }
 const results = [];
@@ -259,6 +323,7 @@ try {
               kings,
               seed,
               first,
+              formations: base.experimentFormations,
               ...play(base, first, seed + first * 104729, policy),
             });
         }
@@ -297,6 +362,7 @@ try {
               started,
               updated: new Date().toISOString(),
               ruleVersion: RULE_VERSION,
+              strategicSetup,
               seeds,
               cap,
               setupResamples,

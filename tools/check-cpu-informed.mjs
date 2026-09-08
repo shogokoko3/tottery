@@ -23,8 +23,9 @@ assert.equal(
 );
 const promoted = reducer(palace, choose(palace));
 assert.equal(promoted.currentTurn, 1, "palace consumes turn");
-const sky = areaFixture("sky"),
-  transform = choose(sky);
+const sky = areaFixture("sky");
+sky.pieces.fx1.rank = "2";
+const transform = choose(sky);
 assert.equal(transform.type, "USE_AREA");
 assert.notEqual(sky.pieces[transform.pieceId].rank, "A", "preserve A");
 const transformed = reducer(sky, transform);
@@ -106,3 +107,34 @@ for (const p of Object.values(small.pieces)) {
 const smallAct = choose(small);
 assert.equal(smallAct.type, "MOVE_PIECE");
 assert.notEqual(reducer(small, smallAct), small, "5x5 move is legal");
+// 攻撃できないとき、Aを使って凍った主力を復帰させる。
+const frozen = areaFixture("ice");
+frozen.areas = [null, null];
+frozen.board[0][4] = null;
+frozen.pieces.fx4.col = 0;
+frozen.board[0][0] = frozen.pieces.fx4;
+frozen.pieces.fx1.frozenUntil = 20;
+frozen.pieces.fx2.rank = "2";
+const rescue = choose(frozen);
+assert.equal(rescue.type, "__CPU_SHUFFLE");
+assert(rescue.pickIds.includes("fx1"));
+// 敵の王が見えていて、そこへ10の2回移動で届くなら踏み台のマスを選ぶ。
+const knight = areaFixture("sky");
+knight.areas = [null, null];
+knight.players[0].skyTwice = true;
+knight.pieces.fx0.col = 0;
+for (const p of Object.values(knight.pieces))
+  if (!["fx0", "fx2", "fx4"].includes(p.id)) p.alive = false;
+knight.pieces.fx2.row = 6;
+knight.pieces.fx2.col = 4;
+knight.pieces.fx4.row = 2;
+knight.pieces.fx4.col = 4;
+knight.pieces.fx4.revealed = true;
+knight.board = Array.from({ length: 9 }, () => Array(9).fill(null));
+for (const p of Object.values(knight.pieces))
+  if (p.alive) knight.board[p.row][p.col] = p;
+const first = choose(knight);
+assert.equal(first.pieceId, "fx2");
+assert.equal(first.row, 4);
+assert([3, 5].includes(first.col));
+console.log("A thaw rescue and two-action knight attack passed");

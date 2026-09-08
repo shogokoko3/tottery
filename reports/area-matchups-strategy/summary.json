@@ -1,0 +1,297 @@
+{
+  "matrix": {
+    "earth": {
+      "sea": {
+        "wins": 382,
+        "losses": 213,
+        "draws": 0,
+        "unfinished": 5,
+        "rate": 64.2016806722689
+      },
+      "forest": {
+        "wins": 307,
+        "losses": 247,
+        "draws": 0,
+        "unfinished": 46,
+        "rate": 55.415162454873645
+      },
+      "ice": {
+        "wins": 298,
+        "losses": 254,
+        "draws": 0,
+        "unfinished": 48,
+        "rate": 53.98550724637681
+      },
+      "sky": {
+        "wins": 185,
+        "losses": 397,
+        "draws": 0,
+        "unfinished": 18,
+        "rate": 31.786941580756015
+      },
+      "palace": {
+        "wins": 395,
+        "losses": 196,
+        "draws": 0,
+        "unfinished": 9,
+        "rate": 66.83587140439933
+      }
+    },
+    "sea": {
+      "earth": {
+        "wins": 213,
+        "losses": 382,
+        "draws": 0,
+        "unfinished": 5,
+        "rate": 35.79831932773109
+      },
+      "forest": {
+        "wins": 181,
+        "losses": 419,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 30.166666666666668
+      },
+      "ice": {
+        "wins": 370,
+        "losses": 225,
+        "draws": 0,
+        "unfinished": 5,
+        "rate": 62.18487394957983
+      },
+      "sky": {
+        "wins": 122,
+        "losses": 478,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 20.333333333333332
+      },
+      "palace": {
+        "wins": 300,
+        "losses": 276,
+        "draws": 0,
+        "unfinished": 24,
+        "rate": 52.083333333333336
+      }
+    },
+    "forest": {
+      "earth": {
+        "wins": 247,
+        "losses": 307,
+        "draws": 0,
+        "unfinished": 46,
+        "rate": 44.584837545126355
+      },
+      "sea": {
+        "wins": 419,
+        "losses": 181,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 69.83333333333333
+      },
+      "ice": {
+        "wins": 317,
+        "losses": 234,
+        "draws": 0,
+        "unfinished": 49,
+        "rate": 57.53176043557169
+      },
+      "sky": {
+        "wins": 193,
+        "losses": 400,
+        "draws": 0,
+        "unfinished": 7,
+        "rate": 32.546374367622256
+      },
+      "palace": {
+        "wins": 368,
+        "losses": 232,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 61.333333333333336
+      }
+    },
+    "ice": {
+      "earth": {
+        "wins": 254,
+        "losses": 298,
+        "draws": 0,
+        "unfinished": 48,
+        "rate": 46.01449275362319
+      },
+      "sea": {
+        "wins": 225,
+        "losses": 370,
+        "draws": 0,
+        "unfinished": 5,
+        "rate": 37.81512605042017
+      },
+      "forest": {
+        "wins": 234,
+        "losses": 317,
+        "draws": 0,
+        "unfinished": 49,
+        "rate": 42.46823956442831
+      },
+      "sky": {
+        "wins": 180,
+        "losses": 418,
+        "draws": 0,
+        "unfinished": 2,
+        "rate": 30.100334448160535
+      },
+      "palace": {
+        "wins": 308,
+        "losses": 292,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 51.333333333333336
+      }
+    },
+    "sky": {
+      "earth": {
+        "wins": 397,
+        "losses": 185,
+        "draws": 0,
+        "unfinished": 18,
+        "rate": 68.21305841924399
+      },
+      "sea": {
+        "wins": 478,
+        "losses": 122,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 79.66666666666667
+      },
+      "forest": {
+        "wins": 400,
+        "losses": 193,
+        "draws": 0,
+        "unfinished": 7,
+        "rate": 67.45362563237774
+      },
+      "ice": {
+        "wins": 418,
+        "losses": 180,
+        "draws": 0,
+        "unfinished": 2,
+        "rate": 69.89966555183946
+      },
+      "palace": {
+        "wins": 393,
+        "losses": 149,
+        "draws": 0,
+        "unfinished": 58,
+        "rate": 72.50922509225093
+      }
+    },
+    "palace": {
+      "earth": {
+        "wins": 196,
+        "losses": 395,
+        "draws": 0,
+        "unfinished": 9,
+        "rate": 33.16412859560068
+      },
+      "sea": {
+        "wins": 276,
+        "losses": 300,
+        "draws": 0,
+        "unfinished": 24,
+        "rate": 47.916666666666664
+      },
+      "forest": {
+        "wins": 232,
+        "losses": 368,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 38.666666666666664
+      },
+      "ice": {
+        "wins": 292,
+        "losses": 308,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 48.666666666666664
+      },
+      "sky": {
+        "wins": 149,
+        "losses": 393,
+        "draws": 0,
+        "unfinished": 58,
+        "rate": 27.490774907749078
+      }
+    }
+  },
+  "forest_before": {
+    "wins": 1354,
+    "losses": 1517,
+    "draws": 2,
+    "unfinished": 127,
+    "rate": 47.161267850923025
+  },
+  "forest_after": {
+    "wins": 1544,
+    "losses": 1354,
+    "draws": 0,
+    "unfinished": 102,
+    "rate": 53.278122843340235
+  },
+  "forest_difference_ci95": [
+    4.029378375172769,
+    8.243759493822289
+  ],
+  "identical_nonforest_games": 6000,
+  "deduction": {
+    "earth": {
+      "moves": 28120,
+      "narrowed": 22409,
+      "inferred": 3228,
+      "candidateAttacks": 8584,
+      "inferredAttacks": 72
+    },
+    "sea": {
+      "moves": 11859,
+      "narrowed": 1751,
+      "inferred": 628,
+      "candidateAttacks": 10624,
+      "inferredAttacks": 71
+    },
+    "forest": {
+      "moves": 25080,
+      "narrowed": 24738,
+      "inferred": 16412,
+      "candidateAttacks": 5174,
+      "inferredAttacks": 1178
+    },
+    "ice": {
+      "moves": 24607,
+      "narrowed": 5105,
+      "inferred": 2127,
+      "candidateAttacks": 11177,
+      "inferredAttacks": 45
+    },
+    "sky": {
+      "moves": 27789,
+      "narrowed": 2088,
+      "inferred": 3586,
+      "candidateAttacks": 15198,
+      "inferredAttacks": 276
+    },
+    "palace": {
+      "moves": 13854,
+      "narrowed": 2267,
+      "inferred": 1092,
+      "candidateAttacks": 12013,
+      "inferredAttacks": 136
+    }
+  },
+  "formation_mean_covered": {
+    "earth": 9,
+    "sea": 9,
+    "forest": 9,
+    "ice": 9,
+    "sky": 9,
+    "palace": 9
+  }
+}

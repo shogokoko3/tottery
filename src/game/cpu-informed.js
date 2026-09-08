@@ -1,3 +1,10 @@
+import { moveSafety, knownThreats, transformationGain } from "./cpu-tactics.js";
+import {
+  chooseArmyPlan,
+  strategicDiscards,
+  arrangeArmy,
+} from "./cpu-strategy.js";
+import { opponentKingBelief } from "./king-belief.js";
 // 公開情報と自分だけが見抜いた情報を使うCPU。伏せ札の数字・王かどうかは評価に使わない。
 import { cpuAction, bestShuffle } from "./cpu.js";
 import { getLegalMoves, kingRankOf, territoryRows } from "./board.js";
@@ -11,6 +18,26 @@ import {
 } from "./areas.js";
 import { automaticAreaAction } from "./area-presentation.js";
 export function cpuInformedAction(state, player) {
+  if (state.phase === "mulligan" && state.mulliganIdx === player)
+    return {
+      type: "CONFIRM_MULLIGAN",
+      discardIds: strategicDiscards(state, player),
+    };
+  if (
+    state.phase === "setup" &&
+    state.setupPlacements &&
+    !state.setupDone[player] &&
+    (state.setupMode === "simultaneous" || state.setupIdx === player)
+  ) {
+    const plan = chooseArmyPlan(state, player);
+    if (plan)
+      return {
+        type: "SETUP_CONFIRM",
+        player,
+        kingId: plan.kingId,
+        placement: arrangeArmy(state, player, plan),
+      };
+  }
   if (
     state.phase !== "play" ||
     state.captureReveal ||
@@ -41,6 +68,8 @@ export function informedPlay(s) {
   const size = s.boardSize;
   const [lo, hi] = territoryRows(size, 1 - player);
   if (s.pendingKingChoice || s.kPlacement) return cpuAction(s, player);
+  const belief = opponentKingBelief(s, player);
+  const candidateIds = new Set(belief.candidates.map((p) => p.id));
   let moves = [];
   for (const p of Object.values(s.pieces)) {
     if (
@@ -64,14 +93,79 @@ export function informedPlay(s) {
         Math.random() * 0.8 +
         (Math.abs(m.row - goal) < Math.abs(p.row - goal) ? 1.2 : 0) -
         (p.isKing ? 2 : 0);
+      // 絞り込んだ王候補への攻撃と接近を評価する。内部の王IDは使わない。
+      const capturedIds = new Set(
+        (m.captures || [])
+          .map((c) => s.board[c.row]?.[c.col]?.id)
+          .filter(Boolean),
+      );
+      if (target && target.owner !== player) capturedIds.add(target.id);
+      score +=
+        80 *
+        belief.weight *
+        [...capturedIds].filter((id) => candidateIds.has(id)).length;
+      if (belief.excluded > 0 && !capturedIds.size) {
+        const distance = (row, col, c) =>
+          Math.max(Math.abs(row - c.row), Math.abs(col - c.col));
+        score +=
+          3 *
+          belief.weight *
+          belief.candidates.reduce(
+            (total, c) =>
+              total + distance(p.row, p.col, c) - distance(m.row, m.col, c),
+            0,
+          );
+      }
       if (target && target.owner !== player) {
         score += 12 + Math.max(0, (m.captures?.length || 1) - 1) * 10;
         if (isKnownTo(s, player, target)) {
           score += value[target.rank] * 0.7;
-          if (target.isKing) score += 80;
-          if (["4", "5"].includes(target.rank))
-            score -= p.isKing ? 100 : value[p.rank] * 2;
+
+          if (["4", "5"].includes(target.rank) && !target.isKing) {
+            const visibleKing = Object.values(s.pieces).find(
+              (c) =>
+                c.alive &&
+                c.owner !== player &&
+                isKnownTo(s, player, c) &&
+                c.isKing,
+            );
+            const risk = visibleKing
+              ? Number(visibleKing.rank === target.rank)
+              : s.areas?.[1 - player]
+                ? Number(s.areas[1 - player].type === "sea") * 0.5
+                : 0.25;
+            score -= risk * (p.isKing ? 100 : value[p.rank] * 2);
+          }
         }
+      }
+      score += moveSafety(s, player, p, m, capturedIds);
+      if (
+        p.rank === "10" &&
+        !s.extraMoveFor &&
+        (p.isKing || p.skyTwice || s.players[player].skyTwice)
+      ) {
+        const board = s.board.map((row) => row.slice());
+        board[p.row][p.col] = null;
+        const after = { ...p, row: m.row, col: m.col };
+        board[m.row][m.col] = after;
+        const follow = getLegalMoves(
+          after,
+          board,
+          size,
+          s.players[player].armyRankCounts,
+          kingRankOf(s, player),
+        );
+        const attacks = follow.filter(
+          (n) => board[n.row][n.col]?.owner === 1 - player,
+        );
+        if (attacks.length)
+          score +=
+            4 +
+            45 *
+              belief.weight *
+              Number(
+                attacks.some((n) => candidateIds.has(board[n.row][n.col].id)),
+              );
       }
       moves.push({
         score,
@@ -91,8 +185,18 @@ export function informedPlay(s) {
     const ids = skyCandidates(s, player).filter(
       (id) => s.pieces[id].rank !== "A" && !isFrozen(s, s.pieces[id]),
     );
-    ids.sort((a, b) => value[s.pieces[a].rank] - value[s.pieces[b].rank]);
-    if (ids.length) return { type: "USE_AREA", pieceId: ids[0] };
+    ids.sort(
+      (a, b) =>
+        transformationGain(s, player, b, "10") -
+        transformationGain(s, player, a, "10"),
+    );
+    // 王を取れる駒の動きを変えない。変身で戦力が落ちる場合は見送る。
+    const chosen = ids.find(
+      (id) =>
+        transformationGain(s, player, id, "10") >= 0 &&
+        !(best?.pieceId === id && best.score >= 12),
+    );
+    if (chosen) return { type: "USE_AREA", pieceId: chosen };
   }
   if (can.ok && can.type === "palace" && (!best || best.score < 12)) {
     // Continue promoting beyond opening, but do not skip an available capture.
@@ -101,13 +205,43 @@ export function informedPlay(s) {
     );
     ids.sort(
       (a, b) =>
-        value[promotedRank(s.pieces[b].rank)] -
-        value[s.pieces[b].rank] -
-        (value[promotedRank(s.pieces[a].rank)] - value[s.pieces[a].rank]),
+        transformationGain(s, player, b, promotedRank(s.pieces[b].rank)) -
+        transformationGain(s, player, a, promotedRank(s.pieces[a].rank)),
     );
+    const threats = knownThreats(s, player);
+    const king = Object.values(s.pieces).find(
+      (p) => p.alive && p.owner === player && p.isKing,
+    );
+    if (king && threats.has(`${king.row}/${king.col}`)) ids.length = 0;
     if (ids.length) return { type: "USE_AREA", pieceId: ids[0] };
   }
   const swap = bestShuffle(s, player);
+  if (swap && (!best || best.score < 12)) {
+    const frozen = Object.values(s.pieces)
+      .filter(
+        (p) =>
+          p.alive &&
+          p.owner === player &&
+          p.id !== swap.aceId &&
+          isFrozen(s, p),
+      )
+      .sort((a, b) => value[b.rank] - value[a.rank]);
+    const partners = Object.values(s.pieces).filter(
+      (p) =>
+        p.alive &&
+        p.owner === player &&
+        p.id !== swap.aceId &&
+        !frozen.includes(p) &&
+        !p.isKing,
+    );
+    const rescue = [...frozen, ...partners].slice(0, 2);
+    if (frozen.length && rescue.length === 2)
+      return {
+        type: "__CPU_SHUFFLE",
+        aceId: swap.aceId,
+        pickIds: rescue.map((p) => p.id),
+      };
+  }
   if (swap && swap.promising && (!best || best.score < 12))
     return { type: "__CPU_SHUFFLE", ...swap };
   if (best) {
