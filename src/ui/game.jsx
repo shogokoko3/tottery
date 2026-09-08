@@ -1950,7 +1950,7 @@ export function GameCore({
             onRoll={() =>
               y({
                 type: "ROLL_DICE_SINGLE",
-                playerIdx: E,
+                player: E,
               })
             }
             onNext={() =>
