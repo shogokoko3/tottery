@@ -1,3 +1,4 @@
+import { AppearanceSettings } from "./season.jsx";
 import { useEffect, useState } from "react";
 import {
   MUSIC_CREDIT,
@@ -30,6 +31,7 @@ import {
 import { forgetMe, loadProfile } from "../game/profile.js";
 import { loadBlocked, unblock } from "../game/blocked.js";
 import { deleteRank } from "../net/ranking.js";
+import { clearProfileSync } from "../net/profile-sync.js";
 import {
   PRIVACY_URL,
   hasPrivacyUrl,
@@ -297,6 +299,7 @@ export function CaptureRevealModal({ reveal, onClose, viewer, final }) {
                 {open ? (
                   <>
                     <CardFace
+                      owner={card.owner}
                       rank={card.rank}
                       suit={card.suit}
                       isKing={card.isKing}
@@ -331,7 +334,7 @@ export function CaptureRevealModal({ reveal, onClose, viewer, final }) {
   );
 }
 
-export function LogViewer({ piece, viewer, onClose, revealAll }) {
+export function LogViewer({ piece, viewer, onClose, revealAll, onMemo }) {
   let a = PLAYER_META[piece.owner],
     u = piece.owner === viewer || !piece.alive || revealAll,
     i = sanitizeHistory(piece, viewer, revealAll);
@@ -350,6 +353,11 @@ export function LogViewer({ piece, viewer, onClose, revealAll }) {
             <Close size={18} />
           </button>
         </div>
+        {onMemo && (
+          <button className="btn btn-ghost" onClick={onMemo}>
+            ✎ 自分だけの推理メモ
+          </button>
+        )}
         {u && (
           <CardGuide
             rank={piece.rank}
@@ -485,7 +493,7 @@ function BlockedListModal({ onClose }) {
 
 /**
  * 自分の記録を消す。ガイドライン 5.1.1(v)。
- * 端末の中(profile.js の forgetMe)と、公開ランキング(ranks/<id>)の両方を消す。
+ * 端末の中(profile.js の forgetMe)と、サーバー(ranks/<uid>・players/<uid>)の両方を消す。
  */
 function DeleteMeModal({ onClose, onDeleted }) {
   const me = loadProfile();
@@ -494,6 +502,8 @@ function DeleteMeModal({ onClose, onDeleted }) {
 
   async function run() {
     setStep("running");
+    // 送り待ちの成績があると、消したあとに再送されて戻ってしまうので先に捨てる
+    await clearProfileSync();
     // 先に公開されている側を消す。端末の中を先に消すと id を見失う
     const res = me.id ? await deleteRank(me.id) : { ok: true };
     if (!res.ok) {
@@ -628,6 +638,7 @@ export function SettingsModal({ onClose }) {
           onEditTitle={() => setEditing("title")}
         />
 
+        <AppearanceSettings />
         <p className="settings-head">音</p>
         <SoundSettings />
 
@@ -873,7 +884,12 @@ export function SetupEffectsModal({ effects, viewer, onClose }) {
             <div className="bonus-cards">
               {foeShown.map((c) => (
                 <div className="bonus-card" key={c.id}>
-                  <CardFace rank={c.rank} suit={c.suit} size="sm" />
+                  <CardFace
+                    owner={c.owner}
+                    rank={c.rank}
+                    suit={c.suit}
+                    size="sm"
+                  />
                   <span
                     className="bonus-card-who"
                     style={{ color: PLAYER_META[c.owner].color }}

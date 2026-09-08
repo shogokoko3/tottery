@@ -70,12 +70,14 @@ export function TutorialSelect({ onStart, onBack }) {
         <Crown size={16} />
         <span>レベル {level}</span>
         <small>
-          {level >= MAX_LEVEL ? "最高レベルです" : `次のレベルまであと ${next}`}
+          {level >= MAX_LEVEL
+            ? "最高レベルです"
+            : `次のレベルまであと ${next.toLocaleString()}`}
         </small>
       </div>
       <p className="hint">
         {TUTORIALS.some((t) => level < t.level)
-          ? "対局するとレベルが上がり、続きの話が開きます。勝つと2つぶん進みます。"
+          ? "話を終えるか対局すると経験値が入り、続きの話が開きます。"
           : "全12話。ここまでで、52枚すべての動きと王の力がそろいます。"}
       </p>
       <div className="menu-list">
@@ -105,8 +107,8 @@ export function TutorialSelect({ onStart, onBack }) {
           );
         })}
       </div>
-      <button className="btn btn-ghost" onClick={onBack}>
-        <ArrowLeft size={16} /> もどる
+      <button className="btn btn-ghost btn-home" onClick={onBack}>
+        <ArrowLeft size={16} /> ホームに戻る
       </button>
     </div>
   );

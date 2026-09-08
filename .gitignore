@@ -10,3 +10,6 @@ dist/
 assets/audio/原曲/
 # tools/bgm-seam.mjs が書き出す試聴用の音
 .bgm-seam/
+
+# スキン素材のビルド先。元ファイルは assets/skins/
+/skins/

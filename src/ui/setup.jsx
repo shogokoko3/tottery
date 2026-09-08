@@ -7,13 +7,14 @@ import {
 } from "../game/board.js";
 
 import { PLAYER_META, RANKS, SUITS, nameOf } from "../game/constants.js";
+import { hasAdjudicationRules } from "../game/rule-version.js";
 import { useWindowWidth } from "../hooks.js";
 import { ArrowLeft, Crown, Dice, Grid } from "../icons.jsx";
 import { CardBack, CardFace } from "./cards.jsx";
 import { CardGuide } from "./guides.jsx";
 import { useNames } from "./names.jsx";
 
-export function DiscardPanel({ cards, label, color }) {
+export function DiscardPanel({ cards, label, color, owner }) {
   if (!cards || cards.length === 0) return null;
   let n = [...cards].sort((a, u) => {
     let i = RANKS.indexOf(a.rank) - RANKS.indexOf(u.rank);
@@ -32,14 +33,14 @@ export function DiscardPanel({ cards, label, color }) {
       <div className="discard-row">
         {n.map((a) => (
           <div className="discard-card" key={a.id}>
-            <CardFace rank={a.rank} suit={a.suit} size="sm" />
+            <CardFace owner={owner} rank={a.rank} suit={a.suit} size="sm" />
           </div>
         ))}
       </div>
     </div>
   );
 }
-export function MulliganHand({ hand, selected, onToggle, focus }) {
+export function MulliganHand({ hand, selected, onToggle, focus, owner }) {
   const width = useWindowWidth();
   const wide = width >= 480;
   const size = width < 380 ? "sm" : "md";
@@ -56,7 +57,7 @@ export function MulliganHand({ hand, selected, onToggle, focus }) {
       }`}
       onClick={() => onToggle(card.id)}
     >
-      <CardFace rank={card.rank} suit={card.suit} size={size} />
+      <CardFace owner={owner} rank={card.rank} suit={card.suit} size={size} />
       {selected.has(card.id) && <span className="discard-badge">✕</span>}
     </div>
   );
@@ -133,7 +134,12 @@ export function WaitingWithBoard({
                     {w && (
                       <div className="mini-piece">
                         {z ? (
-                          <CardFace rank={w.rank} suit={w.suit} size="sm" />
+                          <CardFace
+                            owner={w.owner}
+                            rank={w.rank}
+                            suit={w.suit}
+                            size="sm"
+                          />
                         ) : (
                           <CardBack
                             colorHex={PLAYER_META[w.owner].color}
@@ -176,7 +182,12 @@ export function WaitingWithBoard({
                   <div className="mini-cell" key={`${v}-${p}`}>
                     {z && (
                       <div className="mini-piece">
-                        <CardFace rank={z.rank} suit={z.suit} size="sm" />
+                        <CardFace
+                          owner={viewer}
+                          rank={z.rank}
+                          suit={z.suit}
+                          size="sm"
+                        />
                       </div>
                     )}
                   </div>
@@ -199,7 +210,12 @@ export function WaitingWithBoard({
           <div className="hand-grid">
             {f.map((r) => (
               <div className="hand-card" key={r.id}>
-                <CardFace rank={r.rank} suit={r.suit} size="sm" />
+                <CardFace
+                  owner={viewer}
+                  rank={r.rank}
+                  suit={r.suit}
+                  size="sm"
+                />
               </div>
             ))}
           </div>
@@ -283,7 +299,8 @@ function previewMoves(state, pIdx, size, placement, card, at) {
     alive: true,
   };
   board[at.row][at.col] = piece;
-  return getLegalMoves(piece, board, size, {});
+  // 布陣中はまだ王が決まっていない。伸びる前の素の動きを出す
+  return getLegalMoves(piece, board, size, {}, null);
 }
 
 export function SetupWaiting({
@@ -347,6 +364,7 @@ export function SetupWaiting({
                       <div className="mini-piece">
                         {mine ? (
                           <CardFace
+                            owner={piece.owner}
                             rank={piece.rank}
                             suit={piece.suit}
                             size="sm"
@@ -403,6 +421,9 @@ export function PlaceStep({
   const placement = state.setupPlacements[pIdx];
   const placedIds = new Set(Object.keys(placement));
   const placedCount = placedIds.size;
+  const adoptionTotal = player.hand
+    .filter((c) => placedIds.has(c.id))
+    .reduce((sum, c) => sum + RANKS.indexOf(c.rank) + 1, 0);
   const flipped = pIdx === 1;
   const hand = player.hand
     .filter((c) => !placedIds.has(c.id))
@@ -539,6 +560,16 @@ export function PlaceStep({
         paused={paused}
         limitMs={limitMs}
       />
+      {/* 絵札に偏って盤に並べきれない手札は、数字の札で配り直している。
+          黙って差し替えると「引いた札と違う」と読まれるので、必ず伝える */}
+      {state.handRescued && state.handRescued[pIdx] && (
+        <p className="setup-rescue">
+          手札が絵札（J・Q・K）に偏っていて、盤に並べきれませんでした。
+          <br />
+          手札と捨て札を予備札に戻し、数字の札だけで配り直しています。
+          引き直しはできません。
+        </p>
+      )}
       {terse ? (
         <p className="hint">
           <span className="legend-dot" />
@@ -556,6 +587,12 @@ export function PlaceStep({
           <strong className="hint-count">
             {placedCount}/{slots}
           </strong>
+        </p>
+      )}
+      {hasAdjudicationRules(state.ruleVersion) && !terse && (
+        <p className="setup-adoption-total">
+          採用合計：<strong>{adoptionTotal}</strong>{" "}
+          <span className="hint">終局不能の判定では低い側が勝ち</span>
         </p>
       )}
       <div className="arrange-layout">
@@ -596,6 +633,7 @@ export function PlaceStep({
                       onPointerDown={(e) => startDrag(e, here.id, { row, col })}
                     >
                       <CardFace
+                        owner={pIdx}
                         rank={here.card.rank}
                         suit={here.card.suit}
                         size="sm"
@@ -633,7 +671,7 @@ export function PlaceStep({
               onPointerDown={(e) => startDrag(e, card.id, null)}
               key={card.id}
             >
-              <CardFace rank={card.rank} suit={card.suit} />
+              <CardFace owner={pIdx} rank={card.rank} suit={card.suit} />
             </div>
           ))}
         </div>
@@ -657,7 +695,12 @@ export function PlaceStep({
       </div>
       {drag && dragCard && (
         <div className="drag-ghost" style={{ left: drag.x, top: drag.y }}>
-          <CardFace rank={dragCard.rank} suit={dragCard.suit} size="sm" />
+          <CardFace
+            owner={pIdx}
+            rank={dragCard.rank}
+            suit={dragCard.suit}
+            size="sm"
+          />
         </div>
       )}
     </div>
@@ -757,6 +800,7 @@ export function KingStep({
                       } ${selectable ? "" : "mini-piece-disabled"}`}
                     >
                       <CardFace
+                        owner={pIdx}
                         rank={card.rank}
                         suit={card.suit}
                         size="sm"
@@ -798,17 +842,34 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
   let n = state.kPlacement.owner,
     [a, u] = territoryRows(size, n),
     i = n === 1;
+  // JとQが同じ手で倒れると2枚めくれる。どちらから置くかを選べるようにする
+  const cards = state.kPlacement.cards;
+  const [pick, setPick] = (0, useState)(0);
+  const chosen = cards[Math.min(pick, cards.length - 1)];
   return (
     <div className="modal-overlay">
       <div className="modal-panel">
         <h3>予備札を配置</h3>
         <p className="hint">
-          Kの効果で引いた1枚。自陣の空きマスに配置できます。
+          {cards.length > 1
+            ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスに配置できます。`
+            : "Kの効果で引いた1枚。自陣の空きマスに配置できます。"}
         </p>
-        <CardGuide
-          rank={state.kPlacement.card.rank}
-          suit={state.kPlacement.card.suit}
-        />
+        {cards.length > 1 ? (
+          <div className="reserve-picks">
+            {cards.map((c, idx) => (
+              <button
+                key={c.id}
+                className={`reserve-pick ${chosen.id === c.id ? "reserve-pick-on" : ""}`}
+                onClick={() => setPick(idx)}
+              >
+                <CardGuide rank={c.rank} suit={c.suit} />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <CardGuide rank={chosen.rank} suit={chosen.suit} />
+        )}
         <div
           className="mini-board"
           style={{
@@ -841,6 +902,7 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
                         type: "PLACE_RESERVE_CARD",
                         row: m,
                         col: s,
+                        cardId: chosen.id,
                       });
                   }}
                   key={`${m}-${s}`}
@@ -851,7 +913,12 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
                     <div className="mini-piece">
                       {p.owner === n ? (
                         <>
-                          <CardFace rank={p.rank} suit={p.suit} size="sm" />
+                          <CardFace
+                            owner={p.owner}
+                            rank={p.rank}
+                            suit={p.suit}
+                            size="sm"
+                          />
                           {p.isKing && (
                             <Crown size={12} className="king-badge" />
                           )}

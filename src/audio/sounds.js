@@ -16,6 +16,9 @@ export const SOUNDS = {
   capture: { file: "se-capture.m4a", gain: 1 },
   /** 持ち時間が残りわずかになった */
   tick: { file: "se-tick.m4a", gain: 0.7 },
+  // マジシャン専用に合成したオリジナル音源（効果音ラボの素材ではない）。
+  aceSwap: { file: "se-ace-swap.m4a", gain: 1 },
+  aceCapture: { file: "se-ace-capture.m4a", gain: 1 },
 };
 
 /**

@@ -46,13 +46,13 @@ const support = read("src/game/support.js") || "";
 見る(
   "通報の導線がある",
   fs.existsSync("src/net/reports.js") &&
-    /PlayerActionModal/.test(read("src/ui/ranking.jsx") || ""),
+    /PlayerActionModal/.test(read("src/ui/season.jsx") || ""),
   "ランキングの行から通報できるようにする(src/ui/report.jsx)",
 );
 見る(
   "ブロックの手立てがある",
   fs.existsSync("src/game/blocked.js") &&
-    /withoutBlocked/.test(read("src/ui/ranking.jsx") || ""),
+    /withoutBlocked/.test(read("src/ui/season.jsx") || ""),
   "src/game/blocked.js を使って、見えなくした相手を一覧から外す",
 );
 見る(

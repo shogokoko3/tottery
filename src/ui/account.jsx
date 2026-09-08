@@ -1,3 +1,4 @@
+import { useCollection } from "../skins/store.js";
 /**
  * プレイヤーのアカウント画面。
  *
@@ -6,7 +7,6 @@
  */
 import { useState } from "react";
 import {
-  LEVEL_STEP,
   MAX_LEVEL,
   MAX_NAME_LEN,
   levelOf,
@@ -16,9 +16,10 @@ import {
   nameError,
   normalizeName,
   saveName,
-  toNextLevel,
+  levelProgress,
 } from "../game/profile.js";
-import { TITLES, hasTitle, titleOf } from "../game/titles.js";
+import { availableTitles, hasTitle, titleOf } from "../game/titles.js";
+import { publishPlayer } from "../net/players.js";
 import { ICONS, hasIcon } from "../game/icons.js";
 import { Check, Close, Sparkle } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
@@ -46,7 +47,7 @@ function NameField({ value, onChange, error }) {
 }
 
 /** はじめて遊ぶときの登録画面 */
-export function NameSetupScreen({ onDone }) {
+export function NameSetupScreen({ onDone, notice }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState(null);
 
@@ -56,7 +57,10 @@ export function NameSetupScreen({ onDone }) {
       setError(bad);
       return;
     }
-    onDone(saveName(value));
+    const next = saveName(value);
+    // 登録した人の台帳へ。はじめてなので登録日も書く
+    publishPlayer(next, { since: Date.now() });
+    onDone(next);
   }
 
   return (
@@ -64,6 +68,7 @@ export function NameSetupScreen({ onDone }) {
       <div className="name-card">
         <p className="name-eyebrow">はじめまして</p>
         <h2>名前を決めてください</h2>
+        {notice && <p className="name-notice">{notice}</p>}
         <p className="hint">
           対戦中の手番や記録に、この名前が出ます。
           <br />
@@ -100,6 +105,7 @@ export function NameEditModal({ onClose, onSaved }) {
       return;
     }
     const next = saveName(value);
+    publishPlayer(next);
     onSaved && onSaved(next);
     onClose();
   }
@@ -144,13 +150,12 @@ export function NameEditModal({ onClose, onSaved }) {
  * 「いまの自分」がひと目で分かる形にした。
  */
 export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
-  const level = levelOf(profile);
-  const next = toNextLevel(profile);
+  const { season } = useCollection();
+  const progress = levelProgress(profile);
+  const level = progress.level;
   const rate = profile.plays
     ? Math.round((profile.wins / profile.plays) * 100)
     : null;
-  // 次のレベルまでの進み具合。最高レベルなら満杯にする
-  const step = next === null ? 1 : (LEVEL_STEP - next) / LEVEL_STEP;
 
   return (
     <div className="account-card">
@@ -160,7 +165,12 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
           onClick={onEditIcon}
           title="アイコンを選ぶ"
         >
-          <PlayerIcon icon={profile.icon} name={profile.name} size="lg" />
+          <PlayerIcon
+            icon={profile.icon}
+            name={profile.name}
+            size="lg"
+            frame={season.frame}
+          />
           <span className="account-mark-edit">変える</span>
         </button>
         <div className="account-id">
@@ -185,12 +195,15 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
       </div>
 
       <div className="level-bar">
-        <span className="level-fill" style={{ width: `${step * 100}%` }} />
+        <span
+          className="level-fill"
+          style={{ width: `${Math.round(progress.ratio * 100)}%` }}
+        />
       </div>
       <p className="level-note">
-        {next === null
-          ? "これ以上は上がりません"
-          : `次のレベルまであと${next}(1局で1、勝つと2)`}
+        {progress.done
+          ? `経験値 ${progress.xp.toLocaleString()} · これ以上は上がりません`
+          : `次のレベルまであと ${progress.left.toLocaleString()}(${progress.into.toLocaleString()} / ${progress.need.toLocaleString()})`}
       </p>
 
       <div className="stat-row">
@@ -201,6 +214,10 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
         <div className="stat">
           <b>{profile.wins}</b>
           <span>勝ち</span>
+        </div>
+        <div className="stat">
+          <b>{profile.draws || 0}</b>
+          <span>引き分け</span>
         </div>
         <div className="stat">
           <b>{rate === null ? "—" : `${rate}%`}</b>
@@ -222,7 +239,9 @@ export function IconPickModal({ onClose, onSaved }) {
   const [picked, setPicked] = useState(profile.icon || "initial");
 
   function submit() {
-    onSaved && onSaved(saveIcon(picked));
+    const next = saveIcon(picked);
+    publishPlayer(next);
+    onSaved && onSaved(next);
     onClose();
   }
 
@@ -274,7 +293,7 @@ export function IconPickModal({ onClose, onSaved }) {
 /**
  * 称号を選ぶ画面。
  *
- * まだ手に入れていないものも並べて、手に入れ方を見せる。
+ * シークレット以外は、まだ手に入れていないものも並べて、手に入れ方を見せる。
  * 対局数などで決まるものは、条件を満たした時点で自動で使えるようになる。
  */
 export function TitlePickModal({ onClose, onSaved }) {
@@ -282,7 +301,9 @@ export function TitlePickModal({ onClose, onSaved }) {
   const [picked, setPicked] = useState(titleOf(profile).id);
 
   function submit() {
-    onSaved && onSaved(saveTitle(picked));
+    const next = saveTitle(picked);
+    publishPlayer(next);
+    onSaved && onSaved(next);
     onClose();
   }
 
@@ -297,8 +318,9 @@ export function TitlePickModal({ onClose, onSaved }) {
         </div>
         <p className="hint">名前の横に付きます。対戦相手にも見えます。</p>
         <div className="title-list">
-          {TITLES.map((t) => {
+          {availableTitles(profile).map((t) => {
             const owned = hasTitle(profile, t.id);
+            if (t.secret && !owned) return null;
             return (
               <button
                 className={`title-choice ${picked === t.id ? "title-choice-on" : ""} ${

@@ -1,8 +1,68 @@
 /* 管理画面だけの見た目。本体の styles.css の上に重ねる */
+.admin-root > .top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+}
+.admin-root > .top-bar > .top-left:empty {
+  display: none;
+}
+.admin-root .brand {
+  font-size: 19px;
+  letter-spacing: 0.08em;
+}
+.admin-login {
+  width: 100%;
+  max-width: 480px;
+  padding-top: 40px;
+}
+.admin-login .admin-input {
+  min-width: 0;
+  font-size: 16px;
+}
+.admin-game-link {
+  display: block;
+  text-align: center;
+  color: var(--gold-soft);
+  padding: 10px;
+}
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+.admin-nav a {
+  padding: 9px 12px;
+  border: 1px solid var(--btn-edge);
+  border-radius: 8px;
+  color: var(--gold-soft);
+  text-decoration: none;
+  font-size: 13px;
+}
+.admin-help {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.admin-help summary {
+  cursor: pointer;
+  padding: 6px 0;
+}
+.admin-card[id] {
+  scroll-margin-top: 16px;
+}
 .admin-stage {
+  /* 本体の .stage は flex。そのままだと欄が縮まず、
+     中の広い表が画面の外へはみ出す */
+  display: block;
   padding: 14px 12px 40px;
   max-width: 1100px;
   margin: 0 auto;
+}
+.admin-card {
+  min-width: 0;
 }
 .admin-card {
   background: rgba(9, 20, 38, 0.66);
@@ -48,49 +108,189 @@
   color: #ffd2d6;
   font-size: 13px;
 }
-/* 横に長い表は、表だけを横に送る */
-.admin-table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+
+/* --- 名前の一覧。押すと詳細が出る --- */
+.admin-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
 }
-.admin-table {
-  border-collapse: collapse;
+.admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   width: 100%;
-  font-size: 13px;
-  white-space: nowrap;
-}
-.admin-table th,
-.admin-table td {
-  padding: 7px 9px;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.14);
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(4, 10, 20, 0.45);
+  color: var(--text);
   text-align: left;
-  vertical-align: middle;
+  cursor: pointer;
 }
-.admin-table th {
-  color: var(--text-dim);
-  font-weight: 400;
+.admin-row:hover {
+  border-color: var(--gold-deep);
+}
+.admin-row.is-dim {
+  opacity: 0.55;
+}
+.admin-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.admin-row-main b {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.admin-row-main small {
   font-size: 11px;
-  letter-spacing: 0.06em;
-}
-.admin-name {
-  font-weight: 700;
-  color: var(--ink, var(--text));
-}
-.admin-num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.admin-id,
-.admin-json {
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 11px;
   color: var(--text-dim);
 }
-.admin-json {
-  white-space: normal;
+.admin-row-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  color: var(--text-dim);
+}
+.admin-row-side em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--card-red);
+  border: 1px solid var(--card-red);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+/* --- 詳細。スマホでは下から、広い画面では真ん中に --- */
+.admin-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(4, 10, 20, 0.72);
+  padding: 0;
+}
+.admin-panel {
+  width: 100%;
   max-width: 520px;
+  max-height: 86dvh;
+  overflow-y: auto;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  border-radius: 14px 14px 0 0;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #16294a 0%, #0e1c33 100%);
 }
-.admin-foot {
-  text-align: center;
+.admin-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  position: sticky;
+  top: -16px;
+  background: #16294a;
+  padding: 10px 0;
+  z-index: 1;
+}
+.admin-panel-head b {
+  font-family: "Shippori Mincho", serif;
+  font-size: 19px;
+  overflow-wrap: anywhere;
+}
+.admin-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.14);
+  font-size: 13px;
+}
+.admin-line > span {
+  flex: none;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.admin-line > b {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.admin-panel-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.admin-panel-actions .btn {
+  flex: 1;
+  min-height: 44px;
+}
+@media (min-width: 640px) {
+  .admin-sheet {
+    align-items: center;
+    padding: 20px;
+  }
+  .admin-panel {
+    border-radius: 14px;
+  }
+}
+
+/* --- 手紙を書く欄 --- */
+.letter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+.letter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.letter-field > span {
   font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+.letter-field textarea.admin-input {
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.7;
+}
+.letter-gifts-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.letter-gift-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.letter-gift-row .admin-input {
+  flex: 1;
+  min-width: 110px;
+}
+.letter-sent {
+  cursor: default;
+}
+.letter-sent:hover {
+  border-color: var(--line);
+}
+
+/* 運営としての uid。ルールに貼るので、選びやすく等幅で出す */
+.admin-uid code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  color: var(--gold-soft);
+  background: rgba(212, 175, 55, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  user-select: all;
 }

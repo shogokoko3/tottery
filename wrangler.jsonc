@@ -1,15 +1,14 @@
-// Cloudflare Workers(静的アセット配信)の設定。
-//
-// Cloudflare のダッシュボードで GitHub を繋ぐと、push のたびに
-//   ビルド   : npm ci && node build.mjs
-//   配信     : npx wrangler deploy
-// が走り、この設定に従って dist/ の中身をそのまま配る。
-// サーバー側のコード(main)は無い。ヘッダーは dist/_headers を読む。
+// 静的ゲームと月間シーズン API を同じオリジンで配信する。
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "tottery",
+  "main": "src/server/worker.js",
   "compatibility_date": "2026-09-01",
   "assets": {
-    "directory": "./dist"
-  }
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "durable_objects": {"bindings": [{"name": "SEASONS", "class_name": "SeasonLedger"}]},
+  "migrations": [{"tag": "season-v1", "new_sqlite_classes": ["SeasonLedger"]}]
 }

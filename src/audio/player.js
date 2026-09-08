@@ -36,6 +36,7 @@ let duck = null;
 let seBus = null;
 /** 効果音id -> AudioBuffer。解錠のときにまとめて読む */
 const buffers = new Map();
+const filmNodes = new WeakMap();
 /** テストプレイ中だけ、鳴らした効果音を控えておく。ふだんは null */
 let played = null;
 let soundsLoading = false;
@@ -215,18 +216,49 @@ function ensureSounds() {
  * まだ読み終わっていなければ何もしない。待って鳴らすと、
  * 操作から遅れて鳴ることになって、かえって気持ちが悪い。
  */
-export function playSound(id) {
+export function playSound(id, { rate = 1 } = {}) {
   const sound = SOUNDS[id];
   const buf = buffers.get(id);
   if (!sound || !buf || !ctx || !seBus || conf().muted) return;
   if (ctx.state === "suspended") return;
   const src = ctx.createBufferSource();
   src.buffer = buf;
+  src.playbackRate.value = Math.max(0.5, Math.min(2, rate));
   const gain = ctx.createGain();
   gain.gain.value = sound.gain;
   src.connect(gain).connect(seBus);
   src.start(0);
   if (played) played.push(id);
+  return () => {
+    try {
+      src.stop();
+    } catch {}
+  };
+}
+
+// Route movie audio through the same SE bus, including on iOS where setting a
+// media element's volume alone is ineffective. Reuse the node in StrictMode.
+export function connectFilmSound(el) {
+  if (ensureGraph()) {
+    try {
+      let node = filmNodes.get(el);
+      if (!node) {
+        const source = ctx.createMediaElementSource(el),
+          gain = ctx.createGain();
+        gain.gain.value = 0.7;
+        source.connect(gain);
+        node = { source, gain };
+        filmNodes.set(el, node);
+      }
+      node.gain.connect(seBus);
+      el.volume = 1;
+      return () => node.gain.disconnect();
+    } catch {
+      /* Media without Web Audio still plays at the saved volume. */
+    }
+  }
+  el.volume = conf().se * 0.7;
+  return () => {};
 }
 
 /**
@@ -347,13 +379,20 @@ export function duckMusic(ms) {
   duck.gain.setValueAtTime(duck.gain.value, now);
   duck.gain.linearRampToValueAtTime(DUCK_LEVEL, now + 0.08);
   clearTimeout(duckTimer);
-  duckTimer = setTimeout(() => {
+  const release = () => {
     if (!ctx || !duck) return;
     const t = ctx.currentTime;
     duck.gain.cancelScheduledValues(t);
     duck.gain.setValueAtTime(duck.gain.value, t);
     duck.gain.linearRampToValueAtTime(1, t + 0.35);
-  }, hold);
+  };
+  const timer = setTimeout(release, hold);
+  duckTimer = timer;
+  return () => {
+    if (duckTimer !== timer) return;
+    clearTimeout(timer);
+    release();
+  };
 }
 
 /**

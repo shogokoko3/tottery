@@ -128,6 +128,8 @@ const EP1_DECK = fill(
 const EP1 = {
   id: 1,
   level: 1,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 100,
   title: "第1話 はじめの一局",
   subtitle: "並べて、動かして、王を討つ",
   pool: CARD_POOLS.basic,
@@ -143,9 +145,8 @@ const EP1 = {
     // 王は c5 の 2♦
     //
     // 4♦ を c4 に置く。ここから c3 へ降りてくるので、王の 4♠ は素の射程
-    // (縦横2マス)だけで討ち取れる。王は必ず「盤に出した同じ数字の枚数」
-    // だけ距離が伸びるが、それを第1話で説明せずに使うと、初めての人は
-    // 「4は3マス動く駒」と覚えてしまう。この配置なら伸びが表に出ない
+    // (縦横2マス)だけで討ち取れる。4・5の王は自分の距離が伸びないので、
+    // ここは素の動きだけで話が済む(伸びるのは王以外の同じ数字のほう)
     placement: {
       t6: { row: 0, col: 2 },
       t8: { row: 1, col: 2 },
@@ -249,7 +250,7 @@ const EP1 = {
     },
     {
       at: myTurn,
-      text: "ここでは教えます。2マス先が相手の王です。4♠ を c5 へ。",
+      text: "続けてプレイを進めてみましょう。4♠ を2マス先の c5 へ。",
       need: { type: "MOVE_PIECE", pieceId: "t2", row: 0, col: 2 },
       focus: {
         cells: [
@@ -302,7 +303,9 @@ const EP2_DECK = fill(
 
 const EP2 = {
   id: 2,
-  level: 1,
+  level: 2,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 300,
   title: "第2話 王が継ぐ",
   subtitle: "王を取られても、終わらない",
   pool: CARD_POOLS.basic,
@@ -384,7 +387,7 @@ const EP2 = {
       focus: { cells: [{ row: 3, col: 2 }] },
     },
     {
-      text: "王は、盤に出した同じ数字の枚数だけ遠くまで動けます。2♠ は2枚なので1+2で3マス。",
+      text: "2か3の王は、採用した枚数×2マスぶん遠くまで動けます。2♠ は2枚なので1+2×2で5マス。",
       need: { type: "SETUP_CONFIRM" },
       focus: { button: true },
     },
@@ -408,7 +411,14 @@ const EP2 = {
       focus: { cells: [{ row: 4, col: 2 }] },
     },
     {
-      text: "新しい王で取り返します。c1 の 2♥ を c3 へ。",
+      // 王を討った駒はその場で表になる。ここは相手の駒がめくれるのが
+      // はっきり見える唯一の場面なので、黙って通すと「なぜ1枚だけ表なのか」
+      // が分からないまま残る。次の手で取り返す相手でもあるので、ここで言う
+      text: "王を討った駒は、その場で表になって名乗りを上げます。c3 の 3♦ がそれです。",
+      focus: { cells: [{ row: 2, col: 2 }] },
+    },
+    {
+      text: "名乗った 3♦ を、新しい王で取り返します。c1 の 2♥ を c3 へ。",
       need: { type: "MOVE_PIECE", pieceId: "t1", row: 2, col: 2 },
       focus: {
         cells: [
@@ -419,7 +429,7 @@ const EP2 = {
     },
     {
       at: myTurn,
-      text: "2マス先が相手の王です。2♥ を c5 へ。",
+      text: "続けてプレイを進めてみましょう。2♥ を2マス先の c5 へ。",
       need: { type: "MOVE_PIECE", pieceId: "t1", row: 0, col: 2 },
       focus: {
         cells: [
@@ -470,7 +480,9 @@ const EP3_DECK = fill(
 
 const EP3 = {
   id: 3,
-  level: 2,
+  level: 3,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 500,
   title: "第3話 道連れ",
   subtitle: "取られた駒が、相手を道連れにする",
   pool: CARD_POOLS.basic,
@@ -496,6 +508,9 @@ const EP3 = {
       { pieceId: "t10", row: 1, col: 4 },
       // こちらの 4♥ を取りに来る手。ここで道連れが起きる
       { pieceId: "t7", row: 3, col: 2 },
+      // 王は2マスずつしか進めないので、討つまでに1手はさまる。
+      // その間の相手の手。盤の隅を動くだけで、こちらの道はふさがない
+      { pieceId: "t10", row: 1, col: 3 },
     ],
   },
   steps: [
@@ -579,24 +594,35 @@ const EP3 = {
       text: "王が4か5のとき、盤に出した同じ数字が取られると、取った駒を道連れにします。",
     },
     {
-      // 4♥ はもう倒れている。枚数は布陣した時点で数えて固定なので倒れても
-      // 減らない。ここを言わないと「2+1で3マス」と計算が合わなくなる
-      text: "王は、盤に出した同じ数字の枚数だけ遠くまで動けます。4♥ が倒れても枚数は減りません。",
+      // 4・5の王は、自分ではなく「王以外の同じ数字」を伸ばす。
+      // ここを言わないと、王が4マス進めると思われて計算が合わなくなる
+      text: "4か5が王のとき、遠くまで動けるのは王ではなく、王以外の同じ数字のほうです。",
       focus: { cells: [{ row: 4, col: 2 }] },
     },
     {
-      text: "道が空きました。王の 4♠ は2+2で4マス。c1 から c5 へ。相手の王を討ちます。",
-      need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
+      text: "王の 4♠ は2マスのままです。道が空いたので、c1 から c3 へ進めてみましょう。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 2, col: 2 },
       focus: {
         cells: [
           { row: 4, col: 2 },
+          { row: 2, col: 2 },
+        ],
+      },
+    },
+    {
+      at: myTurn,
+      text: "続けてプレイを進めてみましょう。4♠ を c3 から c5 へ、もう2マス動かします。",
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
+      focus: {
+        cells: [
+          { row: 2, col: 2 },
           { row: 0, col: 2 },
         ],
       },
     },
     {
       at: atEnd,
-      text: "4か5を王にしたら、同じ数字を前に置くと相手は取りづらくなります。",
+      text: "4か5を王にしたら、同じ数字を前に置きます。道連れで守られ、その駒は遠くまで動けます。",
       end: true,
     },
   ],
@@ -638,7 +664,9 @@ const EP4_DECK = fill(
 
 const EP4 = {
   id: 4,
-  level: 3,
+  level: 4,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 700,
   title: "第4話 ふさがれる道",
   subtitle: "6は偶数、8は奇数",
   pool: CARD_POOLS.mid,
@@ -752,7 +780,7 @@ const EP4 = {
     },
     {
       at: myTurn,
-      text: "b5 の 8♠ で、隣の c5 にいる王を取ります。1マスも奇数です。",
+      text: "b5 の 8♠ で、隣の c5 にいる相手の駒を取ってみましょう。1マスも奇数です。",
       need: { type: "MOVE_PIECE", pieceId: "t1", row: 0, col: 2 },
       focus: { pieces: ["t1"], cells: [{ row: 0, col: 2 }] },
     },
@@ -800,7 +828,9 @@ const EP5_DECK = fill(
 
 const EP5 = {
   id: 5,
-  level: 3,
+  level: 5,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 900,
   title: "第5話 ななめの兄弟",
   subtitle: "7と9、そして王のまとめ取り",
   pool: CARD_POOLS.mid,
@@ -969,7 +999,9 @@ const EP6_DECK = fill(
 
 const EP6 = {
   id: 6,
-  level: 4,
+  level: 6,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 1100,
   title: "第6話 跳ぶ駒",
   subtitle: "10は、塞がれない",
   pool: CARD_POOLS.numbers,
@@ -1085,7 +1117,7 @@ const EP6 = {
     },
     {
       at: myTurn,
-      text: "2回目です。b3 から c5 へ跳んで、王を取ります。",
+      text: "2回目です。b3 から c5 へ跳んで、相手の駒を取ってみましょう。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
       focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
     },
@@ -1130,7 +1162,9 @@ const EP7_DECK = fill(
 
 const EP7 = {
   id: 7,
-  level: 5,
+  level: 7,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 1300,
   title: "第7話 果てまで走る",
   subtitle: "J は縦横、Q は斜め",
   pool: CARD_POOLS.high,
@@ -1250,7 +1284,7 @@ const EP7 = {
     },
     {
       at: myTurn,
-      text: "a5 の J♠ を横に2マス。c5 の王を取ります。",
+      text: "a5 の J♠ を横に2マス。c5 の相手の駒を取ってみましょう。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
       focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
     },
@@ -1298,7 +1332,9 @@ const EP8_DECK = fill(
 
 const EP8 = {
   id: 8,
-  level: 5,
+  level: 8,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 1500,
   title: "第8話 Kの王",
   subtitle: "失うほど、湧いてくる",
   pool: CARD_POOLS.court,
@@ -1386,7 +1422,7 @@ const EP8 = {
     },
     {
       at: myTurn,
-      text: "Kの王には力があります。J か Q が倒されるたび、配られなかった山(予備札)から1枚呼べます。",
+      text: "Kの王には力があります。J か Q が倒されるたび、配られなかった山(予備札)から1枚を表向きで呼べます。",
       focus: { pieces: ["t1"] },
     },
     {
@@ -1412,6 +1448,12 @@ const EP8 = {
       focus: { pieces: ["t0"] },
     },
     {
+      // 予備札から出た駒は表向き。盤で1枚だけ表になっているのが見えるので、
+      // ここで言っておかないと「なぜこれだけ表なのか」が残る
+      text: "ただし予備札から出た駒は表向きです。正体は相手にも見えています。",
+      focus: { cells: [{ row: 3, col: 1 }] },
+    },
+    {
       at: myTurn,
       text: "K♠ で c3 の相手を取り返します。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 2, col: 2 },
@@ -1419,13 +1461,13 @@ const EP8 = {
     },
     {
       at: myTurn,
-      text: "そのまま c5 の王を取ります。縦にどこまでも走れます。",
+      text: "続けて c5 の相手の駒を取ってみましょう。縦にどこまでも走れます。",
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 0, col: 2 },
       focus: { pieces: ["t0"], cells: [{ row: 0, col: 2 }] },
     },
     {
       at: atEnd,
-      text: "Kは全方向へ走り、10と同じ跳び方もできる。JかQを失うたび、予備札が来ます。",
+      text: "Kは全方向へ走り、10と同じ跳び方もできる。JかQを失うたび、予備札が表向きで来ます。",
       end: true,
     },
   ],
@@ -1467,7 +1509,9 @@ const EP9_DECK = fill(
 
 const EP9 = {
   id: 9,
-  level: 6,
+  level: 9,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 800,
   title: "第9話 動かない駒",
   subtitle: "A は、盤ごと組み替える",
   pool: CARD_POOLS.full,
@@ -1562,7 +1606,7 @@ const EP9 = {
     },
     {
       at: myTurn,
-      text: "相手の王 c5 は、真下の c4 に守られています。d1 の 8♠ では届きません。",
+      text: "c5 に相手の駒があり、その手前の c4 にも別の駒があります。d1 の 8♠ では届きません。",
       focus: {
         cells: [
           { row: 0, col: 2 },
@@ -1573,7 +1617,7 @@ const EP9 = {
     },
     {
       at: myTurn,
-      text: "A♠ をタップして入れ替えを始めます。次に、守っている c4 の相手をタップ。",
+      text: "A♠ をタップして入れ替えを始めます。次に、手前の c4 にいる相手の駒をタップ。",
       need: { type: "TOGGLE_SHUFFLE_PICK", id: "t8" },
       focus: { pieces: ["t0", "t8"] },
     },
@@ -1591,12 +1635,12 @@ const EP9 = {
     },
     {
       at: myTurn,
-      text: "守っていた駒は b1 へ飛び、8♠ が c4 に立ちました。A♠ も d1 へ動いています。",
+      text: "c4 にいた相手の駒は b1 へ移り、8♠ が c4 に立ちました。A♠ も d1 へ動いています。",
       focus: { pieces: ["t2"] },
     },
     {
       at: myTurn,
-      text: "8♠ で、真上の c5 にいる王を取ります。",
+      text: "続けてプレイを進めてみましょう。8♠ で、真上の c5 にいる相手の駒を取ります。",
       need: { type: "MOVE_PIECE", pieceId: "t2", row: 0, col: 2 },
       focus: { pieces: ["t2"], cells: [{ row: 0, col: 2 }] },
     },
@@ -1643,7 +1687,9 @@ const EP10_DECK = fill(
 
 const EP10 = {
   id: 10,
-  level: 7,
+  level: 9,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 900,
   title: "第10話 囲んで討つ",
   subtitle: "三角形の内側は、倒れる",
   pool: CARD_POOLS.full,
@@ -1741,7 +1787,7 @@ const EP10 = {
     },
     {
       at: myTurn,
-      text: "相手の王が c2 まで踏み込みました。A♠・4♠・5♠ が囲む三角形の内側です。",
+      text: "相手の駒が c2 まで進んできました。A♠・4♠・5♠ が囲む三角形の内側です。",
       focus: {
         cells: [{ row: 3, col: 2 }],
         pieces: ["t0", "t1", "t2"],
@@ -1819,7 +1865,9 @@ const EP11_SEVEN = idOf(EP11_DECK, "7H");
 
 const EP11 = {
   id: 11,
-  level: 7,
+  level: 10,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 800,
   title: "第11話 布陣の妙",
   // 読んでから決める回なので、説明は前面に出して先に読ませる
   readFirst: true,
@@ -1954,7 +2002,7 @@ const EP11 = {
     },
     {
       at: myTurn,
-      text: "もう1マス先が相手の王です。8♣ を c5 へ。",
+      text: "続けてプレイを進めてみましょう。8♣ を、もう1マス先の c5 へ。",
       need: { type: "MOVE_PIECE", pieceId: "t2", row: 0, col: 2 },
       focus: {
         cells: [
@@ -2009,7 +2057,9 @@ const EP12_JACK = idOf(EP12_DECK, "JS");
 
 const EP12 = {
   id: 12,
-  level: 8,
+  level: 10,
+  // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
+  xp: 900,
   title: "第12話 見えた1枚",
   // 読んでから決める回なので、説明は前面に出して先に読ませる
   readFirst: true,
@@ -2050,7 +2100,10 @@ const EP12 = {
       text: "また後手。相手の捨て札を先に見られます。",
     },
     {
-      text: "5枚とも同じマークならフラッシュ。対局前に、相手の駒が1枚めくれます。",
+      text: "5×5では、並べる5枚を同じマークでそろえるとフラッシュ。対局前に、相手の王以外の駒が1枚めくれます。",
+    },
+    {
+      text: "9×9では、並べる9枚を同じマークでそろえるとフラッシュ。相手の王以外の駒が3枚めくれます。",
     },
     {
       text: "捨てられたのは ♣ と ♦。♠ は1枚も出ていません。まだ場に残っています。",
@@ -2121,11 +2174,11 @@ const EP12 = {
       text: "めくれた駒だけは正体が分かります。伏せた駒とは違います。",
     },
     {
-      text: "めくれたのは 10♦。10 は縦2横1へしか跳べず、d4 には届きません。だから d4 は安全です。",
+      text: "めくれたのは 10♦。10 は縦2横1へしか跳べず、この駒から d4 には届きません。",
       focus: { cells: [{ row: 1, col: 3 }] },
     },
     {
-      text: "安全と分かった d4 へ。a1 の Q♠ を斜めに進めて相手を取ります。",
+      text: "見えた駒の動きを参考にしてみましょう。a1 の Q♠ を d4 へ斜めに進めて相手を取ります。",
       need: { type: "MOVE_PIECE", pieceId: "t3", row: 1, col: 3 },
       focus: {
         cells: [
@@ -2136,7 +2189,7 @@ const EP12 = {
     },
     {
       at: myTurn,
-      text: "そのまま斜め1マス先が相手の王です。Q♠ を e5 へ。",
+      text: "続けてプレイを進めてみましょう。Q♠ を斜め1マス先の e5 へ。",
       need: { type: "MOVE_PIECE", pieceId: "t3", row: 0, col: 4 },
       focus: {
         cells: [
@@ -2170,6 +2223,11 @@ export const TUTORIALS = [
 
 export function tutorialById(id) {
   return TUTORIALS.find((t) => t.id === id) || null;
+}
+
+export function nextTutorialAfter(id) {
+  const index = TUTORIALS.findIndex((t) => t.id === id);
+  return index >= 0 ? TUTORIALS[index + 1] || null : null;
 }
 
 /* =========================================================================

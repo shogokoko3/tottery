@@ -1,3 +1,4 @@
+import { seasonTitle } from "./season.js";
 /**
  * アカウントの称号。名前の横に添える飾り。
  *
@@ -10,6 +11,8 @@
  * 相手が新しい版で、こちらの知らない称号を持っていることがある。
  * そのときは何も出さない(findTitle が null を返す)。
  */
+import { FOIL_MISSION_DEFS } from "./foil-missions.js";
+
 export const TITLES = [
   { id: "novice", name: "見習い", how: "最初から", free: true },
   { id: "first", name: "初陣", how: "1局遊ぶ", unlocked: (p) => p.plays >= 1 },
@@ -43,6 +46,16 @@ export const TITLES = [
     how: "オンラインで1局遊ぶ",
     unlocked: (p) => p.rated >= 1,
   },
+  // シークレットミッションの褒美
+  {
+    id: "court-heavy",
+    name: "国士無双",
+    how: "シークレット「手札が絵札に偏りすぎて配り直された」",
+    secret: true,
+  },
+  // ミッションの褒美。条件では自動で開かず、受け取ったときに配られる
+  { id: "regular", name: "常連", how: "ミッション「3日あそぶ」" },
+  { id: "devoted", name: "皆勤の士", how: "ミッション「30日あそぶ」" },
   {
     id: "rank-shi",
     name: "士の位",
@@ -61,6 +74,12 @@ export const TITLES = [
     how: "持ち点 2000",
     unlocked: (p) => p.rating >= 2000,
   },
+  // Ownership completes a mission; only its explicit reward claim grants a title.
+  ...FOIL_MISSION_DEFS.map((entry) => ({
+    id: entry.titleId,
+    name: entry.titleName,
+    how: `${entry.missionName}\n（ミッション報酬を受け取る）`,
+  })),
 ];
 
 /** 既定の称号 */
@@ -68,7 +87,7 @@ export const DEFAULT_TITLE = "novice";
 
 /** id から称号を引く。知らない id なら null */
 export function findTitle(id) {
-  return TITLES.find((t) => t.id === id) || null;
+  return TITLES.find((t) => t.id === id) || seasonTitle(id);
 }
 
 /** その人が使える称号か */
@@ -83,7 +102,7 @@ export function hasTitle(profile, id) {
 
 /** いま使える称号の一覧 */
 export function ownedTitles(profile) {
-  return TITLES.filter((t) => hasTitle(profile, t.id));
+  return availableTitles(profile).filter((t) => hasTitle(profile, t.id));
 }
 
 /**
@@ -105,4 +124,11 @@ export function titleNameOf(id) {
 export function newlyEarned(before, after) {
   const had = new Set(ownedTitles(before).map((t) => t.id));
   return ownedTitles(after).filter((t) => !had.has(t.id));
+}
+
+export function availableTitles(profile) {
+  return [
+    ...TITLES,
+    ...[...new Set(profile?.titles || [])].map(seasonTitle).filter(Boolean),
+  ];
 }

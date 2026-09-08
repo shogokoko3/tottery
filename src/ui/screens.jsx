@@ -1,4 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { seasonRequest, retrySeasonMatches } from "../net/season.js";
+import { AppearanceSeats } from "./season.jsx";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useScreenBgm } from "../audio/index.js";
 import { titleBgImg } from "../assets.js";
 import { VERSION } from "../game/constants.js";
@@ -16,29 +25,72 @@ import {
   Play,
   Settings,
   Users,
+  Sparkle,
+  Grid,
+  Mail,
+  Ticket,
 } from "../icons.jsx";
 import {
   LOBBY_TTL,
+  createRoom,
   deleteLobbyPath,
   deleteRoom,
   generateRoomCode,
-  makeClientId,
+  joinRoom,
+  leaveRoom,
   readLobby,
   readLobbyPath,
   readRoom,
   writeLobby,
-  writeRoom,
+  updateRoom,
 } from "../net/firebase.js";
+import {
+  loadOnlineSize,
+  saveOnlineSize,
+  matchesOnlineSize,
+} from "../net/match-settings.js";
 import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
+import { TsumeScreen, useTsumeDay } from "./tsume.jsx";
+import { tsumeReceipt } from "../game/tsume-daily.js";
+import { nextTutorialAfter } from "../game/tutorial.js";
+import { ProfileSyncNotice } from "./profile-sync.jsx";
+import { XpGainToast } from "./xp-gain.jsx";
+import { getXpNotices, subscribeXpNotices } from "../game/xp-notices.js";
+import { GAME_RULE_VERSION } from "../game/rule-version.js";
+import { roomRuleVersion } from "../net/sync.js";
 import { RankingScreen } from "./ranking.jsx";
-import { hasName, isTestPlay, loadProfile } from "../game/profile.js";
+import {
+  hasName,
+  isTestPlay,
+  loadProfile,
+  levelProgress,
+} from "../game/profile.js";
 import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { titleOf } from "../game/titles.js";
+import { PlayerIcon } from "./playericon.jsx";
+import { adoptUid, touchDay } from "../game/profile.js";
+import { dropOldRows, syncPlayer } from "../net/players.js";
+import { ensureAuth, myUid } from "../net/auth.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
+import SKIN_STYLES from "../skins/styles.css";
+import SEASON_STYLES from "./season.css";
+import TSUME_STYLES from "./tsume.css";
+import { SkinsScreen } from "./skins.jsx";
+import { useMissionProfile } from "./mission-profile.js";
+import { MissionsScreen } from "./missions.jsx";
+import { BattlePassScreen } from "./battlepass.jsx";
+import { LettersScreen, useUnreadLetters } from "./letters.jsx";
+import { LoginBonus } from "./loginbonus.jsx";
+import { claimableCount } from "../game/missions.js";
+import { getCollection, useCollection } from "../skins/store.js";
+import { sanitizeLoadout } from "../skins/catalog.js";
+import { createCpuLoadout } from "../skins/cpu-loadout.js";
+
+const mySkins = () => sanitizeLoadout(getCollection().equipped);
 
 /** いま端末に登録されている自分の名前。まだ決めていなければ null */
 function myName() {
@@ -60,6 +112,13 @@ function myRating() {
   return loadProfile().rating;
 }
 
+/**
+ * 設定を開く手。GameShell が持っている設定の札を、
+ * その下に置かれた画面(ホームなど)からも開けるようにする。
+ */
+const OpenSettings = createContext(null);
+export const useOpenSettings = () => useContext(OpenSettings);
+
 export function GameShell({
   children,
   showRules,
@@ -77,10 +136,13 @@ export function GameShell({
   let goHome = onHome || onBack;
   return (
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
-      <style>{STYLES}</style>
+      <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES}</style>
       <header className="top-bar">
+        {/* 戻る釦が無いときは空のまま。飾りの王冠を置いていたが、
+            押せそうに見えて何も起きないので外した。
+            桁は残す(消すと真ん中の題がずれる) */}
         <div className="top-left">
-          {onBack ? (
+          {onBack && (
             <button
               className="icon-btn plain"
               onClick={onBack}
@@ -88,13 +150,6 @@ export function GameShell({
             >
               <ArrowLeft size={20} />
             </button>
-          ) : (
-            <Crown
-              size={20}
-              style={{
-                color: "var(--gold)",
-              }}
-            />
           )}
         </div>
         {goHome ? (
@@ -126,7 +181,9 @@ export function GameShell({
         <div className="test-badge">テストプレイ中 · 時間制限なし</div>
       )}
       <main className={`stage ${sheet ? "stage-with-sheet" : ""}`}>
-        {children}
+        <OpenSettings.Provider value={() => f(!0)}>
+          {children}
+        </OpenSettings.Provider>
       </main>
       {sheet}
       {showRules && <RulesPanel onClose={() => setShowRules(!1)} />}
@@ -137,26 +194,211 @@ export function GameShell({
     </div>
   );
 }
+/**
+ * タイトル。押すところは「ゲームスタート」だけにしてある。
+ * スキンはこの次のホームから入る。ここに並べると、
+ * 遊び始める前に寄り道の口が見えてしまう。
+ */
 export function HomeScreen({ onStart }) {
   return (
     <div className="intro title-hero">
-      <img className="title-bg" src={titleBgImg} alt="" draggable="false" />
-      <button
-        className="btn btn-primary btn-large intro-start"
-        onClick={onStart}
-      >
-        ゲームスタート <ArrowRight size={18} />
+      <div className="title-hero-visual">
+        <img className="title-bg" src={titleBgImg} alt="" draggable="false" />
+        <button
+          className="btn btn-primary btn-large intro-start"
+          onClick={onStart}
+        >
+          ゲームスタート <ArrowRight size={18} />
+        </button>
+      </div>
+    </div>
+  );
+}
+/**
+ * ホームの一番上に出る、自分の札。
+ *
+ * 「いまの自分」(名前・称号・レベル・持っているチケット)をひと目で出す。
+ * 押すと設定が開く。名前やアイコンを変えるのはそこ。
+ */
+function HomeSelf({ profile, tickets }) {
+  const { season } = useCollection();
+  const openSettings = useOpenSettings();
+  const progress = levelProgress(profile);
+  return (
+    <button
+      className="home-self"
+      onClick={openSettings || void 0}
+      aria-label="自分の設定を開く"
+    >
+      <PlayerIcon
+        icon={profile.icon}
+        name={profile.name}
+        size="md"
+        frame={season.frame}
+      />
+      <span className="home-self-id">
+        <b>{profile.name || "名無し"}</b>
+        <small>{titleOf(profile).name}</small>
+      </span>
+      <span className="home-self-right">
+        <span className="home-lv">
+          Lv <b>{progress.level}</b>
+        </span>
+        <span className="home-tickets">
+          <Ticket size={13} />
+          {tickets}
+        </span>
+        <ArrowRight size={14} className="home-self-more" />
+      </span>
+      <span className="home-self-bar">
+        <span style={{ width: `${Math.round(progress.ratio * 100)}%` }} />
+      </span>
+    </button>
+  );
+}
+
+/** ホームの四角い入り口。絵柄を上、名前を下に置く */
+function HomeTile({ tone, icon, label, note, badge, onClick }) {
+  return (
+    <button className={`home-tile home-tile-${tone}`} onClick={onClick}>
+      <span className="home-tile-icon">{icon}</span>
+      <b>{label}</b>
+      <small>{note}</small>
+      {badge > 0 && (
+        <span className="menu-badge">{badge > 99 ? "99+" : badge}</span>
+      )}
+    </button>
+  );
+}
+
+/**
+ * ホーム。タイトルの「ゲームスタート」の次に出る。
+ *
+ * 片手で持った電話で見るところなので、並べ方に軽重をつけた。
+ * 一番やってほしい「対戦する」を大きく、次に「チュートリアル」、
+ * あとは四角い入り口を2つずつ。ランキングは下に控えめに置く。
+ * 7つを同じ帯で並べると、どれも同じ重さに見えて選べなくなる。
+ */
+export function MenuScreen({
+  onPlay,
+  onTutorial,
+  onTsume,
+  onSkins,
+  onBattlePass,
+  onMissions,
+  onRanking,
+  onLetters,
+  now = Date.now,
+}) {
+  const [profile] = useMissionProfile();
+  // 受け取れるミッションの数と、未読のお知らせ。入り口に印を出す
+  const unread = useUnreadLetters();
+  const collection = useCollection();
+  const ready = claimableCount(profile, collection);
+  const today = useTsumeDay(now);
+  const receipt = tsumeReceipt(collection, today.day);
+  const tsumeStatus = receipt?.cleared
+    ? "cleared"
+    : receipt?.joined
+      ? "joined"
+      : "new";
+  return (
+    <div className="home-wrap">
+      {/* その日のぶんがまだなら、ここに着いたときに札が出る */}
+      <LoginBonus />
+
+      {/* 運営からのお知らせ。読み物なので入り口は細く、一番上に置く */}
+      <button className="home-news" onClick={onLetters}>
+        <Mail size={15} />
+        運営からのお知らせ
+        {unread > 0 && <span className="home-news-count">{unread}</span>}
+        <ArrowRight size={13} className="home-news-arrow" />
+      </button>
+
+      <HomeSelf profile={profile} tickets={collection.tickets} />
+
+      <button className="home-hero" onClick={onPlay}>
+        <span className="home-hero-icon">
+          <Globe size={34} />
+        </span>
+        <span className="home-hero-label">
+          <b>対戦する</b>
+          <small>オンライン・フレンド・CPU</small>
+        </span>
+        <ArrowRight size={20} className="home-hero-arrow" />
+      </button>
+
+      <button className="home-wide" onClick={onTutorial}>
+        <span className="home-wide-icon">
+          <Book size={22} />
+        </span>
+        <span className="home-wide-label">
+          <b>チュートリアル</b>
+          <small>ルールとカードの効果を学ぶ</small>
+        </span>
+        <ArrowRight size={16} className="home-wide-arrow" />
+      </button>
+
+      <div className="home-grid">
+        <HomeTile
+          tone="tsume"
+          icon={<Crown size={26} />}
+          label="詰めトッタリー"
+          note={
+            <span
+              className={`home-tsume-status is-${tsumeStatus}`}
+              role="status"
+            >
+              {receipt?.joined ? (
+                <Check size={12} />
+              ) : (
+                <span className="home-tsume-dot" aria-hidden="true" />
+              )}
+              本日{" "}
+              {receipt?.cleared
+                ? "クリア済み"
+                : receipt?.joined
+                  ? "挑戦済み"
+                  : "未挑戦"}
+            </span>
+          }
+          onClick={onTsume}
+        />
+        <HomeTile
+          tone="missions"
+          icon={<Check size={26} />}
+          label="ミッション"
+          note="褒美を受け取る"
+          badge={ready}
+          onClick={onMissions}
+        />
+        <HomeTile
+          tone="pass"
+          icon={<Grid size={26} />}
+          label="バトルパス"
+          note="マスを埋める"
+          onClick={onBattlePass}
+        />
+        <HomeTile
+          tone="skins"
+          icon={<Sparkle size={26} />}
+          label="ガチャ・装備"
+          note="英雄を召喚する"
+          onClick={onSkins}
+        />
+      </div>
+
+      <button className="home-quiet" onClick={onRanking}>
+        <Crown size={16} />
+        ランキングを見る
+        <ArrowRight size={14} />
       </button>
     </div>
   );
 }
-export function MatchingScreen({
-  onOnline,
-  onFriend,
-  onCpu,
-  onTutorial,
-  onRanking,
-}) {
+
+/** 対戦の相手を選ぶ。ホームの「対戦する」から来る */
+export function MatchingScreen({ onOnline, onFriend, onCpu, onBack }) {
   return (
     <div className="center-stage">
       <h2>対戦相手を選ぶ</h2>
@@ -179,49 +421,99 @@ export function MatchingScreen({
             CPUと対戦する<small>ひとりで練習・腕試し</small>
           </span>
         </button>
-        <button className="btn btn-scroll btn-choice" onClick={onTutorial}>
-          <Book size={30} />
-          <span className="choice-label">
-            チュートリアル<small>ルールとカードの効果を学ぶ</small>
-          </span>
-        </button>
-        <button className="btn btn-ghost btn-choice" onClick={onRanking}>
-          <Crown size={30} />
-          <span className="choice-label">
-            ランキング<small>オンライン対戦の成績で並びます</small>
-          </span>
-        </button>
       </div>
+      <button className="btn btn-ghost btn-home" onClick={onBack}>
+        <ArrowLeft size={18} /> ホームに戻る
+      </button>
     </div>
   );
 }
-export function RandomMatchScreen({ onBack, onRoomReady }) {
+
+/**
+ * 相手が部屋に書いた名乗りは、こちらでは何も保証できない。
+ * 物や桁外れの数がそのまま画面に届くと、描くところで落ちて真っ白になる。
+ * 受け取る側で必ず通す
+ */
+/** 部屋の席から、自分でないほうの uid を取り出す */
+function foeOf(seats, me) {
+  const ids = Object.values(seats || {}).filter((id) => id && id !== me);
+  return ids.length === 1 ? ids[0] : null;
+}
+
+function safeName(v) {
+  return typeof v === "string" && v ? v.slice(0, 10) : null;
+}
+function safeTag(v) {
+  return typeof v === "string" && v ? v.slice(0, 40) : null;
+}
+function safeRating(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.min(4000, Math.round(n))) : null;
+}
+
+export function RandomMatchScreen({ onBack, onRoomReady, boardSize }) {
+  const loadout = useRef(mySkins()).current;
   let [l, n] = (0, useState)("searching"),
     [a, u] = (0, useState)(""),
-    i = (0, useRef)(makeClientId()),
     f = (0, useRef)(null),
+    // 掲示に名乗った合言葉。降りるときに下ろす
+    claimed = (0, useRef)(null),
     o = (0, useRef)(!1);
   return (
     (0, useEffect)(() => {
       if (l !== "waiting") return;
+      // 掲示に名乗りが立っただけでは始めない。
+      // 名乗りは席を取らなくても書けるので、それを合図にすると、
+      // 名乗るだけ名乗って来ない相手に永久に待たされる。
+      // 席についた相手が部屋へ書く guestPresent を合図にする
+      let claimedAt = null;
       let r = setInterval(async () => {
         let d = f.current;
         if (!d) return;
-        let m = await readLobbyPath(`/${d}/guest`);
-        if (!o.current && m.ok && m.data) {
-          clearInterval(r);
-          let s = f.current,
-            // 相手の名前は、参加時に部屋へ書き込まれている
-            g = await readRoom(s);
+        let g = await readRoom(d);
+        if (o.current || !g.ok) return;
+        if (!g.data || !g.data.guestPresent) {
+          // 名乗りだけ立って席が埋まらないまま経ったら、その名乗りを外す。
+          // 外せるのは掲示の持ち主(=自分)だけ
+          let m = await readLobbyPath(`/${d}/guest`);
           if (o.current) return;
+          if (m.ok && m.data) {
+            if (claimedAt === null) claimedAt = Date.now();
+            else if (Date.now() - claimedAt > 15e3) {
+              (deleteLobbyPath(`/${d}/guest`), (claimedAt = null));
+            }
+          } else claimedAt = null;
+          return;
+        }
+        {
+          if (
+            !matchesOnlineSize(g.data, boardSize) ||
+            g.data.guestMatchSize !== boardSize
+          ) {
+            clearInterval(r);
+            deleteLobbyPath(`/${d}`);
+            u(
+              "対戦相手のルール設定を確認できませんでした。もう一度お探しください。",
+            );
+            n("error");
+            return;
+          }
+          clearInterval(r);
+          let s = d;
           (deleteLobbyPath(`/${d}`),
             onRoomReady({
               code: s,
+              createdAt: g.data.createdAt,
               myPlayerIndex: 0,
-              names: [myName(), (g.data && g.data.guestName) || null],
-              icons: [myIcon(), (g.data && g.data.guestIcon) || null],
-              titles: [myTitle(), (g.data && g.data.guestTitle) || null],
-              ratings: [myRating(), (g.data && g.data.guestRating) || null],
+              foeUid: foeOf(g.data.seats, myUid()),
+              ruleVersion: roomRuleVersion(g.data),
+              names: [myName(), safeName(g.data.guestName)],
+              icons: [myIcon(), safeTag(g.data.guestIcon)],
+              titles: [myTitle(), safeTag(g.data.guestTitle)],
+              ratings: [myRating(), safeRating(g.data.guestRating)],
+              // 自分の装備は手元のものを使う。部屋の欄は相手も書けるので、
+              // そこから読み直すと、持っていないスキンを着せられる
+              skins: [loadout, sanitizeLoadout(g.data?.guestSkins)],
             }));
         }
       }, 1500);
@@ -229,13 +521,29 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
     }, [l]),
     (0, useEffect)(
       () => () => {
-        ((o.current = !0), f.current && deleteLobbyPath(`/${f.current}`));
+        ((o.current = !0),
+          f.current && deleteLobbyPath(`/${f.current}`),
+          // 名乗ったまま抜けると、待っている人を固めてしまう
+          claimed.current &&
+            (deleteLobbyPath(`/${claimed.current}/guest`),
+            leaveRoom(claimed.current)));
       },
       [],
     ),
     (0, useEffect)(() => {
       (async () => {
-        let r = i.current,
+        // 待ち合わせの掲示は uid で名乗る。ルール側が「持ち主だけが動かせる」
+        // ようにしてあるので、端末ごとの仮のidでは掲示できない
+        let auth = await ensureAuth();
+        if (o.current) return;
+        if (!auth) {
+          (u(
+            "サインインできませんでした。通信状況を確認して、もう一度お試しください。",
+          ),
+            n("error"));
+          return;
+        }
+        let r = auth.uid,
           d = await readLobby();
         if (o.current) return;
         if (!d.ok) {
@@ -246,8 +554,13 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           all = Object.entries(d.data || {}),
           // 時間切れの掲載は誰も拾えない。見つけたついでに片付ける。
           // 部屋には手番の列がまるごと入っているので、残したままにしない
+          // 未来の日付を入れた掲示は、いつまでも「新しい」ままになる。
+          // 先の日付も古いものと同じく片付ける
           stale = all.filter(
-            ([, g]) => !g || m - (g.createdAt || 0) >= LOBBY_TTL,
+            ([, g]) =>
+              !g ||
+              m - (g.createdAt || 0) >= LOBBY_TTL ||
+              (g.createdAt || 0) > m + 60e3,
           );
         for (let [z] of stale) {
           deleteLobbyPath(`/${z}`);
@@ -257,55 +570,102 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           .filter(
             ([z, g]) =>
               g &&
+              matchesOnlineSize(g, boardSize) &&
               !g.guest &&
               g.host !== r &&
-              m - (g.createdAt || 0) < LOBBY_TTL,
+              m - (g.createdAt || 0) < LOBBY_TTL &&
+              (g.createdAt || 0) <= m + 60e3,
           )
+          // 偽の掲示を撒かれても、往復に付き合うのは先頭の数件までにする
+          .slice(0, 6)
           .sort((z, g) => (g[1].createdAt || 0) - (z[1].createdAt || 0));
         for (let [z] of s) {
+          // 先に掲示へ名乗る。ランダムマッチの部屋の席は「掲示で名乗った人」
+          // にしか開かないので、この順でないと座れない。
+          // 名乗りは自分で下ろせるので、途中で降りても持ち主を固めない
           let g = await writeLobby(`/${z}/guest`, r);
           if (o.current) return;
           if (!g.ok) continue;
+          claimed.current = z;
           let A = await readLobbyPath(`/${z}/guest`);
           if (o.current) return;
-          if (A.ok && A.data === r) {
+          if (!A.ok || A.data !== r) {
+            // 掲示は他の人に取られた
+            claimed.current = null;
+            continue;
+          }
+          let seat = await joinRoom(z);
+          if (o.current) return;
+          if (!seat.ok) {
+            (await deleteLobbyPath(`/${z}/guest`), (claimed.current = null));
+            continue;
+          }
+          {
             let b = await readRoom(z);
             if (o.current) return;
             if (!b.ok) {
-              (u(b.error), n("error"));
+              (await leaveRoom(z),
+                await deleteLobbyPath(`/${z}/guest`),
+                (claimed.current = null),
+                u(b.error),
+                n("error"));
               return;
             }
-            if (
-              (await writeRoom(z, {
-                ...(b.data || {}),
-                guestPresent: !0,
-                guestName: myName(),
-                guestIcon: myIcon(),
-                guestTitle: myTitle(),
-                guestRating: myRating(),
-              }),
-              o.current)
-            )
+            if (!matchesOnlineSize(b.data, boardSize)) {
+              await leaveRoom(z);
+              await deleteLobbyPath(`/${z}/guest`);
+              claimed.current = null;
+              continue;
+            }
+            const ready = await updateRoom(z, {
+              guestPresent: !0,
+              guestName: myName(),
+              guestIcon: myIcon(),
+              guestTitle: myTitle(),
+              guestRating: myRating(),
+              guestSkins: loadout,
+              guestRuleVersion: GAME_RULE_VERSION,
+              guestMatchSize: boardSize,
+            });
+            if (o.current) return;
+            if (!ready.ok) {
+              await leaveRoom(z);
+              await deleteLobbyPath(`/${z}/guest`);
+              claimed.current = null;
+              u(ready.error);
+              n("error");
               return;
+            }
+            claimed.current = null;
             onRoomReady({
               code: z,
+              createdAt: b.data?.createdAt,
               myPlayerIndex: 1,
-              names: [(b.data && b.data.hostName) || null, myName()],
-              icons: [(b.data && b.data.hostIcon) || null, myIcon()],
-              titles: [(b.data && b.data.hostTitle) || null, myTitle()],
-              ratings: [(b.data && b.data.hostRating) || null, myRating()],
+              foeUid: foeOf(b.data && b.data.seats, myUid()),
+              ruleVersion: roomRuleVersion({
+                ...b.data,
+                guestRuleVersion: GAME_RULE_VERSION,
+              }),
+              names: [safeName(b.data && b.data.hostName), myName()],
+              icons: [safeTag(b.data && b.data.hostIcon), myIcon()],
+              titles: [safeTag(b.data && b.data.hostTitle), myTitle()],
+              ratings: [safeRating(b.data && b.data.hostRating), myRating()],
+              skins: [sanitizeLoadout(b.data?.hostSkins), loadout],
             });
             return;
           }
         }
         let v = generateRoomCode() + generateRoomCode(),
-          p = await writeRoom(v, {
+          p = await createRoom(v, {
+            matchSize: boardSize,
             guestPresent: !1,
             gameState: null,
             hostName: myName(),
             hostIcon: myIcon(),
             hostTitle: myTitle(),
             hostRating: myRating(),
+            hostSkins: loadout,
+            hostRuleVersion: GAME_RULE_VERSION,
           });
         if (o.current) return;
         if (!p.ok) {
@@ -313,6 +673,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           return;
         }
         let w = await writeLobby(`/${v}`, {
+          matchSize: boardSize,
           host: r,
           guest: null,
           createdAt: Date.now(),
@@ -338,7 +699,7 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
           {a}
         </p>
         <button className="btn btn-ghost" onClick={onBack}>
-          マッチング画面に戻る
+          対戦相手を選ぶに戻る
         </button>
       </div>
     ) : (
@@ -367,8 +728,15 @@ export function RandomMatchScreen({ onBack, onRoomReady }) {
     )
   );
 }
-export function RulesSelectScreen({ onStart, onBack, backLabel, note }) {
-  let [a, u] = (0, useState)(5);
+export function RulesSelectScreen({
+  onStart,
+  onBack,
+  backLabel,
+  note,
+  initialSize = 5,
+  ranked = false,
+}) {
+  let [a, u] = (0, useState)(initialSize);
   return (
     <div className="setup-wrap">
       <h2>ルール設定</h2>
@@ -393,6 +761,7 @@ export function RulesSelectScreen({ onStart, onBack, backLabel, note }) {
             <button
               className={`board-choice ${a === i ? "active" : ""}`}
               onClick={() => u(i)}
+              aria-pressed={a === i}
               key={i}
             >
               <div
@@ -410,7 +779,16 @@ export function RulesSelectScreen({ onStart, onBack, backLabel, note }) {
               <span>
                 {i}×{i}
               </span>
-              <small>{i === 5 ? "5枚で戦う短期戦" : "9枚で戦う本格戦"}</small>
+              <small>
+                {i === 5 ? "5枚で戦う短期戦" : "9枚で戦う本格戦"}
+                {/* 持ち点が動くのは9×9だけ。選ぶ前に分かるようにしておく */}
+                {ranked && i === 9 && (
+                  <>
+                    <br />
+                    <b className="board-choice-ranked">ランキングに載ります</b>
+                  </>
+                )}
+              </small>
             </button>
           ))}
         </div>
@@ -434,6 +812,7 @@ export function RoomScreen({
   onBeforeRoom,
   autoCreate,
 }) {
+  const loadout = useRef(mySkins()).current;
   let [u, i] = (0, useState)(null),
     [f, o] = (0, useState)(""),
     [r, d] = (0, useState)(""),
@@ -446,9 +825,7 @@ export function RoomScreen({
     return (
       (async () => {
         let x = `diag${Date.now()}`,
-          N = await writeRoom(x, {
-            test: !0,
-          });
+          N = await createRoom(x, {});
         if (P) return;
         if (!N.ok) {
           (z("fail"), A(N.error));
@@ -487,11 +864,15 @@ export function RoomScreen({
               (clearInterval(x),
               onRoomReady({
                 code: f,
+                createdAt: N.data.createdAt,
                 myPlayerIndex: 0,
-                names: [myName(), N.data.guestName || null],
-                icons: [myIcon(), N.data.guestIcon || null],
-                titles: [myTitle(), N.data.guestTitle || null],
-                ratings: [myRating(), N.data.guestRating || null],
+                foeUid: foeOf(N.data.seats, myUid()),
+                ruleVersion: roomRuleVersion(N.data),
+                names: [myName(), safeName(N.data.guestName)],
+                icons: [myIcon(), safeTag(N.data.guestIcon)],
+                titles: [myTitle(), safeTag(N.data.guestTitle)],
+                ratings: [myRating(), safeRating(N.data.guestRating)],
+                skins: [loadout, sanitizeLoadout(N.data.guestSkins)],
               }));
           }
         }, 1200);
@@ -501,14 +882,18 @@ export function RoomScreen({
     }, [u, f]));
   async function y() {
     (p(!0), s(""));
-    let P = generateRoomCode(),
-      x = await writeRoom(P, {
+    // 合言葉そのものが鍵になる。4文字(約100万通り)では総当たりで
+    // 待機中の部屋に入り込まれ、伏せた王まで見えてしまう
+    let P = generateRoomCode() + generateRoomCode(),
+      x = await createRoom(P, {
         guestPresent: !1,
         gameState: null,
         hostName: myName(),
         hostIcon: myIcon(),
         hostTitle: myTitle(),
         hostRating: myRating(),
+        hostSkins: loadout,
+        hostRuleVersion: GAME_RULE_VERSION,
       });
     if ((p(!1), !x.ok)) {
       s(x.error);
@@ -518,43 +903,63 @@ export function RoomScreen({
   }
   async function T() {
     let P = r.trim().toUpperCase();
-    if (P.length < 4) {
-      s("4桁のコードを入力してください");
+    if (P.length < 8) {
+      s("8文字の合言葉を入力してください");
       return;
     }
     (p(!0), s(""));
-    let x = await readRoom(P);
-    if (!x.ok) {
-      (p(!1), s(x.error));
+    // 先に席をとる。部屋の中身は席についてからでないと読めない。
+    // 断られたら、その合言葉の部屋が無いか、もう二人そろっている
+    let seat = await joinRoom(P);
+    if (!seat.ok) {
+      (p(!1),
+        s("そのコードのルームは見つからないか、既に対戦相手が参加しています"));
       return;
     }
-    if (!x.data) {
-      (p(!1), s("そのコードのルームは見つかりませんでした"));
+    let x = await readRoom(P);
+    if (!x.ok) {
+      (await leaveRoom(P), p(!1), s(x.error));
+      return;
+    }
+    // 席をとれたからといって部屋があるとは限らない(締める前のルールでは
+    // 存在しない部屋にも座れてしまう)。中身を見て確かめる
+    if (!x.data || (!x.data.createdAt && !x.data.hostName)) {
+      (await leaveRoom(P),
+        p(!1),
+        s("そのコードのルームは見つかりませんでした"));
       return;
     }
     if (x.data.guestPresent) {
-      (p(!1), s("このルームは既に対戦相手が参加済みです"));
+      (await leaveRoom(P), p(!1), s("このルームは既に対戦相手が参加済みです"));
       return;
     }
-    let N = await writeRoom(P, {
-      ...x.data,
+    let N = await updateRoom(P, {
       guestPresent: !0,
       guestName: myName(),
       guestIcon: myIcon(),
       guestTitle: myTitle(),
       guestRating: myRating(),
+      guestSkins: loadout,
+      guestRuleVersion: GAME_RULE_VERSION,
     });
     if ((p(!1), !N.ok)) {
-      s(N.error);
+      (await leaveRoom(P), s(N.error));
       return;
     }
     onRoomReady({
       code: P,
-      names: [x.data.hostName || null, myName()],
-      icons: [x.data.hostIcon || null, myIcon()],
-      titles: [x.data.hostTitle || null, myTitle()],
-      ratings: [x.data.hostRating || null, myRating()],
+      createdAt: x.data.createdAt,
+      foeUid: foeOf(x.data.seats, myUid()),
+      names: [safeName(x.data.hostName), myName()],
+      icons: [safeTag(x.data.hostIcon), myIcon()],
+      titles: [safeTag(x.data.hostTitle), myTitle()],
+      ratings: [safeRating(x.data.hostRating), myRating()],
+      skins: [sanitizeLoadout(x.data.hostSkins), loadout],
       myPlayerIndex: 1,
+      ruleVersion: roomRuleVersion({
+        ...x.data,
+        guestRuleVersion: GAME_RULE_VERSION,
+      }),
     });
   }
   function R() {
@@ -566,7 +971,7 @@ export function RoomScreen({
       <h2>ルームを作成しました</h2>
       <div className="room-code">{f}</div>
       <p className="hint">
-        この4桁のコードを相手に伝えてください。相手が参加すると自動的に始まります。
+        この合言葉を相手に伝えてください。相手が参加すると自動的に始まります。
       </p>
       <Dice size={22} className="dim-icon spin-icon" />
       {m && (
@@ -594,7 +999,7 @@ export function RoomScreen({
             (R(), onBackToMatching());
           }}
         >
-          マッチング画面に戻る
+          対戦相手を選ぶに戻る
         </button>
       </div>
     </div>
@@ -659,7 +1064,7 @@ export function RoomScreen({
             P && P.focus();
           }}
         >
-          {[0, 1, 2, 3].map((P) => (
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((P) => (
             <div
               className={`code-box ${r.length === P ? "code-box-active" : ""}`}
               key={P}
@@ -671,7 +1076,7 @@ export function RoomScreen({
             id="code-input"
             className="code-hidden"
             value={r}
-            maxLength={4}
+            maxLength={8}
             onChange={(P) =>
               d(P.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
             }
@@ -688,7 +1093,7 @@ export function RoomScreen({
         </button>
       </div>
       <p className="code-note">
-        <Info size={14} /> 4文字の合言葉を入力してください。
+        <Info size={14} /> 8文字の合言葉を入力してください。
       </p>
       {m && (
         <p
@@ -710,12 +1115,26 @@ export function RoomScreen({
         }}
         onClick={onBackToMatching}
       >
-        <ArrowLeft size={18} /> メインメニューへ戻る
+        <ArrowLeft size={18} /> 対戦相手を選ぶに戻る
       </button>
     </div>
   );
 }
 export function TotteryApp() {
+  // 獲得時はホームのレベル欄も新しい経験値へ更新する。
+  useSyncExternalStore(subscribeXpNotices, getXpNotices, getXpNotices);
+  return (
+    <>
+      <TotteryScreens />
+      <XpGainToast />
+      <ProfileSyncNotice />
+    </>
+  );
+}
+
+function TotteryScreens() {
+  const collection = useCollection();
+  const [cpuSkins, setCpuSkins] = useState({});
   // はじめて遊ぶときは、まず名前を決めてもらう
   let [named, setNamed] = (0, useState)(() => hasName()),
     [e, t] = (0, useState)("home"),
@@ -728,24 +1147,103 @@ export function TotteryApp() {
     // ルール設定を開いた元の画面。「戻る」はここへ帰る。
     // 対戦の種類(o)から推測すると、CPU対戦とルームの「オフラインで対戦」が
     // どちらも "game" なので見分けられず、CPUの戻り先がフレンド対戦になる
-    [rulesFrom, setRulesFrom] = (0, useState)("matching");
+    [rulesFrom, setRulesFrom] = (0, useState)("matching"),
+    // 同じ部屋で何局目か。再戦のたびに1つ進める
+    [round, setRound] = (0, useState)(0),
+    // 運営に使用停止にされたかどうか
+    [banned, setBanned] = (0, useState)(!1);
   // 場面に合った曲へ。対局中は GameCore のほうが決めるので、ここは触らない
   useScreenBgm(e);
+  // 起動時に、登録した人の台帳へ自分を置き直す。使用停止なら名前を捨てる
+  useEffect(() => {
+    let gone = false;
+    (async () => {
+      // 先に Firebase のサインインを通す。サーバーの記録は uid を鍵に持つので、
+      // 名前がまだ無い人でもここは通す(名前を決めた瞬間に uid で載るように)。
+      // 通信できなければ null が返る。そのときは今までどおり素で進む
+      const auth = await ensureAuth();
+      const me = loadProfile();
+      if (auth && me.id !== auth.uid) {
+        // 端末が名乗っていた古い鍵から、Firebase の uid へ持ち替える。
+        // 名前・持ち点・戦績は端末の中にあるので、鍵が変わっても失われない。
+        //
+        // まだ名前が無い(id も無い)初回起動でも、ここを通しておく。
+        // 通さないと、名前を決めたときに端末が自分で p… という鍵を作り、
+        // その鍵で台帳に載せようとして弾かれる(ルールは uid しか許さない)。
+        const oldId = me.id;
+        adoptUid(auth.uid);
+        const now = loadProfile();
+        // 先に新しい鍵で載せ直してから、古い鍵の行を消す。
+        // 逆順だと、途中で落ちたときランキングから消えたままになる
+        if (now.name) {
+          await syncPlayer(now);
+        }
+        dropOldRows(oldId);
+        if (gone) return;
+      }
+      const now = loadProfile();
+      if (!now.id || !now.name) return;
+      retrySeasonMatches().catch(() => {});
+      seasonRequest("summary").catch(() => {});
+      // 使用頻度のミッション用に、1日1回だけ数える
+      touchDay();
+      if (gone) return;
+      const stopped = await syncPlayer(loadProfile());
+      if (gone || !stopped) return;
+      // 名前を捨てて決め直させてはいけない。停止の印は uid に付くので、
+      // 何度名乗り直しても同じ印が見つかり、名前を決める画面から
+      // 出られなくなる。ここで止めて、理由を出す
+      setBanned(!0);
+    })();
+    return () => {
+      gone = true;
+    };
+    // 名前を決めた直後にも通す(初回の記録を取りこぼさないため)
+  }, [named]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [e]);
   function s() {
     (u(null), m(!1), setTut(null), t("home"));
+  }
+  function startTutorial(chosen) {
+    (u(null), setTut(chosen), m(!0), r("game"), t("game"));
+    window.scrollTo(0, 0);
+  }
+  function showTutorials() {
+    (u(null), m(!1), setTut(null), t("tutorial"));
   }
   // 上の「トッタリー」から。ルーム作成の予約(p)も引きずらないように
   function goHome() {
     (w(!1), s());
   }
   function v(b) {
-    (u(b), t("game"));
+    (u(b), setRound(0), t("game"));
   }
   let [p, w] = (0, useState)(!1);
   function z(b) {
+    if (o === "online") saveOnlineSize(b);
     (f(b), o === "room" && w(!0), t(o));
   }
   // 画面の枠(背景や上のバー)は GameShell が出すので、その中に入れる
+  //
+  // 使用停止は名前ではなく口座に付く。名前を決め直させても同じ印が
+  // 残るので、ここで行き止まりにする
+  if (banned)
+    return (
+      <GameShell>
+        <div className="center-stage">
+          <h2>ご利用を停止しています</h2>
+          <p className="hint">
+            他の方への迷惑行為が確認されたため、このアカウントではトッタリーをご利用いただけません。
+          </p>
+          <p className="hint">
+            心当たりがない場合や、内容についてのお問い合わせは、
+            ストアの製品ページに記載の連絡先までご連絡ください。
+          </p>
+        </div>
+      </GameShell>
+    );
   if (!named)
     return (
       <GameShell showRules={l} setShowRules={n}>
@@ -753,6 +1251,7 @@ export function TotteryApp() {
       </GameShell>
     );
   if (e === "game") {
+    const nextTutorial = tut ? nextTutorialAfter(tut.id) : null;
     // 対局中に出す名前。相手の名前が分からない席は色名のまま
     let mine = loadProfile(),
       me = mine.name || null,
@@ -767,16 +1266,36 @@ export function TotteryApp() {
           ? [mine.icon, null]
           : [null, null],
       // 称号はマッチした相手と交わすもの。CPU戦・同じ端末では渡さない
-      titles = a ? a.titles || [null, null] : [null, null];
+      titles = a ? a.titles || [null, null] : [null, null],
+      skins = a
+        ? (a.skins || [{}, {}]).map(sanitizeLoadout)
+        : tut
+          ? [{}, {}]
+          : d
+            ? [collection.equipped, cpuSkins]
+            : [collection.equipped, collection.equipped];
     return (
-      <SeatsProvider value={{ names, icons, titles }}>
-        <GameCore
-          network={a}
-          boardSize={tut ? tut.boardSize : i}
-          cpu={d}
-          tutorial={tut}
-          onExit={s}
-        />
+      <SeatsProvider value={{ names, icons, titles, skins }}>
+        <AppearanceSeats network={a} cpu={d} tutorial={tut}>
+          <GameCore
+            // 再戦のたびに作り直す。見た手の控えも記録済みの印も、
+            // 前の対局のものを引きずらせない。
+            // チュートリアルは話ごとに作り直す
+            key={tut ? tut.id : `battle-${round}`}
+            round={round}
+            onRematch={a ? () => setRound((n) => n + 1) : null}
+            network={a}
+            boardSize={tut ? tut.boardSize : i}
+            cpu={d}
+            tutorial={tut}
+            nextTutorial={nextTutorial}
+            onNextTutorial={
+              nextTutorial ? () => startTutorial(nextTutorial) : null
+            }
+            onTutorialList={showTutorials}
+            onExit={s}
+          />
+        </AppearanceSeats>
       </SeatsProvider>
     );
   }
@@ -785,13 +1304,32 @@ export function TotteryApp() {
       showRules={l}
       setShowRules={n}
       onHome={e === "home" ? null : goHome}
+      onBack={e === "skins" || e === "tsume" ? () => t("menu") : undefined}
     >
       {
         {
-          home: <HomeScreen onStart={() => t("matching")} />,
+          home: <HomeScreen onStart={() => t("menu")} />,
+          skins: (
+            <SkinsScreen
+              onBack={() => t("menu")}
+              onBattlePass={() => t("battlepass")}
+            />
+          ),
+          menu: (
+            <MenuScreen
+              onPlay={() => t("matching")}
+              onTutorial={showTutorials}
+              onTsume={() => t("tsume")}
+              onSkins={() => t("skins")}
+              onBattlePass={() => t("battlepass")}
+              onMissions={() => t("missions")}
+              onLetters={() => t("letters")}
+              onRanking={() => t("ranking")}
+            />
+          ),
           matching: (
             <MatchingScreen
-              onRanking={() => t("ranking")}
+              onBack={() => t("menu")}
               onOnline={() => {
                 (u(null),
                   m(!1),
@@ -803,6 +1341,7 @@ export function TotteryApp() {
                 (u(null), m(!1), t("room"));
               }}
               onCpu={() => {
+                setCpuSkins(createCpuLoadout());
                 (u(null),
                   m(!0),
                   setTut(null),
@@ -810,22 +1349,27 @@ export function TotteryApp() {
                   setRulesFrom("matching"),
                   t("rules"));
               }}
-              onTutorial={() => {
-                (u(null), t("tutorial"));
-              }}
             />
           ),
-          ranking: <RankingScreen onBack={() => t("matching")} />,
-          tutorial: (
-            <TutorialSelect
-              onBack={() => t("matching")}
-              onStart={(chosen) => {
-                (setTut(chosen), m(!0), r("game"), t("game"));
-              }}
+          ranking: <RankingScreen onBack={() => t("menu")} />,
+          tsume: <TsumeScreen onBack={() => t("menu")} />,
+          missions: <MissionsScreen onBack={() => t("menu")} />,
+          battlepass: (
+            <BattlePassScreen
+              onBack={() => t("menu")}
+              onSkins={() => t("skins")}
             />
+          ),
+          letters: <LettersScreen onBack={() => t("menu")} />,
+          tutorial: (
+            <TutorialSelect onBack={() => t("menu")} onStart={startTutorial} />
           ),
           online: (
-            <RandomMatchScreen onBack={() => t("matching")} onRoomReady={v} />
+            <RandomMatchScreen
+              boardSize={i}
+              onBack={() => t("matching")}
+              onRoomReady={v}
+            />
           ),
           room: (
             <RoomScreen
@@ -849,16 +1393,16 @@ export function TotteryApp() {
           ),
           rules: (
             <RulesSelectScreen
+              ranked={o === "online" || o === "room"}
+              initialSize={o === "online" ? loadOnlineSize() : 5}
               onStart={z}
               onBack={() => t(rulesFrom)}
-              backLabel="戻る"
-              note={
-                o === "online"
-                  ? "この設定で対戦相手を探します。相手が先に待っていた場合は、相手の設定が使われます。"
-                  : o === "room"
-                    ? "この設定でルームを作ります。"
-                    : null
+              backLabel={
+                rulesFrom === "room"
+                  ? "フレンド対戦に戻る"
+                  : "対戦相手を選ぶに戻る"
               }
+              note={o === "room" ? "この設定でルームを作ります。" : null}
             />
           ),
         }[e]

@@ -1,8 +1,16 @@
+import { useMatchRatings } from "./match-rating.jsx";
+import { useSeasonMatch, SeasonMatchNotice } from "./season.jsx";
+import { usePrivateNotes } from "./private-notes.jsx";
+import { useAceMagic } from "./ace-magic.jsx";
+import { useBattleFilm } from "./skin-film.jsx";
+import { useBattlePass } from "./battlepass-track.jsx";
+import { useCapturePresentation } from "./capture-presentation.jsx";
+import { movePresentationMs } from "../game/capture-presentation.js";
 import { useEffect, useRef, useState } from "react";
 import { useGameBgm, useGameSounds } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
 import { enrichAction } from "../game/actions.js";
-import { getLegalMoves, squareName } from "../game/board.js";
+import { getLegalMoves, kingRankOf, squareName } from "../game/board.js";
 import {
   PLAYER_META,
   nameOf,
@@ -32,12 +40,25 @@ import {
   Sparkle,
 } from "../icons.jsx";
 import {
+  bumpRound,
+  clearActs,
   deleteRoom,
   makeClientId,
   pushAct,
   readActs,
+  readRematch,
+  readRound,
+  wantRematch,
 } from "../net/firebase.js";
-import { LOCAL_ONLY_ACTIONS, withLocalContext } from "../net/sync.js";
+import { myUid } from "../net/auth.js";
+import { achieveSecret } from "../game/profile.js";
+import { chanceLabel } from "../game/secrets.js";
+import {
+  LOCAL_ONLY_ACTIONS,
+  acceptAct,
+  withLocalContext,
+} from "../net/sync.js";
+import { takePresentationBatch } from "../net/presentation.js";
 import { CardFace, Piece } from "./cards.jsx";
 import { useNames, useSeats } from "./names.jsx";
 import { PlayerIcon } from "./playericon.jsx";
@@ -73,48 +94,103 @@ import {
   upcomingNeedStep,
 } from "../game/tutorial.js";
 import { isTestPlay, recordGame } from "../game/profile.js";
+import { releaseXpNotice } from "../game/xp-notices.js";
+import { GAME_RULE_VERSION } from "../game/rule-version.js";
+import {
+  CLOCK_EXTENSION_LIMIT,
+  CLOCK_EXTENSION_THRESHOLD_MS,
+  clockExtensionsRemaining,
+  hasLimitedClock,
+} from "../game/clock.js";
 import { titleNameOf } from "../game/titles.js";
-import { publishRank } from "../net/ranking.js";
+import { publishPlayer } from "../net/players.js";
 
 /** 持ち時間の表示。自分の時計は下、相手の時計は上に置く */
-export function ClockBar({ clocks, currentTurn, viewer }) {
-  const { names, icons, titles } = useSeats();
+export function ClockBar({
+  clocks,
+  currentTurn,
+  viewer,
+  extensionUses = [0, 0],
+  ruleVersion,
+}) {
+  const limited = hasLimitedClock(ruleVersion);
+  const { names, icons, titles, frames } = useSeats();
   const fmt = (ms) => {
     const total = Math.max(0, Math.ceil(ms / 1000));
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
   };
   const order = viewer === 1 ? [0, 1] : [1, 0];
   return (
-    <div className="clock-bar">
-      {order.map((idx) => {
-        const active = currentTurn === idx;
-        const ms = clocks[idx];
-        return (
-          <div
-            className={`clock-cell ${active ? "clock-active" : ""} ${
-              ms <= 30000 ? "clock-low" : ""
-            }`}
-            style={{ "--pc": PLAYER_META[idx].color }}
-            key={idx}
-          >
-            <span className="clock-who">
-              <PlayerIcon
-                icon={icons && icons[idx]}
-                name={names && names[idx]}
-                side={idx}
-                size="sm"
-              />
-              <span className="clock-name">
-                {shortPlayerLabel(idx, viewer, names)}({PLAYER_META[idx].name})
-                {titles && titleNameOf(titles[idx]) && (
-                  <em className="seat-title">{titleNameOf(titles[idx])}</em>
-                )}
+    <div className="clock-panel">
+      <div className="clock-bar">
+        {order.map((idx) => {
+          const active = currentTurn === idx;
+          const ms = clocks[idx];
+          const remaining = clockExtensionsRemaining(extensionUses[idx]);
+          const warning = limited && remaining <= 3;
+          return (
+            <div
+              className={`clock-cell ${active ? "clock-active" : ""} ${
+                ms <= CLOCK_EXTENSION_THRESHOLD_MS ? "clock-low" : ""
+              } ${limited ? "clock-limited" : ""}`}
+              style={{ "--pc": PLAYER_META[idx].color }}
+              key={idx}
+            >
+              <span className="clock-who">
+                <PlayerIcon
+                  icon={icons && icons[idx]}
+                  frame={frames && frames[idx]}
+                  name={names && names[idx]}
+                  side={idx}
+                  size="sm"
+                />
+                <span className="clock-name">
+                  {shortPlayerLabel(idx, viewer, names)}({PLAYER_META[idx].name}
+                  )
+                  {titles && titleNameOf(titles[idx]) && (
+                    <em className="seat-title">{titleNameOf(titles[idx])}</em>
+                  )}
+                </span>
               </span>
-            </span>
-            <strong className="clock-time">{fmt(ms)}</strong>
-          </div>
-        );
-      })}
+              <strong className="clock-time">{fmt(ms)}</strong>
+              {limited && (
+                <div
+                  className={`clock-extension ${warning ? "clock-extension-warning" : ""} ${remaining === 0 ? "clock-extension-empty" : ""}`}
+                >
+                  <div className="clock-extension-count">
+                    <span>
+                      追加 あと<strong>{remaining}</strong>回
+                    </span>
+                    <span className="clock-extension-pips" aria-hidden="true">
+                      {Array.from({ length: CLOCK_EXTENSION_LIMIT }, (_, n) => (
+                        <i
+                          key={n}
+                          className={n < remaining ? "available" : ""}
+                        />
+                      ))}
+                    </span>
+                  </div>
+                  <div
+                    className="clock-extension-alert"
+                    role="status"
+                    aria-atomic="true"
+                  >
+                    {warning &&
+                      (remaining === 0
+                        ? "次の手番から追加なし"
+                        : `⚠ 追加は残り${remaining}回`)}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {limited && (
+        <p className="clock-rule-hint">
+          手番開始時に30秒以下なら＋10秒・各6回まで
+        </p>
+      )}
     </div>
   );
 }
@@ -236,7 +312,12 @@ export function CapturedRow({ players, dispatch, viewer }) {
                     }
                     key={o.id}
                   >
-                    <CardFace rank={o.rank} suit={o.suit} size="sm" />
+                    <CardFace
+                      owner={o.owner}
+                      rank={o.rank}
+                      suit={o.suit}
+                      size="sm"
+                    />
                   </div>
                 ))}
             </div>
@@ -252,6 +333,7 @@ export function CapturedRow({ players, dispatch, viewer }) {
             <div className="discard-both">
               {players.map((i, f) => (
                 <DiscardPanel
+                  owner={f}
                   cards={i.discard}
                   label={`${shortPlayerLabel(f, viewer, names)}(${PLAYER_META[f].name})が捨てたカード`}
                   color={PLAYER_META[f].color}
@@ -265,6 +347,40 @@ export function CapturedRow({ players, dispatch, viewer }) {
     </>
   );
 }
+function AdjudicationResult({ state, names }) {
+  const result = state.adjudication;
+  if (!result) return null;
+  return (
+    <section className="adjudication-result" aria-label="判定結果の内訳">
+      <p>
+        {result.reason === "no-legal-action"
+          ? "手番側に合法な行動がなく、対局を進められないため判定しました。"
+          : "駒の動ける範囲から、どちらの王も討てない局面と判定しました。"}
+      </p>
+      <div className="adjudication-scores">
+        {result.totals.map((total, side) => (
+          <div
+            key={side}
+            className={state.winner === side ? "adjudication-winner" : ""}
+          >
+            <span>{nameOf(side, names)}</span>
+            <strong>{total}</strong>
+            <small>{result.ranks?.[side]?.join(" + ")}</small>
+          </div>
+        ))}
+      </div>
+      <p>
+        {state.winner == null
+          ? "採用合計が同じため、引き分けです。"
+          : "採用合計が低い側の勝ちです。"}
+      </p>
+      <p className="hint">
+        対局開始時に採用した全ての札を合計します。A=1、J=11、Q=12、K=13。倒れた駒も含み、途中で投入した予備札は含みません。
+      </p>
+    </section>
+  );
+}
+
 export function GameView({
   state,
   network,
@@ -274,8 +390,13 @@ export function GameView({
   dispatch,
   onExit,
   tutorial,
+  nextTutorial,
+  onNextTutorial,
+  onTutorialList,
   youAre,
   rating,
+  rematch,
+  seasonResult,
 }) {
   const names = useNames();
   let [f, o] = (0, useState)(!1),
@@ -284,9 +405,13 @@ export function GameView({
     // 動きの再生。押すたびに数が増え、それを鍵に演出をやり直させる
     [playSeq, setPlaySeq] = (0, useState)(0),
     [playing, setPlaying] = (0, useState)(!1),
-    r = PLAYER_META[state.winner],
+    drawn = state.winner === null,
+    r = drawn
+      ? { name: "引き分け", color: "var(--gold-soft)" }
+      : PLAYER_META[state.winner],
     // 1台で交互に指しているときは「あなた」が決まらないので、色名で伝える
-    lost = youAre !== null && youAre !== void 0 && state.winner !== youAre,
+    lost =
+      !drawn && youAre !== null && youAre !== void 0 && state.winner !== youAre,
     won = youAre !== null && youAre !== void 0 && state.winner === youAre;
   // 記録の行を選んだら、その手の動きを再生する
   (0, useEffect)(() => {
@@ -366,7 +491,8 @@ export function GameView({
           s.includes("新しい王") ||
           s.includes("入れ替えた") ||
           s.includes("投入") ||
-          s.includes("降参"),
+          s.includes("降参") ||
+          s.includes("判定"),
       );
     return (
       <div className="modal-overlay">
@@ -377,16 +503,19 @@ export function GameView({
                 color: r.color,
               }}
             >
-              {network
-                ? state.winner === myIdx
-                  ? "あなたの勝ち!"
-                  : "あなたの負け…"
-                : `${r.name}の勝利!`}
+              {drawn
+                ? "引き分け"
+                : network
+                  ? state.winner === myIdx
+                    ? "あなたの勝ち!"
+                    : "あなたの負け…"
+                  : `${r.name}の勝利!`}
             </h3>
             <button className="icon-btn" onClick={() => o(!1)}>
               <Close size={18} />
             </button>
           </div>
+          <AdjudicationResult state={state} names={names} />
           {state.resignedBy !== null && state.resignedBy !== void 0 && (
             <p
               className="hint"
@@ -517,6 +646,7 @@ export function GameView({
                                 style={{ "--who": PLAYER_META[A.owner].color }}
                               >
                                 <CardFace
+                                  owner={A.owner}
                                   rank={A.rank}
                                   suit={A.suit}
                                   size={size >= 9 ? "xs" : "md"}
@@ -567,7 +697,12 @@ export function GameView({
                         }
                         key={p.id}
                       >
-                        <CardFace rank={p.rank} suit={p.suit} size="sm" />
+                        <CardFace
+                          owner={p.owner}
+                          rank={p.rank}
+                          suit={p.suit}
+                          size="sm"
+                        />
                       </div>
                     ))}
                   {s.capturedOwn.filter((p) => !p.alive).length === 0 && (
@@ -609,7 +744,11 @@ export function GameView({
       <div
         className={`modal-panel gameover-panel ${lost ? "defeat-panel" : ""}`}
       >
-        {lost ? (
+        {drawn ? (
+          <span className="adjudication-draw-mark" aria-hidden="true">
+            ＝
+          </span>
+        ) : lost ? (
           <Flag size={34} className="defeat-mark" />
         ) : (
           <Crown
@@ -623,15 +762,31 @@ export function GameView({
           className={lost ? "defeat-title" : ""}
           style={lost ? void 0 : { color: r.color }}
         >
-          {won ? "あなたの勝ち!" : lost ? "敗北" : `${r.name}の勝利!`}
+          {drawn
+            ? "引き分け"
+            : tutorial && won
+              ? "チュートリアルクリア!"
+              : won
+                ? "あなたの勝ち!"
+                : lost
+                  ? "敗北"
+                  : `${r.name}の勝利!`}
         </h2>
+        {tutorial && won && (
+          <>
+            <p className="hint">{tutorial.title}</p>
+            <p>{tutorial.steps.find((step) => step.end)?.text}</p>
+          </>
+        )}
         {lost && (
           <p className="defeat-lead">
-            {state.timeoutBy === youAre
-              ? "持ち時間を使い切りました"
-              : state.resignedBy === youAre
-                ? "降参しました"
-                : "王を討たれました"}
+            {state.adjudication
+              ? "採用カードの合計による判定負けです"
+              : state.timeoutBy === youAre
+                ? "持ち時間を使い切りました"
+                : state.resignedBy === youAre
+                  ? "降参しました"
+                  : "王を討たれました"}
           </p>
         )}
         {state.resignedBy !== null && state.resignedBy !== void 0 && (
@@ -644,9 +799,15 @@ export function GameView({
             {nameOf(state.resignedBy, names)}が降参しました
           </p>
         )}
-        <div className={`king-card ${lost ? "lose-card" : "win-card"}`}>
-          <img src={winKingCardImg} alt="" />
-        </div>
+        <AdjudicationResult state={state} names={names} />
+        {!state.adjudication && (
+          <div
+            className={`king-card ${lost ? "lose-card" : "win-card"} ${tutorial && won ? "tutorial-king-card" : ""}`}
+          >
+            <img src={winKingCardImg} alt="" />
+          </div>
+        )}
+        <SeasonMatchNotice result={seasonResult} />
         {rating && (
           <div className="rating-change">
             <span className="rating-label">レーティング</span>
@@ -662,13 +823,41 @@ export function GameView({
             </span>
           </div>
         )}
+        {tutorial && won && (
+          <div className="tutorial-complete">
+            {nextTutorial && onNextTutorial ? (
+              <>
+                <p className="hint">次は「{nextTutorial.title}」</p>
+                <button
+                  className="btn btn-primary btn-wide"
+                  onClick={onNextTutorial}
+                >
+                  次のステージへ <ArrowRight size={16} />
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="hint">最終ステージをクリアしました!</p>
+                <button
+                  className="btn btn-primary btn-wide"
+                  onClick={onTutorialList || onExit}
+                >
+                  チュートリアル一覧へ
+                </button>
+              </>
+            )}
+          </div>
+        )}
         <div
           className="setup-actions"
           style={{
             marginTop: 16,
           }}
         >
-          <button className="btn btn-primary" onClick={() => o(!0)}>
+          <button
+            className={`btn ${tutorial && won ? "btn-ghost" : "btn-primary"}`}
+            onClick={() => o(!0)}
+          >
             <Info size={16} /> 対局を振り返る
           </button>
         </div>
@@ -679,19 +868,40 @@ export function GameView({
           }}
         >
           {/* チュートリアルは同じ台本をなぞるだけなので、もう一度は出さない */}
-          {tutorial ? null : !network || myIdx === 0 ? (
+          {tutorial && onTutorialList && (!won || nextTutorial) && (
+            <button className="btn btn-ghost" onClick={onTutorialList}>
+              チュートリアル一覧へ
+            </button>
+          )}
+          {tutorial ? null : rematch ? (
+            // オンラインは両者の合意で始める。片方だけで盤を作り直すと、
+            // 相手は準備ができていないまま次の対局に入ってしまう
+            rematch.asked ? (
+              <p className="hint">
+                相手の返事を待っています…
+                {rematch.foeAsked && "（そろいました。仕切り直します）"}
+              </p>
+            ) : (
+              <>
+                {rematch.foeAsked && (
+                  <p className="hint">相手はもう一度遊びたいようです</p>
+                )}
+                <button
+                  className="btn btn-ghost"
+                  onClick={rematch.ask}
+                  disabled={seasonResult?.status === "saving"}
+                >
+                  <RotateCcw size={16} /> もう一度遊ぶ
+                </button>
+              </>
+            )
+          ) : (
             <button
               className="btn btn-ghost"
-              onClick={() =>
-                dispatch({
-                  type: "NEW_GAME",
-                })
-              }
+              onClick={() => dispatch({ type: "NEW_GAME" })}
             >
               <RotateCcw size={16} /> もう一度遊ぶ
             </button>
-          ) : (
-            <p className="hint">ホストがもう一度遊ぶか選んでいます…</p>
           )}
           {onExit && (
             <button className="btn btn-ghost" onClick={onExit}>
@@ -716,8 +926,26 @@ function foeWait(state, act, playMs) {
   return state.phase === "play" ? playMs : 400;
 }
 
-export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
+export function GameCore({
+  onExit,
+  network,
+  boardSize,
+  cpu,
+  tutorial,
+  round = 0,
+  onRematch,
+  nextTutorial,
+  onNextTutorial,
+  onTutorialList,
+}) {
   const names = useNames();
+  const { skins } = useSeats();
+  const matchRatings = useMatchRatings(
+    network,
+    round,
+    !!network && boardSize === 9 && !tutorial,
+  );
+  const pausedAt = useRef(null);
   let [a, u] = (0, useState)(initialState),
     [i, f] = (0, useState)(!1),
     [o, r] = (0, useState)(!1),
@@ -735,22 +963,58 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     setupStartRef = (0, useRef)(null),
     setupPhaseStartRef = (0, useRef)(null),
     [pendingCapture, setPendingCapture] = (0, useState)(null),
-    [holdFx, setHoldFx] = (0, useState)(!1),
+    [finishedDefeat, setFinishedDefeat] = (0, useState)(null),
     [tutStep, setTutStep] = (0, useState)(0),
     // 台本にない手を指したときに、帯へ返す一言。
     // 黙って握りつぶすと「押しても何も起きない=壊れている」と読まれる
     [tutNudge, setTutNudge] = (0, useState)(null),
     foeIdxRef = (0, useRef)(0),
     recordedRef = (0, useRef)(!1),
+    xpNoticeRef = (0, useRef)(null),
+    mountedRef = (0, useRef)(false),
     [ratingResult, setRatingResult] = (0, useState)(null),
     // テストプレイ中は、布陣の1分も対局の持ち時間も止める
     testPlay = (0, useRef)(isTestPlay()).current;
   // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない
   let noLimit = !!tutorial || testPlay;
+  // 自分が取った駒をバトルパスへ。チュートリアルでは進めない
+  useBattlePass(a, network ? p : cpu ? 0 : a.currentTurn, !!tutorial);
+
+  const seasonResult = useSeasonMatch(a, network, round, !!tutorial);
+  const boardRef = useRef(null);
+  const aceMagic = useAceMagic(a, skins, {
+    disabled: !!tutorial,
+    viewer: network ? p : cpu ? 0 : null,
+    boardRef,
+  });
+  // Aの包囲を見せ終えてから、倒れた王の継承などの映像へつなぐ。
+  const cinematic = useBattleFilm(
+    a,
+    skins,
+    !!tutorial,
+    network ? p : cpu ? 0 : null,
+    aceMagic.busy,
+  );
+  const fxBusy = cinematic.busy || aceMagic.busy;
+  const pauseClock = fxBusy || !!a.captureReveal;
+  const captureDisplayed = useCapturePresentation(a);
+  const displayed = aceMagic.busy ? aceMagic.displayState : captureDisplayed;
+  const privateNotes = usePrivateNotes(
+    a,
+    tutorial ? null : network ? p : cpu ? 0 : null,
+    fxBusy || !!a.captureReveal,
+  );
+  const holdFx =
+    !!a.captureReveal &&
+    !aceMagic.captureHandled &&
+    !!a.lastDefeat &&
+    finishedDefeat !== a.lastDefeat;
   // 案内の位置は、押した回数ではなく盤面から引き直す。
   // どんな触り方をされても画面とずれない
   let tutIdx = tutorial ? currentStepIndex(tutorial, a, tutStep) : -1;
   function y(E) {
+    if (fxBusy) return;
+    if (a.captureReveal && E.type === "VIEW_LOG") return;
     // どの駒を動かすかをアクション自身に持たせる。
     // 台本の照合にも、通信で相手へ送るときにも要る
     if (E.type === "MOVE_PIECE" && !E.pieceId && a.selectedId)
@@ -832,9 +1096,11 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   }
   (0, useEffect)(() => {
     a.phase === "intro" &&
+      matchRatings.ready &&
       ((network && p !== 0) ||
         y({
           type: "START_SETUP",
+          ruleVersion: network ? network.ruleVersion : GAME_RULE_VERSION,
           size: boardSize || 5,
           setupMode: network || cpu ? "simultaneous" : "sequential",
           ...(tutorial
@@ -847,7 +1113,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
               }
             : null),
         }));
-  }, [a.phase, boardSize]);
+  }, [a.phase, boardSize, matchRatings.ready]);
   // チュートリアルの相手は考えない。台本の手だけをそのまま指す。
   //
   // CPU に肩代わりさせない。1手でも CPU が指すと、そこから先は
@@ -856,7 +1122,13 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   (0, useEffect)(() => {
     if (!tutorial || network) return;
     let act = foeAction(a, tutorial, foeIdxRef.current, (piece) =>
-      getLegalMoves(piece, a.board, a.boardSize, a.players[1].armyRankCounts),
+      getLegalMoves(
+        piece,
+        a.board,
+        a.boardSize,
+        a.players[1].armyRankCounts,
+        kingRankOf(a, 1),
+      ),
     );
     if (!act) return;
     let id = setTimeout(
@@ -878,7 +1150,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
 
   let T = 1;
   ((0, useEffect)(() => {
-    if (!cpu || network || tutorial) return;
+    if (!cpu || network || tutorial || fxBusy) return;
     let E = cpuAction(a, T);
     if (!E) return;
     let U = foeWait(a, E, 1000),
@@ -902,37 +1174,93 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
           : y(E);
       }, U);
     return () => clearTimeout(be);
-  }, [a, cpu, network]),
+  }, [a, cpu, network, fxBusy]),
     (0, useEffect)(() => {
-      if (!network) return;
+      if (!network || fxBusy || a.captureReveal) return;
       let E = !1,
+        reading = false,
         U = setInterval(async () => {
-          let be = await readActs(network.code);
+          if (reading) return;
+          reading = true;
+          let be;
+          try {
+            be = await readActs(network.code);
+          } finally {
+            reading = false;
+          }
           if (E) return;
           if (!be.ok) {
             v(be.error);
             return;
           }
-          let at = be.list.filter(
-            (ne) => ne && ne.__id && !g.current.has(ne.__id),
-          );
+          // 届いた手はそのまま信じない。acceptAct が形を確かめて直す
+          const me = myUid();
+          /**
+           * 時間切れの申告は、こちらの時計でも尽きているときだけ受ける。
+           *
+           * 相手が「自分の時間が切れた」と認めるのは素直に受ける。
+           * 「そちらが切れた」と言われたときだけ、こちらの測りで確かめる。
+           * これが無いと、時間の残っている相手をいつでも負けにできる
+           */
+          const timeoutOk = (ne) => {
+            if (ne.type !== "CLOCK_TIMEOUT") return !0;
+            if (ne.player !== a.currentTurn) return !1;
+            if (ne.player !== p) return !0;
+            const left =
+              a.clocks[ne.player] -
+              Math.max(0, Date.now() - turnStartRef.current);
+            return left <= 0;
+          };
+          const unseen = be.list
+            .map((ne) => acceptAct(ne, me, p, network.foeUid || null))
+            .filter((ne) => ne && timeoutOk(ne) && !g.current.has(ne.__id));
+          const { actions: at, consumedIds } = takePresentationBatch(unseen, {
+            split: a.phase === "play",
+          });
           at.length !== 0 &&
-            (at.forEach((ne) => g.current.add(ne.__id)),
-            u((ne) => at.reduce((Me, ze) => reducer(Me, ze), ne)),
+            (consumedIds.forEach((id) => g.current.add(id)),
+            u((ne) =>
+              at.reduce((Me, ze) => {
+                // 壊れた手が1件混ざるだけで画面ごと落ちないようにする。
+                // 消したことは記録済みなので、落ちた手は捨てて先へ進む
+                try {
+                  return reducer(Me, ze);
+                } catch (err) {
+                  // 握りつぶすと、こちらの盤だけが進まないまま対局が
+                  // 続いてしまう。少なくとも起きたことは知らせる
+                  console.warn("受け取った手を適用できませんでした", ze, err);
+                  v(
+                    "相手から受け取れない手が届きました。盤がずれている可能性があります。",
+                  );
+                  return Me;
+                }
+              }, ne),
+            ),
             b(be.list.length));
         }, 700);
       return () => {
         ((E = !0), clearInterval(U));
       };
-    }, [network]));
+    }, [
+      network,
+      fxBusy,
+      a.phase,
+      a.captureReveal,
+      cinematic.enabled,
+      aceMagic.enabled,
+    ]));
   // 駒が倒れたら、盤の上で演出を見せてから結果の札を開く
   (0, useEffect)(() => {
-    if (!a.lastDefeat) return;
-    setHoldFx(!0);
+    if (!a.lastDefeat || aceMagic.captureHandled) {
+      return;
+    }
     let n = a.lastDefeat.cells.length;
-    let id = setTimeout(() => setHoldFx(!1), 1500 + (n - 1) * 440);
+    let id = setTimeout(
+      () => setFinishedDefeat(a.lastDefeat),
+      Math.max(1500 + (n - 1) * 440, movePresentationMs(a.lastMove)),
+    );
     return () => clearTimeout(id);
-  }, [a.lastDefeat ? a.lastDefeat.seq : 0]);
+  }, [a.lastDefeat, aceMagic.captureHandled]);
 
   // 1秒未満の刻みで残り時間を描き替える
   ((0, useEffect)(() => {
@@ -1021,11 +1349,19 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   if (turnKeyRef.current !== turnKey) {
     turnKeyRef.current = turnKey;
     turnStartRef.current = Date.now();
+    pausedAt.current = null;
+  }
+  // 映像と撃破札の確認中は操作できないので、持ち時間から差し引かない。
+  if (pauseClock && pausedAt.current === null) pausedAt.current = Date.now();
+  if (!pauseClock && pausedAt.current !== null) {
+    turnStartRef.current += Date.now() - pausedAt.current;
+    pausedAt.current = null;
   }
 
   let clockRunning =
       a.phase === "play" &&
       !noLimit &&
+      !pauseClock &&
       (a.winner === null || a.winner === undefined) &&
       !handoff,
     clockSpent = clockRunning ? Math.max(0, nowMs - turnStartRef.current) : 0,
@@ -1035,11 +1371,21 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
 
   (0, useEffect)(() => {
     if (!clockRunning) return;
-    let left =
-      a.clocks[a.currentTurn] - Math.max(0, Date.now() - turnStartRef.current);
+    // 待っている側も、相手の持ち時間が尽きたことを申告できる。
+    //
+    // 申告できるのが手番側の端末だけだと、相手が黙って何も送らないかぎり
+    // 対局が永久に止まる。こちらから終わらせる手立てが「降参」しか無く、
+    // それでは自分にだけ負けと持ち点の減少が付く。
+    //
+    // 待っている側は、時計のずれと通信の遅れを見込んで少し待ってから
+    // 申告する(先に手が届けば、この効果は作り直されて申告は起きない)
+    const waiting = network && a.currentTurn !== p;
+    const grace = waiting ? 15e3 : 0;
+    const left =
+      a.clocks[a.currentTurn] -
+      Math.max(0, Date.now() - turnStartRef.current) +
+      grace;
     if (left > 0) return;
-    // 秒読みは無し。時計を持っている側の端末が自分で負けを申告する
-    if (network && a.currentTurn !== p) return;
     y({
       type: "CLOCK_TIMEOUT",
       player: a.currentTurn,
@@ -1057,7 +1403,10 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
    * ゲストが先に抜けて部屋を消すと、ホストの再戦が壊れる。
    */
   function leaveGame() {
-    if (network && p === 0) deleteRoom(network.code);
+    // ホームへはすぐ戻す。記録が届くまで部屋の手順を残しておく。
+    seasonResult.submit().then((saved) => {
+      if (network && p === 0 && saved) deleteRoom(network.code);
+    });
     onExit();
   }
 
@@ -1080,21 +1429,140 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     });
   }
 
+  /**
+   * 再戦は両者の合意で始める。
+   *
+   * 片方が押しただけで盤を作り直すと、相手は準備ができていないまま
+   * 新しい対局に入る。部屋の手番の列も積まれる一方で、1000件で頭打ちになる。
+   * 両方そろったらホストが列を片付け、何局目かを1つ進める。
+   * どちらの端末も、それを見てから入り直す(GameCore を作り直す)
+   */
+  let [askedRematch, setAskedRematch] = (0, useState)(!1),
+    [foeAsked, setFoeAsked] = (0, useState)(!1);
+  (0, useEffect)(() => {
+    if (!network || a.phase !== "gameover" || !onRematch) return;
+    let stop = !1;
+    const me = myUid();
+    const id = setInterval(async () => {
+      // 相手の意思
+      const r = await readRematch(network.code, round);
+      if (stop) return;
+      if (r.ok)
+        setFoeAsked(
+          Object.keys(r.data || {}).some((u) => u !== me && (r.data || {})[u]),
+        );
+      // 片付けが済んで局が進んだら入り直す
+      const n = await readRound(network.code);
+      if (stop) return;
+      if (n.ok && Number(n.data) > round) {
+        clearInterval(id);
+        onRematch();
+      }
+    }, 1200);
+    return () => {
+      ((stop = !0), clearInterval(id));
+    };
+  }, [network, a.phase, round, onRematch]);
+
+  // 両方そろったら、ホストが片付けて局を進める
+  (0, useEffect)(() => {
+    if (
+      !network ||
+      p !== 0 ||
+      !askedRematch ||
+      !foeAsked ||
+      (seasonResult.active && seasonResult.status !== "done")
+    )
+      return;
+    let stop = !1;
+    (async () => {
+      await clearActs(network.code);
+      if (!stop) await bumpRound(network.code, round + 1);
+    })();
+    return () => {
+      stop = !0;
+    };
+  }, [network, p, askedRematch, foeAsked, round, seasonResult.status]);
+
+  /**
+   * シークレットミッションの達成。
+   *
+   * 絵札に偏って盤に並べきれず、数字の札で配り直された場面。
+   * 実際の配り方で およそ2600局に1回しか起きない
+   */
+  let [secretGot, setSecretGot] = (0, useState)(null);
+  (0, useEffect)(() => {
+    const mine = network ? p : cpu ? 0 : a.setupIdx;
+    if (!a.handRescued || !a.handRescued[mine]) return;
+    const got = achieveSecret("court-heavy");
+    if (got) setSecretGot(got);
+  }, [a.handRescued, a.setupIdx]);
+
   // 対局が終わったら1局ぶん記録する。レベルの元になる。
   // オンラインで相手の持ち点が分かっていれば、レーティングもここで動かす
+  // 「もう一度遊ぶ」で盤が初期化されても、記録済みの印は残っていた。
+  // そのままだと2局目以降が誰の分も記録されない(対戦数・勝数・経験値・
+  // 持ち点・称号の判定がまるごと止まる)
   (0, useEffect)(() => {
-    if (a.phase !== "gameover" || recordedRef.current) return;
+    if (a.phase !== "gameover") {
+      recordedRef.current = !1;
+      setRatingResult(null);
+    }
+  }, [a.phase]);
+  (0, useEffect)(() => {
+    if (a.phase !== "gameover") {
+      recordedRef.current = false;
+      return;
+    }
+    if (recordedRef.current || !matchRatings.ready) return;
     recordedRef.current = !0;
-    const won = a.winner === (network ? p : 0);
+    const won = a.winner === null ? null : a.winner === (network ? p : 0);
+    // 持ち点(とランキング)に数えるのは、**9×9のオンライン対戦だけ**。
+    // 5×5は短期戦で運の割合が大きく、同じ物差しに載せると持ち点が
+    // 実力を表さなくなる。CPU戦とチュートリアルは相手の強さが決まらない
+    const ranked = !!network && a.boardSize === 9;
     const foeRating =
-      network && network.ratings ? network.ratings[1 - p] : null;
-    const after = recordGame(
-      won,
-      typeof foeRating === "number" ? { foeRating } : void 0,
-    );
+      ranked && matchRatings.ratings ? matchRatings.ratings[1 - p] : null;
+    // チュートリアルは話ごとの経験値。対戦の数には数えない
+    const after = recordGame(won, {
+      online: !!network && !tutorial,
+      matchId: network
+        ? `${network.code}:${network.createdAt || 0}:${round}`
+        : null,
+      adoptedRanks: Object.keys(
+        a.players[network ? p : 0]?.armyRankCounts || {},
+      ),
+      deferXpNotice: true,
+      ...(typeof foeRating === "number"
+        ? { foeRating, startRating: matchRatings.ratings[p] }
+        : null),
+      ...(tutorial
+        ? {
+            xp: won ? tutorial.xp : 0,
+            tutorial: !0,
+            ...(won ? { tutorialId: tutorial.id } : {}),
+          }
+        : null),
+    });
+    xpNoticeRef.current = after.xpNoticeId;
     setRatingResult(after.delta === null ? null : after);
-    if (after.delta !== null) publishRank(after);
-  }, [a.phase, a.winner]);
+    publishPlayer(after);
+  }, [a.phase, a.winner, matchRatings.ready]);
+
+  // 経験値で先に決着を知らせない。撃破札と映像の後でゲージを出す。
+  (0, useEffect)(() => {
+    if (!a.captureReveal && !fxBusy) releaseXpNotice(xpNoticeRef.current);
+  }, [a.phase, a.captureReveal, fxBusy]);
+  (0, useEffect)(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      // 画面を離れても獲得表示を失わない。StrictModeの再接続では解放しない。
+      queueMicrotask(() => {
+        if (!mountedRef.current) releaseXpNotice(xpNoticeRef.current);
+      });
+    };
+  }, []);
 
   // 進んだところまでを覚えておく。
   // これが無いと、同じ駒を2度動かす台本で前の指示へ戻ってしまう
@@ -1167,36 +1635,42 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                 : "光っているボタンを押して進めてください。",
           }
         : null,
-    tutSheet = tutActive ? (
-      <TutorialSheet
-        step={tutActive}
-        index={tutIdx}
-        total={tutorial.steps.length}
-        nudge={tutNudge}
-        // 「次へ」で進む説明の札は、盤の上に前面で出して気づかせる。
-        // 撃破の札などのモーダルが出ている間は下の帯に戻す(覆うと閉じられない)。
-        // 締めの札も下の帯。前面にすると勝敗の画面を隠してしまう
-        front={
-          !tutActive.need &&
-          !tutActive.end &&
-          !a.captureReveal &&
-          !a.pendingKingChoice
-        }
-        // 駒やマスを光らせている札は下寄せにして、盤の真ん中を空ける
-        low={tutHasTarget}
-        onNext={tutActive.end ? onExit : () => setTutStep(tutIdx + 1)}
-      />
-    ) : tutHold ? (
-      <TutorialSheet
-        step={tutHold}
-        index={tutIdx - 1}
-        total={tutorial.steps.length}
-      />
-    ) : null;
+    // 最後の説明と次の話への案内は、撃破札の確認後に完了画面へまとめる。
+    tutSheet =
+      tutActive && !tutActive.end ? (
+        <TutorialSheet
+          step={tutActive}
+          index={tutIdx}
+          total={tutorial.steps.length}
+          nudge={tutNudge}
+          // 「次へ」で進む説明の札は、盤の上に前面で出して気づかせる。
+          // 撃破の札などのモーダルが出ている間は下の帯に戻す(覆うと閉じられない)。
+          front={!tutActive.need && !a.captureReveal && !a.pendingKingChoice}
+          // 駒やマスを光らせている札は下寄せにして、盤の真ん中を空ける
+          low={tutHasTarget}
+          onNext={() => setTutStep(tutIdx + 1)}
+        />
+      ) : tutHold ? (
+        <TutorialSheet
+          step={tutHold}
+          index={tutIdx - 1}
+          total={tutorial.steps.length}
+        />
+      ) : null;
 
+  const presentationSheet = (
+    <>
+      {tutSheet}
+      {cinematic.overlay}
+      {aceMagic.overlay}
+    </>
+  );
   let R = a.boardSize,
-    P = network ? p : cpu ? 0 : a.currentTurn,
-    x = network ? a.currentTurn === p : cpu ? a.currentTurn === 0 : !0,
+    P = network ? p : cpu ? 0 : (aceMagic.viewer ?? displayed.currentTurn),
+    x =
+      !fxBusy &&
+      !a.captureReveal &&
+      (network ? a.currentTurn === p : cpu ? a.currentTurn === 0 : !0),
     N = network
       ? `${p === 0 ? "host" : "guest"} acts:${g.current.size} d${a.diceIdx}[${(a.dice || []).map((E) => E ?? "-").join(",")}]`
       : null;
@@ -1204,7 +1678,10 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   // 場面に合った曲へ。勝敗のジングルは「自分」がいる対局だけ勝ち負けを分ける。
   // 1台で交互に指す対戦はどちらも自分なので、いつも勝ちの側で鳴らす
   useGameBgm({
-    state: a,
+    state:
+      (fxBusy || a.captureReveal) && displayed.phase === "gameover"
+        ? { ...displayed, phase: "play" }
+        : displayed,
     clocks: liveClocks,
     self: network ? p : cpu ? 0 : null,
     tutorial,
@@ -1215,19 +1692,21 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   useGameSounds({
     state: a,
     self: network ? p : cpu ? 0 : null,
-    warnMs: noLimit
-      ? null
-      : a.phase === "setup"
-        ? setupRemaining
-        : a.phase === "play"
-          ? liveClocks[P]
-          : null,
+    captureHandled: aceMagic.captureHandled,
+    warnMs:
+      noLimit || pauseClock
+        ? null
+        : a.phase === "setup"
+          ? setupRemaining
+          : a.phase === "play"
+            ? liveClocks[P]
+            : null,
   });
 
   if (d)
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1249,7 +1728,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   if (o)
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -1264,34 +1743,40 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         />
       </GameShell>
     );
-  if (a.phase === "intro")
+  if (a.phase === "intro" || !matchRatings.ready)
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
         netInfo={N}
-        onBack={() => r(!0)}
+        onBack={() => {
+          if (!fxBusy) r(!0);
+        }}
       >
         <WaitingScreen
           text={
-            network && p !== 0
-              ? "相手の準備を待っています…"
-              : "対局の準備をしています…"
+            !matchRatings.ready
+              ? matchRatings.error || "対戦前のレートを確認しています…"
+              : network && p !== 0
+                ? "相手の準備を待っています…"
+                : "対局の準備をしています…"
           }
         />
       </GameShell>
     );
-  if (a.captureReveal && !holdFx)
+  if (a.captureReveal && !holdFx && !fxBusy)
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
         netInfo={N}
-        onBack={() => r(!0)}
+        onBack={() => {
+          if (!fxBusy) r(!0);
+        }}
       >
         <CaptureRevealModal
           reveal={a.captureReveal}
@@ -1308,26 +1793,30 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         />
       </GameShell>
     );
-  if (a.pendingKingChoice)
+  if (a.pendingKingChoice && !a.captureReveal && !fxBusy)
     return network && a.pendingKingChoice.owner !== p ? (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
         netInfo={N}
-        onBack={() => r(!0)}
+        onBack={() => {
+          if (!fxBusy) r(!0);
+        }}
       >
         <WaitingScreen text="相手が新しい王を選んでいます…" />
       </GameShell>
     ) : (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
         netInfo={N}
-        onBack={() => r(!0)}
+        onBack={() => {
+          if (!fxBusy) r(!0);
+        }}
       >
         <KingChoiceInterstitial state={a} size={R} dispatch={y} />
       </GameShell>
@@ -1336,12 +1825,14 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   if (a.setupEffects)
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
         netInfo={N}
-        onBack={() => r(!0)}
+        onBack={() => {
+          if (!fxBusy) r(!0);
+        }}
       >
         <SetupEffectsModal
           effects={a.setupEffects}
@@ -1354,15 +1845,17 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         />
       </GameShell>
     );
-  if (a.interstitial && !network && !cpu)
+  if (a.interstitial && !a.captureReveal && !network && !cpu && !fxBusy)
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
         netInfo={N}
-        onBack={() => r(!0)}
+        onBack={() => {
+          if (!fxBusy) r(!0);
+        }}
       >
         <Interstitial
           forPlayer={a.interstitial.forPlayer}
@@ -1379,12 +1872,14 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (a.diceIdx === 3)
       return (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
           netInfo={N}
-          onBack={() => r(!0)}
+          onBack={() => {
+            if (!fxBusy) r(!0);
+          }}
         >
           <div className="center-stage">
             <h2>同じ目でした</h2>
@@ -1426,34 +1921,40 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     return E !== null ? (
       cpu && E !== 0 ? (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
           netInfo={N}
-          onBack={() => r(!0)}
+          onBack={() => {
+            if (!fxBusy) r(!0);
+          }}
         >
           <DiceStage playerIdx={E} value={a.dice[E]} />
         </GameShell>
       ) : network && E !== p ? (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
           netInfo={N}
-          onBack={() => r(!0)}
+          onBack={() => {
+            if (!fxBusy) r(!0);
+          }}
         >
           <DiceStage playerIdx={E} value={a.dice[E]} />
         </GameShell>
       ) : (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
           netInfo={N}
-          onBack={() => r(!0)}
+          onBack={() => {
+            if (!fxBusy) r(!0);
+          }}
         >
           <DiceStep
             playerIdx={E}
@@ -1461,7 +1962,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             onRoll={() =>
               y({
                 type: "ROLL_DICE_SINGLE",
-                playerIdx: E,
+                player: E,
               })
             }
             onNext={() =>
@@ -1474,12 +1975,14 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
       )
     ) : (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
         netInfo={N}
-        onBack={() => r(!0)}
+        onBack={() => {
+          if (!fxBusy) r(!0);
+        }}
       >
         <div className="center-stage">
           <h2>結果発表</h2>
@@ -1530,12 +2033,14 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (cpu && a.mulliganIdx !== 0)
       return (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
           netInfo={N}
-          onBack={() => r(!0)}
+          onBack={() => {
+            if (!fxBusy) r(!0);
+          }}
         >
           <WaitingWithBoard
             text={
@@ -1552,12 +2057,14 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (network && a.mulliganIdx !== p)
       return (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
           netInfo={N}
-          onBack={() => r(!0)}
+          onBack={() => {
+            if (!fxBusy) r(!0);
+          }}
         >
           <WaitingWithBoard
             text="相手が交換するカードを選んでいます…"
@@ -1572,12 +2079,14 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
       be = new Set(U._mulliganSelected || []);
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
         netInfo={N}
-        onBack={() => r(!0)}
+        onBack={() => {
+          if (!fxBusy) r(!0);
+        }}
       >
         <div className="setup-wrap">
           <h2
@@ -1593,6 +2102,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             </p>
           )}
           <MulliganHand
+            owner={E}
             focus={tutFocus}
             hand={U.hand}
             selected={be}
@@ -1604,6 +2114,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             }
           />
           <DiscardPanel
+            owner={1 - E}
             cards={a.players[1 - E].discard}
             label={`${shortPlayerLabel(1 - E, P, names)}(${PLAYER_META[1 - E].name})が捨てたカード`}
             color={PLAYER_META[1 - E].color}
@@ -1629,12 +2140,14 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
     if (a.setupDone[me])
       return (
         <GameShell
-          sheet={tutSheet}
+          sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
           netInfo={N}
-          onBack={() => r(!0)}
+          onBack={() => {
+            if (!fxBusy) r(!0);
+          }}
         >
           <SetupWaiting
             state={a}
@@ -1652,12 +2165,14 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
       );
     return (
       <GameShell
-        sheet={tutSheet}
+        sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
         netInfo={N}
-        onBack={() => r(!0)}
+        onBack={() => {
+          if (!fxBusy) r(!0);
+        }}
       >
         {a.setupSteps[me] === "place" ? (
           <PlaceStep
@@ -1692,27 +2207,45 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
   }
 
   let M = x && a.selectedId ? a.pieces[a.selectedId] : null,
-    ct = M ? getLegalMoves(M, a.board, R, a.players[P].armyRankCounts) : [],
+    ct = M
+      ? getLegalMoves(
+          M,
+          a.board,
+          R,
+          a.players[P].armyRankCounts,
+          kingRankOf(a, P),
+        )
+      : [],
     Jl = P === 1,
     Pl = x && a.shuffleMode;
   return (
     <GameShell
-      sheet={tutSheet}
+      sheet={presentationSheet}
       focusButton={tutButton}
       showRules={i}
       setShowRules={f}
       netInfo={N}
-      onBack={() => r(!0)}
+      onBack={() => {
+        if (!fxBusy) r(!0);
+      }}
     >
       <div className="play-wrap">
+        {network && a.ruleVersion !== GAME_RULE_VERSION && (
+          <p className="hint">
+            この対局は従来ルールで進行します。新しい持ち時間・判定ルールを使うには、両者ともページを再読み込みして新しい対局を始めてください。
+          </p>
+        )}
         {!tutorial && (
           <ClockBar
             clocks={liveClocks}
-            currentTurn={a.currentTurn}
+            extensionUses={displayed.clockExtensionUses}
+            ruleVersion={a.ruleVersion}
+            currentTurn={displayed.currentTurn}
             viewer={P}
           />
         )}
-        <TurnBar state={a} viewer={P} />
+        <TurnBar state={displayed} viewer={P} />
+        {aceMagic.controls}
         {pendingCapture && (
           <CaptureConfirm
             count={pendingCapture.count}
@@ -1782,6 +2315,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             </div>
             <div
               className="board-grid"
+              ref={boardRef}
               style={{
                 gridTemplateColumns: `repeat(${R},1fr)`,
               }}
@@ -1794,25 +2328,33 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                 }).map((be, at) => {
                   let ne = Jl ? R - 1 - U : U,
                     Me = Jl ? R - 1 - at : at,
-                    ze = a.board[ne][Me],
+                    ze = displayed.board[ne][Me],
                     Zt = ct.find((wl) => wl.row === ne && wl.col === Me),
                     Zo = territoryOwnerOf(ne, Me, R),
-                    Vt = a.lastMove,
+                    Vt = aceMagic.busy ? null : a.lastMove,
                     Vo = Vt && Vt.from.row === ne && Vt.from.col === Me,
                     Go = Vt && Vt.to.row === ne && Vt.to.col === Me,
-                    Oi = a.lastSwap,
+                    Oi = aceMagic.busy ? null : a.lastSwap,
                     Lo =
                       Oi &&
                       Oi.cells.some((wl) => wl.row === ne && wl.col === Me),
-                    fxIdx = a.lastDefeat
-                      ? a.lastDefeat.cells.findIndex(
-                          (wl) => wl.row === ne && wl.col === Me,
-                        )
-                      : -1,
+                    fxIdx =
+                      a.captureReveal &&
+                      !aceMagic.captureHandled &&
+                      !aceMagic.busy &&
+                      a.lastDefeat
+                        ? a.lastDefeat.cells.findIndex(
+                            (wl) => wl.row === ne && wl.col === Me,
+                          )
+                        : -1,
                     fx = fxIdx >= 0 ? a.lastDefeat.cells[fxIdx] : null,
                     // 直前に動いた駒。1マスずつ進んで見えるようにする
                     stepIn =
-                      Go && Vt && ze && Vt.from
+                      Go &&
+                      Vt &&
+                      ze &&
+                      Vt.from &&
+                      (!Vt.captured || a.captureReveal)
                         ? (() => {
                             const dc = Vt.from.col - Vt.to.col;
                             const dr = Vt.from.row - Vt.to.row;
@@ -1828,7 +2370,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                               sy: Jl ? -dr : dr,
                               stops: n + 1,
                               // 立ち寄る場所ごとに 190ms 留まる
-                              ms: (n + 1) * 190,
+                              ms: movePresentationMs(Vt),
                               seq: Vt.seq || 0,
                             };
                           })()
@@ -1853,7 +2395,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                               }
                             : void 0
                       }
-                      className={`cell ${Zt ? (Zt.capture ? "cell-capture" : "cell-move") : ""} ${Zo !== null ? `zone-${Zo}` : ""} ${S0} ${focusCell(ne, Me) ? "guide-target" : ""}`}
+                      className={`cell ${aceMagic.mask.has(`${ne},${Me}`) ? "ace-magic-masked" : ""} ${Zt ? (Zt.capture ? "cell-capture" : "cell-move") : ""} ${Zo !== null ? `zone-${Zo}` : ""} ${S0} ${focusCell(ne, Me) ? "guide-target" : ""}`}
                       onClick={() => {
                         Pl ||
                           ze ||
@@ -1875,11 +2417,12 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                             a.lastDefeat.via === "surround"
                               ? "fx-defeat-surround"
                               : ""
-                          } ${fx.wasKing ? "fx-defeat-king" : ""}`}
+                          }`}
                         />
                       )}
                       {ze && (
                         <div
+                          {...privateNotes.handlers(ze)}
                           className={`piece-slot ${stepIn ? "piece-stepping" : ""}`}
                           key={stepIn ? `mv${stepIn.seq}` : "piece"}
                           style={
@@ -1929,7 +2472,9 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
                             }
                             isPickable={!!Pl && ze.id !== a.shuffleMode.aId}
                             isGuided={focusPiece(ze.id)}
+                            justRevealed={displayed.lastReveal?.id === ze.id}
                           />
+                          {privateNotes.marker(ze)}
                         </div>
                       )}
                     </div>
@@ -1947,6 +2492,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             </div>
           </div>
         </div>
+        {aceMagic.boardEffect}
         {Pl && (
           <div className="action-bar">
             <span>
@@ -2023,15 +2569,52 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
         {a.kPlacement && a.kPlacement.owner === P && !a.captureReveal && (
           <ReservePlacer state={a} dispatch={y} size={R} focus={tutFocus} />
         )}
-        <CapturedRow players={a.players} dispatch={y} viewer={P} />
+        {/* めったに起きない場面に出くわしたら、その場で知らせる。
+            どれくらい珍しかったかを見せないと、ただの不運に見える */}
+        {secretGot && (
+          <div className="modal-overlay">
+            <div className="modal-panel secret-panel">
+              <Crown size={28} className="dim-icon" />
+              <h3>シークレット達成</h3>
+              <p className="secret-name">{secretGot.name}</p>
+              <p className="hint">{secretGot.how}</p>
+              <p className="secret-chance">{chanceLabel(secretGot.chance)}</p>
+              {secretGot.like && <p className="hint">{secretGot.like}</p>}
+              <p className="hint">称号「{secretGot.name}」を手に入れました。</p>
+              <button
+                className="btn btn-primary"
+                onClick={() => setSecretGot(null)}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        )}
+        {!tutorial && (network || cpu) && a.phase === "play" && (
+          <p className="private-note-hint">✎ 相手の伏せ札を長押しで推理メモ</p>
+        )}
+        <CapturedRow players={displayed.players} dispatch={y} viewer={P} />
         <div className="resign-row">
-          <button className="btn btn-ghost btn-resign" onClick={() => m(!0)}>
+          <button
+            className="btn btn-ghost btn-resign"
+            disabled={fxBusy}
+            onClick={() => m(!0)}
+          >
             <Flag size={16} /> 降参する
           </button>
         </div>
-        {a.logViewerId && a.pieces[a.logViewerId] && (
+        {privateNotes.editor}
+        {!a.captureReveal && a.logViewerId && a.pieces[a.logViewerId] && (
           <LogViewer
             piece={a.pieces[a.logViewerId]}
+            onMemo={
+              privateNotes.can(a.pieces[a.logViewerId])
+                ? () => {
+                    privateNotes.open(a.pieces[a.logViewerId]);
+                    y({ type: "CLOSE_LOG" });
+                  }
+                : null
+            }
             viewer={P}
             revealAll={a.phase === "gameover"}
             onClose={() =>
@@ -2042,7 +2625,7 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
           />
         )}
         {/* 撃破の札を閉じるまでは、勝敗の画面を出さない */}
-        {a.phase === "gameover" && !a.captureReveal && (
+        {a.phase === "gameover" && !a.captureReveal && !fxBusy && (
           <GameView
             state={a}
             network={network}
@@ -2052,8 +2635,26 @@ export function GameCore({ onExit, network, boardSize, cpu, tutorial }) {
             dispatch={y}
             onExit={leaveGame}
             tutorial={tutorial}
+            nextTutorial={nextTutorial}
+            onNextTutorial={onNextTutorial}
+            onTutorialList={onTutorialList}
             youAre={network ? p : cpu ? 0 : null}
             rating={ratingResult}
+            seasonResult={seasonResult}
+            rematch={
+              network && onRematch
+                ? {
+                    asked: askedRematch,
+                    foeAsked,
+                    ask: async () => {
+                      if (await seasonResult.submit()) {
+                        setAskedRematch(true);
+                        wantRematch(network.code, round);
+                      }
+                    },
+                  }
+                : null
+            }
           />
         )}
       </div>

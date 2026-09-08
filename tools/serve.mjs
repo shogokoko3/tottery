@@ -15,6 +15,7 @@ const types = {
   ".png": "image/png",
   ".json": "application/json",
   ".m4a": "audio/mp4",
+  ".mp4": "video/mp4",
 };
 
 const server = createServer(async (req, res) => {

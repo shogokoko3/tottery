@@ -4,14 +4,17 @@
  * App Store のガイドライン 1.2 は、利用者が作った文章を他人に見せるアプリに
  * 「不快なものを通報する手段と、それに応える体制」を求めている。
  *
- * 送り先は reports/<自動id>。読めるのは運営だけ(firebase-rules.json で
- * ".read": false にしてある)。管理画面 /admin から一覧して、
- * 問題があれば ranks/<id> を消す。
+ * 送り先は reports/<自動id>。読めるのは運営(OPERATOR_UID)だけ。
+ * ルール(firebase-rules.json)が受け付けるのは
+ * targetId / targetName / reason / reporterId / at の5欄だけで、
+ * reporterId は Firebase の uid と一致していなければならず、
+ * at はサーバーの時刻から±60秒以内。handled は運営しか書けない。
  *
  * 送信に失敗しても、画面には「受け付けた」と出さない。
  * 届いていないのに届いたことにするのは、通報の仕組みとして意味がない。
  */
 import { DB_URL } from "./firebase.js";
+import { authedFetch, myUid } from "./auth.js";
 
 const TIMEOUT_MS = 8000;
 
@@ -46,23 +49,23 @@ function withTimeout(promise, ms) {
  *
  * target: {id, name} 通報される相手
  * reason: REASONS の id
- * me:     {id, name} 通報する人。誰からの通報かを運営が追えるようにする
+ * me:     {id, name} 通報する人。uid がまだ無いときの控えにだけ使う
  */
 export async function sendReport(target, reason, me) {
   if (!target || !target.id) return { ok: false, error: "相手が分かりません" };
   try {
     const res = await withTimeout(
-      fetch(`${DB_URL}/reports.json`, {
+      authedFetch(`${DB_URL}/reports.json`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          targetId: target.id,
-          targetName: String(target.name || "").slice(0, 40),
+          targetId: String(target.id).slice(0, 64),
+          targetName: [...String(target.name || "")].slice(0, 40).join(""),
           reason: String(reason || "other").slice(0, 20),
-          reporterId: (me && me.id) || null,
-          reporterName: String((me && me.name) || "").slice(0, 40),
+          // 誰からの通報か。名乗りではなく Firebase の uid(ルールが照合する)。
+          // 名前は運営が players/<uid> から引けるので送らない
+          reporterId: myUid() || (me && me.id) || null,
           at: Date.now(),
-          handled: false,
         }),
       }),
       TIMEOUT_MS,

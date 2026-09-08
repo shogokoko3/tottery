@@ -74,8 +74,13 @@ fs.writeFileSync("index.html", html);
 fs.mkdirSync("dist", { recursive: true });
 fs.writeFileSync("dist/index.html", html);
 
-// 管理画面。サーバーに載っている成績(ranks)と待ち合わせ(lobby)を見る。
-// 本体とは別の1枚にして、/admin.html で開く
+// スキンの画像と映像は別ファイルで必要な場面だけ読み込む。
+for (const dir of ["skins", "dist/skins"]) {
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.cpSync("assets/skins", dir, { recursive: true });
+}
+
+// 公開するのはログイン画面。運営データはサーバー照合後にのみ読み込む。
 const admin = await bundleInto("src/admin/admin.jsx", "admin.template.html");
 fs.writeFileSync("admin.html", admin.html);
 fs.writeFileSync("dist/admin.html", admin.html);

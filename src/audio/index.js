@@ -15,6 +15,7 @@ export { MUSIC_CREDIT, SE_CREDIT } from "./tracks.js";
 export {
   armAudioUnlock,
   audioSettings,
+  connectFilmSound,
   duckMusic,
   playSound,
   setBgmVolume,
@@ -49,7 +50,7 @@ export function useScreenBgm(screen) {
 export function useGameBgm({ state, clocks, self, tutorial }) {
   const phase = state ? state.phase : null;
 
-  // 終盤に入ったら戻らない。持ち時間は手番ごとに10秒足されるので、
+  // 終盤に入ったら戻らない。持ち時間は残り30秒以下の手番開始時に10秒足されるので、
   // その場で判定すると境目で曲が行ったり来たりする
   const late = (0, useRef)(false);
   if (phase === "intro" || phase === "dice" || phase === "mulligan")
@@ -60,9 +61,11 @@ export function useGameBgm({ state, clocks, self, tutorial }) {
   const finished = phase === "gameover";
   const result = !finished
     ? null
-    : self == null || state.winner === self
-      ? "win"
-      : "lose";
+    : state.winner === null
+      ? "draw"
+      : self == null || state.winner === self
+        ? "win"
+        : "lose";
 
   const id = trackForScene({
     screen: "game",
@@ -95,7 +98,7 @@ export function useGameBgm({ state, clocks, self, tutorial }) {
  * 相手がどこで手を止めているかが伝わってしまう。
  * 駒が倒れたことは盤を見れば分かるので、そちらは両方で鳴らす。
  */
-export function useGameSounds({ state, self, warnMs }) {
+export function useGameSounds({ state, self, warnMs, captureHandled = false }) {
   const side = self == null ? (state ? state.setupIdx : 0) : self;
   const placed = state
     ? Object.keys((state.setupPlacements && state.setupPlacements[side]) || {})
@@ -113,13 +116,14 @@ export function useGameSounds({ state, self, warnMs }) {
     // 対局に入った最初の描画では鳴らさない
     if (!before) return;
     if (dead > before.dead) {
+      if (captureHandled) return;
       // 効果音とぶつからないよう、BGM を一瞬下げる
       duckMusic(CAPTURE_DUCK_MS);
       playSound("capture");
       return;
     }
     if (placed > before.placed || moves > before.moves) playSound("place");
-  }, [placed, moves, dead]);
+  }, [placed, moves, dead, captureHandled]);
 
   // 時計が動いていない場面(段の切り替わり・チュートリアル)では null になる。
   // そのあいだは触らない。0 として扱うと、次に始まった段が

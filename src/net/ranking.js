@@ -9,10 +9,11 @@
  * (Sign in with Apple や Game Center)を入れるまでは、そのつもりで扱う。
  */
 import { DB_URL } from "./firebase.js";
+import { authedFetch } from "./auth.js";
 
 const TIMEOUT_MS = 8000;
 /** 一覧に出す人数 */
-export const RANK_LIMIT = 50;
+export const RANK_LIMIT = 100;
 
 function withTimeout(promise, ms) {
   return Promise.race([
@@ -27,30 +28,31 @@ function withTimeout(promise, ms) {
   ]);
 }
 
-/** 自分の成績を載せる。失敗しても対局には影響しないので黙って諦める */
-export async function publishRank(profile) {
-  if (!profile || !profile.id || !profile.name) return { ok: false };
+// 互換用の入口も同じ保存処理を使う。ランキングだけを更新しない。
+export { publishProfile as publishRank } from "./profile-sync.js";
+import { isRankedRecord, worldGamesOf } from "./profile-record.js";
+
+/**
+ * 全体の総対局数。持ち点の「全体分」に使う。
+ *
+ * ランキングの行にある rated(持ち点つき対局数)を全部足す。
+ * 数えるのは9×9のオンライン対戦だけなので、この合計がそのまま
+ * 「みんなが遊んだ数」になる。
+ *
+ * 読めなかったら0を返す(全体分が乗らないだけで、対局は進む)。
+ * ※遊ぶ人が増えたら、全件を読むのはやめて合計を別に持たせること
+ */
+export async function readWorldGames() {
   try {
-    await withTimeout(
-      fetch(`${DB_URL}/ranks/${profile.id}.json`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: profile.name,
-          icon: profile.icon || null,
-          title: profile.title || null,
-          rating: profile.rating,
-          rated: profile.rated,
-          wins: profile.wins,
-          plays: profile.plays,
-          at: Date.now(),
-        }),
-      }),
+    const res = await withTimeout(
+      authedFetch(`${DB_URL}/ranks.json`),
       TIMEOUT_MS,
     );
-    return { ok: true };
+    if (!res.ok) return 0;
+    const data = await res.json();
+    return worldGamesOf(Object.values(data || {}));
   } catch {
-    return { ok: false };
+    return 0;
   }
 }
 
@@ -60,15 +62,20 @@ export async function publishRank(profile) {
  * App Store のガイドライン 5.1.1(v) は、アカウントを作れるアプリに
  * 「アプリの中から自分の記録を消せること」を求めている。その消す側。
  * 端末の中の記録を消すのは profile.js の forgetMe()。
+ * シーズンの成績(Cloudflare Worker の台帳)はここでは消えない。
  */
 export async function deleteRank(id) {
   if (!id) return { ok: false, error: "記録が見つかりません" };
   try {
-    const res = await withTimeout(
-      fetch(`${DB_URL}/ranks/${id}.json`, { method: "DELETE" }),
-      TIMEOUT_MS,
-    );
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // ranks(公開ランキング)と players(運営の台帳)の両方。
+    // ルール上、自分の uid の行は自分で消せる(newData が無い書き込み)
+    for (const node of ["ranks", "players"]) {
+      const res = await withTimeout(
+        authedFetch(`${DB_URL}/${node}/${id}.json`, { method: "DELETE" }),
+        TIMEOUT_MS,
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    }
     return { ok: true, error: null };
   } catch (err) {
     return {
@@ -83,9 +90,9 @@ export async function deleteRank(id) {
 
 /** 持ち点の高い順に読み出す */
 export async function readRanks(limit = RANK_LIMIT) {
-  const url = `${DB_URL}/ranks.json?orderBy=%22rating%22&limitToLast=${limit}`;
+  const url = `${DB_URL}/ranks.json`;
   try {
-    const res = await withTimeout(fetch(url), TIMEOUT_MS);
+    const res = await withTimeout(authedFetch(url), TIMEOUT_MS);
     // 401 は ranks の読み書きを許すルールがまだ公開されていないとき
     if (res.status === 401)
       return {
@@ -98,9 +105,15 @@ export async function readRanks(limit = RANK_LIMIT) {
     const data = await res.json();
     const list = Object.entries(data || {})
       .map(([id, row]) => ({ id, ...row }))
-      .filter((r) => r && typeof r.rating === "number" && r.name)
-      .sort((a, b) => b.rating - a.rating);
-    return { ok: true, list, error: null };
+      .filter(isRankedRecord)
+      .sort((a, b) => b.rating - a.rating || a.id.localeCompare(b.id))
+      .slice(0, limit);
+    return {
+      ok: true,
+      list,
+      world: worldGamesOf(Object.values(data || {})),
+      error: null,
+    };
   } catch (err) {
     return {
       ok: false,

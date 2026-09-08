@@ -4,6 +4,8 @@
  * どの呼び出しも 8 秒でタイムアウトし、例外ではなく {ok, error} を返す。
  */
 
+import { authedFetch, ensureAuth, myUid } from "./auth.js";
+
 export const DB_URL =
   "https://tottery-66e0f-default-rtdb.asia-southeast1.firebasedatabase.app";
 const TIMEOUT_MS = 8000;
@@ -50,7 +52,7 @@ function withTimeout(promise, ms) {
 
 async function getJson(url) {
   try {
-    const res = await withTimeout(fetch(url), TIMEOUT_MS);
+    const res = await withTimeout(authedFetch(url), TIMEOUT_MS);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return { ok: true, data: await res.json(), error: null };
   } catch (err) {
@@ -61,7 +63,7 @@ async function getJson(url) {
 async function sendJson(url, method, body) {
   try {
     const res = await withTimeout(
-      fetch(url, {
+      authedFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -77,7 +79,7 @@ async function sendJson(url, method, body) {
 
 async function remove(url) {
   try {
-    await withTimeout(fetch(url, { method: "DELETE" }), TIMEOUT_MS);
+    await withTimeout(authedFetch(url, { method: "DELETE" }), TIMEOUT_MS);
   } catch {
     /* 後始末なので失敗しても進める */
   }
@@ -85,17 +87,113 @@ async function remove(url) {
 
 /* ---------------------------- ルーム ---------------------------- */
 
+/** 客の席。席は host と guest の2つしか無く、数えずに満室が決まる */
+const guestSeatUrl = (code) => `${DB_URL}/rooms/${code}/seats/guest.json`;
+
+/** サインインが通っていれば uid。通らなければ null */
+async function whoAmI() {
+  const a = await ensureAuth();
+  return (a && a.uid) || myUid();
+}
+
 export const readRoom = (code) => getJson(roomUrl(code));
-export const writeRoom = (code, data) => sendJson(roomUrl(code), "PUT", data);
+
+/**
+ * 部屋を新しく作る。
+ *
+ * 部屋は席についた二人だけのものにしてある(ルール側で閉じている)ので、
+ * 作るときに自分を席へ入れておく。createdAt は、放置された部屋を
+ * あとから誰かが片付けられるようにするための日付。
+ */
+export async function createRoom(code, data) {
+  const uid = await whoAmI();
+  if (!uid) return { ok: false, error: "サインインできていません" };
+  const base = data && typeof data === "object" ? data : {};
+  return sendJson(roomUrl(code), "PUT", {
+    ...base,
+    seats: { host: uid },
+    createdAt: Number(base.createdAt) || Date.now(),
+  });
+}
+
+/**
+ * 出来ている部屋に、自分の名乗り(名前・アイコン・持ち点など)を書き足す。
+ *
+ * 丸ごと置き直さない。置き直すと、それまでに積んだ手番の列を
+ * 消してしまううえ、ルール側でも中身の丸ごと上書きは断っている。
+ */
+export const updateRoom = (code, patch) =>
+  sendJson(roomUrl(code), "PATCH", patch);
+
+/**
+ * 空いている席に座る。
+ *
+ * 部屋の中身は席についてからでないと読めないので、参加する側は
+ * まずこれを呼ぶ。席が埋まっていたり、その合言葉の部屋が無ければ
+ * サーバーが断る。断られたことが「満室 or 見つからない」の合図になる。
+ */
+export async function joinRoom(code) {
+  const uid = await whoAmI();
+  if (!uid) return { ok: false, error: "サインインできていません" };
+  return sendJson(guestSeatUrl(code), "PUT", uid);
+}
+
+/** 座った席を空ける(参加をやめたとき) */
+export async function leaveRoom(code) {
+  const uid = await whoAmI();
+  if (uid) await remove(guestSeatUrl(code));
+}
+
 export const deleteRoom = (code) => remove(roomUrl(code));
 
-/** 手番を1件追記する。キーの昇順がそのまま再生順になる */
-export const pushAct = (code, act) => sendJson(actsUrl(code), "POST", act);
+/**
+ * 手番の列だけを片付ける。
+ *
+ * 部屋の手番は積まれる一方で、上限(1000件)に当たるとそこから先が
+ * 書けなくなる。再戦のたびに前の対局ぶんを消しておく。
+ * 消せるのは席についている当事者だけ
+ */
+export const clearActs = (code) => remove(actsUrl(code));
+
+/**
+ * 再戦の意思を置く。局ごとに分けてあるので、消さなくても混ざらない。
+ * 両方そろったらホストが手番の列を片付け、round を1つ進める。
+ * どちらの端末も round が変わったのを見て入り直す
+ */
+export async function wantRematch(code, round) {
+  const uid = await whoAmI();
+  if (!uid) return { ok: false, error: "サインインできていません" };
+  return sendJson(
+    `${DB_URL}/rooms/${code}/rematch/r${round}/${uid}.json`,
+    "PUT",
+    true,
+  );
+}
+
+export const readRematch = (code, round) =>
+  getJson(`${DB_URL}/rooms/${code}/rematch/r${round}.json`);
+
+/** 何局目か。ホストだけが進める */
+export const bumpRound = (code, round) =>
+  sendJson(`${DB_URL}/rooms/${code}/round.json`, "PUT", round);
+
+export const readRound = (code) =>
+  getJson(`${DB_URL}/rooms/${code}/round.json`);
+
+/**
+ * 手番を1件追記する。キーの昇順がそのまま再生順になる。
+ * by には自分の uid を入れる。ルールがここを見て、他人になりすました
+ * 手を弾く。
+ */
+export async function pushAct(code, act) {
+  const uid = await whoAmI();
+  return sendJson(actsUrl(code), "POST", uid ? { ...act, by: uid } : act);
+}
 
 /** 追記された手番を古い順に読み出す */
 export async function readActs(code) {
   try {
-    const res = await withTimeout(fetch(actsUrl(code)), TIMEOUT_MS);
+    const res = await withTimeout(authedFetch(actsUrl(code)), TIMEOUT_MS);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!data) return { ok: true, list: [], error: null };

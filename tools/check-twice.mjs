@@ -107,15 +107,20 @@ function drive(forceRank) {
 
       if (!isSecond || !kingId || !s.pieces[kingId]) continue;
       const history = s.pieces[kingId].history;
-      const added = history.length - before;
+      // 相手の王を討つと「名乗りを上げた」が1行入る。これは行動そのものでは
+      // ないので、行動が何行残ったかを数えるときは外す
+      const acts = history
+        .slice(before)
+        .filter((l) => !l.includes("名乗りを上げた"));
+      const added = acts.length;
       seen[forceRank]++;
       if (added !== 1)
         problems.push(
           `王の${forceRank}: 2回目で行動ログが${added}行しか増えない`,
         );
-      else if (!history[history.length - 1].includes("(2回目)"))
+      else if (!acts[acts.length - 1].includes("(2回目)"))
         problems.push(
-          `王の${forceRank}: 2回目だと分からない「${history[history.length - 1]}」`,
+          `王の${forceRank}: 2回目だと分からない「${acts[acts.length - 1]}」`,
         );
     }
   }

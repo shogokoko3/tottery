@@ -62,8 +62,12 @@ export function unblock(id) {
   return next;
 }
 
-/** 隠した相手を一覧から除く。ランキングなどに掛ける */
-export function withoutBlocked(rows) {
+/**
+ * 隠した相手を一覧から除く。ランキングなどに掛ける。
+ * 第2引数は使わない。呼び出し側が「見えなくした直後に描き直す」ための
+ * 数え札を渡してくるだけで、毎回 localStorage を読み直すので値は要らない
+ */
+export function withoutBlocked(rows, _tick) {
   if (!Array.isArray(rows) || !rows.length) return rows || [];
   const hidden = new Set(loadBlocked().map((b) => b.id));
   if (!hidden.size) return rows;

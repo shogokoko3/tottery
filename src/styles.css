@@ -397,8 +397,11 @@ h3 {
 }
 .room-code {
   font-family: "Shippori Mincho", serif;
-  font-size: 44px;
-  letter-spacing: 0.2em;
+  /* 合言葉は8文字。狭い画面でもはみ出さない大きさに収める */
+  font-size: clamp(22px, 8vw, 38px);
+  letter-spacing: 0.12em;
+  max-width: 100%;
+  word-break: break-all;
   color: var(--gold-soft);
   border: 2px solid var(--gold);
   border-radius: 8px;
@@ -964,6 +967,14 @@ h3 {
 .gameover-panel {
   text-align: center;
 }
+.tutorial-complete {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.tutorial-king-card {
+  width: 80px;
+}
 .review-panel {
   max-width: 520px;
   text-align: center;
@@ -1241,21 +1252,28 @@ h3 {
   box-shadow: none;
 }
 .code-row {
+  /* 8文字ぶんの枠と「参加する」を横に並べると、狭い画面で枠が潰れる。
+     枠を1行いっぱいに使い、ボタンはその下に置く */
   display: flex;
+  flex-direction: column;
   gap: 10px;
   align-items: stretch;
   margin: 16px 0 8px;
 }
+.code-row .code-join {
+  width: 100%;
+}
 .code-boxes {
   display: flex;
-  gap: 8px;
+  gap: 5px;
   flex: 1;
   position: relative;
   cursor: text;
 }
 .code-box {
   flex: 1;
-  aspect-ratio: 0.85;
+  min-width: 0;
+  aspect-ratio: 0.72;
   background: var(--card-face);
   border: 1px solid var(--gold);
   border-radius: 6px;
@@ -1719,6 +1737,9 @@ h3 {
 }
 
 /* --- 持ち時間 --- */
+.clock-panel {
+  width: 100%;
+}
 .clock-bar {
   display: flex;
   gap: 8px;
@@ -1755,6 +1776,74 @@ h3 {
 }
 .clock-active.clock-low {
   animation: clock-pulse 1s ease-in-out infinite;
+}
+.clock-limited {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+}
+.clock-extension {
+  grid-column: 1 / -1;
+  border-top: 1px solid rgba(212, 175, 55, 0.18);
+  padding-top: 5px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.clock-extension-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  white-space: nowrap;
+}
+.clock-extension-count strong {
+  margin: 0 2px;
+  font-size: 13px;
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+.clock-extension-pips {
+  display: flex;
+  gap: 3px;
+}
+.clock-extension-pips i {
+  width: 5px;
+  height: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 2px;
+}
+.clock-extension-pips .available {
+  background: linear-gradient(#f8e3a1, #b78739);
+  box-shadow: 0 0 4px #e2b85655;
+}
+.clock-extension-alert:not(:empty) {
+  margin-top: 3px;
+  padding: 3px 2px;
+  border-radius: 3px;
+  color: #ffe0a0;
+  background: #d99c2520;
+  text-align: center;
+  font-weight: 700;
+}
+.clock-extension-warning {
+  border-top-color: #e8b05077;
+}
+.clock-extension-empty .clock-extension-alert {
+  background: #d4553a26;
+  color: #ffb7a3;
+}
+.clock-extension-empty .clock-extension-count strong {
+  color: #ffb7a3;
+}
+.clock-rule-hint {
+  margin: 0 0 7px;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-dim);
 }
 @keyframes clock-pulse {
   50% {
@@ -2258,8 +2347,21 @@ h3 {
   color: var(--gold-soft);
 }
 .title-choice-locked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   opacity: 0.45;
   cursor: default;
+}
+.title-choice-locked b,
+.title-choice-locked small {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.title-choice-locked small {
+  white-space: pre-line;
 }
 /* 時計の欄: 名前の下に称号 */
 .clock-name {
@@ -2925,10 +3027,10 @@ h3 {
   color: var(--text-dim);
 }
 
-/* 対局数・勝ち・勝率 */
+/* 対局数・勝ち・引き分け・勝率 */
 .stat-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   border-top: 1px solid var(--line);
   padding-top: 12px;
@@ -3424,4 +3526,1346 @@ h3 {
   align-items: flex-start;
   gap: 4px;
   min-width: 0;
+
+/* 名前を決め直す画面に出す、運営からの一言 */
+.name-notice {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(176, 32, 47, 0.6);
+  background: rgba(176, 32, 47, 0.15);
+  color: #ffd2d6;
+  font-size: 13px;
+}
+
+/* --- ミッション --- */
+.tottery-root:has(.missions-screen) {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tottery-root:has(.missions-screen) > .top-bar,
+.tottery-root:has(.missions-screen) > .test-badge {
+  flex-shrink: 0;
+}
+.tottery-root:has(.missions-screen) > .build-tag {
+  display: none;
+}
+.stage:has(> .missions-screen) {
+  flex: 1;
+  min-height: 0;
+  padding: 12px max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  overflow: hidden;
+}
+.missions-screen {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--btn-edge);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #162940, #0b172a);
+}
+.missions-heading {
+  padding: 12px 12px 8px;
+  flex-shrink: 0;
+}
+.missions-heading h2 {
+  margin: 0 0 6px;
+  font-size: 24px;
+}
+.missions-heading .level-badge {
+  margin: 0;
+  font-size: 12px;
+}
+.missions-heading .level-badge small {
+  display: none;
+}
+.missions-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  flex-shrink: 0;
+  margin: 0 10px 10px;
+}
+.missions-tabs button {
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 2px;
+  border: 1px solid var(--btn-edge);
+  background: #0d1c30;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  font-family: inherit;
+  cursor: pointer;
+  position: relative;
+}
+.missions-tabs button:first-child {
+  border-radius: 8px 0 0 8px;
+}
+.missions-tabs button:last-child {
+  border-radius: 0 8px 8px 0;
+}
+.missions-tabs button + button {
+  border-left: 0;
+}
+.missions-tabs button[aria-selected="true"] {
+  background: linear-gradient(180deg, #f1da98, #c2a25f);
+  color: #211b13;
+}
+.missions-tabs button:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: -4px;
+}
+.missions-tab-count {
+  position: absolute;
+  right: 2px;
+  top: -6px;
+  background: #a72f29;
+  color: #fff;
+  border-radius: 12px;
+  min-width: 18px;
+  padding: 0 4px;
+  font: 700 10px/18px sans-serif;
+}
+.missions-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 12px;
+  scrollbar-width: thin;
+}
+.missions-scroll .mission-list {
+  margin: 0 0 12px;
+}
+.missions-scroll .mission {
+  text-align: left;
+}
+.missions-empty {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+.missions-footer {
+  flex-shrink: 0;
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--line);
+  background: #102038;
+}
+.missions-footer .mission-message:empty {
+  display: none;
+}
+.missions-footer .mission-message {
+  max-height: 3.2em;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+.missions-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.missions-actions .btn {
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 6px;
+  font-size: 12px;
+  touch-action: manipulation;
+}
+@media (max-height: 500px) {
+  .missions-heading {
+    padding: 4px 12px;
+  }
+  .missions-heading h2 {
+    font-size: 18px;
+    margin: 0;
+  }
+  .missions-heading .level-badge {
+    display: none;
+  }
+  .missions-tabs {
+    margin-bottom: 6px;
+  }
+}
+.mission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0;
+}
+.missions-reset {
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  font: 11px/1.5 sans-serif;
+}
+.mission-segments {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+  margin: 10px 0;
+}
+.mission-segments span {
+  height: 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #071323;
+}
+.mission-segments .is-filled {
+  background: linear-gradient(180deg, var(--gold-soft), var(--gold-deep));
+  border-color: var(--gold);
+}
+.mission {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(9, 20, 38, 0.6);
+  padding: 12px 14px;
+}
+/* 受け取れるものは金の縁で目を引く。受け取り済みは沈める */
+.mission.is-ready {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+}
+.mission.is-claimed {
+  opacity: 0.55;
+}
+.mission-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mission-kind {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.mission-head b {
+  font-family: "Shippori Mincho", serif;
+  font-size: 14px;
+}
+.mission-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin: 9px 0 7px;
+}
+.mission-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold));
+}
+.mission-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mission-foot small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.mission-done {
+  font-size: 11px;
+  color: var(--gold-soft);
+}
+.mission-message {
+  min-height: 1.6em;
+  margin: 0;
+  font-size: 12px;
+  color: var(--gold-soft);
+  text-align: center;
+}
+/* 受け取れる数の印 */
+.menu-badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--card-red);
+  color: #fff;
+  font: 700 11px/20px sans-serif;
+  text-align: center;
+}
+.btn-choice {
+  position: relative;
+}
+
+/* --- バトルパス --- */
+.pass-reward {
+  margin: 14px 0;
+  color: var(--gold-soft);
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.pass-reward svg {
+  vertical-align: middle;
+}
+.pass-reward strong {
+  display: block;
+  font-size: 15px;
+}
+.pass-counts {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin: 10px 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.pass-counts b {
+  color: var(--gold-soft);
+  font-size: 15px;
+}
+.pass-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr));
+  gap: 4px;
+  max-width: 420px;
+  margin: 0 auto 14px;
+}
+.pass-cell {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border: 0;
+  padding: 0;
+  background: none;
+  perspective: 700px;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 表と裏を貼り合わせた板。押すとこれが回る */
+.pass-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+.pass-cell.is-flipped .pass-inner {
+  transform: rotateY(180deg);
+}
+.pass-front,
+.pass-back {
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border: 1px solid var(--line);
+  background: rgba(9, 20, 38, 0.7);
+}
+.pass-front {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 3px;
+  color: var(--text-dim);
+  font-size: 8.5px;
+  line-height: 1.25;
+  text-align: center;
+}
+/* 裏は絵柄の一片。回りきった向きで貼る */
+.pass-back {
+  transform: rotateY(180deg);
+  background-repeat: no-repeat;
+  border-color: var(--gold);
+}
+/* まだ開いていないマスは沈める */
+.pass-cell.is-locked {
+  opacity: 0.35;
+}
+/* いま挑戦できるマス */
+.pass-cell.is-open .pass-front {
+  border-color: var(--gold-deep);
+  color: var(--text);
+}
+/* クリア済み。押すとめくれる。もう一度押すと条件に戻る */
+.pass-cell.is-cleared {
+  cursor: pointer;
+}
+.pass-cell.is-cleared .pass-front {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.14);
+  color: var(--gold-soft);
+}
+.pass-name {
+  overflow-wrap: anywhere;
+}
+.pass-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.pass-turn {
+  font-size: 8px;
+  border: 1px solid var(--gold);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+/* 進み具合。マスの下辺に細く */
+.pass-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.pass-bar::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: var(--p, 0%);
+  background: var(--gold);
+}
+/* 一括でめくる釦 */
+.pass-actions {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 10px;
+}
+.pass-complete-art {
+  max-width: 420px;
+  margin: 0 auto 14px;
+  border: 2px solid var(--gold-soft);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 0 22px rgba(230, 198, 129, 0.18);
+}
+.pass-complete-art img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+.pass-earned {
+  text-align: center;
+  color: var(--gold-soft);
+  font-size: 17px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 18px rgba(238, 211, 138, 0.3);
+}
+.pass-earned svg {
+  vertical-align: middle;
+}
+.pass-earned strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+}
+.pass-cell:disabled {
+  cursor: default;
+}
+@media (max-width: 400px) {
+  .pass-cell {
+    font-size: 8px;
+  }
+  .pass-turn {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pass-inner {
+    transition: none;
+  }
+}
+
+/* --- 運営からのお知らせ ---
+ * 覆いの見た目は管理画面側の CSS にしか無く、プレイヤーの画面では
+ * 素の文字が一覧の下に伸びていた。ここに独立して置き直す。 */
+.notice-wrap {
+  text-align: left;
+}
+.notice-wrap h2,
+.notice-wrap .mission-message {
+  text-align: center;
+}
+/* まとめて受け取る。文言が折り返すと読みにくいので1行に収める */
+.notice-all {
+  font-size: 15px;
+  padding: 13px 16px;
+}
+
+.notice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+/* お知らせ1件。件名・日付・本文の頭・添付をこの順に積む。
+ * 件名だけだと中身が想像できず、いちいち開くことになる */
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  border-radius: 10px;
+  background: rgba(4, 10, 20, 0.45);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.notice:active {
+  transform: translateY(1px);
+}
+/* 未読は左の縁と点で示す。全体を金で塗ると、並んだとき目が休まらない */
+.notice.is-new {
+  border-left-color: var(--gold);
+}
+.notice.is-read {
+  opacity: 0.55;
+}
+
+.notice-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.notice-mark {
+  flex: none;
+  width: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold-soft);
+  align-self: center;
+}
+.notice-mark i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.notice-head b {
+  flex: 1;
+  min-width: 0;
+  font-family: "Shippori Mincho", serif;
+  font-size: 14.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.notice-when {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+/* 本文の頭。1行だけ見せて、続きは開いてもらう */
+.notice-peek {
+  margin-left: 20px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+/* 添付は小さな札にして、開かなくても中身が分かるようにする */
+.notice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-left: 20px;
+}
+.notice-chip {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--gold-soft);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* 開いたときの覆い。画面いっぱいを覆って、外を押すと閉じる */
+.notice-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(4, 8, 18, 0.78);
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+@media (min-height: 620px) {
+  .notice-sheet {
+    align-items: center;
+  }
+}
+.notice-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 440px;
+  max-height: 82vh;
+  border: 1px solid var(--gold);
+  border-radius: 14px;
+  background: linear-gradient(170deg, #142a48, #0b1729);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  text-align: left;
+}
+.notice-panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 14px 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.notice-panel-head b {
+  flex: 1;
+  font-family: "Shippori Mincho", serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--gold-soft);
+  overflow-wrap: anywhere;
+}
+/* 閉じるは指で押せる大きさに */
+.notice-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -8px -6px 0 0;
+  display: grid;
+  place-items: center;
+}
+/* 本文が長くてもここだけが動く。題と受け取る釦は動かない */
+.notice-panel-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 16px 4px;
+}
+.notice-date {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.notice-body {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.notice-gifts {
+  margin-bottom: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(212, 175, 55, 0.08);
+}
+.notice-gifts-label {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.notice-gifts ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--gold-soft);
+}
+/* 続きがあることが分かるよう、下端をふわりと薄くする */
+.notice-actions {
+  position: relative;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+}
+.notice-actions::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -22px;
+  height: 22px;
+  pointer-events: none;
+  background: linear-gradient(rgba(11, 23, 41, 0), #0b1729);
+}
+
+/* --- ホーム ---
+ * 片手で持った電話で見るところ。7つの入り口を同じ帯で並べると、
+ * どれも同じ重さに見えて選べなくなるので、大きさと色で軽重をつけた。
+ * 触るところはどれも 44px 以上にしてある。 */
+.home-wrap {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* 画面の高さが余ったぶんは上下に分ける。下だけに余白が溜まらないように */
+  margin-block: auto;
+}
+/* ホームのときだけ、置き場を画面の高さいっぱいに広げる */
+.stage:has(> .home-wrap) {
+  min-height: calc(100vh - 60px);
+  min-height: calc(100dvh - 60px);
+  justify-content: flex-start;
+}
+
+/* 自分の札。名前・称号・レベル・チケット */
+.home-self {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-self:active {
+  transform: scale(0.99);
+}
+.home-self-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.home-self-id b {
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-self-id small {
+  font-size: 11px;
+  color: var(--gold-soft);
+  opacity: 0.85;
+}
+.home-self-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+/* 押せることが分かるように、右端に小さな矢印を添える */
+.home-self-more {
+  opacity: 0.4;
+  flex: none;
+}
+.home-lv b {
+  font-size: 16px;
+  color: var(--gold-soft);
+  margin-left: 2px;
+}
+.home-tickets {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(212, 175, 55, 0.08);
+  color: var(--gold-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+/* レベルの帯は札の下辺に沿わせる。数字だけより進み具合が伝わる */
+.home-self-bar {
+  grid-column: 1 / -1;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.14);
+  overflow: hidden;
+}
+.home-self-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold-soft), var(--gold));
+}
+
+/* 一番やってほしいところ。ここだけ金にする */
+.home-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #f0d98a, #d4af37 60%, #b8942b);
+  color: #22160a;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    0 6px 0 #7a5f18,
+    0 10px 24px rgba(0, 0, 0, 0.4);
+  -webkit-tap-highlight-color: transparent;
+}
+.home-hero:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 2px 0 #7a5f18,
+    0 4px 10px rgba(0, 0, 0, 0.4);
+}
+.home-hero-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 50%;
+  background: rgba(34, 22, 10, 0.14);
+}
+.home-hero-label {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 3px;
+}
+.home-hero-label b {
+  font-size: 21px;
+  letter-spacing: 0.08em;
+}
+.home-hero-label small {
+  font-size: 12px;
+  opacity: 0.75;
+}
+.home-hero-arrow {
+  opacity: 0.5;
+  flex: none;
+}
+
+/* チュートリアル。金の次に置く一段 */
+.home-wide {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border: 1px solid rgba(143, 111, 214, 0.45);
+  border-radius: 12px;
+  background: linear-gradient(150deg, #2c2450, #1b1836);
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  -webkit-tap-highlight-color: transparent;
+}
+.home-wide:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+.home-wide-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 10px;
+  background: rgba(203, 182, 255, 0.14);
+  color: var(--swap-soft);
+}
+.home-wide-label {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 2px;
+}
+.home-wide-label b {
+  font-size: 15px;
+  letter-spacing: 0.06em;
+}
+.home-wide-label small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.home-wide-arrow {
+  color: var(--text-dim);
+  opacity: 0.6;
+  flex: none;
+}
+
+/* 四角い入り口。2つずつ並べる */
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.home-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 96px;
+  padding: 12px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  -webkit-tap-highlight-color: transparent;
+}
+.home-tile:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+.home-tile b {
+  font-size: 13.5px;
+  letter-spacing: 0.04em;
+}
+.home-tile small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.home-tile-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+/* 入り口ごとに絵柄の色を変える。同じ絵柄・同じ色だと押し間違える */
+.home-tile-skins .home-tile-icon {
+  color: var(--swap-soft);
+  background: rgba(143, 111, 214, 0.16);
+}
+.home-tile-pass .home-tile-icon {
+  color: #7fd3c4;
+  background: rgba(127, 211, 196, 0.14);
+}
+/* 金は金の釦(対戦する)に取ってあるので、ここは琥珀にして分ける */
+.home-tile-missions .home-tile-icon {
+  color: #f5c26b;
+  background: rgba(245, 194, 107, 0.22);
+}
+.home-tile-letters .home-tile-icon {
+  color: #8fbce8;
+  background: rgba(143, 188, 232, 0.14);
+}
+.home-tile .menu-badge {
+  top: 8px;
+  right: 8px;
+}
+
+/* ランキング。毎日押すものではないので控えめに */
+.home-quiet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-quiet:active {
+  color: var(--gold-soft);
+}
+
+/* 背の低い電話。詰めて1画面に収める。
+ * お知らせの帯を足したぶん、四角の入り口も薄くする */
+@media (max-height: 700px) {
+  .home-wrap {
+    gap: 9px;
+  }
+  .home-hero {
+    padding: 12px 16px;
+  }
+  .home-hero-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .home-hero-label b {
+    font-size: 19px;
+  }
+  .home-wide {
+    padding: 10px 16px;
+  }
+  .home-tile {
+    min-height: 0;
+    padding: 9px 8px;
+    gap: 3px;
+  }
+  .home-tile-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .home-self {
+    padding: 8px 14px 10px;
+  }
+}
+
+/* --- ログインボーナス --- */
+/* 受け取るまで閉じない札。外を押しても消えない */
+.bonus-panel {
+  max-width: 400px;
+}
+.bonus-title {
+  margin: 0;
+  font-size: 19px;
+  color: var(--gold-soft);
+  letter-spacing: 0.08em;
+}
+.bonus-sub {
+  margin: 4px 0 16px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+/* 7日ぶんを横に並べる。狭い画面でも折り返さず、1マスずつ細くする */
+.bonus-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.bonus-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.bonus-cell small {
+  font-size: 9px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.bonus-cell b {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--text);
+}
+/* 今日のマス。ここだけ金で光らせる */
+.bonus-cell.is-today {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.16);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.3);
+}
+.bonus-cell.is-today b {
+  color: var(--gold-soft);
+}
+/* 受け取り済み。沈めて、済みの印を重ねる */
+.bonus-cell.is-taken {
+  opacity: 0.45;
+}
+.bonus-check {
+  color: var(--gold-soft);
+}
+/* 幅の狭い電話。7マスが潰れないよう、札の余白を詰める */
+@media (max-width: 380px) {
+  .bonus-panel {
+    padding: 20px 12px;
+  }
+  .bonus-cell {
+    padding: 8px 1px;
+  }
+}
+.bonus-gain {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--text);
+}
+.bonus-gain b {
+  color: var(--gold-soft);
+  font-size: 17px;
+}
+
+/* 「ホームに戻る」。どの画面でも同じ置き方にする。
+ * すぐ上の釦にくっついていると押し間違えるので、間を空けて単体で立たせる。
+ * 主役ではないので幅は控えめに。ただし指で押せる高さは確保する。 */
+.btn-home {
+  display: block;
+  margin: 26px auto 0;
+  min-width: 200px;
+  min-height: 48px;
+}
+
+/* 王を討った駒が名乗りを上げる。盤の上でくるりと表になる。
+ * 取られた側にも「どの駒に討たれたか」が見えるように、めくったあと
+ * 金の光をひと呼吸だけ添える */
+.piece-unveiled {
+  animation: piece-unveil 620ms ease-out both;
+}
+@keyframes piece-unveil {
+  0% {
+    transform: rotateY(90deg) scale(0.9);
+    filter: brightness(1.6);
+  }
+  55% {
+    transform: rotateY(-10deg) scale(1.08);
+    filter: brightness(1.35) drop-shadow(0 0 10px var(--gold));
+  }
+  100% {
+    transform: rotateY(0) scale(1);
+    filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .piece-unveiled {
+    animation: none;
+  }
+}
+
+/* 早見表の足元に添える一言 */
+.rule-foot {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  line-height: 1.7;
+}
+.rule-foot b {
+  color: var(--gold-soft);
+}
+
+/* 運営からのお知らせ。読み物なので、自分の札の上に細く置く。
+ * 毎日押すものではないが、届いたことには気づいてほしいので、
+ * 数がある時だけ赤い印を出す */
+.home-news {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(143, 188, 232, 0.08);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-news:active {
+  transform: translateY(1px);
+}
+.home-news svg {
+  color: #8fbce8;
+  flex: none;
+}
+.home-news-count {
+  min-width: 18px;
+  height: 18px;
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--card-red);
+  color: #fff;
+  font: 700 11px/18px sans-serif;
+  text-align: center;
+}
+/* 印が無いときも矢印は右端に寄せる */
+.home-news-arrow {
+  margin-left: auto;
+  opacity: 0.5;
+}
+.home-news-count ~ .home-news-arrow {
+  margin-left: 6px;
+}
+
+/* 次に増やすものの席。四角の並びを崩さないための空き */
+.home-slot {
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  opacity: 0.35;
+}
+
+/* 予備札が2枚めくれたときの選択 */
+.reserve-picks {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 10px 0;
+}
+.reserve-pick {
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity 0.15s,
+    border-color 0.15s;
+}
+.reserve-pick-on {
+  border-color: var(--gold);
+  opacity: 1;
+}
+
+/* 絵札に偏って配り直したときの知らせ */
+.setup-rescue {
+  margin: 10px auto;
+  max-width: 480px;
+  padding: 10px 14px;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  background: rgba(198, 163, 90, 0.12);
+  color: var(--gold-soft);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* シークレットミッションの達成 */
+.secret-panel {
+  text-align: center;
+}
+.secret-name {
+  font-family: "Shippori Mincho", serif;
+  font-size: 24px;
+  color: var(--gold);
+  margin: 6px 0;
+}
+.secret-chance {
+  display: inline-block;
+  margin: 8px auto;
+  padding: 5px 12px;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  color: var(--gold-soft);
+  font-size: 13px;
+}
+.secret-row {
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: rgba(198, 163, 90, 0.08);
+}
+.secret-row h4 {
+  margin: 0 0 4px;
+  font-family: "Shippori Mincho", serif;
+  color: var(--gold);
+}
+.adjudication-result {
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #102339;
+  text-align: center;
+}
+.adjudication-result p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.adjudication-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.adjudication-scores > div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 6px;
+}
+.adjudication-scores span,
+.adjudication-scores small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.adjudication-scores strong {
+  display: block;
+  font-size: 32px;
+  color: var(--gold-soft);
+}
+.adjudication-scores small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.adjudication-scores .adjudication-winner {
+  border-color: var(--gold);
+  background: #d5b86915;
+}
+.adjudication-draw-mark {
+  font-size: 34px;
+  color: var(--gold-soft);
+}
+.setup-adoption-total {
+  text-align: center;
+  font-size: 13px;
+  margin: 8px 0;
+}
+.setup-adoption-total strong {
+  color: var(--gold-soft);
+}
+
+/* 持ち点が動くのは9×9だけ、と分かるように */
+.board-choice-ranked {
+  color: var(--gold);
+  font-size: 11px;
+}
+
+.profile-sync-notice {
+  position: fixed;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 24px);
+  width: 430px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  color: #f3dfb3;
+  background: #241d19;
+  border: 1px solid #ad8140;
+  border-radius: 10px;
+  font: 12px/1.6 sans-serif;
+  box-shadow: 0 4px 20px #0008;
+}
+.profile-sync-notice button {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  color: #241d19;
+  background: #dfbe73;
+  border: 0;
+  border-radius: 6px;
 }

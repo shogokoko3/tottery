@@ -114,6 +114,15 @@ export const SCREEN_TRACK = {
   ranking: "title",
   tutorial: "title",
   rules: "title",
+  // 対局の外の画面(メニュー・スキン・ミッション・バトルパス・手紙)は
+  // タイトルと同じ曲のまま続ける。画面を行き来しても曲が切れない
+  menu: "title",
+  skins: "title",
+  missions: "title",
+  battlepass: "title",
+  letters: "title",
+  // 詰めトッタリーは考える場面なので、布陣と同じ落ち着いた曲
+  tsume: "setup",
   // 相手を待っているあいだは、数分続いても飽きない薄い曲にする
   online: "waiting",
   room: "waiting",
@@ -151,7 +160,7 @@ export const EXTRA_TRACKS = ["endgame", "lose"];
  *   screen  画面(SCREEN_TRACK の見出し)
  *   phase   対局中の進み具合(PHASE_TRACK の見出し)
  *   endgame 終盤かどうか
- *   result  決着したときだけ "win" か "lose"
+ *   result  決着したときだけ "win" / "lose" / "draw"
  *
  * 表に無いものが来ても、音が止まるより鳴っているほうがましなので
  * 既定の曲を返す。**書き忘れを知らせるのは実行時ではなく `npm run check`。**
@@ -163,7 +172,10 @@ export function trackForScene(scene) {
   if (screen !== "game")
     return screen in SCREEN_TRACK ? SCREEN_TRACK[screen] : "title";
 
-  if (phase === "gameover") return scene.result === "lose" ? "lose" : "win";
+  if (phase === "gameover") {
+    if (scene.result === "draw") return "waiting";
+    return scene.result === "lose" ? "lose" : "win";
+  }
   if (phase === "play") return scene.endgame ? "endgame" : "battle";
   return phase in PHASE_TRACK ? PHASE_TRACK[phase] : "setup";
 }

@@ -174,6 +174,30 @@ export const Book = (props) => (
   </IconBase>
 );
 
+/** 運営からの手紙。封筒 */
+export const Mail = (props) => (
+  <IconBase {...props}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m3.5 6.5 8.5 6.5 8.5-6.5" />
+  </IconBase>
+);
+
+/** エーテル。錬成の素材。六角の結晶 */
+export const Ether = (props) => (
+  <IconBase {...props}>
+    <path d="M12 2.5 20 7v10l-8 4.5L4 17V7z" />
+    <path d="M12 7.5 16 10v4l-4 2.5L8 14v-4z" />
+  </IconBase>
+);
+
+/** チケット。切り取り線の入った札 */
+export const Ticket = (props) => (
+  <IconBase {...props}>
+    <path d="M3 8.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2.5 2.5 0 0 0 0 5v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2.5 2.5 0 0 0 0-5z" />
+    <path d="M14 7.5v9" />
+  </IconBase>
+);
+
 export const Hand = (props) => (
   <IconBase {...props}>
     <path d="M9 11V5a1.5 1.5 0 0 1 3 0v6" />

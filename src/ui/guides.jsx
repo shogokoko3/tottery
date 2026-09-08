@@ -5,6 +5,11 @@ import { Close } from "../icons.jsx";
 import { CardFace } from "./cards.jsx";
 
 export function MoveDiagram({ rank, isKing = !1, gridSize = 7 }) {
+  // 4・5 の王は自分ではなく「王以外の同じ数字」を伸ばす。
+  // 王の欄では、その伸びた駒のほうを描く(王自身は素の動きのままなので、
+  // 王として描くと通常の欄と同じ図になり、何が変わったのか読めない)
+  const growsOthers = rank === "4" || rank === "5";
+  const drawAsKing = isKing && !growsOthers;
   let n = Math.floor(gridSize / 2),
     a = emptyBoard(gridSize),
     u = {
@@ -12,13 +17,13 @@ export function MoveDiagram({ rank, isKing = !1, gridSize = 7 }) {
       rank,
       suit: "spade",
       owner: 0,
-      isKing,
+      isKing: drawAsKing,
       row: n,
       col: n,
       alive: !0,
       history: [],
     };
-  if (((a[n][n] = u), isKing && ["6", "7", "8", "9"].includes(rank)))
+  if (((a[n][n] = u), drawAsKing && ["6", "7", "8", "9"].includes(rank)))
     for (let o = 0; o < gridSize; o++)
       for (let r = 0; r < gridSize; r++)
         (o === n && r === n) ||
@@ -36,9 +41,7 @@ export function MoveDiagram({ rank, isKing = !1, gridSize = 7 }) {
   let i =
       rank === "A"
         ? []
-        : getLegalMoves(u, a, gridSize, {
-            [rank]: 1,
-          }),
+        : getLegalMoves(u, a, gridSize, { [rank]: 1 }, isKing ? rank : null),
     f = new Set(i.map((o) => `${o.row},${o.col}`));
   return (
     <div
@@ -128,6 +131,21 @@ export function RulesPanel({ onClose }) {
             </div>
           ))}
         </div>
+        {/* 表になる場面は2つしかないので、早見表の足元に添えておく */}
+        <p className="hint rule-foot">
+          駒が表になるのは3つの場面です。布陣が<b>フラッシュ</b>
+          で相手に公開された とき、<b>相手の王を討った</b>
+          とき（その駒はその場で名乗りを上げます）、 そして<b>Kの王の予備札</b>
+          から出たとき。表になった駒は、相手にも 正体が見えます。
+        </p>
+        <p className="hint rule-foot">
+          <b>終局できない局面の判定：</b>駒の移動範囲から両者の王を討てないと
+          確定した場合、または手番側に合法な行動がない場合は、対局開始時に
+          採用した札の数字の合計が低い側の勝ちです。同点は引き分け。
+          A=1、J=11、Q=12、K=13として数え、倒れた駒も含みます。
+          途中で投入した予備札は合計に含みません。
+          同じ局面の繰り返しだけでは判定しません。
+        </p>
       </div>
     </div>
   );

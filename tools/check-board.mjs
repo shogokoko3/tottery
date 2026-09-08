@@ -13,7 +13,12 @@
  *   - 生成された手はすべて盤の内側を指す
  */
 import { reducer, autoArrange, autoPickKing } from "../src/game/reducer.js";
-import { getLegalMoves, inBounds, totalSlots } from "../src/game/board.js";
+import {
+  getLegalMoves,
+  inBounds,
+  kingRankOf,
+  totalSlots,
+} from "../src/game/board.js";
 import { cpuAction } from "../src/game/cpu.js";
 import { CARD_POOLS } from "../src/game/constants.js";
 
@@ -83,6 +88,7 @@ function checkState(s, where) {
         s.board,
         s.boardSize,
         s.players[p.owner].armyRankCounts,
+        kingRankOf(s, p.owner),
       )) {
         if (!inBounds(m.row, m.col, s.boardSize))
           problems.push(`${where}: ${p.id} の手が盤の外 (${m.row},${m.col})`);

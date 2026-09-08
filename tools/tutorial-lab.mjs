@@ -18,7 +18,7 @@
  * その局面で指せる手を一覧にして見せる。
  */
 import { reducer } from "../src/game/reducer.js";
-import { getLegalMoves, squareName } from "../src/game/board.js";
+import { getLegalMoves, kingRankOf, squareName } from "../src/game/board.js";
 import { TUTORIALS } from "../src/game/tutorial.js";
 
 const SUIT = { spade: "♠", heart: "♥", diamond: "♦", club: "♣" };
@@ -67,6 +67,7 @@ function moveList(s, owner) {
       s.board,
       s.boardSize,
       s.players[owner].armyRankCounts,
+      kingRankOf(s, owner),
     );
     if (!ms.length) continue;
     out.push(
@@ -131,6 +132,7 @@ moves.forEach((mv, i) => {
     s.board,
     s.boardSize,
     s.players[who].armyRankCounts,
+    kingRankOf(s, who),
   );
   const hit = legal.find((m) => m.row === mv.row && m.col === mv.col);
   if (!hit) {

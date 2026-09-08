@@ -1,6 +1,9 @@
 import { CAPTAIN_CARD_ART, NORMAL_CARD_ART, cardBackImg } from "../assets.js";
 import { PLAYER_META, SUIT_SYMBOL } from "../game/constants.js";
+import { useSeats } from "./names.jsx";
+import { byId } from "../skins/catalog.js";
 import { Crown } from "../icons.jsx";
+import { FoilArtwork } from "./foil-artwork.jsx";
 
 export const SUIT_CODE = {
   spade: "S",
@@ -12,7 +15,18 @@ export function cardArtSrc(e, t, l) {
   let n = e + SUIT_CODE[t];
   return (l && CAPTAIN_CARD_ART[n]) || NORMAL_CARD_ART[n];
 }
-export function CardFace({ rank, suit, size = "md", isKing = !1 }) {
+export function CardFace({
+  rank,
+  suit,
+  size = "md",
+  isKing = !1,
+  owner,
+  skinId,
+  animated = true,
+}) {
+  const seats = useSeats();
+  const selected = byId(skinId || seats.skins?.[owner]?.[rank]);
+  const skin = selected?.rank === String(rank) ? selected : null;
   let a =
     size === "xs"
       ? {
@@ -35,21 +49,40 @@ export function CardFace({ rank, suit, size = "md", isKing = !1 }) {
             };
   return (
     <div
-      className={`card-face ${isKing ? "card-captain" : ""}`}
+      className={`card-face ${isKing ? "card-captain" : ""} ${skin ? "card-skinned" : ""}`}
+      data-size={size}
+      data-skin={skin?.id}
       style={{
         width: a.w,
         height: a.h,
       }}
     >
-      <img
-        src={cardArtSrc(rank, suit, isKing)}
-        alt={`${rank}${SUIT_SYMBOL[suit]}`}
-        draggable="false"
+      <FoilArtwork
+        skin={skin}
+        src={skin?.boardCard || skin?.card || cardArtSrc(rank, suit, isKing)}
+        alt={`${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}`}
+        animated={animated}
       />
+      {skin && (
+        <span
+          aria-hidden="true"
+          className={`skin-card-mark ${suit === "heart" || suit === "diamond" ? "red-suit" : ""}`}
+        >
+          {rank}
+          <small>{SUIT_SYMBOL[suit]}</small>
+        </span>
+      )}
+      {skin && isKing && (
+        <span className="skin-king-mark" aria-label="王">
+          ♛
+        </span>
+      )}
     </div>
   );
 }
-export function CardBack({ colorHex, size = "md" }) {
+export function CardBack({ colorHex, size = "md", backId, owner }) {
+  const seats = useSeats();
+  const moon = (backId ?? seats.backs?.[owner]) === "moon-crest";
   let l =
     size === "xs"
       ? {
@@ -72,14 +105,22 @@ export function CardBack({ colorHex, size = "md" }) {
             };
   return (
     <div
-      className="card-back"
+      className={moon ? "card-back card-back-moon" : "card-back"}
       style={{
         width: l.w,
         height: l.h,
         "--pc": colorHex,
       }}
     >
-      <img src={cardBackImg} alt="" draggable="false" />
+      {moon ? (
+        <span className="moon-crest-art" aria-hidden="true">
+          <i>✦</i>
+          <b>☾</b>
+          <i>✦</i>
+        </span>
+      ) : (
+        <img src={cardBackImg} alt="" draggable="false" />
+      )}
     </div>
   );
 }
@@ -89,24 +130,27 @@ export function Piece({
   isSelected,
   isPickable,
   isGuided,
+  justRevealed,
   size = "md",
 }) {
   let u = PLAYER_META[piece.owner],
-    // フラッシュで公開された駒は、持ち主でなくても表向きに見える
+    // フラッシュで公開された駒と、王を討って名乗りを上げた駒は、
+    // 持ち主でなくても表向きに見える
     i = piece.owner === viewer || !!piece.revealed;
   return (
     <div
-      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""}`}
+      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""} ${justRevealed ? "piece-unveiled" : ""}`}
     >
       {i ? (
         <CardFace
+          owner={piece.owner}
           rank={piece.rank}
           suit={piece.suit}
           size={size}
           isKing={piece.isKing}
         />
       ) : (
-        <CardBack colorHex={u.color} size={size} />
+        <CardBack colorHex={u.color} size={size} owner={piece.owner} />
       )}
       {piece.revealed && <span className="revealed-badge">公開</span>}
       {piece.isKing && i && (
