@@ -1,105 +1,7 @@
 import { SeasonScreen } from "./season.jsx";
-/**
- * ランキング。持ち点の高い順に並べる。
- *
- * 持ち点が動くのは9×9のオンライン対戦だけ。5×5は短期戦で運の割合が
- * 大きいので、同じ物差しには載せない。
- *
- * いまの本人確認は端末ごとの目印だけなので、消して入れ直せば作り直せる。
- * 順位は自己申告に近い、ということを画面にも書いておく。
- */
-import { useEffect, useState } from "react";
-import { loadProfile } from "../game/profile.js";
-import { rankTitle, RANK_TIERS } from "../game/rating.js";
-import { readRanks } from "../net/ranking.js";
+import { useState } from "react";
+import { RANK_TIERS } from "../game/rating.js";
 import { ArrowLeft } from "../icons.jsx";
-import { PlayerIcon } from "./playericon.jsx";
-
-function LifetimeRanking() {
-  const me = loadProfile();
-  const [state, setState] = useState("loading");
-  const [list, setList] = useState([]);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let gone = false;
-    const refresh = async () => {
-      const res = await readRanks();
-      if (gone) return;
-      if (!res.ok) {
-        setError(res.error);
-        setState("error");
-        return;
-      }
-      setList(res.list);
-      setState("done");
-    };
-    refresh();
-    const onSaved = (event) => {
-      if (event.detail === "saved") refresh();
-    };
-    window.addEventListener("tottery:profile-sync", onSaved);
-    return () => {
-      gone = true;
-      window.removeEventListener("tottery:profile-sync", onSaved);
-    };
-  }, []);
-
-  const myPlace = list.findIndex((r) => r.id === me.id);
-
-  return (
-    <div className="rank-wrap">
-      <h3>通算ランキング</h3>
-      <p className="hint">
-        9×9のオンライン対戦の成績で並びます。5×5とCPU戦は数えません。
-      </p>
-
-      <div className="rank-me">
-        <PlayerIcon icon={me.icon} name={me.name} />
-        <div className="rank-me-id">
-          <b>{me.name || "(未設定)"}</b>
-          <span className="rank-me-sub">
-            {rankTitle(me.rating, me.rated)} · {me.rated}戦
-          </span>
-        </div>
-        <div className="rank-me-score">
-          <b>{me.rating}</b>
-          <span>{myPlace >= 0 ? `${myPlace + 1}位` : "未掲載"}</span>
-        </div>
-      </div>
-
-      {state === "loading" && <p className="hint">読み込んでいます…</p>}
-      {state === "error" && <p className="error-text">{error}</p>}
-      {state === "done" && list.length === 0 && (
-        <p className="hint">まだ誰も載っていません。</p>
-      )}
-
-      {state === "done" && list.length > 0 && (
-        <ol className="rank-list">
-          {list.map((row, i) => (
-            <li
-              className={`rank-row ${row.id === me.id ? "rank-row-me" : ""}`}
-              key={row.id}
-            >
-              <span className="rank-place">{i + 1}</span>
-              <PlayerIcon icon={row.icon} name={row.name} size="sm" />
-              <span className="rank-name">{row.name}</span>
-              <span className="rank-title">
-                {rankTitle(row.rating, row.rated)}
-              </span>
-              <b className="rank-score">{row.rating}</b>
-            </li>
-          ))}
-        </ol>
-      )}
-
-      <p className="hint rank-note">
-        いまの本人確認は端末ごとの目印だけです。アプリを消して入れ直すと
-        別人として載ります。端末を替えても続くアカウントは今後入れる予定です。
-      </p>
-    </div>
-  );
-}
 
 function RankGuide() {
   return (
@@ -140,7 +42,7 @@ function RankGuide() {
       </table>
       <div className="rank-guide-note">
         <b>対象は9×9のオンライン対戦</b>
-        <p>通算と今シーズン、それぞれのレートで判定します。</p>
+        <p>今シーズンのレートで段位を判定します。</p>
         <p>初期レートは1500。「兵」からスタートします。</p>
       </div>
     </section>
@@ -148,7 +50,7 @@ function RankGuide() {
 }
 
 export function RankingScreen({ onBack }) {
-  const [tab, setTab] = useState("season");
+  const [tab, setTab] = useState("ranks");
   return (
     <div className="season-screen">
       <header className="season-header">
@@ -159,10 +61,9 @@ export function RankingScreen({ onBack }) {
       </header>
       <nav className="season-tabs" aria-label="ランキングの種類">
         {[
-          ["season", "今シーズン"],
-          ["lifetime", "通算"],
-          ["history", "歴代記録"],
           ["ranks", "段位一覧"],
+          ["season", "今シーズン"],
+          ["history", "歴代記録"],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -177,8 +78,6 @@ export function RankingScreen({ onBack }) {
       <div className="season-scroll" key={tab}>
         {tab === "ranks" ? (
           <RankGuide />
-        ) : tab === "lifetime" ? (
-          <LifetimeRanking />
         ) : (
           <SeasonScreen key={tab} historyOnly={tab === "history"} />
         )}
