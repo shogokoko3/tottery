@@ -5112,3 +5112,64 @@ h3 {
   font-size: 14px;
   font-weight: 700;
 }
+
+/* ===== 盤面エリアの盤のプレビュー(src/ui/area-preview.jsx) =====
+   対局中の盤の絵(fields/)をそのまま小さく。対局中と同じく 12% の内側に 9×9 の目 */
+.area-preview-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 8px 0 10px;
+}
+.area-preview {
+  margin: 0;
+  flex: 1 1 140px;
+  max-width: 220px;
+}
+.area-preview-board {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #101b28 center / 100% 100% no-repeat;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.area-preview-board:not(.is-loaded)::after {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border: 1px dashed rgba(212, 175, 55, 0.3);
+  border-radius: 4px;
+}
+.area-preview-grid {
+  position: absolute;
+  inset: 12%;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.area-preview-grid span {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.area-preview-grid .zone-foe {
+  background: rgba(45, 105, 165, 0.35);
+}
+.area-preview-grid .zone-mine {
+  background: rgba(160, 45, 38, 0.32);
+}
+.area-preview figcaption {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+}
+.area-guide-preview .area-preview {
+  max-width: 160px;
+}
+.skins-area-preview .area-preview {
+  max-width: 200px;
+}

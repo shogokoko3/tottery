@@ -38,6 +38,7 @@ import { updateCollection, useCollection } from "../skins/store.js";
 import { CardFace } from "./cards.jsx";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
 import { AREA_BY_RANK, AREA_INFO } from "../game/areas.js";
+import { AreaPreview } from "./area-preview.jsx";
 import { SkinFilm } from "./skin-film.jsx";
 import { ArrowLeft, Ether } from "../icons.jsx";
 import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
@@ -66,6 +67,7 @@ function SkinAreaNote({ skin, owned, equipped }) {
     <div className={`skins-area-note skins-area-note-${type}`}>
       <span className="skins-eyebrow">効果盤面</span>
       <h3>{info.name}</h3>
+      <AreaPreview type={type} skinId={skin.id} className="skins-area-preview" />
       <p>{info.text}</p>
       <p className="skins-area-how">
         このフォイルを <b>{skin.rank}</b> に装備し、<b>{skin.rank} を王</b>

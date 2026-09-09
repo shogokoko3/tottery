@@ -6,56 +6,9 @@
  * 数字(2体・3手番・50%)は AREA_TUNING から引き、文は人が読む形に直してある。
  * 効果を差し替えたら、この表も直すこと(tools/check-area-guide.mjs が見張る)。
  */
-import { AREA_INFO, AREA_TUNING } from "../game/areas.js";
-
-/** 表に出す6行。順番は王のランクの順 */
-export const AREA_GUIDE_ROWS = [
-  {
-    type: "earth",
-    ranks: "2・3",
-    when: "自分の手番の初めに自動",
-    effect: `直前に動いた相手の駒の足跡を読み、${Math.round(AREA_TUNING.earthOdds * 100)}%で正体を見抜きます。見抜いた駒は自分にだけ表向きになります。`,
-    seen: "相手には、当たったか外れたかだけが分かります",
-  },
-  {
-    type: "sea",
-    ranks: "4・5",
-    when: "自分の手番の初めに自動",
-    effect:
-      "盤上の全ての駒を、中央に向かって最大1マスずつ引き寄せます。行き先が埋まっている駒はその場に残ります。取りは起きません。",
-    seen: "相手にも駒の動きがそのまま見えます",
-  },
-  {
-    type: "forest",
-    ranks: "6・7",
-    when: "自分の手番の初めに自動",
-    effect: `相手の王以外で、まだ正体を知らない駒からランダムに${AREA_TUNING.forestReveals}体を見抜きます。見抜いた駒は自分にだけ表向きになります。`,
-    seen: "相手には「見抜かれた」ことだけが分かり、どの駒かは分かりません",
-  },
-  {
-    type: "ice",
-    ranks: "8・9",
-    when: "自分の手番の初めに自動",
-    effect: `相手の王以外からランダムに${AREA_TUNING.iceTargets}体を凍らせます。凍った駒は相手の${AREA_TUNING.freezeTurns}手番のあいだ動けません。すでに凍っている駒が選ばれると、${AREA_TUNING.freezeTurns}手番ぶん延びます。凍った駒は取られます。Aの入れ替えに使うと氷は解けますが、凍ったA自身は入れ替えを使えません。`,
-    seen: "凍った駒は青白くなり ❄ が付きます。凍って何も指せなければ、その側の負けです",
-  },
-  {
-    type: "sky",
-    ranks: "10",
-    when: "自分の手番の初めに「発動」を押して駒を選ぶ",
-    effect:
-      "自分の駒1体(王と10以外)を本物の10に変身させます。変身した駒は表向きになり「空」の印が付きます。以後、自分の10は全て1手番に2回動けます。",
-    seen: "相手にも変身した駒と正体が見えます",
-  },
-  {
-    type: "palace",
-    ranks: "J・Q・K",
-    when: "自分の手番の初めに「発動」を押して駒を選ぶ",
-    effect:
-      "自分の駒1体(王・A以外)を1段階昇格させます(2→3 … 9→10→J→Q→K)。1試合に1回だけ、2段階昇格も選べます(9→J、10→Q、J→Kなど)。Kより上には進めません。昇格した駒は表向きになり「宮」の印が付きます。昇格したあと、その手番で普通に駒を動かせます。",
-    seen: "相手にも昇格した駒と正体が見えます",
-  },
-];
+import { AREA_INFO } from "../game/areas.js";
+import { AREA_GUIDE_ROWS } from "./area-guide-rows.js";
+import { AreaPreview } from "./area-preview.jsx";
 
 export function AreaGuide() {
   return (
@@ -80,6 +33,7 @@ export function AreaGuide() {
               </span>
               <span className="area-guide-ranks">王が {row.ranks}</span>
             </div>
+            <AreaPreview type={row.type} className="area-guide-preview" />
             <div className="area-guide-when">{row.when}</div>
             <div className="area-guide-effect">{row.effect}</div>
             <div className="area-guide-seen">{row.seen}</div>

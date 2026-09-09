@@ -11,18 +11,10 @@
 import { AREA_BY_RANK, AREA_INFO, AREA_TUNING } from "../src/game/areas.js";
 import { AUTO_AREAS } from "../src/game/area-presentation.js";
 
-// JSX を Node で読むために、行の定義だけを esbuild で変換して取り込む
-import { transform } from "esbuild";
 import fs from "node:fs";
+import { AREA_GUIDE_ROWS as rows } from "../src/ui/area-guide-rows.js";
+// 前置きの文(フォイル限定など)は画面側にあるので、そちらの原文も読む
 const src = fs.readFileSync("src/ui/area-guide.jsx", "utf8");
-const { code } = await transform(src, { loader: "jsx", format: "esm" });
-const mod = await import(
-  "data:text/javascript;base64," +
-    Buffer.from(
-      code.replace(/from "\.\.\/game\/areas\.js"/, `from "${new URL("../src/game/areas.js", import.meta.url).href}"`),
-    ).toString("base64")
-);
-const rows = mod.AREA_GUIDE_ROWS;
 
 let ok = 0;
 const fails = [];
