@@ -592,6 +592,17 @@ function ForgePanel({
                   {skin.rank} · {rarityLabel(skin)}
                 </span>
                 <h4>{skin.name}</h4>
+                {/* このフォイルで立つ効果盤面。押すとフォイル版の詳細(効果・発動の条件)へ */}
+                {AREA_BY_RANK[skin.rank] && (
+                  <button
+                    type="button"
+                    className="forge-milestone-area"
+                    onClick={() => onPick(byId(foilId(skin.id)))}
+                    aria-label={`${skin.name}のフォイルで立つ効果盤面「${AREA_INFO[AREA_BY_RANK[skin.rank]].name}」の詳細`}
+                  >
+                    効果盤面: {AREA_INFO[AREA_BY_RANK[skin.rank]].name} ›
+                  </button>
+                )}
               </div>
               <div className="forge-milestone-progress">
                 <div>

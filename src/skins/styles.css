@@ -2243,3 +2243,19 @@
 .skins-area-note-ice { border-left-color: rgba(160, 220, 255, 0.9); }
 .skins-area-note-sky { border-left-color: rgba(150, 130, 230, 0.9); }
 .skins-area-note-palace { border-left-color: rgba(212, 175, 55, 0.9); }
+
+/* フォイル加工のカードに出す、効果盤面への入口 */
+.forge-milestone-area {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--gold-soft, #e8cf7a);
+  font-size: 11px;
+  cursor: pointer;
+}
+.forge-milestone-area:hover {
+  background: rgba(212, 175, 55, 0.2);
+}
