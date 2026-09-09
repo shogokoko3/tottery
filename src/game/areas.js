@@ -70,7 +70,7 @@ export const AREA_INFO = Object.freeze({
   },
   ice: {
     name: "氷のエリア",
-    text: "毎回の自分の手番開始時、相手の王以外をランダムで1体凍結。凍結中なら残り期間に3手番追加",
+    text: "毎回の自分の手番開始時、相手の王以外をランダムで1体凍結し、3手番動かせない。凍結中なら残り期間に3手番追加する。",
     usesTurn: false,
     needsPiece: false,
   },
