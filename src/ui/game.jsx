@@ -1673,9 +1673,8 @@ export function GameCore({
       matchId: network
         ? `${network.code}:${network.createdAt || 0}:${round}`
         : null,
-      adoptedRanks: Object.keys(
-        a.players[network ? p : 0]?.armyRankCounts || {},
-      ),
+      // 今週の数字のミッション用。王の数字は継承しても変わらない
+      kingRank: kingRankOf(a, network ? p : 0),
       deferXpNotice: true,
       ...(typeof foeRating === "number"
         ? { foeRating, startRating: matchRatings.ratings[p] }

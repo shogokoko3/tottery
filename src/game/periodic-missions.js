@@ -23,6 +23,38 @@ export function missionPeriods(at = Date.now()) {
   };
 }
 
+/** 王にできる数字。A は王にできないので入れない */
+export const KING_RANKS = [
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "J",
+  "Q",
+  "K",
+];
+
+// 週の文字列から決める、全員共通の乱数。同じ週なら端末・再読み込みを問わず同じ数字になる。
+function hash(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/** 今週の数字。2〜K から週ごとに抽選し、月曜朝5時(JST)に切り替わる */
+export function weeklyKingRank(at = Date.now()) {
+  const { week } = missionPeriods(at);
+  return { week, rank: KING_RANKS[hash(`king:${week}`) % KING_RANKS.length] };
+}
+
 export function sanitizeMissionProgress(raw = {}) {
   return {
     week: validDay(raw?.week) ? raw.week : null,
@@ -31,7 +63,12 @@ export function sanitizeMissionProgress(raw = {}) {
     wins: Number.isSafeInteger(raw?.wins)
       ? Math.max(0, Math.min(5, raw.wins))
       : 0,
-    ranks: unique(raw?.ranks, (r) => ["K", "10", "4", "2"].includes(r), 4),
+    // この週に、その数字を王にしてオンラインで勝った記録(数字の一覧)
+    kingWins: unique(
+      raw?.kingWins,
+      (r) => KING_RANKS.includes(r),
+      KING_RANKS.length,
+    ),
     // Retain recent match receipts across resets so a replay cannot count again tomorrow.
     seen: unique(
       raw?.seen,
@@ -61,7 +98,7 @@ export function recordMissionLogin(raw, at = Date.now()) {
 
 export function recordMissionGame(
   raw,
-  { online, tutorial, won, ranks = [], matchId } = {},
+  { online, tutorial, won, kingRank = null, matchId } = {},
   at = Date.now(),
 ) {
   const value = currentProgress(raw, at);
@@ -80,17 +117,10 @@ export function recordMissionGame(
     seen: [...value.seen, matchId].slice(-4096),
     gameDays: [...new Set([...value.gameDays, day])],
     wins: Math.min(5, value.wins + (won === true ? 1 : 0)),
-    ranks:
-      won === true
-        ? [
-            ...new Set([
-              ...value.ranks,
-              ...ranks
-                .map(String)
-                .filter((r) => ["K", "10", "4", "2"].includes(r)),
-            ]),
-          ]
-        : value.ranks,
+    kingWins:
+      won === true && KING_RANKS.includes(String(kingRank))
+        ? [...new Set([...value.kingWins, String(kingRank)])]
+        : value.kingWins,
   };
 }
 
@@ -108,7 +138,7 @@ export const PERIODIC_MISSIONS = [
     name: "デイリーミッションを全てクリアする",
     goal: 3,
     unit: "件",
-    reward: { type: "ticket", amount: 2 },
+    reward: { type: "ether", amount: 30 },
   },
   {
     key: "online",
@@ -125,11 +155,10 @@ export const PERIODIC_MISSIONS = [
     reward: { type: "ether", amount: 30 },
   },
   {
-    key: "login",
+    key: "tsume",
     category: "weekly",
-    name: "ログインする",
+    name: "詰めトッタリーをクリアする",
     goal: 5,
-    unit: "日",
     segments: true,
     reward: { type: "ticket", amount: 2 },
   },
@@ -141,21 +170,26 @@ export const PERIODIC_MISSIONS = [
     segments: true,
     reward: { type: "ticket", amount: 2 },
   },
-  ...["K", "10", "4", "2"].map((rank) => ({
-    key: `rank-${rank}`,
+  {
+    key: "king",
     category: "weekly",
-    name: `オンライン対戦で${rank}を使って勝利する`,
+    // 実際の名前は periodicMissionRows が今週の数字を入れて作る
+    name: "今週の数字を王にしてオンライン対戦で勝利する",
     goal: 1,
     reward: { type: "ticket", amount: 2 },
-  })),
+  },
 ];
+
+/** 今週の数字を入れた、王のミッションの名前 */
+export const kingMissionName = (rank) =>
+  `今週の数字「${rank}」を王にしてオンライン対戦で勝利する`;
 
 export const sanitizeMissionClaims = (raw) =>
   unique(
     raw,
     (id) =>
       typeof id === "string" &&
-      /^(daily|weekly):\d{4}-\d{2}-\d{2}:(login|all|online|gacha|wins|rank-(K|10|4|2))$/.test(
+      /^(daily|weekly):\d{4}-\d{2}-\d{2}:(login|all|online|gacha|wins|tsume|king|rank-(K|10|4|2))$/.test(
         id,
       ),
     32,
@@ -170,6 +204,16 @@ export function periodicMissionRows(profile, collection, at = Date.now()) {
     gacha: Number(collection?.missionDrawDay === periods.day),
   };
   const claims = sanitizeMissionClaims(collection?.missionClaims);
+  // 今週クリアした詰めトッタリーの日数。受取記録は collection.tsume にあり、
+  // 形は tsume-daily.js の sanitizeTsumeProgress が保証している(ここでは読むだけ)
+  const tsumeDays = Object.entries(collection?.tsume?.days || {}).filter(
+    ([d, v]) =>
+      validDay(d) &&
+      v?.cleared === true &&
+      d >= periods.week &&
+      d <= periods.day,
+  ).length;
+  const king = weeklyKingRank(at);
   return PERIODIC_MISSIONS.map((def) => {
     const period = def.category === "daily" ? periods.day : periods.week;
     const id = `${def.category}:${period}:${def.key}`;
@@ -178,15 +222,18 @@ export function periodicMissionRows(profile, collection, at = Date.now()) {
         ? def.key === "all"
           ? daily.login + daily.online + daily.gacha
           : daily[def.key]
-        : def.key === "login"
-          ? progress.loginDays.length
+        : def.key === "tsume"
+          ? tsumeDays
           : def.key === "wins"
             ? progress.wins
-            : Number(progress.ranks.includes(def.key.slice(5)));
+            : Number(progress.kingWins.includes(king.rank));
     const claimed = claims.includes(id);
     const now = claimed ? def.goal : Math.min(def.goal, raw);
     return {
       ...def,
+      ...(def.key === "king"
+        ? { name: kingMissionName(king.rank), rank: king.rank }
+        : {}),
       id,
       periodic: true,
       kind: def.category,

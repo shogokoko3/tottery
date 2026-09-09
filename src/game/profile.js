@@ -234,7 +234,9 @@ export function nameError(raw) {
   if (!name) return "名前を入力してください";
   // 整えたあとの長さで見る。生の文字列を見ると、前後に空白を付けただけで
   // 10文字以内の名前を断ってしまう
-  const trimmed = String(raw == null ? "" : raw).trim().replace(/\s+/g, " ");
+  const trimmed = String(raw == null ? "" : raw)
+    .trim()
+    .replace(/\s+/g, " ");
   if ([...trimmed].length > MAX_NAME_LEN)
     return `名前は${MAX_NAME_LEN}文字までです`;
   // 他人の画面と公開ランキングに出るので、露骨な語は断る(ガイドライン 1.2)
@@ -382,7 +384,7 @@ export function recordGame(won, opts) {
         online: opts?.online === true,
         tutorial: !!opts?.tutorial || opts?.tutorialId != null,
         won,
-        ranks: opts?.adoptedRanks || [],
+        kingRank: opts?.kingRank ?? null,
         matchId: opts?.matchId,
       },
       opts?.at,
