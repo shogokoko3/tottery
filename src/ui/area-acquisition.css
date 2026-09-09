@@ -196,9 +196,12 @@
   white-space: nowrap;
 }
 .area-acquisition-info {
-  text-align: center;
-  font-size: 13px;
-  line-height: 1.8;
+  text-align: left;
+  font:
+    14px/1.9 "Yu Gothic",
+    "Hiragino Kaku Gothic ProN",
+    sans-serif;
+  letter-spacing: normal;
   color: #e2dac7;
 }
 .area-acquisition-info > p {
@@ -222,7 +225,14 @@
 }
 .area-acquisition-condition {
   color: #d9cdaf;
-  font-size: 11px;
+  font-size: 13px;
+  border-top: 1px solid #bcac8045;
+  padding-top: 12px;
+}
+.area-acquisition-condition b {
+  display: block;
+  margin-bottom: 4px;
+  color: #f1d7a0;
 }
 .area-acquisition-footer {
   flex-shrink: 0;

@@ -1444,9 +1444,6 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             >
               {results.map((result, index) => {
                 const s = byId(result.id);
-                const areaReward = areaRewards.find((r) =>
-                  r.skins.some((skin) => skin.id === s.id),
-                );
                 return (
                   <article
                     key={index}
@@ -1469,12 +1466,6 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                       </span>
                     </div>
                     <strong>{s.name}</strong>
-                    {areaReward && (
-                      <p className="skins-result-area">
-                        <b>✦ 効果盤面「{areaRewardName(areaReward)}」も獲得</b>
-                        <small>装備した札を王にすると9×9で発動</small>
-                      </p>
-                    )}
                     <button
                       className="skin-btn"
                       disabled={working || collection.equipped[s.rank] === s.id}
@@ -1488,6 +1479,29 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 );
               })}
             </div>
+            {areaRewards.length > 0 && (
+              <section className="skins-result-areas" aria-label="獲得した効果盤面">
+                <h3>効果盤面も獲得しました</h3>
+                <ul>
+                  {areaRewards.map((reward) => (
+                    <li key={reward.theme}>
+                      <b>{areaRewardName(reward)}</b>
+                      <span>
+                        {reward.skins.map((skin) => (
+                          <small key={skin.id}>
+                            {skin.rank}：{skin.name.replace("（フォイル）", "")}
+                          </small>
+                        ))}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  獲得したフォイルを対応する数字に装備し、その札を王にすると、9×9の対局で使えます。
+                </p>
+                <p>効果の詳しい説明は、所持スキン一覧でフォイルを選ぶと確認できます。</p>
+              </section>
+            )}
             <p className="skins-message" role="status">
               {message}
             </p>

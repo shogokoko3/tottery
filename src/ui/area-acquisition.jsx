@@ -58,7 +58,7 @@ function AcquiredField({ reward, reduce }) {
         </div>
       </div>
       <div className="area-acquisition-info">
-        <p>{AREA_INFO[reward.type].text}</p>
+        <p className="area-acquisition-effect">{AREA_INFO[reward.type].text}</p>
         <div className="area-acquisition-ranks">
           {reward.skins.map((skin) => (
             <span key={skin.id}>
@@ -67,7 +67,8 @@ function AcquiredField({ reward, reduce }) {
           ))}
         </div>
         <p className="area-acquisition-condition">
-          <b>このフォイルを装備した札を王にすると、9×9で使えます。</b>
+          <b>盤面の使い方</b>
+          このフォイルを対応する数字に装備し、その札を王にすると、9×9の対局で使えます。
         </p>
       </div>
     </div>

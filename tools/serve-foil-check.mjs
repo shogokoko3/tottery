@@ -17,6 +17,8 @@ const result = await build({
 import {useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {SkinsScreen} from './src/ui/skins.jsx';
+import {AreaAcquisition} from './src/ui/area-acquisition.jsx';
+import {areaRewardsFor,areaRewardName} from './src/skins/area-rewards.js';
 import {CardFace,Piece} from './src/ui/cards.jsx';
 import {SeatsProvider} from './src/ui/names.jsx';
 import {useCollection,updateCollection} from './src/skins/store.js';
@@ -25,7 +27,14 @@ import {POOL,FOIL_SKINS,foilId} from './src/skins/catalog.js';
 import styles from './src/styles.css';
 import skinStyles from './src/skins/styles.css';
 function App(){
- const state=useCollection(); const [mode,setMode]=useState('skins'); const [forced,setForced]=useState(true); const [sample,setSample]=useState('SSR'); const [backCount,setBackCount]=useState(0);
+ const state=useCollection(); const [mode,setMode]=useState(new URLSearchParams(location.search).get('preview')==='area'?'area':'skins'); const [forced,setForced]=useState(true); const [sample,setSample]=useState('SSR'); const [backCount,setBackCount]=useState(0);
+ const [previewField,setPreviewField]=useState(new URLSearchParams(location.search).get('field')||'all');
+ const [previewCount,setPreviewCount]=useState(new URLSearchParams(location.search).get('count')==='1'?1:10);
+ const allFields=areaRewardsFor(FOIL_SKINS.map(s=>({id:s.id,isNew:true})));
+ const chosenFields=allFields.filter(r=>previewField==='all'||r.theme===previewField);
+ const fieldResults=chosenFields.map(r=>({id:r.skins[0].id,isNew:true}));
+ const sampleResults=previewCount===1?fieldResults.slice(0,1):[...fieldResults,...POOL.slice(0,10-fieldResults.length).map(s=>({id:s.id,isNew:true}))];
+ async function finishFieldPreview(){await updateCollection(()=>normalize({ether:10000,motion:'full',owned:Object.fromEntries(sampleResults.map(r=>[r.id,1])),pending:{results:sampleResults,at:Date.now()}}));setMode('skins');}
  async function seed(all){await updateCollection(()=>normalize({ether:10000,motion:'full',owned:all?Object.fromEntries([...POOL,...FOIL_SKINS].map(s=>[s.id,3])):{'elf-male':2},equipped:all?{'3':foilId('zombie-female'),'6':foilId('elf-male')}:{}}));}
  async function milestoneSeed(kind){
   const value=kind==='legacy'?{owned:{'elf-male':100,'pirate-male':99}}:
@@ -45,12 +54,13 @@ function App(){
  <p className="foil-fixture-note">この画面だけの仮データです。設定を閉じてゲームを操作できます。</p>
  <div className="foil-fixture-options"><label>抽選例 <select aria-label="抽選例" value={sample} onChange={e=>scenario(e.target.value)}><option value="SSR">SSR昇格</option><option value="SR">SR昇格</option><option value="R">R</option><option value="mixed">10連・通常とフォイル混在</option></select></label><label>加工 <select aria-label="加工" value={forced?'foil':'normal'} onChange={e=>outcome(e.target.value==='foil')}><option value="foil">フォイル</option><option value="normal">通常</option></select></label></div>
  <nav aria-label="検証画面"><button onClick={()=>setMode('skins')}>ガチャ・錬成</button><button onClick={()=>setMode('board')}>盤面</button></nav>
+ <fieldset><legend>獲得画面のプレビュー</legend><label>盤面 <select aria-label="プレビューする効果盤面" value={previewField} onChange={e=>setPreviewField(e.target.value)}><option value="all">全7種類</option>{allFields.map(r=><option key={r.theme} value={r.theme}>{areaRewardName(r)}</option>)}</select></label><label>結果 <select aria-label="プレビューの結果枚数" value={previewCount} onChange={e=>setPreviewCount(Number(e.target.value))}><option value={1}>1枚</option><option value={10}>10枚</option></select></label><button onClick={()=>setMode('area')}>獲得演出から見る</button><button onClick={finishFieldPreview}>結果画面を見る</button></fieldset>
  <fieldset><legend>所持データ</legend><button onClick={()=>seed(false)}>通常版だけ</button><button onClick={()=>seed(true)}>全種3枚ずつ</button><button onClick={receiptSeed}>保存済み結果</button></fieldset>
  <fieldset><legend>通算100回報酬</legend><button onClick={()=>milestoneSeed('legacy')}>旧所持100枚・99枚</button><button onClick={()=>milestoneSeed('near')}>錬成直前99回</button><button onClick={()=>milestoneSeed('all')}>全15種達成</button><button onClick={()=>milestoneSeed('claimed')}>受取済み</button><button onClick={()=>updateCollection(s=>grantSkin(s,'pirate-male'))}>海賊を1枚追加</button></fieldset>
  <details className="foil-fixture-data"><summary>保存状態を見る</summary><output>ether={state.ether} / equipped={JSON.stringify(state.equipped)} / lastCraft={JSON.stringify(state.lastCraft)} / pending={JSON.stringify(state.pending)} / owned={JSON.stringify(state.owned)} / acquired={JSON.stringify(state.acquired)} / foilMilestones={JSON.stringify(state.foilMilestones)}</output></details>
  </details><output className="foil-fixture-current" data-testid="foil-fixture-status">表示: {mode} · ホームへ戻った回数: {backCount}</output></header>
  <SeatsProvider value={{names:['自分','相手'],skins:[{'3':foilId('zombie-female'),'6':foilId('elf-male')},{'3':foilId('zombie-female')}]}}>
- {mode==='skins'?<SkinsScreen onBack={returnHome} onBattlePass={()=>{}}/>:mode==='home'?<main className="foil-fixture-home" data-testid="foil-fixture-home" data-back-count={backCount}><h1>ホーム</h1><p role="status">スキン画面からホームに戻りました。</p><button className="skin-btn skin-btn-gold" onClick={()=>setMode('skins')}>ガチャ・錬成を開く</button></main>:<>
+ {mode==='area'?<AreaAcquisition rewards={areaRewardsFor(sampleResults)} onFinish={finishFieldPreview}/>:mode==='skins'?<SkinsScreen onBack={returnHome} onBattlePass={()=>{}}/>:mode==='home'?<main className="foil-fixture-home" data-testid="foil-fixture-home" data-back-count={backCount}><h1>ホーム</h1><p role="status">スキン画面からホームに戻りました。</p><button className="skin-btn skin-btn-gold" onClick={()=>setMode('skins')}>ガチャ・錬成を開く</button></main>:<>
  <div className="foil-check-board"><section aria-label="自分のフォイル"><span>自分</span><Piece piece={{...piece,owner:0}} viewer={0} size="lg"/></section><section aria-label="相手の伏せ駒"><span>相手・非公開</span><Piece piece={piece} viewer={0} size="lg"/></section><section aria-label="相手の公開フォイル"><span>相手・公開後</span><Piece piece={{...piece,revealed:true}} viewer={0} size="lg"/></section></div>
  <p style={{padding:'0 20px'}}>9×9の表示負荷：自分の表駒と相手の裏駒。裏面にはフォイル演出を出しません。</p>
  <div className="foil-check-grid">{Array.from({length:81},(_,i)=>{const s=FOIL_SKINS[i%FOIL_SKINS.length];return i%2?<Piece key={i} piece={{...piece,id:'hidden'+i}} viewer={0} size="md"/>:<CardFace key={i} rank={s.rank} suit="spade" skinId={s.id} size="md"/>;})}</div>
@@ -80,7 +90,7 @@ localStorage.setItem('tottery.skins.v1',JSON.stringify({ether:10000,owned:{'elf-
 localStorage.setItem('tottery.audio.v1',JSON.stringify({muted:true}));
 window.__foilFixture={foil:true,sample:'SSR',n:0,gachaRandom(){const f=window.__foilFixture;const step=f.n++;const card=Math.floor(step/2);if(step%2===0)return f.sample==='mixed'?[.972,.2,.83,.45,.78,.99,.96,.1,.978,.995][card%10]:f.sample==='SSR'?.972:f.sample==='SR'?.85:.2;return f.sample==='mixed'?(card%3===0?.005:.5):f.foil?.005:.5;},craftRandom(){return window.__foilFixture.foil?.005:.5;}};
 const localFetch=window.fetch.bind(window);window.fetch=(input,init)=>{const url=new URL(typeof input==='string'||input instanceof URL?input:input.url,location.href);return url.origin===location.origin?localFetch(input,init):Promise.resolve(new Response('{}',{headers:{'Content-Type':'application/json'}}));};
-history.replaceState(null,'',location.pathname+'?test=1');
+const previewUrl=new URL(location.href);previewUrl.searchParams.set('test','1');history.replaceState(null,'',previewUrl);
 `;
 fs.writeFileSync(path.join(root,'index.html'),`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>フォイル実装確認</title><body style="margin:0"><div id="root"></div><script>${bootstrap}</script><script>${result.outputFiles[0].text}</script></body></html>`);
 fs.symlinkSync(path.join(repo,'assets/skins'),path.join(root,'skins'));

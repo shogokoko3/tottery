@@ -1978,21 +1978,44 @@
   color: #d5dcf0;
   font: 12px/1.7 sans-serif;
 }
-.skins-result-area {
-  margin: 8px 0 12px;
-  padding: 9px 8px;
+.skins-result-areas {
+  margin: 22px 0 12px;
+  padding: 16px;
   border: 1px solid #d0b67c70;
   border-radius: 5px;
   background: linear-gradient(125deg, #6a512c32, #162d4038);
   color: #f2d7a1;
-  font-size: 12px;
-  line-height: 1.7;
-  text-align: center;
+  font: 14px/1.85 "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+  text-align: left;
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
 }
-.skins-result-area small {
+.skins-result-areas h3 {
+  margin: 0 0 12px;
+  font: 700 16px/1.6 "Shippori Mincho", "Yu Mincho", serif;
+  color: #f2d7a1;
+}
+.skins-result-areas ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.skins-result-areas li + li {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #d0b67c30;
+}
+.skins-result-areas li > b,
+.skins-result-areas small {
   display: block;
-  font-size: 10px;
+}
+.skins-result-areas small {
+  font-size: 12px;
   color: #c9c3b4;
+}
+.skins-result-areas p {
+  margin: 12px 0 0;
+  color: #e2dac7;
 }
 .skins-detail-foil {
   margin: 0 0 9px 9px;
