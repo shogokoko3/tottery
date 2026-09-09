@@ -1168,7 +1168,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           aria-selected={tab === "gacha"}
           onClick={() => setTab("gacha")}
         >
-          スキンガチャ
+          ガチャ
         </button>
         <button
           role="tab"
@@ -1196,7 +1196,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         )}
       </div>
       {tab === "gacha" ? (
-        <div className="skins-gacha" role="tabpanel" aria-label="スキンガチャ">
+        <div className="skins-gacha" role="tabpanel" aria-label="ガチャ">
           <section className="skins-banner">
             <div className="skins-banner-art" aria-hidden="true">
               <FoilArtwork

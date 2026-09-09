@@ -134,6 +134,9 @@
   font-size: 14px;
   line-height: 1.2;
   white-space: nowrap;
+  /* 文字が枠より長くても外にはみ出さない(縮めて…で切る) */
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
   transition:
     background 0.15s,
