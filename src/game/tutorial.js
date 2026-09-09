@@ -2206,6 +2206,205 @@ const EP12 = {
   ],
 };
 
+/* ---------------- 第13話(スキンを持つと開く) ---------------- */
+
+/**
+ * 盤面エリア。
+ *
+ * 王にした札のランクにスキンがあると、そのランク帯のエリアが自陣に立つ。
+ * この回では「選んで使う」空(あなた・王は10)と、「自動で起きる」氷(相手・王は8)を
+ * 1局で両方見せる。9×9 だけの決まりなので、盤も 9×9。
+ *
+ * 引き直しは無し(手札9枚がそのまま9体)。乱数は空(相手を選ぶ)には無く、
+ * 氷の「誰が凍るか」は areaPicks で固定する。
+ */
+const EP13_DECK = fill(
+  [
+    // あなたの手札9枚。王は 10♠(空のエリア)。4♠ をあとで 10 に変身させる
+    "10S",
+    "4S",
+    "2S",
+    "3S",
+    "5S",
+    "6S",
+    "7S",
+    "9S",
+    "8S",
+    // 相手の手札9枚。王は 8♥(氷のエリア)
+    "8H",
+    "2H",
+    "3H",
+    "4H",
+    "5H",
+    "6H",
+    "7H",
+    "9H",
+    "10H",
+  ],
+  CARD_POOLS.numbers,
+);
+
+const EP13 = {
+  id: 13,
+  // レベルではなく、スキンを1枚でも持っていると開く
+  level: 1,
+  needsSkin: true,
+  xp: 300,
+  title: "第13話 盤面エリア",
+  subtitle: "王のスキンが、盤を変える",
+  pool: CARD_POOLS.numbers,
+  poolLabel: "2 〜 10",
+  boardSize: 9,
+  handSize: 9,
+  dice: [6, 2],
+  deck: EP13_DECK,
+  reserveOrder: EP13_DECK.slice(18).map((c) => c.id),
+  // 盤面エリアを立てる。装備は台本で固定(あなたの 10 と、相手の 8)
+  areas: true,
+  loadouts: [{ 10: "dragon-knight" }, { 8: "viking-male" }],
+  // 相手の氷が凍らせる駒。あなたの d1 の 2♠
+  areaPicks: ["t2"],
+  foe: {
+    discardIds: [],
+    placement: {
+      t9: { row: 1, col: 6 },
+      t10: { row: 0, col: 0 },
+      t11: { row: 0, col: 1 },
+      t12: { row: 0, col: 2 },
+      t13: { row: 0, col: 3 },
+      t14: { row: 0, col: 4 },
+      t15: { row: 0, col: 5 },
+      t16: { row: 0, col: 7 },
+      t17: { row: 0, col: 8 },
+    },
+    kingId: "t9",
+    // こちらの駒を取りには来ない
+    moves: [{ pieceId: "t10", row: 1, col: 0 }],
+  },
+  steps: [
+    {
+      text: "王にする札にスキンがあると、盤に「エリア」が立ちます。まずサイコロ。",
+      need: { type: "ROLL_DICE_SINGLE" },
+      focus: { button: true },
+    },
+    {
+      at: atMulligan,
+      text: "今回は引き直しません。そのまま確定します。",
+      need: { type: "CONFIRM_MULLIGAN" },
+      focus: { button: true },
+    },
+    {
+      at: atPlace,
+      text: "9×9 は9枚を並べます。スキン付きの 10♠ を e1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 8, col: 4 },
+      focus: { cards: ["t0"], cells: [{ row: 8, col: 4 }] },
+    },
+    {
+      text: "4♠ を e3 へ。あとで変身させる駒です。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 6, col: 4 },
+      focus: { cards: ["t1"], cells: [{ row: 6, col: 4 }] },
+    },
+    {
+      text: "2♠ を d1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 8, col: 3 },
+      focus: { cards: ["t2"], cells: [{ row: 8, col: 3 }] },
+    },
+    {
+      text: "3♠ を f1 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 8, col: 5 },
+      focus: { cards: ["t3"], cells: [{ row: 8, col: 5 }] },
+    },
+    {
+      text: "5♠ を e2 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t4", row: 7, col: 4 },
+      focus: { cards: ["t4"], cells: [{ row: 7, col: 4 }] },
+    },
+    {
+      text: "6♠ を d2 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t5", row: 7, col: 3 },
+      focus: { cards: ["t5"], cells: [{ row: 7, col: 3 }] },
+    },
+    {
+      text: "7♠ を f2 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t6", row: 7, col: 5 },
+      focus: { cards: ["t6"], cells: [{ row: 7, col: 5 }] },
+    },
+    {
+      text: "9♠ を d3 へ。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t7", row: 6, col: 3 },
+      focus: { cards: ["t7"], cells: [{ row: 6, col: 3 }] },
+    },
+    {
+      text: "8♠ を f3 へ。これで9枚そろいます。",
+      need: { type: "SETUP_PLACE_CARD", cardId: "t8", row: 6, col: 5 },
+      focus: { cards: ["t8"], cells: [{ row: 6, col: 5 }] },
+    },
+    {
+      text: "「王を選ぶ」を押します。",
+      need: { type: "SETUP_GOTO_KING_STEP" },
+      focus: { button: true },
+    },
+    {
+      at: atKing,
+      text: "e1 の 10♠ を王に。スキンの付いた札を王にすると、そのランク帯のエリアが立ちます。",
+      need: { type: "SETUP_PICK_KING", cardId: "t0" },
+      focus: { cells: [{ row: 8, col: 4 }] },
+    },
+    {
+      text: "「布陣を確定」を押します。",
+      need: { type: "SETUP_CONFIRM" },
+      focus: { button: true },
+    },
+    {
+      at: myTurn,
+      text: "盤の上の札を見てください。あなたは「空のエリア」、相手は「氷のエリア」。相手の王が 8 か 9 だと分かります。",
+    },
+    {
+      at: myTurn,
+      text: "空は選んで使います。「発動」を押してから、e3 の 4♠ をタップ。",
+      need: { type: "USE_AREA", pieceId: "t1" },
+      focus: { areaButton: true, pieces: ["t1"] },
+    },
+    {
+      at: myTurn,
+      text: "4♠ が本物の 10 になり、表向きに。「空」の印が付きます。以後、あなたの 10 は全て1手番に2回動けます。",
+      focus: { pieces: ["t1"] },
+    },
+    {
+      text: "変身した駒は 10 の跳び方(桂馬)です。e3 から f5 へ。",
+      need: { type: "MOVE_PIECE", pieceId: "t1", row: 4, col: 5 },
+      focus: { pieces: ["t1"], cells: [{ row: 4, col: 5 }] },
+    },
+    {
+      at: (s) =>
+        s.phase === "play" && s.currentTurn === 0 && s.extraMoveFor === "t1",
+      text: "同じ手番でもう一度動けます。f5 から h6 へ。",
+      need: { type: "MOVE_PIECE", pieceId: "t1", row: 3, col: 7 },
+      focus: { pieces: ["t1"], cells: [{ row: 3, col: 7 }] },
+    },
+    {
+      at: myTurn,
+      text: "相手の番に、氷のエリアが自動で働きました。あなたの d1 の 2♠ が凍り、相手の3手番のあいだ動けません。",
+      focus: { pieces: ["t2"] },
+    },
+    {
+      text: "凍った駒は取られます。A の入れ替えに使うと解けます。今回はそのまま攻めます。",
+      focus: { pieces: ["t2"] },
+    },
+    {
+      at: myTurn,
+      text: "h6 の 10 で g8 の相手を取ります。相手の王です。",
+      need: { type: "MOVE_PIECE", pieceId: "t1", row: 1, col: 6 },
+      focus: { pieces: ["t1"], cells: [{ row: 1, col: 6 }] },
+    },
+    {
+      at: atEnd,
+      text: "エリアは毎回の自分の手番に1回。土・海・森・氷は自動、空・宮殿は選んで使います。詳しくはルール画面の「盤面エリア」へ。",
+      end: true,
+    },
+  ],
+};
+
 export const TUTORIALS = [
   EP1,
   EP2,
@@ -2221,10 +2420,19 @@ export const TUTORIALS = [
   EP12,
 ];
 
+/**
+ * 番外の話。レベルではなく条件(needsSkin: スキンを1枚でも持っている)で開く。
+ * レベルの設計(全12話で Lv10)から外すため、TUTORIALS には入れない
+ */
+export const EXTRA_TUTORIALS = [EP13];
+
+export const ALL_TUTORIALS = [...TUTORIALS, ...EXTRA_TUTORIALS];
+
 export function tutorialById(id) {
-  return TUTORIALS.find((t) => t.id === id) || null;
+  return ALL_TUTORIALS.find((t) => t.id === id) || null;
 }
 
+/** 次の話。番外の話は続けて出さない(開く条件が別なので) */
 export function nextTutorialAfter(id) {
   const index = TUTORIALS.findIndex((t) => t.id === id);
   return index >= 0 ? TUTORIALS[index + 1] || null : null;
@@ -2375,6 +2583,8 @@ const NEED_RANK = {
   PLACE_RESERVE_CARD: 4,
   TOGGLE_SHUFFLE_PICK: 4,
   CONFIRM_SHUFFLE: 4,
+  USE_AREA: 4,
+  SKIP_EXTRA_ACTION: 4,
 };
 
 /**
@@ -2437,6 +2647,17 @@ export function needDone(need, s) {
       if (!piece) return false;
       return !piece.alive || (piece.row === need.row && piece.col === need.col);
     }
+    case "USE_AREA": {
+      // 駒を選ぶエリア(空・宮殿)は、その駒にしるしが付いたら済み。
+      // 自動のエリアは、自分のエリアが1度でも使われたら済み
+      if (need.pieceId) {
+        const piece = s.pieces[need.pieceId];
+        return !!piece && (!!piece.mark || !piece.alive);
+      }
+      return !!(s.areas && s.areas[0] && (s.areas[0].uses || 0) > 0);
+    }
+    case "SKIP_EXTRA_ACTION":
+      return !s.extraMoveFor;
     default:
       return false;
   }

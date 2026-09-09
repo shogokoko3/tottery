@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { TUTORIALS } from "../game/tutorial.js";
+import { TUTORIALS, EXTRA_TUTORIALS } from "../game/tutorial.js";
+import { getCollection } from "../skins/store.js";
 import {
   levelOf,
   loadProfile,
@@ -63,6 +64,14 @@ export function TutorialSelect({ onStart, onBack }) {
   const [profile] = useState(() => loadProfile());
   const level = levelOf(profile);
   const next = toNextLevel(profile);
+  // 番外の話は、スキンを1枚でも持っていると開く
+  const [hasSkin] = useState(() => {
+    try {
+      return Object.keys(getCollection().owned || {}).length > 0;
+    } catch {
+      return false;
+    }
+  });
   return (
     <div className="setup-wrap">
       <h2>チュートリアル</h2>
@@ -81,8 +90,8 @@ export function TutorialSelect({ onStart, onBack }) {
           : "全12話。ここまでで、52枚すべての動きと王の力がそろいます。"}
       </p>
       <div className="menu-list">
-        {TUTORIALS.map((t) => {
-          const locked = level < t.level;
+        {[...TUTORIALS, ...EXTRA_TUTORIALS].map((t) => {
+          const locked = level < t.level || (t.needsSkin && !hasSkin);
           return (
             <button
               className={`menu-item ${locked ? "menu-item-locked" : ""}`}
@@ -97,7 +106,8 @@ export function TutorialSelect({ onStart, onBack }) {
               <span className="menu-item-side">
                 {locked ? (
                   <>
-                    <Lock size={14} /> Lv.{t.level}
+                    <Lock size={14} />{" "}
+                    {t.needsSkin && !hasSkin ? "スキンを手に入れると開く" : `Lv.${t.level}`}
                   </>
                 ) : (
                   <>カード {t.poolLabel}</>

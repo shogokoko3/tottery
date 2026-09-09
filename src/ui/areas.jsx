@@ -30,6 +30,7 @@ export function AreaBar({
   busy,
   names,
   onHelp,
+  focusFire = false,
 }) {
   const areas = state.areas || [null, null];
   if (!areas[0] && !areas[1]) return null;
@@ -85,7 +86,7 @@ export function AreaBar({
       </span>
       {mine && !AUTO_AREAS.has(mine.type) && !mine.used && myTurn && (
         <button
-          className="btn btn-primary btn-small"
+          className={`btn btn-primary btn-small ${focusFire ? "guide-target" : ""}`}
           disabled={!can.ok}
           title={can.ok ? info.text : can.why}
           onClick={() => {

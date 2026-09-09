@@ -1288,7 +1288,8 @@ function TotteryScreens() {
       skins = a
         ? (a.skins || [{}, {}]).map(sanitizeLoadout)
         : tut
-          ? [{}, {}]
+          ? // 第13話は台本が装備を持つ(王のスキンでエリアが立つ)
+            (tut.loadouts || [{}, {}]).map(sanitizeLoadout)
           : d
             ? [collection.equipped, cpuSkins]
             : [collection.equipped, collection.equipped];

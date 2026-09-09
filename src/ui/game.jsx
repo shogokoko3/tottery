@@ -1152,6 +1152,9 @@ export function GameCore({
         // 入れ替えの並び順も固定する。乱数のままだと毎回ちがう配置になる
         if (E.type === "CONFIRM_SHUFFLE" && !E.order && tutorial.shuffleOrder)
           E = { ...E, order: [...tutorial.shuffleOrder] };
+        // 盤面エリアの「誰が凍るか」なども固定する
+        if (E.type === "USE_AREA" && !E.picks && tutorial.areaPicks)
+          E = { ...E, picks: [...tutorial.areaPicks], hit: true };
       }
       if (network && LOCAL_ONLY_ACTIONS.has(E.type)) return reducer(U, E);
       // 手元の対局でも、席を名乗る手には乱数を焼き込む。
@@ -1163,7 +1166,7 @@ export function GameCore({
         (E.type === "ROLL_DICE_SINGLE" && E.value == null) ||
         (E.type === "CONFIRM_MULLIGAN" && !E.reserveOrder) ||
         (E.type === "CONFIRM_SHUFFLE" && !E.order) ||
-        E.type === "USE_AREA";
+        (E.type === "USE_AREA" && !E.picks && E.hit == null);
       let be = network
         ? enrichAction(withLocalContext(E, U), U)
         : seedMissing
@@ -1210,7 +1213,8 @@ export function GameCore({
     const key = `${a.turnNo}:${a.areas[a.currentTurn].type}:${a.areas[a.currentTurn].uses || 0}`;
     if (autoIssued.current === key) return;
     autoIssued.current = key;
-    y(autoArea);
+    // 台本の対局で相手の番なら、台本の関門を通す相手の手として出す
+    y(tutorial && a.currentTurn === 1 ? { ...autoArea, __foe: !0 } : autoArea);
   }, [a, fxBusy, network, cpu]);
   (0, useEffect)(() => {
     a.phase === "intro" &&
@@ -1228,6 +1232,10 @@ export function GameCore({
           (boardSize || 5) === 9 &&
           (!network || hasAreaRules(network.ruleVersion))
             ? { areas: true, loadouts: skins }
+            : null),
+          // 第13話(盤面エリア)は台本が装備を持つ
+          ...(tutorial && tutorial.areas
+            ? { areas: true, loadouts: tutorial.loadouts }
             : null),
           ...(tutorial
             ? {
@@ -1250,7 +1258,9 @@ export function GameCore({
   // 毎回ちがう盤面になってしまう。案内は決まった盤面を前提に書いてあるので、
   // 噛み合わなくなる。台本が足りているかは check-tutorial が見張っている
   (0, useEffect)(() => {
-    if (!tutorial || network) return;
+    // 盤面エリアなどの演出中は y() が手を捨てるので、演出が終わってから
+    // もう一度この effect が走るように fxBusy を条件と依存に入れる
+    if (!tutorial || network || fxBusy) return;
     let act = foeAction(a, tutorial, foeIdxRef.current, (piece) =>
       getLegalMoves(
         piece,
@@ -1276,7 +1286,7 @@ export function GameCore({
       foeWait(a, act, 1200),
     );
     return () => clearTimeout(id);
-  }, [a, tutorial, network]);
+  }, [a, tutorial, network, fxBusy]);
 
   let T = 1;
   ((0, useEffect)(() => {
@@ -2398,6 +2408,7 @@ export function GameCore({
             busy={fxBusy || !!a.captureReveal || !!Pl || !!a.selectedId}
             names={names}
             onHelp={() => f("areas")}
+            focusFire={!!(tutFocus && tutFocus.areaButton)}
           />
         )}
         {aceMagic.controls}

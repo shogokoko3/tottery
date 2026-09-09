@@ -46,12 +46,14 @@ import { levelOfXp } from "../src/game/level.js";
 import { cpuAction } from "../src/game/cpu.js";
 import {
   FREE_ACTIONS,
+  ALL_TUTORIALS,
   TUTORIALS,
   currentStepIndex,
   foeAction,
   matchesNeed,
   upcomingNeedStep,
 } from "../src/game/tutorial.js";
+import { automaticAreaAction } from "../src/game/area-presentation.js";
 
 let fail = 0;
 function ok(label, cond, extra) {
@@ -175,7 +177,7 @@ function applyNeed(s, need, tut) {
   return next;
 }
 
-for (const tut of TUTORIALS) {
+for (const tut of ALL_TUTORIALS) {
   console.log(tut.title);
   let s = reducer(
     { phase: "intro" },
@@ -188,6 +190,8 @@ for (const tut of TUTORIALS) {
       pool: tut.pool,
       handSize: tut.handSize,
       scripted: !tut.bonus,
+      // 第13話: 盤面エリアを立てる
+      ...(tut.areas ? { areas: true, loadouts: tut.loadouts } : {}),
     },
   );
   ok("手札が配れる", s.players[0].hand.length === tut.handSize);
@@ -276,6 +280,16 @@ for (const tut of TUTORIALS) {
       noteKingStretch(s, act);
       s = reducer(s, act);
       watermark = Math.max(watermark, idx);
+      continue;
+    }
+    // 盤面エリアの自動発動。画面(game.jsx)と同じく、使えるならすぐ使う。
+    // 誰が凍るかなどの乱数は台本(areaPicks)で固定する
+    const auto = automaticAreaAction(s);
+    if (auto) {
+      s = reducer(s, {
+        ...auto,
+        ...(tut.areaPicks ? { picks: [...tut.areaPicks], hit: true } : {}),
+      });
       continue;
     }
     const flow = flowAction(s);
@@ -489,7 +503,7 @@ for (const tut of TUTORIALS) {
  * 「王を選ぶ」も押せず、投げ出す以外に出口が無くなる。
  */
 console.log("\n布陣のやり直し");
-for (const tut of TUTORIALS) {
+for (const tut of ALL_TUTORIALS) {
   let s = reducer(
     { phase: "intro" },
     {
@@ -560,7 +574,7 @@ for (const tut of TUTORIALS) {
  * ものが無い」状態で止まるが、台本自体は進んでしまうので気づけない。
  */
 console.log("\n案内が指す先");
-for (const tut of TUTORIALS) {
+for (const tut of ALL_TUTORIALS) {
   const handIds = tut.deck.slice(0, tut.handSize).map((c) => c.id);
   const foeIds = Object.keys(tut.foe.placement);
   const reserveIds = tut.reserveOrder || [];
