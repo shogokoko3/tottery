@@ -2397,6 +2397,7 @@ export function GameCore({
             setPicking={setAreaPick}
             busy={fxBusy || !!a.captureReveal || !!Pl || !!a.selectedId}
             names={names}
+            onHelp={() => f("areas")}
           />
         )}
         {aceMagic.controls}

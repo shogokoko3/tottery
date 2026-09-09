@@ -29,6 +29,7 @@ export function AreaBar({
   setPicking,
   busy,
   names,
+  onHelp,
 }) {
   const areas = state.areas || [null, null];
   if (!areas[0] && !areas[1]) return null;
@@ -115,6 +116,16 @@ export function AreaBar({
           <small>エリアなし</small>
         )}
       </span>
+      {onHelp && (
+        <button
+          className="icon-btn area-help"
+          onClick={onHelp}
+          aria-label="盤面エリアの説明を見る"
+          title="盤面エリアの説明"
+        >
+          ?
+        </button>
+      )}
       {mine &&
         !AUTO_AREAS.has(mine.type) &&
         !mine.used &&

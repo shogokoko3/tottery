@@ -188,7 +188,12 @@ export function GameShell({
         </OpenSettings.Provider>
       </main>
       {sheet}
-      {showRules && <RulesPanel onClose={() => setShowRules(!1)} />}
+      {showRules && (
+        <RulesPanel
+          onClose={() => setShowRules(!1)}
+          initialTab={typeof showRules === "string" ? showRules : "moves"}
+        />
+      )}
       <div className="build-tag">
         {netInfo && <span className="net-tag">{netInfo} · </span>}build:{" "}
         {VERSION}
@@ -793,7 +798,7 @@ export function RulesSelectScreen({
                 {i}×{i}
               </span>
               <small>
-                {i === 5 ? "5枚で戦う短期戦" : "9枚で戦う本格戦"}
+                {i === 5 ? "5枚で戦う短期戦" : "9枚で戦う本格戦。王のスキンで盤面エリアが立つ"}
                 {/* 持ち点が動くのは9×9だけ。選ぶ前に分かるようにしておく */}
                 {ranked && i === 9 && (
                   <>

@@ -3,6 +3,7 @@ import { emptyBoard, getLegalMoves } from "../game/board.js";
 import { KING_TEXT, MOVE_TEXT, RANKS } from "../game/constants.js";
 import { Close } from "../icons.jsx";
 import { CardFace } from "./cards.jsx";
+import { AreaGuide } from "./area-guide.jsx";
 
 export function MoveDiagram({ rank, isKing = !1, gridSize = 7 }) {
   // 4・5 の王は自分ではなく「王以外の同じ数字」を伸ばす。
@@ -85,8 +86,38 @@ export function CardGuide({ rank, suit, isKing = !1, compact = !1 }) {
     </div>
   );
 }
-export function RulesPanel({ onClose }) {
-  let [t, l] = (0, useState)(!1);
+export function RulesPanel({ onClose, initialTab = "moves" }) {
+  // "moves" 通常の動き / "king" 王にした時 / "areas" 盤面エリア
+  let [tab, setTab] = (0, useState)(
+    ["moves", "king", "areas"].includes(initialTab) ? initialTab : "moves",
+  );
+  let t = tab === "king",
+    l = (king) => setTab(king ? "king" : "moves");
+  if (tab === "areas")
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-panel" onClick={(n) => n.stopPropagation()}>
+          <div className="modal-head">
+            <h3>盤面エリア</h3>
+            <button className="icon-btn" onClick={onClose}>
+              <Close size={18} />
+            </button>
+          </div>
+          <div className="rule-toggle">
+            <button className="btn btn-ghost" onClick={() => setTab("moves")}>
+              通常の動き
+            </button>
+            <button className="btn btn-ghost" onClick={() => setTab("king")}>
+              王にした時
+            </button>
+            <button className="btn btn-primary" onClick={() => setTab("areas")}>
+              盤面エリア
+            </button>
+          </div>
+          <AreaGuide />
+        </div>
+      </div>
+    );
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel" onClick={(n) => n.stopPropagation()}>
@@ -108,6 +139,9 @@ export function RulesPanel({ onClose }) {
             onClick={() => l(!0)}
           >
             王にした時
+          </button>
+          <button className="btn btn-ghost" onClick={() => setTab("areas")}>
+            盤面エリア
           </button>
         </div>
         <p
