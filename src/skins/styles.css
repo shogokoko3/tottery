@@ -112,24 +112,57 @@
   font-size: 24px;
   padding-left: 6px;
 }
+/* 区切りが分かるよう、タブは枠のある切り替えボタンにする(選択中は金で塗る) */
 .skins-tabs {
   display: flex;
-  border-bottom: 1px solid #d5b57640;
+  gap: 6px;
+  padding: 5px;
   margin-bottom: 24px;
-  gap: 24px;
+  border: 1px solid #d5b57655;
+  border-radius: 12px;
+  background: #0d1727;
 }
 .skins-tabs button {
-  border: 0;
-  border-bottom: 2px solid transparent;
-  padding: 10px 0 14px;
-  background: transparent;
-  color: #9fabbb;
+  flex: 1 1 0;
+  min-width: 0;
+  border: 1px solid #d5b57633;
+  border-radius: 8px;
+  padding: 10px 4px;
+  background: #142136;
+  color: #b7c1cf;
   font: inherit;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
   cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.skins-tabs button:hover {
+  color: #f1d395;
+  border-color: #d5b57680;
 }
 .skins-tabs button[aria-selected="true"] {
-  color: #f1d395;
-  border-color: #e7c887;
+  color: #1c1608;
+  font-weight: 700;
+  background: linear-gradient(180deg, #f3d99c, #d9b569);
+  border-color: #f1d395;
+  box-shadow: 0 1px 0 #ffffff33 inset;
+}
+.skins-tabs button:focus-visible {
+  outline: 2px solid #f1d395;
+  outline-offset: 2px;
+}
+@media (max-width: 400px) {
+  .skins-tabs {
+    gap: 4px;
+    padding: 4px;
+  }
+  .skins-tabs button {
+    font-size: 13px;
+    padding: 9px 2px;
+  }
 }
 .skins-banner {
   height: 410px;

@@ -585,7 +585,7 @@ function ForgePanel({
   };
 
   return (
-    <div role="tabpanel" aria-label={foilView ? "フォイル" : "錬成"}>
+    <div role="tabpanel" aria-label={foilView ? "加工" : "錬成"}>
       <div className="forge-banks">
         {foilView ? (
           <div className="forge-bank forge-bank-shards">
@@ -885,7 +885,7 @@ function ForgePanel({
           )}
           <p className="skins-note forge-protection">
             {foilKnown
-              ? `通常版とフォイルは別々に最後の1枚を保護します。ここで崩すのは通常版だけです。フォイルのダブりは「フォイル」タブで${SHARD_NAME}にします(エーテルにはなりません)。`
+              ? `通常版とフォイルは別々に最後の1枚を保護します。ここで崩すのは通常版だけです。フォイルのダブりは「加工」タブで${SHARD_NAME}にします(エーテルにはなりません)。`
               : "最後の1枚は保護され、一括で崩す対象になりません。"}
           </p>
         </section>
@@ -997,7 +997,7 @@ function ForgePanel({
             <br />
             早期特典・特別スキンは崩すことも作ることもできません。
             {foilKnown &&
-              ` フォイルのダブりはエーテルにならず、「フォイル」タブで${SHARD_NAME}(R ${SHARD_VALUE.R}・SR ${SHARD_VALUE.SR}・SSR ${SHARD_VALUE.SSR})になります。`}
+              ` フォイルのダブりはエーテルにならず、「加工」タブで${SHARD_NAME}(R ${SHARD_VALUE.R}・SR ${SHARD_VALUE.SR}・SSR ${SHARD_VALUE.SSR})になります。`}
           </p>
         </section>
       )}
@@ -1184,14 +1184,14 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         >
           錬成
         </button>
-        {/* フォイルを1枚でも持つと開く。欠片と交換・フォイル加工はこちら */}
+        {/* フォイルを1枚でも持つと開く。欠片と交換・フォイル加工はこちら。錬成と対の名前 */}
         {foilKnown && (
           <button
             role="tab"
             aria-selected={tab === "foil"}
             onClick={() => setTab("foil")}
           >
-            フォイル
+            加工
           </button>
         )}
       </div>
