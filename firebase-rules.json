@@ -192,6 +192,9 @@
             "pieceId": {
               ".validate": "newData.isString() && newData.val().length <= 16"
             },
+            "promotionSteps": {
+              ".validate": "newData.parent().child('type').val() == 'USE_AREA' && newData.isNumber() && (newData.val() == 1 || newData.val() == 2)"
+            },
             "aId": {
               ".validate": "newData.isString() && newData.val().length <= 16"
             },

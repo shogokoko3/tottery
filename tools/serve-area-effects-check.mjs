@@ -43,7 +43,7 @@ const result = await build({
           s = 'import {areaFixture} from "../../tools/area-fixture.mjs";\n' + s;
           s += `\nfunction fixtureState(){const params=new URLSearchParams(location.search),theme=params.get('area') || 'ice';
 const type=['heaven','hell'].includes(theme)?'palace':theme;
-const s=areaFixture(type);s.ruleVersion=8;
+const s=areaFixture(type);s.ruleVersion=9;
 s.areas[0].skin=theme==='hell'?'demon-k':'angel-k';
 if(params.get('foe'))s.areas[1]={type:params.get('foe'),skin:'demon-k',used:false,uses:0};
 return s;}`;

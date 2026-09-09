@@ -4,6 +4,12 @@ import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
 import { adjudicatePosition, withInitialArmies } from "./adjudication.js";
 import { hasAdjudicationRules } from "./rule-version.js";
+import {
+  discardCards,
+  replenishReserve,
+  reserveSeed,
+  recyclesReserve,
+} from "./reserve.js";
 import { CLOCK_INITIAL_MS, grantTurnTime } from "./clock.js";
 import {
   areaUsesTurn,
@@ -179,6 +185,13 @@ function rescueHand(state, idx) {
     ...state,
     players,
     reserve: [...plain.slice(want), ...heavy],
+    ...(recyclesReserve(state)
+      ? {
+          discardPile: (state.discardPile || []).filter(
+            (c) => !pool.some((p) => p.id === c.id),
+          ),
+        }
+      : {}),
     handRescued: replaceAt(state.handRescued || [false, false], idx, true),
     log: [
       ...state.log,
@@ -400,7 +413,8 @@ export function isNotableLog(line) {
     line.includes("降参") ||
     line.includes("布陣判定") ||
     line.includes("エリア") ||
-    line.includes("宮殿")
+    line.includes("宮殿") ||
+    line.includes("シャッフルして補充")
   );
 }
 
@@ -422,6 +436,9 @@ export function initialState() {
     boardSize: 5,
     players: [makePlayer(0), makePlayer(1)],
     reserve: [],
+    discardPile: [],
+    reserveShuffleState: 0,
+    reserveRefills: 0,
     firstPlayer: 0,
     dice: [null, null],
     diceIdx: 0,
@@ -465,6 +482,7 @@ export function initialState() {
     captureReveal: null,
     pendingKingChoice: null,
     logViewerId: null,
+    logViewerSnapshot: null,
     log: [],
     lastReveal: null,
     lastRevenge: null,
@@ -607,6 +625,8 @@ export function removePiece(state, pieceId, opts) {
     ],
   };
 
+  next = discardCards(next, [dead]);
+
   // 王が4か5のとき、同ランクの手駒が倒されると倒した相手を道連れにする
   if (
     (dead.rank === "4" || dead.rank === "5") &&
@@ -649,6 +669,7 @@ export function removePiece(state, pieceId, opts) {
     // まとめ取りで J と Q が同時に倒れると、2枚めくれることがある。
     // 置き場を1枚にしていた頃は、1枚目が上書きされて山にも手札にも
     // 戻らず黙って消えていた。列にして、どちらからでも置けるようにする
+    if (king && king.rank === "K" && king.alive) next = replenishReserve(next);
     if (king && king.rank === "K" && king.alive && next.reserve.length > 0) {
       const reserve = [...next.reserve];
       const card = reserve.pop();
@@ -1024,6 +1045,16 @@ function settleKingChoice(state) {
 function afterAction(prev, next, action) {
   // 持ち時間を使い切っていた手は、布陣判定より時間切れを優先する。
   let out = afterClock(prev, next, action);
+  if (
+    next !== prev &&
+    [
+      "CONFIRM_MULLIGAN",
+      "MOVE_PIECE",
+      "CONFIRM_SHUFFLE",
+      "SKIP_RESERVE_PLACEMENT",
+    ].includes(action.type)
+  )
+    out = replenishReserve(out);
   if (completedRuleAction(prev, out, action)) out = adjudicatePosition(out);
 
   // 記録に残る出来事があったら、その時点の盤面を控えておく。
@@ -1208,6 +1239,7 @@ function coreReducer(state, action) {
         areaLoadouts: sanitizeLoadouts(action.loadouts),
         players,
         reserve,
+        reserveShuffleState: reserveSeed(deck),
         // 通信の対局は必ず同時配置。順番配置を送られると、先手でない側は
         // 自分の端末の上ですら1枚も置けなくなる(布陣から抜けられない)
         setupMode:
@@ -1352,12 +1384,14 @@ function coreReducer(state, action) {
         ...state.log,
         `${PLAYER_META[idx].name}が${count}枚を引き直した`,
       ];
+      const discardPile = discardCards(state, discarded).discardPile;
 
       if (idx === state.firstPlayer) {
         return {
           ...state,
           players,
           reserve: rest,
+          discardPile,
           mulliganIdx: 1 - state.firstPlayer,
           log,
           interstitial: { forPlayer: 1 - state.firstPlayer, kind: "mulligan" },
@@ -1369,6 +1403,7 @@ function coreReducer(state, action) {
         ...state,
         players,
         reserve: rest,
+        discardPile,
         phase: "setup",
         setupIdx: state.firstPlayer,
         setupSteps: ["place", "place"],
@@ -1925,6 +1960,7 @@ function coreReducer(state, action) {
         ? cards.find((c) => c.id === action.cardId)
         : cards[0];
       if (!card) return state;
+      if (state.pieces[card.id]?.alive) return state;
       // 盤の内側・自陣・空いているマス。どれも見ていないと、相手の駒の上に
       // 置いて、撃破もせずに盤から消せる(取るより強い手になる)
       if (!onBoard(state.board, action.row, action.col)) return state;
@@ -1987,7 +2023,10 @@ function coreReducer(state, action) {
     case "SKIP_RESERVE_PLACEMENT":
       if (!state.kPlacement || state.currentTurn !== state.kPlacement.owner)
         return state;
-      return { ...state, kPlacement: null };
+      return discardCards(
+        { ...state, kPlacement: null },
+        state.kPlacement.cards,
+      );
 
     case "USE_AREA": {
       // 盤面エリアの発動(src/game/areas.js)。使えなければ何も起きない
@@ -2013,11 +2052,23 @@ function coreReducer(state, action) {
         return state;
       return endTurn(state);
 
-    case "VIEW_LOG":
-      return { ...state, logViewerId: action.id };
+    case "VIEW_LOG": {
+      const captured =
+        [0, 1].includes(action.capturedOwner) &&
+        Number.isInteger(action.capturedIndex)
+          ? state.players[action.capturedOwner].capturedOwn[
+              action.capturedIndex
+            ]
+          : null;
+      return {
+        ...state,
+        logViewerId: action.id,
+        logViewerSnapshot: captured?.id === action.id ? captured : null,
+      };
+    }
 
     case "CLOSE_LOG":
-      return { ...state, logViewerId: null };
+      return { ...state, logViewerId: null, logViewerSnapshot: null };
 
     case "RESIGN": {
       const who = action.player;

@@ -266,8 +266,7 @@ export function cpuAction(state, player) {
   if (state.phase === "play") {
     if (state.currentTurn !== player) return null;
 
-    if (state.kPlacement) {
-      if (state.kPlacement.owner !== player) return null;
+    if (state.kPlacement?.owner === player) {
       const [lo, hi] = territoryRows(state.boardSize, player);
       for (let r = lo; r <= hi; r++)
         for (let c = 0; c < state.boardSize; c++)

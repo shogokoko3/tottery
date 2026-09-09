@@ -82,7 +82,7 @@ export const AREA_INFO = Object.freeze({
   },
   palace: {
     name: "宮殿",
-    text: "自分の駒1体を1段昇格させる(Kまで・公開)。昇格後も駒を動かせる",
+    text: "自分の駒1体を1段階昇格(Kまで・公開)。1試合に1回だけ2段階も選べる。昇格後も駒を動かせる",
     usesTurn: false,
     needsPiece: true,
   },
@@ -107,6 +107,8 @@ export const AREA_TUNING = Object.freeze({
   skyAllTens: true,
   /** 宮殿: これより上には昇格できない("K" なら上限なし) */
   palaceCap: "K",
+  /** 宮殿: 1局に2段階昇格を選べる回数(版9以降) */
+  palaceDoubleUses: 1,
 });
 /** 氷で動けなくなる相手の手番の数(互換用。AREA_TUNING.freezeTurns を見る) */
 export const FREEZE_TURNS = AREA_TUNING.freezeTurns;
@@ -244,9 +246,9 @@ export function skyCandidates(state, player) {
 }
 
 /** 宮殿: 昇格させられる自分の駒(王以外。K はもう上がらない) */
-export function palaceCandidates(state, player) {
+export function palaceCandidates(state, player, steps = 1) {
   return alivePieces(state, player)
-    .filter((p) => !p.isKing && promotedRank(p.rank) !== null)
+    .filter((p) => palacePromotionRank(state, p, steps) !== null)
     .map((p) => p.id)
     .sort();
 }
@@ -257,6 +259,23 @@ export function promotedRank(rank) {
   if (i < 1 || i + 1 >= RANKS.length) return null;
   if (RANKS.indexOf(AREA_TUNING.palaceCap) <= i) return null;
   return RANKS[i + 1];
+}
+
+export function palaceDoubleRemaining(state, player) {
+  const area = state.areas?.[player];
+  return state.ruleVersion >= 9 && area?.type === "palace"
+    ? Math.max(0, AREA_TUNING.palaceDoubleUses - (area.doubleUses || 0))
+    : 0;
+}
+
+/** 通常と2段階の両方をUI・CPU・対局処理で同じように判定する。 */
+export function palacePromotionRank(state, piece, steps = 1) {
+  if (!piece || piece.isKing || ![1, 2].includes(steps)) return null;
+  const next = promotedRank(piece.rank);
+  if (steps === 1) return next;
+  return next && palaceDoubleRemaining(state, piece.owner) > 0
+    ? promotedRank(next)
+    : null;
 }
 
 /** 採用枚数の表を、ランクが変わった駒に合わせて動かす */
@@ -490,6 +509,7 @@ export function useArea(state, action) {
         {
           ...piece,
           rank: "10",
+          originalRank: piece.originalRank || piece.rank,
           revealed: true,
           mark: "sky",
           // 軍全体を2回にしない設定でも、変身した駒自身は2回動ける
@@ -515,9 +535,10 @@ export function useArea(state, action) {
     }
     case "palace": {
       const piece = state.pieces[action.pieceId];
-      if (!piece || !palaceCandidates(state, player).includes(piece.id))
+      const steps = action.promotionSteps ?? 1;
+      if (!piece || !palaceCandidates(state, player, steps).includes(piece.id))
         return state;
-      const rank = promotedRank(piece.rank);
+      const rank = palacePromotionRank(state, piece, steps);
       const players = state.players.map((p, i) =>
         i === player
           ? {
@@ -532,6 +553,7 @@ export function useArea(state, action) {
         {
           ...piece,
           rank,
+          originalRank: piece.originalRank || piece.rank,
           revealed: true,
           mark: "palace",
           history: [
@@ -543,10 +565,19 @@ export function useArea(state, action) {
       return markUsed(
         {
           ...next,
+          ...(steps === 2
+            ? {
+                areas: next.areas.map((a, i) =>
+                  i === player
+                    ? { ...a, doubleUses: (a.doubleUses || 0) + 1 }
+                    : a,
+                ),
+              }
+            : {}),
           lastReveal: { id: piece.id, reason: "宮殿で昇格した" },
           log: [
             ...state.log,
-            `${name}が宮殿で${squareName(piece.row, piece.col, state.boardSize)}の駒を${rank}に昇格させた(公開)`,
+            `${name}が宮殿で${squareName(piece.row, piece.col, state.boardSize)}の駒を${rank}に${steps === 2 ? "2段階" : ""}昇格させた(公開)${steps === 2 ? "。2段階昇格は使用済み" : ""}`,
           ],
         },
         player,

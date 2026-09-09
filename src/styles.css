@@ -4906,9 +4906,23 @@ h3 {
   color: var(--gold-soft);
   font-size: 13px;
 }
+.area-promotion-options {
+  display: flex;
+  flex: 1 0 100%;
+  gap: 8px;
+}
+.area-promotion-options .btn {
+  flex: 1;
+  min-height: 44px;
+  white-space: normal;
+}
+.area-promotion-options small { display: block; font-size: 11px; }
+.area-pick-instruction { flex: 1; min-width: 150px; }
+.area-bar-picking > .btn { min-height: 44px; }
 .area-chip {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;

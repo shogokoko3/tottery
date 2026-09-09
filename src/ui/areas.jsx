@@ -13,6 +13,8 @@ import {
   canUseArea,
   recurringArea,
   areaUsesTurn,
+  palaceCandidates,
+  palaceDoubleRemaining,
 } from "../game/areas.js";
 
 /** エリアの札に出す短い名前 */
@@ -46,15 +48,59 @@ export function AreaBar({
           : {}),
       }
     : null;
+  if (
+    mine?.type === "palace" &&
+    state.ruleVersion < 9 &&
+    !areaUsesTurn(state, mine.type)
+  )
+    info.text = "自分の駒1体を1段昇格させる(Kまで・公開)。昇格後も駒を動かせる";
+  const doubleLeft = palaceDoubleRemaining(state, me);
+  const doubleTargets =
+    mine?.type === "palace" ? palaceCandidates(state, me, 2) : [];
   const label = (i) => (names && names[i] ? names[i] : PLAYER_META[i].name);
 
   if (picking && mine) {
     return (
-      <div className="area-bar area-bar-picking">
-        <span>
+      <div
+        className="area-bar area-bar-picking"
+        role="group"
+        aria-label="エリアの対象選択"
+      >
+        {mine.type === "palace" && state.ruleVersion >= 9 && (
+          <div
+            className="area-promotion-options"
+            role="group"
+            aria-label="昇格する段階"
+          >
+            <button
+              className={`btn btn-small ${picking !== 2 ? "btn-primary" : "btn-ghost"}`}
+              aria-pressed={picking !== 2}
+              onClick={() => setPicking(1)}
+            >
+              1段階昇格
+            </button>
+            <button
+              className={`btn btn-small ${picking === 2 ? "btn-primary" : "btn-ghost"}`}
+              aria-pressed={picking === 2}
+              disabled={!doubleLeft || !doubleTargets.length}
+              title={
+                !doubleLeft
+                  ? "この試合の2段階昇格は使用済みです"
+                  : !doubleTargets.length
+                    ? "2段階昇格できる駒がありません"
+                    : "1試合に1回だけ使えます"
+              }
+              onClick={() => setPicking(2)}
+            >
+              2段階昇格
+              <small>{doubleLeft ? `残り${doubleLeft}回` : "使用済み"}</small>
+            </button>
+          </div>
+        )}
+        <span className="area-pick-instruction">
           {mine.type === "sky"
             ? "10に変身させる駒を選んでください"
-            : "昇格させる駒を選んでください"}
+            : `${picking === 2 ? "2段階" : "1段階"}昇格させる駒を選んでください`}
         </span>
         <button
           className="btn btn-ghost btn-small"
@@ -79,6 +125,11 @@ export function AreaBar({
                   ? "使用済み"
                   : "未使用"}
             </small>
+            {mine.type === "palace" && state.ruleVersion >= 9 && (
+              <small>
+                2段階：{doubleLeft ? `残り${doubleLeft}回` : "使用済み"}
+              </small>
+            )}
           </>
         ) : (
           <small>エリアなし</small>
@@ -112,6 +163,12 @@ export function AreaBar({
                   ? "使用済み"
                   : "未使用"}
             </small>
+            {areas[foe].type === "palace" && state.ruleVersion >= 9 && (
+              <small>
+                2段階：
+                {palaceDoubleRemaining(state, foe) ? "残り1回" : "使用済み"}
+              </small>
+            )}
           </>
         ) : (
           <small>エリアなし</small>

@@ -325,16 +325,18 @@ export function CapturedRow({ players, dispatch, viewer }) {
             <div className="captured-cards">
               {i.capturedOwn
                 .filter((o) => !o.alive)
-                .map((o) => (
+                .map((o, capturedIndex) => (
                   <div
                     className="captured-card"
                     onClick={() =>
                       dispatch({
                         type: "VIEW_LOG",
                         id: o.id,
+                        capturedOwner: f,
+                        capturedIndex,
                       })
                     }
-                    key={o.id}
+                    key={`${o.id}-${capturedIndex}`}
                   >
                     <CardFace
                       owner={o.owner}
@@ -748,16 +750,18 @@ export function GameView({
                 <div className="captured-cards">
                   {s.capturedOwn
                     .filter((p) => !p.alive)
-                    .map((p) => (
+                    .map((p, capturedIndex) => (
                       <div
                         className="captured-card"
                         onClick={() =>
                           dispatch({
                             type: "VIEW_LOG",
                             id: p.id,
+                            capturedOwner: v,
+                            capturedIndex,
                           })
                         }
-                        key={p.id}
+                        key={`${p.id}-${capturedIndex}`}
                       >
                         <CardFace
                           owner={p.owner}
@@ -2364,11 +2368,12 @@ export function GameCore({
     Jl = P === 1,
     Pl = x && a.shuffleMode;
   // 盤面エリアで選べる駒(空: 変身、宮殿: 昇格)
+  const logPiece = a.logViewerSnapshot || a.pieces[a.logViewerId];
   const areaCands =
     areaPick && a.areas && a.areas[P]
       ? a.areas[P].type === "sky"
         ? skyCandidates(a, P)
-        : palaceCandidates(a, P)
+        : palaceCandidates(a, P, areaPick === 2 ? 2 : 1)
       : [];
   return (
     <GameShell
@@ -2639,7 +2644,13 @@ export function GameCore({
                             if (areaPick) {
                               wl.stopPropagation();
                               if (areaCands.includes(ze.id)) {
-                                y({ type: "USE_AREA", pieceId: ze.id });
+                                y({
+                                  type: "USE_AREA",
+                                  pieceId: ze.id,
+                                  ...(areaPick === 2
+                                    ? { promotionSteps: 2 }
+                                    : {}),
+                                });
                                 setAreaPick(false);
                               }
                               return;
@@ -2822,13 +2833,13 @@ export function GameCore({
           </button>
         </div>
         {privateNotes.editor}
-        {!a.captureReveal && a.logViewerId && a.pieces[a.logViewerId] && (
+        {!a.captureReveal && a.logViewerId && logPiece && (
           <LogViewer
-            piece={a.pieces[a.logViewerId]}
+            piece={logPiece}
             onMemo={
-              privateNotes.can(a.pieces[a.logViewerId])
+              !a.logViewerSnapshot && privateNotes.can(logPiece)
                 ? () => {
-                    privateNotes.open(a.pieces[a.logViewerId]);
+                    privateNotes.open(logPiece);
                     y({ type: "CLOSE_LOG" });
                   }
                 : null
