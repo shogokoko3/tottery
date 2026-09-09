@@ -1578,6 +1578,43 @@
   color: var(--text-dim);
 }
 
+/* エーテルと欠片。欠片はフォイルを1枚でも持つと現れる */
+.forge-banks {
+  margin-bottom: 18px;
+}
+.forge-banks.has-shards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.forge-banks .forge-bank {
+  margin-bottom: 0;
+}
+.forge-bank-shards {
+  background: linear-gradient(
+    180deg,
+    rgba(219, 189, 121, 0.16),
+    rgba(16, 32, 58, 0.6)
+  );
+}
+.forge-bank-shards b {
+  color: #f0dbab;
+}
+.forge-gain-shard {
+  color: #f0dbab;
+}
+.forge-exchange-grid {
+  margin-top: 14px;
+}
+.forge-card.is-owned {
+  opacity: 0.72;
+}
+@media (max-width: 420px) {
+  .forge-banks.has-shards {
+    grid-template-columns: 1fr;
+  }
+}
+
 .forge-section {
   margin-bottom: 22px;
 }
@@ -1985,14 +2022,20 @@
   border-radius: 5px;
   background: linear-gradient(125deg, #6a512c32, #162d4038);
   color: #f2d7a1;
-  font: 14px/1.85 "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+  font:
+    14px/1.85 "Yu Gothic",
+    "Hiragino Kaku Gothic ProN",
+    sans-serif;
   text-align: left;
   letter-spacing: normal;
   overflow-wrap: anywhere;
 }
 .skins-result-areas h3 {
   margin: 0 0 12px;
-  font: 700 16px/1.6 "Shippori Mincho", "Yu Mincho", serif;
+  font:
+    700 16px/1.6 "Shippori Mincho",
+    "Yu Mincho",
+    serif;
   color: #f2d7a1;
 }
 .skins-result-areas ul {
@@ -2276,12 +2319,24 @@
   color: var(--text-dim, #b9b3a3);
   border-left-color: rgba(212, 175, 55, 0.35);
 }
-.skins-area-note-earth { border-left-color: rgba(139, 94, 50, 0.9); }
-.skins-area-note-sea { border-left-color: rgba(46, 126, 196, 0.9); }
-.skins-area-note-forest { border-left-color: rgba(52, 140, 78, 0.9); }
-.skins-area-note-ice { border-left-color: rgba(160, 220, 255, 0.9); }
-.skins-area-note-sky { border-left-color: rgba(150, 130, 230, 0.9); }
-.skins-area-note-palace { border-left-color: rgba(212, 175, 55, 0.9); }
+.skins-area-note-earth {
+  border-left-color: rgba(139, 94, 50, 0.9);
+}
+.skins-area-note-sea {
+  border-left-color: rgba(46, 126, 196, 0.9);
+}
+.skins-area-note-forest {
+  border-left-color: rgba(52, 140, 78, 0.9);
+}
+.skins-area-note-ice {
+  border-left-color: rgba(160, 220, 255, 0.9);
+}
+.skins-area-note-sky {
+  border-left-color: rgba(150, 130, 230, 0.9);
+}
+.skins-area-note-palace {
+  border-left-color: rgba(212, 175, 55, 0.9);
+}
 
 /* フォイル加工のカードに出す、効果盤面への入口 */
 .forge-milestone-area {

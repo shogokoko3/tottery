@@ -11,6 +11,7 @@ import {
   sanitizeLoadout,
 } from "./catalog.js";
 import { craftCheck, dismantleCheck } from "./ether.js";
+import { exchangeCheck, shatterCheck } from "./shards.js";
 import { sanitizeTsumeProgress } from "../game/tsume-daily.js";
 import {
   missionPeriods,
@@ -130,6 +131,8 @@ export function normalize(raw) {
         : null,
     // エーテル。ダブりを崩すと増え、狙った1枚を作ると減る
     ether: count(value.ether),
+    // フォイルの欠片。フォイルのダブりを崩すと増え、持っていないフォイルと交換すると減る
+    shards: count(value.shards),
     owned,
     acquired: acquiredTotals({ ...value, owned, foilMilestones }),
     foilMilestones,
@@ -149,7 +152,10 @@ export function normalize(raw) {
             byId(value.lastCraft.id).foil &&
             foilMilestones[baseSkinId(value.lastCraft.id)]
               ? { source: "milestone" }
-              : {}),
+              : value.lastCraft.source === "exchange" &&
+                  byId(value.lastCraft.id).foil
+                ? { source: "exchange" }
+                : {}),
           }
         : null,
   };
@@ -247,7 +253,43 @@ export function dismantle(state, id) {
   };
 }
 
-/** 通常版のダブりをまとめて崩す。フォイルは個別に選んだ場合だけ。 */
+/**
+ * フォイルのダブりを1枚崩して、フォイルの欠片にする(shards.js の決まり)。
+ * 最後の1枚は残す。エーテルは増えない。
+ */
+export function shatter(state, id) {
+  const check = shatterCheck(state, id);
+  if (!check.ok) throw new Error(check.why);
+  return {
+    ...state,
+    owned: { ...state.owned, [id]: state.owned[id] - 1 },
+    acquired: acquiredTotals(state),
+    shards: count(state.shards) + check.gain,
+  };
+}
+
+/**
+ * 欠片を払って、持っていないフォイルを1枚作る。抽選はない(必ずそのフォイル)。
+ * 交換で得た分も通算獲得に数える。結果は lastCraft に source: "exchange" で残す。
+ */
+export function exchangeFoil(state, baseId) {
+  if (state.pending || state.lastCraft)
+    throw new Error("先にガチャ・錬成の結果を確認してください。");
+  const check = exchangeCheck(state, baseId);
+  if (!check.ok) throw new Error(check.why);
+  const id = foilId(baseSkinId(baseId));
+  const acquired = acquiredTotals(state);
+  recordAcquisition(acquired, id);
+  return {
+    ...state,
+    acquired,
+    owned: { ...state.owned, [id]: (state.owned[id] || 0) + 1 },
+    shards: count(state.shards) - check.cost,
+    lastCraft: { id, isNew: true, source: "exchange" },
+  };
+}
+
+/** 通常版のダブりをまとめて崩す。フォイルは欠片にするので含めない。 */
 export function dismantleAll(state) {
   let next = state;
   for (const skin of SKINS) {

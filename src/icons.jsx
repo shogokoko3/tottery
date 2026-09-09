@@ -190,6 +190,14 @@ export const Ether = (props) => (
   </IconBase>
 );
 
+/** フォイルの欠片。割れた宝石のかけら */
+export const Shard = (props) => (
+  <IconBase {...props}>
+    <path d="M7 3h10l4 5-9 13L3 8z" />
+    <path d="M3 8h18M9 8l3 13M15 8l-3 13M7 3l2 5M17 3l-2 5" />
+  </IconBase>
+);
+
 /** チケット。切り取り線の入った札 */
 export const Ticket = (props) => (
   <IconBase {...props}>

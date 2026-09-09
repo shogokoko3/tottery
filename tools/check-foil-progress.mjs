@@ -9,6 +9,7 @@ import {
   dismantle,
   dismantleAll,
   foilMilestoneCheck,
+  shatter,
   grantSkin,
   normalize,
   pull,
@@ -153,8 +154,9 @@ for (const skin of POOL) {
   assert.equal(foilMilestoneCheck(closed, skin.id).claimed, true);
   assert.throws(() => claimFoilMilestone(closed, skin.id), /受け取り済み/);
   assert.equal(
-    saved(dismantle(closed, foilId(skin.id))).acquired[skin.id],
+    saved(shatter(closed, foilId(skin.id))).acquired[skin.id],
     100,
+    "フォイルを欠片にしても通算は減らない",
   );
 }
 const fullOwned = normalize({ owned: { [id]: 100 } });

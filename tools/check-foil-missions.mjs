@@ -3,7 +3,7 @@ import { FOIL_SKINS, POOL, foilId, rate } from "../src/skins/catalog.js";
 import {
   claimFoilMilestone,
   craft,
-  dismantle,
+  shatter,
   normalize,
   pull,
 } from "../src/skins/collection.js";
@@ -197,7 +197,8 @@ for (const skin of POOL) {
   assert.equal(claimed.now, 1);
   assert.equal(claimed.ratio, 1);
   assert.equal(claimed.raw, 0, "未読所持情報のrawは完成表示に置き換えない");
-  const afterDismantle = dismantle(
+  // フォイルのダブりは欠片にする(2026-09-10)。1枚残れば称号は保たれる
+  const afterDismantle = shatter(
     normalize({ owned: { [mission.skinId]: 2 } }),
     mission.skinId,
   );

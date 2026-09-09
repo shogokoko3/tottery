@@ -20,6 +20,7 @@ import {
   craft,
   dismantle,
   dismantleAll,
+  shatter,
   equip,
   grantSkin,
   normalize,
@@ -214,10 +215,9 @@ const stock = normalize({
   equipped: { 6: "elf-male:foil", K: "angel-k:foil" },
 });
 assert.equal(dustOf("elf-male:foil"), DUST.SR);
-assert.deepEqual(dismantleCheck(stock, "elf-male:foil"), {
-  ok: true,
-  gain: DUST.SR,
-});
+// 2026-09-10: フォイルはエーテルにせず欠片にする(shards.js)。分解は断る
+assert.equal(dismantleCheck(stock, "elf-male:foil").ok, false);
+assert.match(dismantleCheck(stock, "elf-male:foil").why, /欠片/);
 assert.ok(spares(stock, ALL_SKINS).some((r) => r.skin.foil));
 assert.equal(totalOfSpares(stock, ALL_SKINS), 40, "一括の下見は通常版だけ");
 const bulk = dismantleAll(stock);
@@ -227,11 +227,13 @@ assert.deepEqual(bulk.owned, {
   "angel-k:foil": 2,
 });
 assert.equal(bulk.ether, 40);
-let individual = dismantle(dismantle(bulk, "elf-male:foil"), "elf-male:foil");
-assert.equal(individual.ether, 80);
+assert.throws(() => dismantle(bulk, "elf-male:foil"), /欠片/);
+let individual = shatter(shatter(bulk, "elf-male:foil"), "elf-male:foil");
+assert.equal(individual.ether, 40, "欠片にしてもエーテルは増えない");
+assert.equal(individual.shards, 4);
 assert.equal(individual.owned["elf-male:foil"], 1);
 assert.equal(individual.equipped["6"], "elf-male:foil");
-assert.throws(() => dismantle(individual, "elf-male:foil"), /最後の1枚/);
+assert.throws(() => shatter(individual, "elf-male:foil"), /最後の1枚/);
 assert.throws(() => dismantle(individual, "elf-male"), /最後の1枚/);
 console.log(
   "フォイル: キャラ率維持・独立1%境界・10連・旧データ・装備・別版保護: OK",
