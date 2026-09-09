@@ -33,6 +33,7 @@ const is = (name, got, want) => {
 
 const types = [...new Set(Object.values(AREA_BY_RANK))];
 is("6種類すべてに行がある(王のランクの順)", rows.map((r) => r.type), types);
+is("フォイルでだけ立つ、と書いてある", /フォイル/.test(src) && /通常のスキンでは立ちません/.test(src), true);
 for (const r of rows) {
   const info = AREA_INFO[r.type];
   is(`${info.name}: 名前がある`, typeof info.name, "string");

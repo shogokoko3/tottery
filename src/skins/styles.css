@@ -2203,3 +2203,43 @@
     text-align: right;
   }
 }
+
+/* スキン詳細の「効果盤面」(src/ui/skins.jsx SkinAreaNote) */
+.skins-area-note {
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
+}
+.skins-area-note h3 {
+  margin: 2px 0 4px;
+  font-size: 16px;
+  color: var(--gold-soft, #e8cf7a);
+}
+.skins-area-note p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.skins-area-how {
+  margin-top: 6px !important;
+  color: var(--text-dim, #b9b3a3);
+  font-size: 12px !important;
+}
+.skins-area-how b {
+  color: var(--gold-soft, #e8cf7a);
+}
+.skins-area-note-plain {
+  font-size: 12px;
+  color: var(--text-dim, #b9b3a3);
+  border-left-color: rgba(212, 175, 55, 0.35);
+}
+.skins-area-note-earth { border-left-color: rgba(139, 94, 50, 0.9); }
+.skins-area-note-sea { border-left-color: rgba(46, 126, 196, 0.9); }
+.skins-area-note-forest { border-left-color: rgba(52, 140, 78, 0.9); }
+.skins-area-note-ice { border-left-color: rgba(160, 220, 255, 0.9); }
+.skins-area-note-sky { border-left-color: rgba(150, 130, 230, 0.9); }
+.skins-area-note-palace { border-left-color: rgba(212, 175, 55, 0.9); }

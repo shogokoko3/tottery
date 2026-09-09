@@ -1,5 +1,5 @@
 import { totalSlots, maxAdopt, territoryRows, getLegalMoves } from "./board.js";
-import { areaForKing } from "./areas.js";
+import { areaForKing, areaSkinOk } from "./areas.js";
 
 export const CARD_VALUE = {
   A: 5,
@@ -38,7 +38,7 @@ export function chooseArmyPlan(state, player, preferredKingRank = null) {
     const area =
       state.areasEnabled &&
       state.boardSize === 9 &&
-      state.areaLoadouts?.[player]?.[king.rank]
+      areaSkinOk(state.areaLoadouts?.[player]?.[king.rank])
         ? areaForKing(king.rank)
         : null;
     const cards = [king],

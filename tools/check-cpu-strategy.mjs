@@ -26,7 +26,7 @@ const ranks = [
 const state = {
   boardSize: 9,
   areasEnabled: true,
-  areaLoadouts: [Object.fromEntries(ranks.map((r) => [r, "skin"])), {}],
+  areaLoadouts: [Object.fromEntries(ranks.map((r) => [r, "skin:foil"])), {}],
   players: [
     { hand: ranks.map((rank, i) => ({ rank, id: `c${i}`, suit: "spade" })) },
     {},

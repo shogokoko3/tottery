@@ -85,7 +85,7 @@ function setup(seed, kings) {
   const all = Object.fromEntries(
     Object.values(groups)
       .flat()
-      .map((r) => [r, "fixture-skin"]),
+      .map((r) => [r, "fixture-skin:foil"]),
   );
   let s = reducer(
     { phase: "intro" },

@@ -34,7 +34,7 @@ export function collectActs(games = 40) {
   const loadout = Object.fromEntries(
     ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"].map((r) => [
       r,
-      `skin-${r}`,
+      `skin-${r}:foil`,
     ]),
   );
   const start = {

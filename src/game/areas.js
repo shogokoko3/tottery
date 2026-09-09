@@ -1,8 +1,9 @@
 /**
  * 盤面エリア(試験ルール)。
  *
- * 王にした札のランクにスキンを装備していると、そのランク帯の「エリア」が
- * 盤に立つ。全エリアが毎手番1回だけ効果を使える。9×9 だけ。5×5 には無い
+ * 王にした札のランクに**フォイルの**スキン(ガチャで引く加工版。id の末尾が
+ * ":foil")を装備していると、そのランク帯の「エリア」が盤に立つ。通常のスキンでは
+ * 立たない。全エリアが毎手番1回だけ効果を使える。9×9 だけ。5×5 には無い
  * (駒が5体しかなく、帯が分かると王の候補が絞れてしまうため)。
  *
  *   2・3  土   直前に動いた相手の駒の足跡を読み、50% で正体を見抜く。
@@ -116,6 +117,16 @@ export function areaForKing(rank) {
   return AREA_BY_RANK[rank] || null;
 }
 
+/**
+ * エリアを立てられる装備か。ガチャのフォイル加工のスキンだけ。
+ * 見分けは id の末尾(src/skins/catalog.js の FOIL_SUFFIX と同じ ":foil")。
+ * catalog を読まないのは、ルール層が画面の台帳に依らないようにするため
+ */
+export const AREA_SKIN_SUFFIX = ":foil";
+export function areaSkinOk(skinId) {
+  return typeof skinId === "string" && skinId.endsWith(AREA_SKIN_SUFFIX);
+}
+
 /** 凍っているか。turnNo が frozenUntil に届くと解ける */
 export function isFrozen(state, piece) {
   return (
@@ -170,7 +181,10 @@ export function initAreas(state) {
     const rank = kingRankOf(state, i);
     const type = areaForKing(rank);
     const skin = loadouts && loadouts[i] ? loadouts[i][rank] : null;
-    return type && skin ? { type, used: false, uses: 0, rank, skin } : null;
+    // フォイル以外のスキンでは立たない
+    return type && areaSkinOk(skin)
+      ? { type, used: false, uses: 0, rank, skin }
+      : null;
   });
   const log = [...(state.log || [])];
   for (const i of [0, 1])

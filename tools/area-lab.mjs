@@ -49,7 +49,7 @@ function makeDeck(seed, kings) {
 /** 1局。kings は席ごとの王のランク、skins は席ごとに「エリアを持つか」 */
 function play(seed, kings, hasArea) {
   Math.random = seeded(seed * 7 + 3);
-  const all = Object.fromEntries(Object.keys(AREA_BY_RANK).map((r) => [r, "skin"]));
+  const all = Object.fromEntries(Object.keys(AREA_BY_RANK).map((r) => [r, "skin:foil"]));
   let s = reducer(
     { phase: "intro" },
     {

@@ -2246,9 +2246,9 @@ const EP13_DECK = fill(
 
 const EP13 = {
   id: 13,
-  // レベルではなく、スキンを1枚でも持っていると開く
+  // レベルではなく、フォイルのスキンを1枚でも持っていると開く
   level: 1,
-  needsSkin: true,
+  needsFoil: true,
   xp: 300,
   title: "第13話 盤面エリア",
   subtitle: "王のスキンが、盤を変える",
@@ -2259,9 +2259,9 @@ const EP13 = {
   dice: [6, 2],
   deck: EP13_DECK,
   reserveOrder: EP13_DECK.slice(18).map((c) => c.id),
-  // 盤面エリアを立てる。装備は台本で固定(あなたの 10 と、相手の 8)
+  // 盤面エリアを立てる。装備は台本で固定(あなたの 10 と、相手の 8。どちらもフォイル)
   areas: true,
-  loadouts: [{ 10: "dragon-knight" }, { 8: "viking-male" }],
+  loadouts: [{ 10: "dragon-knight:foil" }, { 8: "viking-male:foil" }],
   // 相手の氷が凍らせる駒。あなたの d1 の 2♠
   areaPicks: ["t2"],
   foe: {
@@ -2283,7 +2283,7 @@ const EP13 = {
   },
   steps: [
     {
-      text: "王にする札にスキンがあると、盤に「エリア」が立ちます。まずサイコロ。",
+      text: "王にする札にフォイルのスキンがあると、盤に「エリア」が立ちます。まずサイコロ。",
       need: { type: "ROLL_DICE_SINGLE" },
       focus: { button: true },
     },
@@ -2295,7 +2295,7 @@ const EP13 = {
     },
     {
       at: atPlace,
-      text: "9×9 は9枚を並べます。スキン付きの 10♠ を e1 へ。",
+      text: "9×9 は9枚を並べます。フォイル付きの 10♠ を e1 へ。",
       need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 8, col: 4 },
       focus: { cards: ["t0"], cells: [{ row: 8, col: 4 }] },
     },
@@ -2346,7 +2346,7 @@ const EP13 = {
     },
     {
       at: atKing,
-      text: "e1 の 10♠ を王に。スキンの付いた札を王にすると、そのランク帯のエリアが立ちます。",
+      text: "e1 の 10♠ を王に。フォイルの付いた札を王にすると、そのランク帯のエリアが立ちます。",
       need: { type: "SETUP_PICK_KING", cardId: "t0" },
       focus: { cells: [{ row: 8, col: 4 }] },
     },

@@ -64,10 +64,12 @@ export function TutorialSelect({ onStart, onBack }) {
   const [profile] = useState(() => loadProfile());
   const level = levelOf(profile);
   const next = toNextLevel(profile);
-  // 番外の話は、スキンを1枚でも持っていると開く
-  const [hasSkin] = useState(() => {
+  // 番外の話は、フォイルのスキンを1枚でも持っていると開く(効果盤面が使える条件と同じ)
+  const [hasFoil] = useState(() => {
     try {
-      return Object.keys(getCollection().owned || {}).length > 0;
+      return Object.keys(getCollection().owned || {}).some((id) =>
+        id.endsWith(":foil"),
+      );
     } catch {
       return false;
     }
@@ -91,7 +93,7 @@ export function TutorialSelect({ onStart, onBack }) {
       </p>
       <div className="menu-list">
         {[...TUTORIALS, ...EXTRA_TUTORIALS].map((t) => {
-          const locked = level < t.level || (t.needsSkin && !hasSkin);
+          const locked = level < t.level || (t.needsFoil && !hasFoil);
           return (
             <button
               className={`menu-item ${locked ? "menu-item-locked" : ""}`}
@@ -107,7 +109,9 @@ export function TutorialSelect({ onStart, onBack }) {
                 {locked ? (
                   <>
                     <Lock size={14} />{" "}
-                    {t.needsSkin && !hasSkin ? "スキンを手に入れると開く" : `Lv.${t.level}`}
+                    {t.needsFoil && !hasFoil
+                      ? "フォイルのスキンを手に入れると開く"
+                      : `Lv.${t.level}`}
                   </>
                 ) : (
                   <>カード {t.poolLabel}</>

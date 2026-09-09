@@ -116,7 +116,7 @@ const ranks = [
 const setup = {
   boardSize: 9,
   areasEnabled: true,
-  areaLoadouts: [{ K: "skin", J: "skin", Q: "skin" }, {}],
+  areaLoadouts: [{ K: "skin:foil", J: "skin:foil", Q: "skin:foil" }, {}],
   players: [{ hand: ranks.map((rank, i) => ({ id: `goal${i}`, rank })) }, {}],
 };
 const plan = chooseArmyPlan(setup, 0);

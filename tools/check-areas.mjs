@@ -41,7 +41,7 @@ function is(name, got, want) {
 }
 const all = (skin) =>
   Object.fromEntries(Object.keys(AREA_BY_RANK).map((r) => [r, skin]));
-const LOADOUTS = [all("skin-red"), all("skin-blue")];
+const LOADOUTS = [all("skin-red:foil"), all("skin-blue:foil")];
 
 /**
  * 望みの王で 9×9 の対局を「対局開始」まで進める。
@@ -162,8 +162,10 @@ console.log("旗が無ければ何も起きない");
   is("USE_AREA は無視", reducer(s, { type: "USE_AREA", hit: true }) === s, true);
   const t = startGame({ kings: ["2", "2"], size: 5 });
   is("5×5 には立たない", t.areas, [null, null]);
-  const u = startGame({ kings: ["2", "3"], loadouts: [{ 2: "x" }, {}] });
+  const u = startGame({ kings: ["2", "3"], loadouts: [{ 2: "x:foil" }, {}] });
   is("王のランクにスキンが無い側は立たない", [u.areas[0] && u.areas[0].type, u.areas[1]], ["earth", null]);
+  const v = startGame({ kings: ["2", "3"], loadouts: [{ 2: "zombie-male" }, { 3: "zombie-female:foil" }] });
+  is("通常のスキンでは立たず、フォイルでだけ立つ", [v.areas[0], v.areas[1] && v.areas[1].type], [null, "earth"]);
   is("旗が無い対局の状態にも turnNo がある", typeof s.turnNo, "number");
 }
 

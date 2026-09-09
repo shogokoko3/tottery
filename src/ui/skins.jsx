@@ -38,6 +38,7 @@ import {
 import { updateCollection, useCollection } from "../skins/store.js";
 import { CardFace } from "./cards.jsx";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
+import { AREA_BY_RANK, AREA_INFO } from "../game/areas.js";
 import { SkinFilm } from "./skin-film.jsx";
 import { ArrowLeft, Ether } from "../icons.jsx";
 import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
@@ -47,6 +48,39 @@ import { FoilAcquisition } from "./foil-acquisition.jsx";
 import { FOIL_INITIAL_HOLD_MS } from "../skins/foil-acquisition.js";
 
 const foilPct = FOIL_CHANCE * 100;
+/**
+ * 効果盤面(src/game/areas.js)の案内。フォイル版だけがエリアを立てられる。
+ * フォイルの詳細ではエリアの名前・効果・発動の条件を、通常版では
+ * 「フォイル版を手に入れると開く」ことを伝える
+ */
+function SkinAreaNote({ skin, owned, equipped }) {
+  const type = AREA_BY_RANK[skin.rank];
+  if (!type) return null;
+  const info = AREA_INFO[type];
+  if (!skin.foil)
+    return (
+      <p className="skins-area-note skins-area-note-plain">
+        フォイル版を手に入れると、効果盤面「{info.name}」が使えます。
+      </p>
+    );
+  return (
+    <div className={`skins-area-note skins-area-note-${type}`}>
+      <span className="skins-eyebrow">効果盤面</span>
+      <h3>{info.name}</h3>
+      <p>{info.text}</p>
+      <p className="skins-area-how">
+        このフォイルを <b>{skin.rank}</b> に装備し、<b>{skin.rank} を王</b>
+        にすると発動します（9×9 の対局のみ・毎回の自分の手番に1回）。
+        {!owned
+          ? " まだ持っていません。ガチャで引くと使えます。"
+          : equipped
+            ? " いま装備中です。"
+            : " 持っています。装備すると使えます。"}
+      </p>
+    </div>
+  );
+}
+
 function FoilBadge({ className = "" }) {
   return <span className={`skins-foil-badge ${className}`}>FOIL</span>;
 }
@@ -1448,6 +1482,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               {selected.foil && <FoilBadge className="skins-detail-foil" />}
               <h2>{selected.name}</h2>
               <p>{selected.role}</p>
+              <SkinAreaNote skin={selected} owned={!!collection.owned[selected.id]} equipped={collection.equipped[selected.rank] === selected.id} />
               {byId(foilId(baseSkinId(selected.id))) && (
                 <div
                   className="skins-variant-switch"
