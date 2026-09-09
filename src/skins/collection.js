@@ -294,3 +294,14 @@ export function claimSpecial(state, id) {
   if (state.owned[id]) return state;
   return { ...state, owned: { ...state.owned, [id]: 1 } };
 }
+
+/**
+ * フォイルが「明らかになった」か。フォイルを1枚でも持っていれば真。
+ *
+ * 持つまでは、フォイル関連(フォイル版の一覧・切り替え・加工・効果盤面の説明・
+ * 第13話・ルール画面のタブ)を画面に出さない。ガチャの提供割合だけは、
+ * 持つ前からフォイルの確率を明記する(本人の決め、2026-09-09)。
+ */
+export function foilRevealed(state) {
+  return Object.keys(state?.owned || {}).some((id) => id.endsWith(":foil"));
+}

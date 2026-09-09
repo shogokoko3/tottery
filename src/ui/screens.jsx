@@ -60,6 +60,7 @@ import { ProfileSyncNotice } from "./profile-sync.jsx";
 import { XpGainToast } from "./xp-gain.jsx";
 import { getXpNotices, subscribeXpNotices } from "../game/xp-notices.js";
 import { GAME_RULE_VERSION } from "../game/rule-version.js";
+import { foilRevealed } from "../skins/collection.js";
 import { roomRuleVersion } from "../net/sync.js";
 import { RankingScreen } from "./ranking.jsx";
 import {
@@ -798,7 +799,7 @@ export function RulesSelectScreen({
                 {i}×{i}
               </span>
               <small>
-                {i === 5 ? "5枚で戦う短期戦" : "9枚で戦う本格戦。王のスキンで盤面エリアが立つ"}
+                {i === 5 ? "5枚で戦う短期戦" : foilRevealed(getCollection()) ? "9枚で戦う本格戦。王のフォイルで盤面エリアが立つ" : "9枚で戦う本格戦"}
                 {/* 持ち点が動くのは9×9だけ。選ぶ前に分かるようにしておく */}
                 {ranked && i === 9 && (
                   <>

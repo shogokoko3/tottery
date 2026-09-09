@@ -22,8 +22,7 @@ import {
   FOIL_MILESTONE,
   foilMilestoneCheck,
   pull,
-  unequip,
-} from "../skins/collection.js";
+  unequip, foilRevealed } from "../skins/collection.js";
 import {
   CRAFT,
   ETHER_NAME,
@@ -486,6 +485,7 @@ function ForgePanel({
   onPick,
   message,
   setMessage,
+  foilKnown = true,
 }) {
   const [pick, setPick] = useState("SSR");
   const [confirmBreak, setConfirmBreak] = useState(null);
@@ -544,6 +544,7 @@ function ForgePanel({
         <p>ダブった札を崩すと貯まります。狙った1枚を作るのに使います。</p>
       </div>
 
+      {foilKnown && (
       <section
         id="forge-foil-milestones"
         className="forge-section forge-milestones"
@@ -627,6 +628,7 @@ function ForgePanel({
           以前のバージョンからは、現在の所持枚数を通算獲得の開始値として引き継ぎます。過去に崩した分は履歴がないため含められません。
         </p>
       </section>
+      )}
 
       <section className="forge-section">
         <div className="forge-head">
@@ -688,8 +690,9 @@ function ForgePanel({
           </p>
         )}
         <p className="skins-note forge-protection">
-          通常版とフォイルは別々に最後の1枚を保護します。一括で崩す対象は通常版だけです。
-          フォイルのダブりは、1枚ずつ確認して崩せます。
+          {foilKnown
+            ? "通常版とフォイルは別々に最後の1枚を保護します。一括で崩す対象は通常版だけです。フォイルのダブりは、1枚ずつ確認して崩せます。"
+            : "最後の1枚は保護され、一括で崩す対象になりません。"}
         </p>
       </section>
 
@@ -795,7 +798,8 @@ function ForgePanel({
           {summary.pullsIfAll}回ぶんになります。
           <br />
           早期特典・特別スキンは崩すことも作ることもできません。
-          フォイルも同じ格の通常版と同じ分解量です。上記の回数は重複したフォイルも個別に崩した場合の目安です。
+          {foilKnown &&
+            " フォイルも同じ格の通常版と同じ分解量です。上記の回数は重複したフォイルも個別に崩した場合の目安です。"}
         </p>
       </section>
       {confirmBreak && (
@@ -924,8 +928,10 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       craftResult ? { ...s, lastCraft: null } : { ...s, pending: null },
     );
   };
+  // フォイルを1枚も持たないうちは、フォイル関連を画面に出さない(確率の明記は除く)
+  const foilKnown = foilRevealed(collection);
   const shown = SKINS.flatMap((s) => {
-    const foil = byId(foilId(s.id));
+    const foil = foilKnown ? byId(foilId(s.id)) : null;
     return foil ? [s, foil] : [s];
   }).filter(
     (s) =>
@@ -942,11 +948,13 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         </div>
         <p>
           所持 <strong>{ownedCount}</strong>
-          <span> / {ALL_SKINS.length}</span>
-          <small className="skins-owned-breakdown">
-            通常 {ownedCount - foilOwnedCount}/{SKINS.length} · フォイル{" "}
-            {foilOwnedCount}/{FOIL_SKINS.length}
-          </small>
+          <span> / {foilKnown ? ALL_SKINS.length : SKINS.length}</span>
+          {foilKnown && (
+            <small className="skins-owned-breakdown">
+              通常 {ownedCount - foilOwnedCount}/{SKINS.length} · フォイル{" "}
+              {foilOwnedCount}/{FOIL_SKINS.length}
+            </small>
+          )}
         </p>
       </div>
       <div className="skins-tabs" role="tablist" aria-label="スキンメニュー">
@@ -997,10 +1005,14 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 この手に。
               </h2>
               <p>カードに宿る、新たな姿。</p>
-              <FoilBadge />
-              <p className="skins-banner-foil">箔がきらめく、特別な一枚。</p>
+              {foilKnown && (
+                <>
+                  <FoilBadge />
+                  <p className="skins-banner-foil">箔がきらめく、特別な一枚。</p>
+                </>
+              )}
               <span className="skins-banner-label">
-                {POOL.length}キャラ · 各キャラにフォイル版
+                {POOL.length}キャラ{foilKnown ? " · 各キャラにフォイル版" : ""}
               </span>
             </div>
           </section>
@@ -1134,6 +1146,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       ) : tab === "forge" ? (
         <ForgePanel
           collection={collection}
+          foilKnown={foilKnown}
           run={run}
           acquire={acquire}
           working={working}
@@ -1194,6 +1207,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               </button>
             ))}
           </div>
+          {foilKnown && (
           <div
             className="skins-filters skins-finish-filters"
             aria-label="仕上げの絞り込み"
@@ -1212,6 +1226,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               </button>
             ))}
           </div>
+          )}
           <div className="skins-grid">
             {shown.map((skin) => {
               const locked = isBattlePassLocked(skin, collection.owned);
@@ -1482,8 +1497,14 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               {selected.foil && <FoilBadge className="skins-detail-foil" />}
               <h2>{selected.name}</h2>
               <p>{selected.role}</p>
-              <SkinAreaNote skin={selected} owned={!!collection.owned[selected.id]} equipped={collection.equipped[selected.rank] === selected.id} />
-              {byId(foilId(baseSkinId(selected.id))) && (
+              {foilKnown && (
+                <SkinAreaNote
+                  skin={selected}
+                  owned={!!collection.owned[selected.id]}
+                  equipped={collection.equipped[selected.rank] === selected.id}
+                />
+              )}
+              {foilKnown && byId(foilId(baseSkinId(selected.id))) && (
                 <div
                   className="skins-variant-switch"
                   aria-label="このキャラの仕上げ"

@@ -92,8 +92,8 @@ export function TutorialSelect({ onStart, onBack }) {
           : "全12話。ここまでで、52枚すべての動きと王の力がそろいます。"}
       </p>
       <div className="menu-list">
-        {[...TUTORIALS, ...EXTRA_TUTORIALS].map((t) => {
-          const locked = level < t.level || (t.needsFoil && !hasFoil);
+        {[...TUTORIALS, ...EXTRA_TUTORIALS.filter((t) => !t.needsFoil || hasFoil)].map((t) => {
+          const locked = level < t.level;
           return (
             <button
               className={`menu-item ${locked ? "menu-item-locked" : ""}`}
@@ -109,9 +109,7 @@ export function TutorialSelect({ onStart, onBack }) {
                 {locked ? (
                   <>
                     <Lock size={14} />{" "}
-                    {t.needsFoil && !hasFoil
-                      ? "フォイルのスキンを手に入れると開く"
-                      : `Lv.${t.level}`}
+                    Lv.{t.level}
                   </>
                 ) : (
                   <>カード {t.poolLabel}</>

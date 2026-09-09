@@ -4,6 +4,8 @@ import { KING_TEXT, MOVE_TEXT, RANKS } from "../game/constants.js";
 import { Close } from "../icons.jsx";
 import { CardFace } from "./cards.jsx";
 import { AreaGuide } from "./area-guide.jsx";
+import { getCollection } from "../skins/store.js";
+import { foilRevealed } from "../skins/collection.js";
 
 export function MoveDiagram({ rank, isKing = !1, gridSize = 7 }) {
   // 4・5 の王は自分ではなく「王以外の同じ数字」を伸ばす。
@@ -93,6 +95,13 @@ export function RulesPanel({ onClose, initialTab = "moves" }) {
   );
   let t = tab === "king",
     l = (king) => setTab(king ? "king" : "moves");
+  // 盤面エリアはフォイルを持つまで見せない。対局中の「?」から開いたときは見せる
+  let areasKnown = initialTab === "areas";
+  try {
+    areasKnown = areasKnown || foilRevealed(getCollection());
+  } catch {
+    /* 読めなければ隠したまま */
+  }
   if (tab === "areas")
     return (
       <div className="modal-overlay" onClick={onClose}>
@@ -140,9 +149,11 @@ export function RulesPanel({ onClose, initialTab = "moves" }) {
           >
             王にした時
           </button>
-          <button className="btn btn-ghost" onClick={() => setTab("areas")}>
-            盤面エリア
-          </button>
+          {areasKnown && (
+            <button className="btn btn-ghost" onClick={() => setTab("areas")}>
+              盤面エリア
+            </button>
+          )}
         </div>
         <p
           className="hint"
