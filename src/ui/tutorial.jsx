@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { TUTORIALS, EXTRA_TUTORIALS } from "../game/tutorial.js";
 import { getCollection } from "../skins/store.js";
+import { foilRevealed } from "../skins/collection.js";
 import {
   levelOf,
   loadProfile,
@@ -64,12 +65,11 @@ export function TutorialSelect({ onStart, onBack }) {
   const [profile] = useState(() => loadProfile());
   const level = levelOf(profile);
   const next = toNextLevel(profile);
-  // 番外の話は、フォイルのスキンを1枚でも持っていると開く(効果盤面が使える条件と同じ)
+  // 番外の話は、フォイルのスキンを1枚でも持っていると開く(効果盤面が使える条件と同じ。
+  // 入手の経路は見ず、いま持っているかだけで決める)
   const [hasFoil] = useState(() => {
     try {
-      return Object.keys(getCollection().owned || {}).some((id) =>
-        id.endsWith(":foil"),
-      );
+      return foilRevealed(getCollection());
     } catch {
       return false;
     }

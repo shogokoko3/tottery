@@ -296,12 +296,15 @@ export function claimSpecial(state, id) {
 }
 
 /**
- * フォイルが「明らかになった」か。フォイルを1枚でも持っていれば真。
+ * フォイルが「明らかになった」か。**いま持っているか**だけで決める。
+ * ガチャ・錬成・フォイル加工・配布など、入手の経路は見ない(経路は今後増える)。
  *
+ * フォイルかどうかは台帳(catalog.js)の `foil` の印で見る。id の付け方に頼らない。
  * 持つまでは、フォイル関連(フォイル版の一覧・切り替え・加工・効果盤面の説明・
  * 第13話・ルール画面のタブ)を画面に出さない。ガチャの提供割合だけは、
  * 持つ前からフォイルの確率を明記する(本人の決め、2026-09-09)。
  */
 export function foilRevealed(state) {
-  return Object.keys(state?.owned || {}).some((id) => id.endsWith(":foil"));
+  const owned = state?.owned || {};
+  return ALL_SKINS.some((skin) => skin.foil && owned[skin.id] > 0);
 }
