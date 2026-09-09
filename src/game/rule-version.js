@@ -10,7 +10,8 @@
 // 6: 森で毎手番見抜く対象を2体へ。
 // 7: 宮殿の昇格後も同じ手番で通常の移動ができる。
 // 8: 海は各駒を中央方向へ最大1マスずつ引き寄せる。
-export const GAME_RULE_VERSION = 8;
+// 9: 宮殿の2段階昇格を各側1局1回。予備札が尽きると捨て札を混ぜて補充。
+export const GAME_RULE_VERSION = 9;
 export const ADJUDICATION_RULE_VERSION = 1;
 export const CLOCK_RULE_VERSION = 2;
 export const AREA_RULE_VERSION = 3;

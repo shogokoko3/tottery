@@ -16,6 +16,9 @@ import { getLegalMoves, kingRankOf, territoryRows } from "./board.js";
 import { canUseArea, isFrozen, isKnownTo, skyCandidates } from "./areas.js";
 import { automaticAreaAction } from "./area-presentation.js";
 export function cpuInformedAction(state, player) {
+  // 相手の予備札は相手の手番まで待機。こちらの10の2回目は続けられる。
+  if (state.kPlacement && state.kPlacement.owner !== state.currentTurn)
+    state = { ...state, kPlacement: null };
   if (
     !state.captureReveal &&
     state.kPlacement?.owner === player &&
@@ -232,7 +235,14 @@ export function informedPlay(s) {
       Math.max(best?.score || 0, enclosure?.score || 0),
       best,
     );
-    if (promotion) return { type: "USE_AREA", pieceId: promotion.pieceId };
+    if (promotion)
+      return {
+        type: "USE_AREA",
+        pieceId: promotion.pieceId,
+        ...(promotion.promotionSteps
+          ? { promotionSteps: promotion.promotionSteps }
+          : {}),
+      };
   }
   const swap = bestShuffle(s, player);
   if (swap && (!best || best.score < 12)) {

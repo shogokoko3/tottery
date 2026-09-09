@@ -4,7 +4,7 @@ import {
   territoryRows,
   pointInTriangle,
 } from "./board.js";
-import { isFrozen, palaceCandidates, promotedRank } from "./areas.js";
+import { isFrozen, palaceCandidates, palacePromotionRank } from "./areas.js";
 import { knownThreats, transformationGain } from "./cpu-tactics.js";
 import { CARD_VALUE } from "./cpu-strategy.js";
 import { opponentKingBelief } from "./king-belief.js";
@@ -62,42 +62,53 @@ export function palacePromotion(s, player, bestMoveScore, bestMove = null) {
   const threats = knownThreats(s, player);
   const free = s.ruleVersion >= 7;
   if (!free && king && threats.has(`${king.row}/${king.col}`)) return null;
-  const replacement = king?.rank === "K" && (s.reserve?.length || 0) > 0;
+  const replacement =
+    king?.rank === "K" && (s.ruleVersion >= 9 || (s.reserve?.length || 0) > 0);
   let best = null;
   for (const id of palaceCandidates(s, player)) {
     const p = s.pieces[id];
     if (isFrozen(s, p)) continue;
-    const next = promotedRank(p.rank);
-    let score = transformationGain(s, player, id, next);
-    // 10→Jで予備札を引ける駒を増やす。9は二段階先のJを見込んで育成。
-    if (next === "J") score += replacement ? 9 : 4;
-    if (p.rank === "9") score += replacement ? 5 : 2;
-    // Q→Kでは補充能力を失う。射程の利益が大きい場合だけ進める。
-    if (p.rank === "Q" && replacement) score -= 7;
-    if (threats.has(`${p.row}/${p.col}`)) score -= 7;
-    // 昇格後に王候補を直接狙える場合は価値を加える。伏せ札は読まない。
-    const belief = opponentKingBelief(s, player),
-      ids = new Set(belief.candidates.map((c) => c.id));
-    const attacks = getLegalMoves(
-      { ...p, rank: next },
-      s.board,
-      s.boardSize,
-      s.players[player].armyRankCounts,
-      kingRankOf(s, player),
-    );
-    if (
-      free &&
-      bestMove?.pieceId === id &&
-      bestMoveScore >= 12 &&
-      !attacks.some((m) => m.row === bestMove.row && m.col === bestMove.col)
-    )
-      continue;
-    score +=
-      8 *
-      belief.weight *
-      Number(attacks.some((m) => ids.has(s.board[m.row][m.col]?.id)));
-    if (score > 0 && (!best || score > best.score))
-      best = { score, type: "USE_AREA", pieceId: id };
+    for (const promotionSteps of [1, 2]) {
+      const next = palacePromotionRank(s, p, promotionSteps);
+      if (!next) continue;
+      let score = transformationGain(s, player, id, next);
+      // 10→Jで予備札を引ける駒を増やす。9は二段階先のJを見込んで育成。
+      if (["J", "Q"].includes(next) && !["J", "Q"].includes(p.rank))
+        score += replacement ? 9 : 4;
+      if (p.rank === "9" && next === "10") score += replacement ? 5 : 2;
+      // Q→Kでは補充能力を失う。射程の利益が大きい場合だけ進める。
+      if (["J", "Q"].includes(p.rank) && next === "K" && replacement)
+        score -= 7;
+      if (threats.has(`${p.row}/${p.col}`)) score -= 7;
+      // 昇格後に王候補を直接狙える場合は価値を加える。伏せ札は読まない。
+      const belief = opponentKingBelief(s, player),
+        ids = new Set(belief.candidates.map((c) => c.id));
+      const attacks = getLegalMoves(
+        { ...p, rank: next },
+        s.board,
+        s.boardSize,
+        s.players[player].armyRankCounts,
+        kingRankOf(s, player),
+      );
+      if (
+        free &&
+        bestMove?.pieceId === id &&
+        bestMoveScore >= 12 &&
+        !attacks.some((m) => m.row === bestMove.row && m.col === bestMove.col)
+      )
+        continue;
+      score +=
+        8 *
+        belief.weight *
+        Number(attacks.some((m) => ids.has(s.board[m.row][m.col]?.id)));
+      if (score > 0 && (!best || score > best.score))
+        best = {
+          score,
+          type: "USE_AREA",
+          pieceId: id,
+          ...(promotionSteps === 2 ? { promotionSteps } : {}),
+        };
+    }
   }
   // 即時の撃破・包囲より優先しない。静かな手より育成を優先。
   return best && (free || bestMoveScore < 12) ? best : null;
