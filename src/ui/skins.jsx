@@ -514,8 +514,11 @@ function ForgePanel({
   message,
   setMessage,
   foilKnown = true,
+  // "ether": 崩す・作る・目安。"foil": 欠片と交換・フォイル加工。画面を分けて情報を絞る
+  view = "ether",
 }) {
   const [pick, setPick] = useState("SSR");
+  const foilView = view === "foil";
   const [confirmBreak, setConfirmBreak] = useState(null);
   // 目安の数字は抽選の中身から引き直す。手で書くと片方だけ古くなる
   const summary = forgeSummary();
@@ -582,16 +585,9 @@ function ForgePanel({
   };
 
   return (
-    <div role="tabpanel" aria-label="錬成">
-      <div className={`forge-banks${foilKnown ? " has-shards" : ""}`}>
-        <div className="forge-bank">
-          <span className="skins-eyebrow">YOUR ETHER</span>
-          <b>
-            <Ether size={26} /> {ether.toLocaleString()}
-          </b>
-          <p>ダブった札を崩すと貯まります。狙った1枚を作るのに使います。</p>
-        </div>
-        {foilKnown && (
+    <div role="tabpanel" aria-label={foilView ? "フォイル" : "錬成"}>
+      <div className="forge-banks">
+        {foilView ? (
           <div className="forge-bank forge-bank-shards">
             <span className="skins-eyebrow">YOUR SHARDS</span>
             <b>
@@ -601,10 +597,18 @@ function ForgePanel({
               ダブったフォイルを崩すと貯まります。持っていないフォイルと交換します。
             </p>
           </div>
+        ) : (
+          <div className="forge-bank">
+            <span className="skins-eyebrow">YOUR ETHER</span>
+            <b>
+              <Ether size={26} /> {ether.toLocaleString()}
+            </b>
+            <p>ダブった札を崩すと貯まります。狙った1枚を作るのに使います。</p>
+          </div>
         )}
       </div>
 
-      {foilKnown && (
+      {foilView && foilKnown && (
         <section
           id="forge-foil-milestones"
           className="forge-section forge-milestones"
@@ -702,7 +706,7 @@ function ForgePanel({
         </section>
       )}
 
-      {foilKnown && (
+      {foilView && foilKnown && (
         <section
           id="forge-foil-exchange"
           className="forge-section forge-milestones forge-exchange"
@@ -821,173 +825,182 @@ function ForgePanel({
         </section>
       )}
 
-      <section className="forge-section">
-        <div className="forge-head">
-          <h3>崩す</h3>
-          <span>
-            {rows.length
-              ? `ダブり ${rows.reduce((n, r) => n + r.spare, 0)}枚`
-              : "ダブりなし"}
-          </span>
-        </div>
-        {rows.length ? (
-          <>
-            <ul className="forge-list">
-              {rows.map(({ skin, spare, gain }) => (
-                <li key={skin.id} className={`forge-row rarity-${skin.rarity}`}>
+      {!foilView && (
+        <section className="forge-section">
+          <div className="forge-head">
+            <h3>崩す</h3>
+            <span>
+              {rows.length
+                ? `ダブり ${rows.reduce((n, r) => n + r.spare, 0)}枚`
+                : "ダブりなし"}
+            </span>
+          </div>
+          {rows.length ? (
+            <>
+              <ul className="forge-list">
+                {rows.map(({ skin, spare, gain }) => (
+                  <li
+                    key={skin.id}
+                    className={`forge-row rarity-${skin.rarity}`}
+                  >
+                    <button
+                      className="forge-thumb"
+                      onClick={() => onPick(skin)}
+                      aria-label={`${skin.name}の詳細`}
+                    >
+                      <img src={skin.card} alt="" loading="lazy" />
+                    </button>
+                    <span className="forge-name">
+                      <b>{skin.name}</b>
+                      <small>
+                        {rarityLabel(skin)} ・ 余り {spare}枚
+                      </small>
+                    </span>
+                    <span className="forge-gain">
+                      <Ether size={13} />+{gain}
+                    </span>
+                    <button
+                      className="btn btn-ghost btn-small"
+                      disabled={working}
+                      onClick={() => breakOne(skin)}
+                    >
+                      崩す
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button
+                className="btn btn-primary btn-wide"
+                disabled={working || !bulk}
+                onClick={breakAll}
+              >
+                <Ether size={16} /> 通常版のダブりを全部崩す（+{bulk}）
+              </button>
+            </>
+          ) : (
+            <p className="skins-empty">
+              同じ札が2枚以上あると崩せます。最後の1枚は残るので、
+              装備中の札が消えることはありません。
+            </p>
+          )}
+          <p className="skins-note forge-protection">
+            {foilKnown
+              ? `通常版とフォイルは別々に最後の1枚を保護します。ここで崩すのは通常版だけです。フォイルのダブりは「フォイル」タブで${SHARD_NAME}にします(エーテルにはなりません)。`
+              : "最後の1枚は保護され、一括で崩す対象になりません。"}
+          </p>
+        </section>
+      )}
+
+      {!foilView && (
+        <section className="forge-section">
+          <div className="forge-head">
+            <h3>作る</h3>
+            <span>好きなキャラを選べます</span>
+          </div>
+          <p className="skins-foil-note">
+            錬成も1枚ごとに{foilPct}
+            %でフォイルになります。通常版とフォイルのどちらか1枚を獲得します。
+          </p>
+          <div className="skins-filters" aria-label="作る札の絞り込み">
+            {["R", "SR", "SSR"].map((r) => (
+              <button
+                key={r}
+                aria-pressed={pick === r}
+                onClick={() => setPick(r)}
+              >
+                {r}（{CRAFT[r]}）
+              </button>
+            ))}
+          </div>
+          <div className="forge-grid">
+            {targets.map((skin) => {
+              const cost = costOf(skin);
+              const can = ether >= cost;
+              const held = collection.owned[skin.id] || 0;
+              return (
+                <div
+                  key={skin.id}
+                  className={`forge-card rarity-${skin.rarity} ${can ? "" : "is-short"}`}
+                >
                   <button
-                    className="forge-thumb"
+                    className="forge-card-art"
                     onClick={() => onPick(skin)}
                     aria-label={`${skin.name}の詳細`}
                   >
                     <img src={skin.card} alt="" loading="lazy" />
+                    <span className="skins-tile-rank">{skin.rank}</span>
                   </button>
-                  <span className="forge-name">
-                    <b>{skin.name}</b>
-                    <small>
-                      {rarityLabel(skin)} ・ 余り {spare}枚
-                    </small>
-                  </span>
-                  <span className="forge-gain">
-                    <Ether size={13} />+{gain}
-                  </span>
+                  <b>{skin.name}</b>
+                  <small>{held ? `所持 ×${held}` : "未所持"}</small>
+                  <small className="forge-foil-held">
+                    フォイル{" "}
+                    {collection.owned[foilId(skin.id)]
+                      ? `×${collection.owned[foilId(skin.id)]}`
+                      : "未所持"}
+                  </small>
                   <button
-                    className="btn btn-ghost btn-small"
-                    disabled={working}
-                    onClick={() => breakOne(skin)}
+                    className={`btn ${can ? "btn-primary" : "btn-ghost"} btn-small`}
+                    disabled={working || !can}
+                    onClick={() => make(skin)}
                   >
-                    崩す
+                    <Ether size={13} /> {cost.toLocaleString()}
                   </button>
-                </li>
-              ))}
-            </ul>
-            <button
-              className="btn btn-primary btn-wide"
-              disabled={working || !bulk}
-              onClick={breakAll}
-            >
-              <Ether size={16} /> 通常版のダブりを全部崩す（+{bulk}）
-            </button>
-          </>
-        ) : (
-          <p className="skins-empty">
-            同じ札が2枚以上あると崩せます。最後の1枚は残るので、
-            装備中の札が消えることはありません。
-          </p>
-        )}
-        <p className="skins-note forge-protection">
-          {foilKnown
-            ? `通常版とフォイルは別々に最後の1枚を保護します。ここで崩すのは通常版だけです。フォイルのダブりは「フォイルの交換」で${SHARD_NAME}にします(エーテルにはなりません)。`
-            : "最後の1枚は保護され、一括で崩す対象になりません。"}
-        </p>
-      </section>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
-      <section className="forge-section">
-        <div className="forge-head">
-          <h3>作る</h3>
-          <span>好きなキャラを選べます</span>
-        </div>
-        <p className="skins-foil-note">
-          錬成も1枚ごとに{foilPct}
-          %でフォイルになります。通常版とフォイルのどちらか1枚を獲得します。
-        </p>
-        <div className="skins-filters" aria-label="作る札の絞り込み">
-          {["R", "SR", "SSR"].map((r) => (
-            <button
-              key={r}
-              aria-pressed={pick === r}
-              onClick={() => setPick(r)}
-            >
-              {r}（{CRAFT[r]}）
-            </button>
-          ))}
-        </div>
-        <div className="forge-grid">
-          {targets.map((skin) => {
-            const cost = costOf(skin);
-            const can = ether >= cost;
-            const held = collection.owned[skin.id] || 0;
-            return (
-              <div
-                key={skin.id}
-                className={`forge-card rarity-${skin.rarity} ${can ? "" : "is-short"}`}
-              >
-                <button
-                  className="forge-card-art"
-                  onClick={() => onPick(skin)}
-                  aria-label={`${skin.name}の詳細`}
-                >
-                  <img src={skin.card} alt="" loading="lazy" />
-                  <span className="skins-tile-rank">{skin.rank}</span>
-                </button>
-                <b>{skin.name}</b>
-                <small>{held ? `所持 ×${held}` : "未所持"}</small>
-                <small className="forge-foil-held">
-                  フォイル{" "}
-                  {collection.owned[foilId(skin.id)]
-                    ? `×${collection.owned[foilId(skin.id)]}`
-                    : "未所持"}
-                </small>
-                <button
-                  className={`btn ${can ? "btn-primary" : "btn-ghost"} btn-small`}
-                  disabled={working || !can}
-                  onClick={() => make(skin)}
-                >
-                  <Ether size={13} /> {cost.toLocaleString()}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="forge-section forge-rates">
-        <div className="forge-head">
-          <h3>交換の目安</h3>
-        </div>
-        <table className="skins-rate-table">
-          <thead>
-            <tr>
-              <th>格</th>
-              <th>崩すと</th>
-              <th>作るのに</th>
-              <th>1枚を狙うと</th>
-            </tr>
-          </thead>
-          <tbody>
-            {summary.rows.map((row) => (
-              <tr key={row.rarity}>
-                <td>{row.rarity}</td>
-                <td>+{row.dust}</td>
-                <td>{row.craft.toLocaleString()}</td>
-                <td>{row.pulls}回</td>
+      {!foilView && (
+        <section className="forge-section forge-rates">
+          <div className="forge-head">
+            <h3>交換の目安</h3>
+          </div>
+          <table className="skins-rate-table">
+            <thead>
+              <tr>
+                <th>格</th>
+                <th>崩すと</th>
+                <th>作るのに</th>
+                <th>1枚を狙うと</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="skins-note">
-          崩してもらえる量は「その1枚の出にくさ」に比例させてあります。
-          作るのに要るのは、その4倍。つまり
-          <b>同じ格ならダブり4枚で好きなキャラを1枚</b>
-          。
-          <br />
-          SSR 1枚（{CRAFT.SSR.toLocaleString()}）は
-          <b>
-            {" "}
-            R なら{summary.byId("R").cardsForTop}枚 ・ SR なら
-            {summary.byId("SR").cardsForTop}枚 ・ SSR なら
-            {summary.byId("SSR").cardsForTop}枚
-          </b>
-          。 R だけを崩して貯めると約{summary.byId("R").pullsForTop}回ぶん、SR
-          だけなら約{summary.byId("SR").pullsForTop}回ぶんで、 狙った SSR
-          を運で当てる{top.pulls}回とほぼ同じです。 引いたものを全部崩せば約
-          {summary.pullsIfAll}回ぶんになります。
-          <br />
-          早期特典・特別スキンは崩すことも作ることもできません。
-          {foilKnown &&
-            ` フォイルのダブりはエーテルにならず、${SHARD_NAME}(R ${SHARD_VALUE.R}・SR ${SHARD_VALUE.SR}・SSR ${SHARD_VALUE.SSR})になります。`}
-        </p>
-      </section>
+            </thead>
+            <tbody>
+              {summary.rows.map((row) => (
+                <tr key={row.rarity}>
+                  <td>{row.rarity}</td>
+                  <td>+{row.dust}</td>
+                  <td>{row.craft.toLocaleString()}</td>
+                  <td>{row.pulls}回</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="skins-note">
+            崩してもらえる量は「その1枚の出にくさ」に比例させてあります。
+            作るのに要るのは、その4倍。つまり
+            <b>同じ格ならダブり4枚で好きなキャラを1枚</b>
+            。
+            <br />
+            SSR 1枚（{CRAFT.SSR.toLocaleString()}）は
+            <b>
+              {" "}
+              R なら{summary.byId("R").cardsForTop}枚 ・ SR なら
+              {summary.byId("SR").cardsForTop}枚 ・ SSR なら
+              {summary.byId("SSR").cardsForTop}枚
+            </b>
+            。 R だけを崩して貯めると約{summary.byId("R").pullsForTop}回ぶん、SR
+            だけなら約{summary.byId("SR").pullsForTop}回ぶんで、 狙った SSR
+            を運で当てる{top.pulls}回とほぼ同じです。 引いたものを全部崩せば約
+            {summary.pullsIfAll}回ぶんになります。
+            <br />
+            早期特典・特別スキンは崩すことも作ることもできません。
+            {foilKnown &&
+              ` フォイルのダブりはエーテルにならず、「フォイル」タブで${SHARD_NAME}(R ${SHARD_VALUE.R}・SR ${SHARD_VALUE.SR}・SSR ${SHARD_VALUE.SSR})になります。`}
+          </p>
+        </section>
+      )}
       {confirmBreak && (
         <SkinModal
           label="フォイルを崩す確認"
@@ -1171,6 +1184,16 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         >
           錬成
         </button>
+        {/* フォイルを1枚でも持つと開く。欠片と交換・フォイル加工はこちら */}
+        {foilKnown && (
+          <button
+            role="tab"
+            aria-selected={tab === "foil"}
+            onClick={() => setTab("foil")}
+          >
+            フォイル
+          </button>
+        )}
       </div>
       {tab === "gacha" ? (
         <div className="skins-gacha" role="tabpanel" aria-label="スキンガチャ">
@@ -1337,10 +1360,11 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             </div>
           </section>
         </div>
-      ) : tab === "forge" ? (
+      ) : tab === "forge" || (tab === "foil" && foilKnown) ? (
         <ForgePanel
           collection={collection}
           foilKnown={foilKnown}
+          view={tab === "foil" ? "foil" : "ether"}
           run={run}
           acquire={acquire}
           working={working}
@@ -1779,7 +1803,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                     className="skin-btn"
                     onClick={() => {
                       setSelected(null);
-                      setTab("forge");
+                      setTab("foil");
                       requestAnimationFrame(() =>
                         document
                           .getElementById("forge-foil-milestones")
