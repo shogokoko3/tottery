@@ -11,7 +11,8 @@
 // 7: 宮殿の昇格後も同じ手番で通常の移動ができる。
 // 8: 海は各駒を中央方向へ最大1マスずつ引き寄せる。
 // 9: 宮殿の2段階昇格を各側1局1回。予備札が尽きると捨て札を混ぜて補充。
-export const GAME_RULE_VERSION = 9;
+// 10: 海を毎手番開始時の任意発動に。使わずに通常の移動もできる。
+export const GAME_RULE_VERSION = 10;
 export const ADJUDICATION_RULE_VERSION = 1;
 export const CLOCK_RULE_VERSION = 2;
 export const AREA_RULE_VERSION = 3;

@@ -3,7 +3,11 @@ import { AREA_INFO, canUseArea, isFrozen, isKnownTo } from "./areas.js";
 
 export const AREA_GATHER_MS = 480;
 export const AREA_EFFECT_MS = 6000;
-export const AUTO_AREAS = new Set(["earth", "sea", "forest", "ice"]);
+export const AUTO_AREAS = new Set(["earth", "forest", "ice"]);
+export function isAutomaticArea(state, type) {
+  // 開始済みの対局では海の旧来の自動発動を保つ。
+  return AUTO_AREAS.has(type) || (type === "sea" && !(state.ruleVersion >= 10));
+}
 export function automaticAreaAction(state) {
   if (
     state.captureReveal ||
@@ -14,7 +18,9 @@ export function automaticAreaAction(state) {
   )
     return null;
   const can = canUseArea(state, state.currentTurn);
-  return can.ok && AUTO_AREAS.has(can.type) ? { type: "USE_AREA" } : null;
+  return can.ok && isAutomaticArea(state, can.type)
+    ? { type: "USE_AREA" }
+    : null;
 }
 // 今の相手手番も含めて、動けない手番の残りを表示する。
 export function frozenTurnsLeft(state, piece) {

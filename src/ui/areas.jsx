@@ -1,13 +1,13 @@
 /**
  * 盤面エリア(src/game/areas.js)の画面。
  *
- * - AreaBar   自分と相手のエリアの名前と、使ったかどうか。空・宮殿の自分の番なら「発動」
+ * - AreaBar   自分と相手のエリアの名前と、使ったかどうか。海・空・宮殿の自分の番なら「発動」
  * 発動の演出は area-effects.jsx が担当する。
  *
  * 見抜いた駒(known)・凍った駒・変身/昇格のしるしは cards.jsx の Piece が描く。
  */
 import { PLAYER_META } from "../game/constants.js";
-import { AUTO_AREAS } from "../game/area-presentation.js";
+import { isAutomaticArea } from "../game/area-presentation.js";
 import {
   AREA_INFO,
   canUseArea,
@@ -135,7 +135,7 @@ export function AreaBar({
           <small>エリアなし</small>
         )}
       </span>
-      {mine && !AUTO_AREAS.has(mine.type) && !mine.used && myTurn && (
+      {mine && !isAutomaticArea(state, mine.type) && !mine.used && myTurn && (
         <button
           className={`btn btn-primary btn-small ${focusFire ? "guide-target" : ""}`}
           disabled={!can.ok}
@@ -185,11 +185,16 @@ export function AreaBar({
         </button>
       )}
       {mine &&
-        !AUTO_AREAS.has(mine.type) &&
+        !isAutomaticArea(state, mine.type) &&
         !mine.used &&
         myTurn &&
         !can.ok &&
         can.why && <small className="area-why">{can.why}</small>}
+      {mine?.type === "sea" && state.ruleVersion >= 10 && myTurn && can.ok && (
+        <small className="area-why">
+          発動は任意です。使わずに駒を動かせます。
+        </small>
+      )}
     </div>
   );
 }

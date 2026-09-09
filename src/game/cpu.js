@@ -6,6 +6,7 @@ import {
   shuffle,
 } from "./board.js";
 import { hasAdjudicationRules } from "./rule-version.js";
+import { shouldUseSea } from "./cpu-sea.js";
 import {
   canUseArea,
   isFrozen,
@@ -139,6 +140,10 @@ export function bestAreaUse(state, player, move) {
   if (!can.ok) return null;
   const value = (id) => RANK_VALUE[state.pieces[id].rank] || 0;
   switch (can.type) {
+    case "sea":
+      return state.ruleVersion < 10 || shouldUseSea(state, player)
+        ? { type: "USE_AREA" }
+        : null;
     case "sky": {
       const ids = skyCandidates(state, player);
       if (!ids.length) return null;

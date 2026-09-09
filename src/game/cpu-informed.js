@@ -15,6 +15,7 @@ import { cpuAction, bestShuffle } from "./cpu.js";
 import { getLegalMoves, kingRankOf, territoryRows } from "./board.js";
 import { canUseArea, isFrozen, isKnownTo, skyCandidates } from "./areas.js";
 import { automaticAreaAction } from "./area-presentation.js";
+import { shouldUseSea } from "./cpu-sea.js";
 export function cpuInformedAction(state, player) {
   // 相手の予備札は相手の手番まで待機。こちらの10の2回目は続けられる。
   if (state.kPlacement && state.kPlacement.owner !== state.currentTurn)
@@ -204,6 +205,8 @@ export function informedPlay(s) {
   moves.sort((a, b) => b.score - a.score);
   const best = moves[0];
   const can = canUseArea(s, player);
+  if (can.ok && can.type === "sea" && shouldUseSea(s, player))
+    return { type: "USE_AREA" };
   if (can.ok && can.type === "sky") {
     // Preserve A utility; turn low-value pieces into 10 first. Never reads hidden enemy cards.
     const ids = skyCandidates(s, player).filter(
