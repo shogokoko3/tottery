@@ -25,6 +25,30 @@ assert.deepEqual(
   state.pieces.fx0,
   "input remains unchanged",
 );
+// 版11: 手番側(自分)の駒は流されず、相手の駒だけが中央へ最大1マス寄る
+const v10 = seaPull({ ...state, ruleVersion: 11 });
+for (const p of Object.values(v10.pieces)) {
+  const before = state.pieces[p.id];
+  if (p.owner === state.currentTurn)
+    assert.deepEqual(
+      [p.row, p.col],
+      [before.row, before.col],
+      "own piece stays",
+    );
+  else
+    assert(
+      Math.max(Math.abs(p.row - before.row), Math.abs(p.col - before.col)) <= 1,
+      "enemy piece moves at most one square",
+    );
+}
+assert(
+  Object.values(v10.pieces).some(
+    (p) =>
+      p.owner !== state.currentTurn &&
+      (p.row !== state.pieces[p.id].row || p.col !== state.pieces[p.id].col),
+  ),
+  "some enemy piece is pulled",
+);
 const old = seaPull({ ...state, ruleVersion: 7 });
 assert(
   Object.values(old.pieces).some(

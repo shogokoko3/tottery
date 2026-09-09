@@ -34,7 +34,8 @@ for (const r of rows) {
   is(`${info.name}: 効果の文がある`, r.effect.length > 20, true);
 }
 const byType = Object.fromEntries(rows.map((r) => [r.type, r]));
-is("土: 確率が AREA_TUNING と同じ", byType.earth.effect.includes(`${Math.round(AREA_TUNING.earthOdds * 100)}%`), true);
+is("土: 確率が AREA_TUNING と同じ", byType.earth.effect.includes(AREA_TUNING.earthOdds >= 1 ? "必ず" : `${Math.round(AREA_TUNING.earthOdds * 100)}%`), true);
+is("海: 対象が AREA_TUNING と同じ", byType.sea.effect.includes(AREA_TUNING.seaPullsOwn ? "全ての駒" : "相手の駒"), true);
 is("森: 体数が AREA_TUNING と同じ", byType.forest.effect.includes(`${AREA_TUNING.forestReveals}体`), true);
 is("氷: 体数が AREA_TUNING と同じ", byType.ice.effect.includes(`${AREA_TUNING.iceTargets}体`), true);
 is("氷: 手番数が AREA_TUNING と同じ", byType.ice.effect.includes(`${AREA_TUNING.freezeTurns}手番`), true);

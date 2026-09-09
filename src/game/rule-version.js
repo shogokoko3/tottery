@@ -12,7 +12,9 @@
 // 8: 海は各駒を中央方向へ最大1マスずつ引き寄せる。
 // 9: 宮殿の2段階昇格を各側1局1回。予備札が尽きると捨て札を混ぜて補充。
 // 10: 海を毎手番開始時の任意発動に。使わずに通常の移動もできる。
-export const GAME_RULE_VERSION = 10;
+// 11: 海は相手の駒だけを流す(自分の駒は動かない)。土は足跡を読めば必ず見抜く
+//     (当たり外れは手に焼き込んであるので、旧対局の再生は変わらない)。
+export const GAME_RULE_VERSION = 11;
 export const ADJUDICATION_RULE_VERSION = 1;
 export const CLOCK_RULE_VERSION = 2;
 export const AREA_RULE_VERSION = 3;

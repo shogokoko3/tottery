@@ -3,7 +3,11 @@ import {
   reserveDeployment,
   bestEncirclement,
 } from "./cpu-palace.js";
-import { moveSafety, transformationGain } from "./cpu-tactics.js";
+import {
+  moveSafety,
+  transformationGain,
+  unknownThreatMap,
+} from "./cpu-tactics.js";
 import {
   chooseArmyPlan,
   strategicDiscards,
@@ -16,7 +20,11 @@ import { getLegalMoves, kingRankOf, territoryRows } from "./board.js";
 import { canUseArea, isFrozen, isKnownTo, skyCandidates } from "./areas.js";
 import { automaticAreaAction } from "./area-presentation.js";
 import { shouldUseSea } from "./cpu-sea.js";
-export function cpuInformedAction(state, player) {
+/**
+ * options.unknownWeight(0〜1): 正体の分からない敵の駒も、その見込みぶんだけ脅威として扱う。
+ * 省略時は 0 で従来どおり(正体の分かった駒だけを脅威にする)。検証ツールが渡す。
+ */
+export function cpuInformedAction(state, player, options = {}) {
   // 相手の予備札は相手の手番まで待機。こちらの10の2回目は続けられる。
   if (state.kPlacement && state.kPlacement.owner !== state.currentTurn)
     state = { ...state, kPlacement: null };
@@ -59,7 +67,7 @@ export function cpuInformedAction(state, player) {
   )
     return cpuAction(state, player);
   if (state.currentTurn !== player) return null;
-  return automaticAreaAction(state) || informedPlay(state);
+  return automaticAreaAction(state) || informedPlay(state, options);
 }
 const value = {
   A: 5,
@@ -76,8 +84,14 @@ const value = {
   Q: 6,
   K: 7,
 };
-export function informedPlay(s) {
+export function informedPlay(s, options = {}) {
   const player = s.currentTurn;
+  const safety = options.unknownWeight
+    ? {
+        unknownWeight: options.unknownWeight,
+        unknownThreats: unknownThreatMap(s, player),
+      }
+    : {};
   const size = s.boardSize;
   const [lo, hi] = territoryRows(size, 1 - player);
   if (s.pendingKingChoice || s.kPlacement) return cpuAction(s, player);
@@ -152,7 +166,7 @@ export function informedPlay(s) {
           }
         }
       }
-      score += moveSafety(s, player, p, m, capturedIds);
+      score += moveSafety(s, player, p, m, capturedIds, safety);
       if (
         p.rank === "10" &&
         !s.extraMoveFor &&

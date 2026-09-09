@@ -1,0 +1,331 @@
+{
+  "sanity": {
+    "all": {
+      "n": 1200,
+      "wins": 482,
+      "losses": 701,
+      "draws": 0,
+      "unfinished": 17,
+      "rate": 40.743871513102285,
+      "uses": 0.0
+    },
+    "ci95": [
+      37.510513036164845,
+      44.05772495755518
+    ],
+    "meta": {
+      "tuning": null,
+      "unknownWeight": 0.6,
+      "sidePolicies": [
+        "aware",
+        "informed"
+      ]
+    }
+  },
+  "sanity-w0.3": {
+    "all": {
+      "n": 1200,
+      "wins": 489,
+      "losses": 698,
+      "draws": 0,
+      "unfinished": 13,
+      "rate": 41.196293176074136,
+      "uses": 0.0
+    },
+    "ci95": [
+      37.94266441821248,
+      44.547759932375314
+    ],
+    "meta": {
+      "tuning": null,
+      "unknownWeight": 0.3,
+      "sidePolicies": [
+        "aware",
+        "informed"
+      ]
+    }
+  },
+  "sanity-w0.15": {
+    "all": {
+      "n": 1200,
+      "wins": 508,
+      "losses": 672,
+      "draws": 0,
+      "unfinished": 20,
+      "rate": 43.05084745762712,
+      "uses": 0.0
+    },
+    "ci95": [
+      39.9830220713073,
+      46.4527027027027
+    ],
+    "meta": {
+      "tuning": null,
+      "unknownWeight": 0.15,
+      "sidePolicies": [
+        "aware",
+        "informed"
+      ]
+    }
+  },
+  "earth-odds0.5-informed": {
+    "all": {
+      "n": 1200,
+      "wins": 561,
+      "losses": 576,
+      "draws": 0,
+      "unfinished": 63,
+      "rate": 49.340369393139845,
+      "uses": 5.33
+    },
+    "ci95": [
+      46.228070175438596,
+      52.453166815343444
+    ],
+    "meta": {
+      "tuning": {
+        "earthOdds": 0.5
+      },
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  },
+  "earth-odds0.75-informed": {
+    "all": {
+      "n": 1200,
+      "wins": 588,
+      "losses": 516,
+      "draws": 2,
+      "unfinished": 94,
+      "rate": 53.26086956521739,
+      "uses": 4.719166666666666
+    },
+    "ci95": [
+      50.18382352941177,
+      56.498194945848375
+    ],
+    "meta": {
+      "tuning": {
+        "earthOdds": 0.75
+      },
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  },
+  "earth-odds1-informed": {
+    "all": {
+      "n": 1200,
+      "wins": 638,
+      "losses": 481,
+      "draws": 2,
+      "unfinished": 79,
+      "rate": 57.01519213583557,
+      "uses": 4.220833333333333
+    },
+    "ci95": [
+      53.81850853548967,
+      60.16187050359712
+    ],
+    "meta": {
+      "tuning": {
+        "earthOdds": 1
+      },
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  },
+  "sea-own1-informed": {
+    "all": {
+      "n": 1200,
+      "wins": 627,
+      "losses": 559,
+      "draws": 0,
+      "unfinished": 14,
+      "rate": 52.86677908937605,
+      "uses": 6.720833333333333
+    },
+    "ci95": [
+      49.83108108108108,
+      55.790363482671175
+    ],
+    "meta": {
+      "tuning": {
+        "seaPullsOwn": true
+      },
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  },
+  "sea-own0-informed": {
+    "all": {
+      "n": 1200,
+      "wins": 659,
+      "losses": 521,
+      "draws": 1,
+      "unfinished": 19,
+      "rate": 55.847457627118644,
+      "uses": 8.903333333333334
+    },
+    "ci95": [
+      52.93118096856415,
+      58.88324873096447
+    ],
+    "meta": {
+      "tuning": {
+        "seaPullsOwn": false
+      },
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  },
+  "earth-odds0.5-aware": {
+    "all": {
+      "n": 1200,
+      "wins": 551,
+      "losses": 457,
+      "draws": 2,
+      "unfinished": 190,
+      "rate": 54.66269841269841,
+      "uses": 6.285833333333334
+    },
+    "ci95": [
+      51.21457489878542,
+      58.096172718351326
+    ],
+    "meta": {
+      "tuning": {
+        "earthOdds": 0.5
+      },
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  },
+  "earth-odds0.75-aware": {
+    "all": {
+      "n": 1200,
+      "wins": 616,
+      "losses": 402,
+      "draws": 0,
+      "unfinished": 182,
+      "rate": 60.51080550098232,
+      "uses": 5.2058333333333335
+    },
+    "ci95": [
+      57.05996131528046,
+      63.78802747791953
+    ],
+    "meta": {
+      "tuning": {
+        "earthOdds": 0.75
+      },
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  },
+  "earth-odds1-aware": {
+    "all": {
+      "n": 1200,
+      "wins": 657,
+      "losses": 358,
+      "draws": 1,
+      "unfinished": 184,
+      "rate": 64.72906403940887,
+      "uses": 4.594166666666666
+    },
+    "ci95": [
+      61.523046092184366,
+      68.04326450344149
+    ],
+    "meta": {
+      "tuning": {
+        "earthOdds": 1
+      },
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  },
+  "sea-own1-aware": {
+    "all": {
+      "n": 1200,
+      "wins": 608,
+      "losses": 546,
+      "draws": 0,
+      "unfinished": 46,
+      "rate": 52.68630849220104,
+      "uses": 9.17
+    },
+    "ci95": [
+      49.656946826758144,
+      55.82608695652174
+    ],
+    "meta": {
+      "tuning": {
+        "seaPullsOwn": true
+      },
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  },
+  "sea-own0-aware": {
+    "all": {
+      "n": 1200,
+      "wins": 664,
+      "losses": 412,
+      "draws": 1,
+      "unfinished": 123,
+      "rate": 61.71003717472119,
+      "uses": 17.074166666666667
+    },
+    "ci95": [
+      58.52272727272727,
+      64.74418604651163
+    ],
+    "meta": {
+      "tuning": {
+        "seaPullsOwn": false
+      },
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  },
+  "forest-aware": {
+    "all": {
+      "n": 1200,
+      "wins": 699,
+      "losses": 366,
+      "draws": 2,
+      "unfinished": 133,
+      "rate": 65.63380281690141,
+      "uses": 3.1058333333333334
+    },
+    "ci95": [
+      62.3963133640553,
+      68.78504672897196
+    ],
+    "meta": {
+      "tuning": null,
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  },
+  "ice-aware": {
+    "all": {
+      "n": 1200,
+      "wins": 707,
+      "losses": 364,
+      "draws": 0,
+      "unfinished": 129,
+      "rate": 66.01307189542484,
+      "uses": 14.9475
+    },
+    "ci95": [
+      62.97674418604651,
+      69.05660377358491
+    ],
+    "meta": {
+      "tuning": null,
+      "unknownWeight": 0.6,
+      "sidePolicies": null
+    }
+  }
+}

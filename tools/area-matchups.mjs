@@ -1,3 +1,5 @@
+// 先に読む。areas.js が評価される前に、検証用の数字の差し替えを置く
+import "./experiment-tuning.mjs";
 import { pathToFileURL } from "node:url";
 import {
   chooseArmyPlan,
@@ -55,11 +57,71 @@ const groups = {
   sky: ["10"],
   palace: ["J", "Q", "K"],
 };
+const AREA_BY_RANK_LOCAL = Object.fromEntries(
+  Object.entries(groups).flatMap(([t, ranks]) => ranks.map((r) => [r, t])),
+);
 const types = Object.keys(groups),
   seeds = Number(process.env.SEEDS || 60),
   cap = Number(process.env.TURN_CAP || 160);
 const policies = (process.env.POLICIES || "stock,informed").split(",");
+// aware: 正体の分からない敵も見込みで脅威にする情報活用CPU(UNKNOWN_WEIGHT、既定 0.6)
+const unknownWeight = Number(process.env.UNKNOWN_WEIGHT || 0.6);
+// SIDE_POLICIES=aware,informed: 組の左側・右側で別の方針を使う(同じ方針同士なら POLICIES)
+const sidePolicies = process.env.SIDE_POLICIES
+  ? process.env.SIDE_POLICIES.split(",")
+  : null;
+function actOf(policy, s) {
+  if (policy === "stock") return cpuAction(s, s.currentTurn);
+  if (policy === "aware")
+    return cpuInformedAction(s, s.currentTurn, { unknownWeight });
+  return (
+    baselineCpu && s.areas[s.currentTurn]?.type === "palace"
+      ? baselineCpu.cpuInformedAction
+      : cpuInformedAction
+  )(s, s.currentTurn);
+}
 const strategicSetup = process.env.STRATEGIC_SETUP === "1";
+// VS_NONE=1: 各エリアを「同じ王のランクでフォイルを持たない側」と当てる。
+// 王の能力・ランクを揃えて、エリアの有無だけの差を測る。
+const vsNone = process.env.VS_NONE === "1";
+// OVERALL=1: 「フォイルを持つ側」対「持たない側」。両者とも手札から王を自由に選ぶ。
+// FOIL_SET は持つフォイルの範囲(all / R / SR / SSR / エリア名のコンマ区切り)。
+// AREA_VALUE=1 で、持つ側の構成にエリアの計測値(reports/area-vs-none)を足す。
+const overall = process.env.OVERALL === "1";
+const foilSets = {
+  all: types,
+  none: [],
+  R: ["earth", "sea"],
+  SR: ["forest", "ice"],
+  SSR: ["sky", "palace"],
+};
+const foilAreas = overall
+  ? foilSets[process.env.FOIL_SET || "all"] ||
+    (process.env.FOIL_SET || "").split(",").filter((t) => types.includes(t))
+  : null;
+// フォイルあり対なし(同じ王)の勝率から 50% を引いた差(pt)。
+// reports/area-vs-none/検証レポート.md(2026-09-09)より。
+// AREA_VALUE=<倍率> で、この差に倍率を掛けた値を構成の点に足す(0 か未指定なら足さない)。
+const AREA_EDGE = {
+  sky: 24.6,
+  ice: 12.6,
+  forest: 11.9,
+  palace: 7.5,
+  sea: 2.9,
+  earth: 0,
+};
+const areaValueScale = Number(process.env.AREA_VALUE || 0);
+const planOptions = areaValueScale
+  ? {
+      areaValue: Object.fromEntries(
+        Object.entries(AREA_EDGE).map(([t, pt]) => [t, pt * areaValueScale]),
+      ),
+    }
+  : {};
+if (overall) {
+  assert(strategicSetup, "OVERALL には STRATEGIC_SETUP=1 が要る");
+  assert(foilAreas, "FOIL_SET が不正");
+}
 const output = process.env.OUTPUT || "reports/area-matchups/results.json";
 fs.mkdirSync(path.dirname(output), { recursive: true });
 const realRandom = Math.random;
@@ -70,7 +132,7 @@ function rng(seed) {
     return n / 4294967296;
   };
 }
-function setup(seed, kings) {
+function setup(seed, kings, sides = null) {
   Math.random = rng(seed);
   const deck = shuffle(buildDeck(null)),
     used = new Set();
@@ -79,13 +141,19 @@ function setup(seed, kings) {
     used.add(c.id);
     return c;
   };
-  const a = pick(kings[0]),
-    b = pick(kings[1]),
+  // kings が無ければ(OVERALL)配札をそのまま使い、王は手札から各自が選ぶ
+  const a = kings && pick(kings[0]),
+    b = kings && pick(kings[1]),
     rest = deck.filter((c) => !used.has(c.id));
   const all = Object.fromEntries(
     Object.values(groups)
       .flat()
       .map((r) => [r, "fixture-skin:foil"]),
+  );
+  const foilOnly = Object.fromEntries(
+    Object.entries(all).filter(([rank]) =>
+      (foilAreas || []).includes(AREA_BY_RANK_LOCAL[rank]),
+    ),
   );
   let s = reducer(
     { phase: "intro" },
@@ -93,9 +161,13 @@ function setup(seed, kings) {
       type: "START_SETUP",
       size: 9,
       setupMode: "simultaneous",
-      deck: [a, ...rest.slice(0, 12), b, ...rest.slice(12)],
+      deck: kings ? [a, ...rest.slice(0, 12), b, ...rest.slice(12)] : rest,
       areas: true,
-      loadouts: [all, all],
+      // "none" の側は装備なし。王のランクにフォイルが無いのでエリアは立たない。
+      // "foil" の側(OVERALL)は FOIL_SET の範囲だけ装備する
+      loadouts: sides
+        ? sides.map((t) => (t === "none" ? {} : t === "foil" ? foilOnly : all))
+        : [all, all],
       ruleVersion: RULE_VERSION,
     },
   );
@@ -124,10 +196,11 @@ function setup(seed, kings) {
           {
             type: "CONFIRM_MULLIGAN",
             discardIds: strategicSetup
-              ? setupStrategy(kings[s.mulliganIdx]).strategicDiscards(
+              ? setupStrategy(kings?.[s.mulliganIdx]).strategicDiscards(
                   s,
                   s.mulliganIdx,
-                  kings[s.mulliganIdx],
+                  kings?.[s.mulliganIdx] ?? null,
+                  planOptions,
                 )
               : [],
           },
@@ -140,8 +213,13 @@ function setup(seed, kings) {
       for (const player of [0, 1]) {
         if (s.setupDone[player]) continue;
         if (strategicSetup) {
-          const strategy = setupStrategy(kings[player]);
-          const plan = strategy.chooseArmyPlan(s, player, kings[player]);
+          const strategy = setupStrategy(kings?.[player]);
+          const plan = strategy.chooseArmyPlan(
+            s,
+            player,
+            kings?.[player] ?? null,
+            planOptions,
+          );
           assert(
             plan,
             JSON.stringify({
@@ -204,11 +282,19 @@ function setup(seed, kings) {
   if (s.setupEffects) s = reducer(s, { type: "DISMISS_SETUP_EFFECTS" });
   if (s.interstitial) s = reducer(s, { type: "DISMISS_INTERSTITIAL" });
   assert.equal(s.phase, "play");
-  kings.forEach((k, i) => assert.equal(kingRankOf(s, i), k));
+  if (kings) kings.forEach((k, i) => assert.equal(kingRankOf(s, i), k));
   return { ...s, experimentFormations: formations };
 }
+// 対戦の組。通常は15組の総当たり、VS_NONE では各エリア対「なし」の6組
+const pairs = overall
+  ? [{ i: types.length + 1, j: types.length, pair: ["foil", "none"] }]
+  : vsNone
+    ? types.map((t, i) => ({ i, j: types.length, pair: [t, "none"] }))
+    : types.flatMap((t, i) =>
+        types.slice(i + 1).map((u, k) => ({ i, j: i + 1 + k, pair: [t, u] })),
+      );
 
-function play(base, first, seed, policy) {
+function play(base, first, seed, policy, policyOf = () => policy) {
   Math.random = rng(seed);
   let s = {
       ...structuredClone(base),
@@ -257,13 +343,7 @@ function play(base, first, seed, policy) {
       stopped = "turn_cap";
       break;
     }
-    let act =
-      automaticAreaAction(s) ||
-      (policy === "stock"
-        ? cpuAction(s, s.currentTurn)
-        : (baselineCpu && s.areas[s.currentTurn]?.type === "palace"
-            ? baselineCpu.cpuInformedAction
-            : cpuInformedAction)(s, s.currentTurn));
+    let act = automaticAreaAction(s) || actOf(policyOf(s.currentTurn), s);
     if (!act) {
       stopped = "no_action";
       break;
@@ -339,96 +419,109 @@ let setupResamples = 0;
 const started = new Date().toISOString();
 try {
   for (const policy of policies)
-    for (let i = 0; i < types.length; i++)
-      for (let j = i + 1; j < types.length; j++) {
-        if (
-          process.env.ONLY_AREA &&
-          ![types[i], types[j]].includes(process.env.ONLY_AREA)
-        )
-          continue;
-        const pair = [types[i], types[j]],
-          t0 = Date.now();
-        for (let n = 0; n < seeds; n++) {
-          const sides = n % 2 ? [...pair].reverse() : pair;
-          const kings = sides.map(
-            (t) => groups[t][Math.floor(n / 2) % groups[t].length],
-          );
-          let seed = 20260909 + n * 7919 + i * 997 + j * 113,
-            base;
-          for (let attempt = 0; attempt < 100; attempt++) {
-            try {
-              base = setup(seed, kings);
-              break;
-            } catch (error) {
-              if (!String(error.message).includes("hand")) throw error;
-              setupResamples++;
-              seed += 15485863;
-            }
+    for (const { i, j, pair } of pairs) {
+      if (process.env.ONLY_AREA && !pair.includes(process.env.ONLY_AREA))
+        continue;
+      const t0 = Date.now();
+      for (let n = 0; n < seeds; n++) {
+        const sides = n % 2 ? [...pair].reverse() : pair;
+        // "なし" の側も相手と同じ帯の王を使う(能力差を消してエリアだけを比べる)
+        const band = vsNone ? groups[pair[0]] : null;
+        const kings = overall
+          ? null
+          : sides.map((t) =>
+              band
+                ? band[Math.floor(n / 2) % band.length]
+                : groups[t][Math.floor(n / 2) % groups[t].length],
+            );
+        let seed = 20260909 + n * 7919 + i * 997 + j * 113,
+          base;
+        for (let attempt = 0; attempt < 100; attempt++) {
+          try {
+            base = setup(seed, kings, vsNone || overall ? sides : null);
+            break;
+          } catch (error) {
+            if (!String(error.message).includes("hand")) throw error;
+            setupResamples++;
+            seed += 15485863;
           }
-          assert(base);
-          assert.deepEqual(
-            base.areas.map((a) => a?.type),
-            sides,
-          );
-          for (const first of [0, 1])
-            results.push({
-              policy,
-              pair,
-              sides,
-              kings,
-              seed,
-              first,
-              formations: base.experimentFormations,
-              ...play(base, first, seed + first * 104729, policy),
-            });
         }
-        const r = results.filter(
-          (r) =>
-            r.policy === policy &&
-            r.pair[0] === pair[0] &&
-            r.pair[1] === pair[1],
-        );
-        console.log(
-          JSON.stringify({
+        assert(base);
+        const areaTypes = base.areas.map((a) => a?.type || "none");
+        if (overall) {
+          // なし側にエリアは立たない。持つ側は FOIL_SET の範囲だけ
+          assert.equal(areaTypes[sides.indexOf("none")], "none");
+          const stood = areaTypes[sides.indexOf("foil")];
+          assert(stood === "none" || foilAreas.includes(stood));
+        } else assert.deepEqual(areaTypes, sides);
+        for (const first of [0, 1])
+          results.push({
             policy,
             pair,
-            n: r.length,
-            winA: r.filter(
-              (r) =>
-                r.completed &&
-                r.winner != null &&
-                r.sides[r.winner] === pair[0],
-            ).length,
-            winB: r.filter(
-              (r) =>
-                r.completed &&
-                r.winner != null &&
-                r.sides[r.winner] === pair[1],
-            ).length,
-            draw: r.filter((r) => r.completed && r.winner === null).length,
-            unfinished: r.filter((r) => !r.completed).length,
-            ms: Date.now() - t0,
-          }),
-        );
-        fs.writeFileSync(
-          output,
-          JSON.stringify(
-            {
-              started,
-              updated: new Date().toISOString(),
-              ruleVersion: RULE_VERSION,
-              strategicSetup,
-              baselinePalace: !!baselineDir,
-              seeds,
-              cap,
-              setupResamples,
-              results,
-            },
-            null,
-            2,
-          ),
-        );
+            sides,
+            kings: kings || [0, 1].map((i) => kingRankOf(base, i)),
+            areaTypes,
+            seed,
+            first,
+            formations: base.experimentFormations,
+            ...play(base, first, seed + first * 104729, policy, (player) =>
+              sidePolicies
+                ? sidePolicies[pair.indexOf(sides[player])] || policy
+                : policy,
+            ),
+            sidePolicies: sidePolicies
+              ? sides.map((t) => sidePolicies[pair.indexOf(t)] || policy)
+              : null,
+          });
       }
+      const r = results.filter(
+        (r) =>
+          r.policy === policy && r.pair[0] === pair[0] && r.pair[1] === pair[1],
+      );
+      console.log(
+        JSON.stringify({
+          policy,
+          pair,
+          n: r.length,
+          winA: r.filter(
+            (r) =>
+              r.completed && r.winner != null && r.sides[r.winner] === pair[0],
+          ).length,
+          winB: r.filter(
+            (r) =>
+              r.completed && r.winner != null && r.sides[r.winner] === pair[1],
+          ).length,
+          draw: r.filter((r) => r.completed && r.winner === null).length,
+          unfinished: r.filter((r) => !r.completed).length,
+          ms: Date.now() - t0,
+        }),
+      );
+      fs.writeFileSync(
+        output,
+        JSON.stringify(
+          {
+            started,
+            updated: new Date().toISOString(),
+            ruleVersion: RULE_VERSION,
+            strategicSetup,
+            vsNone,
+            overall,
+            foilAreas,
+            areaValue: planOptions.areaValue || null,
+            unknownWeight,
+            sidePolicies,
+            tuning: globalThis.TOTTERY_AREA_TUNING || null,
+            baselinePalace: !!baselineDir,
+            seeds,
+            cap,
+            setupResamples,
+            results,
+          },
+          null,
+          2,
+        ),
+      );
+    }
 } finally {
   Math.random = realRandom;
 }

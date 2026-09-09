@@ -1,5 +1,11 @@
 import { areaTheme } from "./field-presentation.js";
-import { AREA_INFO, canUseArea, isFrozen, isKnownTo } from "./areas.js";
+import {
+  AREA_INFO,
+  canUseArea,
+  isFrozen,
+  isKnownTo,
+  seaPullsOwn,
+} from "./areas.js";
 
 export const AREA_GATHER_MS = 480;
 export const AREA_EFFECT_MS = 6000;
@@ -66,6 +72,8 @@ export function areaEvent(before, after, viewer) {
       to: last.to,
       moves:
         last.type === "sea" ? (last.moves || []).map((m) => ({ ...m })) : [],
+      // 版11からは相手の駒だけが流れる。旧対局の再生では両者の駒が流れる
+      pullsOwn: last.type === "sea" ? seaPullsOwn(after) : undefined,
       trail:
         last.type === "earth" && before.lastMove
           ? [before.lastMove.from, before.lastMove.to]
@@ -122,7 +130,10 @@ export function areaEventText(event, stage) {
           ? "正体を見抜いた"
           : "正体を見抜かれた"
         : "鬼火が静かに消えた・読み違えた",
-      sea: "水流が駒を中央へ引き寄せた",
+      sea:
+        event.pullsOwn === false
+          ? "水流が相手の駒を中央へ引き寄せた"
+          : "水流が駒を中央へ引き寄せた",
       forest: event.own
         ? "森が正体を知らせた・自分だけに表示"
         : "森の力で駒を見抜かれた",

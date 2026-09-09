@@ -6,9 +6,9 @@
  * 立たない。全エリアが毎手番1回だけ効果を使える。9×9 だけ。5×5 には無い
  * (駒が5体しかなく、帯が分かると王の候補が絞れてしまうため)。
  *
- *   2・3  土   直前に動いた相手の駒の足跡を読み、50% で正体を見抜く。
- *              当たったか外れたかは相手にも分かる。正体は自分だけが知る
- *   4・5  海   盤上の全ての駒を中央へ引き寄せる
+ *   2・3  土   直前に動いた相手の駒の足跡を読み、正体を見抜く(版11から必ず当たる。
+ *              それまでは 50%)。読んだことは相手にも分かる。正体は自分だけが知る
+ *   4・5  海   相手の駒を中央へ引き寄せる(版11から。版8〜10は自分の駒も流された)
  *   6・7  森   相手の王以外の駒を2体見抜く(自分だけが知る)
  *   8・9  氷   相手の王以外の駒を1体(乱数で選ぶ)凍らせ、相手の3手番のあいだ動けなくする。
  *              凍った駒を A の入れ替えに使うと氷は解ける。凍った A 自身は入れ替えを使えない。
@@ -52,13 +52,13 @@ export const AREA_BY_RANK = Object.freeze({
 export const AREA_INFO = Object.freeze({
   earth: {
     name: "土のエリア",
-    text: "直前に動いた相手の駒の足跡を読み、50%で正体を見抜く(正体は自分だけが知る)",
+    text: "直前に動いた相手の駒の足跡を読み、正体を見抜く(正体は自分だけが知る)",
     usesTurn: false,
     needsPiece: false,
   },
   sea: {
     name: "海のエリア",
-    text: "毎手番の初めに任意で発動。盤上の全ての駒を中央方向へ最大1マスずつ引き寄せる。行き先が埋まっている駒はその場に留まる。発動後も移動できる",
+    text: "毎手番の初めに任意で発動。相手の駒を中央方向へ最大1マスずつ引き寄せる。自分の駒は流されない。行き先が埋まっている駒はその場に留まる。発動後も移動できる",
     usesTurn: false,
     needsPiece: false,
   },
@@ -95,10 +95,14 @@ export const AREA_INFO = Object.freeze({
 export const AREA_TUNING = Object.freeze({
   /** 旧ルール版の1局あたり回数 */
   usesPerGame: 1,
-  /** 土: 見抜ける確率(0〜1)。enrichAction がこの確率で hit を焼き込む */
-  earthOdds: 0.5,
+  /** 土: 見抜ける確率(0〜1)。enrichAction がこの確率で hit を焼き込む。
+   *  2026-09-09 に 0.5 → 1 (同じ王同士の検証で 49% → 57%。reports/area-tuning) */
+  earthOdds: 1,
   /** 森: 見抜く駒の数 */
   forestReveals: 2,
+  /** 海: 自分の駒も引き寄せるか。false なら相手の駒だけが流される(版11から。
+   *  版10以前の対局は常に全駒。2026-09-09、同じ王同士の検証で 53% → 56%) */
+  seaPullsOwn: false,
   /** 氷: 凍らせる駒の数 */
   iceTargets: 1,
   /** 氷: 相手が動けない手番の数 */
@@ -109,6 +113,9 @@ export const AREA_TUNING = Object.freeze({
   palaceCap: "K",
   /** 宮殿: 1局に2段階昇格を選べる回数(版9以降) */
   palaceDoubleUses: 1,
+  // 検証ツールだけが globalThis.TOTTERY_AREA_TUNING で数字を差し替える。
+  // 画面(ブラウザー)では未定義なので、上の値がそのまま使われる。
+  ...(globalThis.TOTTERY_AREA_TUNING || {}),
 });
 /** 氷で動けなくなる相手の手番の数(互換用。AREA_TUNING.freezeTurns を見る) */
 export const FREEZE_TURNS = AREA_TUNING.freezeTurns;
@@ -590,17 +597,22 @@ export function useArea(state, action) {
 }
 
 /**
- * 海: 全ての駒を中央へ引き寄せる。
+ * 海: 駒を中央へ引き寄せる。
  * 中央に近い駒から順に(同じ距離なら手番側の駒、次に行・列の順)、
  * 中央方向へ縦・横・斜めに最大1マス進める。進み先が埋まっていれば動かさない。
- * 取りは起きない。版7以前の対局には旧処理を適用する。
+ * 取りは起きない。版11からは相手の駒だけを流す(自分の駒は動かない)。
+ * 版8〜10の対局は全駒を流し、版7以前の対局には旧処理を適用する。
  */
+export function seaPullsOwn(state) {
+  return AREA_TUNING.seaPullsOwn || !(state.ruleVersion >= 11);
+}
 export function seaPull(state) {
   if (!(state.ruleVersion >= 8)) return seaPullLegacy(state);
   const c = (state.boardSize - 1) / 2;
   const distance = (p) => Math.max(Math.abs(p.row - c), Math.abs(p.col - c));
+  const pullsOwn = seaPullsOwn(state);
   const order = Object.values(state.pieces)
-    .filter((p) => p.alive)
+    .filter((p) => p.alive && (pullsOwn || p.owner !== state.currentTurn))
     .sort(
       (a, b) =>
         distance(a) - distance(b) ||
@@ -644,7 +656,7 @@ export function seaPull(state) {
     shuffleMode: null,
     log: [
       ...state.log,
-      `${PLAYER_META[state.currentTurn].name}が海のエリアで駒を中央へ1マスずつ引き寄せた(${moves.length}体が動いた)`,
+      `${PLAYER_META[state.currentTurn].name}が海のエリアで${pullsOwn ? "駒" : "相手の駒"}を中央へ1マスずつ引き寄せた(${moves.length}体が動いた)`,
     ],
   };
 }

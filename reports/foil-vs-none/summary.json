@@ -1,0 +1,1040 @@
+{
+  "all-v20": {
+    "label": "全フォイル（6エリア）・エリアの値打ち×2.0（10があれば空を選ぶ）",
+    "foilAreas": [
+      "earth",
+      "sea",
+      "forest",
+      "ice",
+      "sky",
+      "palace"
+    ],
+    "areaValue": {
+      "sky": 49.2,
+      "ice": 25.2,
+      "forest": 23.8,
+      "palace": 15,
+      "sea": 5.8,
+      "earth": 0
+    },
+    "all": {
+      "n": 1200,
+      "wins": 740,
+      "losses": 459,
+      "draws": 0,
+      "unfinished": 1,
+      "rate": 61.71809841534612
+    },
+    "ci95": [
+      58.764607679465776,
+      64.58333333333333
+    ],
+    "first": {
+      "n": 600,
+      "wins": 386,
+      "losses": 213,
+      "draws": 0,
+      "unfinished": 1,
+      "rate": 64.44073455759599
+    },
+    "second": {
+      "n": 600,
+      "wins": 354,
+      "losses": 246,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 59.0
+    },
+    "byArea": {
+      "sky": {
+        "n": 936,
+        "wins": 598,
+        "losses": 337,
+        "draws": 0,
+        "unfinished": 1,
+        "rate": 63.9572192513369
+      },
+      "palace": {
+        "n": 138,
+        "wins": 65,
+        "losses": 73,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 47.10144927536232
+      },
+      "ice": {
+        "n": 118,
+        "wins": 69,
+        "losses": 49,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 58.47457627118644
+      },
+      "forest": {
+        "n": 8,
+        "wins": 8,
+        "losses": 0,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 100.0
+      }
+    },
+    "kings": {
+      "foil": {
+        "10": 936,
+        "K": 134,
+        "8": 72,
+        "9": 46,
+        "6": 8,
+        "Q": 2,
+        "J": 2
+      },
+      "none": {
+        "K": 706,
+        "4": 176,
+        "5": 174,
+        "J": 24,
+        "9": 22,
+        "10": 20,
+        "8": 20,
+        "7": 16,
+        "Q": 16,
+        "6": 16,
+        "2": 6,
+        "3": 4
+      }
+    }
+  },
+  "SSR-v20": {
+    "label": "SSRのフォイルだけ（空・宮殿）×2.0",
+    "foilAreas": [
+      "sky",
+      "palace"
+    ],
+    "areaValue": {
+      "sky": 49.2,
+      "ice": 25.2,
+      "forest": 23.8,
+      "palace": 15,
+      "sea": 5.8,
+      "earth": 0
+    },
+    "all": {
+      "n": 1200,
+      "wins": 720,
+      "losses": 479,
+      "draws": 0,
+      "unfinished": 1,
+      "rate": 60.05004170141785
+    },
+    "ci95": [
+      57.095158597662774,
+      62.88573811509591
+    ],
+    "first": {
+      "n": 600,
+      "wins": 378,
+      "losses": 221,
+      "draws": 0,
+      "unfinished": 1,
+      "rate": 63.10517529215359
+    },
+    "second": {
+      "n": 600,
+      "wins": 342,
+      "losses": 258,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 57.0
+    },
+    "byArea": {
+      "sky": {
+        "n": 936,
+        "wins": 596,
+        "losses": 339,
+        "draws": 0,
+        "unfinished": 1,
+        "rate": 63.74331550802139
+      },
+      "palace": {
+        "n": 260,
+        "wins": 122,
+        "losses": 138,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 46.92307692307692
+      },
+      "none": {
+        "n": 4,
+        "wins": 2,
+        "losses": 2,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 50.0
+      }
+    },
+    "kings": {
+      "foil": {
+        "10": 936,
+        "K": 220,
+        "J": 22,
+        "Q": 18,
+        "5": 2,
+        "4": 2
+      },
+      "none": {
+        "K": 706,
+        "4": 176,
+        "5": 174,
+        "J": 24,
+        "9": 22,
+        "10": 20,
+        "8": 20,
+        "7": 16,
+        "Q": 16,
+        "6": 16,
+        "2": 6,
+        "3": 4
+      }
+    }
+  },
+  "all-v10": {
+    "label": "全フォイル×1.0",
+    "foilAreas": [
+      "earth",
+      "sea",
+      "forest",
+      "ice",
+      "sky",
+      "palace"
+    ],
+    "areaValue": {
+      "sky": 24.6,
+      "ice": 12.6,
+      "forest": 11.9,
+      "palace": 7.5,
+      "sea": 2.9,
+      "earth": 0
+    },
+    "all": {
+      "n": 1200,
+      "wins": 652,
+      "losses": 548,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 54.333333333333336
+    },
+    "ci95": [
+      51.333333333333336,
+      57.416666666666664
+    ],
+    "first": {
+      "n": 600,
+      "wins": 344,
+      "losses": 256,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 57.333333333333336
+    },
+    "second": {
+      "n": 600,
+      "wins": 308,
+      "losses": 292,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 51.333333333333336
+    },
+    "byArea": {
+      "sky": {
+        "n": 198,
+        "wins": 134,
+        "losses": 64,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 67.67676767676768
+      },
+      "palace": {
+        "n": 968,
+        "wins": 499,
+        "losses": 469,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 51.549586776859506
+      },
+      "ice": {
+        "n": 28,
+        "wins": 13,
+        "losses": 15,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 46.42857142857143
+      },
+      "forest": {
+        "n": 6,
+        "wins": 6,
+        "losses": 0,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 100.0
+      }
+    },
+    "kings": {
+      "foil": {
+        "K": 812,
+        "10": 198,
+        "Q": 96,
+        "J": 60,
+        "8": 16,
+        "9": 12,
+        "6": 6
+      },
+      "none": {
+        "K": 706,
+        "4": 176,
+        "5": 174,
+        "J": 24,
+        "9": 22,
+        "10": 20,
+        "8": 20,
+        "7": 16,
+        "Q": 16,
+        "6": 16,
+        "2": 6,
+        "3": 4
+      }
+    }
+  },
+  "SSR-v10": {
+    "label": "SSRだけ×1.0",
+    "foilAreas": [
+      "sky",
+      "palace"
+    ],
+    "areaValue": {
+      "sky": 24.6,
+      "ice": 12.6,
+      "forest": 11.9,
+      "palace": 7.5,
+      "sea": 2.9,
+      "earth": 0
+    },
+    "all": {
+      "n": 1200,
+      "wins": 654,
+      "losses": 546,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 54.5
+    },
+    "ci95": [
+      51.5,
+      57.583333333333336
+    ],
+    "first": {
+      "n": 600,
+      "wins": 345,
+      "losses": 255,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 57.5
+    },
+    "second": {
+      "n": 600,
+      "wins": 309,
+      "losses": 291,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 51.5
+    },
+    "byArea": {
+      "sky": {
+        "n": 198,
+        "wins": 134,
+        "losses": 64,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 67.67676767676768
+      },
+      "palace": {
+        "n": 998,
+        "wins": 518,
+        "losses": 480,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 51.90380761523046
+      },
+      "none": {
+        "n": 4,
+        "wins": 2,
+        "losses": 2,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 50.0
+      }
+    },
+    "kings": {
+      "foil": {
+        "K": 828,
+        "10": 198,
+        "Q": 100,
+        "J": 70,
+        "5": 2,
+        "4": 2
+      },
+      "none": {
+        "K": 706,
+        "4": 176,
+        "5": 174,
+        "J": 24,
+        "9": 22,
+        "10": 20,
+        "8": 20,
+        "7": 16,
+        "Q": 16,
+        "6": 16,
+        "2": 6,
+        "3": 4
+      }
+    }
+  },
+  "SR-v10": {
+    "label": "SRのフォイルだけ（森・氷）×1.0",
+    "foilAreas": [
+      "forest",
+      "ice"
+    ],
+    "areaValue": {
+      "sky": 24.6,
+      "ice": 12.6,
+      "forest": 11.9,
+      "palace": 7.5,
+      "sea": 2.9,
+      "earth": 0
+    },
+    "all": {
+      "n": 1200,
+      "wins": 660,
+      "losses": 529,
+      "draws": 0,
+      "unfinished": 11,
+      "rate": 55.50883095037847
+    },
+    "ci95": [
+      52.27272727272727,
+      58.57142857142857
+    ],
+    "first": {
+      "n": 600,
+      "wins": 350,
+      "losses": 246,
+      "draws": 0,
+      "unfinished": 4,
+      "rate": 58.7248322147651
+    },
+    "second": {
+      "n": 600,
+      "wins": 310,
+      "losses": 283,
+      "draws": 0,
+      "unfinished": 7,
+      "rate": 52.27655986509275
+    },
+    "byArea": {
+      "ice": {
+        "n": 752,
+        "wins": 412,
+        "losses": 332,
+        "draws": 0,
+        "unfinished": 8,
+        "rate": 55.376344086021504
+      },
+      "forest": {
+        "n": 448,
+        "wins": 248,
+        "losses": 197,
+        "draws": 0,
+        "unfinished": 3,
+        "rate": 55.73033707865169
+      }
+    },
+    "kings": {
+      "foil": {
+        "9": 392,
+        "8": 360,
+        "6": 230,
+        "7": 218
+      },
+      "none": {
+        "K": 706,
+        "4": 176,
+        "5": 174,
+        "J": 24,
+        "9": 22,
+        "10": 20,
+        "8": 20,
+        "7": 16,
+        "Q": 16,
+        "6": 16,
+        "2": 6,
+        "3": 4
+      }
+    }
+  },
+  "R-v10": {
+    "label": "Rのフォイルだけ（土・海）×1.0",
+    "foilAreas": [
+      "earth",
+      "sea"
+    ],
+    "areaValue": {
+      "sky": 24.6,
+      "ice": 12.6,
+      "forest": 11.9,
+      "palace": 7.5,
+      "sea": 2.9,
+      "earth": 0
+    },
+    "all": {
+      "n": 1200,
+      "wins": 583,
+      "losses": 608,
+      "draws": 0,
+      "unfinished": 9,
+      "rate": 48.95046179680941
+    },
+    "ci95": [
+      45.72147651006711,
+      51.97313182199832
+    ],
+    "first": {
+      "n": 600,
+      "wins": 303,
+      "losses": 291,
+      "draws": 0,
+      "unfinished": 6,
+      "rate": 51.01010101010101
+    },
+    "second": {
+      "n": 600,
+      "wins": 280,
+      "losses": 317,
+      "draws": 0,
+      "unfinished": 3,
+      "rate": 46.901172529313236
+    },
+    "byArea": {
+      "sea": {
+        "n": 1158,
+        "wins": 562,
+        "losses": 589,
+        "draws": 0,
+        "unfinished": 7,
+        "rate": 48.827106863596875
+      },
+      "earth": {
+        "n": 32,
+        "wins": 15,
+        "losses": 15,
+        "draws": 0,
+        "unfinished": 2,
+        "rate": 50.0
+      },
+      "none": {
+        "n": 10,
+        "wins": 6,
+        "losses": 4,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 60.0
+      }
+    },
+    "kings": {
+      "foil": {
+        "5": 608,
+        "4": 550,
+        "2": 20,
+        "3": 12,
+        "K": 10
+      },
+      "none": {
+        "K": 706,
+        "4": 176,
+        "5": 174,
+        "J": 24,
+        "9": 22,
+        "10": 20,
+        "8": 20,
+        "7": 16,
+        "Q": 16,
+        "6": 16,
+        "2": 6,
+        "3": 4
+      }
+    }
+  },
+  "all-v04": {
+    "label": "全フォイル×0.4",
+    "foilAreas": [
+      "earth",
+      "sea",
+      "forest",
+      "ice",
+      "sky",
+      "palace"
+    ],
+    "areaValue": {
+      "sky": 9.8,
+      "ice": 5,
+      "forest": 4.8,
+      "palace": 3,
+      "sea": 1.2,
+      "earth": 0
+    },
+    "all": {
+      "n": 1200,
+      "wins": 618,
+      "losses": 582,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 51.5
+    },
+    "ci95": [
+      48.5,
+      54.5
+    ],
+    "first": {
+      "n": 600,
+      "wins": 333,
+      "losses": 267,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 55.5
+    },
+    "second": {
+      "n": 600,
+      "wins": 285,
+      "losses": 315,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 47.5
+    },
+    "byArea": {
+      "sky": {
+        "n": 4,
+        "wins": 4,
+        "losses": 0,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 100.0
+      },
+      "palace": {
+        "n": 1182,
+        "wins": 607,
+        "losses": 575,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 51.353637901861255
+      },
+      "ice": {
+        "n": 8,
+        "wins": 3,
+        "losses": 5,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 37.5
+      },
+      "forest": {
+        "n": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 100.0
+      },
+      "sea": {
+        "n": 4,
+        "wins": 2,
+        "losses": 2,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 50.0
+      }
+    },
+    "kings": {
+      "foil": {
+        "K": 966,
+        "Q": 128,
+        "J": 88,
+        "8": 6,
+        "10": 4,
+        "9": 2,
+        "6": 2,
+        "5": 2,
+        "4": 2
+      },
+      "none": {
+        "K": 706,
+        "4": 176,
+        "5": 174,
+        "J": 24,
+        "9": 22,
+        "10": 20,
+        "8": 20,
+        "7": 16,
+        "Q": 16,
+        "6": 16,
+        "2": 6,
+        "3": 4
+      }
+    }
+  },
+  "SSR-v04": {
+    "label": "SSRだけ×0.4",
+    "foilAreas": [
+      "sky",
+      "palace"
+    ],
+    "areaValue": {
+      "sky": 9.8,
+      "ice": 5,
+      "forest": 4.8,
+      "palace": 3,
+      "sea": 1.2,
+      "earth": 0
+    },
+    "all": {
+      "n": 1200,
+      "wins": 617,
+      "losses": 583,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 51.416666666666664
+    },
+    "ci95": [
+      48.333333333333336,
+      54.416666666666664
+    ],
+    "first": {
+      "n": 600,
+      "wins": 334,
+      "losses": 266,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 55.666666666666664
+    },
+    "second": {
+      "n": 600,
+      "wins": 283,
+      "losses": 317,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 47.166666666666664
+    },
+    "byArea": {
+      "sky": {
+        "n": 4,
+        "wins": 3,
+        "losses": 1,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 75.0
+      },
+      "palace": {
+        "n": 1192,
+        "wins": 612,
+        "losses": 580,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 51.34228187919463
+      },
+      "none": {
+        "n": 4,
+        "wins": 2,
+        "losses": 2,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 50.0
+      }
+    },
+    "kings": {
+      "foil": {
+        "K": 972,
+        "Q": 130,
+        "J": 90,
+        "10": 4,
+        "5": 2,
+        "4": 2
+      },
+      "none": {
+        "K": 706,
+        "4": 176,
+        "5": 174,
+        "J": 24,
+        "9": 22,
+        "10": 20,
+        "8": 20,
+        "7": 16,
+        "Q": 16,
+        "6": 16,
+        "2": 6,
+        "3": 4
+      }
+    }
+  },
+  "SR-v04": {
+    "label": "SRだけ×0.4",
+    "foilAreas": [
+      "forest",
+      "ice"
+    ],
+    "areaValue": {
+      "sky": 9.8,
+      "ice": 5,
+      "forest": 4.8,
+      "palace": 3,
+      "sea": 1.2,
+      "earth": 0
+    },
+    "all": {
+      "n": 1200,
+      "wins": 664,
+      "losses": 525,
+      "draws": 0,
+      "unfinished": 11,
+      "rate": 55.84524810765349
+    },
+    "ci95": [
+      52.569502948609944,
+      58.99581589958159
+    ],
+    "first": {
+      "n": 600,
+      "wins": 350,
+      "losses": 245,
+      "draws": 0,
+      "unfinished": 5,
+      "rate": 58.8235294117647
+    },
+    "second": {
+      "n": 600,
+      "wins": 314,
+      "losses": 280,
+      "draws": 0,
+      "unfinished": 6,
+      "rate": 52.861952861952865
+    },
+    "byArea": {
+      "ice": {
+        "n": 688,
+        "wins": 379,
+        "losses": 302,
+        "draws": 0,
+        "unfinished": 7,
+        "rate": 55.65345080763583
+      },
+      "forest": {
+        "n": 512,
+        "wins": 285,
+        "losses": 223,
+        "draws": 0,
+        "unfinished": 4,
+        "rate": 56.10236220472441
+      }
+    },
+    "kings": {
+      "foil": {
+        "9": 362,
+        "8": 326,
+        "6": 262,
+        "7": 250
+      },
+      "none": {
+        "K": 706,
+        "4": 176,
+        "5": 174,
+        "J": 24,
+        "9": 22,
+        "10": 20,
+        "8": 20,
+        "7": 16,
+        "Q": 16,
+        "6": 16,
+        "2": 6,
+        "3": 4
+      }
+    }
+  },
+  "R-v04": {
+    "label": "Rだけ×0.4",
+    "foilAreas": [
+      "earth",
+      "sea"
+    ],
+    "areaValue": {
+      "sky": 9.8,
+      "ice": 5,
+      "forest": 4.8,
+      "palace": 3,
+      "sea": 1.2,
+      "earth": 0
+    },
+    "all": {
+      "n": 1200,
+      "wins": 588,
+      "losses": 603,
+      "draws": 0,
+      "unfinished": 9,
+      "rate": 49.37027707808564
+    },
+    "ci95": [
+      46.17968094038623,
+      52.39697224558452
+    ],
+    "first": {
+      "n": 600,
+      "wins": 307,
+      "losses": 287,
+      "draws": 0,
+      "unfinished": 6,
+      "rate": 51.68350168350168
+    },
+    "second": {
+      "n": 600,
+      "wins": 281,
+      "losses": 316,
+      "draws": 0,
+      "unfinished": 3,
+      "rate": 47.06867671691792
+    },
+    "byArea": {
+      "sea": {
+        "n": 1142,
+        "wins": 555,
+        "losses": 580,
+        "draws": 0,
+        "unfinished": 7,
+        "rate": 48.89867841409691
+      },
+      "earth": {
+        "n": 48,
+        "wins": 27,
+        "losses": 19,
+        "draws": 0,
+        "unfinished": 2,
+        "rate": 58.69565217391305
+      },
+      "none": {
+        "n": 10,
+        "wins": 6,
+        "losses": 4,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 60.0
+      }
+    },
+    "kings": {
+      "foil": {
+        "5": 604,
+        "4": 538,
+        "2": 28,
+        "3": 20,
+        "K": 10
+      },
+      "none": {
+        "K": 706,
+        "4": 176,
+        "5": 174,
+        "J": 24,
+        "9": 22,
+        "10": 20,
+        "8": 20,
+        "7": 16,
+        "Q": 16,
+        "6": 16,
+        "2": 6,
+        "3": 4
+      }
+    }
+  },
+  "all-stock": {
+    "label": "全フォイル・エリアの値打ちを足さない（従来の構成評価）",
+    "foilAreas": [
+      "earth",
+      "sea",
+      "forest",
+      "ice",
+      "sky",
+      "palace"
+    ],
+    "areaValue": null,
+    "all": {
+      "n": 1200,
+      "wins": 609,
+      "losses": 591,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 50.75
+    },
+    "ci95": [
+      47.75,
+      53.75
+    ],
+    "first": {
+      "n": 600,
+      "wins": 331,
+      "losses": 269,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 55.166666666666664
+    },
+    "second": {
+      "n": 600,
+      "wins": 278,
+      "losses": 322,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 46.333333333333336
+    },
+    "byArea": {
+      "palace": {
+        "n": 1190,
+        "wins": 605,
+        "losses": 585,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 50.84033613445378
+      },
+      "sea": {
+        "n": 10,
+        "wins": 4,
+        "losses": 6,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 40.0
+      }
+    },
+    "kings": {
+      "foil": {
+        "K": 968,
+        "Q": 132,
+        "J": 90,
+        "4": 6,
+        "5": 4
+      },
+      "none": {
+        "K": 706,
+        "4": 176,
+        "5": 174,
+        "J": 24,
+        "9": 22,
+        "10": 20,
+        "8": 20,
+        "7": 16,
+        "Q": 16,
+        "6": 16,
+        "2": 6,
+        "3": 4
+      }
+    }
+  }
+}

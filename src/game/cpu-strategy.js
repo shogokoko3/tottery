@@ -25,7 +25,16 @@ const affinity = {
   sky: { 2: 2, 3: 2, 10: 4, A: 1 },
   palace: { A: 3, 9: 4.2, 10: 5, J: 3, Q: 3 },
 };
-export function chooseArmyPlan(state, player, preferredKingRank = null) {
+/**
+ * options.areaValue: {earth: n, …} エリアそのものの値打ち(構成の点に足す)。
+ * 省略時は 0 で、従来どおり札の相性だけで比べる。検証ツールが計測値を渡す。
+ */
+export function chooseArmyPlan(
+  state,
+  player,
+  preferredKingRank = null,
+  options = {},
+) {
   const hand = state.players[player].hand,
     slots = totalSlots(state.boardSize);
   let best = null;
@@ -44,7 +53,9 @@ export function chooseArmyPlan(state, player, preferredKingRank = null) {
     const cards = [king],
       counts = { [king.rank]: 1 };
     let score =
-      CARD_VALUE[king.rank] + (area === "palace" && king.rank === "K" ? 4 : 0);
+      CARD_VALUE[king.rank] +
+      (area === "palace" && king.rank === "K" ? 4 : 0) +
+      ((area && options.areaValue?.[area]) || 0);
     const marginal = (c) => {
       let n = CARD_VALUE[c.rank] + (affinity[area]?.[c.rank] || 0);
       // 後継者と王の射程、海賊王と同数字の射程を構成に織り込む。
@@ -81,8 +92,13 @@ export function chooseArmyPlan(state, player, preferredKingRank = null) {
   }
   return best;
 }
-export function strategicDiscards(state, player, preferredKingRank = null) {
-  const plan = chooseArmyPlan(state, player, preferredKingRank);
+export function strategicDiscards(
+  state,
+  player,
+  preferredKingRank = null,
+  options = {},
+) {
+  const plan = chooseArmyPlan(state, player, preferredKingRank, options);
   if (!plan) return [];
   const keep = new Set(plan.cards.map((c) => c.id));
   return state.players[player].hand

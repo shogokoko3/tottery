@@ -1,0 +1,320 @@
+{
+  "earth": {
+    "all": {
+      "wins": 561,
+      "losses": 576,
+      "draws": 0,
+      "unfinished": 63,
+      "rate": 49.340369393139845,
+      "turns_median": 16,
+      "uses_mean": 5.33
+    },
+    "ci95": [
+      46.4,
+      52.63620386643234
+    ],
+    "first": {
+      "wins": 295,
+      "losses": 273,
+      "draws": 0,
+      "unfinished": 32,
+      "rate": 51.936619718309856,
+      "turns_median": 15,
+      "uses_mean": 5.035
+    },
+    "second": {
+      "wins": 266,
+      "losses": 303,
+      "draws": 0,
+      "unfinished": 31,
+      "rate": 46.748681898066785,
+      "turns_median": 16,
+      "uses_mean": 5.625
+    },
+    "kings": {
+      "2": {
+        "wins": 294,
+        "losses": 277,
+        "draws": 0,
+        "unfinished": 29,
+        "rate": 51.48861646234676,
+        "turns_median": 16,
+        "uses_mean": 5.593333333333334
+      },
+      "3": {
+        "wins": 267,
+        "losses": 299,
+        "draws": 0,
+        "unfinished": 34,
+        "rate": 47.17314487632509,
+        "turns_median": 16,
+        "uses_mean": 5.066666666666666
+      }
+    }
+  },
+  "sea": {
+    "all": {
+      "wins": 627,
+      "losses": 559,
+      "draws": 0,
+      "unfinished": 14,
+      "rate": 52.86677908937605,
+      "turns_median": 10,
+      "uses_mean": 6.720833333333333
+    },
+    "ci95": [
+      50.04212299915754,
+      55.8277027027027
+    ],
+    "first": {
+      "wins": 347,
+      "losses": 246,
+      "draws": 0,
+      "unfinished": 7,
+      "rate": 58.51602023608769,
+      "turns_median": 10,
+      "uses_mean": 7.03
+    },
+    "second": {
+      "wins": 280,
+      "losses": 313,
+      "draws": 0,
+      "unfinished": 7,
+      "rate": 47.21753794266442,
+      "turns_median": 10,
+      "uses_mean": 6.411666666666667
+    },
+    "kings": {
+      "4": {
+        "wins": 285,
+        "losses": 314,
+        "draws": 0,
+        "unfinished": 1,
+        "rate": 47.57929883138564,
+        "turns_median": 10,
+        "uses_mean": 5.636666666666667
+      },
+      "5": {
+        "wins": 342,
+        "losses": 245,
+        "draws": 0,
+        "unfinished": 13,
+        "rate": 58.262350936967636,
+        "turns_median": 10,
+        "uses_mean": 7.805
+      }
+    }
+  },
+  "forest": {
+    "all": {
+      "wins": 701,
+      "losses": 432,
+      "draws": 0,
+      "unfinished": 67,
+      "rate": 61.871138570167695,
+      "turns_median": 10,
+      "uses_mean": 3.1225
+    },
+    "ci95": [
+      58.590308370044056,
+      65.05706760316066
+    ],
+    "first": {
+      "wins": 374,
+      "losses": 193,
+      "draws": 0,
+      "unfinished": 33,
+      "rate": 65.96119929453263,
+      "turns_median": 10,
+      "uses_mean": 3.2283333333333335
+    },
+    "second": {
+      "wins": 327,
+      "losses": 239,
+      "draws": 0,
+      "unfinished": 34,
+      "rate": 57.773851590106005,
+      "turns_median": 10,
+      "uses_mean": 3.0166666666666666
+    },
+    "kings": {
+      "6": {
+        "wins": 345,
+        "losses": 226,
+        "draws": 0,
+        "unfinished": 29,
+        "rate": 60.42031523642732,
+        "turns_median": 8,
+        "uses_mean": 3.0566666666666666
+      },
+      "7": {
+        "wins": 356,
+        "losses": 206,
+        "draws": 0,
+        "unfinished": 38,
+        "rate": 63.345195729537366,
+        "turns_median": 11,
+        "uses_mean": 3.1883333333333335
+      }
+    }
+  },
+  "ice": {
+    "all": {
+      "wins": 739,
+      "losses": 441,
+      "draws": 0,
+      "unfinished": 20,
+      "rate": 62.6271186440678,
+      "turns_median": 9,
+      "uses_mean": 8.185833333333333
+    },
+    "ci95": [
+      59.71162001696353,
+      65.61969439728354
+    ],
+    "first": {
+      "wins": 381,
+      "losses": 212,
+      "draws": 0,
+      "unfinished": 7,
+      "rate": 64.2495784148398,
+      "turns_median": 10,
+      "uses_mean": 7.953333333333333
+    },
+    "second": {
+      "wins": 358,
+      "losses": 229,
+      "draws": 0,
+      "unfinished": 13,
+      "rate": 60.98807495741056,
+      "turns_median": 9,
+      "uses_mean": 8.418333333333333
+    },
+    "kings": {
+      "8": {
+        "wins": 341,
+        "losses": 259,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 56.833333333333336,
+        "turns_median": 7,
+        "uses_mean": 5.565
+      },
+      "9": {
+        "wins": 398,
+        "losses": 182,
+        "draws": 0,
+        "unfinished": 20,
+        "rate": 68.62068965517241,
+        "turns_median": 13,
+        "uses_mean": 10.806666666666667
+      }
+    }
+  },
+  "sky": {
+    "all": {
+      "wins": 886,
+      "losses": 302,
+      "draws": 0,
+      "unfinished": 12,
+      "rate": 74.57912457912458,
+      "turns_median": 9,
+      "uses_mean": 3.308333333333333
+    },
+    "ci95": [
+      71.76470588235294,
+      77.13080168776371
+    ],
+    "first": {
+      "wins": 469,
+      "losses": 127,
+      "draws": 0,
+      "unfinished": 4,
+      "rate": 78.69127516778524,
+      "turns_median": 8,
+      "uses_mean": 3.3566666666666665
+    },
+    "second": {
+      "wins": 417,
+      "losses": 175,
+      "draws": 0,
+      "unfinished": 8,
+      "rate": 70.4391891891892,
+      "turns_median": 10,
+      "uses_mean": 3.26
+    },
+    "kings": {
+      "10": {
+        "wins": 886,
+        "losses": 302,
+        "draws": 0,
+        "unfinished": 12,
+        "rate": 74.57912457912458,
+        "turns_median": 9,
+        "uses_mean": 3.308333333333333
+      }
+    }
+  },
+  "palace": {
+    "all": {
+      "wins": 690,
+      "losses": 510,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 57.5,
+      "turns_median": 8,
+      "uses_mean": 4.131666666666667
+    },
+    "ci95": [
+      54.25,
+      60.5
+    ],
+    "first": {
+      "wins": 363,
+      "losses": 237,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 60.5,
+      "turns_median": 8,
+      "uses_mean": 4.503333333333333
+    },
+    "second": {
+      "wins": 327,
+      "losses": 273,
+      "draws": 0,
+      "unfinished": 0,
+      "rate": 54.5,
+      "turns_median": 8,
+      "uses_mean": 3.76
+    },
+    "kings": {
+      "J": {
+        "wins": 193,
+        "losses": 207,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 48.25,
+        "turns_median": 7,
+        "uses_mean": 3.8025
+      },
+      "K": {
+        "wins": 240,
+        "losses": 160,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 60.0,
+        "turns_median": 7,
+        "uses_mean": 4.0175
+      },
+      "Q": {
+        "wins": 257,
+        "losses": 143,
+        "draws": 0,
+        "unfinished": 0,
+        "rate": 64.25,
+        "turns_median": 9,
+        "uses_mean": 4.575
+      }
+    }
+  }
+}

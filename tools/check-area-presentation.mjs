@@ -3,6 +3,7 @@ import { areaFixture } from "./area-fixture.mjs";
 import {
   automaticAreaAction,
   areaEvent,
+  areaEventText,
   frozenTurnsLeft,
   hasVisibleSkyBonus,
 } from "../src/game/area-presentation.js";
@@ -34,6 +35,21 @@ for (const type of ["sky", "palace"])
     null,
     "optional " + type,
   );
+// 海の字幕は版で変わる。版11からは相手の駒だけ、版8〜10の旧対局は両者の駒
+{
+  const v10 = { ...areaFixture("sea"), ruleVersion: 11 },
+    v9 = { ...areaFixture("sea"), ruleVersion: 10 };
+  const e10 = areaEvent(v10, reducer(v10, { type: "USE_AREA" }), 0),
+    e9 = areaEvent(v9, reducer(v9, { type: "USE_AREA" }), 0);
+  assert.equal(e10.pullsOwn, false);
+  assert.equal(e9.pullsOwn, true);
+  assert.equal(areaEventText(e10, "apply"), "水流が相手の駒を中央へ引き寄せた");
+  assert.equal(areaEventText(e9, "apply"), "水流が駒を中央へ引き寄せた");
+  assert(
+    e10.moves.every((m) => v10.pieces[m.id].owner !== v10.currentTurn),
+    "v10 moves only enemy pieces",
+  );
+}
 const waiting = areaFixture("earth");
 waiting.lastMove = null;
 assert.equal(automaticAreaAction(waiting), null, "earth waits for footprint");
