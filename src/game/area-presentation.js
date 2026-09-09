@@ -132,15 +132,17 @@ export function areaEventText(event, stage) {
         : "鬼火が静かに消えた・読み違えた",
       sea:
         event.pullsOwn === false
-          ? "水流が相手の駒を中央へ引き寄せた"
+          ? event.own
+            ? "水流が相手の駒を中央へ引き寄せた"
+            : "水流が自分の駒を中央へ引き寄せた"
           : "水流が駒を中央へ引き寄せた",
       forest: event.own
         ? "森が正体を知らせた・自分だけに表示"
         : "森の力で駒を見抜かれた",
       ice: event.extended
         ? `凍結期間を追加・残り${event.frozenTurns}手番`
-        : `凍結・相手の${event.frozenTurns}手番は移動できない`,
-      sky: "10へ変身・自軍の10は2回行動",
+        : `凍結・${event.own ? "相手" : "自分"}の${event.frozenTurns}手番は移動できない`,
+      sky: `10へ変身・${event.own ? "自軍" : "相手"}の10は同じ1体で2回行動`,
       palace: `${event.from} → ${event.to} に昇格・${event.usesTurn === false ? "続けて駒を動かせる" : "相手の手番へ"}`,
       thaw: "再び動けるようになった",
       birth: "陣地にエリアの力が宿った",

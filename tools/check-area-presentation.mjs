@@ -45,10 +45,35 @@ for (const type of ["sky", "palace"])
   assert.equal(e9.pullsOwn, true);
   assert.equal(areaEventText(e10, "apply"), "水流が相手の駒を中央へ引き寄せた");
   assert.equal(areaEventText(e9, "apply"), "水流が駒を中央へ引き寄せた");
+  const opponentView = areaEvent(v10, reducer(v10, { type: "USE_AREA" }), 1);
+  assert.equal(
+    areaEventText(opponentView, "apply"),
+    "水流が自分の駒を中央へ引き寄せた",
+  );
   assert(
     e10.moves.every((m) => v10.pieces[m.id].owner !== v10.currentTurn),
     "v10 moves only enemy pieces",
   );
+}
+// 演出の字幕は発動者ではなく、画面を見ている側を基準にする。
+for (const [type, action, ownText, foeText] of [
+  [
+    "ice",
+    { type: "USE_AREA", picks: ["fx5"] },
+    "凍結・相手の3手番は移動できない",
+    "凍結・自分の3手番は移動できない",
+  ],
+  [
+    "sky",
+    { type: "USE_AREA", pieceId: "fx1" },
+    "10へ変身・自軍の10は同じ1体で2回行動",
+    "10へ変身・相手の10は同じ1体で2回行動",
+  ],
+]) {
+  const before = { ...areaFixture(type), ruleVersion: 11 };
+  const after = reducer(before, action);
+  assert.equal(areaEventText(areaEvent(before, after, 0), "apply"), ownText);
+  assert.equal(areaEventText(areaEvent(before, after, 1), "apply"), foeText);
 }
 const waiting = areaFixture("earth");
 waiting.lastMove = null;

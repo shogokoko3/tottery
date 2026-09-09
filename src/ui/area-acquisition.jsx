@@ -67,7 +67,7 @@ function AcquiredField({ reward, reduce }) {
           ))}
         </div>
         <p className="area-acquisition-condition">
-          <b>このフォイルを装備した札を王にすると、9×9で発動。</b>
+          <b>このフォイルを装備した札を王にすると、9×9で使えます。</b>
         </p>
       </div>
     </div>
