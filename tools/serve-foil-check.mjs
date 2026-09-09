@@ -31,7 +31,7 @@ function App(){
   const value=kind==='legacy'?{owned:{'elf-male':100,'pirate-male':99}}:
     kind==='near'?{owned:{'elf-male':1},acquired:{'elf-male':99},ether:80}:
     kind==='claimed'?{owned:{'elf-male':1,'elf-male:foil':1},acquired:{'elf-male':100},foilMilestones:{'elf-male':true}}:
-    {owned:Object.fromEntries(POOL.map(s=>[s.id,1])),acquired:Object.fromEntries(POOL.map(s=>[s.id,100]))};
+    {owned:{...Object.fromEntries(POOL.map(s=>[s.id,1])),'elf-male:foil':1},acquired:Object.fromEntries(POOL.map(s=>[s.id,100]))};
   await updateCollection(()=>normalize({ether:0,motion:'full',...value}));setMode('skins');
  }
  async function receiptSeed(){await updateCollection(()=>normalize({ether:10000,motion:'full',owned:{'dragon-knight:foil':1},pending:{results:[{id:'dragon-knight:foil',isNew:true}],at:Date.now()}}));setMode('skins');}
@@ -84,6 +84,7 @@ history.replaceState(null,'',location.pathname+'?test=1');
 `;
 fs.writeFileSync(path.join(root,'index.html'),`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>フォイル実装確認</title><body style="margin:0"><div id="root"></div><script>${bootstrap}</script><script>${result.outputFiles[0].text}</script></body></html>`);
 fs.symlinkSync(path.join(repo,'assets/skins'),path.join(root,'skins'));
+fs.symlinkSync(path.join(repo,'assets/fields'),path.join(root,'fields'));
 const types={'.html':'text/html; charset=utf-8','.webp':'image/webp','.png':'image/png','.json':'application/json','.mp4':'video/mp4'};
 const server=http.createServer((request,response)=>{
   const pathname=decodeURIComponent(new URL(request.url,'http://localhost').pathname);

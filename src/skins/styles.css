@@ -1978,6 +1978,22 @@
   color: #d5dcf0;
   font: 12px/1.7 sans-serif;
 }
+.skins-result-area {
+  margin: 8px 0 12px;
+  padding: 9px 8px;
+  border: 1px solid #d0b67c70;
+  border-radius: 5px;
+  background: linear-gradient(125deg, #6a512c32, #162d4038);
+  color: #f2d7a1;
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: center;
+}
+.skins-result-area small {
+  display: block;
+  font-size: 10px;
+  color: #c9c3b4;
+}
 .skins-detail-foil {
   margin: 0 0 9px 9px;
 }

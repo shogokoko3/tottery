@@ -39,6 +39,8 @@ import { CardFace } from "./cards.jsx";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
 import { AREA_BY_RANK, AREA_INFO } from "../game/areas.js";
 import { AreaPreview } from "./area-preview.jsx";
+import { AreaAcquisition } from "./area-acquisition.jsx";
+import { areaRewardName, areaRewardsFor } from "../skins/area-rewards.js";
 import { SkinFilm } from "./skin-film.jsx";
 import { ArrowLeft, Ether } from "../icons.jsx";
 import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
@@ -340,6 +342,13 @@ function SummonReveal({ results, onFinish, reduce }) {
   const seed = seedOf(results);
   const all = flipped.every(Boolean);
   const allComplete = completed.every(Boolean);
+  const hasAreaReward = areaRewardsFor(results).length > 0;
+  useEffect(() => {
+    if (!allComplete || !hasAreaReward) return;
+    // 全札の昇格・フォイル完成を見届けてから、盤面の獲得へつなぐ。
+    const timer = setTimeout(onFinish, reduce ? 0 : 400);
+    return () => clearTimeout(timer);
+  }, [allComplete, hasAreaReward, onFinish, reduce]);
   const completeAt = useCallback((i) => {
     setCompleted((c) => (c[i] ? c : c.map((v, k) => (k === i ? true : v))));
   }, []);
@@ -423,7 +432,7 @@ function SummonReveal({ results, onFinish, reduce }) {
               すべてめくる
             </button>
           )}
-          {allComplete && (
+          {allComplete && !hasAreaReward && (
             <button className="skin-btn skin-btn-gold" onClick={onFinish}>
               結果へ →
             </button>
@@ -892,6 +901,8 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       : "召喚結果";
   const results =
     collection.pending?.results || (craftResult ? [craftResult] : null);
+  const areaRewards = areaRewardsFor(results || []);
+  const finishAcquisition = useCallback(() => setAcquisitionMode("area"), []);
   const magicianLocked = isBattlePassLocked(
     byId("genie-magician"),
     collection.owned,
@@ -919,7 +930,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     // A screen restored from storage starts with null and never replays this change.
     setAcquisitionMode(
       reduce || collection.motion !== "full"
-        ? null
+        ? "area"
         : kind === "summon"
           ? "summon"
           : "foil",
@@ -1368,7 +1379,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         (acquisitionMode === "summon" && collection.pending ? (
           <SummonReveal
             results={collection.pending.results}
-            onFinish={() => setAcquisitionMode(null)}
+            onFinish={finishAcquisition}
             reduce={reduce || collection.motion !== "full"}
           />
         ) : acquisitionMode === "foil" &&
@@ -1376,8 +1387,14 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           byId(craftResult.id).foil ? (
           <CraftedFoilReveal
             result={craftResult}
-            onFinish={() => setAcquisitionMode(null)}
+            onFinish={finishAcquisition}
             reduce={reduce || collection.motion !== "full"}
+          />
+        ) : acquisitionMode === "area" && areaRewards.length > 0 ? (
+          <AreaAcquisition
+            rewards={areaRewards}
+            reduce={reduce || collection.motion !== "full"}
+            onFinish={() => setAcquisitionMode(null)}
           />
         ) : (
           <SkinModal
@@ -1427,6 +1444,9 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             >
               {results.map((result, index) => {
                 const s = byId(result.id);
+                const areaReward = areaRewards.find((r) =>
+                  r.skins.some((skin) => skin.id === s.id),
+                );
                 return (
                   <article
                     key={index}
@@ -1449,6 +1469,12 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                       </span>
                     </div>
                     <strong>{s.name}</strong>
+                    {areaReward && (
+                      <p className="skins-result-area">
+                        <b>✦ 効果盤面「{areaRewardName(areaReward)}」も獲得</b>
+                        <small>装備した札を王にすると9×9で発動</small>
+                      </p>
+                    )}
                     <button
                       className="skin-btn"
                       disabled={working || collection.equipped[s.rank] === s.id}
