@@ -1,4 +1,4 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/skylab/arealab/showform ほか。HUNT=1 で王の特定後の詰め探索)。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3/skylab/arealab/showform ほか。HUNT=1 で王の特定後の詰め探索)。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
@@ -1063,6 +1063,44 @@ if (mode === "kings" || mode === "kingsfoil") {
     for (let r = lo; r <= hi; r++) console.log("  " + [...Array(9)].map((_, c) => (grid[`${r},${c}`] || ".").padStart(4)).join(""));
   }
   process.exit(0);
+} else if (mode === "matrix3") {
+  // 最終の総当たり: 各エリアが自分の得意な指し方・駒選び・布陣を使う(全員に王の特定後の詰め探索つき)
+  const groups = { earth: ["2", "3"], sea: ["4", "5"], forest: ["6", "7"], ice: ["8", "9"], sky: ["10"], palace: ["J", "Q", "K"] };
+  const BLOCK = (r, c) => ({ J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 3, 10: 5, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c);
+  const PRI = {
+    earth: (k) => (r, c) => (r === k ? 10 : { J: 8, Q: 8, 10: 7, 4: 5, 8: 5, 2: 4, 3: 4, 5: 3, 9: 3, A: c.A ? 0 : 2, 6: 2, 7: 2 }[r] ?? 0) - dup(r, c) + (r === k ? 0.65 * (c[r] || 0) : 0),
+    forest: () => (r, c) => ({ J: 8, Q: 8, 10: 8, 4: 6, 2: 6, 8: 5, 3: 4, 5: 4, 9: 3, A: c.A ? 0 : 2, 6: 2, 7: 2 }[r] ?? 0) - dup(r, c),
+    ice: () => (r, c) => ({ J: 8, Q: 8, 4: 7, 2: 7, 8: 5, 3: 4, 5: 4, 10: 4, 9: 3, A: c.A ? 0 : 2, 6: 2, 7: 2 }[r] ?? 0) - dup(r, c),
+    sky: () => (r, c) => ({ 10: 9, J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 2, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c),
+    sea: () => BLOCK, palace: () => BLOCK,
+  };
+  const midK = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo + 1 : hi - 1, col: 4 }); };
+  const mk = (type, k) => {
+    const base = { king: k, foil: "king", ...prioritySide(k, PRI[type](k)) };
+    if (type === "earth") return { ...base, act: withKingHunt(earthAct()), arrange: midK };
+    if (type === "forest") return { ...base, act: withKingHunt(skyAct({ advance: 1.4, candidateBonus: 120, unknownBonus: 3, burstMin: 99 })), arrange: fortressArrange };
+    if (type === "ice") return { ...base, act: withKingHunt(iceAct()), arrange: fortressArrange };
+    if (type === "sky") return { ...base, act: withKingHunt(skyAdaptiveAct()), arrange: fortressArrange };
+    if (type === "sea") return { ...base, act: withKingHunt(skyAct()) };
+    return { ...base, act: withKingHunt(fortAct()), arrange: fortressArrange };
+  };
+  const types = Object.keys(groups);
+  let pairs = types.flatMap((t, i) => types.slice(i + 1).map((u) => [t, u]));
+  if (process.env.PAIR_RANGE) { const [a, b] = process.env.PAIR_RANGE.split("-").map(Number); pairs = pairs.slice(a, b); }
+  pairs.forEach(([a, b]) => {
+    const i = types.indexOf(a) * 6 + types.indexOf(b);
+    const seedBase = 251260910 + i * 1000003;
+    for (let n = 0; n < SEEDS; n++) {
+      const ka = groups[a][n % groups[a].length];
+      const kb = groups[b][Math.floor(n / groups[a].length) % groups[b].length];
+      const sides = [mk(a, ka), mk(b, kb)];
+      let seed = seedBase + n * 7919, base;
+      for (let attempt = 0; attempt < 200; attempt++) { try { base = setup(seed, sides); break; } catch (e) { if (!/hand|setup/.test(String(e.message))) throw e; seed += 15485863; } }
+      const kings = [0, 1].map((i) => kingRankOf(base.s, i));
+      for (const first of [0, 1]) rows.push({ label: `${a} vs ${b}`, seed, first, kings, counts: [0, 1].map((i) => base.s.players[i].armyRankCounts), straight: [false, false], flush: [false, false], ...play(base.s, first, seed + first * 104729, sides) });
+    }
+    console.error(`${a}/${b} done ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+  });
 } else if (mode === "mirror") {
   // 先手の値打ち: 自由同士・フォイル無し
   rows.push(...runPair("free-vs-free", [free(), free()], 50260910));
