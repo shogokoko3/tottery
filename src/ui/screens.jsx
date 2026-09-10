@@ -532,6 +532,7 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize }) {
           let s = d;
           (deleteLobbyPath(`/${d}`),
             onRoomReady({
+              random: !0,
               code: s,
               createdAt: g.data.createdAt,
               myPlayerIndex: 0,
@@ -670,6 +671,7 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize }) {
             }
             claimed.current = null;
             onRoomReady({
+              random: !0,
               code: z,
               createdAt: b.data?.createdAt,
               myPlayerIndex: 1,
@@ -1238,6 +1240,14 @@ function TotteryScreens() {
   function s() {
     (u(null), m(!1), setTut(null), t("home"));
   }
+  // 対局後の「戻る」。オンラインとCPU戦は、初期画面まで戻さず「対戦相手を選ぶ」へ
+  function backToMatching() {
+    (u(null), m(!1), setTut(null), t("matching"));
+  }
+  // 連戦。同じ盤の大きさのまま、次の相手を探しに行く(RandomMatchScreen は開くと同時に探し始める)
+  function nextRandomMatch() {
+    (u(null), m(!1), setTut(null), setRound(0), t("online"));
+  }
   function startTutorial(chosen) {
     (u(null), setTut(chosen), m(!0), r("game"), t("game"));
     window.scrollTo(0, 0);
@@ -1326,7 +1336,9 @@ function TotteryScreens() {
               nextTutorial ? () => startTutorial(nextTutorial) : null
             }
             onTutorialList={showTutorials}
-            onExit={s}
+            onExit={tut ? s : backToMatching}
+            exitLabel={tut ? "タイトルに戻る" : "対戦相手を選ぶに戻る"}
+            onNextMatch={a && a.random ? nextRandomMatch : null}
           />
         </AppearanceSeats>
       </SeatsProvider>

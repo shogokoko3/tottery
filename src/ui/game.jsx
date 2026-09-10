@@ -58,6 +58,7 @@ import {
   Crown,
   Dice,
   Flag,
+  Globe,
   Info,
   RotateCcw,
   Shuffle,
@@ -416,6 +417,8 @@ export function GameView({
   viewer,
   dispatch,
   onExit,
+  exitLabel = "タイトルに戻る",
+  onNextMatch,
   tutorial,
   nextTutorial,
   onNextTutorial,
@@ -949,6 +952,12 @@ export function GameView({
               チュートリアル一覧へ
             </button>
           )}
+          {/* ランダムマッチは、同じ相手との再戦を待たずに次の相手を探せる(連戦) */}
+          {onNextMatch && (
+            <button className="btn btn-primary" onClick={onNextMatch}>
+              <Globe size={16} /> 次の相手と対戦する
+            </button>
+          )}
           {tutorial ? null : rematch ? (
             // オンラインは両者の合意で始める。片方だけで盤を作り直すと、
             // 相手は準備ができていないまま次の対局に入ってしまう
@@ -981,7 +990,7 @@ export function GameView({
           )}
           {onExit && (
             <button className="btn btn-ghost" onClick={onExit}>
-              タイトルに戻る
+              {exitLabel}
             </button>
           )}
         </div>
@@ -1004,6 +1013,10 @@ function foeWait(state, act, playMs) {
 
 export function GameCore({
   onExit,
+  // 対局後の「戻る」の行き先の名前。対戦相手を選ぶ画面へ戻すときはその旨を書く
+  exitLabel,
+  // ランダムマッチで、同じ相手を待たずに次の相手を探す(連戦)。無ければ出さない
+  onNextMatch,
   network,
   boardSize,
   cpu,
@@ -1553,6 +1566,13 @@ export function GameCore({
       if (network && p === 0 && saved) deleteRoom(network.code);
     });
     onExit();
+  }
+  /** 連戦。部屋の片付けは抜けるときと同じで、その足で次の相手を探しに行く */
+  function nextMatch() {
+    seasonResult.submit().then((saved) => {
+      if (network && p === 0 && saved) deleteRoom(network.code);
+    });
+    onNextMatch();
   }
 
   // 取る手は必ず一度確認する
@@ -2989,6 +3009,8 @@ export function GameCore({
             viewer={P}
             dispatch={y}
             onExit={leaveGame}
+            exitLabel={exitLabel}
+            onNextMatch={network && onNextMatch ? nextMatch : null}
             tutorial={tutorial}
             nextTutorial={nextTutorial}
             onNextTutorial={onNextTutorial}
