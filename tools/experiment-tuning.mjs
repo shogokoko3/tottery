@@ -2,10 +2,12 @@
 //   EARTH_ODDS=0.75  土の当たる確率
 //   SEA_PULLS_OWN=0  海で自分の駒を流さない
 //   ICE_KING=1       氷で相手の王も凍らせる
+//   FREEZE_DEATH=4   凍ったまま4手番迎えた駒は倒れる(凍結死)
 // 画面のコードはこのファイルを読まないので、配信物には影響しない。
 const tuning = {};
 if (process.env.EARTH_ODDS) tuning.earthOdds = Number(process.env.EARTH_ODDS);
 if (process.env.SEA_PULLS_OWN)
   tuning.seaPullsOwn = process.env.SEA_PULLS_OWN === "1";
 if (process.env.ICE_KING) tuning.iceFreezesKing = process.env.ICE_KING === "1";
+if (process.env.FREEZE_DEATH) tuning.freezeDeathTurns = Number(process.env.FREEZE_DEATH);
 if (Object.keys(tuning).length) globalThis.TOTTERY_AREA_TUNING = tuning;

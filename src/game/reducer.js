@@ -19,6 +19,7 @@ import {
   sanitizeLoadouts,
   thaw,
   useArea,
+  AREA_TUNING,
 } from "./areas.js";
 export { CLOCK_INITIAL_MS, CLOCK_INCREMENT_MS } from "./clock.js";
 import {
@@ -718,16 +719,62 @@ export function endAction(state, pieceId) {
 
 export function endTurn(state) {
   const next = 1 - state.currentTurn;
-  return loseIfFrozen({
-    ...state,
-    currentTurn: next,
-    turnNo: (state.turnNo || 0) + 1,
-    selectedId: null,
-    shuffleMode: null,
-    extraMoveFor: null,
-    extraUsed: false,
-    interstitial: { forPlayer: next, kind: "turn" },
-  });
+  return loseIfFrozen(
+    freezeDeaths({
+      ...state,
+      currentTurn: next,
+      turnNo: (state.turnNo || 0) + 1,
+      selectedId: null,
+      shuffleMode: null,
+      extraMoveFor: null,
+      extraUsed: false,
+      interstitial: { forPlayer: next, kind: "turn" },
+    }),
+  );
+}
+
+/**
+ * 凍結死(検証用。AREA_TUNING.freezeDeathTurns が 0 なら何もしない)。
+ * 手番が回ってきた側の駒のうち、凍ったまま迎えた手番の回数が上限に達した駒は倒れる。
+ * 氷が解けた駒は数え直す。倒したのは氷の側だが、討った駒は無い(包囲と同じ扱いで名乗らず、道連れも起きない)
+ */
+function freezeDeaths(state) {
+  const limit = AREA_TUNING.freezeDeathTurns;
+  if (!limit || !state.areasEnabled || state.winner != null) return state;
+  const player = state.currentTurn;
+  let next = state;
+  const pieces = { ...state.pieces };
+  let changed = false;
+  for (const p of Object.values(state.pieces)) {
+    if (!p.alive || p.owner !== player) continue;
+    if (isFrozen(state, p)) {
+      pieces[p.id] = { ...p, frozenTurns: (p.frozenTurns || 0) + 1 };
+      changed = true;
+    } else if (p.frozenTurns) {
+      const { frozenTurns, ...rest } = p;
+      pieces[p.id] = rest;
+      changed = true;
+    }
+  }
+  if (!changed) return state;
+  const board = state.board.map((r) => [...r]);
+  for (const p of Object.values(pieces))
+    if (p.alive && board[p.row][p.col]?.id === p.id) board[p.row][p.col] = p;
+  next = { ...state, pieces, board };
+  for (const p of Object.values(pieces)) {
+    if (!p.alive || p.owner !== player || (p.frozenTurns || 0) < limit) continue;
+    if (!next.pieces[p.id]?.alive) continue;
+    next = {
+      ...next,
+      log: [
+        ...next.log,
+        `${PLAYER_META[player].name}の${p.rank}${SUIT_SYMBOL[p.suit]}は凍りついたまま倒れた(凍結死)`,
+      ],
+    };
+    next = removePiece(next, p.id, { by: null, viaCounter: true });
+    if (next.winner != null) return { ...next, phase: "gameover" };
+  }
+  return next;
 }
 
 /* =========================================================================
