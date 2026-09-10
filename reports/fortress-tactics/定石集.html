@@ -1,0 +1,807 @@
+<title>トッタリー 9×9 定石集</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#f6f1e6;--paper:#fffdf7;--ink:#1d2540;--muted:#5d6478;--line:#d8cfb8;--gold:#b8892f;--gold-soft:#e6cf95;--navy:#132247;--red:#c1543a;--sq-own:#f3e4dc;--sq-own2:#ead3c8;--sq-foe:#e2eaf2;--sq-foe2:#d3dfea;--sq-mid:#fbf6ea;--sq-mid2:#f1e8d3;--frame:#8a7350;--pc:#c1543a;--pc-edge:#7a2f1f;--king:#d9a441;--king-edge:#a0741a;--warn-bg:#fbeee6;
+--earth:#8a5a2b;--sea:#2f6f8f;--forest:#2f6b3a;--ice:#3e8e90;--sky:#4a6fb5;--palace:#7a4a9a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0e1626;--paper:#151f33;--ink:#ecebe3;--muted:#a7adbf;--line:#2c3a55;--gold:#d9b25c;--gold-soft:#6a5624;--navy:#0b1426;--warn-bg:#2a2230;--frame:#6f5f43}}
+:root[data-theme="dark"]{--bg:#0e1626;--paper:#151f33;--ink:#ecebe3;--muted:#a7adbf;--line:#2c3a55;--gold:#d9b25c;--gold-soft:#6a5624;--navy:#0b1426;--warn-bg:#2a2230;--frame:#6f5f43}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Sans JP",system-ui,sans-serif;font-size:15px;line-height:1.75;margin:0}
+.wrap{max-width:1040px;margin:0 auto;padding:32px 20px 72px}
+h1,h2,h3{font-family:"Shippori Mincho","Hiragino Mincho ProN",serif;text-wrap:balance;margin:0}
+h1{font-size:34px;font-weight:700;letter-spacing:.02em}
+.hero{border-bottom:2px solid var(--gold);padding-bottom:18px;margin-bottom:28px;display:flex;flex-wrap:wrap;gap:8px 28px;align-items:end}
+.hero p{margin:0;color:var(--muted);max-width:60ch}
+.eyebrow{font-size:12px;letter-spacing:.18em;color:var(--gold);text-transform:uppercase}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 30px}
+.summary a{display:block;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;text-decoration:none;color:inherit}
+.summary a:focus-visible,.summary a:hover{outline:2px solid var(--gold);outline-offset:2px}
+.summary .tag{margin-bottom:6px}
+.summary b{display:block;font-family:"Shippori Mincho",serif;font-size:17px}
+.summary small{color:var(--muted);display:block;line-height:1.5}
+.tag{display:inline-block;color:#fff;font-weight:700;font-size:13px;padding:2px 10px;border-radius:999px;letter-spacing:.08em}
+.tag-earth{background:var(--earth)}.tag-sea{background:var(--sea)}.tag-forest{background:var(--forest)}.tag-ice{background:var(--ice)}.tag-sky{background:var(--sky)}.tag-palace{background:var(--palace)}
+.area{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin:0 0 22px}
+.area-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px;margin-bottom:14px}
+.area-head h2{font-size:24px}
+.title-line{margin:0;color:var(--muted)} .title-line b{color:var(--gold);font-family:"Shippori Mincho",serif;font-size:17px}
+.area-body{display:grid;grid-template-columns:270px 1fr;gap:18px 26px;align-items:start}
+.fig{margin:0} .fig figcaption{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:8px}
+.board{width:100%;height:auto;display:block}
+.sq.own{fill:var(--sq-own)}.sq.own.alt{fill:var(--sq-own2)}.sq.foe{fill:var(--sq-foe)}.sq.foe.alt{fill:var(--sq-foe2)}.sq.mid{fill:var(--sq-mid)}.sq.mid.alt{fill:var(--sq-mid2)}
+.pc{fill:var(--pc);stroke:var(--pc-edge);stroke-width:1.5}.pc.king{fill:var(--king);stroke:var(--king-edge)}
+.pt{fill:#fff8ee;font-weight:700;font-family:"Noto Sans JP",sans-serif}.pt.king{fill:#3a2a00}
+.frame{fill:none;stroke:var(--frame);stroke-width:2}
+.text{min-width:0} .deck{margin:0 0 8px;font-size:16px} .lbl{display:inline-block;font-size:11.5px;letter-spacing:.14em;color:var(--gold);margin-right:10px;vertical-align:middle}
+.how{margin:0 0 10px;padding-left:1.3em} .how li{margin:0 0 4px}
+.warn{margin:0;background:var(--warn-bg);border-left:3px solid var(--red);padding:8px 12px;border-radius:0 8px 8px 0}
+.score{grid-column:1 / -1;border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;max-width:520px}
+.score caption{text-align:left;font-size:12.5px;color:var(--muted);padding:0 0 4px}
+.score th,.score td{padding:5px 10px;border-bottom:1px solid var(--line);text-align:left} .score td{text-align:right;font-weight:500}
+.matrix-wrap{overflow-x:auto} .matrix{border-collapse:collapse;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:600px}
+.matrix th,.matrix td{border:1px solid var(--line);padding:6px 10px;text-align:center} .matrix th{background:var(--gold-soft);color:var(--ink)}
+.note{color:var(--muted);font-size:13.5px;max-width:70ch}
+h2.sec{font-size:22px;margin:34px 0 12px;padding-left:12px;border-left:4px solid var(--gold)}
+@media (max-width:720px){.area-body{grid-template-columns:1fr}.fig{max-width:300px}}
+@media (prefers-reduced-motion:no-preference){.summary a{transition:transform .15s}.summary a:hover{transform:translateY(-2px)}}
+</style>
+<div class="wrap">
+<header class="hero">
+  <div><div class="eyebrow">Tottery 9×9 · Rule v11 · 2026-09-11</div><h1>トッタリー 9×9 定石集</h1></div>
+  <p>6つの盤面エリアそれぞれの「王・駒選び・布陣・指し方」を、ゲーム本体の判定を使ったCPU同士の実測（約20万局）から決めたもの。数字はCPU同士の得点率で、人間同士の勝率ではない。</p>
+</header>
+
+<nav class="summary" aria-label="エリア一覧">
+  <a href="#palace"><span class="tag tag-palace">宮殿</span><b>昇格の砦</b><small>K＋J・Q＋10×3＋9＋4・2 ／ 通常配置</small></a>
+  <a href="#sea"><span class="tag tag-sea">海</span><b>道連れの特攻</b><small>4×4＋J・J・Q・Q＋10 ／ 通常配置（同数字3枚以上のとき）</small></a>
+  <a href="#forest"><span class="tag tag-forest">森</span><b>消去法の詰め</b><small>6＋J・J・Q・Q＋10・10＋4・2 ／ 隅3×3</small></a>
+  <a href="#earth"><span class="tag tag-earth">土</span><b>継承の狩り</b><small>2×4＋J・J・Q・Q＋10 ／ 王は中列</small></a>
+  <a href="#sky"><span class="tag tag-sky">空</span><b>隅から進軍</b><small>10＋J・J・Q・Q＋4・2・8・8 ／ 隅3×3</small></a>
+  <a href="#ice"><span class="tag tag-ice">氷</span><b>隅の要塞</b><small>8＋J・J・Q・Q＋4・4・2・2 ／ 隅3×3</small></a>
+</nav>
+
+<h2 class="sec">共通の決まり</h2>
+<ul class="note">
+  <li>J・Qを2枚ずつ（遠くから取り返す）、隣を守れる 2・4・8（縦横1マス先）と 3・5・Q（斜め）。6・7（偶数歩）と A は隣を守れないので入れない</li>
+  <li>布陣は寄せる。散らすと取られる駒が2〜3割増える。布陣の時点で全駒が取り返せても、対局中に実際に取り返せるのは3〜4割</li>
+  <li>王が割れたら詰め探索: 即取り → 必至（相手がどう応じても次の手で取れる手）→ 両狙い（王を狙う駒を2体以上）→ 接近</li>
+  <li>6〜9の王は同じ線上の相手を偶数（奇数）マスだけまとめて取り、間の駒を飛び越える。相手がその帯なら、王を一直線の列に置かない</li>
+  <li>王を晒さない指し方同士は3〜7割が160手番で未決着になる。実戦では持ち時間が決め手</li>
+</ul>
+
+
+<section class="area" id="palace">
+  <header class="area-head">
+    <span class="tag tag-palace">宮殿</span>
+    <h2>昇格の砦</h2>
+    <p class="title-line">称号 <b>（称号は検討中）</b></p>
+  </header>
+  <div class="area-body">
+    <figure class="fig">
+      <svg class="board" viewBox="0 0 270 270" role="img" aria-label="布陣図">
+<rect class="sq foe" x="0" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="0" width="30" height="30"/>
+<rect class="sq foe" x="60" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="0" width="30" height="30"/>
+<rect class="sq foe" x="120" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="0" width="30" height="30"/>
+<rect class="sq foe" x="180" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="0" width="30" height="30"/>
+<rect class="sq foe" x="240" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="0" y="30" width="30" height="30"/>
+<rect class="sq foe" x="30" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="60" y="30" width="30" height="30"/>
+<rect class="sq foe" x="90" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="120" y="30" width="30" height="30"/>
+<rect class="sq foe" x="150" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="180" y="30" width="30" height="30"/>
+<rect class="sq foe" x="210" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="240" y="30" width="30" height="30"/>
+<rect class="sq foe" x="0" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="60" width="30" height="30"/>
+<rect class="sq foe" x="60" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="60" width="30" height="30"/>
+<rect class="sq foe" x="120" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="60" width="30" height="30"/>
+<rect class="sq foe" x="180" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="60" width="30" height="30"/>
+<rect class="sq foe" x="240" y="60" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="90" width="30" height="30"/>
+<rect class="sq mid" x="30" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="90" width="30" height="30"/>
+<rect class="sq mid" x="90" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="90" width="30" height="30"/>
+<rect class="sq mid" x="150" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="90" width="30" height="30"/>
+<rect class="sq mid" x="210" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="90" width="30" height="30"/>
+<rect class="sq mid" x="0" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="30" y="120" width="30" height="30"/>
+<rect class="sq mid" x="60" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="90" y="120" width="30" height="30"/>
+<rect class="sq mid" x="120" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="150" y="120" width="30" height="30"/>
+<rect class="sq mid" x="180" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="210" y="120" width="30" height="30"/>
+<rect class="sq mid" x="240" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="150" width="30" height="30"/>
+<rect class="sq mid" x="30" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="150" width="30" height="30"/>
+<rect class="sq mid" x="90" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="150" width="30" height="30"/>
+<rect class="sq mid" x="150" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="150" width="30" height="30"/>
+<rect class="sq mid" x="210" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="150" width="30" height="30"/>
+<rect class="sq own" x="0" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="180" width="30" height="30"/>
+<rect class="sq own" x="60" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="180" width="30" height="30"/>
+<rect class="sq own" x="120" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="180" width="30" height="30"/>
+<rect class="sq own" x="180" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="180" width="30" height="30"/>
+<rect class="sq own" x="240" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="0" y="210" width="30" height="30"/>
+<rect class="sq own" x="30" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="60" y="210" width="30" height="30"/>
+<rect class="sq own" x="90" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="120" y="210" width="30" height="30"/>
+<rect class="sq own" x="150" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="180" y="210" width="30" height="30"/>
+<rect class="sq own" x="210" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="240" y="210" width="30" height="30"/>
+<rect class="sq own" x="0" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="240" width="30" height="30"/>
+<rect class="sq own" x="60" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="240" width="30" height="30"/>
+<rect class="sq own" x="120" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="240" width="30" height="30"/>
+<rect class="sq own" x="180" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="240" width="30" height="30"/>
+<rect class="sq own" x="240" y="240" width="30" height="30"/>
+<rect class="pc king" x="182" y="242" width="26" height="26" rx="5"/>
+<text class="pt king" x="195.0" y="260.0" text-anchor="middle" font-size="15">K</text>
+<rect class="pc " x="62" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="200.0" text-anchor="middle" font-size="15">J</text>
+<rect class="pc " x="182" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="195.0" y="200.0" text-anchor="middle" font-size="15">Q</text>
+<rect class="pc " x="122" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="135.0" y="230.0" text-anchor="middle" font-size="12">10</text>
+<rect class="pc " x="152" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="165.0" y="200.0" text-anchor="middle" font-size="12">10</text>
+<rect class="pc " x="212" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="225.0" y="230.0" text-anchor="middle" font-size="12">10</text>
+<rect class="pc " x="152" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="165.0" y="230.0" text-anchor="middle" font-size="15">9</text>
+<rect class="pc " x="62" y="242" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="260.0" text-anchor="middle" font-size="15">4</text>
+<rect class="pc " x="32" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="45.0" y="200.0" text-anchor="middle" font-size="15">2</text>
+<rect class="frame" x="0" y="0" width="270" height="270"/>
+</svg>
+      <figcaption>通常配置。王は後列、9と10が守る。自分が下側、金が王。左右対称も同じ</figcaption>
+    </figure>
+    <div class="text">
+      <p class="deck"><span class="lbl">駒選び</span>K王＋J・Q＋10・10・10＋9＋4・2</p>
+      <ol class="how"><li>毎手番1体を昇格。順は 10→J（予備札の対象になる）→Q→K。1試合に1回の2段階は序盤に 10→Q で使う</li><li>取られそうな駒は J か Q に上げてから取らせる。倒れれば予備札に変わる</li><li>育てるあいだは要塞の手の選び方で守り、王は動かさない。王以外の Q・K が3体そろったら進軍、王が割れたら詰め探索</li></ol>
+      <p class="warn"><span class="lbl">注意</span>隅の要塞に組んではいけない。6〜9の王は同じ線上の相手を偶数（奇数）マスだけまとめて取り、間の駒を飛び越えるので、隅の縦一列は王ごと刈られる（森に 45）。通常配置なら森に 90〜100</p>
+    </div>
+    <table class="score"><caption>得点率（未決着は0.5、各200〜600局）</caption><tbody><tr><th scope="row">通常CPU</th><td>89</td></tr><tr><th scope="row">進軍型の空</th><td>72</td></tr><tr><th scope="row">氷の要塞</th><td>74</td></tr><tr><th scope="row">海の特攻</th><td>71</td></tr><tr><th scope="row">森の詰め</th><td>90</td></tr></tbody></table>
+  </div>
+</section>
+<section class="area" id="sea">
+  <header class="area-head">
+    <span class="tag tag-sea">海</span>
+    <h2>道連れの特攻</h2>
+    <p class="title-line">称号 <b>荒波の航海士</b></p>
+  </header>
+  <div class="area-body">
+    <figure class="fig">
+      <svg class="board" viewBox="0 0 270 270" role="img" aria-label="布陣図">
+<rect class="sq foe" x="0" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="0" width="30" height="30"/>
+<rect class="sq foe" x="60" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="0" width="30" height="30"/>
+<rect class="sq foe" x="120" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="0" width="30" height="30"/>
+<rect class="sq foe" x="180" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="0" width="30" height="30"/>
+<rect class="sq foe" x="240" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="0" y="30" width="30" height="30"/>
+<rect class="sq foe" x="30" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="60" y="30" width="30" height="30"/>
+<rect class="sq foe" x="90" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="120" y="30" width="30" height="30"/>
+<rect class="sq foe" x="150" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="180" y="30" width="30" height="30"/>
+<rect class="sq foe" x="210" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="240" y="30" width="30" height="30"/>
+<rect class="sq foe" x="0" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="60" width="30" height="30"/>
+<rect class="sq foe" x="60" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="60" width="30" height="30"/>
+<rect class="sq foe" x="120" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="60" width="30" height="30"/>
+<rect class="sq foe" x="180" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="60" width="30" height="30"/>
+<rect class="sq foe" x="240" y="60" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="90" width="30" height="30"/>
+<rect class="sq mid" x="30" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="90" width="30" height="30"/>
+<rect class="sq mid" x="90" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="90" width="30" height="30"/>
+<rect class="sq mid" x="150" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="90" width="30" height="30"/>
+<rect class="sq mid" x="210" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="90" width="30" height="30"/>
+<rect class="sq mid" x="0" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="30" y="120" width="30" height="30"/>
+<rect class="sq mid" x="60" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="90" y="120" width="30" height="30"/>
+<rect class="sq mid" x="120" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="150" y="120" width="30" height="30"/>
+<rect class="sq mid" x="180" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="210" y="120" width="30" height="30"/>
+<rect class="sq mid" x="240" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="150" width="30" height="30"/>
+<rect class="sq mid" x="30" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="150" width="30" height="30"/>
+<rect class="sq mid" x="90" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="150" width="30" height="30"/>
+<rect class="sq mid" x="150" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="150" width="30" height="30"/>
+<rect class="sq mid" x="210" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="150" width="30" height="30"/>
+<rect class="sq own" x="0" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="180" width="30" height="30"/>
+<rect class="sq own" x="60" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="180" width="30" height="30"/>
+<rect class="sq own" x="120" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="180" width="30" height="30"/>
+<rect class="sq own" x="180" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="180" width="30" height="30"/>
+<rect class="sq own" x="240" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="0" y="210" width="30" height="30"/>
+<rect class="sq own" x="30" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="60" y="210" width="30" height="30"/>
+<rect class="sq own" x="90" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="120" y="210" width="30" height="30"/>
+<rect class="sq own" x="150" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="180" y="210" width="30" height="30"/>
+<rect class="sq own" x="210" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="240" y="210" width="30" height="30"/>
+<rect class="sq own" x="0" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="240" width="30" height="30"/>
+<rect class="sq own" x="60" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="240" width="30" height="30"/>
+<rect class="sq own" x="120" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="240" width="30" height="30"/>
+<rect class="sq own" x="180" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="240" width="30" height="30"/>
+<rect class="sq own" x="240" y="240" width="30" height="30"/>
+<rect class="pc king" x="92" y="242" width="26" height="26" rx="5"/>
+<text class="pt king" x="105.0" y="260.0" text-anchor="middle" font-size="15">4</text>
+<rect class="pc " x="122" y="242" width="26" height="26" rx="5"/>
+<text class="pt " x="135.0" y="260.0" text-anchor="middle" font-size="15">4</text>
+<rect class="pc " x="122" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="135.0" y="230.0" text-anchor="middle" font-size="15">4</text>
+<rect class="pc " x="122" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="135.0" y="200.0" text-anchor="middle" font-size="15">4</text>
+<rect class="pc " x="92" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="105.0" y="200.0" text-anchor="middle" font-size="15">J</text>
+<rect class="pc " x="92" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="105.0" y="230.0" text-anchor="middle" font-size="15">J</text>
+<rect class="pc " x="32" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="45.0" y="230.0" text-anchor="middle" font-size="15">Q</text>
+<rect class="pc " x="2" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="15.0" y="200.0" text-anchor="middle" font-size="15">Q</text>
+<rect class="pc " x="62" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="230.0" text-anchor="middle" font-size="12">10</text>
+<rect class="frame" x="0" y="0" width="270" height="270"/>
+</svg>
+      <figcaption>通常配置。仲間の4が縦に並び、王は後列で J・Q と4が守る。自分が下側、金が王。左右対称も同じ</figcaption>
+    </figure>
+    <div class="text">
+      <p class="deck"><span class="lbl">駒選び</span>4王＋4・4・4＋J・J・Q・Q＋10</p>
+      <ol class="how"><li>仲間の4は採用4枚で射程が 2＋8＝10。取られても道連れなので、自分の危険は軽く見て、取れる駒と次に取れる升へ突っ込む</li><li>王は動かさない。J・Q は仲間の突撃で空いた線から取り返す</li><li>海は「引き寄せた後の局面が良くなるとき」だけ発動。毎手番必ず発動すると寄せた相手の攻め手が王に近づき、進軍型の空に 31 まで落ちる</li></ol>
+      <p class="warn"><span class="lbl">注意</span>強さは同じ数字の枚数で決まる（4枚 99・3枚 88・2枚 78・1枚 22、対進軍型の空）。配られた札では平均1.7〜2.1枚なので、4か5が3枚以上そろったときだけ選ぶ</p>
+    </div>
+    <table class="score"><caption>得点率（未決着は0.5、各200〜600局）</caption><tbody><tr><th scope="row">通常CPU</th><td>99</td></tr><tr><th scope="row">氷の要塞</th><td>88</td></tr><tr><th scope="row">進軍型の空</th><td>99</td></tr><tr><th scope="row">宮殿の要塞</th><td>71</td></tr></tbody></table>
+  </div>
+</section>
+<section class="area" id="forest">
+  <header class="area-head">
+    <span class="tag tag-forest">森</span>
+    <h2>消去法の詰め</h2>
+    <p class="title-line">称号 <b>静寂な狩人</b></p>
+  </header>
+  <div class="area-body">
+    <figure class="fig">
+      <svg class="board" viewBox="0 0 270 270" role="img" aria-label="布陣図">
+<rect class="sq foe" x="0" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="0" width="30" height="30"/>
+<rect class="sq foe" x="60" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="0" width="30" height="30"/>
+<rect class="sq foe" x="120" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="0" width="30" height="30"/>
+<rect class="sq foe" x="180" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="0" width="30" height="30"/>
+<rect class="sq foe" x="240" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="0" y="30" width="30" height="30"/>
+<rect class="sq foe" x="30" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="60" y="30" width="30" height="30"/>
+<rect class="sq foe" x="90" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="120" y="30" width="30" height="30"/>
+<rect class="sq foe" x="150" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="180" y="30" width="30" height="30"/>
+<rect class="sq foe" x="210" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="240" y="30" width="30" height="30"/>
+<rect class="sq foe" x="0" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="60" width="30" height="30"/>
+<rect class="sq foe" x="60" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="60" width="30" height="30"/>
+<rect class="sq foe" x="120" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="60" width="30" height="30"/>
+<rect class="sq foe" x="180" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="60" width="30" height="30"/>
+<rect class="sq foe" x="240" y="60" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="90" width="30" height="30"/>
+<rect class="sq mid" x="30" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="90" width="30" height="30"/>
+<rect class="sq mid" x="90" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="90" width="30" height="30"/>
+<rect class="sq mid" x="150" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="90" width="30" height="30"/>
+<rect class="sq mid" x="210" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="90" width="30" height="30"/>
+<rect class="sq mid" x="0" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="30" y="120" width="30" height="30"/>
+<rect class="sq mid" x="60" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="90" y="120" width="30" height="30"/>
+<rect class="sq mid" x="120" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="150" y="120" width="30" height="30"/>
+<rect class="sq mid" x="180" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="210" y="120" width="30" height="30"/>
+<rect class="sq mid" x="240" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="150" width="30" height="30"/>
+<rect class="sq mid" x="30" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="150" width="30" height="30"/>
+<rect class="sq mid" x="90" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="150" width="30" height="30"/>
+<rect class="sq mid" x="150" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="150" width="30" height="30"/>
+<rect class="sq mid" x="210" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="150" width="30" height="30"/>
+<rect class="sq own" x="0" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="180" width="30" height="30"/>
+<rect class="sq own" x="60" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="180" width="30" height="30"/>
+<rect class="sq own" x="120" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="180" width="30" height="30"/>
+<rect class="sq own" x="180" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="180" width="30" height="30"/>
+<rect class="sq own" x="240" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="0" y="210" width="30" height="30"/>
+<rect class="sq own" x="30" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="60" y="210" width="30" height="30"/>
+<rect class="sq own" x="90" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="120" y="210" width="30" height="30"/>
+<rect class="sq own" x="150" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="180" y="210" width="30" height="30"/>
+<rect class="sq own" x="210" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="240" y="210" width="30" height="30"/>
+<rect class="sq own" x="0" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="240" width="30" height="30"/>
+<rect class="sq own" x="60" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="240" width="30" height="30"/>
+<rect class="sq own" x="120" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="240" width="30" height="30"/>
+<rect class="sq own" x="180" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="240" width="30" height="30"/>
+<rect class="sq own" x="240" y="240" width="30" height="30"/>
+<rect class="pc king" x="2" y="242" width="26" height="26" rx="5"/>
+<text class="pt king" x="15.0" y="260.0" text-anchor="middle" font-size="15">6</text>
+<rect class="pc " x="62" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="230.0" text-anchor="middle" font-size="15">J</text>
+<rect class="pc " x="62" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="200.0" text-anchor="middle" font-size="15">J</text>
+<rect class="pc " x="32" y="242" width="26" height="26" rx="5"/>
+<text class="pt " x="45.0" y="260.0" text-anchor="middle" font-size="15">Q</text>
+<rect class="pc " x="2" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="15.0" y="200.0" text-anchor="middle" font-size="15">Q</text>
+<rect class="pc " x="62" y="242" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="260.0" text-anchor="middle" font-size="12">10</text>
+<rect class="pc " x="32" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="45.0" y="200.0" text-anchor="middle" font-size="12">10</text>
+<rect class="pc " x="2" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="15.0" y="230.0" text-anchor="middle" font-size="15">4</text>
+<rect class="pc " x="32" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="45.0" y="230.0" text-anchor="middle" font-size="15">2</text>
+<rect class="frame" x="0" y="0" width="270" height="270"/>
+</svg>
+      <figcaption>自陣の隅 3×3。前列 Q 10 J、中列 4 2 J、後列 王の6 Q 10。自分が下側、金が王。左右対称も同じ</figcaption>
+    </figure>
+    <div class="text">
+      <p class="deck"><span class="lbl">駒選び</span>6王＋J・J・Q・Q＋10・10＋4・2</p>
+      <ol class="how"><li>毎手番、王以外が2体ずつ自動で割れる。4回で8体が割れ、残った1体が王。この間は隅の形を崩さず、安全に取れる正体不明の駒だけ取る</li><li>王が確定（6〜7手番）したら詰め探索へ。即取り→必至（どう応じても次で取れる手）→両狙い→接近</li><li>10は駒を飛び越えるので要塞の王にも届く。10×2と J・Q で両狙いを作り、一方を受けられたらもう一方で取る</li></ol>
+      <p class="warn"><span class="lbl">注意</span>中央に組むと氷の要塞に 50 まで落ちる。散らさない。王が確定する前に駒を削られると詰めの駒が足りなくなる</p>
+    </div>
+    <table class="score"><caption>得点率（未決着は0.5、各200〜600局）</caption><tbody><tr><th scope="row">通常CPU</th><td>83</td></tr><tr><th scope="row">氷の要塞</th><td>89</td></tr><tr><th scope="row">進軍型の空</th><td>47</td></tr><tr><th scope="row">宮殿の要塞</th><td>70</td></tr></tbody></table>
+  </div>
+</section>
+<section class="area" id="earth">
+  <header class="area-head">
+    <span class="tag tag-earth">土</span>
+    <h2>継承の狩り</h2>
+    <p class="title-line">称号 <b>軌跡の追跡者</b></p>
+  </header>
+  <div class="area-body">
+    <figure class="fig">
+      <svg class="board" viewBox="0 0 270 270" role="img" aria-label="布陣図">
+<rect class="sq foe" x="0" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="0" width="30" height="30"/>
+<rect class="sq foe" x="60" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="0" width="30" height="30"/>
+<rect class="sq foe" x="120" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="0" width="30" height="30"/>
+<rect class="sq foe" x="180" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="0" width="30" height="30"/>
+<rect class="sq foe" x="240" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="0" y="30" width="30" height="30"/>
+<rect class="sq foe" x="30" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="60" y="30" width="30" height="30"/>
+<rect class="sq foe" x="90" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="120" y="30" width="30" height="30"/>
+<rect class="sq foe" x="150" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="180" y="30" width="30" height="30"/>
+<rect class="sq foe" x="210" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="240" y="30" width="30" height="30"/>
+<rect class="sq foe" x="0" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="60" width="30" height="30"/>
+<rect class="sq foe" x="60" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="60" width="30" height="30"/>
+<rect class="sq foe" x="120" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="60" width="30" height="30"/>
+<rect class="sq foe" x="180" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="60" width="30" height="30"/>
+<rect class="sq foe" x="240" y="60" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="90" width="30" height="30"/>
+<rect class="sq mid" x="30" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="90" width="30" height="30"/>
+<rect class="sq mid" x="90" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="90" width="30" height="30"/>
+<rect class="sq mid" x="150" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="90" width="30" height="30"/>
+<rect class="sq mid" x="210" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="90" width="30" height="30"/>
+<rect class="sq mid" x="0" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="30" y="120" width="30" height="30"/>
+<rect class="sq mid" x="60" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="90" y="120" width="30" height="30"/>
+<rect class="sq mid" x="120" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="150" y="120" width="30" height="30"/>
+<rect class="sq mid" x="180" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="210" y="120" width="30" height="30"/>
+<rect class="sq mid" x="240" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="150" width="30" height="30"/>
+<rect class="sq mid" x="30" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="150" width="30" height="30"/>
+<rect class="sq mid" x="90" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="150" width="30" height="30"/>
+<rect class="sq mid" x="150" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="150" width="30" height="30"/>
+<rect class="sq mid" x="210" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="150" width="30" height="30"/>
+<rect class="sq own" x="0" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="180" width="30" height="30"/>
+<rect class="sq own" x="60" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="180" width="30" height="30"/>
+<rect class="sq own" x="120" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="180" width="30" height="30"/>
+<rect class="sq own" x="180" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="180" width="30" height="30"/>
+<rect class="sq own" x="240" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="0" y="210" width="30" height="30"/>
+<rect class="sq own" x="30" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="60" y="210" width="30" height="30"/>
+<rect class="sq own" x="90" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="120" y="210" width="30" height="30"/>
+<rect class="sq own" x="150" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="180" y="210" width="30" height="30"/>
+<rect class="sq own" x="210" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="240" y="210" width="30" height="30"/>
+<rect class="sq own" x="0" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="240" width="30" height="30"/>
+<rect class="sq own" x="60" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="240" width="30" height="30"/>
+<rect class="sq own" x="120" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="240" width="30" height="30"/>
+<rect class="sq own" x="180" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="240" width="30" height="30"/>
+<rect class="sq own" x="240" y="240" width="30" height="30"/>
+<rect class="pc king" x="122" y="212" width="26" height="26" rx="5"/>
+<text class="pt king" x="135.0" y="230.0" text-anchor="middle" font-size="15">2</text>
+<rect class="pc " x="92" y="242" width="26" height="26" rx="5"/>
+<text class="pt " x="105.0" y="260.0" text-anchor="middle" font-size="15">2</text>
+<rect class="pc " x="122" y="242" width="26" height="26" rx="5"/>
+<text class="pt " x="135.0" y="260.0" text-anchor="middle" font-size="15">2</text>
+<rect class="pc " x="92" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="105.0" y="230.0" text-anchor="middle" font-size="15">2</text>
+<rect class="pc " x="92" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="105.0" y="200.0" text-anchor="middle" font-size="15">J</text>
+<rect class="pc " x="122" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="135.0" y="200.0" text-anchor="middle" font-size="15">J</text>
+<rect class="pc " x="182" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="195.0" y="200.0" text-anchor="middle" font-size="15">Q</text>
+<rect class="pc " x="212" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="225.0" y="230.0" text-anchor="middle" font-size="15">Q</text>
+<rect class="pc " x="152" y="242" width="26" height="26" rx="5"/>
+<text class="pt " x="165.0" y="260.0" text-anchor="middle" font-size="12">10</text>
+<rect class="frame" x="0" y="0" width="270" height="270"/>
+</svg>
+      <figcaption>王は中列中央。前列 J J Q、中列 2 王 Q、後列 2 2 10。自分が下側、金が王。左右対称も同じ</figcaption>
+    </figure>
+    <div class="text">
+      <p class="deck"><span class="lbl">駒選び</span>2王＋2・2・2＋J・J・Q・Q＋10</p>
+      <ol class="how"><li>動いた相手の駒は毎手番自動で割れる。王候補＝動いていない駒。王（射程9）と J・Q で、取り返しの利く升だけに出て狩る</li><li>王を失っても次の2が同じ射程で継ぐので王を惜しまない。ただし2を同じ線に並べて一度に2枚失う形は避ける</li><li>相手の王が動いた瞬間に正体が割れる。割れたら詰め探索</li></ol>
+      <p class="warn"><span class="lbl">注意</span>王を最後尾に置くと 7 落ちる（最前列は初手から狙われて 3 落ちる）。攻めてくる相手（空・宮殿）に弱いので、守る相手と分かっているときの選択肢</p>
+    </div>
+    <table class="score"><caption>得点率（未決着は0.5、各200〜600局）</caption><tbody><tr><th scope="row">通常CPU</th><td>89</td></tr><tr><th scope="row">氷の要塞</th><td>64</td></tr><tr><th scope="row">進軍型の空</th><td>50</td></tr><tr><th scope="row">宮殿の要塞</th><td>36</td></tr></tbody></table>
+  </div>
+</section>
+<section class="area" id="sky">
+  <header class="area-head">
+    <span class="tag tag-sky">空</span>
+    <h2>隅から進軍</h2>
+    <p class="title-line">称号 <b>（双翼の将は S6 の形）</b></p>
+  </header>
+  <div class="area-body">
+    <figure class="fig">
+      <svg class="board" viewBox="0 0 270 270" role="img" aria-label="布陣図">
+<rect class="sq foe" x="0" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="0" width="30" height="30"/>
+<rect class="sq foe" x="60" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="0" width="30" height="30"/>
+<rect class="sq foe" x="120" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="0" width="30" height="30"/>
+<rect class="sq foe" x="180" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="0" width="30" height="30"/>
+<rect class="sq foe" x="240" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="0" y="30" width="30" height="30"/>
+<rect class="sq foe" x="30" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="60" y="30" width="30" height="30"/>
+<rect class="sq foe" x="90" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="120" y="30" width="30" height="30"/>
+<rect class="sq foe" x="150" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="180" y="30" width="30" height="30"/>
+<rect class="sq foe" x="210" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="240" y="30" width="30" height="30"/>
+<rect class="sq foe" x="0" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="60" width="30" height="30"/>
+<rect class="sq foe" x="60" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="60" width="30" height="30"/>
+<rect class="sq foe" x="120" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="60" width="30" height="30"/>
+<rect class="sq foe" x="180" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="60" width="30" height="30"/>
+<rect class="sq foe" x="240" y="60" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="90" width="30" height="30"/>
+<rect class="sq mid" x="30" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="90" width="30" height="30"/>
+<rect class="sq mid" x="90" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="90" width="30" height="30"/>
+<rect class="sq mid" x="150" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="90" width="30" height="30"/>
+<rect class="sq mid" x="210" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="90" width="30" height="30"/>
+<rect class="sq mid" x="0" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="30" y="120" width="30" height="30"/>
+<rect class="sq mid" x="60" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="90" y="120" width="30" height="30"/>
+<rect class="sq mid" x="120" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="150" y="120" width="30" height="30"/>
+<rect class="sq mid" x="180" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="210" y="120" width="30" height="30"/>
+<rect class="sq mid" x="240" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="150" width="30" height="30"/>
+<rect class="sq mid" x="30" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="150" width="30" height="30"/>
+<rect class="sq mid" x="90" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="150" width="30" height="30"/>
+<rect class="sq mid" x="150" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="150" width="30" height="30"/>
+<rect class="sq mid" x="210" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="150" width="30" height="30"/>
+<rect class="sq own" x="0" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="180" width="30" height="30"/>
+<rect class="sq own" x="60" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="180" width="30" height="30"/>
+<rect class="sq own" x="120" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="180" width="30" height="30"/>
+<rect class="sq own" x="180" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="180" width="30" height="30"/>
+<rect class="sq own" x="240" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="0" y="210" width="30" height="30"/>
+<rect class="sq own" x="30" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="60" y="210" width="30" height="30"/>
+<rect class="sq own" x="90" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="120" y="210" width="30" height="30"/>
+<rect class="sq own" x="150" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="180" y="210" width="30" height="30"/>
+<rect class="sq own" x="210" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="240" y="210" width="30" height="30"/>
+<rect class="sq own" x="0" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="240" width="30" height="30"/>
+<rect class="sq own" x="60" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="240" width="30" height="30"/>
+<rect class="sq own" x="120" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="240" width="30" height="30"/>
+<rect class="sq own" x="180" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="240" width="30" height="30"/>
+<rect class="sq own" x="240" y="240" width="30" height="30"/>
+<rect class="pc king" x="2" y="242" width="26" height="26" rx="5"/>
+<text class="pt king" x="15.0" y="260.0" text-anchor="middle" font-size="12">10</text>
+<rect class="pc " x="62" y="242" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="260.0" text-anchor="middle" font-size="15">J</text>
+<rect class="pc " x="62" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="230.0" text-anchor="middle" font-size="15">J</text>
+<rect class="pc " x="32" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="45.0" y="200.0" text-anchor="middle" font-size="15">Q</text>
+<rect class="pc " x="62" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="200.0" text-anchor="middle" font-size="15">Q</text>
+<rect class="pc " x="32" y="242" width="26" height="26" rx="5"/>
+<text class="pt " x="45.0" y="260.0" text-anchor="middle" font-size="15">4</text>
+<rect class="pc " x="2" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="15.0" y="230.0" text-anchor="middle" font-size="15">2</text>
+<rect class="pc " x="32" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="45.0" y="230.0" text-anchor="middle" font-size="15">8</text>
+<rect class="pc " x="2" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="15.0" y="200.0" text-anchor="middle" font-size="15">8</text>
+<rect class="frame" x="0" y="0" width="270" height="270"/>
+</svg>
+      <figcaption>自陣の隅 3×3 から進軍。前列 8 Q Q、中列 2 8 J、後列 王の10 4 J。自分が下側、金が王。左右対称も同じ</figcaption>
+    </figure>
+    <div class="text">
+      <p class="deck"><span class="lbl">駒選び</span>10王＋J・J・Q・Q＋4・2・8・8</p>
+      <ol class="how"><li>相手の駒が3割以上出てきたら前進を止めて受け、一気に返す。1割以下なら前進を速める</li><li>一気に取れるときだけ変身。変身した10と王の10は1手番に2回跳べるので、取ってから安全な升へ戻る</li><li>取られたら取り返せる形（9体すべてに取り返しの手）を保ったまま前へ出る。孤立する前進はしない</li></ol>
+      <p class="warn"><span class="lbl">注意</span>宮殿の要塞が唯一の苦手（最高 48）。称号「双翼の将」の形（10・10・J・J・Q・Q・4・2・8 の通常配置）は総合 62 で、この隅の形（65）と同等</p>
+    </div>
+    <table class="score"><caption>得点率（未決着は0.5、各200〜600局）</caption><tbody><tr><th scope="row">通常CPU</th><td>89</td></tr><tr><th scope="row">氷の要塞</th><td>62</td></tr><tr><th scope="row">進軍型の空</th><td>50</td></tr><tr><th scope="row">従来の空</th><td>60</td></tr></tbody></table>
+  </div>
+</section>
+<section class="area" id="ice">
+  <header class="area-head">
+    <span class="tag tag-ice">氷</span>
+    <h2>隅の要塞</h2>
+    <p class="title-line">称号 <b>堅牢な要塞</b></p>
+  </header>
+  <div class="area-body">
+    <figure class="fig">
+      <svg class="board" viewBox="0 0 270 270" role="img" aria-label="布陣図">
+<rect class="sq foe" x="0" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="0" width="30" height="30"/>
+<rect class="sq foe" x="60" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="0" width="30" height="30"/>
+<rect class="sq foe" x="120" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="0" width="30" height="30"/>
+<rect class="sq foe" x="180" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="0" width="30" height="30"/>
+<rect class="sq foe" x="240" y="0" width="30" height="30"/>
+<rect class="sq foe alt" x="0" y="30" width="30" height="30"/>
+<rect class="sq foe" x="30" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="60" y="30" width="30" height="30"/>
+<rect class="sq foe" x="90" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="120" y="30" width="30" height="30"/>
+<rect class="sq foe" x="150" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="180" y="30" width="30" height="30"/>
+<rect class="sq foe" x="210" y="30" width="30" height="30"/>
+<rect class="sq foe alt" x="240" y="30" width="30" height="30"/>
+<rect class="sq foe" x="0" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="30" y="60" width="30" height="30"/>
+<rect class="sq foe" x="60" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="90" y="60" width="30" height="30"/>
+<rect class="sq foe" x="120" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="150" y="60" width="30" height="30"/>
+<rect class="sq foe" x="180" y="60" width="30" height="30"/>
+<rect class="sq foe alt" x="210" y="60" width="30" height="30"/>
+<rect class="sq foe" x="240" y="60" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="90" width="30" height="30"/>
+<rect class="sq mid" x="30" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="90" width="30" height="30"/>
+<rect class="sq mid" x="90" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="90" width="30" height="30"/>
+<rect class="sq mid" x="150" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="90" width="30" height="30"/>
+<rect class="sq mid" x="210" y="90" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="90" width="30" height="30"/>
+<rect class="sq mid" x="0" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="30" y="120" width="30" height="30"/>
+<rect class="sq mid" x="60" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="90" y="120" width="30" height="30"/>
+<rect class="sq mid" x="120" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="150" y="120" width="30" height="30"/>
+<rect class="sq mid" x="180" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="210" y="120" width="30" height="30"/>
+<rect class="sq mid" x="240" y="120" width="30" height="30"/>
+<rect class="sq mid alt" x="0" y="150" width="30" height="30"/>
+<rect class="sq mid" x="30" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="60" y="150" width="30" height="30"/>
+<rect class="sq mid" x="90" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="120" y="150" width="30" height="30"/>
+<rect class="sq mid" x="150" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="180" y="150" width="30" height="30"/>
+<rect class="sq mid" x="210" y="150" width="30" height="30"/>
+<rect class="sq mid alt" x="240" y="150" width="30" height="30"/>
+<rect class="sq own" x="0" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="180" width="30" height="30"/>
+<rect class="sq own" x="60" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="180" width="30" height="30"/>
+<rect class="sq own" x="120" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="180" width="30" height="30"/>
+<rect class="sq own" x="180" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="180" width="30" height="30"/>
+<rect class="sq own" x="240" y="180" width="30" height="30"/>
+<rect class="sq own alt" x="0" y="210" width="30" height="30"/>
+<rect class="sq own" x="30" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="60" y="210" width="30" height="30"/>
+<rect class="sq own" x="90" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="120" y="210" width="30" height="30"/>
+<rect class="sq own" x="150" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="180" y="210" width="30" height="30"/>
+<rect class="sq own" x="210" y="210" width="30" height="30"/>
+<rect class="sq own alt" x="240" y="210" width="30" height="30"/>
+<rect class="sq own" x="0" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="30" y="240" width="30" height="30"/>
+<rect class="sq own" x="60" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="90" y="240" width="30" height="30"/>
+<rect class="sq own" x="120" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="150" y="240" width="30" height="30"/>
+<rect class="sq own" x="180" y="240" width="30" height="30"/>
+<rect class="sq own alt" x="210" y="240" width="30" height="30"/>
+<rect class="sq own" x="240" y="240" width="30" height="30"/>
+<rect class="pc king" x="2" y="242" width="26" height="26" rx="5"/>
+<text class="pt king" x="15.0" y="260.0" text-anchor="middle" font-size="15">8</text>
+<rect class="pc " x="62" y="242" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="260.0" text-anchor="middle" font-size="15">J</text>
+<rect class="pc " x="62" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="230.0" text-anchor="middle" font-size="15">J</text>
+<rect class="pc " x="32" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="45.0" y="200.0" text-anchor="middle" font-size="15">Q</text>
+<rect class="pc " x="62" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="75.0" y="200.0" text-anchor="middle" font-size="15">Q</text>
+<rect class="pc " x="32" y="242" width="26" height="26" rx="5"/>
+<text class="pt " x="45.0" y="260.0" text-anchor="middle" font-size="15">4</text>
+<rect class="pc " x="2" y="182" width="26" height="26" rx="5"/>
+<text class="pt " x="15.0" y="200.0" text-anchor="middle" font-size="15">4</text>
+<rect class="pc " x="2" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="15.0" y="230.0" text-anchor="middle" font-size="15">2</text>
+<rect class="pc " x="32" y="212" width="26" height="26" rx="5"/>
+<text class="pt " x="45.0" y="230.0" text-anchor="middle" font-size="15">2</text>
+<rect class="frame" x="0" y="0" width="270" height="270"/>
+</svg>
+      <figcaption>自陣の隅 3×3。前列 4 Q Q、中列 2 2 J、後列 王の8 4 J。自分が下側、金が王。左右対称も同じ</figcaption>
+    </figure>
+    <div class="text">
+      <p class="deck"><span class="lbl">駒選び</span>8王＋J・J・Q・Q＋4・4・2・2</p>
+      <ol class="how"><li>徹底防御。王へ通じる線と桂馬の2升を味方で埋め、全駒に取り返しの手を残す</li><li>相手のどの駒が「どのランクだとしても」王に届く手は指さない。自陣から出るのは取るときだけ</li><li>氷は毎手番、相手の王以外1体を自動で凍らせる。相手が手を出して駒を失うか、凍って動けなくなるのを待つ</li></ol>
+      <p class="warn"><span class="lbl">注意</span>王を割ってくる相手（森・土）と、待つほど強くなる宮殿に弱い（8）。守り一辺倒は情報系に崩される</p>
+    </div>
+    <table class="score"><caption>得点率（未決着は0.5、各200〜600局）</caption><tbody><tr><th scope="row">通常CPU</th><td>91</td></tr><tr><th scope="row">進軍型の空</th><td>59</td></tr><tr><th scope="row">宮殿の要塞</th><td>8</td></tr></tbody></table>
+  </div>
+</section>
+
+<h2 class="sec">相性表（配られた手札、各組300局）</h2>
+<div class="matrix-wrap"><table class="matrix"><thead><tr><th>自分＼相手</th><th>土</th><th>海</th><th>森</th><th>氷</th><th>空</th><th>宮殿</th></tr></thead><tbody><tr><th scope="row">土</th><td>—</td><td>29% (33)</td><td>86% (58)</td><td>74% (53)</td><td>12% (22)</td><td>18% (32)</td></tr><tr><th scope="row">海</th><td>71% (67)</td><td>—</td><td>48% (49)</td><td>53% (52)</td><td>31% (34)</td><td>38% (40)</td></tr><tr><th scope="row">森</th><td>14% (43)</td><td>52% (51)</td><td>—</td><td>74% (72)</td><td>52% (52)</td><td>58% (57)</td></tr><tr><th scope="row">氷</th><td>26% (47)</td><td>47% (48)</td><td>26% (28)</td><td>—</td><td>47% (49)</td><td>32% (39)</td></tr><tr><th scope="row">空</th><td>88% (78)</td><td>69% (66)</td><td>48% (48)</td><td>53% (51)</td><td>—</td><td>48% (48)</td></tr><tr><th scope="row">宮殿</th><td>82% (69)</td><td>62% (61)</td><td>42% (43)</td><td>68% (62)</td><td>53% (52)</td><td>—</td></tr></tbody></table></div>
+<p class="note">行が列に勝った割合。括弧は160手番で未決着の局を引き分け0.5として数えた得点率。総合の得点率は 空 58 ＞ 宮殿 57 ＞ 森 55 ＞ 海 48 ＞ 氷 42 ＞ 土 40。手札は固定せず13枚から組んでいるので、海と土は理想の9枚がそろわない分だけ上の定石の数字より低い（海は同じ数字が平均1.7〜2.1枚）。</p>
+
+<h2 class="sec">称号</h2>
+<ul class="note">
+  <li>堅牢な要塞 — 自陣の隅 3×3 に9体を固め、王を最奥に置いて対局を始める（どのエリアでも）</li>
+  <li>双翼の将 — 空で 10・10・J・J・Q・Q・4・2・8 を「前列 Q J J Q、中列 8 2 4 と 10、後列に王の10」に</li>
+  <li>軌跡の追跡者 — 土で 2・2・2・2・J・J・Q・Q・10 を「前列 J J Q、中列 2 王の2 Q、後列 2 2 10」に</li>
+  <li>静寂な狩人 — 森で 6・J・J・Q・Q・10・10・4・2 を隅の 3×3「前列 Q 10 J、中列 4 2 J、後列 王の6 Q 10」に</li>
+  <li>荒波の航海士 — 海で 4・4・4・4・J・J・Q・Q・10 を「前列 Q J 4、中列 Q 10 J 4、後列 王の4 4」に</li>
+  <li>宮殿の型は名前を検討中</li>
+</ul>
+<p class="note">演出と称号は組んだ本人にだけ出る。相手には知らせず、記録にも残さない（王の位置が漏れるため）。詳細は repo の reports/fortress-tactics/検証レポート.md。</p>
+</div>
