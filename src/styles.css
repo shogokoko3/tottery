@@ -4762,6 +4762,51 @@ h3 {
   color: var(--gold);
   margin: 6px 0;
 }
+/* 隅の要塞の演出。3×3が奥から順に灯り、王のマスが金に光る */
+.fortress-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 34px);
+  gap: 5px;
+  justify-content: center;
+  margin: 4px auto 10px;
+}
+.fortress-cell {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  background: #c1543a;
+  border: 1px solid #7a2f1f;
+  opacity: 0;
+  animation: fortress-in 0.35s ease-out forwards;
+  animation-delay: calc(var(--i) * 90ms);
+}
+.fortress-cell.is-king {
+  background: var(--gold);
+  border-color: var(--gold);
+  box-shadow: 0 0 14px var(--gold);
+  animation:
+    fortress-in 0.35s ease-out forwards,
+    fortress-glow 1.6s ease-in-out 1s infinite;
+}
+@keyframes fortress-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fortress-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 8px var(--gold);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--gold);
+  }
+}
 .secret-chance {
   display: inline-block;
   margin: 8px auto;

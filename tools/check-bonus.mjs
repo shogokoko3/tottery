@@ -9,7 +9,7 @@
  */
 import { reducer, autoPickKing } from "../src/game/reducer.js";
 import { buildDeck, territoryRows, totalSlots } from "../src/game/board.js";
-import { isStraight, isFlush } from "../src/game/bonus.js";
+import { isStraight, isFlush, fortressCorner } from "../src/game/bonus.js";
 
 let ok = 0;
 const fails = [];
@@ -264,6 +264,34 @@ console.log("効果が無ければ知らせない");
 {
   const s = play(stack(NOT5, NOT5B, 5));
   is("何も起きない", s.setupEffects, null);
+}
+
+console.log("隅の要塞");
+{
+  const army = (cells, kingIdx, owner = 0) =>
+    Object.fromEntries(
+      cells.map(([row, col], i) => [
+        `${owner}p${i}`,
+        { id: `${owner}p${i}`, row, col, owner, alive: true, isKing: i === kingIdx },
+      ]),
+    );
+  const block = (rows, col0) =>
+    rows.flatMap((row) => [0, 1, 2].map((d) => [row, col0 + d]));
+  const left = block([6, 7, 8], 0); // 赤(下)の左隅。最後の [8,0] が奥の隅
+  is("左隅に王を奥で組む", fortressCorner(army(left, 6), 9, 0), 0);
+  is("王が奥の隅でなければ要塞ではない", fortressCorner(army(left, 7), 9, 0), null);
+  is("王が前列なら要塞ではない", fortressCorner(army(left, 0), 9, 0), null);
+  is("右隅も要塞", fortressCorner(army(block([6, 7, 8], 6), 8), 9, 0), 6);
+  is("隅から1列ずれると要塞ではない", fortressCorner(army(block([6, 7, 8], 1), 6), 9, 0), null);
+  is("青(上)は0行目の隅が奥", fortressCorner(army(block([0, 1, 2], 0), 0, 1), 9, 1), 0);
+  is("青の王が2行目なら要塞ではない", fortressCorner(army(block([0, 1, 2], 0), 6, 1), 9, 1), null);
+  const dead = army(left, 6);
+  dead["0p1"] = { ...dead["0p1"], alive: false };
+  is("倒れた駒があれば要塞ではない", fortressCorner(dead, 9, 0), null);
+  is("5×5には無い", fortressCorner(army(block([3, 4], 0).slice(0, 5), 4), 5, 0), null);
+  const both = { ...army(left, 6, 0), ...army(block([0, 1, 2], 6), 2, 1) };
+  is("相手の駒が混ざっていても自分の側だけ見る", fortressCorner(both, 9, 0), 0);
+  is("相手側(右隅)も判定できる", fortressCorner(both, 9, 1), 6);
 }
 
 console.log(`\n${ok} ok / ${fails.length} fail`);

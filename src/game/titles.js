@@ -46,6 +46,13 @@ export const TITLES = [
     how: "オンラインで1局遊ぶ",
     unlocked: (p) => p.rated >= 1,
   },
+  // 布陣の褒美。9×9で隅の要塞(src/game/bonus.js の fortressCorner)を組んで
+  // CPU戦かオンライン対戦を始めると、その場で配られる
+  {
+    id: "fortress",
+    name: "要塞の主",
+    how: "9×9で、自陣の隅3×3に9体を固め、王をいちばん奥に置いて対局を始める",
+  },
   // シークレットミッションの褒美
   {
     id: "court-heavy",

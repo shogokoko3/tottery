@@ -9,6 +9,7 @@
  * 判定は盤に出した札すべて(5×5なら5枚、9×9なら9枚)で行う。
  */
 import { RANKS } from "./constants.js";
+import { territoryRows } from "./board.js";
 
 /** A=1 … K=13 */
 function value(rank) {
@@ -70,4 +71,38 @@ export function pickRevealed(ids, count, seedText) {
     out.push(rest.splice(h % rest.length, 1)[0]);
   }
   return out;
+}
+
+/* ---------------------------- 隅の要塞 ---------------------------- */
+
+/**
+ * 隅の要塞。9×9で、自陣の隅の 3×3 を自分の9体で埋め、王をいちばん奥の隅に
+ * 置いた布陣。効果は無く、組んだ本人にだけ演出と称号「要塞の主」を出す
+ * (相手に知らせると王の位置が漏れるので、state にも記録にも載せない)。
+ *
+ * 組んだ隅の左端の列(0 か size-3)を返す。要塞でなければ null。
+ */
+export function fortressCorner(pieces, size, player) {
+  if (size < 9) return null;
+  const mine = Object.values(pieces || {}).filter(
+    (p) => p.owner === player && p.alive,
+  );
+  if (mine.length !== 9) return null;
+  const [lo, hi] = territoryRows(size, player);
+  const back = player === 0 ? hi : lo;
+  const king = mine.find((p) => p.isKing);
+  if (!king) return null;
+  for (const col0 of [0, size - 3]) {
+    const inBlock = mine.every(
+      (p) => p.row >= lo && p.row <= hi && p.col >= col0 && p.col < col0 + 3,
+    );
+    if (!inBlock) continue;
+    const cornerCol = col0 === 0 ? 0 : size - 1;
+    return king.row === back && king.col === cornerCol ? col0 : null;
+  }
+  return null;
+}
+
+export function isFortress(pieces, size, player) {
+  return fortressCorner(pieces, size, player) !== null;
 }

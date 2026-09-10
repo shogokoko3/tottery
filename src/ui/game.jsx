@@ -75,7 +75,8 @@ import {
   wantRematch,
 } from "../net/firebase.js";
 import { myUid } from "../net/auth.js";
-import { achieveSecret } from "../game/profile.js";
+import { achieveSecret, grantTitle, loadProfile } from "../game/profile.js";
+import { fortressCorner } from "../game/bonus.js";
 import { chanceLabel } from "../game/secrets.js";
 import {
   LOCAL_ONLY_ACTIONS,
@@ -1642,6 +1643,28 @@ export function GameCore({
     if (got) setSecretGot(got);
   }, [a.handRescued, a.setupIdx]);
 
+  /**
+   * 隅の要塞。自陣の隅3×3に9体を固め、王をいちばん奥に置いて対局を始めたら、
+   * 本人にだけ演出と称号「要塞の主」を出す。王の位置が分かってしまうので、
+   * 相手には知らせないし、記録にも残さない。CPU戦とオンライン対戦だけ
+   */
+  let [fortressGot, setFortressGot] = (0, useState)(null);
+  const fortressSeen = (0, useRef)(!1);
+  (0, useEffect)(() => {
+    if (a.phase !== "play" && a.phase !== "gameover") {
+      fortressSeen.current = !1;
+      return;
+    }
+    if (a.phase !== "play" || fortressSeen.current) return;
+    fortressSeen.current = !0;
+    if (tutorial || !(network || cpu)) return;
+    const corner = fortressCorner(a.pieces, a.boardSize, P);
+    if (corner === null) return;
+    const had = loadProfile().titles.includes("fortress");
+    grantTitle("fortress");
+    setFortressGot({ fresh: !had, right: corner > 0 });
+  }, [a.phase]);
+
   // 対局が終わったら1局ぶん記録する。レベルの元になる。
   // オンラインで相手の持ち点が分かっていれば、レーティングもここで動かす
   // 「もう一度遊ぶ」で盤が初期化されても、記録済みの印は残っていた。
@@ -2814,6 +2837,41 @@ export function GameCore({
                 onClick={() => setSecretGot(null)}
               >
                 閉じる
+              </button>
+            </div>
+          </div>
+        )}
+        {fortressGot && !a.setupEffects && (
+          <div className="modal-overlay">
+            <div className="modal-panel secret-panel fortress-panel">
+              <p className="bonus-eyebrow">布陣の称号</p>
+              <div
+                className={`fortress-grid ${fortressGot.right ? "is-right" : ""}`}
+                aria-hidden="true"
+              >
+                {Array.from({ length: 9 }, (_, i) => (
+                  <span
+                    key={i}
+                    className={`fortress-cell ${i === (fortressGot.right ? 8 : 6) ? "is-king" : ""}`}
+                    style={{ "--i": i }}
+                  />
+                ))}
+              </div>
+              <p className="secret-name">隅の要塞</p>
+              <p className="hint">
+                自陣の隅に9体を固め、王をいちばん奥に据えた。
+                王へ通じる線はすべて味方が塞いでいる。
+              </p>
+              <p className="hint">
+                {fortressGot.fresh
+                  ? "称号「要塞の主」を手に入れました。設定から選べます。"
+                  : "称号「要塞の主」は獲得済みです。"}
+              </p>
+              <button
+                className="btn btn-primary"
+                onClick={() => setFortressGot(null)}
+              >
+                対局へ
               </button>
             </div>
           </div>
