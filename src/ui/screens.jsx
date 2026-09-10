@@ -73,6 +73,7 @@ import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { titleOf } from "../game/titles.js";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
+import { onlineGate, onlineGateLabel } from "../game/online-gate.js";
 import { isBlocked } from "../game/blocked.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
 import { ensureAuth, myUid } from "../net/auth.js";
@@ -405,16 +406,28 @@ export function MenuScreen({
   );
 }
 
-/** 対戦の相手を選ぶ。ホームの「対戦する」から来る */
-export function MatchingScreen({ onOnline, onFriend, onCpu, onBack }) {
+/**
+ * 対戦の相手を選ぶ。ホームの「対戦する」から来る。
+ * ランダムマッチだけは、チュートリアルを第8話まで終えるまで開かない(src/game/online-gate.js)。
+ * 閉じている間は薄くして理由と残りの話数を添え、押すとチュートリアル一覧へ
+ */
+export function MatchingScreen({ onOnline, onFriend, onCpu, onBack, onTutorial }) {
+  const gate = onlineGate(loadProfile());
   return (
     <div className="center-stage">
       <h2>対戦相手を選ぶ</h2>
       <div className="nav-stack">
-        <button className="btn btn-primary btn-choice" onClick={onOnline}>
+        <button
+          className={`btn btn-primary btn-choice ${gate.ok ? "" : "btn-choice-locked"}`}
+          aria-disabled={!gate.ok}
+          onClick={gate.ok ? onOnline : onTutorial}
+        >
           <Globe size={30} />
           <span className="choice-label">
-            オンラインでマッチする<small>世界中のプレイヤーと対戦</small>
+            オンラインでマッチする
+            <small>
+              {gate.ok ? "世界中のプレイヤーと対戦" : onlineGateLabel(gate)}
+            </small>
           </span>
         </button>
         <button className="btn btn-friend btn-choice" onClick={onFriend}>
@@ -1350,6 +1363,7 @@ function TotteryScreens() {
           matching: (
             <MatchingScreen
               onBack={() => t("menu")}
+              onTutorial={showTutorials}
               onOnline={() => {
                 (u(null),
                   m(!1),

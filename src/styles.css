@@ -364,6 +364,15 @@ h3 {
   gap: 14px;
   text-align: left;
 }
+/* ランダムマッチが開くまでの見た目。押せる(チュートリアル一覧へ)が、金の釦としては沈める */
+.btn-choice-locked {
+  opacity: 0.55;
+  filter: saturate(0.6);
+}
+.btn-choice-locked .choice-label small {
+  opacity: 1;
+  font-weight: 700;
+}
 .choice-label {
   display: flex;
   flex-direction: column;
