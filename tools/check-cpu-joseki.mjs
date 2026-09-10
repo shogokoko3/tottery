@@ -4,6 +4,7 @@
 //   3. 伏せ札の不変性: 相手の正体不明の駒の数字・王の印を入れ替えても、同じ手を選ぶ
 //   4. 1手の思考時間が端末で待てる範囲(2秒以内)
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { reducer } from "../src/game/reducer.js";
 import { enrichAction } from "../src/game/actions.js";
 import { kingRankOf } from "../src/game/board.js";
@@ -187,4 +188,12 @@ assert.ok(totalChecks >= 12, `伏せ札の不変性を十分な回数見た(${to
   assert.equal(josekiCpuAction(s, 1, "nowhere"), cpuInformedAction(s, 1), "未知のエリアは通常CPU");
   assert.equal(josekiDeck("nowhere", "10"), null);
 }
-console.log("定石CPU: 山札・王とエリア・布陣・対局・伏せ札の不変性・思考時間 OK");
+// 画面の配線: エリアを選ぶ欄と、選んだエリアの受け渡しは、フォイルを初めて手に入れた人(foilRevealed)にだけ
+{
+  const src = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
+  const gate = /onCpuArea=\{\s*d && !tut && foilRevealed\(collection\)/;
+  assert.ok(gate.test(src), "CPUのエリアを選ぶ欄は foilRevealed で隠す");
+  const pass = /cpuArea=\{\s*d && !tut && i === 9 && foilRevealed\(collection\) \? cpuArea : null/;
+  assert.ok(pass.test(src), "選んだエリアの受け渡しも foilRevealed で止める");
+}
+console.log("定石CPU: 山札・王とエリア・布陣・対局・伏せ札の不変性・思考時間・フォイル前は隠す OK");

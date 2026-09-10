@@ -1374,7 +1374,10 @@ function TotteryScreens() {
             network={a}
             boardSize={tut ? tut.boardSize : i}
             cpu={d}
-            cpuArea={d && !tut && i === 9 ? cpuArea : null}
+            // フォイルを初めて手に入れるまでは、エリアを選ぶ欄そのものを出さない(選べても渡さない)
+            cpuArea={
+              d && !tut && i === 9 && foilRevealed(collection) ? cpuArea : null
+            }
             tutorial={tut}
             nextTutorial={nextTutorial}
             onNextTutorial={
