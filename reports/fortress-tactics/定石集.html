@@ -54,7 +54,7 @@ h2.sec{font-size:22px;margin:34px 0 12px;padding-left:12px;border-left:4px solid
 
 <div class="wrap">
 <header class="hero">
-  <div><div class="eyebrow">Tottery 9×9 · Rule v11 · 2026-09-11</div><h1>トッタリー 9×9 定石集</h1></div>
+  <div><div class="eyebrow">Tottery 9×9 · Rule v12 · 2026-09-11</div><h1>トッタリー 9×9 定石集</h1></div>
   <p>6つの盤面エリアそれぞれの「王・駒選び・布陣・指し方」を、ゲーム本体の判定を使ったCPU同士の実測（約20万局）から決めたもの。数字はCPU同士の得点率で、人間同士の勝率ではない。</p>
 </header>
 
@@ -73,6 +73,7 @@ h2.sec{font-size:22px;margin:34px 0 12px;padding-left:12px;border-left:4px solid
   <li>布陣は寄せる。散らすと取られる駒が2〜3割増える。布陣の時点で全駒が取り返せても、対局中に実際に取り返せるのは3〜4割</li>
   <li>王が割れたら詰め探索: 即取り → 必至（相手がどう応じても次の手で取れる手）→ 両狙い（王を狙う駒を2体以上）→ 接近</li>
   <li>6〜9の王は同じ線上の相手を偶数（奇数）マスだけまとめて取り、間の駒を飛び越える。相手がその帯なら、王を一直線の列に置かない</li>
+  <li>ルール版12から氷は相手の王も凍らせる。相手が氷なら、王が凍った3手番を A の入れ替えか護衛でしのぐ算段が要る</li>
   <li>王を晒さない指し方同士は3〜7割が160手番で未決着になる。実戦では持ち時間が決め手</li>
 </ul>
 
@@ -551,10 +552,10 @@ h2.sec{font-size:22px;margin:34px 0 12px;padding-left:12px;border-left:4px solid
     </figure>
     <div class="text">
       <p class="deck"><span class="lbl">駒選び</span>8王＋J・J・Q・Q＋4・4・2・2</p>
-      <ol class="how"><li>徹底防御。王へ通じる線と桂馬の2升を味方で埋め、全駒に取り返しの手を残す</li><li>相手のどの駒が「どのランクだとしても」王に届く手は指さない。自陣から出るのは取るときだけ</li><li>氷は毎手番、相手の王以外1体を自動で凍らせる。相手が手を出して駒を失うか、凍って動けなくなるのを待つ</li></ol>
-      <p class="warn"><span class="lbl">注意</span>王を割ってくる相手（森・土）と、待つほど強くなる宮殿に弱い（8）。守り一辺倒は情報系に崩される</p>
+      <ol class="how"><li>徹底防御。王へ通じる線と桂馬の2升を味方で埋め、全駒に取り返しの手を残す。相手のどの駒が「どのランクだとしても」王に届く手は指さない</li><li>氷は毎手番、相手の駒を1体（ルール版12から王も）自動で凍らせる。王が凍ったら3手番は動けないので、その間に詰め探索で取りに行く</li><li>相手が手を出して駒を失うか、凍りきって動けなくなるのを待つ。凍った駒は取れる</li></ol>
+      <p class="warn"><span class="lbl">注意</span>ルール版12（氷は王も凍らせる）で最下位から上位へ。まだ負け越すのは森（先にこちらの王を割ってくる）と宮殿の要塞（昇格した駒が凍った王を守る）。版11までの氷は王を凍らせず、得点率は 48 だった</p>
     </div>
-    <table class="score"><caption>得点率（未決着は0.5、各200〜600局）</caption><tbody><tr><th scope="row">通常CPU</th><td>91</td></tr><tr><th scope="row">進軍型の空</th><td>59</td></tr><tr><th scope="row">宮殿の要塞</th><td>8</td></tr></tbody></table>
+    <table class="score"><caption>得点率（未決着は0.5、各200〜600局）</caption><tbody><tr><th scope="row">通常CPU</th><td>88</td></tr><tr><th scope="row">進軍型の空</th><td>92</td></tr><tr><th scope="row">宮殿の要塞</th><td>45</td></tr><tr><th scope="row">海の特攻</th><td>86</td></tr><tr><th scope="row">森の詰め</th><td>40</td></tr><tr><th scope="row">土の狩り</th><td>93</td></tr></tbody></table>
   </div>
 </section>
 <section class="area" id="sky">
@@ -799,12 +800,12 @@ h2.sec{font-size:22px;margin:34px 0 12px;padding-left:12px;border-left:4px solid
 </section>
 
 <h2 class="sec">相性表（正式版: 各エリアが定石の9枚を持って戦う、各組300局）</h2>
-<div class="matrix-wrap"><table class="matrix"><thead><tr><th>自分＼相手</th><th>土</th><th>海</th><th>森</th><th>氷</th><th>空</th><th>宮殿</th></tr></thead><tbody><tr><th scope="row">土</th><td>—</td><td>44% (46)</td><td>100% (63)</td><td>77% (57)</td><td>29% (34)</td><td>36% (37)</td></tr><tr><th scope="row">海</th><td>56% (54)</td><td>—</td><td>76% (75)</td><td>81% (72)</td><td>80% (77)</td><td>82% (80)</td></tr><tr><th scope="row">森</th><td>0% (37)</td><td>24% (25)</td><td>—</td><td>80% (79)</td><td>66% (65)</td><td>18% (24)</td></tr><tr><th scope="row">氷</th><td>23% (44)</td><td>19% (28)</td><td>20% (22)</td><td>—</td><td>45% (48)</td><td>5% (31)</td></tr><tr><th scope="row">空</th><td>71% (67)</td><td>20% (23)</td><td>34% (35)</td><td>55% (52)</td><td>—</td><td>48% (49)</td></tr><tr><th scope="row">宮殿</th><td>64% (63)</td><td>18% (20)</td><td>82% (76)</td><td>95% (69)</td><td>52% (52)</td><td>—</td></tr></tbody></table></div>
-<p class="note">行が列に勝った割合。括弧は160手番で未決着の局を引き分け0.5として数えた得点率。各エリアは定石の9枚を山札の許す限り持ち（同じ札を取り合う組では先に取る側を配札ごとに交互）、定石の指し方で戦う。総合の得点率は <b>海 72 ＞ 宮殿 56 ＞ 土 47 ≈ 森 46 ≈ 空 45 ＞ 氷 34</b>。定石どおりの札がそろえば、道連れの特攻を持つ海が突出し、それを受けられるのは宮殿と土だけ。氷は「王を割る相手」と「待つほど強くなる相手」の両方に弱い。</p>
+<div class="matrix-wrap"><table class="matrix"><thead><tr><th>自分＼相手</th><th>土</th><th>海</th><th>森</th><th>氷</th><th>空</th><th>宮殿</th></tr></thead><tbody><tr><th scope="row">土</th><td>—</td><td>44% (46)</td><td>100% (63)</td><td>23% (23)</td><td>29% (34)</td><td>36% (37)</td></tr><tr><th scope="row">海</th><td>56% (54)</td><td>—</td><td>76% (75)</td><td>54% (54)</td><td>80% (77)</td><td>82% (80)</td></tr><tr><th scope="row">森</th><td>0% (37)</td><td>24% (25)</td><td>—</td><td>69% (69)</td><td>66% (65)</td><td>18% (24)</td></tr><tr><th scope="row">氷</th><td>77% (77)</td><td>46% (46)</td><td>31% (31)</td><td>—</td><td>81% (81)</td><td>79% (79)</td></tr><tr><th scope="row">空</th><td>71% (67)</td><td>20% (23)</td><td>34% (35)</td><td>19% (19)</td><td>—</td><td>48% (49)</td></tr><tr><th scope="row">宮殿</th><td>64% (63)</td><td>18% (20)</td><td>82% (76)</td><td>21% (21)</td><td>52% (52)</td><td>—</td></tr></tbody></table></div>
+<p class="note">行が列に勝った割合。括弧は160手番で未決着の局を引き分け0.5として数えた得点率。各エリアは定石の9枚を山札の許す限り持ち（同じ札を取り合う組では先に取る側を配札ごとに交互）、定石の指し方で戦う。総合の得点率は <b>海 68 ＞ 氷 63 ＞ 宮殿 46 ＞ 森 44 ＞ 土 41 ＞ 空 39</b>（ルール版12）。定石どおりの札がそろえば、道連れの特攻を持つ海が首位で、王も凍らせる氷がそれに次ぐ。氷が負け越すのは森（先に王を割ってくる）と海だけ。空・宮殿・土は氷に2割前後で、王が凍った3手番で詰められている。</p>
 
 <h2 class="sec">相性表（参考: 配られた13枚から組む、各組300局）</h2>
-<div class="matrix-wrap"><table class="matrix"><thead><tr><th>自分＼相手</th><th>土</th><th>海</th><th>森</th><th>氷</th><th>空</th><th>宮殿</th></tr></thead><tbody><tr><th scope="row">土</th><td>—</td><td>29% (33)</td><td>86% (58)</td><td>74% (53)</td><td>24% (27)</td><td>27% (30)</td></tr><tr><th scope="row">海</th><td>71% (67)</td><td>—</td><td>48% (49)</td><td>53% (52)</td><td>41% (42)</td><td>56% (56)</td></tr><tr><th scope="row">森</th><td>14% (43)</td><td>52% (51)</td><td>—</td><td>74% (72)</td><td>30% (36)</td><td>13% (24)</td></tr><tr><th scope="row">氷</th><td>26% (47)</td><td>47% (48)</td><td>26% (28)</td><td>—</td><td>29% (45)</td><td>14% (35)</td></tr><tr><th scope="row">空</th><td>76% (74)</td><td>59% (58)</td><td>70% (64)</td><td>71% (55)</td><td>—</td><td>61% (60)</td></tr><tr><th scope="row">宮殿</th><td>73% (70)</td><td>44% (44)</td><td>87% (77)</td><td>86% (65)</td><td>39% (40)</td><td>—</td></tr></tbody></table></div>
-<p class="note">指し方は同じで、手札だけ配られたままにしたもの。総合の得点率は 空 62 ＞ 宮殿 59 ＞ 海 53 ＞ 森 45 ＞ 氷 41 ＞ 土 40。海は同じ数字が平均1.7〜2.1枚しかそろわず、土は2が4枚そろわないため、正式版より落ちる。実戦の期待値に近いのはこちら。</p>
+<div class="matrix-wrap"><table class="matrix"><thead><tr><th>自分＼相手</th><th>土</th><th>海</th><th>森</th><th>氷</th><th>空</th><th>宮殿</th></tr></thead><tbody><tr><th scope="row">土</th><td>—</td><td>29% (33)</td><td>86% (58)</td><td>6% (12)</td><td>24% (27)</td><td>27% (30)</td></tr><tr><th scope="row">海</th><td>71% (67)</td><td>—</td><td>48% (49)</td><td>29% (29)</td><td>41% (42)</td><td>56% (56)</td></tr><tr><th scope="row">森</th><td>14% (43)</td><td>52% (51)</td><td>—</td><td>60% (60)</td><td>30% (36)</td><td>13% (24)</td></tr><tr><th scope="row">氷</th><td>94% (88)</td><td>71% (71)</td><td>40% (40)</td><td>—</td><td>85% (85)</td><td>80% (80)</td></tr><tr><th scope="row">空</th><td>76% (74)</td><td>59% (58)</td><td>70% (64)</td><td>15% (16)</td><td>—</td><td>61% (60)</td></tr><tr><th scope="row">宮殿</th><td>73% (70)</td><td>44% (44)</td><td>87% (77)</td><td>20% (20)</td><td>39% (40)</td><td>—</td></tr></tbody></table></div>
+<p class="note">指し方は同じで、手札だけ配られたままにしたもの。総合の得点率は 氷 73 ＞ 空 54 ＞ 宮殿 50 ＞ 海 48 ＞ 森 43 ＞ 土 32（ルール版12）。海は同じ数字が平均1.7〜2.1枚しかそろわず、土は2が4枚そろわないため正式版より落ち、氷は駒選びに左右されないので首位になる。実戦の期待値に近いのはこちら。</p>
 
 <h2 class="sec">称号</h2>
 <ul class="note">
