@@ -13,7 +13,7 @@ export function formationFixture(form = "wings") {
     );
   } else {
     const def =
-      FORMATIONS.find((d) => ({ wings: "twin-wings", earth: "heir-hunt", forest: "elimination" })[form] === d.id) ||
+      FORMATIONS.find((d) => ({ wings: "twin-wings", earth: "heir-hunt", forest: "elimination", sea: "kamikaze" })[form] === d.id) ||
       FORMATIONS[0];
     const dx = def.edge ? 0 : 3;
     def.cells.forEach(([depth, col, rank, king]) =>
@@ -28,7 +28,7 @@ export function formationFixture(form = "wings") {
     if (isKing) s.players[owner].kingId = p.id;
     s.players[owner].armyRankCounts[rank] = (s.players[owner].armyRankCounts[rank] || 0) + 1;
   });
-  const area = form === "fortress" ? "ice" : form === "earth" ? "earth" : form === "forest" ? "forest" : "sky";
+  const area = form === "fortress" ? "ice" : form === "earth" ? "earth" : form === "forest" ? "forest" : form === "sea" ? "sea" : "sky";
   return {
     ...s,
     boardSize: 9,

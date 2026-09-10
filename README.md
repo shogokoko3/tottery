@@ -288,7 +288,7 @@ npm run build     # index.html を生成
   state にも記録にも載せず、画面だけで出す（`game.jsx` の `fortressGot`）
 - 2回目からは「獲得済み」と出るだけ。`node tools/check-bonus.mjs` が判定を見張る
 
-同じ仕組みで**布陣の型**（`bonus.js` の `FORMATIONS`）が3つある。エリアが立っているときに
+同じ仕組みで**布陣の型**（`bonus.js` の `FORMATIONS`）が4つある。エリアが立っているときに
 決まった9枚を決まった形に組んで対局を始めると出る。左右対称は同じ形。実測
 （[reports/fortress-tactics](reports/fortress-tactics/検証レポート.md)）で各エリアの最適解だった布陣。
 
@@ -296,8 +296,9 @@ npm run build     # index.html を生成
 | --- | --- | --- | --- |
 | 双翼の陣 | 双翼の将 | 空 | 10・10・J・J・Q・Q・4・2・8。前列 Q J J Q、中列 8 2 4 と 10、後列に王の10（横のずらし可） |
 | 継承の狩り | 軌跡の追跡者 | 土 | 2・2・2・2・J・J・Q・Q・10。前列 J J Q、中列 2 王の2 Q、後列 2 2 10（横のずらし可） |
+| 道連れの特攻 | 荒波の航海士 | 海 | 4・4・4・4・J・J・Q・Q・10。前列 Q J 4、中列 Q 10 J 4、後列 王の4 4（横のずらし可） |
 | 消去法の詰め | 静寂な狩人 | 森 | 6・J・J・Q・Q・10・10・4・2。隅の3×3で、前列 Q 10 J、中列 4 2 J、後列 王の6 Q 10 |
-どちらの演出も `node tools/serve-formation-check.mjs`（`http://127.0.0.1:4222/?test=1&form=wings` / `earth` / `forest` / `fortress`）で
+どちらの演出も `node tools/serve-formation-check.mjs`（`http://127.0.0.1:4222/?test=1&form=wings` / `earth` / `forest` / `sea` / `fortress`）で
 決まった盤面から確認できる。配信用 `dist/` には含めない
 
 ## 錬成（エーテル）
