@@ -53,6 +53,12 @@ export const TITLES = [
     name: "要塞の主",
     how: "9×9で、自陣の隅3×3に9体を固め、王をいちばん奥に置いて対局を始める",
   },
+  // 空のエリアで双翼の陣(src/game/bonus.js の twinWingsMatch)を組んで対局を始めると配られる
+  {
+    id: "twin-wings",
+    name: "双翼の将",
+    how: "空のエリアで、10・10・J・J・Q・Q・4・2・8 を「前列 Q J J Q、中列 8 2 4 と 10、後列に王の10」の形に組んで対局を始める",
+  },
   // シークレットミッションの褒美
   {
     id: "court-heavy",

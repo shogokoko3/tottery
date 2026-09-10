@@ -288,6 +288,13 @@ npm run build     # index.html を生成
   state にも記録にも載せず、画面だけで出す（`game.jsx` の `fortressGot`）
 - 2回目からは「獲得済み」と出るだけ。`node tools/check-bonus.mjs` が判定を見張る
 
+同じ仕組みで**双翼の陣**（称号「双翼の将」）もある。空のエリア（10の王にフォイル）で
+10・10・J・J・Q・Q・4・2・8 を「前列 Q J J Q、中列 8 2 4 と 10、後列に王の10」の形に
+組んで対局を始めると出る（`twinWingsMatch`。左右対称と横のずらしは同じ形）。
+実測（[reports/fortress-tactics](reports/fortress-tactics/検証レポート.md)）で空の最適解だった布陣。
+どちらの演出も `node tools/serve-formation-check.mjs`（`http://127.0.0.1:4222/?test=1&form=wings` / `form=fortress`）で
+決まった盤面から確認できる。配信用 `dist/` には含めない
+
 ## 錬成（エーテル）
 
 ダブったスキンを崩して**エーテル**にし、**狙った1枚**を作る。決まりは

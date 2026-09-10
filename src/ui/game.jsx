@@ -76,7 +76,7 @@ import {
 } from "../net/firebase.js";
 import { myUid } from "../net/auth.js";
 import { achieveSecret, grantTitle, loadProfile } from "../game/profile.js";
-import { fortressCorner } from "../game/bonus.js";
+import { fortressCorner, twinWingsMatch, TWIN_WINGS } from "../game/bonus.js";
 import { chanceLabel } from "../game/secrets.js";
 import {
   LOCAL_ONLY_ACTIONS,
@@ -1665,6 +1665,27 @@ export function GameCore({
     setFortressGot({ fresh: !had, right: corner > 0 });
   }, [a.phase]);
 
+  /**
+   * 双翼の陣。空のエリアで 10・10・J・J・Q・Q・4・2・8 を決まった形に組んで対局を
+   * 始めたら、本人にだけ演出と称号「双翼の将」を出す。要塞と同じ扱い
+   */
+  let [wingsGot, setWingsGot] = (0, useState)(null);
+  const wingsSeen = (0, useRef)(!1);
+  (0, useEffect)(() => {
+    if (a.phase !== "play" && a.phase !== "gameover") {
+      wingsSeen.current = !1;
+      return;
+    }
+    if (a.phase !== "play" || wingsSeen.current) return;
+    wingsSeen.current = !0;
+    if (tutorial || !(network || cpu)) return;
+    const hit = twinWingsMatch(a, P);
+    if (!hit) return;
+    const had = loadProfile().titles.includes("twin-wings");
+    grantTitle("twin-wings");
+    setWingsGot({ fresh: !had, mirror: hit.mirror });
+  }, [a.phase]);
+
   // 対局が終わったら1局ぶん記録する。レベルの元になる。
   // オンラインで相手の持ち点が分かっていれば、レーティングもここで動かす
   // 「もう一度遊ぶ」で盤が初期化されても、記録済みの印は残っていた。
@@ -2870,6 +2891,43 @@ export function GameCore({
               <button
                 className="btn btn-primary"
                 onClick={() => setFortressGot(null)}
+              >
+                対局へ
+              </button>
+            </div>
+          </div>
+        )}
+        {wingsGot && !fortressGot && !a.setupEffects && (
+          <div className="modal-overlay">
+            <div className="modal-panel secret-panel wings-panel">
+              <p className="bonus-eyebrow">布陣の称号</p>
+              <div className="wings-grid" aria-hidden="true">
+                {TWIN_WINGS.cells.map(([depth, col, rank, king], i) => (
+                  <span
+                    key={i}
+                    className={`wings-cell ${king ? "is-king" : ""}`}
+                    style={{
+                      "--i": i,
+                      gridRow: depth + 1,
+                      gridColumn: (wingsGot.mirror ? TWIN_WINGS.width - 1 - col : col) + 1,
+                    }}
+                  >
+                    {rank}
+                  </span>
+                ))}
+              </div>
+              <p className="secret-name">双翼の陣</p>
+              <p className="hint">
+                空のエリアに、10を2枚そろえて王を隠し、J・Qの4枚で取り返しを利かせた布陣。
+              </p>
+              <p className="hint">
+                {wingsGot.fresh
+                  ? "称号「双翼の将」を手に入れました。設定から選べます。"
+                  : "称号「双翼の将」は獲得済みです。"}
+              </p>
+              <button
+                className="btn btn-primary"
+                onClick={() => setWingsGot(null)}
               >
                 対局へ
               </button>

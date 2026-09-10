@@ -106,3 +106,62 @@ export function fortressCorner(pieces, size, player) {
 export function isFortress(pieces, size, player) {
   return fortressCorner(pieces, size, player) !== null;
 }
+
+/* ---------------------------- 双翼の陣 ---------------------------- */
+
+/**
+ * 双翼の陣。空のエリア(10 の王にフォイル)で、10・10・J・J・Q・Q・4・2・8 を
+ * 決まった形に組んだ布陣。実測(reports/fortress-tactics)で空の最適解だった形。
+ *
+ *   前列  Q  J  J  Q
+ *   中列  8  2  4  .  10
+ *   後列  .  .  [10]         ← 王
+ *
+ * 左右対称(鏡写し)と横のずらしは同じ形と見なす。効果は無く、組んだ本人にだけ
+ * 演出と称号「双翼の将」を出す(相手に知らせると王の位置が漏れる)。
+ * cells は [前列からの深さ, 左端からの列, ランク, 王か]。
+ */
+export const TWIN_WINGS = Object.freeze({
+  counts: { 10: 2, J: 2, Q: 2, 4: 1, 2: 1, 8: 1 },
+  width: 5,
+  cells: [
+    [0, 0, "Q"],
+    [0, 1, "J"],
+    [0, 2, "J"],
+    [0, 3, "Q"],
+    [1, 0, "8"],
+    [1, 1, "2"],
+    [1, 2, "4"],
+    [1, 4, "10"],
+    [2, 2, "10", true],
+  ],
+});
+
+/** 双翼の陣なら { mirror, dx } を、違えば null を返す */
+export function twinWingsMatch(state, player) {
+  const size = state?.boardSize;
+  if (!size || size < 9) return null;
+  if (state.areas?.[player]?.type !== "sky") return null;
+  const mine = Object.values(state.pieces || {}).filter(
+    (p) => p.owner === player && p.alive,
+  );
+  if (mine.length !== 9) return null;
+  const counts = {};
+  for (const p of mine) counts[p.rank] = (counts[p.rank] || 0) + 1;
+  for (const [rank, n] of Object.entries(TWIN_WINGS.counts))
+    if (counts[rank] !== n) return null;
+  const [lo, hi] = territoryRows(size, player);
+  const front = player === 0 ? lo : hi;
+  const dir = player === 0 ? 1 : -1;
+  for (const mirror of [false, true])
+    for (let dx = 0; dx + TWIN_WINGS.width <= size; dx++) {
+      const ok = TWIN_WINGS.cells.every(([depth, c, rank, king]) => {
+        const col = mirror ? size - 1 - (c + dx) : c + dx;
+        const row = front + depth * dir;
+        const p = mine.find((q) => q.row === row && q.col === col);
+        return !!p && p.rank === rank && !!p.isKing === !!king;
+      });
+      if (ok) return { mirror, dx };
+    }
+  return null;
+}

@@ -9,7 +9,12 @@
  */
 import { reducer, autoPickKing } from "../src/game/reducer.js";
 import { buildDeck, territoryRows, totalSlots } from "../src/game/board.js";
-import { isStraight, isFlush, fortressCorner } from "../src/game/bonus.js";
+import {
+  isStraight,
+  isFlush,
+  fortressCorner,
+  twinWingsMatch,
+} from "../src/game/bonus.js";
 
 let ok = 0;
 const fails = [];
@@ -292,6 +297,34 @@ console.log("隅の要塞");
   const both = { ...army(left, 6, 0), ...army(block([0, 1, 2], 6), 2, 1) };
   is("相手の駒が混ざっていても自分の側だけ見る", fortressCorner(both, 9, 0), 0);
   is("相手側(右隅)も判定できる", fortressCorner(both, 9, 1), 6);
+}
+
+console.log("双翼の陣");
+{
+  // 赤(下): 前列6行目 Q J J Q、中列7行目 8 2 4 . 10、後列8行目 [10]。dx=3 から
+  const layout = (dx, mirror = false, owner = 0, kingIdx = 8, rankAt = null) => {
+    const spec = [[6, 0, "Q"], [6, 1, "J"], [6, 2, "J"], [6, 3, "Q"], [7, 0, "8"], [7, 1, "2"], [7, 2, "4"], [7, 4, "10"], [8, 2, "10"]];
+    const pieces = {};
+    spec.forEach(([row, c, rank], i) => {
+      const col = mirror ? 8 - (c + dx) : c + dx;
+      const r = owner === 0 ? row : 8 - row;
+      pieces[`w${i}`] = { id: `w${i}`, row: r, col, owner, alive: true, isKing: i === kingIdx, rank: rankAt && rankAt[i] ? rankAt[i] : rank };
+    });
+    return pieces;
+  };
+  const st = (pieces, area = "sky", owner = 0) => ({ boardSize: 9, pieces, areas: owner === 0 ? [{ type: area }, null] : [null, { type: area }] });
+  is("空で決まった形なら一致", twinWingsMatch(st(layout(3)), 0), { mirror: false, dx: 3 });
+  is("横にずらしても同じ形", twinWingsMatch(st(layout(0)), 0), { mirror: false, dx: 0 });
+  is("鏡写しも同じ形", twinWingsMatch(st(layout(2, true)), 0), { mirror: true, dx: 2 });
+  is("青(上)でも判定できる", twinWingsMatch(st(layout(3, false, 1), "sky", 1), 1), { mirror: false, dx: 3 });
+  is("空でなければ出ない", twinWingsMatch(st(layout(3), "ice"), 0), null);
+  is("エリア無しでは出ない", twinWingsMatch({ boardSize: 9, pieces: layout(3), areas: [null, null] }, 0), null);
+  is("王が中列の10なら違う", twinWingsMatch(st(layout(3, false, 0, 7)), 0), null);
+  is("1枚でも違う札なら違う", twinWingsMatch(st(layout(3, false, 0, 8, { 4: "3" })), 0), null);
+  const off = layout(3);
+  off.w0 = { ...off.w0, row: 7, col: 8 };
+  is("1枚でも位置が違えば違う", twinWingsMatch(st(off), 0), null);
+  is("5×5には無い", twinWingsMatch({ ...st(layout(0)), boardSize: 5 }, 0), null);
 }
 
 console.log(`\n${ok} ok / ${fails.length} fail`);

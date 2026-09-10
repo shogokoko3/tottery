@@ -4807,6 +4807,48 @@ h3 {
     box-shadow: 0 0 20px var(--gold);
   }
 }
+/* 双翼の陣の演出。翼が左右から羽ばたくように、外側の駒から順に舞い降りる */
+.wings-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 30px);
+  grid-template-rows: repeat(3, 30px);
+  gap: 4px;
+  justify-content: center;
+  margin: 4px auto 10px;
+}
+.wings-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #3e8e90;
+  border: 1px solid #1f5658;
+  color: #f4fbfb;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0;
+  animation: wings-in 0.45s ease-out forwards;
+  animation-delay: calc(var(--i) * 80ms);
+}
+.wings-cell.is-king {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #3a2a00;
+  box-shadow: 0 0 14px var(--gold);
+  animation:
+    wings-in 0.45s ease-out forwards,
+    fortress-glow 1.6s ease-in-out 1s infinite;
+}
+@keyframes wings-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 .secret-chance {
   display: inline-block;
   margin: 8px auto;
