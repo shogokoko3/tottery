@@ -14,6 +14,9 @@ import {
   isFlush,
   fortressCorner,
   twinWingsMatch,
+  FORMATIONS,
+  formationMatch,
+  matchFormations,
 } from "../src/game/bonus.js";
 
 let ok = 0;
@@ -325,6 +328,33 @@ console.log("双翼の陣");
   off.w0 = { ...off.w0, row: 7, col: 8 };
   is("1枚でも位置が違えば違う", twinWingsMatch(st(off), 0), null);
   is("5×5には無い", twinWingsMatch({ ...st(layout(0)), boardSize: 5 }, 0), null);
+}
+
+console.log("継承の狩り・消去法の詰め");
+{
+  const build = (def, { dx = 0, mirror = false, owner = 0, area = def.area, tweak = null } = {}) => {
+    const pieces = {};
+    def.cells.forEach(([depth, c, rank, king], i) => {
+      const col = mirror ? 8 - (c + dx) : c + dx;
+      const row = owner === 0 ? 6 + depth : 2 - depth;
+      pieces[`f${i}`] = { id: `f${i}`, row, col, owner, alive: true, isKing: !!king, rank };
+    });
+    if (tweak) tweak(pieces);
+    return { boardSize: 9, pieces, areas: owner === 0 ? [{ type: area }, null] : [null, { type: area }] };
+  };
+  const earth = FORMATIONS.find((d) => d.id === "heir-hunt"), forest = FORMATIONS.find((d) => d.id === "elimination");
+  is("型は3つ", FORMATIONS.map((d) => d.id), ["twin-wings", "heir-hunt", "elimination"]);
+  is("継承の狩り: 土で決まった形なら一致", formationMatch(build(earth, { dx: 3 }), 0, earth), { mirror: false, dx: 3 });
+  is("継承の狩り: 鏡写しも一致", formationMatch(build(earth, { dx: 1, mirror: true }), 0, earth), { mirror: true, dx: 1 });
+  is("継承の狩り: 土でなければ出ない", formationMatch(build(earth, { dx: 3, area: "forest" }), 0, earth), null);
+  is("継承の狩り: 王が後列の2なら違う", formationMatch(build(earth, { dx: 3, tweak: (p) => { p.f4.isKing = false; p.f6.isKing = true; } }), 0, earth), null);
+  is("消去法の詰め: 森で左隅なら一致", formationMatch(build(forest), 0, forest), { mirror: false, dx: 0 });
+  is("消去法の詰め: 右隅(鏡写し)も一致", formationMatch(build(forest, { mirror: true }), 0, forest), { mirror: true, dx: 0 });
+  is("消去法の詰め: 隅からずれると違う", formationMatch(build(forest, { dx: 1 }), 0, forest), null);
+  is("消去法の詰め: 青(上)でも判定できる", formationMatch(build(forest, { owner: 1 }), 1, forest), { mirror: false, dx: 0 });
+  is("消去法の詰め: 7王では違う", formationMatch(build(forest, { tweak: (p) => { p.f6.rank = "7"; } }), 0, forest), null);
+  is("matchFormations は組めた型だけ返す", matchFormations(build(forest), 0).map((h) => h.def.id), ["elimination"]);
+  is("matchFormations: 何も組めていなければ空", matchFormations(build(forest, { dx: 1 }), 0), []);
 }
 
 console.log(`\n${ok} ok / ${fails.length} fail`);

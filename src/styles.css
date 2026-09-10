@@ -4810,7 +4810,7 @@ h3 {
 /* 双翼の陣の演出。翼が左右から羽ばたくように、外側の駒から順に舞い降りる */
 .wings-grid {
   display: grid;
-  grid-template-columns: repeat(5, 30px);
+  grid-template-columns: repeat(var(--cols, 5), 30px);
   grid-template-rows: repeat(3, 30px);
   gap: 4px;
   justify-content: center;

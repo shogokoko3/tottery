@@ -1,6 +1,6 @@
 // 布陣の称号の確認用の盤面。赤(下)が双翼の陣か隅の要塞を組み、青(上)はK王と数体。
 import { initialState } from "../src/game/reducer.js";
-import { TWIN_WINGS } from "../src/game/bonus.js";
+import { FORMATIONS } from "../src/game/bonus.js";
 export function formationFixture(form = "wings") {
   const s = initialState(),
     pieces = {},
@@ -12,8 +12,12 @@ export function formationFixture(form = "wings") {
       ([row, col], i) => specs.push([ranks[i], 0, row, col, i === 0]),
     );
   } else {
-    TWIN_WINGS.cells.forEach(([depth, col, rank, king]) =>
-      specs.push([rank, 0, 6 + depth, col + 3, !!king]),
+    const def =
+      FORMATIONS.find((d) => ({ wings: "twin-wings", earth: "heir-hunt", forest: "elimination" })[form] === d.id) ||
+      FORMATIONS[0];
+    const dx = def.edge ? 0 : 3;
+    def.cells.forEach(([depth, col, rank, king]) =>
+      specs.push([rank, 0, 6 + depth, col + dx, !!king]),
     );
   }
   specs.push(["K", 1, 0, 4, true], ["6", 1, 2, 3, false], ["10", 1, 2, 5, false], ["A", 1, 1, 6, false]);
@@ -24,7 +28,7 @@ export function formationFixture(form = "wings") {
     if (isKing) s.players[owner].kingId = p.id;
     s.players[owner].armyRankCounts[rank] = (s.players[owner].armyRankCounts[rank] || 0) + 1;
   });
-  const area = form === "fortress" ? "ice" : "sky";
+  const area = form === "fortress" ? "ice" : form === "earth" ? "earth" : form === "forest" ? "forest" : "sky";
   return {
     ...s,
     boardSize: 9,

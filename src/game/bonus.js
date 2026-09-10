@@ -107,55 +107,105 @@ export function isFortress(pieces, size, player) {
   return fortressCorner(pieces, size, player) !== null;
 }
 
-/* ---------------------------- 双翼の陣 ---------------------------- */
+/* ---------------------------- 布陣の型 ---------------------------- */
 
 /**
- * 双翼の陣。空のエリア(10 の王にフォイル)で、10・10・J・J・Q・Q・4・2・8 を
- * 決まった形に組んだ布陣。実測(reports/fortress-tactics)で空の最適解だった形。
+ * 布陣の型。エリアが立っているときに、決まった9枚を決まった形に組んで対局を始めると、
+ * 組んだ本人にだけ演出と称号を出す(相手に知らせると王の位置が漏れるので、state にも
+ * 記録にも載せない)。実測(reports/fortress-tactics)で各エリアの最適解だった形。
  *
- *   前列  Q  J  J  Q
- *   中列  8  2  4  .  10
- *   後列  .  .  [10]         ← 王
- *
- * 左右対称(鏡写し)と横のずらしは同じ形と見なす。効果は無く、組んだ本人にだけ
- * 演出と称号「双翼の将」を出す(相手に知らせると王の位置が漏れる)。
- * cells は [前列からの深さ, 左端からの列, ランク, 王か]。
+ * cells は [前列からの深さ, 左端からの列, ランク, 王か]。左右対称(鏡写し)は同じ形。
+ * edge が真なら自陣の隅(左端か、鏡写しで右端)に組んだときだけ。そうでなければ横のずらしも同じ形。
  */
-export const TWIN_WINGS = Object.freeze({
-  counts: { 10: 2, J: 2, Q: 2, 4: 1, 2: 1, 8: 1 },
-  width: 5,
-  cells: [
-    [0, 0, "Q"],
-    [0, 1, "J"],
-    [0, 2, "J"],
-    [0, 3, "Q"],
-    [1, 0, "8"],
-    [1, 1, "2"],
-    [1, 2, "4"],
-    [1, 4, "10"],
-    [2, 2, "10", true],
-  ],
-});
+export const FORMATIONS = Object.freeze([
+  {
+    id: "twin-wings",
+    name: "双翼の陣",
+    title: "双翼の将",
+    area: "sky",
+    flavor: "空のエリアに、10を2枚そろえて王を隠し、J・Qの4枚で取り返しを利かせた布陣。",
+    counts: { 10: 2, J: 2, Q: 2, 4: 1, 2: 1, 8: 1 },
+    width: 5,
+    cells: [
+      [0, 0, "Q"],
+      [0, 1, "J"],
+      [0, 2, "J"],
+      [0, 3, "Q"],
+      [1, 0, "8"],
+      [1, 1, "2"],
+      [1, 2, "4"],
+      [1, 4, "10"],
+      [2, 2, "10", true],
+    ],
+  },
+  {
+    // 土「継承の狩り」: 2を4枚(王の射程9、倒れても継ぐ)。王は中列で前線に立つ
+    id: "heir-hunt",
+    name: "継承の狩り",
+    title: "継承の狩人",
+    area: "earth",
+    flavor: "土のエリアに、2を4枚そろえて王を中列に据えた布陣。王ごと前に出て、正体の分からない駒を狩る。",
+    counts: { 2: 4, J: 2, Q: 2, 10: 1 },
+    width: 5,
+    cells: [
+      [0, 0, "J"],
+      [0, 1, "J"],
+      [0, 3, "Q"],
+      [1, 0, "2"],
+      [1, 1, "2", true],
+      [1, 4, "Q"],
+      [2, 0, "2"],
+      [2, 1, "2"],
+      [2, 2, "10"],
+    ],
+  },
+  {
+    // 森「消去法の詰め」: 隅の3×3。4回の発動で王以外を全部見抜き、残った1体を10×2とJ・Qで詰める
+    id: "elimination",
+    name: "消去法の詰め",
+    title: "消去法の賢者",
+    area: "forest",
+    flavor: "森のエリアに、隅の3×3で6の王を固めた布陣。王以外を全部見抜いて残った1体を、10とJ・Qで詰める。",
+    counts: { 6: 1, J: 2, Q: 2, 10: 2, 4: 1, 2: 1 },
+    width: 3,
+    edge: true,
+    cells: [
+      [0, 0, "Q"],
+      [0, 1, "10"],
+      [0, 2, "J"],
+      [1, 0, "4"],
+      [1, 1, "2"],
+      [1, 2, "J"],
+      [2, 0, "6", true],
+      [2, 1, "Q"],
+      [2, 2, "10"],
+    ],
+  },
+]);
 
-/** 双翼の陣なら { mirror, dx } を、違えば null を返す */
-export function twinWingsMatch(state, player) {
+/** 互換用。双翼の陣の定義 */
+export const TWIN_WINGS = FORMATIONS[0];
+
+/** その型に組めていれば { mirror, dx } を、違えば null を返す */
+export function formationMatch(state, player, def) {
   const size = state?.boardSize;
   if (!size || size < 9) return null;
-  if (state.areas?.[player]?.type !== "sky") return null;
+  if (state.areas?.[player]?.type !== def.area) return null;
   const mine = Object.values(state.pieces || {}).filter(
     (p) => p.owner === player && p.alive,
   );
   if (mine.length !== 9) return null;
   const counts = {};
   for (const p of mine) counts[p.rank] = (counts[p.rank] || 0) + 1;
-  for (const [rank, n] of Object.entries(TWIN_WINGS.counts))
+  for (const [rank, n] of Object.entries(def.counts))
     if (counts[rank] !== n) return null;
   const [lo, hi] = territoryRows(size, player);
   const front = player === 0 ? lo : hi;
   const dir = player === 0 ? 1 : -1;
+  const maxDx = def.edge ? 0 : size - def.width;
   for (const mirror of [false, true])
-    for (let dx = 0; dx + TWIN_WINGS.width <= size; dx++) {
-      const ok = TWIN_WINGS.cells.every(([depth, c, rank, king]) => {
+    for (let dx = 0; dx <= maxDx; dx++) {
+      const ok = def.cells.every(([depth, c, rank, king]) => {
         const col = mirror ? size - 1 - (c + dx) : c + dx;
         const row = front + depth * dir;
         const p = mine.find((q) => q.row === row && q.col === col);
@@ -164,4 +214,17 @@ export function twinWingsMatch(state, player) {
       if (ok) return { mirror, dx };
     }
   return null;
+}
+
+/** 組めている型をすべて返す(通常は0か1つ) */
+export function matchFormations(state, player) {
+  return FORMATIONS.map((def) => {
+    const hit = formationMatch(state, player, def);
+    return hit ? { def, ...hit } : null;
+  }).filter(Boolean);
+}
+
+/** 互換用。双翼の陣なら { mirror, dx } */
+export function twinWingsMatch(state, player) {
+  return formationMatch(state, player, TWIN_WINGS);
 }

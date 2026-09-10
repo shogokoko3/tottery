@@ -56,7 +56,7 @@ const result = await build({
     loader: "jsx",
     contents: `
 import {createRoot} from 'react-dom/client';import {GameCore} from './src/ui/game.jsx';import {SeatsProvider} from './src/ui/names.jsx';
-function App(){return <><nav style={{padding:8,background:'#10203a',display:'flex',gap:12}}>{[['wings','双翼の陣'],['fortress','隅の要塞']].map(([id,label])=><a style={{color:'#eee'}} href={'?test=1&form='+id} key={id}>{label}</a>)}</nav><SeatsProvider value={{names:['あなた','CPU'],skins:[{},{}],backs:[null,null],frames:[null,null]}}><GameCore boardSize={9} cpu={{level:1}} onExit={()=>location.reload()}/></SeatsProvider></>};createRoot(document.getElementById('root')).render(<App/>);
+function App(){return <><nav style={{padding:8,background:'#10203a',display:'flex',gap:12}}>{[['wings','双翼の陣'],['earth','継承の狩り'],['forest','消去法の詰め'],['fortress','隅の要塞']].map(([id,label])=><a style={{color:'#eee'}} href={'?test=1&form='+id} key={id}>{label}</a>)}</nav><SeatsProvider value={{names:['あなた','CPU'],skins:[{},{}],backs:[null,null],frames:[null,null]}}><GameCore boardSize={9} cpu={{level:1}} onExit={()=>location.reload()}/></SeatsProvider></>};createRoot(document.getElementById('root')).render(<App/>);
 `,
   },
 });
