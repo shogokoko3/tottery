@@ -1,10 +1,12 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3(SOFT=1 で定石の札)/skylab/arealab/seadeal/showform ほか。HUNT=1 で王の特定後の詰め探索)。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3(SOFT=1)/skylab/arealab/seadeal/showform ほか。HUNT=1 で詰め探索、ICE_KING=1 / FREEZE_DEATH=4 で氷のルール案)。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
 //   sky     … 左: 10 王 + 空フォイル、構成の変種 / 右: 自由・フォイル無し
 //   kingsfoil … 左: 王固定 + その帯のフォイル / 右: 自由・フォイル無し
-if (process.env.ICE_TARGETS || process.env.FREEZE_TURNS) globalThis.TOTTERY_AREA_TUNING = { ...(process.env.ICE_TARGETS ? { iceTargets: Number(process.env.ICE_TARGETS) } : {}), ...(process.env.FREEZE_TURNS ? { freezeTurns: Number(process.env.FREEZE_TURNS) } : {}) };
+if (process.env.FREEZE_DEATH) globalThis.TOTTERY_AREA_TUNING = { ...(globalThis.TOTTERY_AREA_TUNING || {}), freezeDeathTurns: Number(process.env.FREEZE_DEATH) };
+if (process.env.ICE_KING) globalThis.TOTTERY_AREA_TUNING = { ...(globalThis.TOTTERY_AREA_TUNING || {}), iceFreezesKing: process.env.ICE_KING === "1" };
+if (process.env.ICE_TARGETS || process.env.FREEZE_TURNS) globalThis.TOTTERY_AREA_TUNING = { ...(globalThis.TOTTERY_AREA_TUNING || {}), ...(process.env.ICE_TARGETS ? { iceTargets: Number(process.env.ICE_TARGETS) } : {}), ...(process.env.FREEZE_TURNS ? { freezeTurns: Number(process.env.FREEZE_TURNS) } : {}) };
 const REPO = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 const { reducer } = await import(`${REPO}/src/game/reducer.js`);
 const { enrichAction } = await import(`${REPO}/src/game/actions.js`);
@@ -148,7 +150,7 @@ function setup(seed, sides) {
 function play(base, first, seed, sides = null) {
   Math.random = rng(seed);
   let s = { ...structuredClone(base), firstPlayer: first, currentTurn: first, interstitial: null }, steps = 0, stopped = null;
-  const iceUses = [0, 0], iceExt = [0, 0];
+  const iceUses = [0, 0], iceExt = [0, 0], freezeDeath = [0, 0];
   let death = null;
   // 取り返しの統計(側0): 相手に取られた回数、次の自分の手で取り返した回数、取った駒がその手番のうちに逃げた回数
   const recap = { taken: 0, recaptured: 0, hitAndRun: 0 };
@@ -194,10 +196,11 @@ function play(base, first, seed, sides = null) {
       death = { by: enriched.type === "MOVE_PIECE" ? `${k.rank}${k.isKing ? "王" : ""}` : enriched.type, turn: s.turnNo, kingAt: myKing ? `${myKing.row},${myKing.col}` : "?", killerKnown: k ? !!(k.revealed || s.known?.[0]?.[k.id]) : null, lost: Object.values(s.pieces).filter((p) => p.owner === 0 && !p.alive).length, took: Object.values(s.pieces).filter((p) => p.owner === 1 && !p.alive).length };
     }
     if (enriched.type === "USE_AREA" && next.lastArea?.type === "ice") { iceUses[cur]++; if (next.lastArea.extended) iceExt[cur]++; }
+    if (next.log.length > s.log.length) for (const line of next.log.slice(s.log.length)) if (line.includes("凍結死")) freezeDeath[line.startsWith("赤") ? 0 : 1]++;
     s = { ...next, replay: [] };
   }
   if (s.phase !== "gameover" && !stopped) stopped = "action_cap";
-  return { winner: s.phase === "gameover" ? s.winner : null, stop: stopped, reason: s.endReason || (s.adjudication ? "adjudication" : "king"), turns: s.turnNo, iceUses, iceExt, death, recap, hunt };
+  return { winner: s.phase === "gameover" ? s.winner : null, stop: stopped, reason: s.endReason || (s.adjudication ? "adjudication" : "king"), turns: s.turnNo, iceUses, iceExt, death, recap, hunt, freezeDeath };
 }
 
 function runPair(label, sides, seedBase) {
