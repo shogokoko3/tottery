@@ -1,4 +1,4 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10 の「最強の戦術」「氷はなぜ弱いか」「隅の要塞」「空の攻め方」「相性表」「エリアごとの指し方」の検証に使った道具。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10 の検証(最強の戦術・氷・隅の要塞・空の攻め方・相性表・エリアごとの指し方・王の位置)に使った道具。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
@@ -342,6 +342,35 @@ function fortressArrange(state, player, plan, col0 = 0) {
       const trial = { ...best, [a.id]: best[b.id], [b.id]: best[a.id] };
       const sc = score(trial);
       if (sc > bestScore + 1e-6) { best = trial; bestScore = sc; improved = true; }
+    }
+    if (!improved) break;
+  }
+  return best;
+}
+/** 王の升を決めて、残りは取り返しが最大になるよう自陣の中で局所探索する(通常配置の王だけ差し替え) */
+function arrangeKingAt(state, player, plan, kingCell) {
+  const size = state.boardSize, [lo, hi] = territoryRows(size, player);
+  const cells = [];
+  for (let row = lo; row <= hi; row++) for (let col = 0; col < size; col++) cells.push({ row, col });
+  const mid = Math.floor(size / 2);
+  const ordered = cells.slice().sort((a, b) => Math.abs(a.col - mid) * 2 + Math.abs(a.row - kingCell.row) - (Math.abs(b.col - mid) * 2 + Math.abs(b.row - kingCell.row)));
+  const placement = { [plan.kingId]: kingCell }, used = new Set([`${kingCell.row}/${kingCell.col}`]);
+  for (const card of plan.cards) if (card.id !== plan.kingId) { const c = ordered.find((c) => !used.has(`${c.row}/${c.col}`)); placement[card.id] = c; used.add(`${c.row}/${c.col}`); }
+  let best = placement, score = formationMetrics(plan, best, size, player).score;
+  for (let pass = 0; pass < 3; pass++) {
+    let improved = false;
+    for (const card of plan.cards) {
+      if (card.id === plan.kingId) continue;
+      for (const cell of cells) {
+        if (cell.row === kingCell.row && cell.col === kingCell.col) continue;
+        const from = best[card.id];
+        if (from.row === cell.row && from.col === cell.col) continue;
+        const other = plan.cards.find((c) => c.id !== plan.kingId && best[c.id].row === cell.row && best[c.id].col === cell.col);
+        const trial = { ...best, [card.id]: cell };
+        if (other) trial[other.id] = from;
+        const next = formationMetrics(plan, trial, size, player).score;
+        if (next > score + 0.001) { best = trial; score = next; improved = true; }
+      }
     }
     if (!improved) break;
   }
@@ -831,6 +860,9 @@ if (mode === "kings" || mode === "kingsfoil") {
     const side = { ...fixedSide(ranks, ranks[0]), foil: "king", act: actOf() };
     if (form === "corner") side.arrange = fortressArrange;
     else if (form === "center") side.arrange = (st, p, plan) => fortressArrange(st, p, plan, 3);
+    else if (form === "front") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo : hi, col: 4 }); };
+    else if (form === "frontside") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo : hi, col: 2 }); };
+    else if (form === "mid") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo + 1 : hi - 1, col: 4 }); };
     rows.push(...runPair(`${AREA} ${n} ${form} vs ${F}`, [side, foe()], 101260910 + i++ * 1000003));
     console.error(`${n}/${form} done ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   }
