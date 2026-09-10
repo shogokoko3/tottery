@@ -1,4 +1,4 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/skylab/arealab/showform ほか)。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/skylab/arealab/showform ほか。HUNT=1 で王の特定後の詰め探索)。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
@@ -148,6 +148,7 @@ function play(base, first, seed, sides = null) {
   let death = null;
   // 取り返しの統計(側0): 相手に取られた回数、次の自分の手で取り返した回数、取った駒がその手番のうちに逃げた回数
   const recap = { taken: 0, recaptured: 0, hitAndRun: 0 };
+  const hunt = {};
   let lastTaken = null;
   const step = (act) => { s = { ...reducer(s, act), replay: [] }; };
   while (s.phase !== "gameover" && steps++ < 2400) {
@@ -156,6 +157,7 @@ function play(base, first, seed, sides = null) {
     if (s.setupEffects) { step({ type: "DISMISS_SETUP_EFFECTS" }); continue; }
     if (s.turnNo >= CAP) { stopped = "turn_cap"; break; }
     let act = automaticAreaAction(s) || (sides?.[s.currentTurn]?.act ? sides[s.currentTurn].act(s, s.currentTurn) : null) || cpuInformedAction(s, s.currentTurn);
+    if (act && act.forced && s.currentTurn === 0) { hunt[act.forced] = (hunt[act.forced] || 0) + 1; delete act.forced; }
     if (!act) { stopped = "no_action"; break; }
     if (act.type === "__CPU_SHUFFLE") {
       step({ type: "SELECT_PIECE", id: act.aceId });
@@ -191,7 +193,7 @@ function play(base, first, seed, sides = null) {
     s = { ...next, replay: [] };
   }
   if (s.phase !== "gameover" && !stopped) stopped = "action_cap";
-  return { winner: s.phase === "gameover" ? s.winner : null, stop: stopped, reason: s.endReason || (s.adjudication ? "adjudication" : "king"), turns: s.turnNo, iceUses, iceExt, death, recap };
+  return { winner: s.phase === "gameover" ? s.winner : null, stop: stopped, reason: s.endReason || (s.adjudication ? "adjudication" : "king"), turns: s.turnNo, iceUses, iceExt, death, recap, hunt };
 }
 
 function runPair(label, sides, seedBase) {
@@ -228,6 +230,7 @@ function summarize(rows) {
     b.frozenEnd = (b.frozenEnd || 0) + (r.reason === "frozen" ? 1 : 0);
     b.iceUses = (b.iceUses || 0) + (r.iceUses?.[0] || 0);
     b.iceExt = (b.iceExt || 0) + (r.iceExt?.[0] || 0);
+    if (r.hunt) { b.hNow = (b.hNow || 0) + (r.hunt.now || 0); b.hMate = (b.hMate || 0) + (r.hunt.mate || 0); b.hThreat = (b.hThreat || 0) + (r.hunt.threat || 0) + (r.hunt.approach || 0); }
     if (r.recap) { b.taken = (b.taken || 0) + r.recap.taken; b.recaptured = (b.recaptured || 0) + r.recap.recaptured; b.har = (b.har || 0) + r.recap.hitAndRun; }
   }
   const pct = (a, b) => (b ? (100 * a / b).toFixed(1) + "%" : "-");
@@ -235,7 +238,7 @@ function summarize(rows) {
   for (const [label, b] of Object.entries(by)) {
     const med = b.turns.sort((x, y) => x - y)[Math.floor(b.turns.length / 2)];
     const foes = Object.entries(b.kings1).sort((x, y) => y[1] - x[1]).slice(0, 4).map(([k, n]) => `${k}:${n}`).join(" ");
-    lines.push(`${label.padEnd(14)} 勝率 ${pct(b.w, b.w + b.l).padStart(6)}  勝-負-未 ${b.w}-${b.l}-${b.und}  先手 ${pct(b.firstW, b.firstG)} 後手 ${pct(b.secondW, b.secondG)}  中央値手番 ${med}  凍結負け ${b.frozenEnd}  取られ${b.taken || 0}/取り返し${pct(b.recaptured || 0, b.taken || 0)}/取り逃げ${b.har || 0}  氷 ${(b.iceUses / (b.w + b.l || 1)).toFixed(1)}回/局(延長 ${pct(b.iceExt, b.iceUses)})  相手王 ${foes}`);
+    lines.push(`${label.padEnd(14)} 勝率 ${pct(b.w, b.w + b.l).padStart(6)}  勝-負-未 ${b.w}-${b.l}-${b.und}  先手 ${pct(b.firstW, b.firstG)} 後手 ${pct(b.secondW, b.secondG)}  中央値手番 ${med}  凍結負け ${b.frozenEnd}  詰め[即${b.hNow || 0}/必至${b.hMate || 0}/両狙い${b.hThreat || 0}] 取られ${b.taken || 0}/取り返し${pct(b.recaptured || 0, b.taken || 0)}/取り逃げ${b.har || 0}  氷 ${(b.iceUses / (b.w + b.l || 1)).toFixed(1)}回/局(延長 ${pct(b.iceExt, b.iceUses)})  相手王 ${foes}`);
   }
   return lines.join("\n");
 }
@@ -667,6 +670,97 @@ function skyAct(opts = {}) {
   };
 }
 /** 土: 継承があるので王ごと前に出て、正体の分からない駒(王候補)を狩る */
+/* ---------------------------- 王の特定後の詰め ---------------------------- */
+// 盤のコピー上で1手を進める(取り・移動のみ。昇格や氷は無視)
+function applyMove(board, pieces, p, m) {
+  const b = board.map((r) => r.slice()), ps = { ...pieces };
+  const gone = [];
+  for (const c of m.captures || []) { const t = b[c.row][c.col]; if (t) { gone.push(t.id); ps[t.id] = { ...t, alive: false }; b[c.row][c.col] = null; } }
+  const t = b[m.row][m.col]; if (t && t.id !== p.id) { gone.push(t.id); ps[t.id] = { ...t, alive: false }; }
+  b[p.row][p.col] = null;
+  const moved = { ...p, row: m.row, col: m.col }; ps[p.id] = moved; b[m.row][m.col] = moved;
+  return { board: b, pieces: ps, gone };
+}
+function movesOf(s, board, pieces, owner) {
+  const out = [];
+  const counts = s.players[owner].armyRankCounts, kr = kingRankOf(s, owner);
+  for (const p of Object.values(pieces)) {
+    if (!p.alive || p.owner !== owner || p.rank === "A" || isFrozen(s, p)) continue;
+    for (const m of legal(p, board, s.boardSize, counts, kr)) out.push({ p, m });
+  }
+  return out;
+}
+const hits = (list, target) => list.filter(({ m }) => (m.row === target.row && m.col === target.col) || (m.captures || []).some((c) => c.row === target.row && c.col === target.col));
+/**
+ * 王が特定できているとき: いま取れるなら取る。次に「相手がどう応じても次の手で王を取れる」手(必至)を探す。
+ * 無ければ、王を狙う駒の数が増える手を返す(両狙いの準備)。相手の応手で自分の王が取られる手は除く。
+ */
+function kingHunt(s, me, targetId) {
+  const target = s.pieces[targetId]; if (!target || !target.alive) return null;
+  const mine = movesOf(s, s.board, s.pieces, me);
+  const now = hits(mine, target);
+  if (now.length) { const { p, m } = now[0]; return { type: "MOVE_PIECE", pieceId: p.id, row: m.row, col: m.col, captures: m.captures, forced: "now" }; }
+  const myKing = s.pieces[s.players[me].kingId];
+  let bestThreat = null;
+  for (const { p, m } of mine) {
+    const after = applyMove(s.board, s.pieces, p, m);
+    if (after.gone.includes(targetId)) continue;
+    const foe = movesOf(s, after.board, after.pieces, 1 - me);
+    let forced = true, kingLost = false;
+    for (const r of foe) {
+      const b2 = applyMove(after.board, after.pieces, r.p, r.m);
+      if (myKing && b2.gone.includes(myKing.id)) { kingLost = true; break; }
+      const t2 = b2.pieces[targetId]; if (!t2 || !t2.alive) { forced = false; break; }
+      const mine2 = movesOf(s, b2.board, b2.pieces, me);
+      if (!hits(mine2, t2).length) { forced = false; break; }
+    }
+    if (kingLost) continue;
+    if (forced && foe.length) return { type: "MOVE_PIECE", pieceId: p.id, row: m.row, col: m.col, captures: m.captures, forced: "mate" };
+    const threats = hits(movesOf(s, after.board, after.pieces, me), target).length;
+    const foeHitsMover = foe.some(({ m: fm }) => (fm.row === m.row && fm.col === m.col) || (fm.captures || []).some((c) => c.row === m.row && c.col === m.col));
+    const score = threats * 10 - (foeHitsMover ? 6 : 0) - (p.isKing ? 8 : 0) + Math.random();
+    if (!bestThreat || score > bestThreat.score) bestThreat = { score, threats, action: { type: "MOVE_PIECE", pieceId: p.id, row: m.row, col: m.col, captures: m.captures, forced: "threat" } };
+  }
+  return bestThreat && bestThreat.threats >= 1 ? bestThreat.action : null;
+}
+/** 王が確定していれば詰めの探索を優先し、無ければ元の指し方に戻る */
+function withKingHunt(base, { minThreats = 2 } = {}) {
+  return (s, me) => {
+    if (s.phase === "play" && !s.pendingKingChoice && !s.kPlacement && !s.extraMoveFor && s.winner == null) {
+      const belief = opponentKingBelief(s, me);
+      if (process.env.HUNT_DEBUG && s.turnNo < 30) console.error(`turn ${s.turnNo} 候補 ${belief.candidates.length} 確定 ${belief.certain} known ${Object.keys(s.known?.[me] || {}).length} area ${s.areas?.[me]?.type} uses ${s.areas?.[me]?.uses}`);
+      if (belief.certain) {
+        const h = kingHunt(s, me, belief.candidates[0].id);
+        if (process.env.HUNT_DEBUG) console.error(`  hunt -> ${h ? h.forced : "null"}`);
+        if (h && h.forced !== "threat") return h;
+        if (h) {
+          const after = applyMove(s.board, s.pieces, s.pieces[h.pieceId], h);
+          const t = after.pieces[belief.candidates[0].id];
+          if (t && hits(movesOf(s, after.board, after.pieces, me), t).length >= minThreats) return h;
+        }
+        // 接近: 動かした駒が「次の手で王を狙える升」に立てる手を、安全な範囲で選ぶ
+        const target = s.pieces[belief.candidates[0].id];
+        const unknown = unknownThreatMap(s, me);
+        let bestA = null;
+        for (const { p, m } of movesOf(s, s.board, s.pieces, me)) {
+          if (p.isKing) continue;
+          const after = applyMove(s.board, s.pieces, p, m);
+          const moved = after.pieces[p.id];
+          const t = after.pieces[target.id]; if (!t) continue;
+          const nextHits = hits(movesOf(s, after.board, { [p.id]: moved }, me), t).length;
+          if (!nextHits) continue;
+          const ids = new Set(after.gone);
+          const safe = moveSafety(s, me, p, m, ids, { unknownWeight: 0.8, unknownThreats: unknown });
+          if (safe < -8) continue;
+          const sc = 10 + safe + Math.random();
+          if (!bestA || sc > bestA.sc) bestA = { sc, action: { type: "MOVE_PIECE", pieceId: p.id, row: m.row, col: m.col, captures: m.captures, forced: "approach" } };
+        }
+        if (bestA) return bestA.action;
+      }
+    }
+    return base(s, me);
+  };
+}
 function earthAct() { return skyAct({ advance: 1.4, kingExpendable: true, candidateBonus: 90, unknownBonus: 4, burstMin: 99 }); }
 /** 森: 毎手番2体ずつ見抜けるので、候補が絞れる(王候補が3体以下か、4手番)まで自陣で粘り、そこから詰めに行く */
 function forestAct(extra = {}) {
@@ -920,7 +1014,8 @@ if (mode === "kings" || mode === "kingsfoil") {
     ? skyAct({ advance: 1.4, candidateBonus: 120, unknownBonus: 3, burstMin: 99 })          // 待たずに、正体不明の駒を狩りに行く
     : process.env.FOREST_STYLE === "fort" ? fortAct()                                         // 要塞で待つだけ
     : forestAct(process.env.SAFE_HUNT === "1" ? { safeHunt: true } : {});
-  const actOf = { earth: earthAct, forest: forestStyle, ice: iceAct, sky: skyAdaptiveAct }[AREA];
+  const actOf0 = { earth: earthAct, forest: forestStyle, ice: iceAct, sky: skyAdaptiveAct }[AREA];
+  const actOf = process.env.HUNT === "1" ? () => withKingHunt(actOf0(), { minThreats: Number(process.env.MIN_THREATS || 2) }) : actOf0;
   const BLOCK = (r, c) => ({ J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 3, 10: 5, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c);
   const F = process.env.FOE || "free";
   const foe = () => F === "free" ? free()
