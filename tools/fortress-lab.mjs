@@ -1,4 +1,4 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3/skylab/arealab/seadeal/showform ほか。HUNT=1 で王の特定後の詰め探索、AREA=palace で宮殿)。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3(SOFT=1 で定石の札)/skylab/arealab/seadeal/showform ほか。HUNT=1 で王の特定後の詰め探索)。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
@@ -98,8 +98,12 @@ function setup(seed, sides) {
   Math.random = rng(seed);
   const deck = shuffle(buildDeck(null)), used = new Set();
   const pick = (r) => { const c = deck.find((c) => c.rank === r && !used.has(c.id)); if (!c) throw Error("hand"); used.add(c.id); return c; };
-  const g0 = sides[0].hand ? sides[0].hand.map(pick) : null;
-  const g1 = sides[1].hand ? sides[1].hand.map(pick) : null;
+  const soft = (ranks) => ranks.map((r) => { const c = deck.find((c) => c.rank === r && !used.has(c.id)); if (c) used.add(c.id); return c; }).filter(Boolean);
+  const order = sides[0].softHand && sides[1].softHand && (seed >> 4) % 2 ? [1, 0] : [0, 1];
+  const softHands = [null, null];
+  for (const i of order) if (sides[i].softHand) softHands[i] = soft(sides[i].softHand);
+  const g0 = softHands[0] || (sides[0].hand ? sides[0].hand.map(pick) : null);
+  const g1 = softHands[1] || (sides[1].hand ? sides[1].hand.map(pick) : null);
   const a = g0 ? null : sides[0].king ? pick(sides[0].king) : null;
   const b = g1 ? null : sides[1].king ? pick(sides[1].king) : null;
   const rest = deck.filter((c) => !used.has(c.id));
@@ -1144,6 +1148,8 @@ if (mode === "kings" || mode === "kingsfoil") {
     : F === "advsky" ? { king: "10", foil: "king", ...prioritySide("10", (r, c) => ({ 10: 9, J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 2, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c)), act: skyAct() }
     : F === "fortice" ? { king: "9", foil: "king", ...prioritySide("9", BLOCK), act: fortAct(), arrange: fortressArrange }
     : F === "fortpalace" ? { king: "K", foil: "king", ...prioritySide("K", BLOCK), act: fortAct(), arrange: fortressArrange }
+    : F === "earthE6" ? { king: "2", foil: "king", ...prioritySide("2", (r, c) => (r === "2" ? 10 : { J: 8, Q: 8, 10: 7, 4: 5, 8: 5, 3: 4, 5: 3, 9: 3 }[r] ?? 0) - dup(r, c) + (r === "2" ? 0.65 * (c[r] || 0) : 0)), act: withKingHunt(earthAct()), arrange: (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo + 1 : hi - 1, col: 4 }); } }
+    : F === "skyS6" ? { ...fixedSide(["10","10","J","J","Q","Q","4","2","8"], "10"), foil: "king", act: withKingHunt(skyAdaptiveAct()) }
     : F === "seaW1" ? { king: "4", foil: "king", ...prioritySide("4", (r, c) => (r === "4" ? 10 : { J: 8, Q: 8, 10: 6, 8: 4, 2: 4 }[r] ?? 0) - dup(r, c) + (r === "4" ? 0.65 * (c[r] || 0) : 0)), act: withKingHunt(seaAct("4")) }
     : F === "forestF1" ? { king: "6", foil: "king", ...prioritySide("6", (r, c) => ({ J: 8, Q: 8, 10: 8, 4: 6, 2: 6, 8: 5 }[r] ?? 0) - dup(r, c)), act: withKingHunt(skyAct({ advance: 1.4, candidateBonus: 120, unknownBonus: 3, burstMin: 99 })), arrange: fortressArrange }
     : free();
@@ -1195,17 +1201,25 @@ if (mode === "kings" || mode === "kingsfoil") {
     ice: () => (r, c) => ({ J: 8, Q: 8, 4: 7, 2: 7, 8: 5, 3: 4, 5: 4, 10: 4, 9: 3, A: c.A ? 0 : 2, 6: 2, 7: 2 }[r] ?? 0) - dup(r, c),
     sky: () => (r, c) => ({ 10: 9, J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 2, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c),
     sea: (k) => (r, c) => (r === k ? 10 : { J: 8, Q: 8, 10: 6, 8: 4, 2: 4, 3: 3, 9: 3, A: c.A ? 0 : 2, 6: 2, 7: 2 }[r] ?? 0) - dup(r, c) + (r === k ? 0.65 * (c[r] || 0) : 0),
-    palace: () => BLOCK,
+    palace: () => (r, c) => ({ J: 8, Q: 8, 10: 9, 9: 7, 4: 5, 2: 5, 8: 4, 3: 3, 5: 3, A: 0, 6: 2, 7: 2 }[r] ?? 0) - dup(r, c),
   };
   const midK = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo + 1 : hi - 1, col: 4 }); };
+  const JOSEKI = {
+    earth: (k) => [k, k, k, k, "J", "J", "Q", "Q", "10"],
+    sea: (k) => [k, k, k, k, "J", "J", "Q", "Q", "10"],
+    forest: (k) => [k, "J", "J", "Q", "Q", "10", "10", "4", "2"],
+    ice: (k) => [k, "J", "J", "Q", "Q", "4", "4", "2", "2"],
+    sky: (k) => [k, "10", "J", "J", "Q", "Q", "4", "2", "8"],
+    palace: (k) => [k, "J", "Q", "10", "10", "10", "9", "4", "2"],
+  };
   const mk = (type, k) => {
-    const base = { king: k, foil: "king", ...prioritySide(k, PRI[type](k)) };
+    const base = { king: k, foil: "king", ...prioritySide(k, PRI[type](k)), ...(process.env.SOFT === "1" ? { softHand: JOSEKI[type](k) } : {}) };
     if (type === "earth") return { ...base, act: withKingHunt(earthAct()), arrange: midK };
     if (type === "forest") return { ...base, act: withKingHunt(skyAct({ advance: 1.4, candidateBonus: 120, unknownBonus: 3, burstMin: 99 })), arrange: fortressArrange };
     if (type === "ice") return { ...base, act: withKingHunt(iceAct()), arrange: fortressArrange };
-    if (type === "sky") return { ...base, act: withKingHunt(skyAdaptiveAct()), arrange: fortressArrange };
+    if (type === "sky") return { ...base, act: withKingHunt(skyAdaptiveAct()) }; // 双翼の陣(通常配置)
     if (type === "sea") return { ...base, act: withKingHunt(seaAct(k)) }; // 特攻型(通常配置)
-    return { ...base, act: withKingHunt(fortAct()), arrange: fortressArrange };
+    return { ...base, act: withKingHunt(palaceAct({ decoys: 3 })) }; // 昇格の砦(通常配置)
   };
   const types = Object.keys(groups);
   let pairs = types.flatMap((t, i) => types.slice(i + 1).map((u) => [t, u]));
