@@ -147,6 +147,30 @@ export async function leaveRoom(code) {
 export const deleteRoom = (code) => remove(roomUrl(code));
 
 /**
+ * 画面を閉じるときの片付け。keepalive で投げっぱなしにする(届かなくても進める)。
+ * 勝敗がついた後にアプリを閉じた人の部屋が残らないように。ホストは部屋ごと、ゲストは席だけ
+ */
+export async function deleteRoomKeepalive(code) {
+  try {
+    await authedFetch(roomUrl(code), { method: "DELETE", keepalive: true });
+  } catch {
+    /* 後始末なので失敗しても進める */
+  }
+}
+export async function leaveRoomKeepalive(code) {
+  try {
+    const uid = await whoAmI();
+    if (uid)
+      await authedFetch(guestSeatUrl(code), {
+        method: "DELETE",
+        keepalive: true,
+      });
+  } catch {
+    /* 後始末なので失敗しても進める */
+  }
+}
+
+/**
  * 手番の列だけを片付ける。
  *
  * 部屋の手番は積まれる一方で、上限(1000件)に当たるとそこから先が

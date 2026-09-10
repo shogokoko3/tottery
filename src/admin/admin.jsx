@@ -335,6 +335,9 @@ function AdminDashboard({ onSignOut }) {
   const [ranksError, setRanksError] = useState(null);
   const [lobbyError, setLobbyError] = useState(null);
   const [lobby, setLobby] = useState(null);
+  // 対局の部屋。勝敗のあと片付けられなかったものが残ることがある
+  const [rooms, setRooms] = useState(null);
+  const [roomsError, setRoomsError] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
@@ -355,7 +358,7 @@ function AdminDashboard({ onSignOut }) {
     setBusy(true);
     setError(null);
     try {
-      const [r, l, p, m, monthly] = await Promise.all([
+      const [r, l, p, m, monthly, rm] = await Promise.all([
         // 1つでも投げると Promise.all ごと落ち、他の一覧まで出なくなる。
         // 「読めなかった」も画面に出したいので、全部に受け皿を付ける
         getJson("ranks").then(
@@ -380,7 +383,26 @@ function AdminDashboard({ onSignOut }) {
           (data) => ({ data }),
           (e) => ({ error: e.message }),
         ),
+        getJson("rooms").then(
+          (rows) => ({ rows }),
+          (e) => ({ error: (e && e.message) || String(e) }),
+        ),
       ]);
+      setRoomsError((rm && rm.error) || null);
+      setRooms(
+        Object.entries((rm && rm.rows) || {})
+          .map(([code, row]) => {
+            const r = row && typeof row === "object" ? row : {};
+            return {
+              code,
+              createdAt: Number(r.createdAt) || 0,
+              host: (r.seats && r.seats.host) || null,
+              guest: (r.seats && r.seats.guest) || null,
+              acts: r.acts ? Object.keys(r.acts).length : 0,
+            };
+          })
+          .sort((a, b) => a.createdAt - b.createdAt),
+      );
       setSeason(monthly.data || null);
       setSeasonError(monthly.error || null);
       setRanks(
@@ -526,6 +548,48 @@ function AdminDashboard({ onSignOut }) {
     }
   }
 
+  /**
+   * 片付け残った部屋。ゲスト無しで3分、両者ありで24時間を過ぎたものを「古い」と見る
+   * (ルールの、誰でも消してよい条件と同じ線)
+   */
+  function staleRoom(r, now) {
+    if (!r.createdAt) return true;
+    if (r.createdAt < now - 86400000) return true;
+    return !r.guest && r.createdAt < now - 180000;
+  }
+
+  async function removeRoom(row) {
+    if (!window.confirm(`部屋 ${row.code} をサーバーから消します。`)) return;
+    setBusy(true);
+    try {
+      await remove(`rooms/${row.code}`);
+      await load();
+    } catch (e) {
+      setError((e && e.message) || String(e));
+      setBusy(false);
+    }
+  }
+
+  async function sweepRooms() {
+    const now = Date.now();
+    const stale = (rooms || []).filter((r) => staleRoom(r, now));
+    if (!stale.length) return;
+    if (
+      !window.confirm(
+        `古い部屋 ${stale.length} 件をサーバーから消します。\n(相手待ちのまま3分、または作られてから24時間を過ぎたもの)`,
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      for (const r of stale) await remove(`rooms/${r.code}`);
+      await load();
+    } catch (e) {
+      setError((e && e.message) || String(e));
+      setBusy(false);
+    }
+  }
+
   async function removeLobby(row) {
     if (!window.confirm(`待ち合わせ ${row.code} をサーバーから消します。`))
       return;
@@ -646,6 +710,7 @@ function AdminDashboard({ onSignOut }) {
             <a href="#admin-season">月間成績</a>
             <a href="#admin-letters">お知らせ・補填</a>
             <a href="#admin-lobby">待ち合わせ</a>
+            <a href="#admin-rooms">対局の部屋</a>
           </nav>
           <details className="admin-help">
             <summary>操作とデータについて</summary>
@@ -929,6 +994,57 @@ function AdminDashboard({ onSignOut }) {
             ))}
             {lobby && lobby.length === 0 && (
               <p className="hint">いま待っている部屋はありません</p>
+            )}
+          </div>
+        </section>
+
+        <section className="admin-card" id="admin-rooms">
+          <h2>対局の部屋</h2>
+          <p className="hint">
+            オンライン対局の手順を置く部屋。勝敗のあとに片付けられます。アプリを閉じられて残ったものは、ここから消せます。
+          </p>
+          {roomsError && <p className="admin-error">{roomsError}</p>}
+          <p>
+            <button
+              type="button"
+              className="btn btn-ghost btn-small"
+              disabled={
+                busy ||
+                !(rooms || []).some((r) => staleRoom(r, Date.now()))
+              }
+              onClick={sweepRooms}
+            >
+              古い部屋をまとめて消す
+            </button>
+          </p>
+          <div className="admin-rows">
+            {(rooms || []).map((r) => {
+              const stale = staleRoom(r, Date.now());
+              return (
+                <div className="admin-row" key={r.code}>
+                  <span className="admin-row-main">
+                    <b>{r.code}</b>
+                    <small>
+                      {r.createdAt ? ago(r.createdAt) : "作成時刻なし"} ·{" "}
+                      {r.guest ? "2人" : "相手待ち"} · 手順 {r.acts}
+                    </small>
+                  </span>
+                  <span className="admin-row-side">
+                    {stale && <em>古い</em>}
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-small"
+                      disabled={busy}
+                      onClick={() => removeRoom(r)}
+                    >
+                      消す
+                    </button>
+                  </span>
+                </div>
+              );
+            })}
+            {rooms && rooms.length === 0 && (
+              <p className="hint">いま残っている部屋はありません</p>
             )}
           </div>
         </section>

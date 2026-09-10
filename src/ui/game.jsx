@@ -68,10 +68,14 @@ import {
   bumpRound,
   clearActs,
   deleteRoom,
+  deleteRoomKeepalive,
+  leaveRoom,
+  leaveRoomKeepalive,
   makeClientId,
   pushAct,
   readActs,
   readRematch,
+  readRoom,
   readRound,
   wantRematch,
 } from "../net/firebase.js";
@@ -961,7 +965,11 @@ export function GameView({
           {tutorial ? null : rematch ? (
             // オンラインは両者の合意で始める。片方だけで盤を作り直すと、
             // 相手は準備ができていないまま次の対局に入ってしまう
-            rematch.asked ? (
+            rematch.foeLeft ? (
+              <p className="hint">
+                相手は部屋を出ました。この相手との再戦はできません。
+              </p>
+            ) : rematch.asked ? (
               <p className="hint">
                 相手の返事を待っています…
                 {rematch.foeAsked && "（そろいました。仕切り直します）"}
@@ -1560,18 +1568,27 @@ export function GameCore({
    * 消すのはホストだけ。「もう一度遊ぶ」を選べるのはホストなので、
    * ゲストが先に抜けて部屋を消すと、ホストの再戦が壊れる。
    */
+  /**
+   * 部屋の片付け。記録が届いてから、ホストは部屋ごと消し、ゲストは席を空ける。
+   * ゲストが席を空けると、再戦を待っているホストは「相手が出た」と分かる
+   * (席を空ける前に記録を送る。記録の照合は自分の席で部屋を読むため)
+   */
+  function tidyRoom() {
+    return seasonResult.submit().then((saved) => {
+      if (!network) return;
+      if (p === 0) {
+        if (saved) deleteRoom(network.code);
+      } else leaveRoom(network.code);
+    });
+  }
   function leaveGame() {
     // ホームへはすぐ戻す。記録が届くまで部屋の手順を残しておく。
-    seasonResult.submit().then((saved) => {
-      if (network && p === 0 && saved) deleteRoom(network.code);
-    });
+    tidyRoom();
     onExit();
   }
   /** 連戦。部屋の片付けは抜けるときと同じで、その足で次の相手を探しに行く */
   function nextMatch() {
-    seasonResult.submit().then((saved) => {
-      if (network && p === 0 && saved) deleteRoom(network.code);
-    });
+    tidyRoom();
     onNextMatch();
   }
 
@@ -1603,12 +1620,31 @@ export function GameCore({
    * どちらの端末も、それを見てから入り直す(GameCore を作り直す)
    */
   let [askedRematch, setAskedRematch] = (0, useState)(!1),
-    [foeAsked, setFoeAsked] = (0, useState)(!1);
+    [foeAsked, setFoeAsked] = (0, useState)(!1),
+    // 相手が部屋を出た(ゲストの席が空いた)か、部屋が消えた(ホストが抜けた)
+    [foeLeft, setFoeLeft] = (0, useState)(!1);
   (0, useEffect)(() => {
     if (!network || a.phase !== "gameover" || !onRematch) return;
     let stop = !1;
     const me = myUid();
+    // 部屋が読めない回数。通信の一時的な失敗と区別するため、2回続いたら「消えた」と見る
+    let unreadable = 0;
     const id = setInterval(async () => {
+      // 相手がまだ居るか。ホストはゲストの席、ゲストは部屋そのものを見る
+      const room = await readRoom(network.code);
+      if (stop) return;
+      if (room.ok) {
+        unreadable = 0;
+        if (!room.data || (p === 0 && !room.data.seats?.guest)) {
+          setFoeLeft(!0);
+          clearInterval(id);
+          return;
+        }
+      } else if (++unreadable >= 2) {
+        setFoeLeft(!0);
+        clearInterval(id);
+        return;
+      }
       // 相手の意思
       const r = await readRematch(network.code, round);
       if (stop) return;
@@ -1627,7 +1663,23 @@ export function GameCore({
     return () => {
       ((stop = !0), clearInterval(id));
     };
-  }, [network, a.phase, round, onRematch]);
+  }, [network, a.phase, round, onRematch, p]);
+
+  /**
+   * 勝敗がついた後にアプリを閉じたら、その場で片付ける(keepalive)。
+   * 記録がまだ送れていないときは触らない(相手の記録の照合が部屋を読むため)。
+   * 対局中は触らない。再読み込みで部屋を消すと、相手の対局まで壊れる
+   */
+  (0, useEffect)(() => {
+    if (!network || a.phase !== "gameover") return;
+    if (seasonResult.active && seasonResult.status !== "done") return;
+    const bye = () => {
+      if (p === 0) deleteRoomKeepalive(network.code);
+      else leaveRoomKeepalive(network.code);
+    };
+    window.addEventListener("pagehide", bye);
+    return () => window.removeEventListener("pagehide", bye);
+  }, [network, a.phase, p, seasonResult.active, seasonResult.status]);
 
   // 両方そろったら、ホストが片付けて局を進める
   (0, useEffect)(() => {
@@ -3023,6 +3075,7 @@ export function GameCore({
                 ? {
                     asked: askedRematch,
                     foeAsked,
+                    foeLeft,
                     ask: async () => {
                       if (await seasonResult.submit()) {
                         setAskedRematch(true);
