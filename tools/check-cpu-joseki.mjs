@@ -188,6 +188,19 @@ assert.ok(totalChecks >= 12, `伏せ札の不変性を十分な回数見た(${to
   assert.equal(josekiCpuAction(s, 1, "nowhere"), cpuInformedAction(s, 1), "未知のエリアは通常CPU");
   assert.equal(josekiDeck("nowhere", "10"), null);
 }
+// CPUの装備: どのスキンを引いても、選んだ王の数字にはフォイルが付く(エリアが立つ)
+{
+  const { createCpuLoadout, ensureCpuFoil } = await import("../src/skins/cpu-loadout.js");
+  const { areaSkinOk } = await import("../src/game/areas.js");
+  for (let i = 0; i < 40; i++) {
+    const base = createCpuLoadout(seeded(500 + i));
+    for (const area of JOSEKI_AREAS)
+      for (const k of JOSEKI_KINGS[area]) {
+        const fixed = ensureCpuFoil(base, k);
+        assert.ok(areaSkinOk(fixed[k]), `装備 ${i}: ${k} にフォイル(${fixed[k]})`);
+      }
+  }
+}
 // 画面の配線: エリアを選ぶ欄と、選んだエリアの受け渡しは、フォイルを初めて手に入れた人(foilRevealed)にだけ
 {
   const src = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
@@ -195,5 +208,6 @@ assert.ok(totalChecks >= 12, `伏せ札の不変性を十分な回数見た(${to
   assert.ok(gate.test(src), "CPUのエリアを選ぶ欄は foilRevealed で隠す");
   const pass = /cpuArea=\{\s*d && !tut && i === 9 && foilRevealed\(collection\) \? cpuArea : null/;
   assert.ok(pass.test(src), "選んだエリアの受け渡しも foilRevealed で止める");
+  assert.ok(/ensureCpuFoil\(cpuSkins, cpuArea\.king\)/.test(src), "CPUの王の数字にフォイルを持たせる");
 }
 console.log("定石CPU: 山札・王とエリア・布陣・対局・伏せ札の不変性・思考時間・フォイル前は隠す OK");

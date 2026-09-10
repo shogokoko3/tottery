@@ -92,7 +92,7 @@ import { LoginBonus } from "./loginbonus.jsx";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 import { sanitizeLoadout } from "../skins/catalog.js";
-import { createCpuLoadout } from "../skins/cpu-loadout.js";
+import { createCpuLoadout, ensureCpuFoil } from "../skins/cpu-loadout.js";
 import {
   JOSEKI_AREAS,
   JOSEKI_INFO,
@@ -1359,7 +1359,13 @@ function TotteryScreens() {
           ? // 第13話は台本が装備を持つ(王のスキンでエリアが立つ)
             (tut.loadouts || [{}, {}]).map(sanitizeLoadout)
           : d
-            ? [collection.equipped, cpuSkins]
+            ? [
+                collection.equipped,
+                // エリアを選んだCPU戦は、王の数字にフォイルを必ず持たせる(でないとエリアが立たない)
+                cpuArea && i === 9 && foilRevealed(collection)
+                  ? ensureCpuFoil(cpuSkins, cpuArea.king)
+                  : cpuSkins,
+              ]
             : [collection.equipped, collection.equipped];
     return (
       <SeatsProvider value={{ names, icons, titles, skins }}>
