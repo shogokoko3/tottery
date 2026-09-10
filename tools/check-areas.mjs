@@ -431,6 +431,8 @@ console.log("氷: 乱数で1体、3手番動けない");
 {
   let s = startGame({ kings: ["8", "9"] });
   if (s.currentTurn !== 0) s = playQuiet(s);
+  // 版11までは王を除く。版12の検査はこの後で
+  s = { ...s, ruleVersion: 11 };
   const foeKing = s.players[1].kingId;
   const act = enrichAction({ type: "USE_AREA" }, s);
   is(
@@ -453,7 +455,29 @@ console.log("氷: 乱数で1体、3手番動けない");
       .map((p) => p.id),
     [target.id],
   );
-  is("相手の王は凍らない", isFrozen(t, t.pieces[foeKing]), false);
+  is("版11: 相手の王は凍らない", isFrozen(t, t.pieces[foeKing]), false);
+  {
+    const s12 = { ...s, ruleVersion: 12 };
+    const act12 = enrichAction({ type: "USE_AREA" }, s12);
+    is("版12: 並びに王も入る", act12.picks.includes(foeKing), true);
+    is("版12: 並びは9体", act12.picks.length, 9);
+    const t12 = reducer(s12, { ...act12, picks: [foeKing] });
+    is("版12: 王を先頭にすれば王が凍る", isFrozen(t12, t12.pieces[foeKing]), true);
+    is(
+      "版12: 凍った王は動かせない",
+      reducer(
+        { ...t12, currentTurn: 1 },
+        {
+          type: "MOVE_PIECE",
+          player: 1,
+          pieceId: foeKing,
+          row: t12.pieces[foeKing].row + 1,
+          col: t12.pieces[foeKing].col,
+        },
+      ).pieces[foeKing].row,
+      t12.pieces[foeKing].row,
+    );
+  }
   is(
     "自分の駒は凍らない",
     mine(t, 0).some((p) => isFrozen(t, p)),

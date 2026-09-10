@@ -14,7 +14,9 @@
 // 10: 海を毎手番開始時の任意発動に。使わずに通常の移動もできる。
 // 11: 海は相手の駒だけを流す(自分の駒は動かない)。土は足跡を読めば必ず見抜く
 //     (当たり外れは手に焼き込んであるので、旧対局の再生は変わらない)。
-export const GAME_RULE_VERSION = 11;
+// 12: 氷は相手の王も凍らせる(2026-09-11。凍った王は動けず、Aの入れ替えでだけ解ける。
+//     通信の手の形式は変わらない。picks に王の id が入るだけ)。
+export const GAME_RULE_VERSION = 12;
 export const ADJUDICATION_RULE_VERSION = 1;
 export const CLOCK_RULE_VERSION = 2;
 export const AREA_RULE_VERSION = 3;

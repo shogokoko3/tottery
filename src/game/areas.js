@@ -10,7 +10,7 @@
  *              それまでは 50%)。読んだことは相手にも分かる。正体は自分だけが知る
  *   4・5  海   相手の駒を中央へ引き寄せる(版11から。版8〜10は自分の駒も流された)
  *   6・7  森   相手の王以外の駒を2体見抜く(自分だけが知る)
- *   8・9  氷   相手の王以外の駒を1体(乱数で選ぶ)凍らせ、相手の3手番のあいだ動けなくする。
+ *   8・9  氷   相手の駒を1体(乱数で選ぶ。版12から王も)凍らせ、相手の3手番のあいだ動けなくする。
  *              凍った駒を A の入れ替えに使うと氷は解ける。凍った A 自身は入れ替えを使えない。
  *              凍らされて何も指せなければ負け
  *   10    空   自分の駒1体を10に変身させる(本物の10になり、公開される)。
@@ -69,7 +69,7 @@ export const AREA_INFO = Object.freeze({
   },
   ice: {
     name: "氷のエリア",
-    text: "毎手番の初めに自動発動。相手の王以外をランダムで1体凍結し、相手の3手番動けなくする。凍結中なら残りに3手番追加。",
+    text: "毎手番の初めに自動発動。相手の駒(王も)をランダムで1体凍結し、相手の3手番動けなくする。凍結中なら残りに3手番追加。",
     usesTurn: false,
     needsPiece: false,
   },
@@ -104,7 +104,7 @@ export const AREA_TUNING = Object.freeze({
   seaPullsOwn: false,
   /** 氷: 凍らせる駒の数 */
   iceTargets: 1,
-  /** 氷: 相手の王も凍らせるか(2026-09-11 の検証用。既定は王を除く。凍った王は動けず、A の入れ替えでだけ解ける) */
+  /** 氷: 相手の王も凍らせるか。版12から常に真(iceFreezesKing())。旧版の対局で試すときの検証用の上書き */
   iceFreezesKing: false,
   /** 氷: 「凍結死」。自分の手番の初めに凍っていた回数がこの数に達した駒は倒れる(0 で無効。2026-09-11 の検証用) */
   freezeDeathTurns: 0,
@@ -230,7 +230,12 @@ export function forestCandidates(state, player) {
     .sort();
 }
 
-/** 氷: 相手の王以外。版4から凍結中も抽選に含める。 */
+/** 氷が相手の王も凍らせるか。版12から。開始済みの旧対局は王を除く */
+export function iceFreezesKing(state) {
+  return state?.ruleVersion >= 12 || AREA_TUNING.iceFreezesKing;
+}
+
+/** 氷: 版4から凍結中も抽選に含める。 */
 export function recurringIce(state) {
   return state.ruleVersion >= 4;
 }
@@ -244,7 +249,7 @@ export function iceCandidates(state, player) {
   return alivePieces(state, 1 - player)
     .filter(
       (p) =>
-        (AREA_TUNING.iceFreezesKing || !p.isKing) &&
+        (iceFreezesKing(state) || !p.isKing) &&
         (recurringIce(state) || !isFrozen(state, p)),
     )
     .map((p) => p.id)
