@@ -41,6 +41,7 @@ import {
   shortPlayerLabel,
 } from "../game/constants.js";
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
+import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
 import {
   isNotableLog,
   autoArrange,
@@ -1028,6 +1029,8 @@ export function GameCore({
   network,
   boardSize,
   cpu,
+  // CPU戦で選んだ相手のエリア({ type, king })。定石の札を配り、定石の指し方で戦う
+  cpuArea = null,
   tutorial,
   round = 0,
   onRematch,
@@ -1259,6 +1262,10 @@ export function GameCore({
           (!network || hasAreaRules(network.ruleVersion))
             ? { areas: true, loadouts: skins }
             : null),
+          // エリアを選んだCPU戦は、CPU(後手の席)に定石の札を積んだ山札で始める
+          ...(cpu && !network && !tutorial && cpuArea && (boardSize || 5) === 9
+            ? { deck: josekiDeck(cpuArea.type, cpuArea.king) }
+            : null),
           // 第13話(盤面エリア)は台本が装備を持つ
           ...(tutorial && tutorial.areas
             ? { areas: true, loadouts: tutorial.loadouts }
@@ -1317,7 +1324,9 @@ export function GameCore({
   let T = 1;
   ((0, useEffect)(() => {
     if (!cpu || network || tutorial || fxBusy || autoArea) return;
-    let E = cpuAction(a, T);
+    let E = cpuArea
+      ? josekiCpuAction(a, T, cpuArea.type, cpuArea.king)
+      : cpuAction(a, T);
     if (!E) return;
     let U = foeWait(a, E, 1000),
       be = setTimeout(() => {

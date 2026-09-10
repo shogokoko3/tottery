@@ -93,6 +93,11 @@ import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 import { sanitizeLoadout } from "../skins/catalog.js";
 import { createCpuLoadout } from "../skins/cpu-loadout.js";
+import {
+  JOSEKI_AREAS,
+  JOSEKI_INFO,
+  pickJosekiKing,
+} from "../game/cpu-joseki.js";
 
 const mySkins = () => sanitizeLoadout(getCollection().equipped);
 
@@ -769,6 +774,9 @@ export function RulesSelectScreen({
   note,
   initialSize = 5,
   ranked = false,
+  // CPU戦で、相手のエリア(定石)を選べるとき。null なら出さない
+  cpuArea = null,
+  onCpuArea = null,
 }) {
   let [a, u] = (0, useState)(initialSize);
   return (
@@ -827,6 +835,40 @@ export function RulesSelectScreen({
           ))}
         </div>
       </div>
+      {onCpuArea && a === 9 && (
+        <div className="rule-section">
+          <div className="rule-section-label">CPUのエリア</div>
+          <p className="hint">
+            相手のエリアを決めて、そのエリアの定石と戦う練習ができます。おまかせでは相手が手札から王を選びます。
+          </p>
+          <div className="area-choices">
+            <button
+              className={`area-choice ${cpuArea === null ? "active" : ""}`}
+              aria-pressed={cpuArea === null}
+              onClick={() => onCpuArea(null)}
+            >
+              <b>おまかせ</b>
+              <small>相手が手札から王を選ぶ</small>
+            </button>
+            {JOSEKI_AREAS.map((type) => (
+              <button
+                key={type}
+                className={`area-choice area-choice-${type} ${cpuArea === type ? "active" : ""}`}
+                aria-pressed={cpuArea === type}
+                onClick={() => onCpuArea(type)}
+              >
+                <b>
+                  {JOSEKI_INFO[type].label}
+                  <span className="area-choice-style">
+                    {JOSEKI_INFO[type].style}
+                  </span>
+                </b>
+                <small>{JOSEKI_INFO[type].text}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {note && <p className="hint">{note}</p>}
       <div className="setup-actions">
         <button className="btn btn-ghost" onClick={onBack}>
@@ -1169,6 +1211,8 @@ export function TotteryApp() {
 function TotteryScreens() {
   const collection = useCollection();
   const [cpuSkins, setCpuSkins] = useState({});
+  // CPU戦で選んだ相手のエリア({ type, king })。null なら相手が手札から王を選ぶ
+  const [cpuArea, setCpuArea] = useState(null);
   // はじめて遊ぶときは、まず名前を決めてもらう
   let [named, setNamed] = (0, useState)(() => hasName()),
     [e, t] = (0, useState)("home"),
@@ -1300,7 +1344,7 @@ function TotteryScreens() {
       names = a
         ? a.names || [null, null]
         : d
-          ? [me, tut ? null : "CPU"]
+          ? [me, tut ? null : cpuArea && i === 9 ? `CPU(${JOSEKI_INFO[cpuArea.type].label})` : "CPU"]
           : [null, null],
       icons = a
         ? a.icons || [null, null]
@@ -1330,6 +1374,7 @@ function TotteryScreens() {
             network={a}
             boardSize={tut ? tut.boardSize : i}
             cpu={d}
+            cpuArea={d && !tut && i === 9 ? cpuArea : null}
             tutorial={tut}
             nextTutorial={nextTutorial}
             onNextTutorial={
@@ -1388,6 +1433,7 @@ function TotteryScreens() {
               }}
               onCpu={() => {
                 setCpuSkins(createCpuLoadout());
+                setCpuArea(null);
                 (u(null),
                   m(!0),
                   setTut(null),
@@ -1449,6 +1495,16 @@ function TotteryScreens() {
                   : "対戦相手を選ぶに戻る"
               }
               note={o === "room" ? "この設定でルームを作ります。" : null}
+              // 相手のエリアを選べるのは CPU戦で、フォイルを持っている(エリアを知っている)人だけ
+              cpuArea={cpuArea ? cpuArea.type : null}
+              onCpuArea={
+                d && !tut && foilRevealed(collection)
+                  ? (type) =>
+                      setCpuArea(
+                        type ? { type, king: pickJosekiKing(type) } : null,
+                      )
+                  : null
+              }
             />
           ),
         }[e]

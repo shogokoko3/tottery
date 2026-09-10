@@ -1071,6 +1071,58 @@ h3 {
   font-size: 10px;
   color: var(--text-dim);
 }
+
+/* CPU戦の相手のエリア(定石)を選ぶ */
+.area-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.area-choice {
+  background: linear-gradient(170deg, #152b49, #0d1c33);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  min-height: 64px;
+}
+.area-choice b {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 15px;
+}
+.area-choice .area-choice-style {
+  font-weight: 500;
+  font-size: 11px;
+  opacity: 0.8;
+}
+.area-choice small {
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.75;
+}
+.area-choice.active {
+  border-color: var(--gold);
+  border-width: 2px;
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.25);
+}
+.area-choice:hover {
+  border-color: var(--gold);
+}
+.area-choice-earth b { color: #d8b27a; }
+.area-choice-sea b { color: #7fc8e8; }
+.area-choice-forest b { color: #8fd08a; }
+.area-choice-ice b { color: #bfe6ff; }
+.area-choice-sky b { color: #f2e6a8; }
+.area-choice-palace b { color: #e6a8f2; }
 .rule-toggle .btn {
   padding: 7px 14px;
   font-size: 13px;

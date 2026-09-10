@@ -1,5 +1,7 @@
 // 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3(SOFT=1)/skylab/arealab/seadeal/showform ほか。HUNT=1 で詰め探索、ICE_KING/FREEZE_DEATH/KING_FREEZE/KING_EXTEND/KING_ONCE で氷の調整案)。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
+// 各エリアの最終定石(matrix3 の mk)は製品の src/game/cpu-joseki.js に移した(エリアごとのCPU戦)。製品版は相手の伏せ札を読まない
+// (kingHunt の応手・kingReachable の王の印を最悪ケースで数える)ので、ここの数字とは少し違う。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
 //   sky     … 左: 10 王 + 空フォイル、構成の変種 / 右: 自由・フォイル無し
