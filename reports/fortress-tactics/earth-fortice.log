@@ -1,0 +1,37 @@
+E1/stock done 91s
+E1/center done 175s
+E1/corner done 223s
+E2/stock done 284s
+E2/center done 355s
+E2/corner done 393s
+E3/stock done 441s
+E3/center done 491s
+E3/corner done 527s
+E4/stock done 580s
+E4/center done 621s
+E4/corner done 645s
+E5/stock done 673s
+E5/center done 711s
+E5/corner done 743s
+E6/stock done 787s
+E6/center done 829s
+E6/corner done 853s
+earth E1 stock vs fortice 勝率  73.5%  勝-負-未 25-9-166  先手 70.0% 後手 75.0%  中央値手番 32  凍結負け 8  氷 0.0回/局(延長 -)  相手王 9:34
+earth E1 center vs fortice 勝率  50.0%  勝-負-未 6-6-188  先手 42.9% 後手 60.0%  中央値手番 102  凍結負け 6  氷 0.0回/局(延長 -)  相手王 9:12
+earth E1 corner vs fortice 勝率  54.3%  勝-負-未 38-32-130  先手 48.5% 後手 59.5%  中央値手番 41  凍結負け 28  氷 0.0回/局(延長 -)  相手王 9:70
+earth E2 stock vs fortice 勝率  70.8%  勝-負-未 17-7-176  先手 76.9% 後手 63.6%  中央値手番 64  凍結負け 7  氷 0.0回/局(延長 -)  相手王 9:24
+earth E2 center vs fortice 勝率  50.0%  勝-負-未 8-8-184  先手 50.0% 後手 50.0%  中央値手番 121  凍結負け 8  氷 0.0回/局(延長 -)  相手王 9:16
+earth E2 corner vs fortice 勝率  56.5%  勝-負-未 39-30-131  先手 53.1% 後手 59.5%  中央値手番 34  凍結負け 29  氷 0.0回/局(延長 -)  相手王 9:69
+earth E3 stock vs fortice 勝率  60.0%  勝-負-未 12-8-180  先手 55.6% 後手 63.6%  中央値手番 36  凍結負け 8  氷 0.0回/局(延長 -)  相手王 9:20
+earth E3 center vs fortice 勝率  18.2%  勝-負-未 2-9-189  先手 14.3% 後手 25.0%  中央値手番 77  凍結負け 9  氷 0.0回/局(延長 -)  相手王 9:11
+earth E3 corner vs fortice 勝率  33.3%  勝-負-未 16-32-152  先手 43.5% 後手 24.0%  中央値手番 36  凍結負け 32  氷 0.0回/局(延長 -)  相手王 9:48
+earth E4 stock vs fortice 勝率  75.0%  勝-負-未 15-5-180  先手 63.6% 後手 88.9%  中央値手番 21  凍結負け 5  氷 0.0回/局(延長 -)  相手王 9:20
+earth E4 center vs fortice 勝率  36.8%  勝-負-未 7-12-181  先手 50.0% 後手 27.3%  中央値手番 67  凍結負け 9  氷 0.0回/局(延長 -)  相手王 9:19
+earth E4 corner vs fortice 勝率  42.4%  勝-負-未 25-34-141  先手 46.9% 後手 37.0%  中央値手番 33  凍結負け 32  氷 0.0回/局(延長 -)  相手王 9:59
+earth E5 stock vs fortice 勝率  56.9%  勝-負-未 41-31-128  先手 57.6% 後手 56.4%  中央値手番 30  凍結負け 31  氷 0.0回/局(延長 -)  相手王 9:72
+earth E5 center vs fortice 勝率  57.7%  勝-負-未 15-11-174  先手 69.2% 後手 46.2%  中央値手番 71  凍結負け 10  氷 0.0回/局(延長 -)  相手王 9:26
+earth E5 corner vs fortice 勝率  45.8%  勝-負-未 27-32-141  先手 39.4% 後手 53.8%  中央値手番 45  凍結負け 28  氷 0.0回/局(延長 -)  相手王 9:59
+earth E6 stock vs fortice 勝率  57.9%  勝-負-未 11-8-181  先手 55.6% 後手 60.0%  中央値手番 78  凍結負け 8  氷 0.0回/局(延長 -)  相手王 9:19
+earth E6 center vs fortice 勝率  37.5%  勝-負-未 6-10-184  先手 66.7% 後手 20.0%  中央値手番 104  凍結負け 10  氷 0.0回/局(延長 -)  相手王 9:16
+earth E6 corner vs fortice 勝率  37.1%  勝-負-未 26-44-130  先手 40.0% 後手 35.0%  中央値手番 35  凍結負け 43  氷 0.0回/局(延長 -)  相手王 9:70
+games 3600  853s

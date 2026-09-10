@@ -1,0 +1,37 @@
+F1/stock done 80s
+F1/center done 174s
+F1/corner done 289s
+F2/stock done 367s
+F2/center done 427s
+F2/corner done 519s
+F3/stock done 594s
+F3/center done 662s
+F3/corner done 771s
+F4/stock done 835s
+F4/center done 892s
+F4/corner done 981s
+F5/stock done 1028s
+F5/center done 1093s
+F5/corner done 1202s
+F6/stock done 1262s
+F6/center done 1328s
+F6/corner done 1442s
+forest F1 stock vs advsky 勝率   8.3%  勝-負-未 11-122-67  先手 14.5% 後手 2.8%  中央値手番 26  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:133
+forest F1 center vs advsky 勝率   5.8%  勝-負-未 9-146-45  先手 6.6% 後手 5.1%  中央値手番 23  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:155
+forest F1 corner vs advsky 勝率   8.5%  勝-負-未 9-97-94  先手 9.3% 後手 7.7%  中央値手番 26  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:106
+forest F2 stock vs advsky 勝率  21.1%  勝-負-未 34-127-39  先手 29.6% 後手 12.5%  中央値手番 22  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:161
+forest F2 center vs advsky 勝率   7.2%  勝-負-未 12-155-33  先手 9.2% 後手 5.0%  中央値手番 21  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:167
+forest F2 corner vs advsky 勝率  10.9%  勝-負-未 14-114-72  先手 10.4% 後手 11.5%  中央値手番 27  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:128
+forest F3 stock vs advsky 勝率  12.0%  勝-負-未 17-125-58  先手 12.5% 後手 11.5%  中央値手番 24  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:142
+forest F3 center vs advsky 勝率   4.8%  勝-負-未 8-158-34  先手 8.3% 後手 1.2%  中央値手番 23  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:166
+forest F3 corner vs advsky 勝率   5.5%  勝-負-未 6-103-91  先手 5.6% 後手 5.5%  中央値手番 28  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:109
+forest F4 stock vs advsky 勝率  10.3%  勝-負-未 15-131-54  先手 8.5% 後手 12.0%  中央値手番 20  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:146
+forest F4 center vs advsky 勝率   8.2%  勝-負-未 14-156-30  先手 11.5% 後手 4.8%  中央値手番 21  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:170
+forest F4 corner vs advsky 勝率   6.4%  勝-負-未 8-117-75  先手 6.6% 後手 6.3%  中央値手番 24  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:125
+forest F5 stock vs advsky 勝率   5.6%  勝-負-未 10-168-22  先手 9.2% 後手 2.2%  中央値手番 15  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:178
+forest F5 center vs advsky 勝率   9.5%  勝-負-未 14-134-52  先手 10.7% 後手 8.2%  中央値手番 23  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:148
+forest F5 corner vs advsky 勝率  10.2%  勝-負-未 9-79-112  先手 15.0% 後手 6.3%  中央値手番 29  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:88
+forest F6 stock vs advsky 勝率  12.7%  勝-負-未 20-138-42  先手 19.2% 後手 6.3%  中央値手番 24  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:158
+forest F6 center vs advsky 勝率   8.7%  勝-負-未 13-136-51  先手 12.7% 後手 5.1%  中央値手番 22  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:149
+forest F6 corner vs advsky 勝率  15.9%  勝-負-未 14-74-112  先手 14.9% 後手 17.1%  中央値手番 25  凍結負け 0  氷 0.0回/局(延長 -)  相手王 10:88
+games 3600  1442s

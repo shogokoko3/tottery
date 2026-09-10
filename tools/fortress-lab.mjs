@@ -1,4 +1,4 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10 の「最強の戦術」「氷はなぜ弱いか」「隅の要塞」「空の攻め方」「相性表の再検証」に使った道具。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10 の「最強の戦術」「氷はなぜ弱いか」「隅の要塞」「空の攻め方」「相性表」「エリアごとの指し方」の検証に使った道具。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
@@ -388,7 +388,15 @@ function fortAct(opts = {}) {
  * 一気に取れるときだけ変身と2回行動で畳みかける。伏せ札の中身は読まない。
  */
 function skyAct(opts = {}) {
-  const { advance = 1.2, unknownWeight = 0.8, shell = 8, burstMin = 9, endgame = 4 } = opts;
+  const {
+    advance: advance0 = 1.2, unknownWeight = 0.8, shell = 8, burstMin: burstMin0 = 9, endgame = 4,
+    adaptive = false,          // 空: 相手の出方(前に出ているか)で、一気に攻めるか、ゆっくり進むかを切り替える
+    candidateBonus = 60,       // 王候補(正体不明の駒)を取る手の加点(信念の重み倍)
+    unknownBonus = 0,          // 正体不明の駒を取る手そのものの加点(土・森の「匿名性を剥がす」狩り)
+    kingExpendable = false,    // 土: 継承者が居るあいだは王の危険を軽く見る(王が前に出て狩る)
+    ready = null,              // 森: (s, me, belief) => 攻めに転じてよいか。偽のあいだは自陣で待つ
+    safeHunt = false,          // 王候補を取る手でも、取り返される升なら加点を3割に(交換で削られない)
+  } = opts;
   const KN = [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]];
   return (s, me) => {
     if (s.phase !== "play" || s.pendingKingChoice || s.kPlacement || s.winner != null) return null;
@@ -405,6 +413,18 @@ function skyAct(opts = {}) {
     const dir = me === 0 ? -1 : 1; // 前進の向き
     const counts = s.players[me].armyRankCounts, kr = kingRankOf(s, me);
     const kingThreatened = king && (threatsNow.has(`${king.row}/${king.col}`) || (unknown.get(`${king.row}/${king.col}`) || 0) > 0.35);
+    // 相手の出方: 相手の駒のうち自陣(相手から見て)の外に出ている割合。高いほど攻めてきている
+    const [flo, fhi] = territoryRows(s.boardSize, 1 - me);
+    const foeOut = enemies.filter((e) => e.row < flo || e.row > fhi).length / Math.max(1, enemies.length);
+    let advance = advance0, burstMin = burstMin0;
+    if (adaptive) {
+      if (foeOut >= 0.3) { advance = 0.4; burstMin = 6; }      // 攻めてきている: 受けて一気に返す
+      else if (foeOut <= 0.1) { advance = 1.4; burstMin = 9; } // 籠もっている: ゆっくり進む
+    }
+    // 土: 継承者(王と同じ数字の生きた駒)が居れば王を晒す危険を軽く見る
+    const heirs = king && ["2", "3"].includes(king.rank) ? allMine.filter((q) => q.rank === king.rank && !q.isKing).length : 0;
+    const kingPenalty = kingExpendable && heirs > 0 ? 18 : 80;
+    const waiting = ready ? !ready(s, me, belief, allMine, enemies) : false;
     const guardedCount = (board, pieces) => {
       let n = 0;
       for (const t of pieces) {
@@ -438,7 +458,8 @@ function skyAct(opts = {}) {
         v += (known ? CARD_VALUE[q.rank] : 3.5) * 2;
         if (isFrozen(s, q)) v += 4;
         if (known && q.isKing) v += 1000;
-        else if (cand.has(id)) v += 60 * belief.weight;
+        else if (cand.has(id)) v += candidateBonus * belief.weight;
+        if (!known) v += unknownBonus;
       }
       return v;
     };
@@ -451,7 +472,9 @@ function skyAct(opts = {}) {
     const evalMove = (p, m, board0, pieces, depth) => {
       const ids = idsOf(board0, m);
       let score = capValue(ids);
-      score += moveSafety(s, me, p, m, ids, { unknownWeight, unknownThreats: unknown });
+      const safe0 = moveSafety(s, me, p, m, ids, { unknownWeight, unknownThreats: unknown });
+      if (safeHunt && safe0 < -3 && ids.size) score -= 0.7 * [...ids].reduce((v, id) => v + (cand.has(id) ? candidateBonus * belief.weight : 0) + (isKnownTo(s, me, s.pieces[id]) ? 0 : unknownBonus), 0);
+      score += safe0;
       const board = board0.map((r) => r.slice());
       board[p.row][p.col] = null;
       for (const id of ids) { const q = s.pieces[id]; if (q) board[q.row][q.col] = null; }
@@ -461,19 +484,21 @@ function skyAct(opts = {}) {
       score += (guardedCount(board, after) - guardedNow) * 2.5;
       const kAt = p.isKing ? moved : king;
       if (king) {
-        if (kingReachable(s, me, board, kAt, ids)) score -= 80;
+        if (kingReachable(s, me, board, kAt, ids)) score -= kingPenalty;
         score += shell * shellCount(board, kAt, after);
       }
-      // 前進: 取らない手でも、取り返せる形のまま前へ出るなら加点。孤立は減点
+      // 前進: 取らない手でも、取り返せる形のまま前へ出るなら加点。孤立は減点。待つあいだは前に出ない
       const fwd = (m.row - p.row) * dir;
       const nearest = Math.min(...after.filter((q) => q.id !== p.id).map((q) => Math.max(Math.abs(q.row - m.row), Math.abs(q.col - m.col))));
       if (!ids.size) {
-        score += advance * Math.max(-1, Math.min(2, fwd));
+        const [hlo, hhi] = territoryRows(s.boardSize, me);
+        const out = m.row < hlo || m.row > hhi;
+        score += waiting ? (out ? -3 : 0) : advance * Math.max(-1, Math.min(2, fwd));
         if (nearest > 2) score -= 4;
         const front = after.filter((q) => q.id !== p.id).map((q) => q.row * dir).sort((a, b) => b - a)[Math.min(2, after.length - 2)];
         if (m.row * dir - front > 2) score -= 2 * (m.row * dir - front - 2);
       } else if (nearest > 2) score -= 2;
-      if (p.isKing) score += kingThreatened ? 6 : -6;
+      if (p.isKing) score += kingThreatened ? 6 : kingExpendable && heirs > 0 ? 0 : -6;
       // 10 の2回行動: 続けて取れる手があれば、その分を足す(取って戻る「取り逃げ」)。
       // 2手をひとまとめに評価する版は、氷の要塞相手に交換が増えて負けが増えたので、この足し込み方に戻した
       if (depth === 0 && !extra && moved.rank === "10" && (moved.isKing || moved.skyTwice || s.players[me].skyTwice)) {
@@ -486,7 +511,7 @@ function skyAct(opts = {}) {
           const moved2 = { ...moved, row: m2.row, col: m2.col }; b2[m2.row][m2.col] = moved2;
           const after2 = after.map((q) => (q.id === p.id ? moved2 : q));
           v += (guardedCount(b2, after2) - guardedNow) * 1.5;
-          if (king && kingReachable(s, me, b2, p.isKing ? moved2 : king, ids2)) v -= 80;
+          if (king && kingReachable(s, me, b2, p.isKing ? moved2 : king, ids2)) v -= kingPenalty;
           if (moveSafety(s, me, moved, m2, ids2, { unknownWeight, unknownThreats: unknown }) < -6) v -= 6;
           if (v > best2) best2 = v;
         }
@@ -534,6 +559,17 @@ function skyAct(opts = {}) {
     return action;
   };
 }
+/** 土: 継承があるので王ごと前に出て、正体の分からない駒(王候補)を狩る */
+function earthAct() { return skyAct({ advance: 1.4, kingExpendable: true, candidateBonus: 90, unknownBonus: 4, burstMin: 99 }); }
+/** 森: 毎手番2体ずつ見抜けるので、候補が絞れる(王候補が3体以下か、4手番)まで自陣で粘り、そこから詰めに行く */
+function forestAct(extra = {}) {
+  return skyAct({ advance: 1.4, candidateBonus: 120, unknownBonus: 3, burstMin: 99,
+    ready: (s, me, belief) => belief.candidates.length <= 3 || (s.turnNo || 0) >= 8, ...extra });
+}
+/** 空: 相手の出方で、一気に返すか、ゆっくり進むかを切り替える */
+function skyAdaptiveAct() { return skyAct({ adaptive: true }); }
+/** 氷: 徹底防御(隅の要塞と同じ手の選び方。攻めに転じるのは敵が凍りきってから) */
+function iceAct() { return turtleAct({ worstCaseKing: true, shell: 12, attackAfterFrozen: 4 }); }
 const HEAVY = (r, c) => ({ J: 8, Q: 8, 10: 6, A: c.A ? 0 : 6, 8: 5, 9: 5, 6: 4, 7: 4, 4: 3, 5: 3, 2: 2, 3: 2 }[r] ?? 0) - dup(r, c);
 const WALL = (r, c) => ({ J: 7, Q: 7, A: c.A ? 0 : 6, 2: 5, 3: 5, 4: 5, 5: 5, 10: 4, 8: 3, 9: 3, 6: 3, 7: 3 }[r] ?? 0) - dup(r, c);
 const free = () => ({ king: null, foil: false, plan: (s, p) => chooseArmyPlan(s, p, null), discards: (s, p) => strategicDiscards(s, p, null) });
@@ -758,6 +794,46 @@ if (mode === "kings" || mode === "kingsfoil") {
     }
     console.error(`${a}/${b} done ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   });
+} else if (mode === "arealab") {
+  // エリアごとの駒選び・布陣の探索。AREA=earth|forest|ice|sky、COMPS、FORMS、FOE(free|fortice|fortpalace|advsky|stocksky)
+  const AREA = process.env.AREA || "earth";
+  const comps = {
+    earth: {
+      E1: ["2","2","2","2","J","Q","10","8","4"], E2: ["2","2","2","J","J","Q","Q","4","8"], E3: ["3","3","3","3","J","Q","10","9","5"],
+      E4: ["2","2","J","Q","10","10","4","8","8"], E5: ["3","3","3","J","J","Q","Q","5","9"], E6: ["2","2","2","2","J","J","Q","Q","10"],
+    },
+    forest: {
+      F1: ["6","J","J","Q","Q","10","10","4","2"], F2: ["7","J","J","Q","Q","10","10","4","8"], F3: ["6","6","J","Q","10","10","10","8","4"],
+      F4: ["7","7","J","J","Q","Q","10","4","2"], F5: ["6","J","J","Q","Q","4","2","8","8"], F6: ["7","J","J","Q","Q","4","2","8","8"],
+    },
+    ice: { I1: ["8","J","J","Q","Q","4","2","8","8"], I2: ["9","J","J","Q","Q","4","2","8","8"], I3: ["8","J","J","Q","Q","4","4","2","2"] },
+    sky: { S6: ["10","10","J","J","Q","Q","4","2","8"], S2: ["10","J","J","Q","Q","4","2","8","8"], S1: ["10","10","10","J","Q","4","2","8","8"] },
+  }[AREA];
+  const forestStyle = () => process.env.FOREST_STYLE === "hunt"
+    ? skyAct({ advance: 1.4, candidateBonus: 120, unknownBonus: 3, burstMin: 99 })          // 待たずに、正体不明の駒を狩りに行く
+    : process.env.FOREST_STYLE === "fort" ? fortAct()                                         // 要塞で待つだけ
+    : forestAct(process.env.SAFE_HUNT === "1" ? { safeHunt: true } : {});
+  const actOf = { earth: earthAct, forest: forestStyle, ice: iceAct, sky: skyAdaptiveAct }[AREA];
+  const BLOCK = (r, c) => ({ J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 3, 10: 5, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c);
+  const F = process.env.FOE || "free";
+  const foe = () => F === "free" ? free()
+    : F === "stocksky" ? { king: "10", foil: "king", ...stockSide("10") }
+    // 相手の手札は固定せず、残りの札から優先度で組む(こちらの固定手札と札の枚数が競合しないように)
+    : F === "advsky" ? { king: "10", foil: "king", ...prioritySide("10", (r, c) => ({ 10: 9, J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 2, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c)), act: skyAct() }
+    : F === "fortice" ? { king: "9", foil: "king", ...prioritySide("9", BLOCK), act: fortAct(), arrange: fortressArrange }
+    : F === "fortpalace" ? { king: "K", foil: "king", ...prioritySide("K", BLOCK), act: fortAct(), arrange: fortressArrange }
+    : free();
+  const forms = (process.env.FORMS || "stock,center,corner").split(",");
+  const names = (process.env.COMPS || Object.keys(comps).join(",")).split(",");
+  let i = 0;
+  for (const n of names) for (const form of forms) {
+    const ranks = comps[n];
+    const side = { ...fixedSide(ranks, ranks[0]), foil: "king", act: actOf() };
+    if (form === "corner") side.arrange = fortressArrange;
+    else if (form === "center") side.arrange = (st, p, plan) => fortressArrange(st, p, plan, 3);
+    rows.push(...runPair(`${AREA} ${n} ${form} vs ${F}`, [side, foe()], 101260910 + i++ * 1000003));
+    console.error(`${n}/${form} done ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+  }
 } else if (mode === "mirror") {
   // 先手の値打ち: 自由同士・フォイル無し
   rows.push(...runPair("free-vs-free", [free(), free()], 50260910));

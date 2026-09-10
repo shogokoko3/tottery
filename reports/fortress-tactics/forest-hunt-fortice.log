@@ -1,0 +1,19 @@
+F5/stock done 30s
+F5/center done 58s
+F5/corner done 75s
+F1/stock done 92s
+F1/center done 121s
+F1/corner done 140s
+F6/stock done 168s
+F6/center done 194s
+F6/corner done 209s
+forest F5 stock vs fortice 勝率  47.2%  勝-負-未 17-19-164  先手 47.1% 後手 47.4%  中央値手番 48  凍結負け 7  氷 0.0回/局(延長 -)  相手王 9:36
+forest F5 center vs fortice 勝率  37.5%  勝-負-未 9-15-176  先手 31.6% 後手 60.0%  中央値手番 91  凍結負け 10  氷 0.0回/局(延長 -)  相手王 9:24
+forest F5 corner vs fortice 勝率  45.8%  勝-負-未 38-45-117  先手 40.5% 後手 50.0%  中央値手番 43  凍結負け 36  氷 0.0回/局(延長 -)  相手王 9:83
+forest F1 stock vs fortice 勝率  19.0%  勝-負-未 19-81-100  先手 25.0% 後手 15.0%  中央値手番 1  凍結負け 4  氷 0.0回/局(延長 -)  相手王 9:100
+forest F1 center vs fortice 勝率  16.7%  勝-負-未 4-20-176  先手 20.0% 後手 11.1%  中央値手番 99  凍結負け 10  氷 0.0回/局(延長 -)  相手王 9:24
+forest F1 corner vs fortice 勝率  29.3%  勝-負-未 22-53-125  先手 23.5% 後手 34.1%  中央値手番 48  凍結負け 45  氷 0.0回/局(延長 -)  相手王 9:75
+forest F6 stock vs fortice 勝率   5.9%  勝-負-未 3-48-149  先手 9.1% 後手 3.4%  中央値手番 83  凍結負け 33  氷 0.0回/局(延長 -)  相手王 9:51
+forest F6 center vs fortice 勝率   8.0%  勝-負-未 4-46-150  先手 6.7% 後手 10.0%  中央値手番 78  凍結負け 34  氷 0.0回/局(延長 -)  相手王 9:50
+forest F6 corner vs fortice 勝率  10.9%  勝-負-未 15-122-63  先手 9.7% 後手 12.3%  中央値手番 66  凍結負け 108  氷 0.0回/局(延長 -)  相手王 9:137
+games 1800  209s
