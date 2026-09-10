@@ -5,6 +5,7 @@
 //   FREEZE_DEATH=4   凍ったまま4手番迎えた駒は倒れる(凍結死)
 //   KING_FREEZE=2    王の凍結を2手番に
 //   KING_EXTEND=0    凍結中の王は延長しない
+//   KING_ONCE=1      王を凍らせるのは1局に1回だけ
 // 画面のコードはこのファイルを読まないので、配信物には影響しない。
 const tuning = {};
 if (process.env.EARTH_ODDS) tuning.earthOdds = Number(process.env.EARTH_ODDS);
@@ -14,4 +15,5 @@ if (process.env.ICE_KING) tuning.iceFreezesKing = process.env.ICE_KING === "1";
 if (process.env.FREEZE_DEATH) tuning.freezeDeathTurns = Number(process.env.FREEZE_DEATH);
 if (process.env.KING_FREEZE) tuning.kingFreezeTurns = Number(process.env.KING_FREEZE);
 if (process.env.KING_EXTEND) tuning.kingFreezeExtends = process.env.KING_EXTEND === "1";
+if (process.env.KING_ONCE) tuning.kingFreezeOnce = process.env.KING_ONCE === "1";
 if (Object.keys(tuning).length) globalThis.TOTTERY_AREA_TUNING = tuning;

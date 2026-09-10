@@ -110,6 +110,8 @@ export const AREA_TUNING = Object.freeze({
   kingFreezeTurns: null,
   /** 氷: 凍結中の王がもう一度選ばれたとき延長するか(false なら王はそのまま。調整の検証用) */
   kingFreezeExtends: true,
+  /** 氷: 王を凍らせるのは1局に1回だけか(調整の検証用。areas[player].kingFrozenOnce に記録) */
+  kingFreezeOnce: false,
   /** 氷: 「凍結死」。自分の手番の初めに凍っていた回数がこの数に達した駒は倒れる(0 で無効。2026-09-11 の検証用) */
   freezeDeathTurns: 0,
   /** 氷: 相手が動けない手番の数 */
@@ -250,10 +252,13 @@ export function recurringArea(state, type) {
 }
 
 export function iceCandidates(state, player) {
+  const kingOk =
+    iceFreezesKing(state) &&
+    !(AREA_TUNING.kingFreezeOnce && state.areas?.[player]?.kingFrozenOnce);
   return alivePieces(state, 1 - player)
     .filter(
       (p) =>
-        (iceFreezesKing(state) || !p.isKing) &&
+        (kingOk || !p.isKing) &&
         (recurringIce(state) || !isFrozen(state, p)),
     )
     .map((p) => p.id)
@@ -510,6 +515,11 @@ export function useArea(state, action) {
           ),
         )
         .join("・");
+      if (targets.some((id) => state.pieces[id].isKing)) {
+        const areas = [...next.areas];
+        areas[player] = { ...areas[player], kingFrozenOnce: true };
+        next = { ...next, areas };
+      }
       return markUsed(
         {
           ...next,

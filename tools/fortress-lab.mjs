@@ -1,9 +1,12 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3(SOFT=1)/skylab/arealab/seadeal/showform ほか。HUNT=1 で詰め探索、ICE_KING=1 / FREEZE_DEATH=4 で氷のルール案)。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3(SOFT=1)/skylab/arealab/seadeal/showform ほか。HUNT=1 で詰め探索、ICE_KING/FREEZE_DEATH/KING_FREEZE/KING_EXTEND/KING_ONCE で氷の調整案)。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
 //   sky     … 左: 10 王 + 空フォイル、構成の変種 / 右: 自由・フォイル無し
 //   kingsfoil … 左: 王固定 + その帯のフォイル / 右: 自由・フォイル無し
+if (process.env.KING_ONCE) globalThis.TOTTERY_AREA_TUNING = { ...(globalThis.TOTTERY_AREA_TUNING || {}), kingFreezeOnce: process.env.KING_ONCE === "1" };
+if (process.env.KING_FREEZE) globalThis.TOTTERY_AREA_TUNING = { ...(globalThis.TOTTERY_AREA_TUNING || {}), kingFreezeTurns: Number(process.env.KING_FREEZE) };
+if (process.env.KING_EXTEND) globalThis.TOTTERY_AREA_TUNING = { ...(globalThis.TOTTERY_AREA_TUNING || {}), kingFreezeExtends: process.env.KING_EXTEND === "1" };
 if (process.env.FREEZE_DEATH) globalThis.TOTTERY_AREA_TUNING = { ...(globalThis.TOTTERY_AREA_TUNING || {}), freezeDeathTurns: Number(process.env.FREEZE_DEATH) };
 if (process.env.ICE_KING) globalThis.TOTTERY_AREA_TUNING = { ...(globalThis.TOTTERY_AREA_TUNING || {}), iceFreezesKing: process.env.ICE_KING === "1" };
 if (process.env.ICE_TARGETS || process.env.FREEZE_TURNS) globalThis.TOTTERY_AREA_TUNING = { ...(globalThis.TOTTERY_AREA_TUNING || {}), ...(process.env.ICE_TARGETS ? { iceTargets: Number(process.env.ICE_TARGETS) } : {}), ...(process.env.FREEZE_TURNS ? { freezeTurns: Number(process.env.FREEZE_TURNS) } : {}) };
@@ -778,6 +781,24 @@ function kingHunt(s, me, targetId) {
   }
   return bestThreat && bestThreat.threats >= 1 ? bestThreat.action : null;
 }
+/** 自分の王が凍っていて、動ける A が居れば、A の入れ替えで王の氷を解く(入れ替え先は3升のどれかに乱数で決まる) */
+function withThaw(base) {
+  return (s, me) => {
+    if (s.phase === "play" && !s.pendingKingChoice && !s.kPlacement && !s.extraMoveFor && s.winner == null) {
+      const king = s.pieces[s.players[me].kingId];
+      if (king && king.alive && isFrozen(s, king)) {
+        const ace = Object.values(s.pieces).find((p) => p.alive && p.owner === me && p.rank === "A" && !isFrozen(s, p));
+        if (ace) {
+          const threats = knownThreats(s, me);
+          const others = Object.values(s.pieces).filter((p) => p.alive && p.owner === me && p.id !== ace.id && p.id !== king.id)
+            .sort((a, b) => Number(threats.has(`${a.row}/${a.col}`)) - Number(threats.has(`${b.row}/${b.col}`)));
+          if (others.length) return { type: "__CPU_SHUFFLE", aceId: ace.id, pickIds: [king.id, others[0].id] };
+        }
+      }
+    }
+    return base(s, me);
+  };
+}
 /** 王が確定していれば詰めの探索を優先し、無ければ元の指し方に戻る */
 function withKingHunt(base, { minThreats = 2 } = {}) {
   return (s, me) => {
@@ -1118,23 +1139,27 @@ if (mode === "kings" || mode === "kingsfoil") {
     earth: {
       E1: ["2","2","2","2","J","Q","10","8","4"], E2: ["2","2","2","J","J","Q","Q","4","8"], E3: ["3","3","3","3","J","Q","10","9","5"],
       E4: ["2","2","J","Q","10","10","4","8","8"], E5: ["3","3","3","J","J","Q","Q","5","9"], E6: ["2","2","2","2","J","J","Q","Q","10"],
+      E6A: ["2","2","2","2","J","J","Q","Q","A"],
     },
     forest: {
       F1: ["6","J","J","Q","Q","10","10","4","2"], F2: ["7","J","J","Q","Q","10","10","4","8"], F3: ["6","6","J","Q","10","10","10","8","4"],
       F4: ["7","7","J","J","Q","Q","10","4","2"], F5: ["6","J","J","Q","Q","4","2","8","8"], F6: ["7","J","J","Q","Q","4","2","8","8"],
+      F1A: ["6","J","J","Q","Q","10","10","4","A"],
     },
-    ice: { I1: ["8","J","J","Q","Q","4","2","8","8"], I2: ["9","J","J","Q","Q","4","2","8","8"], I3: ["8","J","J","Q","Q","4","4","2","2"] },
+    ice: { I1: ["8","J","J","Q","Q","4","2","8","8"], I2: ["9","J","J","Q","Q","4","2","8","8"], I3: ["8","J","J","Q","Q","4","4","2","2"], I3A: ["8","J","J","Q","Q","4","4","2","A"] },
     palace: {
       // 10 は相手(空)の王に1枚残すため最大3枚
       P2: ["K","J","Q","10","10","10","9","9","9"], P3: ["K","J","Q","10","10","9","9","8","8"], P4: ["K","J","Q","10","10","10","9","4","2"],
       P6: ["K","J","Q","10","10","10","9","8","8"], P7: ["K","J","Q","9","9","9","9","8","8"], P8: ["K","J","Q","10","10","10","9","9","8"],
+      P4A: ["K","J","Q","10","10","10","9","4","A"],
     },
     sea: {
       W1: ["4","4","4","4","J","J","Q","Q","10"], W2: ["5","5","5","5","J","J","Q","Q","10"], W3: ["4","4","4","J","J","Q","Q","2","8"],
       N3: ["4","4","4","J","J","Q","Q","10","8"], N2: ["4","4","J","J","Q","Q","10","8","2"], N1: ["4","J","J","Q","Q","10","8","2","8"],
       W4: ["4","4","4","4","J","Q","10","10","2"], W5: ["5","5","5","J","J","Q","Q","3","9"], W6: ["4","4","4","4","J","J","Q","Q","8"],
+      W1A: ["4","4","4","4","J","J","Q","Q","A"],
     },
-    sky: { S6: ["10","10","J","J","Q","Q","4","2","8"], S2: ["10","J","J","Q","Q","4","2","8","8"], S1: ["10","10","10","J","Q","4","2","8","8"] },
+    sky: { S6: ["10","10","J","J","Q","Q","4","2","8"], S2: ["10","J","J","Q","Q","4","2","8","8"], S1: ["10","10","10","J","Q","4","2","8","8"], S6A: ["10","10","J","J","Q","Q","4","8","A"] },
   }[AREA];
   const forestStyle = () => process.env.FOREST_STYLE === "hunt"
     ? skyAct({ advance: 1.4, candidateBonus: 120, unknownBonus: 3, burstMin: 99 })          // 待たずに、正体不明の駒を狩りに行く
@@ -1161,7 +1186,7 @@ if (mode === "kings" || mode === "kingsfoil") {
   let i = 0;
   for (const n of names) for (const form of forms) {
     const ranks = comps[n];
-    const side = { ...fixedSide(ranks, ranks[0]), foil: "king", act: AREA === "sea" ? (process.env.HUNT === "1" ? withKingHunt(seaAct(ranks[0])) : seaAct(ranks[0])) : actOf() };
+    const side = { ...fixedSide(ranks, ranks[0]), foil: "king", act: withThaw(AREA === "sea" ? (process.env.HUNT === "1" ? withKingHunt(seaAct(ranks[0])) : seaAct(ranks[0])) : actOf()) };
     if (form === "corner") side.arrange = fortressArrange;
     else if (form === "center") side.arrange = (st, p, plan) => fortressArrange(st, p, plan, 3);
     else if (form === "front") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo : hi, col: 4 }); };
