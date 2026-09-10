@@ -106,6 +106,10 @@ export const AREA_TUNING = Object.freeze({
   iceTargets: 1,
   /** 氷: 相手の王も凍らせるか。版12から常に真(iceFreezesKing())。旧版の対局で試すときの検証用の上書き */
   iceFreezesKing: false,
+  /** 氷: 王の凍結手番数(null なら freezeTurns と同じ。調整の検証用) */
+  kingFreezeTurns: null,
+  /** 氷: 凍結中の王がもう一度選ばれたとき延長するか(false なら王はそのまま。調整の検証用) */
+  kingFreezeExtends: true,
   /** 氷: 「凍結死」。自分の手番の初めに凍っていた回数がこの数に達した駒は倒れる(0 で無効。2026-09-11 の検証用) */
   freezeDeathTurns: 0,
   /** 氷: 相手が動けない手番の数 */
@@ -461,12 +465,27 @@ export function useArea(state, action) {
       for (const id of candidates) if (!chosen.includes(id)) chosen.push(id);
       const targets = chosen.slice(0, AREA_TUNING.iceTargets);
       if (!targets.length) return state;
-      const untilFor = (id) =>
-        Math.max(
-          state.turnNo || 0,
-          recurringIce(state) ? state.pieces[id].frozenUntil || 0 : 0,
-        ) +
-        AREA_TUNING.freezeTurns * 2;
+      const untilFor = (id) => {
+        const p = state.pieces[id];
+        const turns =
+          p.isKing && AREA_TUNING.kingFreezeTurns != null
+            ? AREA_TUNING.kingFreezeTurns
+            : AREA_TUNING.freezeTurns;
+        if (
+          p.isKing &&
+          !AREA_TUNING.kingFreezeExtends &&
+          recurringIce(state) &&
+          isFrozen(state, p)
+        )
+          return p.frozenUntil;
+        return (
+          Math.max(
+            state.turnNo || 0,
+            recurringIce(state) ? p.frozenUntil || 0 : 0,
+          ) +
+          turns * 2
+        );
+      };
       const extended = targets.some(
         (id) => recurringIce(state) && isFrozen(state, state.pieces[id]),
       );
