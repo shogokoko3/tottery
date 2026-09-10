@@ -16,6 +16,7 @@
  */
 import { levelOf } from "./profile.js";
 import { FOIL_MISSION_DEFS } from "./foil-missions.js";
+import { foilRevealed } from "../skins/collection.js";
 import { periodicMissionRows } from "./periodic-missions.js";
 
 /** 条件ごとの、いまの数字の読み方 */
@@ -167,8 +168,12 @@ export function statusOf(mission, profile, collection) {
  */
 export function listMissions(profile, collection) {
   const rank = (s) => (s.done && !s.claimed ? 0 : s.claimed ? 2 : 1);
+  // フォイルのミッションは、フォイルを1枚も持たないうちは見せない(達成・受取済みなら出す)
+  const known = foilRevealed(collection);
   return [
-    ...MISSIONS.map((m) => statusOf(m, profile, collection)),
+    ...MISSIONS.filter((m) => m.kind !== "foil" || known).map((m) =>
+      statusOf(m, profile, collection),
+    ),
     ...periodicMissionRows(profile, collection),
   ].sort((a, b) => rank(a) - rank(b) || a.goal - b.goal);
 }

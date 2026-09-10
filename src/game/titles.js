@@ -50,33 +50,39 @@ export const TITLES = [
   // CPU戦かオンライン対戦を始めると、その場で配られる。組み方は伏せて「○○のエリアで獲得」とだけ書く
   {
     id: "fortress",
+    foil: true,
     name: "堅牢な要塞",
     how: "氷のエリアで獲得",
   },
   // 空のエリアで双翼の陣(src/game/bonus.js の twinWingsMatch)を組んで対局を始めると配られる
   {
     id: "twin-wings",
+    foil: true,
     name: "双翼の将",
     how: "空のエリアで獲得",
   },
   // 土「継承の狩り」・森「消去法の詰め」(src/game/bonus.js の FORMATIONS)も同じ扱い
   {
     id: "heir-hunt",
+    foil: true,
     name: "軌跡の追跡者",
     how: "土のエリアで獲得",
   },
   {
     id: "elimination",
+    foil: true,
     name: "静寂な狩人",
     how: "森のエリアで獲得",
   },
   {
     id: "kamikaze",
+    foil: true,
     name: "荒波の航海士",
     how: "海のエリアで獲得",
   },
   {
     id: "royal-road",
+    foil: true,
     name: "覇道",
     how: "宮殿のエリアで獲得",
   },
@@ -112,9 +118,15 @@ export const TITLES = [
   ...FOIL_MISSION_DEFS.map((entry) => ({
     id: entry.titleId,
     name: entry.titleName,
+    foil: true,
     how: `${entry.missionName}\n（ミッション報酬を受け取る）`,
   })),
 ];
+
+/**
+ * foil: true の称号は、フォイルを1枚も持たないうちは一覧に出さない(手に入れたものは出す)。
+ * フォイルもエリアも、初めてフォイルを引くまでは存在を見せない決まり(src/skins/collection.js の foilRevealed)
+ */
 
 /** 既定の称号 */
 export const DEFAULT_TITLE = "novice";

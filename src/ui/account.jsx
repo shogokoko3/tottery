@@ -19,6 +19,8 @@ import {
   levelProgress,
 } from "../game/profile.js";
 import { availableTitles, hasTitle, titleOf } from "../game/titles.js";
+import { foilRevealed } from "../skins/collection.js";
+import { getCollection } from "../skins/store.js";
 import { publishPlayer } from "../net/players.js";
 import { ICONS, hasIcon } from "../game/icons.js";
 import { Check, Close, Sparkle } from "../icons.jsx";
@@ -321,6 +323,8 @@ export function TitlePickModal({ onClose, onSaved }) {
           {availableTitles(profile).map((t) => {
             const owned = hasTitle(profile, t.id);
             if (t.secret && !owned) return null;
+            // フォイル・エリアの称号は、フォイルを1枚も持たないうちは見せない
+            if (t.foil && !owned && !foilRevealed(getCollection())) return null;
             return (
               <button
                 className={`title-choice ${picked === t.id ? "title-choice-on" : ""} ${
