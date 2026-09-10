@@ -568,7 +568,8 @@
 
 /* Approved illustrated fields. Only selected objects move; the board stays fixed. */
 .area-illustrated {
-  --field-inset: 12%;
+  /* 実際の値は backdrop.jsx の fieldInsetRatio が盤の幅から入れ直す */
+  --field-inset: 5%;
   padding: var(--field-inset);
   overflow: hidden;
 }
