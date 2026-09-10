@@ -1,4 +1,4 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3/skylab/arealab/showform ほか。HUNT=1 で王の特定後の詰め探索)。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3/skylab/arealab/seadeal/showform ほか。HUNT=1 で王の特定後の詰め探索)。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
@@ -506,6 +506,9 @@ function skyAct(opts = {}) {
     kingExpendable = false,    // 土: 継承者が居るあいだは王の危険を軽く見る(王が前に出て狩る)
     ready = null,              // 森: (s, me, belief) => 攻めに転じてよいか。偽のあいだは自陣で待つ
     safeHunt = false,          // 王候補を取る手でも、取り返される升なら加点を3割に(交換で削られない)
+    kamikazeRank = null,       // 海: 王と同じ数字の仲間。取られても道連れなので自分の危険を軽く見て突っ込む
+    kamikazeAdvance = 2.0,     // 仲間の前進の加点
+    seaMode = "cpu",           // 海の発動: "cpu"(通常CPUの判断) / "always" / "never"
   } = opts;
   const KN = [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]];
   return (s, me) => {
@@ -582,7 +585,14 @@ function skyAct(opts = {}) {
     const evalMove = (p, m, board0, pieces, depth) => {
       const ids = idsOf(board0, m);
       let score = capValue(ids);
-      const safe0 = moveSafety(s, me, p, m, ids, { unknownWeight, unknownThreats: unknown });
+      const kamikaze = kamikazeRank && p.rank === kamikazeRank && !p.isKing;
+      let safe0 = moveSafety(s, me, p, m, ids, { unknownWeight, unknownThreats: unknown });
+      if (kamikaze) {
+        // 王への危険(-65以下の大きな減点)はそのまま、自分が取られる分は道連れなので2割に
+        const kingPart = safe0 <= -60 ? -65 : 0;
+        safe0 = kingPart + (safe0 - kingPart) * 0.2;
+        score += capValue(ids) * 0.5; // 取れる手は積極的に
+      }
       if (safeHunt && safe0 < -3 && ids.size) score -= 0.7 * [...ids].reduce((v, id) => v + (cand.has(id) ? candidateBonus * belief.weight : 0) + (isKnownTo(s, me, s.pieces[id]) ? 0 : unknownBonus), 0);
       score += safe0;
       const board = board0.map((r) => r.slice());
@@ -603,8 +613,14 @@ function skyAct(opts = {}) {
       if (!ids.size) {
         const [hlo, hhi] = territoryRows(s.boardSize, me);
         const out = m.row < hlo || m.row > hhi;
-        score += waiting ? (out ? -3 : 0) : advance * Math.max(-1, Math.min(2, fwd));
-        if (nearest > 2) score -= 4;
+        const adv = kamikaze ? kamikazeAdvance : advance;
+        score += waiting ? (out ? -3 : 0) : adv * Math.max(-1, Math.min(2, fwd));
+        if (nearest > 2 && !kamikaze) score -= 4;
+        // 仲間は、次の手で敵を取れる升(脅し)に立つ手を加点
+        if (kamikaze) {
+          const threats = legal(moved, board, s.boardSize, counts, kr).filter((mv) => board[mv.row][mv.col]?.owner === 1 - me).length;
+          score += Math.min(3, threats) * 2.5;
+        }
         const front = after.filter((q) => q.id !== p.id).map((q) => q.row * dir).sort((a, b) => b - a)[Math.min(2, after.length - 2)];
         if (m.row * dir - front > 2) score -= 2 * (m.row * dir - front - 2);
       } else if (nearest > 2) score -= 2;
@@ -636,9 +652,10 @@ function skyAct(opts = {}) {
         if (!best || sc > best.score) best = { score: sc, type: "MOVE_PIECE", pieceId: p.id, row: m.row, col: m.col, captures: m.captures };
       }
     if (extra) return best && best.score > -1 ? (({ score, ...a }) => a)(best) : { type: "SKIP_EXTRA_ACTION" };
-    // 海・宮殿の任意発動は通常CPUの判断を借りる(空だけ下で自前に判断)
+    // 海・宮殿の任意発動は通常CPUの判断を借りる(空だけ下で自前に判断)。海は seaMode で always/never にもできる
     const can = canUseArea(s, me);
-    if (can.ok && (can.type === "sea" || can.type === "palace")) {
+    if (can.ok && can.type === "sea" && seaMode === "always") return { type: "USE_AREA" };
+    if (can.ok && ((can.type === "sea" && seaMode === "cpu") || can.type === "palace")) {
       const a = cpuInformedAction(s, me);
       if (a && a.type === "USE_AREA") return a;
     }
@@ -769,6 +786,10 @@ function forestAct(extra = {}) {
 }
 /** 空: 相手の出方で、一気に返すか、ゆっくり進むかを切り替える */
 function skyAdaptiveAct() { return skyAct({ adaptive: true }); }
+/** 海: 王は守り、同じ数字の仲間を特攻させる(道連れ)。海で相手を中央へ寄せて的を作る */
+function seaAct(kingRank, extra = {}) {
+  return skyAct({ advance: 0.6, kamikazeRank: kingRank, kamikazeAdvance: 2.0, burstMin: 99, candidateBonus: 60, seaMode: process.env.SEA_MODE || "cpu", ...extra });
+}
 /** 氷: 徹底防御(隅の要塞と同じ手の選び方。攻めに転じるのは敵が凍りきってから) */
 function iceAct() { return turtleAct({ worstCaseKing: true, shell: 12, attackAfterFrozen: 4 }); }
 const HEAVY = (r, c) => ({ J: 8, Q: 8, 10: 6, A: c.A ? 0 : 6, 8: 5, 9: 5, 6: 4, 7: 4, 4: 3, 5: 3, 2: 2, 3: 2 }[r] ?? 0) - dup(r, c);
@@ -1008,13 +1029,18 @@ if (mode === "kings" || mode === "kingsfoil") {
       F4: ["7","7","J","J","Q","Q","10","4","2"], F5: ["6","J","J","Q","Q","4","2","8","8"], F6: ["7","J","J","Q","Q","4","2","8","8"],
     },
     ice: { I1: ["8","J","J","Q","Q","4","2","8","8"], I2: ["9","J","J","Q","Q","4","2","8","8"], I3: ["8","J","J","Q","Q","4","4","2","2"] },
+    sea: {
+      W1: ["4","4","4","4","J","J","Q","Q","10"], W2: ["5","5","5","5","J","J","Q","Q","10"], W3: ["4","4","4","J","J","Q","Q","2","8"],
+      N3: ["4","4","4","J","J","Q","Q","10","8"], N2: ["4","4","J","J","Q","Q","10","8","2"], N1: ["4","J","J","Q","Q","10","8","2","8"],
+      W4: ["4","4","4","4","J","Q","10","10","2"], W5: ["5","5","5","J","J","Q","Q","3","9"], W6: ["4","4","4","4","J","J","Q","Q","8"],
+    },
     sky: { S6: ["10","10","J","J","Q","Q","4","2","8"], S2: ["10","J","J","Q","Q","4","2","8","8"], S1: ["10","10","10","J","Q","4","2","8","8"] },
   }[AREA];
   const forestStyle = () => process.env.FOREST_STYLE === "hunt"
     ? skyAct({ advance: 1.4, candidateBonus: 120, unknownBonus: 3, burstMin: 99 })          // 待たずに、正体不明の駒を狩りに行く
     : process.env.FOREST_STYLE === "fort" ? fortAct()                                         // 要塞で待つだけ
     : forestAct(process.env.SAFE_HUNT === "1" ? { safeHunt: true } : {});
-  const actOf0 = { earth: earthAct, forest: forestStyle, ice: iceAct, sky: skyAdaptiveAct }[AREA];
+  const actOf0 = { earth: earthAct, forest: forestStyle, ice: iceAct, sky: skyAdaptiveAct, sea: () => seaAct(process.env.SEA_KING || "4") }[AREA];
   const actOf = process.env.HUNT === "1" ? () => withKingHunt(actOf0(), { minThreats: Number(process.env.MIN_THREATS || 2) }) : actOf0;
   const BLOCK = (r, c) => ({ J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 3, 10: 5, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c);
   const F = process.env.FOE || "free";
@@ -1030,7 +1056,7 @@ if (mode === "kings" || mode === "kingsfoil") {
   let i = 0;
   for (const n of names) for (const form of forms) {
     const ranks = comps[n];
-    const side = { ...fixedSide(ranks, ranks[0]), foil: "king", act: actOf() };
+    const side = { ...fixedSide(ranks, ranks[0]), foil: "king", act: AREA === "sea" ? (process.env.HUNT === "1" ? withKingHunt(seaAct(ranks[0])) : seaAct(ranks[0])) : actOf() };
     if (form === "corner") side.arrange = fortressArrange;
     else if (form === "center") side.arrange = (st, p, plan) => fortressArrange(st, p, plan, 3);
     else if (form === "front") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo : hi, col: 4 }); };
@@ -1072,7 +1098,8 @@ if (mode === "kings" || mode === "kingsfoil") {
     forest: () => (r, c) => ({ J: 8, Q: 8, 10: 8, 4: 6, 2: 6, 8: 5, 3: 4, 5: 4, 9: 3, A: c.A ? 0 : 2, 6: 2, 7: 2 }[r] ?? 0) - dup(r, c),
     ice: () => (r, c) => ({ J: 8, Q: 8, 4: 7, 2: 7, 8: 5, 3: 4, 5: 4, 10: 4, 9: 3, A: c.A ? 0 : 2, 6: 2, 7: 2 }[r] ?? 0) - dup(r, c),
     sky: () => (r, c) => ({ 10: 9, J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 2, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c),
-    sea: () => BLOCK, palace: () => BLOCK,
+    sea: (k) => (r, c) => (r === k ? 10 : { J: 8, Q: 8, 10: 6, 8: 4, 2: 4, 3: 3, 9: 3, A: c.A ? 0 : 2, 6: 2, 7: 2 }[r] ?? 0) - dup(r, c) + (r === k ? 0.65 * (c[r] || 0) : 0),
+    palace: () => BLOCK,
   };
   const midK = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo + 1 : hi - 1, col: 4 }); };
   const mk = (type, k) => {
@@ -1081,7 +1108,7 @@ if (mode === "kings" || mode === "kingsfoil") {
     if (type === "forest") return { ...base, act: withKingHunt(skyAct({ advance: 1.4, candidateBonus: 120, unknownBonus: 3, burstMin: 99 })), arrange: fortressArrange };
     if (type === "ice") return { ...base, act: withKingHunt(iceAct()), arrange: fortressArrange };
     if (type === "sky") return { ...base, act: withKingHunt(skyAdaptiveAct()), arrange: fortressArrange };
-    if (type === "sea") return { ...base, act: withKingHunt(skyAct()) };
+    if (type === "sea") return { ...base, act: withKingHunt(seaAct(k)) }; // 特攻型(通常配置)
     return { ...base, act: withKingHunt(fortAct()), arrange: fortressArrange };
   };
   const types = Object.keys(groups);
@@ -1101,6 +1128,34 @@ if (mode === "kings" || mode === "kingsfoil") {
     }
     console.error(`${a}/${b} done ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   });
+} else if (mode === "seadeal") {
+  // 配られた手札で海を使う。引き直しの方針を比べ、王と同じ数字が何枚そろったかも数える
+  const F = process.env.FOE || "free";
+  const BLOCK = (r, c) => ({ J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 3, 10: 5, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c);
+  const foe = () => F === "free" ? free()
+    : F === "advsky" ? { king: "10", foil: "king", ...prioritySide("10", (r, c) => ({ 10: 9, J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 2, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c)), act: skyAct() }
+    : F === "fortpalace" ? { king: "K", foil: "king", ...prioritySide("K", BLOCK), act: fortAct(), arrange: fortressArrange } : free();
+  const seaPri = (k) => (r, c) => (r === k ? 10 : { J: 8, Q: 8, 10: 6, 8: 4, 2: 4, 3: 3, 9: 3, A: c.A ? 0 : 2, 6: 2, 7: 2 }[r] ?? 0) - dup(r, c) + (r === k ? 0.65 * (c[r] || 0) : 0);
+  const variants = {
+    "引き直し4枚まで": (k) => ({ king: k, foil: "king", ...prioritySide(k, seaPri(k)), act: withKingHunt(seaAct(k)) }),
+    "同数字以外を全部引き直す": (k) => ({ king: k, foil: "king", ...prioritySide(k, seaPri(k), { mulliganAll: true, keepMin: 9.5 }), act: withKingHunt(seaAct(k)) }),
+    "J・Q・10も残して引き直す": (k) => ({ king: k, foil: "king", ...prioritySide(k, seaPri(k), { mulliganAll: true, keepMin: 5.5 }), act: withKingHunt(seaAct(k)) }),
+  };
+  let i = 0;
+  for (const [name, mk] of Object.entries(variants)) {
+    const rowsHere = [];
+    for (let n = 0; n < SEEDS; n++) {
+      const k = n % 2 ? "5" : "4";
+      const sides = [mk(k), foe()];
+      let seed = 291260910 + i * 1000003 + n * 7919, base;
+      for (let attempt = 0; attempt < 200; attempt++) { try { base = setup(seed, sides); break; } catch (e) { if (!/hand|setup/.test(String(e.message))) throw e; seed += 15485863; } }
+      const kings = [0, 1].map((j) => kingRankOf(base.s, j));
+      for (const first of [0, 1]) rowsHere.push({ label: `海 ${name} vs ${F}`, seed, first, kings, counts: [0, 1].map((j) => base.s.players[j].armyRankCounts), straight: [false, false], flush: [false, false], ...play(base.s, first, seed + first * 104729, sides) });
+    }
+    const sib = rowsHere.reduce((a, r) => a + (r.counts[0][r.kings[0]] || 0), 0) / rowsHere.length;
+    console.error(`${name}: 王と同じ数字の平均枚数(王込み) ${sib.toFixed(2)}`);
+    rows.push(...rowsHere); i++;
+  }
 } else if (mode === "mirror") {
   // 先手の値打ち: 自由同士・フォイル無し
   rows.push(...runPair("free-vs-free", [free(), free()], 50260910));
