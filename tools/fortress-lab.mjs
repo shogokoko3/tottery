@@ -1,4 +1,4 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3/skylab/arealab/seadeal/showform ほか。HUNT=1 で王の特定後の詰め探索)。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/matrix3/skylab/arealab/seadeal/showform ほか。HUNT=1 で王の特定後の詰め探索、AREA=palace で宮殿)。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
@@ -13,7 +13,7 @@ const { chooseArmyPlan, strategicDiscards, arrangeArmy } = await import(`${REPO}
 const { cpuInformedAction } = await import(`${REPO}/src/game/cpu-informed.js`);
 const { automaticAreaAction } = await import(`${REPO}/src/game/area-presentation.js`);
 const { GAME_RULE_VERSION } = await import(`${REPO}/src/game/rule-version.js`);
-const { AREA_BY_RANK, isFrozen, isKnownTo, canUseArea, skyCandidates } = await import(`${REPO}/src/game/areas.js`);
+const { AREA_BY_RANK, isFrozen, isKnownTo, canUseArea, skyCandidates, palaceCandidates, palacePromotionRank } = await import(`${REPO}/src/game/areas.js`);
 const { getLegalMoves: legal, territoryRows } = await import(`${REPO}/src/game/board.js`);
 const { knownThreats, unknownThreatMap, moveSafety } = await import(`${REPO}/src/game/cpu-tactics.js`);
 const { opponentKingBelief } = await import(`${REPO}/src/game/king-belief.js`);
@@ -248,7 +248,7 @@ function summarize(rows) {
  * 伏せ札の中身は読まない(公開/見抜いた駒と、位置だけ)。
  */
 function turtleAct(opts = {}) {
-  const { attackAfterFrozen = 3, unknownWeight = 0.8, worstCaseKing = false, shell = 0 } = opts;
+  const { attackAfterFrozen = 3, unknownWeight = 0.8, worstCaseKing = false, shell = 0, twoPly = false } = opts;
   // 王の殻: 王の周り8升と桂馬8升のうち、自分の駒が居るか自分の駒が届く升の数
   const shellCount = (s, me, board, kingAt, pieces) => {
     const cells = [];
@@ -331,6 +331,7 @@ function turtleAct(opts = {}) {
             const danger = kingReachable(s, me, board, kAt, ids);
             if (danger) score -= 80;
             if (shell) score += shell * shellCount(s, me, board, kAt, allMine.map((q) => (q.id === p.id ? moved : q)));
+            if (twoPly && !danger && sweepThreatIn2(s, me, board, kAt, ids)) score -= 40;
           }
         }
         score += Math.random() * 0.5;
@@ -458,6 +459,32 @@ function arrangeSpreadGuard(state, player, plan, lambda = 6, kingRow = "mid") {
   return best;
 }
 const ANY_RANKS = ["2","3","4","5","6","7","8","9","10","J","Q","K"];
+const BAND = { earth: ["2", "3"], sea: ["4", "5"], forest: ["6", "7"], ice: ["8", "9"], sky: ["10"], palace: ["J", "Q", "K"] };
+/**
+ * 2手先の王の危険(6〜9の王の「線をまとめて取る」動きに限る): 相手のエリアから王の帯が分かるとき、
+ * 正体不明の相手の駒が帯の王だとして1手動いた先から、次の手で自分の王を(まとめ取りで)取れるか。
+ * 6〜9の王は自分の駒を飛び越えて偶数/奇数の升の駒を全部取るので、1手先だけ見ても防げない
+ */
+function sweepThreatIn2(s, me, board, kingAt, ignore = new Set()) {
+  const band = BAND[s.areas?.[1 - me]?.type];
+  if (!band || !["6", "7", "8", "9"].includes(band[0])) return false;
+  for (const e of Object.values(s.pieces)) {
+    if (!e.alive || e.owner === me || ignore.has(e.id) || isFrozen(s, e)) continue;
+    const at = board[e.row]?.[e.col]; if (!at || at.id !== e.id) continue;
+    if (isKnownTo(s, me, e) && !e.isKing) continue;
+    const ranks = isKnownTo(s, me, e) ? [e.rank] : band;
+    for (const rank of ranks) {
+      const q = { ...e, rank, isKing: true };
+      for (const m of legal(q, board, s.boardSize, {}, undefined)) {
+        if (m.capture) continue; // 取る手はここでは見ない(1手先の判定が拾う)
+        const b2 = board.map((r) => r.slice());
+        b2[q.row][q.col] = null; const q2 = { ...q, row: m.row, col: m.col }; b2[m.row][m.col] = q2;
+        if (legal(q2, b2, s.boardSize, {}, undefined).some((mv) => (mv.row === kingAt.row && mv.col === kingAt.col) || (mv.captures || []).some((c) => c.row === kingAt.row && c.col === kingAt.col))) return true;
+      }
+    }
+  }
+  return false;
+}
 /** 相手のどの駒かが「どのランクだとしても」王の升に届くか(最悪ケース) */
 function kingReachable(s, me, board, kingAt, ignore = new Set()) {
   for (const e of Object.values(s.pieces)) {
@@ -506,6 +533,8 @@ function skyAct(opts = {}) {
     kingExpendable = false,    // 土: 継承者が居るあいだは王の危険を軽く見る(王が前に出て狩る)
     ready = null,              // 森: (s, me, belief) => 攻めに転じてよいか。偽のあいだは自陣で待つ
     safeHunt = false,          // 王候補を取る手でも、取り返される升なら加点を3割に(交換で削られない)
+    kingPenaltyOverride = null, // 王を晒す手の減点(既定80)を差し替える(K王のように王自身が強いとき)
+    twoPly = false,            // 6〜9の王の「線のまとめ取り」を2手先まで見る
     kamikazeRank = null,       // 海: 王と同じ数字の仲間。取られても道連れなので自分の危険を軽く見て突っ込む
     kamikazeAdvance = 2.0,     // 仲間の前進の加点
     seaMode = "cpu",           // 海の発動: "cpu"(通常CPUの判断) / "always" / "never"
@@ -536,7 +565,7 @@ function skyAct(opts = {}) {
     }
     // 土: 継承者(王と同じ数字の生きた駒)が居れば王を晒す危険を軽く見る
     const heirs = king && ["2", "3"].includes(king.rank) ? allMine.filter((q) => q.rank === king.rank && !q.isKing).length : 0;
-    const kingPenalty = kingExpendable && heirs > 0 ? 18 : 80;
+    const kingPenalty = kingPenaltyOverride != null ? kingPenaltyOverride : kingExpendable && heirs > 0 ? 18 : 80;
     const waiting = ready ? !ready(s, me, belief, allMine, enemies) : false;
     const guardedCount = (board, pieces) => {
       let n = 0;
@@ -604,8 +633,10 @@ function skyAct(opts = {}) {
       score += (guardedCount(board, after) - guardedNow) * 2.5;
       const kAt = p.isKing ? moved : king;
       if (king) {
-        if (kingReachable(s, me, board, kAt, ids)) score -= kingPenalty;
+        const danger = kingReachable(s, me, board, kAt, ids);
+        if (danger) score -= kingPenalty;
         score += shell * shellCount(board, kAt, after);
+        if (twoPly && !danger && sweepThreatIn2(s, me, board, kAt, ids)) score -= 40;
       }
       // 前進: 取らない手でも、取り返せる形のまま前へ出るなら加点。孤立は減点。待つあいだは前に出ない
       const fwd = (m.row - p.row) * dir;
@@ -789,6 +820,63 @@ function skyAdaptiveAct() { return skyAct({ adaptive: true }); }
 /** 海: 王は守り、同じ数字の仲間を特攻させる(道連れ)。海で相手を中央へ寄せて的を作る */
 function seaAct(kingRank, extra = {}) {
   return skyAct({ advance: 0.6, kamikazeRank: kingRank, kamikazeAdvance: 2.0, burstMin: 99, candidateBonus: 60, seaMode: process.env.SEA_MODE || "cpu", ...extra });
+}
+/**
+ * 宮殿(K王): 毎手番の昇格で仲間を育て、倒れたJ・Qは予備札で補充する。
+ * 育てるあいだは要塞の手の選び方で守り、強い駒がそろったら進軍型＋詰め探索に切り替える。
+ *   promote: "kfirst"(Q→K まで上げる) / "keepjq"(J・Qで止めて補充権を残す)
+ *   strikeStrong: 非王で Q 以上の駒がこの数そろったら攻めに転じる。strikeTurn: 手番数でも転じる
+ *   doubleEarly: 2段階昇格を序盤(10→Q)に使う
+ */
+function palaceAct(opts = {}) {
+  const { promote = "kfirst", strikeStrong = 3, strikeTurn = 12, doubleEarly = true, shell = 12, decoys = 0, kingActive = false, twoPly = false } = opts;
+  const guard = turtleAct({ worstCaseKing: true, shell, twoPly });
+  const march = skyAct({ advance: 1.2, burstMin: 99, candidateBonus: 90, unknownBonus: 2, twoPly, ...(kingActive ? { kingPenaltyOverride: 30 } : {}) });
+  const V = { 2: 2, 3: 2, 4: 3, 5: 3, 6: 3.5, 7: 3.5, 8: 4, 9: 4.5, 10: 5.5, J: 7, Q: 7.5, K: 9.5 };
+  const base = (s, me) => {
+    const strong = Object.values(s.pieces).filter((p) => p.alive && p.owner === me && !p.isKing && ["Q", "K"].includes(p.rank)).length;
+    const attack = strong >= strikeStrong || (s.turnNo || 0) >= strikeTurn;
+    return attack ? march(s, me) : guard(s, me);
+  };
+  return (s, me) => {
+    if (s.phase === "play" && !s.pendingKingChoice && !s.kPlacement && !s.extraMoveFor && s.winner == null) {
+      const can = canUseArea(s, me);
+      if (can.ok && can.type === "palace") {
+        const threats = knownThreats(s, me);
+        const unknown = unknownThreatMap(s, me);
+        const belief = opponentKingBelief(s, me);
+        const kingCand = new Set(belief.candidates.map((c) => c.id));
+        let best = null;
+        // 囮: 昇格すると公開されるので、消去法で王が割れないよう、安い駒を decoys 体だけ伏せたまま残す
+        const hidden = Object.values(s.pieces).filter((p) => p.alive && p.owner === me && !p.isKing && !p.revealed && !p.mark);
+        const decoyIds = new Set(hidden.sort((a, b) => (V[a.rank] - V[b.rank]) || a.id.localeCompare(b.id)).slice(0, decoys).map((p) => p.id));
+        for (const id of palaceCandidates(s, me)) {
+          const p = s.pieces[id];
+          if (isFrozen(s, p)) continue;
+          if (decoyIds.has(id) && hidden.length <= decoys) continue;
+          if (decoyIds.has(id)) continue;
+          for (const steps of [1, 2]) {
+            const next = palacePromotionRank(s, p, steps);
+            if (!next) continue;
+            let sc = V[next] - V[p.rank];
+            const toJQ = ["J", "Q"].includes(next) && !["J", "Q"].includes(p.rank);
+            if (toJQ) sc += 3; // 予備札の対象になる
+            if (["J", "Q"].includes(p.rank) && next === "K") sc += promote === "kfirst" ? 2 : -6;
+            const risk = threats.has(`${p.row}/${p.col}`) ? 1 : (unknown.get(`${p.row}/${p.col}`) || 0);
+            if (risk > 0.4 && ["J", "Q"].includes(next)) sc += 4; // 取られそうな駒をJ・Qにしてから取らせる(予備札に変える)
+            if (risk > 0.4 && next === "K") sc -= 3;
+            // 昇格後に王候補へ届くなら加点
+            const reach = legal({ ...p, rank: next }, s.board, s.boardSize, s.players[me].armyRankCounts, kingRankOf(s, me));
+            if (reach.some((m) => { const t = s.board[m.row][m.col]; return t && kingCand.has(t.id); })) sc += belief.certain ? 30 : 6;
+            if (steps === 2) { if (!doubleEarly || (s.turnNo || 0) > 6 || !["Q", "K"].includes(next)) continue; sc += 2; }
+            if (!best || sc > best.sc) best = { sc, id, steps };
+          }
+        }
+        if (best && best.sc > 0) return { type: "USE_AREA", pieceId: best.id, promotionSteps: best.steps };
+      }
+    }
+    return base(s, me);
+  };
 }
 /** 氷: 徹底防御(隅の要塞と同じ手の選び方。攻めに転じるのは敵が凍りきってから) */
 function iceAct() { return turtleAct({ worstCaseKing: true, shell: 12, attackAfterFrozen: 4 }); }
@@ -1029,6 +1117,11 @@ if (mode === "kings" || mode === "kingsfoil") {
       F4: ["7","7","J","J","Q","Q","10","4","2"], F5: ["6","J","J","Q","Q","4","2","8","8"], F6: ["7","J","J","Q","Q","4","2","8","8"],
     },
     ice: { I1: ["8","J","J","Q","Q","4","2","8","8"], I2: ["9","J","J","Q","Q","4","2","8","8"], I3: ["8","J","J","Q","Q","4","4","2","2"] },
+    palace: {
+      // 10 は相手(空)の王に1枚残すため最大3枚
+      P2: ["K","J","Q","10","10","10","9","9","9"], P3: ["K","J","Q","10","10","9","9","8","8"], P4: ["K","J","Q","10","10","10","9","4","2"],
+      P6: ["K","J","Q","10","10","10","9","8","8"], P7: ["K","J","Q","9","9","9","9","8","8"], P8: ["K","J","Q","10","10","10","9","9","8"],
+    },
     sea: {
       W1: ["4","4","4","4","J","J","Q","Q","10"], W2: ["5","5","5","5","J","J","Q","Q","10"], W3: ["4","4","4","J","J","Q","Q","2","8"],
       N3: ["4","4","4","J","J","Q","Q","10","8"], N2: ["4","4","J","J","Q","Q","10","8","2"], N1: ["4","J","J","Q","Q","10","8","2","8"],
@@ -1040,7 +1133,8 @@ if (mode === "kings" || mode === "kingsfoil") {
     ? skyAct({ advance: 1.4, candidateBonus: 120, unknownBonus: 3, burstMin: 99 })          // 待たずに、正体不明の駒を狩りに行く
     : process.env.FOREST_STYLE === "fort" ? fortAct()                                         // 要塞で待つだけ
     : forestAct(process.env.SAFE_HUNT === "1" ? { safeHunt: true } : {});
-  const actOf0 = { earth: earthAct, forest: forestStyle, ice: iceAct, sky: skyAdaptiveAct, sea: () => seaAct(process.env.SEA_KING || "4") }[AREA];
+  const palaceOpts = () => ({ promote: process.env.PROMOTE || "kfirst", strikeStrong: Number(process.env.STRIKE_STRONG || 3), strikeTurn: Number(process.env.STRIKE_TURN || 12), doubleEarly: process.env.DOUBLE_EARLY !== "0", decoys: Number(process.env.DECOYS || 0), kingActive: process.env.KING_ACTIVE === "1", twoPly: process.env.TWO_PLY === "1" });
+  const actOf0 = { earth: earthAct, forest: forestStyle, ice: iceAct, sky: skyAdaptiveAct, sea: () => seaAct(process.env.SEA_KING || "4"), palace: () => palaceAct(palaceOpts()) }[AREA];
   const actOf = process.env.HUNT === "1" ? () => withKingHunt(actOf0(), { minThreats: Number(process.env.MIN_THREATS || 2) }) : actOf0;
   const BLOCK = (r, c) => ({ J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 3, 10: 5, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c);
   const F = process.env.FOE || "free";
@@ -1050,6 +1144,8 @@ if (mode === "kings" || mode === "kingsfoil") {
     : F === "advsky" ? { king: "10", foil: "king", ...prioritySide("10", (r, c) => ({ 10: 9, J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 2, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c)), act: skyAct() }
     : F === "fortice" ? { king: "9", foil: "king", ...prioritySide("9", BLOCK), act: fortAct(), arrange: fortressArrange }
     : F === "fortpalace" ? { king: "K", foil: "king", ...prioritySide("K", BLOCK), act: fortAct(), arrange: fortressArrange }
+    : F === "seaW1" ? { king: "4", foil: "king", ...prioritySide("4", (r, c) => (r === "4" ? 10 : { J: 8, Q: 8, 10: 6, 8: 4, 2: 4 }[r] ?? 0) - dup(r, c) + (r === "4" ? 0.65 * (c[r] || 0) : 0)), act: withKingHunt(seaAct("4")) }
+    : F === "forestF1" ? { king: "6", foil: "king", ...prioritySide("6", (r, c) => ({ J: 8, Q: 8, 10: 8, 4: 6, 2: 6, 8: 5 }[r] ?? 0) - dup(r, c)), act: withKingHunt(skyAct({ advance: 1.4, candidateBonus: 120, unknownBonus: 3, burstMin: 99 })), arrange: fortressArrange }
     : free();
   const forms = (process.env.FORMS || "stock,center,corner").split(",");
   const names = (process.env.COMPS || Object.keys(comps).join(",")).split(",");
