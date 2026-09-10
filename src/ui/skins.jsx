@@ -1738,7 +1738,17 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             >
               <ArrowLeft size={18} /> もどる
             </button>
-            <span>スキン詳細</span>
+            {!selectedLocked && selected.video ? (
+              <button
+                type="button"
+                className="skin-btn skin-btn-gold skins-detail-play"
+                onClick={() => setFilm(selected)}
+              >
+                ▶ バトル演出を見る
+              </button>
+            ) : (
+              <span>スキン詳細</span>
+            )}
           </div>
           <div className="skins-detail">
             {selectedLocked ? (
@@ -1913,11 +1923,6 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                     ▶ 包囲撃破の動画を見る
                   </button>
                 </>
-              )}
-              {!selectedLocked && selected.video && (
-                <button className="skin-btn" onClick={() => setFilm(selected)}>
-                  ▶ 5秒のバトル演出を見る
-                </button>
               )}
               <p className="skins-message" role="status">
                 {message}
