@@ -7,10 +7,10 @@ export const fieldUrl = (theme) => `fields/${files[theme] || `${theme}.png`}`;
 
 /**
  * 絵の縁(盤の内側の余白)の割合。以前は 12% で、9×9 の1マスがスマホで 27px ほどになり
- * 駒を触りにくかった(2026-09-11 本人の指摘)。小さな画面ほど縁を削ってマスを残す
+ * 駒を触りにくかった(2026-09-11 本人の指摘)。小さな画面ほど縁を削ってマスを残す(5% でもまだ小さいとのことで 3% に)
  */
 export function fieldInsetRatio(boardWidth) {
-  return boardWidth < 480 ? 0.05 : 0.08;
+  return boardWidth < 480 ? 0.03 : 0.08;
 }
 
 export function FieldBackdrop({ theme, areas }) {

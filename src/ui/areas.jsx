@@ -6,7 +6,7 @@
  *
  * 見抜いた駒(known)・凍った駒・変身/昇格のしるしは cards.jsx の Piece が描く。
  */
-import { PLAYER_META } from "../game/constants.js";
+import { PLAYER_META, SUIT_SYMBOL } from "../game/constants.js";
 import { isAutomaticArea } from "../game/area-presentation.js";
 import {
   AREA_INFO,
@@ -15,6 +15,7 @@ import {
   areaUsesTurn,
   palaceCandidates,
   palaceDoubleRemaining,
+  palacePromotionRank,
 } from "../game/areas.js";
 
 /** エリアの札に出す短い名前 */
@@ -33,6 +34,10 @@ export function AreaBar({
   names,
   onHelp,
   focusFire = false,
+  // 選んだ駒(空: 変身、宮殿: 昇格)。ワンタップで確定せず、ここで「確定」を押してもらう
+  chosen = null,
+  onConfirm = null,
+  onUnchoose = null,
 }) {
   const areas = state.areas || [null, null];
   if (!areas[0] && !areas[1]) return null;
@@ -97,11 +102,34 @@ export function AreaBar({
             </button>
           </div>
         )}
-        <span className="area-pick-instruction">
-          {mine.type === "sky"
-            ? "10に変身させる駒を選んでください"
-            : `${picking === 2 ? "2段階" : "1段階"}昇格させる駒を選んでください`}
-        </span>
+        {chosen ? (
+          <>
+            <span className="area-pick-instruction">
+              <b>
+                {chosen.rank}
+                {SUIT_SYMBOL[chosen.suit]}
+              </b>
+              {mine.type === "sky"
+                ? " を 10 に変身させます(公開されます)"
+                : ` を${picking === 2 ? "2段階" : "1段階"}昇格させます(${chosen.rank} → ${palacePromotionRank(state, chosen, picking === 2 ? 2 : 1) || "?"}、公開されます)`}
+            </span>
+            <button
+              className={`btn btn-primary btn-small ${focusFire ? "guide-target" : ""}`}
+              onClick={onConfirm}
+            >
+              確定
+            </button>
+            <button className="btn btn-ghost btn-small" onClick={onUnchoose}>
+              選び直す
+            </button>
+          </>
+        ) : (
+          <span className="area-pick-instruction">
+            {mine.type === "sky"
+              ? "10に変身させる駒を選んでください"
+              : `${picking === 2 ? "2段階" : "1段階"}昇格させる駒を選んでください`}
+          </span>
+        )}
         <button
           className="btn btn-ghost btn-small"
           onClick={() => setPicking(false)}

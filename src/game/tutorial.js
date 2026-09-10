@@ -2361,7 +2361,7 @@ const EP13 = {
     },
     {
       at: myTurn,
-      text: "空は選んで使います。「発動」を押してから、e3 の 4♠ をタップ。",
+      text: "空は選んで使います。「発動」→ e3 の 4♠ をタップ →「確定」。",
       need: { type: "USE_AREA", pieceId: "t1" },
       focus: { areaButton: true, pieces: ["t1"] },
     },

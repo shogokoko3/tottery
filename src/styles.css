@@ -3498,6 +3498,20 @@ h3 {
    区切りは 768px(iPad の短辺)と、横向きの 900px。
    iPhone の横向き(最大 956px)にも掛かるが、iPhone は縦固定なので届かない。 */
 
+/* --- スマホでは盤を画面の余白まで広げる(9×9 の1マスを稼ぐ。2026-09-11 本人の指摘) --- */
+@media (max-width: 767px) {
+  .play-wrap > .board-outer {
+    margin-left: -12px;
+    margin-right: -12px;
+  }
+  .board-frame {
+    width: min(98vw, 500px);
+  }
+  .rank-labels {
+    padding: 6px 2px;
+  }
+}
+
 /* --- 盤の大きさ。幅と高さのうち小さい方で決める --- */
 @media (min-width: 768px) {
   .board-frame {

@@ -1075,6 +1075,8 @@ export function GameCore({
     [ratingResult, setRatingResult] = (0, useState)(null),
     // 盤面エリア: 空・宮殿で「どの駒か」を選んでいる最中
     [areaPick, setAreaPick] = (0, useState)(false),
+    // 駒選びで選んだ駒。「確定」を押すまで発動しない(ワンタップで確定していたのを本人の指摘で改めた)
+    [areaChoice, setAreaChoice] = (0, useState)(null),
     // テストプレイ中は、布陣の1分も対局の持ち時間も止める
     testPlay = (0, useRef)(isTestPlay()).current;
   // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない
@@ -1284,6 +1286,7 @@ export function GameCore({
   // 盤面エリアの駒選びは、手番が変わったらやめる
   (0, useEffect)(() => {
     setAreaPick(false);
+    setAreaChoice(null);
   }, [a.currentTurn, a.phase]);
   // チュートリアルの相手は考えない。台本の手だけをそのまま指す。
   //
@@ -2505,6 +2508,9 @@ export function GameCore({
         ? skyCandidates(a, P)
         : palaceCandidates(a, P, areaPick === 2 ? 2 : 1)
       : [];
+  // 段階を切り替えて候補から外れた駒は選び直してもらう
+  const areaChosen =
+    areaChoice && areaCands.includes(areaChoice) ? a.pieces[areaChoice] : null;
   return (
     <GameShell
       sheet={presentationSheet}
@@ -2539,7 +2545,22 @@ export function GameCore({
             myTurn={!!x}
             dispatch={y}
             picking={areaPick}
-            setPicking={setAreaPick}
+            setPicking={(v) => {
+              setAreaPick(v);
+              if (!v) setAreaChoice(null);
+            }}
+            chosen={areaChosen}
+            onConfirm={() => {
+              if (!areaChosen) return;
+              y({
+                type: "USE_AREA",
+                pieceId: areaChosen.id,
+                ...(areaPick === 2 ? { promotionSteps: 2 } : {}),
+              });
+              setAreaChoice(null);
+              setAreaPick(false);
+            }}
+            onUnchoose={() => setAreaChoice(null)}
             busy={fxBusy || !!a.captureReveal || !!Pl || !!a.selectedId}
             names={names}
             onHelp={() => f("areas")}
@@ -2773,16 +2794,9 @@ export function GameCore({
                             // 盤面エリアの駒選び(空・宮殿)
                             if (areaPick) {
                               wl.stopPropagation();
-                              if (areaCands.includes(ze.id)) {
-                                y({
-                                  type: "USE_AREA",
-                                  pieceId: ze.id,
-                                  ...(areaPick === 2
-                                    ? { promotionSteps: 2 }
-                                    : {}),
-                                });
-                                setAreaPick(false);
-                              }
+                              // 選ぶだけ。発動はエリアの帯の「確定」で
+                              if (areaCands.includes(ze.id))
+                                setAreaChoice(ze.id);
                               return;
                             }
                             if ((wl.stopPropagation(), Pl)) {
@@ -2815,6 +2829,7 @@ export function GameCore({
                             size={R >= 9 ? "xs" : "md"}
                             isSelected={
                               (!!M && a.selectedId === ze.id) ||
+                              (!!areaChosen && areaChosen.id === ze.id) ||
                               (Pl &&
                                 (a.shuffleMode.aId === ze.id ||
                                   a.shuffleMode.picks.includes(ze.id)))

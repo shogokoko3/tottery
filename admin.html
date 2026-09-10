@@ -3513,6 +3513,20 @@ h3 {
    \u533A\u5207\u308A\u306F 768px(iPad \u306E\u77ED\u8FBA)\u3068\u3001\u6A2A\u5411\u304D\u306E 900px\u3002
    iPhone \u306E\u6A2A\u5411\u304D(\u6700\u5927 956px)\u306B\u3082\u639B\u304B\u308B\u304C\u3001iPhone \u306F\u7E26\u56FA\u5B9A\u306A\u306E\u3067\u5C4A\u304B\u306A\u3044\u3002 */
 
+/* --- \u30B9\u30DE\u30DB\u3067\u306F\u76E4\u3092\u753B\u9762\u306E\u4F59\u767D\u307E\u3067\u5E83\u3052\u308B(9\xD79 \u306E1\u30DE\u30B9\u3092\u7A3C\u3050\u30022026-09-11 \u672C\u4EBA\u306E\u6307\u6458) --- */
+@media (max-width: 767px) {
+  .play-wrap > .board-outer {
+    margin-left: -12px;
+    margin-right: -12px;
+  }
+  .board-frame {
+    width: min(98vw, 500px);
+  }
+  .rank-labels {
+    padding: 6px 2px;
+  }
+}
+
 /* --- \u76E4\u306E\u5927\u304D\u3055\u3002\u5E45\u3068\u9AD8\u3055\u306E\u3046\u3061\u5C0F\u3055\u3044\u65B9\u3067\u6C7A\u3081\u308B --- */
 @media (min-width: 768px) {
   .board-frame {
