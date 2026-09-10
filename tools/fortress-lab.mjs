@@ -1,4 +1,4 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証(最強の戦術・氷・隅の要塞・空の攻め方・相性表・エリアごとの指し方・王の位置・散らした布陣)に使った道具。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証に使った道具(mode: kings/sky/fort/comp/fortmatrix/matrix2/skylab/arealab/showform ほか)。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
@@ -146,6 +146,9 @@ function play(base, first, seed, sides = null) {
   let s = { ...structuredClone(base), firstPlayer: first, currentTurn: first, interstitial: null }, steps = 0, stopped = null;
   const iceUses = [0, 0], iceExt = [0, 0];
   let death = null;
+  // 取り返しの統計(側0): 相手に取られた回数、次の自分の手で取り返した回数、取った駒がその手番のうちに逃げた回数
+  const recap = { taken: 0, recaptured: 0, hitAndRun: 0 };
+  let lastTaken = null;
   const step = (act) => { s = { ...reducer(s, act), replay: [] }; };
   while (s.phase !== "gameover" && steps++ < 2400) {
     if (s.captureReveal) { step({ type: "DISMISS_CAPTURE" }); continue; }
@@ -166,6 +169,18 @@ function play(base, first, seed, sides = null) {
       enriched = { ...enriched, picks: sides[cur].icePicks(s, cur) };
     const next = reducer(s, enriched);
     if (next === prior) { stopped = "rejected:" + act.type; break; }
+    if (enriched.type === "MOVE_PIECE" || enriched.type === "CONFIRM_SHUFFLE") {
+      const lostNow = Object.values(s.pieces).filter((p) => p.alive && p.owner === 0 && !next.pieces[p.id]?.alive).length;
+      if (cur === 1 && lostNow > 0) {
+        if (lastTaken && lastTaken.by === enriched.pieceId && lastTaken.turn === s.turnNo) recap.hitAndRun++;
+        recap.taken += lostNow; lastTaken = { by: enriched.pieceId, turn: s.turnNo };
+      } else if (cur === 1 && lastTaken && lastTaken.turn === s.turnNo && enriched.pieceId === lastTaken.by) recap.hitAndRun++;
+      if (cur === 0 && lastTaken) {
+        const gone = lastTaken.by && s.pieces[lastTaken.by]?.alive && !next.pieces[lastTaken.by]?.alive;
+        if (gone) recap.recaptured++;
+        lastTaken = null;
+      }
+    }
     if (next.winner != null && s.winner == null && next.winner !== cur && false) {}
     if (next.phase === "gameover" && next.winner === 1 && cur === 1 && !death) {
       const k = enriched.type === "MOVE_PIECE" ? s.pieces[enriched.pieceId] : null;
@@ -176,7 +191,7 @@ function play(base, first, seed, sides = null) {
     s = { ...next, replay: [] };
   }
   if (s.phase !== "gameover" && !stopped) stopped = "action_cap";
-  return { winner: s.phase === "gameover" ? s.winner : null, stop: stopped, reason: s.endReason || (s.adjudication ? "adjudication" : "king"), turns: s.turnNo, iceUses, iceExt, death };
+  return { winner: s.phase === "gameover" ? s.winner : null, stop: stopped, reason: s.endReason || (s.adjudication ? "adjudication" : "king"), turns: s.turnNo, iceUses, iceExt, death, recap };
 }
 
 function runPair(label, sides, seedBase) {
@@ -213,13 +228,14 @@ function summarize(rows) {
     b.frozenEnd = (b.frozenEnd || 0) + (r.reason === "frozen" ? 1 : 0);
     b.iceUses = (b.iceUses || 0) + (r.iceUses?.[0] || 0);
     b.iceExt = (b.iceExt || 0) + (r.iceExt?.[0] || 0);
+    if (r.recap) { b.taken = (b.taken || 0) + r.recap.taken; b.recaptured = (b.recaptured || 0) + r.recap.recaptured; b.har = (b.har || 0) + r.recap.hitAndRun; }
   }
   const pct = (a, b) => (b ? (100 * a / b).toFixed(1) + "%" : "-");
   const lines = [];
   for (const [label, b] of Object.entries(by)) {
     const med = b.turns.sort((x, y) => x - y)[Math.floor(b.turns.length / 2)];
     const foes = Object.entries(b.kings1).sort((x, y) => y[1] - x[1]).slice(0, 4).map(([k, n]) => `${k}:${n}`).join(" ");
-    lines.push(`${label.padEnd(14)} 勝率 ${pct(b.w, b.w + b.l).padStart(6)}  勝-負-未 ${b.w}-${b.l}-${b.und}  先手 ${pct(b.firstW, b.firstG)} 後手 ${pct(b.secondW, b.secondG)}  中央値手番 ${med}  凍結負け ${b.frozenEnd}  氷 ${(b.iceUses / (b.w + b.l || 1)).toFixed(1)}回/局(延長 ${pct(b.iceExt, b.iceUses)})  相手王 ${foes}`);
+    lines.push(`${label.padEnd(14)} 勝率 ${pct(b.w, b.w + b.l).padStart(6)}  勝-負-未 ${b.w}-${b.l}-${b.und}  先手 ${pct(b.firstW, b.firstG)} 後手 ${pct(b.secondW, b.secondG)}  中央値手番 ${med}  凍結負け ${b.frozenEnd}  取られ${b.taken || 0}/取り返し${pct(b.recaptured || 0, b.taken || 0)}/取り逃げ${b.har || 0}  氷 ${(b.iceUses / (b.w + b.l || 1)).toFixed(1)}回/局(延長 ${pct(b.iceExt, b.iceUses)})  相手王 ${foes}`);
   }
   return lines.join("\n");
 }
@@ -410,6 +426,34 @@ const SPREAD = {
   // 前列に3・中列に3・後列に3を1升おきに(縦にも横にも隣がない)
   sparse: { cells: (lo, hi, p) => { const f = p === 0 ? lo : hi, m = p === 0 ? lo + 1 : hi - 1, b = p === 0 ? hi : lo; return [{ row: f, col: 1 }, { row: f, col: 4 }, { row: f, col: 7 }, { row: m, col: 2 }, { row: m, col: 6 }, { row: b, col: 1 }, { row: b, col: 4 }, { row: b, col: 7 }, { row: m, col: 4 }]; }, king: 8 },
 };
+/** 散らばりつつ全駒に取り返しの手がある形を探す。評価 = 取り返し評価 + λ × 駒同士の平均距離。取り返せない駒があれば大きく減点 */
+function arrangeSpreadGuard(state, player, plan, lambda = 6, kingRow = "mid") {
+  const size = state.boardSize, [lo, hi] = territoryRows(size, player);
+  const kingCell = { row: kingRow === "mid" ? (player === 0 ? lo + 1 : hi - 1) : player === 0 ? hi : lo, col: 4 };
+  const cells = []; for (let row = lo; row <= hi; row++) for (let col = 0; col < size; col++) cells.push({ row, col });
+  const others = plan.cards.filter((c) => c.id !== plan.kingId);
+  const objective = (pl) => {
+    const m = formationMetrics(plan, pl, size, player);
+    const pts = plan.cards.map((c) => pl[c.id]);
+    let d = 0, n = 0;
+    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) { d += Math.max(Math.abs(pts[i].row - pts[j].row), Math.abs(pts[i].col - pts[j].col)); n++; }
+    return m.score + lambda * (d / n) - (m.covered < 9 ? 100 : 0);
+  };
+  let best = arrangeKingAt(state, player, plan, kingCell), score = objective(best);
+  for (let pass = 0; pass < 6; pass++) {
+    let improved = false;
+    for (const card of others) for (const cell of cells) {
+      if (cell.row === kingCell.row && cell.col === kingCell.col) continue;
+      const from = best[card.id]; if (from.row === cell.row && from.col === cell.col) continue;
+      const other = others.find((c) => best[c.id].row === cell.row && best[c.id].col === cell.col);
+      const trial = { ...best, [card.id]: cell }; if (other) trial[other.id] = from;
+      const sc = objective(trial);
+      if (sc > score + 1e-6) { best = trial; score = sc; improved = true; }
+    }
+    if (!improved) break;
+  }
+  return best;
+}
 const ANY_RANKS = ["2","3","4","5","6","7","8","9","10","J","Q","K"];
 /** 相手のどの駒かが「どのランクだとしても」王の升に届くか(最悪ケース) */
 function kingReachable(s, me, board, kingAt, ignore = new Set()) {
@@ -898,11 +942,32 @@ if (mode === "kings" || mode === "kingsfoil") {
     else if (form === "frontside") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo : hi, col: 2 }); };
     else if (form === "mid") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo + 1 : hi - 1, col: 4 }); };
     else if (form === "midside") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo + 1 : hi - 1, col: 2 }); };
+    else if (form.startsWith("spreadguard")) { const lam = Number(form.replace("spreadguard", "") || 6); side.arrange = (st, p, plan) => arrangeSpreadGuard(st, p, plan, lam, AREA === "earth" ? "mid" : "back"); }
     else if (SPREAD[form]) side.arrange = (st, p, plan) => arrangeCells(st, p, plan, SPREAD[form].cells, SPREAD[form].king);
     else if (form === "backside") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? hi : lo, col: 2 }); };
     rows.push(...runPair(`${AREA} ${n} ${form} vs ${F}`, [side, foe()], Number(process.env.SEED_BASE || 101260910) + i++ * 1000003));
     console.error(`${n}/${form} done ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   }
+} else if (mode === "showform") {
+  // 布陣を対局せずに表示する。KING, RANKS(コンマ区切り), FORMS
+  const ranks = (process.env.RANKS || "2,2,2,2,J,J,Q,Q,10").split(","), K = process.env.KING || ranks[0];
+  const cards = ranks.map((r, i) => ({ id: "c" + i, rank: r, suit: "spade" }));
+  const counts = {}; for (const c of cards) counts[c.rank] = (counts[c.rank] || 0) + 1;
+  const plan = { cards, kingId: "c0", kingRank: K, counts };
+  const st = { boardSize: 9 };
+  const [lo, hi] = territoryRows(9, 0);
+  for (const form of (process.env.FORMS || "spreadguard6").split(",")) {
+    let pl;
+    if (form.startsWith("spreadguard")) pl = arrangeSpreadGuard(st, 0, plan, Number(form.replace("spreadguard", "") || 6), process.env.KINGROW || "mid");
+    else if (SPREAD[form]) pl = arrangeCells(st, 0, plan, SPREAD[form].cells, SPREAD[form].king);
+    else if (form === "mid") pl = arrangeKingAt(st, 0, plan, { row: lo + 1, col: 4 });
+    else pl = arrangeArmy(st, 0, plan);
+    const m = formationMetrics(plan, pl, 9, 0);
+    const grid = {}; for (const c of cards) grid[`${pl[c.id].row},${pl[c.id].col}`] = c.id === "c0" ? "[" + c.rank + "]" : c.rank;
+    console.log(`${form}  取り返せる ${m.covered}/9 相互 ${m.mutual} 護衛 ${m.kingGuards}  ${JSON.stringify(grid)}`);
+    for (let r = lo; r <= hi; r++) console.log("  " + [...Array(9)].map((_, c) => (grid[`${r},${c}`] || ".").padStart(4)).join(""));
+  }
+  process.exit(0);
 } else if (mode === "mirror") {
   // 先手の値打ち: 自由同士・フォイル無し
   rows.push(...runPair("free-vs-free", [free(), free()], 50260910));
