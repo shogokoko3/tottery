@@ -1658,6 +1658,8 @@ export function GameCore({
     if (a.phase !== "play" || fortressSeen.current) return;
     fortressSeen.current = !0;
     if (tutorial || !(network || cpu)) return;
+    // 「堅牢な要塞」は氷の称号。氷のエリアが立っているときだけ
+    if (a.areas?.[P]?.type !== "ice") return;
     const corner = fortressCorner(a.pieces, a.boardSize, P);
     if (corner === null) return;
     const had = loadProfile().titles.includes("fortress");
