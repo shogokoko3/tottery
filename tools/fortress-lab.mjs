@@ -1,4 +1,4 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10 の「最強の戦術」「氷はなぜ弱いか」「隅の要塞」「空の攻め方」の検証に使った道具。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10 の「最強の戦術」「氷はなぜ弱いか」「隅の要塞」「空の攻め方」「相性表の再検証」に使った道具。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
@@ -501,8 +501,13 @@ function skyAct(opts = {}) {
         if (!best || sc > best.score) best = { score: sc, type: "MOVE_PIECE", pieceId: p.id, row: m.row, col: m.col, captures: m.captures };
       }
     if (extra) return best && best.score > -1 ? (({ score, ...a }) => a)(best) : { type: "SKIP_EXTRA_ACTION" };
-    // 変身: いま変身した駒が(2回行動で)一気に取れるときだけ。終盤(敵が少ない)は自由に
+    // 海・宮殿の任意発動は通常CPUの判断を借りる(空だけ下で自前に判断)
     const can = canUseArea(s, me);
+    if (can.ok && (can.type === "sea" || can.type === "palace")) {
+      const a = cpuInformedAction(s, me);
+      if (a && a.type === "USE_AREA") return a;
+    }
+    // 変身: いま変身した駒が(2回行動で)一気に取れるときだけ。終盤(敵が少ない)は自由に
     if (can.ok && can.type === "sky") {
       let bestX = null;
       for (const id of skyCandidates(s, me)) {
@@ -723,6 +728,36 @@ if (mode === "kings" || mode === "kingsfoil") {
     rows.push(...runPair(`${n} ${form} ${style} vs ${F}`, [side, foe()], 98260910 + i++ * 1000003));
     console.error(`${n}/${form}/${style} done ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   }
+} else if (mode === "matrix2") {
+  // 各エリアが自分に合った指し方を使う総当たり。STYLE_MAP="sky:advance,palace:fort,..."(既定は下)
+  const groups = { earth: ["2", "3"], sea: ["4", "5"], forest: ["6", "7"], ice: ["8", "9"], sky: ["10"], palace: ["J", "Q", "K"] };
+  const BLOCK = (r, c) => ({ J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 3, 10: 5, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c);
+  const SKYP = (r, c) => ({ 10: 9, J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 2, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c);
+  const defaults = { earth: "fort", sea: "fort", forest: "fort", ice: "fort", sky: "advance", palace: "fort" };
+  const styleMap = { ...defaults };
+  for (const kv of (process.env.STYLE_MAP || "").split(",").filter(Boolean)) { const [k, v] = kv.split(":"); styleMap[k] = v; }
+  const mk = (type, k) => {
+    const st = styleMap[type];
+    const pri = type === "sky" ? SKYP : BLOCK;
+    if (st === "advance") return { king: k, foil: "king", ...prioritySide(k, pri), act: skyAct() };
+    if (st === "stock") return { king: k, foil: "king", ...stockSide(k) };
+    return { king: k, foil: "king", ...prioritySide(k, pri), act: fortAct(), arrange: fortressArrange };
+  };
+  const types = Object.keys(groups);
+  const pairs = types.flatMap((t, i) => types.slice(i + 1).map((u) => [t, u]));
+  pairs.forEach(([a, b], i) => {
+    const seedBase = 99260910 + i * 1000003;
+    for (let n = 0; n < SEEDS; n++) {
+      const ka = groups[a][n % groups[a].length];
+      const kb = groups[b][Math.floor(n / groups[a].length) % groups[b].length];
+      const sides = [mk(a, ka), mk(b, kb)];
+      let seed = seedBase + n * 7919, base;
+      for (let attempt = 0; attempt < 200; attempt++) { try { base = setup(seed, sides); break; } catch (e) { if (!/hand|setup/.test(String(e.message))) throw e; seed += 15485863; } }
+      const kings = [0, 1].map((i) => kingRankOf(base.s, i));
+      for (const first of [0, 1]) rows.push({ label: `${a} vs ${b}`, seed, first, kings, counts: [0, 1].map((i) => base.s.players[i].armyRankCounts), straight: [false, false], flush: [false, false], ...play(base.s, first, seed + first * 104729, sides) });
+    }
+    console.error(`${a}/${b} done ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+  });
 } else if (mode === "mirror") {
   // 先手の値打ち: 自由同士・フォイル無し
   rows.push(...runPair("free-vs-free", [free(), free()], 50260910));
