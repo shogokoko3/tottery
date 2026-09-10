@@ -50,7 +50,7 @@ export const TITLES = [
   // CPU戦かオンライン対戦を始めると、その場で配られる
   {
     id: "fortress",
-    name: "要塞の主",
+    name: "堅牢な要塞",
     how: "9×9で、自陣の隅3×3に9体を固め、王をいちばん奥に置いて対局を始める",
   },
   // 空のエリアで双翼の陣(src/game/bonus.js の twinWingsMatch)を組んで対局を始めると配られる
@@ -62,12 +62,12 @@ export const TITLES = [
   // 土「継承の狩り」・森「消去法の詰め」(src/game/bonus.js の FORMATIONS)も同じ扱い
   {
     id: "heir-hunt",
-    name: "継承の狩人",
+    name: "軌跡の追跡者",
     how: "土のエリアで、2・2・2・2・J・J・Q・Q・10 を「前列 J J Q、中列 2 王の2 Q、後列 2 2 10」の形に組んで対局を始める",
   },
   {
     id: "elimination",
-    name: "消去法の賢者",
+    name: "静寂な狩人",
     how: "森のエリアで、6・J・J・Q・Q・10・10・4・2 を隅の3×3「前列 Q 10 J、中列 4 2 J、後列 王の6 Q 10」に組んで対局を始める",
   },
   // シークレットミッションの褒美

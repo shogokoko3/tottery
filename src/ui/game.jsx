@@ -1645,7 +1645,7 @@ export function GameCore({
 
   /**
    * 隅の要塞。自陣の隅3×3に9体を固め、王をいちばん奥に置いて対局を始めたら、
-   * 本人にだけ演出と称号「要塞の主」を出す。王の位置が分かってしまうので、
+   * 本人にだけ演出と称号「堅牢な要塞」を出す。王の位置が分かってしまうので、
    * 相手には知らせないし、記録にも残さない。CPU戦とオンライン対戦だけ
    */
   let [fortressGot, setFortressGot] = (0, useState)(null);
@@ -2889,8 +2889,8 @@ export function GameCore({
               </p>
               <p className="hint">
                 {fortressGot.fresh
-                  ? "称号「要塞の主」を手に入れました。設定から選べます。"
-                  : "称号「要塞の主」は獲得済みです。"}
+                  ? "称号「堅牢な要塞」を手に入れました。設定から選べます。"
+                  : "称号「堅牢な要塞」は獲得済みです。"}
               </p>
               <button
                 className="btn btn-primary"
