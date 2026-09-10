@@ -1,4 +1,4 @@
-// 9×9 の戦術比較(手元の実験専用)。2026-09-10 の検証(最強の戦術・氷・隅の要塞・空の攻め方・相性表・エリアごとの指し方・王の位置)に使った道具。結果は reports/fortress-tactics/。
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10〜11 の検証(最強の戦術・氷・隅の要塞・空の攻め方・相性表・エリアごとの指し方・王の位置・散らした布陣)に使った道具。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
@@ -376,6 +376,40 @@ function arrangeKingAt(state, player, plan, kingCell) {
   }
   return best;
 }
+/** 決めた9升に、王を kingIdx の升へ置き、残りは取り返しが最大になるよう入れ替える(升の形は固定) */
+function arrangeCells(state, player, plan, cellsFor, kingIdx) {
+  const size = state.boardSize, [lo, hi] = territoryRows(size, player);
+  const cells = cellsFor(lo, hi, player);
+  const others = plan.cards.filter((c) => c.id !== plan.kingId);
+  const slots = cells.filter((_, i) => i !== kingIdx);
+  const placement = { [plan.kingId]: cells[kingIdx] };
+  others.forEach((c, i) => (placement[c.id] = slots[i]));
+  let best = placement, score = formationMetrics(plan, best, size, player).score;
+  for (let pass = 0; pass < 4; pass++) {
+    let improved = false;
+    for (const a of others) for (const b of others) {
+      if (a.id >= b.id) continue;
+      const trial = { ...best, [a.id]: best[b.id], [b.id]: best[a.id] };
+      const sc = formationMetrics(plan, trial, size, player).score;
+      if (sc > score + 1e-6) { best = trial; score = sc; improved = true; }
+    }
+    if (!improved) break;
+  }
+  return best;
+}
+// 散らした形。自分が下(player 0)なら lo が最前列、hi が最後尾
+const SPREAD = {
+  // 横一列(中列): 王は中央
+  line: { cells: (lo, hi, p) => [...Array(9)].map((_, c) => ({ row: p === 0 ? lo + 1 : hi - 1, col: c })), king: 4 },
+  // 市松(前列 5・中列 4)。王は中列中央
+  wide: { cells: (lo, hi, p) => { const f = p === 0 ? lo : hi, m = p === 0 ? lo + 1 : hi - 1; return [0, 2, 4, 6, 8].map((c) => ({ row: f, col: c })).concat([1, 3, 5, 7].map((c) => ({ row: m, col: c }))); }, king: 7 },
+  // 左右2つの塊(2×2 ずつ)と中央の王
+  twogroups: { cells: (lo, hi, p) => { const m = p === 0 ? lo + 1 : hi - 1, b = p === 0 ? hi : lo; return [{ row: b, col: 0 }, { row: b, col: 1 }, { row: m, col: 0 }, { row: m, col: 1 }, { row: b, col: 7 }, { row: b, col: 8 }, { row: m, col: 7 }, { row: m, col: 8 }, { row: m, col: 4 }]; }, king: 8 },
+  // 3列に市松で散らす。王は中列中央
+  checker: { cells: (lo, hi, p) => { const f = p === 0 ? lo : hi, m = p === 0 ? lo + 1 : hi - 1, b = p === 0 ? hi : lo; return [{ row: f, col: 2 }, { row: f, col: 4 }, { row: f, col: 6 }, { row: m, col: 3 }, { row: m, col: 5 }, { row: b, col: 2 }, { row: b, col: 4 }, { row: b, col: 6 }, { row: m, col: 4 }]; }, king: 8 },
+  // 前列に3・中列に3・後列に3を1升おきに(縦にも横にも隣がない)
+  sparse: { cells: (lo, hi, p) => { const f = p === 0 ? lo : hi, m = p === 0 ? lo + 1 : hi - 1, b = p === 0 ? hi : lo; return [{ row: f, col: 1 }, { row: f, col: 4 }, { row: f, col: 7 }, { row: m, col: 2 }, { row: m, col: 6 }, { row: b, col: 1 }, { row: b, col: 4 }, { row: b, col: 7 }, { row: m, col: 4 }]; }, king: 8 },
+};
 const ANY_RANKS = ["2","3","4","5","6","7","8","9","10","J","Q","K"];
 /** 相手のどの駒かが「どのランクだとしても」王の升に届くか(最悪ケース) */
 function kingReachable(s, me, board, kingAt, ignore = new Set()) {
@@ -863,7 +897,10 @@ if (mode === "kings" || mode === "kingsfoil") {
     else if (form === "front") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo : hi, col: 4 }); };
     else if (form === "frontside") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo : hi, col: 2 }); };
     else if (form === "mid") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo + 1 : hi - 1, col: 4 }); };
-    rows.push(...runPair(`${AREA} ${n} ${form} vs ${F}`, [side, foe()], 101260910 + i++ * 1000003));
+    else if (form === "midside") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? lo + 1 : hi - 1, col: 2 }); };
+    else if (SPREAD[form]) side.arrange = (st, p, plan) => arrangeCells(st, p, plan, SPREAD[form].cells, SPREAD[form].king);
+    else if (form === "backside") side.arrange = (st, p, plan) => { const [lo, hi] = territoryRows(st.boardSize, p); return arrangeKingAt(st, p, plan, { row: p === 0 ? hi : lo, col: 2 }); };
+    rows.push(...runPair(`${AREA} ${n} ${form} vs ${F}`, [side, foe()], Number(process.env.SEED_BASE || 101260910) + i++ * 1000003));
     console.error(`${n}/${form} done ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   }
 } else if (mode === "mirror") {
