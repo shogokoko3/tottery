@@ -1,5 +1,5 @@
+// 9×9 の戦術比較(手元の実験専用)。2026-09-10 の「最強の戦術」「氷はなぜ弱いか」「隅の要塞」「空の攻め方」の検証に使った道具。結果は reports/fortress-tactics/。
 // 9×9 の戦術比較(手元の実験専用)。本番・ランキングには一切触れない。
-// 2026-09-10 に「最強の戦術」「氷はなぜ弱いか」「隅の要塞」の検証に使った道具。結果は reports/fortress-tactics/。
 // 使い方: node tactic-lab.mjs <mode> [SEEDS=n]
 //   kings   … 左: 王を固定(2〜K)・フォイル無し / 右: CPU が手札から自由に選ぶ・フォイル無し
 //   sky     … 左: 10 王 + 空フォイル、構成の変種 / 右: 自由・フォイル無し
@@ -13,7 +13,7 @@ const { chooseArmyPlan, strategicDiscards, arrangeArmy } = await import(`${REPO}
 const { cpuInformedAction } = await import(`${REPO}/src/game/cpu-informed.js`);
 const { automaticAreaAction } = await import(`${REPO}/src/game/area-presentation.js`);
 const { GAME_RULE_VERSION } = await import(`${REPO}/src/game/rule-version.js`);
-const { AREA_BY_RANK, isFrozen, isKnownTo } = await import(`${REPO}/src/game/areas.js`);
+const { AREA_BY_RANK, isFrozen, isKnownTo, canUseArea, skyCandidates } = await import(`${REPO}/src/game/areas.js`);
 const { getLegalMoves: legal, territoryRows } = await import(`${REPO}/src/game/board.js`);
 const { knownThreats, unknownThreatMap, moveSafety } = await import(`${REPO}/src/game/cpu-tactics.js`);
 const { opponentKingBelief } = await import(`${REPO}/src/game/king-belief.js`);
@@ -383,6 +383,152 @@ function fortAct(opts = {}) {
     return t(s, me);
   };
 }
+/**
+ * 空の攻め方(本人の方針): 相手が守っていれば無闇に変身しない。取り返せる形を保って前進し、
+ * 一気に取れるときだけ変身と2回行動で畳みかける。伏せ札の中身は読まない。
+ */
+function skyAct(opts = {}) {
+  const { advance = 1.2, unknownWeight = 0.8, shell = 8, burstMin = 9, endgame = 4 } = opts;
+  const KN = [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]];
+  return (s, me) => {
+    if (s.phase !== "play" || s.pendingKingChoice || s.kPlacement || s.winner != null) return null;
+    const extra = s.extraMoveFor;
+    const allMine = Object.values(s.pieces).filter((p) => p.alive && p.owner === me);
+    const movers = extra ? allMine.filter((p) => p.id === extra) : allMine.filter((p) => !isFrozen(s, p) && p.rank !== "A");
+    if (!movers.length) return extra ? { type: "SKIP_EXTRA_ACTION" } : null;
+    const enemies = Object.values(s.pieces).filter((p) => p.alive && p.owner !== me);
+    const unknown = unknownThreatMap(s, me);
+    const threatsNow = knownThreats(s, me);
+    const belief = opponentKingBelief(s, me);
+    const cand = new Set(belief.candidates.map((c) => c.id));
+    const king = s.pieces[s.players[me].kingId];
+    const dir = me === 0 ? -1 : 1; // 前進の向き
+    const counts = s.players[me].armyRankCounts, kr = kingRankOf(s, me);
+    const kingThreatened = king && (threatsNow.has(`${king.row}/${king.col}`) || (unknown.get(`${king.row}/${king.col}`) || 0) > 0.35);
+    const guardedCount = (board, pieces) => {
+      let n = 0;
+      for (const t of pieces) {
+        board[t.row][t.col] = { id: "x", owner: 1 - me, row: t.row, col: t.col };
+        if (pieces.some((q) => q.id !== t.id && !isFrozen(s, q) && q.rank !== "A" && legal(q, board, s.boardSize, counts, kr).some((mv) => mv.row === t.row && mv.col === t.col))) n++;
+        board[t.row][t.col] = t;
+      }
+      return n;
+    };
+    const shellCount = (board, kingAt, pieces) => {
+      let n = 0, total = 0;
+      for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1],...KN]) {
+        const r = kingAt.row + dr, c = kingAt.col + dc;
+        if (r < 0 || r >= s.boardSize || c < 0 || c >= s.boardSize) continue;
+        total++;
+        const at = board[r][c];
+        if (at && at.owner === me) { n++; continue; }
+        if (at) continue;
+        board[r][c] = { id: "x", owner: 1 - me, row: r, col: c };
+        if (pieces.some((q) => !q.isKing && !isFrozen(s, q) && q.rank !== "A" && legal(q, board, s.boardSize, counts, kr).some((mv) => mv.row === r && mv.col === c))) n++;
+        board[r][c] = null;
+      }
+      return total ? n / total : 1;
+    };
+    const guardedNow = guardedCount(s.board.map((r) => r.slice()), allMine);
+    const capValue = (ids) => {
+      let v = 0;
+      for (const id of ids) {
+        const q = s.pieces[id];
+        const known = isKnownTo(s, me, q);
+        v += (known ? CARD_VALUE[q.rank] : 3.5) * 2;
+        if (isFrozen(s, q)) v += 4;
+        if (known && q.isKing) v += 1000;
+        else if (cand.has(id)) v += 60 * belief.weight;
+      }
+      return v;
+    };
+    const idsOf = (board, m) => {
+      const ids = new Set((m.captures || []).map((c) => board[c.row]?.[c.col]?.id).filter(Boolean));
+      const t = board[m.row][m.col]; if (t && t.owner !== me) ids.add(t.id);
+      return ids;
+    };
+    // 手の評価。pieces は現在の駒(rank 差し替え済みでもよい)、board はその盤
+    const evalMove = (p, m, board0, pieces, depth) => {
+      const ids = idsOf(board0, m);
+      let score = capValue(ids);
+      score += moveSafety(s, me, p, m, ids, { unknownWeight, unknownThreats: unknown });
+      const board = board0.map((r) => r.slice());
+      board[p.row][p.col] = null;
+      for (const id of ids) { const q = s.pieces[id]; if (q) board[q.row][q.col] = null; }
+      const moved = { ...p, row: m.row, col: m.col };
+      board[m.row][m.col] = moved;
+      const after = pieces.map((q) => (q.id === p.id ? moved : q));
+      score += (guardedCount(board, after) - guardedNow) * 2.5;
+      const kAt = p.isKing ? moved : king;
+      if (king) {
+        if (kingReachable(s, me, board, kAt, ids)) score -= 80;
+        score += shell * shellCount(board, kAt, after);
+      }
+      // 前進: 取らない手でも、取り返せる形のまま前へ出るなら加点。孤立は減点
+      const fwd = (m.row - p.row) * dir;
+      const nearest = Math.min(...after.filter((q) => q.id !== p.id).map((q) => Math.max(Math.abs(q.row - m.row), Math.abs(q.col - m.col))));
+      if (!ids.size) {
+        score += advance * Math.max(-1, Math.min(2, fwd));
+        if (nearest > 2) score -= 4;
+        const front = after.filter((q) => q.id !== p.id).map((q) => q.row * dir).sort((a, b) => b - a)[Math.min(2, after.length - 2)];
+        if (m.row * dir - front > 2) score -= 2 * (m.row * dir - front - 2);
+      } else if (nearest > 2) score -= 2;
+      if (p.isKing) score += kingThreatened ? 6 : -6;
+      // 10 の2回行動: 続けて取れる手があれば、その分を足す(取って戻る「取り逃げ」)。
+      // 2手をひとまとめに評価する版は、氷の要塞相手に交換が増えて負けが増えたので、この足し込み方に戻した
+      if (depth === 0 && !extra && moved.rank === "10" && (moved.isKing || moved.skyTwice || s.players[me].skyTwice)) {
+        let best2 = 0;
+        for (const m2 of legal(moved, board, s.boardSize, counts, kr)) {
+          const ids2 = idsOf(board, m2);
+          let v = capValue(ids2);
+          const b2 = board.map((r) => r.slice());
+          b2[moved.row][moved.col] = null; for (const id of ids2) { const q = s.pieces[id]; if (q) b2[q.row][q.col] = null; }
+          const moved2 = { ...moved, row: m2.row, col: m2.col }; b2[m2.row][m2.col] = moved2;
+          const after2 = after.map((q) => (q.id === p.id ? moved2 : q));
+          v += (guardedCount(b2, after2) - guardedNow) * 1.5;
+          if (king && kingReachable(s, me, b2, p.isKing ? moved2 : king, ids2)) v -= 80;
+          if (moveSafety(s, me, moved, m2, ids2, { unknownWeight, unknownThreats: unknown }) < -6) v -= 6;
+          if (v > best2) best2 = v;
+        }
+        score += 0.9 * best2;
+      }
+      return score;
+    };
+    let best = null;
+    for (const p of movers)
+      for (const m of legal(p, s.board, s.boardSize, counts, kr)) {
+        const sc = evalMove(p, m, s.board, allMine, 0) + Math.random() * 0.3;
+        if (!best || sc > best.score) best = { score: sc, type: "MOVE_PIECE", pieceId: p.id, row: m.row, col: m.col, captures: m.captures };
+      }
+    if (extra) return best && best.score > -1 ? (({ score, ...a }) => a)(best) : { type: "SKIP_EXTRA_ACTION" };
+    // 変身: いま変身した駒が(2回行動で)一気に取れるときだけ。終盤(敵が少ない)は自由に
+    const can = canUseArea(s, me);
+    if (can.ok && can.type === "sky") {
+      let bestX = null;
+      for (const id of skyCandidates(s, me)) {
+        const x = s.pieces[id];
+        if (isFrozen(s, x) || x.rank === "A") continue;
+        const x10 = { ...x, rank: "10", skyTwice: true };
+        const pieces = allMine.map((q) => (q.id === id ? x10 : q));
+        const board = s.board.map((r) => r.slice()); board[x.row][x.col] = x10;
+        let bestMove = -Infinity;
+        for (const m of legal(x10, board, s.boardSize, counts, kr)) {
+          const sc = evalMove(x10, m, board, pieces, 0);
+          if (sc > bestMove) bestMove = sc;
+        }
+        const guardLoss = (guardedCount(board.map((r) => r.slice()), pieces) - guardedNow) * 2.5;
+        const worth = bestMove + guardLoss - (best ? best.score : 0);
+        const cheap = CARD_VALUE[x.rank] <= 3;
+        if ((worth >= burstMin) || (enemies.length <= endgame && cheap && worth > 0))
+          if (!bestX || worth > bestX.worth) bestX = { id, worth };
+      }
+      if (bestX) return { type: "USE_AREA", pieceId: bestX.id };
+    }
+    if (!best) return null;
+    const { score, ...action } = best;
+    return action;
+  };
+}
 const HEAVY = (r, c) => ({ J: 8, Q: 8, 10: 6, A: c.A ? 0 : 6, 8: 5, 9: 5, 6: 4, 7: 4, 4: 3, 5: 3, 2: 2, 3: 2 }[r] ?? 0) - dup(r, c);
 const WALL = (r, c) => ({ J: 7, Q: 7, A: c.A ? 0 : 6, 2: 5, 3: 5, 4: 5, 5: 5, 10: 4, 8: 3, 9: 3, 6: 3, 7: 3 }[r] ?? 0) - dup(r, c);
 const free = () => ({ king: null, foil: false, plan: (s, p) => chooseArmyPlan(s, p, null), discards: (s, p) => strategicDiscards(s, p, null) });
@@ -545,6 +691,38 @@ if (mode === "kings" || mode === "kingsfoil") {
     rows.push(...rowsHere);
     console.error(`${a}/${b} done ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   });
+} else if (mode === "skylab") {
+  // 空の駒選び・布陣の探索。FOE: free | fortice | fortpalace | sky(通常CPUの空) | fortsea
+  const comps = {
+    S1: ["10","10","10","J","Q","4","2","8","8"],
+    S2: ["10","J","J","Q","Q","4","2","8","8"],
+    S3: ["10","10","J","Q","2","2","3","4","8"],
+    S4: ["10","J","Q","4","4","2","2","8","3"],
+    S5: ["10","10","10","10","J","Q","4","2","8"],
+    S6: ["10","10","J","J","Q","Q","4","2","8"],
+  };
+  const BLOCK = (r, c) => ({ J: 8, Q: 8, 4: 7, 2: 6, 8: 6, A: c.A ? 0 : 3, 10: 5, 5: 5, 3: 5, 9: 4, 6: 4, 7: 4 }[r] ?? 0) - dup(r, c);
+  const F = process.env.FOE || "free";
+  const foe = () => F === "free" ? free()
+    : F === "sky" ? { king: "10", foil: "king", ...stockSide("10") }
+    : F === "fortice" ? { ...fixedSide(["9","J","J","Q","Q","4","2","8","8"], "9"), foil: "king", act: fortAct(), arrange: fortressArrange }
+    : F === "fortpalace" ? { king: "K", foil: "king", ...prioritySide("K", BLOCK), act: fortAct(), arrange: fortressArrange }
+    : F === "fortsea" ? { king: "5", foil: "king", ...prioritySide("5", BLOCK), act: fortAct(), arrange: fortressArrange }
+    : free();
+  const forms = (process.env.FORMS || "corner,center,stock").split(",");
+  const names = (process.env.COMPS || "S2").split(",");
+  const styles = (process.env.STYLES || "sky").split(",");
+  let i = 0;
+  for (const n of names) for (const form of forms) for (const style of styles) {
+    const side = { ...fixedSide(comps[n], "10"), foil: "king" };
+    if (style === "sky") side.act = skyAct();
+    else if (style === "skyfast") side.act = skyAct({ advance: 2, burstMin: 6 });
+    else if (style === "skyslow") side.act = skyAct({ advance: 0.6, burstMin: 12 });
+    if (form === "corner") side.arrange = fortressArrange;
+    else if (form === "center") side.arrange = (st, p, plan) => fortressArrange(st, p, plan, 3);
+    rows.push(...runPair(`${n} ${form} ${style} vs ${F}`, [side, foe()], 98260910 + i++ * 1000003));
+    console.error(`${n}/${form}/${style} done ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+  }
 } else if (mode === "mirror") {
   // 先手の値打ち: 自由同士・フォイル無し
   rows.push(...runPair("free-vs-free", [free(), free()], 50260910));
