@@ -104,6 +104,8 @@ export const AREA_TUNING = Object.freeze({
   seaPullsOwn: false,
   /** 氷: 凍らせる駒の数 */
   iceTargets: 1,
+  /** 氷: 相手の王も凍らせるか(2026-09-11 の検証用。既定は王を除く。凍った王は動けず、A の入れ替えでだけ解ける) */
+  iceFreezesKing: false,
   /** 氷: 相手が動けない手番の数 */
   freezeTurns: 3,
   /** 空: 変身させたあと、その軍の10全部が2回動けるようにするか */
@@ -238,7 +240,11 @@ export function recurringArea(state, type) {
 
 export function iceCandidates(state, player) {
   return alivePieces(state, 1 - player)
-    .filter((p) => !p.isKing && (recurringIce(state) || !isFrozen(state, p)))
+    .filter(
+      (p) =>
+        (AREA_TUNING.iceFreezesKing || !p.isKing) &&
+        (recurringIce(state) || !isFrozen(state, p)),
+    )
     .map((p) => p.id)
     .sort();
 }
