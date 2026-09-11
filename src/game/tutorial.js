@@ -1438,7 +1438,7 @@ const EP8 = {
         s.currentTurn === 0 &&
         !!s.kPlacement &&
         !s.captureReveal,
-      text: "取られました。予備札が1枚来ています。光った b2 をタップして出します。",
+      text: "取られました。予備札が1枚来ています。光った b2 をタップし、「ここに置く」で出します。",
       need: { type: "PLACE_RESERVE_CARD", row: 3, col: 1 },
       focus: { cells: [{ row: 3, col: 1 }] },
     },

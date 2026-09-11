@@ -2,11 +2,18 @@ import { useRef, useState } from "react";
 import {
   emptyBoard,
   getLegalMoves,
+  squareName,
   territoryRows,
   totalSlots,
 } from "../game/board.js";
 
-import { PLAYER_META, RANKS, SUITS, nameOf } from "../game/constants.js";
+import {
+  PLAYER_META,
+  RANKS,
+  SUITS,
+  SUIT_SYMBOL,
+  nameOf,
+} from "../game/constants.js";
 import { hasAdjudicationRules } from "../game/rule-version.js";
 import { useWindowWidth } from "../hooks.js";
 import { ArrowLeft, Crown, Dice, Grid } from "../icons.jsx";
@@ -838,6 +845,10 @@ export function KingStep({
   );
 }
 
+/**
+ * Kの予備札を盤に出す。置き場所はタップかドラッグで決め、仮置きを見てから「ここに置く」で確定する
+ * (以前はマスをタップした瞬間に置いていた。2026-09-11 本人の指摘で確認を挟む)
+ */
 export function ReservePlacer({ state, dispatch, size, focus }) {
   let n = state.kPlacement.owner,
     [a, u] = territoryRows(size, n),
@@ -845,33 +856,112 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
   // JとQが同じ手で倒れると2枚めくれる。どちらから置くかを選べるようにする
   const cards = state.kPlacement.cards;
   const [pick, setPick] = (0, useState)(0);
+  // 仮置きの升。確定するまで盤には出ない
+  const [target, setTarget] = (0, useState)(null);
+  const [drag, setDrag] = (0, useState)(null);
+  const [hover, setHover] = (0, useState)(null);
+  const boardRef = useRef(null);
   const chosen = cards[Math.min(pick, cards.length - 1)];
+  const open = (row, col) =>
+    row >= a && row <= u && !state.board[row][col];
+  const cellUnder = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    const cell = el && el.closest ? el.closest("[data-cell]") : null;
+    if (!cell || !boardRef.current || !boardRef.current.contains(cell))
+      return null;
+    const [row, col] = cell.dataset.cell.split("-").map(Number);
+    return open(row, col) ? { row, col } : null;
+  };
+  /** 札(または仮置きの駒)を掴む。動かさず離せばタップ、動かして離せばドラッグ */
+  function startDrag(e, idx, fromTarget) {
+    if (e.button != null && e.button !== 0) return;
+    e.preventDefault();
+    const startX = e.clientX,
+      startY = e.clientY;
+    let moved = false;
+    if (idx !== pick) {
+      setPick(idx);
+      setTarget(null);
+    }
+    setDrag({ x: startX, y: startY, idx });
+    const move = (ev) => {
+      if (
+        Math.abs(ev.clientX - startX) > 8 ||
+        Math.abs(ev.clientY - startY) > 8
+      )
+        moved = true;
+      setDrag((d) => (d ? { ...d, x: ev.clientX, y: ev.clientY } : d));
+      setHover(moved ? cellUnder(ev.clientX, ev.clientY) : null);
+    };
+    const up = (ev) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      setDrag(null);
+      setHover(null);
+      if (!moved) return;
+      const at = cellUnder(ev.clientX, ev.clientY);
+      // 仮置きの駒を盤の外へ運んだら置き直し
+      if (!at) {
+        if (fromTarget) setTarget(null);
+        return;
+      }
+      setTarget(at);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  }
+  const confirm = () => {
+    if (!target || !open(target.row, target.col)) return;
+    dispatch({
+      type: "PLACE_RESERVE_CARD",
+      row: target.row,
+      col: target.col,
+      cardId: chosen.id,
+    });
+    setTarget(null);
+  };
+  const focusCell = (row, col) =>
+    !!(
+      focus &&
+      focus.cells &&
+      focus.cells.some((c) => c.row === row && c.col === col)
+    );
+  const targetOk = !!target && open(target.row, target.col);
   return (
     <div className="modal-overlay">
       <div className="modal-panel">
         <h3>予備札を配置</h3>
         <p className="hint">
           {cards.length > 1
-            ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスに配置できます。`
-            : "Kの効果で引いた1枚。自陣の空きマスに配置できます。"}
+            ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスをタップするか札をドラッグして置き場所を決めます。`
+            : "Kの効果で引いた1枚。自陣の空きマスをタップするか、札をドラッグして置き場所を決めます。"}
+          置き場所を決めてから「ここに置く」で確定します。
         </p>
         {cards.length > 1 ? (
           <div className="reserve-picks">
             {cards.map((c, idx) => (
               <button
                 key={c.id}
-                className={`reserve-pick ${chosen.id === c.id ? "reserve-pick-on" : ""}`}
-                onClick={() => setPick(idx)}
+                className={`reserve-pick ${chosen.id === c.id ? "reserve-pick-on" : ""} ${drag && drag.idx === idx ? "hand-card-lifted" : ""}`}
+                onPointerDown={(e) => startDrag(e, idx, false)}
               >
                 <CardGuide rank={c.rank} suit={c.suit} />
               </button>
             ))}
           </div>
         ) : (
-          <CardGuide rank={chosen.rank} suit={chosen.suit} />
+          <div
+            className={`reserve-source ${drag ? "hand-card-lifted" : ""}`}
+            onPointerDown={(e) => startDrag(e, 0, false)}
+          >
+            <CardGuide rank={chosen.rank} suit={chosen.suit} />
+          </div>
         )}
         <div
           className="mini-board"
+          ref={boardRef}
           style={{
             gridTemplateColumns: `repeat(${size},1fr)`,
           }}
@@ -884,26 +974,23 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
             }).map((r, d) => {
               let m = i ? size - 1 - o : o,
                 s = i ? size - 1 - d : d,
-                v = m >= a && m <= u,
-                p = state.board[m][s];
+                v = open(m, s),
+                p = state.board[m][s],
+                isTarget = !!target && target.row === m && target.col === s,
+                isHover = !!hover && hover.row === m && hover.col === s;
               return (
                 <div
-                  className={`mini-cell ${v && !p ? "mini-cell-zone mini-cell-open" : ""} ${
-                    focus &&
-                    focus.cells &&
-                    focus.cells.some((c) => c.row === m && c.col === s)
-                      ? "guide-target"
-                      : ""
+                  className={`mini-cell ${v ? "mini-cell-zone mini-cell-open" : ""} ${isTarget ? "mini-cell-target" : ""} ${isHover ? "mini-cell-hover" : ""} ${
+                    focusCell(m, s) && !target ? "guide-target" : ""
                   }`}
+                  data-cell={`${m}-${s}`}
+                  onPointerDown={
+                    isTarget ? (e) => startDrag(e, pick, true) : undefined
+                  }
                   onClick={() => {
-                    v &&
-                      !p &&
-                      dispatch({
-                        type: "PLACE_RESERVE_CARD",
-                        row: m,
-                        col: s,
-                        cardId: chosen.id,
-                      });
+                    if (!v) return;
+                    // 同じ升をもう一度タップしても仮置きのまま
+                    setTarget({ row: m, col: s });
                   }}
                   key={`${m}-${s}`}
                 >
@@ -931,22 +1018,64 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
                       )}
                     </div>
                   )}
+                  {isTarget && !p && (
+                    // 仮置き。確定するまで盤には出ない
+                    <div
+                      className={`mini-piece mini-piece-preview ${drag && drag.idx === pick ? "mini-piece-lifted" : ""}`}
+                    >
+                      <CardFace
+                        owner={n}
+                        rank={chosen.rank}
+                        suit={chosen.suit}
+                        size="sm"
+                      />
+                    </div>
+                  )}
                 </div>
               );
             }),
           )}
         </div>
-        <button
-          className="btn btn-ghost"
-          onClick={() =>
-            dispatch({
-              type: "SKIP_RESERVE_PLACEMENT",
-            })
-          }
-        >
-          今回は見送る
-        </button>
+        <p className="hint reserve-status">
+          {targetOk
+            ? `${chosen.rank}${SUIT_SYMBOL[chosen.suit]} を ${squareName(target.row, target.col, size)} に置きます。別のマスをタップするか、駒をドラッグすると置き直せます。`
+            : "まだ置き場所が決まっていません。"}
+        </p>
+        <div className="reserve-actions">
+          <button
+            className={`btn btn-primary ${focus && targetOk ? "guide-target" : ""}`}
+            disabled={!targetOk}
+            onClick={confirm}
+          >
+            ここに置く
+          </button>
+          {targetOk && (
+            <button className="btn btn-ghost" onClick={() => setTarget(null)}>
+              置き直す
+            </button>
+          )}
+          <button
+            className="btn btn-ghost"
+            onClick={() =>
+              dispatch({
+                type: "SKIP_RESERVE_PLACEMENT",
+              })
+            }
+          >
+            今回は見送る
+          </button>
+        </div>
       </div>
+      {drag && (
+        <div className="drag-ghost" style={{ left: drag.x, top: drag.y }}>
+          <CardFace
+            owner={n}
+            rank={cards[Math.min(drag.idx, cards.length - 1)].rank}
+            suit={cards[Math.min(drag.idx, cards.length - 1)].suit}
+            size="sm"
+          />
+        </div>
+      )}
     </div>
   );
 }

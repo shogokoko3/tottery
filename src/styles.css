@@ -4812,6 +4812,44 @@ h3 {
   border-color: var(--gold);
   opacity: 1;
 }
+/* 予備札の仮置き。置き場所を決めてから「ここに置く」で確定する */
+.reserve-source {
+  display: flex;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.reserve-pick {
+  touch-action: none;
+}
+.mini-cell-target {
+  box-shadow: inset 0 0 0 2px var(--gold);
+  background: rgba(212, 175, 55, 0.22);
+}
+.mini-piece-preview {
+  opacity: 0.9;
+  cursor: grab;
+}
+.mini-piece-preview::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border: 2px dashed var(--gold);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.reserve-status {
+  margin: 10px 0 4px;
+  min-height: 1.6em;
+}
+.reserve-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
 
 /* 絵札に偏って配り直したときの知らせ */
 .setup-rescue {

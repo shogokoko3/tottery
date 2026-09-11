@@ -4827,6 +4827,44 @@ h3 {
   border-color: var(--gold);
   opacity: 1;
 }
+/* \u4E88\u5099\u672D\u306E\u4EEE\u7F6E\u304D\u3002\u7F6E\u304D\u5834\u6240\u3092\u6C7A\u3081\u3066\u304B\u3089\u300C\u3053\u3053\u306B\u7F6E\u304F\u300D\u3067\u78BA\u5B9A\u3059\u308B */
+.reserve-source {
+  display: flex;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.reserve-pick {
+  touch-action: none;
+}
+.mini-cell-target {
+  box-shadow: inset 0 0 0 2px var(--gold);
+  background: rgba(212, 175, 55, 0.22);
+}
+.mini-piece-preview {
+  opacity: 0.9;
+  cursor: grab;
+}
+.mini-piece-preview::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border: 2px dashed var(--gold);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.reserve-status {
+  margin: 10px 0 4px;
+  min-height: 1.6em;
+}
+.reserve-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
 
 /* \u7D75\u672D\u306B\u504F\u3063\u3066\u914D\u308A\u76F4\u3057\u305F\u3068\u304D\u306E\u77E5\u3089\u305B */
 .setup-rescue {
