@@ -4482,6 +4482,21 @@ h3 {
   font-size: 11px;
   color: var(--text-dim);
 }
+/* まだ1話も終えていない人にだけ添える小さな印 */
+.home-wide-pill {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--gold);
+  color: var(--gold-soft);
+  font-size: 10px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.tutorial-offer {
+  text-align: center;
+}
 .home-wide-arrow {
   color: var(--text-dim);
   opacity: 0.6;

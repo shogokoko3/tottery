@@ -74,6 +74,12 @@ import { titleOf } from "../game/titles.js";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
 import { onlineGate, onlineGateLabel } from "../game/online-gate.js";
+import {
+  homeTutorialNudge,
+  markFirstTutorialOffered,
+  shouldOfferFirstTutorial,
+} from "../game/tutorial-nudge.js";
+import { TUTORIALS } from "../game/tutorial.js";
 import { isBlocked } from "../game/blocked.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
 import { ensureAuth, myUid } from "../net/auth.js";
@@ -311,6 +317,8 @@ export function MenuScreen({
   const ready = claimableCount(profile, collection);
   const today = useTsumeDay(now);
   const receipt = tsumeReceipt(collection, today.day);
+  // チュートリアルの釦の一言。第8話まで終えるまでは次の話を添える
+  const nudge = homeTutorialNudge(profile);
   const tsumeStatus = receipt?.cleared
     ? "cleared"
     : receipt?.joined
@@ -347,8 +355,13 @@ export function MenuScreen({
           <Book size={22} />
         </span>
         <span className="home-wide-label">
-          <b>チュートリアル</b>
-          <small>ルールとカードの効果を学ぶ</small>
+          <b>
+            チュートリアル
+            {nudge && nudge.kind === "start" && (
+              <span className="home-wide-pill">おすすめ</span>
+            )}
+          </b>
+          <small>{nudge ? nudge.text : "ルールとカードの効果を学ぶ"}</small>
         </span>
         <ArrowRight size={16} className="home-wide-arrow" />
       </button>
@@ -1237,7 +1250,9 @@ function TotteryScreens() {
     // 同じ部屋で何局目か。再戦のたびに1つ進める
     [round, setRound] = (0, useState)(0),
     // 運営に使用停止にされたかどうか
-    [banned, setBanned] = (0, useState)(!1);
+    [banned, setBanned] = (0, useState)(!1),
+    // 名前を決めた直後に一度だけ出す、第1話への案内
+    [offerTutorial, setOfferTutorial] = (0, useState)(!1);
   // 場面に合った曲へ。対局中は GameCore のほうが決めるので、ここは触らない
   useScreenBgm(e);
   // 起動時に、登録した人の台帳へ自分を置き直す。使用停止なら名前を捨てる
@@ -1341,7 +1356,16 @@ function TotteryScreens() {
   if (!named)
     return (
       <GameShell showRules={l} setShowRules={n}>
-        <NameSetupScreen onDone={() => setNamed(!0)} />
+        <NameSetupScreen
+          onDone={() => {
+            setNamed(!0);
+            // 初めての人にだけ、一度きり。第1話を終えていれば出さない
+            if (shouldOfferFirstTutorial(loadProfile())) {
+              markFirstTutorialOffered();
+              setOfferTutorial(!0);
+            }
+          }}
+        />
       </GameShell>
     );
   if (e === "game") {
@@ -1422,7 +1446,39 @@ function TotteryScreens() {
     >
       {
         {
-          home: <HomeScreen onStart={() => t("menu")} />,
+          home: (
+            <>
+              <HomeScreen onStart={() => t("menu")} />
+              {offerTutorial && (
+                <div className="modal-overlay">
+                  <div className="modal-panel tutorial-offer">
+                    <h3>はじめまして</h3>
+                    <p className="hint">
+                      遊び方は第1話で3分ほどで覚えられます。先に見ておきますか？
+                    </p>
+                    <p className="hint">ホームの「チュートリアル」からいつでも始められます。</p>
+                    <div className="setup-actions">
+                      <button
+                        className="btn btn-ghost"
+                        onClick={() => setOfferTutorial(!1)}
+                      >
+                        あとで
+                      </button>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => {
+                          setOfferTutorial(!1);
+                          startTutorial(TUTORIALS[0]);
+                        }}
+                      >
+                        第1話を始める
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ),
           skins: (
             <SkinsScreen
               onBack={() => t("menu")}
