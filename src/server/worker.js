@@ -6,12 +6,40 @@ import { seasonAt } from "../game/season.js";
 
 const json = (data, status = 200) =>
   Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
+/**
+ * iOS アプリ(Capacitor)は capacitor://localhost から呼ぶので、同じオリジンではない。
+ * この2つの由来にだけ CORS を返す(Web は同じオリジンなので要らない)。
+ * 運営の口(/api/admin/*)はアプリに入れないので対象外
+ */
+const APP_ORIGINS = new Set(["capacitor://localhost", "ionic://localhost"]);
+export function withCors(res, request) {
+  const origin = request.headers.get("origin");
+  if (!origin || !APP_ORIGINS.has(origin)) return res;
+  const headers = new Headers(res.headers);
+  headers.set("Access-Control-Allow-Origin", origin);
+  headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  headers.set("Access-Control-Max-Age", "600");
+  headers.append("Vary", "Origin");
+  return new Response(res.body, { status: res.status, headers });
+}
 const remote = (url, init = {}) =>
   fetch(url, { ...init, signal: AbortSignal.timeout(7000) });
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+    // iOS アプリからの事前確認(preflight)。シーズンの口だけ
+    if (
+      request.method === "OPTIONS" &&
+      url.pathname.startsWith("/api/season/")
+    )
+      return withCors(new Response(null, { status: 204 }), request);
+    return withCors(await handleApi(request, env, url), request);
+  },
+};
+async function handleApi(request, env, url) {
+  {
     if (url.pathname === "/api/season/health" && request.method === "GET")
       return json({ ok: true, version: 1, season: seasonAt() });
     const adminSession = url.pathname === "/api/admin/session";
@@ -116,8 +144,8 @@ export default {
         409,
       );
     }
-  },
-};
+  }
+}
 export class SeasonLedger {
   constructor(ctx) {
     this.ctx = ctx;

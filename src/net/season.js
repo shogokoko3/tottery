@@ -3,12 +3,26 @@ import { updateCollection } from "../skins/store.js";
 import { applySeasonReceipts } from "../game/season.js";
 import { grantTitle } from "../game/profile.js";
 
+/** シーズン API の置き場所(Cloudflare Worker)。Web は同じオリジンなので相対でよい */
+export const SEASON_API_ORIGIN = "https://tottery.shogokoko3.workers.dev";
+
+/**
+ * API の土台。iOS アプリ(capacitor://localhost)では相対パスが届かないので絶対 URL にする。
+ * Web(https の本番・手元の localhost)は同じオリジンの相対パス(手元は tools/serve.mjs の見本が受ける)
+ */
+export function seasonApiBase(loc = globalThis.location) {
+  const protocol = loc && typeof loc.protocol === "string" ? loc.protocol : "";
+  return protocol === "capacitor:" || protocol === "ionic:" || protocol === "file:"
+    ? SEASON_API_ORIGIN
+    : "";
+}
+
 export async function seasonRequest(op, body = {}) {
   const auth = await ensureAuth();
   if (!auth) throw new Error("通信を確認して、もう一度お試しください。");
   let res;
   try {
-    res = await fetch(`/api/season/${op}`, {
+    res = await fetch(`${seasonApiBase()}/api/season/${op}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

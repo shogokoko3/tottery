@@ -16,3 +16,5 @@ assets/audio/原曲/
 
 # 盤面画像の配信先。元画像は assets/fields/
 /fields/
+# iOS のアーカイブと書き出し(tools/ios-release.sh)
+ios/build/
