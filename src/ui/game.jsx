@@ -51,6 +51,7 @@ import {
   CLOCK_INITIAL_MS,
   KING_LIMIT_MS,
   setupLimitMs,
+  setupWaiting,
 } from "../game/reducer.js";
 import {
   ArrowRight,
@@ -1107,7 +1108,9 @@ export function GameCore({
   const fxBusy = cinematic.busy || aceMagic.busy || areaFx.busy;
   const autoArea = automaticAreaAction(a);
   const autoIssued = useRef(null);
-  const pauseClock = fxBusy || !!a.captureReveal;
+  // 布陣ボーナスを読んでいるあいだ、相手の確認を待っているあいだは持ち時間を減らさない
+  const pauseClock =
+    fxBusy || !!a.captureReveal || !!a.setupEffects || setupWaiting(a);
   const captureDisplayed = useCapturePresentation(a);
   const displayed = aceMagic.busy
     ? aceMagic.displayState
@@ -1236,6 +1239,7 @@ export function GameCore({
       fxBusy ||
       a.captureReveal ||
       a.setupEffects ||
+      setupWaiting(a) ||
       a.kPlacement ||
       (!network && !cpu && a.interstitial) ||
       (network && a.currentTurn !== p)
@@ -1333,7 +1337,9 @@ export function GameCore({
 
   let T = 1;
   ((0, useEffect)(() => {
-    if (!cpu || network || tutorial || fxBusy || autoArea) return;
+    // 布陣ボーナスを読んでいるあいだは CPU も待つ(閉じたら盤が動いていた、にしない)
+    if (!cpu || network || tutorial || fxBusy || autoArea || a.setupEffects)
+      return;
     let E =
       cpuArea && cpuArea.king
         ? josekiCpuAction(a, T, cpuArea.type, cpuArea.king)
@@ -2127,12 +2133,31 @@ export function GameCore({
         <SetupEffectsModal
           effects={a.setupEffects}
           viewer={network || cpu ? P : void 0}
-          onClose={() =>
+          onClose={() => {
             y({
               type: "DISMISS_SETUP_EFFECTS",
-            })
-          }
+            });
+            // 通信の対局では「読み終えた」を相手にも送る。両方そろってから対局が始まる
+            if (network && a.setupAck)
+              y({ type: "ACK_SETUP_EFFECTS", player: p });
+          }}
         />
+      </GameShell>
+    );
+  // 相手がまだ布陣ボーナスを読んでいる。そろうまで盤は出さない(持ち時間も止まっている)
+  if (network && setupWaiting(a) && !fxBusy)
+    return (
+      <GameShell
+        sheet={presentationSheet}
+        focusButton={tutButton}
+        showRules={i}
+        setShowRules={f}
+        netInfo={N}
+        onBack={() => {
+          if (!fxBusy) r(!0);
+        }}
+      >
+        <WaitingScreen text="相手が布陣ボーナスを確認しています…" />
       </GameShell>
     );
   if (a.interstitial && !a.captureReveal && !network && !cpu && !fxBusy)

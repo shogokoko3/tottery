@@ -56,6 +56,8 @@ export const NET_ACTIONS = new Set([
   "PLACE_RESERVE_CARD",
   "SKIP_RESERVE_PLACEMENT",
   "SKIP_EXTRA_ACTION",
+  // 布陣ボーナスを読み終えた合図(版13)。両方そろうまで盤は動かない
+  "ACK_SETUP_EFFECTS",
   "RESIGN",
   "NEW_GAME",
 ]);

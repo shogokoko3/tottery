@@ -3,7 +3,7 @@ import { areaEvent } from "./area-presentation.js";
 import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
 import { adjudicatePosition, withInitialArmies } from "./adjudication.js";
-import { hasAdjudicationRules } from "./rule-version.js";
+import { hasAdjudicationRules, hasBonusAckRules } from "./rule-version.js";
 import {
   discardCards,
   replenishReserve,
@@ -71,6 +71,7 @@ const RECEIVABLE = {
   SKIP_RESERVE_PLACEMENT: ["play"],
   PLACE_RESERVE_CARD: ["play"],
   CHOOSE_HEIR: ["play"],
+  ACK_SETUP_EFFECTS: ["play"],
   RESIGN: ["setup", "play"],
   CLOCK_TIMEOUT: ["setup", "play"],
   NEW_GAME: ["gameover"],
@@ -466,6 +467,13 @@ export function initialState() {
     replay: [],
     /** 布陣ボーナス(ストレート・フラッシュ)の結果。知らせ終えたら消す */
     setupEffects: null,
+    /** 通信の対局か(START_SETUP が通信に載った手か)。版13の「両者の確認」に使う */
+    online: false,
+    /**
+     * 布陣ボーナスを両者が確認したか [先手側, 後手側]。null なら確認は要らない。
+     * どちらかが false のあいだは指し手を受け付けない(setupWaiting)
+     */
+    setupAck: null,
     /** 台本どおりに進める場面(チュートリアル)かどうか */
     scripted: false,
     board: [],
@@ -977,9 +985,33 @@ function startPlay(base, log) {
     firstPlayer: first,
     log: [...nextLog, `--- 対局開始:${PLAYER_META[first].name}の番 ---`],
     setupEffects: effects,
+    // 版13の通信対局では、ボーナスの知らせを両者が閉じるまで指し手を受け付けない。
+    // 片方が読んでいるあいだに相手が指すと、戻ってきたら盤が動いていた、になる
+    setupAck:
+      effects && base.online && hasBonusAckRules(base.ruleVersion)
+        ? [false, false]
+        : null,
     interstitial: { forPlayer: first, kind: "turn" },
   });
 }
+
+/** 布陣ボーナスの確認を待っているか(両者の確認がそろうまで真) */
+export function setupWaiting(state) {
+  return !!state.setupAck && state.setupAck.some((x) => !x);
+}
+/** 確認がそろうまで盤に触れさせない手 */
+const WAITS_FOR_ACK = new Set([
+  "MOVE_PIECE",
+  "USE_AREA",
+  "CONFIRM_SHUFFLE",
+  "SKIP_EXTRA_ACTION",
+  "PLACE_RESERVE_CARD",
+  "SKIP_RESERVE_PLACEMENT",
+  "CHOOSE_HEIR",
+  "CLOCK_TIMEOUT",
+  "SELECT_PIECE",
+  "TOGGLE_SHUFFLE_PICK",
+]);
 
 /* =========================================================================
    reducer
@@ -990,6 +1022,8 @@ export function reducer(state, action) {
   if (!actorAllowed(state, action)) return state;
   // 乱数の結果を持たない手も受け取らない(盤が二人で食い違う)
   if (!seedsPresent(state, action)) return state;
+  // 布陣ボーナスを両者が確認し終えるまで、盤は動かさない(版13の通信対局)
+  if (setupWaiting(state) && WAITS_FOR_ACK.has(action.type)) return state;
   // 合計同点の終局はwinner:null。winnerの真偽だけで対局を再開させない。
   if (
     state.phase === "gameover" &&
@@ -1281,6 +1315,9 @@ function coreReducer(state, action) {
       return {
         ...initialState(),
         boardSize: size,
+        // 通信の対局か。ホストは自分の手にも __id を付けてから盤に入れるので、
+        // 席の名乗り(相手から届いた手)か __id(通信に載せた手)のどちらかで分かる
+        online: fromNetwork(action) || typeof action.__id === "string",
         // 盤面エリアは 9×9 で、始める側が明示したときだけ
         areasEnabled: action.areas === true && size === 9,
         areaLoadouts: sanitizeLoadouts(action.loadouts),
@@ -1651,6 +1688,23 @@ function coreReducer(state, action) {
 
     case "DISMISS_SETUP_EFFECTS":
       return { ...state, setupEffects: null };
+
+    case "ACK_SETUP_EFFECTS": {
+      // 「布陣ボーナスを読み終えた」の合図。席は通信なら送り主から決まる
+      if (!state.setupAck) return state;
+      const who = action.player;
+      if (who !== 0 && who !== 1) return state;
+      if (state.setupAck[who]) return state;
+      const setupAck = [...state.setupAck];
+      setupAck[who] = true;
+      return {
+        ...state,
+        setupAck,
+        log: setupAck.every(Boolean)
+          ? [...state.log, "両者が布陣ボーナスを確認した。対局開始"]
+          : state.log,
+      };
+    }
 
     case "CLOCK_TIMEOUT": {
       const loser = action.player;

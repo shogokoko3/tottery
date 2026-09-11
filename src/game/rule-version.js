@@ -16,7 +16,10 @@
 //     (当たり外れは手に焼き込んであるので、旧対局の再生は変わらない)。
 // 12: 氷は相手の王も凍らせる(2026-09-11。凍った王は動けず、Aの入れ替えでだけ解ける。
 //     通信の手の形式は変わらない。picks に王の id が入るだけ)。
-export const GAME_RULE_VERSION = 12;
+// 13: 布陣ボーナス(ストレート・フラッシュ)が出た対局は、両者が確認し終えるまで始まらない
+//     (2026-09-11 本人の依頼。オンラインだけ。ACK_SETUP_EFFECTS を送り合い、そろうまで指し手を受け付けない)。
+export const GAME_RULE_VERSION = 13;
+export const BONUS_ACK_RULE_VERSION = 13;
 export const ADJUDICATION_RULE_VERSION = 1;
 export const CLOCK_RULE_VERSION = 2;
 export const AREA_RULE_VERSION = 3;
@@ -33,4 +36,9 @@ export function hasAdjudicationRules(version) {
 /** 盤面エリアを使う版か。部屋の両者がこの版のときだけオンラインで働く */
 export function hasAreaRules(version) {
   return hasAdjudicationRules(version) && version >= AREA_RULE_VERSION;
+}
+
+/** 布陣ボーナスを両者が確認してから始める版か */
+export function hasBonusAckRules(version) {
+  return hasAdjudicationRules(version) && version >= BONUS_ACK_RULE_VERSION;
 }
