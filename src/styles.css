@@ -954,6 +954,22 @@ h3 {
   justify-content: center;
   z-index: 50;
   padding: 20px;
+  /* 指の動きは重ねた画面の中だけで受ける。暗い背景をなぞっても下の画面を動かさない
+     (予備札の配置で下の盤が動いていた。2026-09-11 本人の指摘) */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+/* 中の札は自分の中だけスクロールし、端まで行っても下の画面へ伝えない */
+.modal-overlay > * {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+/* 重ねた画面が出ているあいだ、下の画面のスクロールを止める */
+body:has(.modal-overlay),
+body:has(.notice-sheet),
+body:has(.skin-overlay) {
+  overflow: hidden;
 }
 .modal-panel {
   background: linear-gradient(170deg, #132844, #0b1729);
@@ -4189,6 +4205,8 @@ h3 {
   justify-content: center;
   background: rgba(4, 8, 18, 0.78);
   padding: 16px;
+  overscroll-behavior: contain;
+  touch-action: none;
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 @media (min-height: 620px) {

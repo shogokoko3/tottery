@@ -556,6 +556,11 @@
   color: #f2e9d6;
   font-family: "Shippori Mincho", "Yu Mincho", serif;
   overscroll-behavior: contain;
+  touch-action: none;
+}
+.skin-overlay > * {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
 }
 .skin-overlay * {
   box-sizing: border-box;
