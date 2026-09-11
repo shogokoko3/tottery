@@ -850,6 +850,14 @@ export function RulesSelectScreen({
               <b>おまかせ</b>
               <small>相手が手札から王を選ぶ</small>
             </button>
+            <button
+              className={`area-choice ${cpuArea === "none" ? "active" : ""}`}
+              aria-pressed={cpuArea === "none"}
+              onClick={() => onCpuArea("none")}
+            >
+              <b>エリアなし</b>
+              <small>どちらも盤面エリアを使わず、素の対局</small>
+            </button>
             {JOSEKI_AREAS.map((type) => (
               <button
                 key={type}
@@ -1344,7 +1352,14 @@ function TotteryScreens() {
       names = a
         ? a.names || [null, null]
         : d
-          ? [me, tut ? null : cpuArea && i === 9 ? `CPU(${JOSEKI_INFO[cpuArea.type].label})` : "CPU"]
+          ? [
+              me,
+              tut
+                ? null
+                : cpuArea && cpuArea.king && i === 9
+                  ? `CPU(${JOSEKI_INFO[cpuArea.type].label})`
+                  : "CPU",
+            ]
           : [null, null],
       icons = a
         ? a.icons || [null, null]
@@ -1362,7 +1377,7 @@ function TotteryScreens() {
             ? [
                 collection.equipped,
                 // エリアを選んだCPU戦は、王の数字にフォイルを必ず持たせる(でないとエリアが立たない)
-                cpuArea && i === 9 && foilRevealed(collection)
+                cpuArea && cpuArea.king && i === 9 && foilRevealed(collection)
                   ? ensureCpuFoil(cpuSkins, cpuArea.king)
                   : cpuSkins,
               ]
@@ -1510,7 +1525,12 @@ function TotteryScreens() {
                 d && !tut && foilRevealed(collection)
                   ? (type) =>
                       setCpuArea(
-                        type ? { type, king: pickJosekiKing(type) } : null,
+                        // "none" は盤面エリアを立てない素の対局。王は決めない
+                        type === "none"
+                          ? { type: "none", king: null }
+                          : type
+                            ? { type, king: pickJosekiKing(type) }
+                            : null,
                       )
                   : null
               }

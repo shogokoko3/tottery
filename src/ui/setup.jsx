@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import {
   emptyBoard,
   getLegalMoves,
+  kingRankOf,
   squareName,
   territoryRows,
   totalSlots,
@@ -929,6 +930,30 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
       focus.cells.some((c) => c.row === row && c.col === col)
     );
   const targetOk = !!target && open(target.row, target.col);
+  // 動ける先のガイド(布陣と同じ)。掴んで升の上にいるときはその升、決めた後は仮置きの升から
+  const previewAt = drag && hover ? hover : targetOk ? target : null;
+  const reach = new Set();
+  if (previewAt) {
+    const board = state.board.map((r) => [...r]);
+    const piece = {
+      id: chosen.id,
+      rank: chosen.rank,
+      suit: chosen.suit,
+      owner: n,
+      isKing: false,
+      row: previewAt.row,
+      col: previewAt.col,
+      alive: true,
+    };
+    board[previewAt.row][previewAt.col] = piece;
+    // 置くと採用枚数が1枚増える(4・5 の王なら同じ数字の射程が伸びる)
+    const counts = {
+      ...state.players[n].armyRankCounts,
+      [chosen.rank]: (state.players[n].armyRankCounts[chosen.rank] || 0) + 1,
+    };
+    for (const m of getLegalMoves(piece, board, size, counts, kingRankOf(state, n)))
+      reach.add(`${m.row}-${m.col}`);
+  }
   return (
     <div className="modal-overlay">
       <div className="modal-panel">
@@ -938,6 +963,8 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
             ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスをタップするか札をドラッグして置き場所を決めます。`
             : "Kの効果で引いた1枚。自陣の空きマスをタップするか、札をドラッグして置き場所を決めます。"}
           置き場所を決めてから「ここに置く」で確定します。
+          <span className="legend-dot" aria-hidden="true" />
+          はその駒が動ける先です。
         </p>
         {cards.length > 1 ? (
           <div className="reserve-picks">
@@ -980,7 +1007,7 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
                 isHover = !!hover && hover.row === m && hover.col === s;
               return (
                 <div
-                  className={`mini-cell ${v ? "mini-cell-zone mini-cell-open" : ""} ${isTarget ? "mini-cell-target" : ""} ${isHover ? "mini-cell-hover" : ""} ${
+                  className={`mini-cell ${v ? "mini-cell-zone mini-cell-open" : ""} ${isTarget ? "mini-cell-target" : ""} ${isHover ? "mini-cell-hover" : ""} ${reach.has(`${m}-${s}`) ? "mini-cell-reach" : ""} ${
                     focusCell(m, s) && !target ? "guide-target" : ""
                   }`}
                   data-cell={`${m}-${s}`}

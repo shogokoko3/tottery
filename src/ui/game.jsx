@@ -1259,13 +1259,20 @@ export function GameCore({
           // 盤面エリア(試験ルール、src/game/areas.js)。9×9 だけ。
           // 手元の対局(CPU・同じ端末)は常に。オンラインは部屋の版が
           // AREA_RULE_VERSION 以上(両者が新しい端末)のときだけ
+          // CPU戦で「エリアなし」を選んだら、9×9 でも盤面エリアを立てない
           ...(!tutorial &&
           (boardSize || 5) === 9 &&
-          (!network || hasAreaRules(network.ruleVersion))
+          (!network || hasAreaRules(network.ruleVersion)) &&
+          !(cpu && cpuArea && cpuArea.type === "none")
             ? { areas: true, loadouts: skins }
             : null),
           // エリアを選んだCPU戦は、CPU(後手の席)に定石の札を積んだ山札で始める
-          ...(cpu && !network && !tutorial && cpuArea && (boardSize || 5) === 9
+          ...(cpu &&
+          !network &&
+          !tutorial &&
+          cpuArea &&
+          cpuArea.king &&
+          (boardSize || 5) === 9
             ? { deck: josekiDeck(cpuArea.type, cpuArea.king) }
             : null),
           // 第13話(盤面エリア)は台本が装備を持つ
@@ -1327,9 +1334,10 @@ export function GameCore({
   let T = 1;
   ((0, useEffect)(() => {
     if (!cpu || network || tutorial || fxBusy || autoArea) return;
-    let E = cpuArea
-      ? josekiCpuAction(a, T, cpuArea.type, cpuArea.king)
-      : cpuAction(a, T);
+    let E =
+      cpuArea && cpuArea.king
+        ? josekiCpuAction(a, T, cpuArea.type, cpuArea.king)
+        : cpuAction(a, T);
     if (!E) return;
     let U = foeWait(a, E, 1000),
       be = setTimeout(() => {
