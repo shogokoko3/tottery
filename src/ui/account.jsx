@@ -249,7 +249,10 @@ export function IconPickModal({ onClose, onSaved }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-panel icon-picker-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-head">
           <h3>アイコンを選ぶ</h3>
           <button className="icon-btn" onClick={onClose}>
@@ -277,7 +280,7 @@ export function IconPickModal({ onClose, onSaved }) {
           })}
         </div>
         <p className="hint">
-          鍵のかかったものは、これから対局で手に入るようになります。
+          紋章アイコンは、対応する布陣の称号を獲得すると使えます。
         </p>
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onClose}>

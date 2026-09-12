@@ -1,8 +1,9 @@
 // 布陣の称号(隅の要塞・双翼の陣)の演出を、決まった盤面で確認するローカル専用の画面。
 // 本番の認証・マッチング・ランキングには触れない。
-//   node tools/serve-formation-check.mjs   → http://127.0.0.1:4222/?test=1&form=wings (form=fortress も)
+//   node tools/serve-formation-check.mjs   → http://127.0.0.1:4270/?test=1&form=wings (form=fortress も)
 import { build } from "esbuild";
 import http from "node:http";
+import path from "node:path";
 import fs from "node:fs";
 const result = await build({
   bundle: true,
@@ -11,6 +12,7 @@ const result = await build({
   loader: { ".webp": "dataurl", ".png": "dataurl", ".css": "text" },
   define: {
     __AUDIO_FILES__: "{}",
+    __HONOR_VERSION__: JSON.stringify(fs.readdirSync("honors")[0]),
     __FIELD_FILES__: JSON.stringify(
       Object.fromEntries(
         fs
@@ -55,14 +57,42 @@ const result = await build({
     resolveDir: process.cwd(),
     loader: "jsx",
     contents: `
-import {createRoot} from 'react-dom/client';import {GameCore} from './src/ui/game.jsx';import {SeatsProvider} from './src/ui/names.jsx';
-function App(){return <><nav style={{padding:8,background:'#10203a',display:'flex',gap:12}}>{[['wings','双翼の陣'],['earth','継承の狩り'],['forest','消去法の詰め'],['sea','道連れの特攻'],['palace','昇格の砦'],['fortress','隅の要塞']].map(([id,label])=><a style={{color:'#eee'}} href={'?test=1&form='+id} key={id}>{label}</a>)}</nav><SeatsProvider value={{names:['あなた','CPU'],skins:[{},{}],backs:[null,null],frames:[null,null]}}><GameCore boardSize={9} cpu={{level:1}} onExit={()=>location.reload()}/></SeatsProvider></>};createRoot(document.getElementById('root')).render(<App/>);
+import {useState} from 'react';import {IconPickModal} from './src/ui/account.jsx';import {loadProfile,grantTitle} from './src/game/profile.js';import {createRoot} from 'react-dom/client';import {GameCore} from './src/ui/game.jsx';import {SeatsProvider} from './src/ui/names.jsx';
+function App(){const [icons,setIcons]=useState(false);return <div className="tottery-root"><button onClick={()=>setIcons(true)}>アイコンを確認</button>{icons&&<IconPickModal onClose={()=>setIcons(false)}/>} <nav style={{padding:8,background:'#10203a',display:'flex',gap:12}}>{[['wings','双翼の陣'],['earth','継承の狩り'],['forest','消去法の詰め'],['sea','道連れの特攻'],['palace','天界'],['hell','魔界'],['fortress','隅の要塞']].map(([id,label])=><a style={{color:'#eee'}} href={'?test=1&form='+id} key={id}>{label}</a>)}</nav><SeatsProvider value={{names:['あなた','CPU'],skins:[{},{}],backs:[null,null],frames:[null,null]}}><GameCore boardSize={9} cpu={{level:1}} onExit={()=>location.reload()}/></SeatsProvider></div>};createRoot(document.getElementById('root')).render(<App/>);
 `,
   },
 });
 const html = `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>布陣の称号 確認</title><style>body{margin:0;background:#081120}</style></head><body><div id="root"></div><script>${result.outputFiles[0].text}</script></body></html>`;
 http
   .createServer((req, res) => {
+    const url = new URL(req.url, "http://localhost");
+    if (
+      url.pathname.startsWith("/honors/") ||
+      url.pathname.startsWith("/skins/")
+    ) {
+      const file = path.resolve("." + decodeURIComponent(url.pathname));
+      if (
+        !file.startsWith(process.cwd() + path.sep) ||
+        !fs.existsSync(file) ||
+        !fs.statSync(file).isFile()
+      ) {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+      res.setHeader(
+        "Content-Type",
+        {
+          ".html": "text/html",
+          ".js": "text/javascript",
+          ".css": "text/css",
+          ".png": "image/png",
+          ".webp": "image/webp",
+        }[path.extname(file)] || "application/octet-stream",
+      );
+      res.end(fs.readFileSync(file));
+      return;
+    }
     if (
       req.url.startsWith("/fields/") &&
       /^\/fields\/[a-z]+\.[a-f0-9]+\.png$/.test(req.url)
@@ -79,6 +109,6 @@ http
     res.writeHead(200, { "Content-Type": "text/html" });
     res.end(html);
   })
-  .listen(4222, "127.0.0.1", () =>
-    console.log("http://127.0.0.1:4222/?test=1&form=wings"),
+  .listen(4270, "127.0.0.1", () =>
+    console.log("http://127.0.0.1:4270/?test=1&form=wings"),
   );

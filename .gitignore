@@ -18,3 +18,6 @@ assets/audio/原曲/
 /fields/
 # iOS のアーカイブと書き出し(tools/ios-release.sh)
 ios/build/
+
+# Versioned formation award export
+/honors/

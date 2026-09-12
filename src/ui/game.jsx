@@ -1,3 +1,4 @@
+import { FormationHonor, formationScene } from "./formation-honor.jsx";
 import { FieldBackdrop } from "./fields/backdrop.jsx";
 import {
   boardFieldTheme,
@@ -1100,12 +1101,33 @@ export function GameCore({
     network ? p : cpu ? 0 : null,
     aceMagic.busy,
   );
+  const [fortressGot, setFortressGot] = useState(null);
+  const [formationGot, setFormationGot] = useState([]);
+  const fortressSeen = useRef(false),
+    formationSeen = useRef(false);
+  const honorViewer = network ? p : 0;
+  const honorPending =
+    !tutorial &&
+    (network || cpu) &&
+    a.phase === "play" &&
+    ((!fortressSeen.current &&
+      a.areas?.[honorViewer]?.type === "ice" &&
+      fortressCorner(a.pieces, a.boardSize, honorViewer) !== null) ||
+      (!formationSeen.current && matchFormations(a, honorViewer).length > 0));
+  const honorBusy =
+    (!!fortressGot || formationGot.length > 0 || honorPending) &&
+    !a.setupEffects &&
+    !setupWaiting(a);
   const areaFx = useAreaEffects(
     a,
     network ? p : cpu ? 0 : null,
-    cinematic.busy || aceMagic.busy || !!a.captureReveal || !!a.setupEffects,
+    cinematic.busy ||
+      aceMagic.busy ||
+      honorBusy ||
+      !!a.captureReveal ||
+      !!a.setupEffects,
   );
-  const fxBusy = cinematic.busy || aceMagic.busy || areaFx.busy;
+  const fxBusy = cinematic.busy || aceMagic.busy || areaFx.busy || honorBusy;
   const autoArea = automaticAreaAction(a);
   const autoIssued = useRef(null);
   // 布陣ボーナスを読んでいるあいだ、相手の確認を待っているあいだは持ち時間を減らさない
@@ -1746,8 +1768,7 @@ export function GameCore({
    * 本人にだけ演出と称号「堅牢な要塞」を出す。王の位置が分かってしまうので、
    * 相手には知らせないし、記録にも残さない。CPU戦とオンライン対戦だけ
    */
-  let [fortressGot, setFortressGot] = (0, useState)(null);
-  const fortressSeen = (0, useRef)(!1);
+
   (0, useEffect)(() => {
     if (a.phase !== "play" && a.phase !== "gameover") {
       fortressSeen.current = !1;
@@ -1762,15 +1783,18 @@ export function GameCore({
     if (corner === null) return;
     const had = loadProfile().titles.includes("fortress");
     grantTitle("fortress");
-    setFortressGot({ fresh: !had, right: corner > 0 });
+    setFortressGot({
+      fresh: !had,
+      right: corner > 0,
+      scene: formationScene(a, P, skins),
+    });
   }, [a.phase]);
 
   /**
    * 布陣の型(双翼の陣・継承の狩り・消去法の詰め)。エリアが立っているときに決まった形に
    * 組んで対局を始めたら、本人にだけ演出と称号を出す。要塞と同じ扱い
    */
-  let [formationGot, setFormationGot] = (0, useState)([]);
-  const formationSeen = (0, useRef)(!1);
+
   (0, useEffect)(() => {
     if (a.phase !== "play" && a.phase !== "gameover") {
       formationSeen.current = !1;
@@ -1785,7 +1809,12 @@ export function GameCore({
     const got = hits.map((h) => {
       const had = titles.includes(h.def.id);
       grantTitle(h.def.id);
-      return { def: h.def, mirror: h.mirror, fresh: !had };
+      return {
+        def: h.def,
+        mirror: h.mirror,
+        fresh: !had,
+        scene: formationScene(a, P, skins),
+      };
     });
     setFormationGot(got);
   }, [a.phase]);
@@ -2998,81 +3027,18 @@ export function GameCore({
           </div>
         )}
         {fortressGot && !a.setupEffects && (
-          <div className="modal-overlay">
-            <div className="modal-panel secret-panel fortress-panel">
-              <p className="bonus-eyebrow">布陣の称号</p>
-              <div
-                className={`fortress-grid ${fortressGot.right ? "is-right" : ""}`}
-                aria-hidden="true"
-              >
-                {Array.from({ length: 9 }, (_, i) => (
-                  <span
-                    key={i}
-                    className={`fortress-cell ${i === (fortressGot.right ? 8 : 6) ? "is-king" : ""}`}
-                    style={{ "--i": i }}
-                  />
-                ))}
-              </div>
-              <p className="secret-name">隅の要塞</p>
-              <p className="hint">
-                自陣の隅に9体を固め、王をいちばん奥に据えた。
-                王へ通じる線はすべて味方が塞いでいる。
-              </p>
-              <p className="hint">
-                {fortressGot.fresh
-                  ? "称号「堅牢な要塞」を手に入れました。設定から選べます。"
-                  : "称号「堅牢な要塞」は獲得済みです。"}
-              </p>
-              <button
-                className="btn btn-primary"
-                onClick={() => setFortressGot(null)}
-              >
-                対局へ
-              </button>
-            </div>
-          </div>
+          <FormationHonor
+            key="fortress"
+            award={fortressGot}
+            onClose={() => setFortressGot(null)}
+          />
         )}
         {formationGot.length > 0 && !fortressGot && !a.setupEffects && (
-          <div className="modal-overlay">
-            <div className="modal-panel secret-panel wings-panel">
-              <p className="bonus-eyebrow">布陣の称号</p>
-              <div
-                className="wings-grid"
-                style={{ "--cols": formationGot[0].def.width }}
-                aria-hidden="true"
-              >
-                {formationGot[0].def.cells.map(([depth, col, rank, king], i) => (
-                  <span
-                    key={i}
-                    className={`wings-cell ${king ? "is-king" : ""}`}
-                    style={{
-                      "--i": i,
-                      gridRow: depth + 1,
-                      gridColumn:
-                        (formationGot[0].mirror
-                          ? formationGot[0].def.width - 1 - col
-                          : col) + 1,
-                    }}
-                  >
-                    {rank}
-                  </span>
-                ))}
-              </div>
-              <p className="secret-name">{formationGot[0].def.name}</p>
-              <p className="hint">{formationGot[0].def.flavor}</p>
-              <p className="hint">
-                {formationGot[0].fresh
-                  ? `称号「${formationGot[0].def.title}」を手に入れました。設定から選べます。`
-                  : `称号「${formationGot[0].def.title}」は獲得済みです。`}
-              </p>
-              <button
-                className="btn btn-primary"
-                onClick={() => setFormationGot((list) => list.slice(1))}
-              >
-                対局へ
-              </button>
-            </div>
-          </div>
+          <FormationHonor
+            key={formationGot[0].def.id}
+            award={formationGot[0]}
+            onClose={() => setFormationGot((list) => list.slice(1))}
+          />
         )}
         {!tutorial && (network || cpu) && a.phase === "play" && (
           <p className="private-note-hint">✎ 相手の伏せ札を長押しで推理メモ</p>
