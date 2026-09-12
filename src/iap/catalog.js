@@ -20,12 +20,12 @@ export const SHOP_ENABLED = true;
 
 /** ジェムのパック(消耗型)。paid は円の価格と同じ、free はおまけ(無償) */
 export const GEM_PACKS = [
-  // おまけ(無償)は買うほど率が上がる。120=0% / 600=20% / 1500=22% / 3000=25% / 5000=27% / 10000=30%
+  // おまけ(無償)は買うほど率が上がる。120=0% / 600=10% / 1500=15% / 3000=20% / 5000=25% / 10000=30%
   { id: `${BUNDLE_ID}.gems.120`, paid: 120, free: 0, name: "120ジェム" },
-  { id: `${BUNDLE_ID}.gems.600`, paid: 600, free: 120, name: "600ジェム＋おまけ120" },
-  { id: `${BUNDLE_ID}.gems.1500`, paid: 1500, free: 330, name: "1,500ジェム＋おまけ330" },
-  { id: `${BUNDLE_ID}.gems.3000`, paid: 3000, free: 750, name: "3,000ジェム＋おまけ750" },
-  { id: `${BUNDLE_ID}.gems.5000`, paid: 5000, free: 1350, name: "5,000ジェム＋おまけ1,350" },
+  { id: `${BUNDLE_ID}.gems.600`, paid: 600, free: 60, name: "600ジェム＋おまけ60" },
+  { id: `${BUNDLE_ID}.gems.1500`, paid: 1500, free: 225, name: "1,500ジェム＋おまけ225" },
+  { id: `${BUNDLE_ID}.gems.3000`, paid: 3000, free: 600, name: "3,000ジェム＋おまけ600" },
+  { id: `${BUNDLE_ID}.gems.5000`, paid: 5000, free: 1250, name: "5,000ジェム＋おまけ1,250" },
   { id: `${BUNDLE_ID}.gems.10000`, paid: 10000, free: 3000, name: "10,000ジェム＋おまけ3,000" },
 ];
 /** 使う順。無償を先に減らし、足りない分を有償から */

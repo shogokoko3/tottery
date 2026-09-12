@@ -59,22 +59,26 @@ await throws("端末の申告で有償ジェムは増やせない", () => w.appl
 is("有償は 0 のまま", pick(w.summary("A")).paid, 0);
 
 console.log("\nジェムの購入(おまけは無償)と使う順");
-const tx = { transactionId: "1000000123", productId: GEM_PACKS[1].id, environment: "Production", purchaseDate: T };
-is("600円のパックで 有償600 + 無償120", (() => { const r = w.purchase("A", tx, T); return { paid: r.gemsPaid, free: r.gemsFree }; })(), { paid: 600, free: 250 + 120 });
+const PACK = GEM_PACKS[1]; // 600円のパック。おまけ(free)は catalog から取る(数字が変わっても壊れない)
+const EARNED_FREE = 250; // 上の「無償ジェム」節で貯めた分
+const tx = { transactionId: "1000000123", productId: PACK.id, environment: "Production", purchaseDate: T };
+is("600のパックで 有償600 + おまけ(無償)", (() => { const r = w.purchase("A", tx, T); return { paid: r.gemsPaid, free: r.gemsFree }; })(), { paid: PACK.paid, free: EARNED_FREE + PACK.free });
 is("同じ取引を送り直しても二重に加算されない", w.purchase("A", tx, T).duplicate, true);
 is("同じ取引を別の uid で出しても渡らない(世界で一度)", w.purchase("B", tx, T).gems, 0);
 await throws("知らない商品は拒む", () => w.purchase("A", { ...tx, transactionId: "1", productId: "x" }, T), /知らない商品/);
 const beforeT = w.balance("A");
-// 無償370・有償600。10枚=100ジェムは無償から
-is("両替は無償から先に減る", pick(w.exchange("A", "x-1", 10, T)), { tickets: beforeT + 10, gems: 870, paid: 600, free: 270 });
+// 10枚=100ジェムは無償から先に減る
+const freeAfterEx = EARNED_FREE + PACK.free - 100;
+is("両替は無償から先に減る", pick(w.exchange("A", "x-1", 10, T)), { tickets: beforeT + 10, gems: PACK.paid + freeAfterEx, paid: PACK.paid, free: freeAfterEx });
 is("同じ両替は二度効かない", w.exchange("A", "x-1", 10, T).applied, false);
-// バトルパス600: 無償270を使い切り、残り330は有償から(1つの出来事)
-is("無償で足りない分は有償から、1つの出来事で", (() => { const r = w.buyPass("A", "p-1", T); return { ...pick(r), ent: r.entitlements }; })(), { tickets: beforeT + 10, gems: 270, paid: 270, free: 0, ent: [BATTLEPASS_ENTITLEMENT] });
-is("既に持っていれば減らさない", w.buyPass("A", "p-2", T).gems, 270);
+// バトルパス600: まず無償を使い切り、足りない分を有償から(1つの出来事)
+const paidAfterPass = PACK.paid - (600 - freeAfterEx);
+is("無償で足りない分は有償から、1つの出来事で", (() => { const r = w.buyPass("A", "p-1", T); return { ...pick(r), ent: r.entitlements }; })(), { tickets: beforeT + 10, gems: paidAfterPass, paid: paidAfterPass, free: 0, ent: [BATTLEPASS_ENTITLEMENT] });
+is("既に持っていれば減らさない", w.buyPass("A", "p-2", T).gems, paidAfterPass);
 await throws("合計が足りなければ両替は失敗し", () => w.exchange("A", "x-2", 100, T), /ジェムが足りません/);
-is("失敗した両替でどちらも動かない", pick(w.summary("A")), { tickets: beforeT + 10, gems: 270, paid: 270, free: 0 });
+is("失敗した両替でどちらも動かない", pick(w.summary("A")), { tickets: beforeT + 10, gems: paidAfterPass, paid: paidAfterPass, free: 0 });
 is("使う順は無償→有償", GEM_CONSUME_ORDER, ["free", "paid"]);
-is("未使用残高は有償だけを数える(無償は別枠)", (() => { const u = w.unused(); return { unused: u.unusedGems, free: u.unusedFreeGems, issued: u.issuedGems, used: u.usedGems, over: u.over }; })(), { unused: 270, free: 0, issued: 600, used: 330, over: false });
+is("未使用残高は有償だけを数える(無償は別枠)", (() => { const u = w.unused(); return { unused: u.unusedGems, free: u.unusedFreeGems, issued: u.issuedGems, used: u.usedGems, over: u.over }; })(), { unused: paidAfterPass, free: 0, issued: PACK.paid, used: PACK.paid - paidAfterPass, over: false });
 
 console.log("\n端末からの引き継ぎと旧表の移行");
 is("一度だけ引き継ぐ", pick(w.migrate("C", 40, T)).tickets, 40);
