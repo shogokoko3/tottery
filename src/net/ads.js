@@ -35,6 +35,15 @@ export async function adsAvailable() {
 
 async function ensureInit(m) {
   if (initialized) return;
+  // ATT(トラッキング許可)を先に一度だけ聞く。iOS はこれが無いと広告 ID を使えず、
+  // 断られてもパーソナライズなしの広告として動く(拒否・未対応でも例外にしない)。
+  // ダイアログの文言は Info.plist の NSUserTrackingUsageDescription(iOS セッションが入れる)
+  try {
+    if (typeof m.AdMob.requestTrackingAuthorization === "function")
+      await m.AdMob.requestTrackingAuthorization();
+  } catch {
+    /* 断られた/未対応でも広告は出せる */
+  }
   await m.AdMob.initialize();
   initialized = true;
 }
