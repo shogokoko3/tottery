@@ -21,6 +21,8 @@ import {
   GEM_CONSUME_ORDER,
   BATTLEPASS_GEMS,
   BATTLEPASS_ENTITLEMENT,
+  BATTLEPASS_WEEK_TICKET_MAX,
+  FIRST_PURCHASE_SKIN,
   FREE_GEM_EVENT_MAX,
   FREE_GEM_DAILY_MAX,
 } from "../iap/catalog.js";
@@ -30,6 +32,12 @@ export const MIGRATE_TICKETS_MAX = 500;
 export const EARN_EVENT_MAX = 10;
 export const EARN_DAILY_MAX = 30;
 const dayOf = (now) => new Date(now).toISOString().slice(0, 10);
+/** その日が入る週の始まり(UTC 月曜)。バトルパスの周回上限の区切り */
+const weekOf = (now) => {
+  const d = new Date(now);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+};
 const cap = (n, max) => (Number.isSafeInteger(n) && n > 0 ? Math.min(n, max) : 0);
 const addColumn = (sql, table, col) => {
   try { sql(`ALTER TABLE ${table} ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`); } catch { /* 既にある */ }
@@ -70,9 +78,18 @@ export class Wallet {
       uid, dayOf(now),
     )[0].n;
   }
+  /** 今週(UTC月曜始まり)のバトルパスのチケット枚数 */
+  passTicketsThisWeek(uid, now) {
+    if (!Number.isFinite(now)) return 0;
+    return this.sql(
+      "SELECT COALESCE(SUM(tickets),0) AS t FROM wallet_ledger WHERE uid=? AND kind='pass' AND ref=?",
+      uid, weekOf(now),
+    )[0].t;
+  }
   summary(uid, now = null) {
     const r = this.row(uid);
     const used = now == null ? null : this.adsUsedToday(uid, now);
+    const passWeek = now == null ? null : this.passTicketsThisWeek(uid, now);
     return {
       tickets: r.tickets,
       gems: r.gems + r.gems_free,
@@ -84,6 +101,8 @@ export class Wallet {
       // 広告リワード。now があるときだけ入れる(いつの「今日」か決まらないと数えられない)
       adPerDay: ADS_PER_DAY,
       ...(used == null ? {} : { adsUsedToday: used, adsLeftToday: Math.max(0, ADS_PER_DAY - used) }),
+      // バトルパスの周回上限(now があるとき)。残り枚数を画面に出す
+      ...(passWeek == null ? {} : { passTicketsThisWeek: passWeek, passTicketsLeftThisWeek: Math.max(0, BATTLEPASS_WEEK_TICKET_MAX - passWeek) }),
     };
   }
   /** 広告を1本見た報酬(チケット1枚)。1日 ADS_PER_DAY 回まで。id で冪等 */
@@ -97,6 +116,24 @@ export class Wallet {
       throw new Error("今日の広告の回数を使い切りました。");
     // ref=日付にして、その日の回数を数えられるようにする
     const r = this.apply(uid, id, { tickets: AD_REWARD_TICKETS }, "ad", dayOf(now), now);
+    return { ...r, ...this.summary(uid, now) };
+  }
+  /**
+   * バトルパスのマスをクリアした報酬(チケット1枚)。**パス所持者だけ**。
+   * マス×周ごとに id で冪等。週(UTC月曜始まり)72枚(3周ぶん)まで。無料の earn とは別枠
+   */
+  passReward(uid, id, now) {
+    if (!this.entitlementsOf(uid).includes(BATTLEPASS_ENTITLEMENT))
+      throw new Error("バトルパスを持っていません。");
+    const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
+    if (seen) {
+      if (seen.uid !== uid) throw new Error("他の人の出来事です。");
+      return { applied: false, ...this.summary(uid, now) };
+    }
+    if (this.passTicketsThisWeek(uid, now) + 1 > BATTLEPASS_WEEK_TICKET_MAX)
+      throw new Error("今週のバトルパスの上限に達しました。");
+    // ref=週にして、その週の枚数を数えられるようにする
+    const r = this.apply(uid, id, { tickets: 1 }, "pass", weekOf(now), now);
     return { ...r, ...this.summary(uid, now) };
   }
   /** 出来事 id で冪等に増減する。減らす場合は残高を超えない */
@@ -162,6 +199,8 @@ export class Wallet {
     const product = productOf(tx.productId);
     if (!product) throw new Error("知らない商品の取引です。");
     const prior = this.sql("SELECT * FROM purchases WHERE transactionId=?", tx.transactionId)[0];
+    // 初課金判定は、この取引を記録する前に「この uid に過去の購入があるか」で決める
+    const hadPurchase = this.sql("SELECT 1 AS x FROM purchases WHERE uid=? LIMIT 1", uid)[0];
     if (!prior)
       this.sql("INSERT INTO purchases VALUES (?,?,?,?,?,?)",
         tx.transactionId, uid, tx.productId, tx.environment, Number(tx.purchaseDate) || now, now);
@@ -169,7 +208,14 @@ export class Wallet {
     // 世界で一度だけ。別の uid で既に渡していれば、ここでは渡さない
     if (!prior)
       granted = this.apply(uid, `iap:${tx.transactionId}`, { gemsPaid: product.paid, gemsFree: product.free }, "purchase", tx.productId, now).applied;
-    return { granted, duplicate: !!prior, product: product.id, ...this.summary(uid) };
+    // 初課金特典(uid ごとに一度だけ): 購入ジェムを2倍(おまけは無償)＋スキンのフラグ。
+    // 資金決済法の未使用残高は有償だけなので、2倍分は無償(gemsFree)で足す
+    let firstPurchase = false;
+    if (granted && !hadPurchase && !this.sql("SELECT 1 AS x FROM wallet_ledger WHERE uid=? AND kind='first-bonus' LIMIT 1", uid)[0]) {
+      this.apply(uid, `iap:firstbonus:${tx.transactionId}`, { gemsFree: product.paid }, "first-bonus", tx.productId, now);
+      firstPurchase = true;
+    }
+    return { granted, duplicate: !!prior, firstPurchase, firstSkin: firstPurchase ? FIRST_PURCHASE_SKIN : null, product: product.id, ...this.summary(uid) };
   }
   /** ジェムでチケットを買う(両替)。1つの出来事なので、片方だけ効くことはない */
   exchange(uid, id, tickets, now) {

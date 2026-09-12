@@ -34,7 +34,10 @@ export function GemShop({ gems, gemsPaid = 0, gemsFree = 0, onClose, onMessage }
       if (!(await gate())) return;
       const r = await buy(id);
       if (r === null) return;
-      say(r.pending ? "購入を受け付けました。通信が戻ると反映されます。" : "ジェムを受け取りました。");
+      if (r.firstPurchase)
+        say("初回購入ありがとうございます！ジェム2倍＋ペガサスナイトのスキンを差し上げました。");
+      else
+        say(r.pending ? "購入を受け付けました。通信が戻ると反映されます。" : "ジェムを受け取りました。");
       onClose();
     } catch (e) {
       say((e && e.message) || "購入できませんでした。");

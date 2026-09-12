@@ -62,29 +62,41 @@ async function verifyOnServer(jws) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) { const e = new Error(data.error || "購入を確認できませんでした。"); e.status = res.status; throw e; }
-  await updateCollection((s) => ({
-    ...s,
-    tickets: Number.isSafeInteger(data.tickets) ? data.tickets : s.tickets,
-    gems: Number.isSafeInteger(data.gems) ? data.gems : s.gems || 0,
-    gemsPaid: Number.isSafeInteger(data.gemsPaid) ? data.gemsPaid : s.gemsPaid || 0,
-    gemsFree: Number.isSafeInteger(data.gemsFree) ? data.gemsFree : s.gemsFree || 0,
-    entitlements: Array.isArray(data.entitlements) ? data.entitlements : s.entitlements || [],
-  }));
+  await updateCollection((s) => {
+    const next = {
+      ...s,
+      tickets: Number.isSafeInteger(data.tickets) ? data.tickets : s.tickets,
+      gems: Number.isSafeInteger(data.gems) ? data.gems : s.gems || 0,
+      gemsPaid: Number.isSafeInteger(data.gemsPaid) ? data.gemsPaid : s.gemsPaid || 0,
+      gemsFree: Number.isSafeInteger(data.gemsFree) ? data.gemsFree : s.gemsFree || 0,
+      entitlements: Array.isArray(data.entitlements) ? data.entitlements : s.entitlements || [],
+    };
+    // 初課金特典のスキン(サーバーが初回と判定したときだけ・一度きり)。2倍ジェムはサーバーで反映済み
+    if (data.firstPurchase && data.firstSkin && !(next.owned || {})[data.firstSkin])
+      next.owned = { ...(next.owned || {}), [data.firstSkin]: 1 };
+    return next;
+  });
   return data;
 }
 
-/** 控えてある取引を送り直す。通ったものと、二度と通らないもの(400)は控えから消す */
+/**
+ * 控えてある取引を送り直す。通ったものと、二度と通らないもの(400)は控えから消す。
+ * 初課金特典が確定したら、その情報を返す(呼ぶ側が知らせに使う)
+ */
 export async function flushPurchases() {
   let list = readPending();
+  let firstPurchase = null;
   for (const ev of [...list]) {
     try {
-      await verifyOnServer(ev.jws);
+      const data = await verifyOnServer(ev.jws);
+      if (data && data.firstPurchase) firstPurchase = { skin: data.firstSkin || null };
       list = list.filter((x) => x.jws !== ev.jws); writePending(list);
     } catch (e) {
       if (e.status === 400) { list = list.filter((x) => x.jws !== ev.jws); writePending(list); }
       else break;
     }
   }
+  return { firstPurchase };
 }
 
 /** 買う。ユーザーが取り消したら null。通れば財布の反映結果 */
@@ -103,10 +115,10 @@ export async function buy(productId) {
   if (!tx || !tx.jwsRepresentation) throw new Error("購入の記録を受け取れませんでした。");
   // 先に控えてから送る。送る途中で落ちても、次に開いたとき送り直せる
   writePending([...readPending(), { jws: tx.jwsRepresentation, at: Date.now() }]);
-  await flushPurchases();
+  const { firstPurchase } = await flushPurchases();
   return readPending().some((x) => x.jws === tx.jwsRepresentation)
-    ? { pending: true }
-    : { pending: false };
+    ? { pending: true, firstPurchase }
+    : { pending: false, firstPurchase };
 }
 
 /** 購入を復元する(買い切りの権利。機種変更や再インストールのあと) */

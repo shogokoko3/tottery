@@ -13,18 +13,25 @@ import {
   allCleared,
   allFlipped,
   canClaim,
+  cycleDone,
   flipAll,
   markAssembled,
   rewardSkin,
+  startNewCycle,
   statusOf,
   toggleFlip,
 } from "../game/battlepass.js";
 import { getPass, updatePass, usePass } from "../game/battlepass-store.js";
 import { claimSpecial } from "../skins/collection.js";
 import { useCollection } from "../skins/store.js";
-import { BATTLEPASS_ENTITLEMENT, BATTLEPASS_GEMS, BATTLEPASS_COMPLETE_GEMS } from "../iap/catalog.js";
+import {
+  BATTLEPASS_ENTITLEMENT,
+  BATTLEPASS_GEMS,
+  BATTLEPASS_TICKETS_PER_CYCLE,
+  BATTLEPASS_CYCLES_PER_WEEK,
+} from "../iap/catalog.js";
 import { shopAvailable } from "../net/iap.js";
-import { WALLET_SERVER, buyPassWithGems, earnGems, newEventId, syncWallet } from "../net/wallet.js";
+import { WALLET_SERVER, buyPassWithGems, newEventId, syncWallet } from "../net/wallet.js";
 import { GemShop } from "./gem-shop.jsx";
 import { Capacitor } from "@capacitor/core";
 import { updateCollection } from "../skins/store.js";
@@ -44,9 +51,12 @@ export function BattlePassScreen({ onBack, onSkins }) {
   const [shop, setShop] = useState(false);
   const [buying, setBuying] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [message, setMessage] = useState("");
   const [animationReady, setAnimationReady] = useState(false);
   const [showConditions, setShowConditions] = useState(false);
+  // 今週まだバトルパスで受け取れるチケット枚数(サーバーが数える)。周回の残り回数に使う
+  const [passLeft, setPassLeft] = useState(null);
   const claiming = useRef(false);
   const attempted = useRef(false);
   const mounted = useRef(false);
@@ -55,8 +65,13 @@ export function BattlePassScreen({ onBack, onSkins }) {
   const rows = CELLS.map((c) => statusOf(c, pass));
   const done = rows.filter((c) => c.cleared).length;
   const turned = rows.filter((c) => c.flipped).length;
-  const pending = allFlipped(pass) && !pass.assembled && !pass.claimed;
-  const assembled = pass.assembled || pass.claimed;
+  // スキンの完成(めくり・並び替え)は1周目だけ。2周目以降は盤を埋めるだけ
+  const firstCycle = (pass.cycle || 1) < 2;
+  const pending = firstCycle && allFlipped(pass) && !pass.assembled && !pass.claimed;
+  const assembled = firstCycle && (pass.assembled || pass.claimed);
+  // 今週あと何周できるか(1周=24枚)。null は未取得
+  const cyclesLeft =
+    passLeft == null ? null : Math.floor(passLeft / BATTLEPASS_TICKETS_PER_CYCLE);
 
   useEffect(() => {
     mounted.current = true;
@@ -65,21 +80,20 @@ export function BattlePassScreen({ onBack, onSkins }) {
     };
   }, []);
 
-  // 店が出せる端末(iOS)か。開いたら残高を取り直す
+  // 店が出せる端末(iOS)か。開いたら残高と、今週あと何枚受け取れるかを取り直す
   useEffect(() => {
     let alive = true;
     shopAvailable().then((ok) => alive && setShopOk(ok));
-    syncWallet().catch(() => {});
+    syncWallet()
+      .then((d) => {
+        if (alive && d && Number.isSafeInteger(d.passTicketsLeftThisWeek))
+          setPassLeft(d.passTicketsLeftThisWeek);
+      })
+      .catch(() => {});
     return () => {
       alive = false;
     };
   }, []);
-
-  // 25マスをそろえたら無償ジェム。id は盤の版で決まるので、何度開いても一度しか効かない
-  useEffect(() => {
-    if (!allCleared(pass) || !BATTLEPASS_COMPLETE_GEMS) return;
-    earnGems(`bp:complete:v${pass.version || 3}`, BATTLEPASS_COMPLETE_GEMS).catch(() => {});
-  }, [pass]);
 
   // ジェムでバトルパスを買う(サーバーで減らして権利をつける)。足りなければ店を開く
   const purchase = useCallback(async () => {
@@ -99,6 +113,29 @@ export function BattlePassScreen({ onBack, onSkins }) {
       if (mounted.current) setBuying(false);
     }
   }, [buying, shopOk]);
+
+  // 次の周へ。今週の残枠(サーバーが正)を確かめてから盤をリセットする
+  const nextCycle = useCallback(async () => {
+    if (switching) return;
+    setSwitching(true);
+    setMessage("");
+    try {
+      const d = await syncWallet().catch(() => null);
+      const left =
+        d && Number.isSafeInteger(d.passTicketsLeftThisWeek)
+          ? d.passTicketsLeftThisWeek
+          : 0;
+      if (mounted.current) setPassLeft(left);
+      if (left < BATTLEPASS_TICKETS_PER_CYCLE) {
+        if (mounted.current)
+          setMessage("今週の周回(3回)を使い切りました。来週また挑戦できます。");
+        return;
+      }
+      updatePass(startNewCycle);
+    } finally {
+      if (mounted.current) setSwitching(false);
+    }
+  }, [switching]);
 
   // 最後の札のめくりを見せてから、同じ25片の並び替えへつなぐ。
   useEffect(() => {
@@ -146,13 +183,13 @@ export function BattlePassScreen({ onBack, onSkins }) {
   }, []);
 
   function flip(id) {
-    if (pending || assembled) return;
+    if (pending || assembled || !firstCycle) return;
     unlockAudio();
     updatePass((s) => toggleFlip(s, id));
   }
 
   function flipCompleted() {
-    if (pending || assembled) return;
+    if (pending || assembled || !firstCycle) return;
     unlockAudio();
     updatePass((s) => flipAll(s, turned < done));
   }
@@ -162,19 +199,50 @@ export function BattlePassScreen({ onBack, onSkins }) {
       <h2>バトルパス</h2>
       <p className="hint">
         相手の駒を取ると、真ん中のとなりのマスから埋まっていきます。
-        めくるとランダムな絵の欠片が現れます。25マスすべてを開くと魔法で並び替わり、絵が完成してスキンを獲得できます。
+        マスをクリアするたびにガチャチケットが1枚（1周＝{BATTLEPASS_TICKETS_PER_CYCLE}枚）。
+        {firstCycle
+          ? "25マスすべてを開くと魔法で並び替わり、1周目は完成でスキンを獲得します。"
+          : "盤を埋めると次の周へ進めます。"}
       </p>
       <p className="pass-reward">
-        <Sparkle size={16} /> コンプリート報酬
-        <strong>A専用スキン「{skin.name}」</strong>
+        <Sparkle size={16} /> 各マスでチケット1枚
+        {firstCycle && <strong>・1周目の完成でA専用スキン「{skin.name}」</strong>}
       </p>
+      {!owned && (
+        <div className="pass-purchase">
+          <p className="hint">
+            バトルパスを購入すると解放されます。いまのジェム {collection.gems || 0}。
+          </p>
+          <button
+            className="btn btn-primary btn-wide"
+            disabled={buying}
+            onClick={purchase}
+          >
+            バトルパスを購入（{BATTLEPASS_GEMS}ジェム）
+          </button>
+          {shopOk && (
+            <button
+              className="btn btn-ghost"
+              disabled={buying}
+              onClick={() => setShop(true)}
+            >
+              ジェムを買う
+            </button>
+          )}
+        </div>
+      )}
       <div className="pass-counts">
         <span>
           クリア <b>{done}</b>/{CELLS.length}
         </span>
-        <span>
-          めくった <b>{assembled ? CELLS.length : turned}</b>/{CELLS.length}
-        </span>
+        {firstCycle ? (
+          <span>
+            めくった <b>{assembled ? CELLS.length : turned}</b>/{CELLS.length}
+          </span>
+        ) : (
+          <span>{pass.cycle}周目</span>
+        )}
+        {owned && cyclesLeft != null && <span>今週あと{cyclesLeft}周</span>}
       </div>
       {pending && animationReady ? (
         <BattlePassMagic
@@ -218,7 +286,7 @@ export function BattlePassScreen({ onBack, onSkins }) {
                 key={c.id}
                 aria-label={label}
                 title={label}
-                disabled={!c.cleared || pending || assembled}
+                disabled={!c.cleared || pending || assembled || !firstCycle}
                 onClick={() => flip(c.id)}
               >
                 {/* 表は条件、裏は絵柄の一片。押すとくるっと回って入れ替わる */}
@@ -230,7 +298,7 @@ export function BattlePassScreen({ onBack, onSkins }) {
                         {c.now}/{c.goal}
                       </span>
                     )}
-                    {c.cleared && !c.free && !assembled && (
+                    {c.cleared && !c.free && !assembled && firstCycle && (
                       <span className="pass-turn">めくる</span>
                     )}
                     {!c.cleared && (
@@ -257,6 +325,7 @@ export function BattlePassScreen({ onBack, onSkins }) {
           </button>
         </div>
       ) : (
+        firstCycle &&
         done > 1 &&
         !pending && (
           <div className="pass-actions">
@@ -317,6 +386,25 @@ export function BattlePassScreen({ onBack, onSkins }) {
         <button className="btn btn-primary btn-wide" onClick={onSkins}>
           スキン画面でAに装備する
         </button>
+      )}
+      {owned && cycleDone(pass) && (
+        <div className="pass-purchase">
+          {cyclesLeft === 0 ? (
+            <p className="hint">
+              今週の周回（{BATTLEPASS_CYCLES_PER_WEEK}回）を使い切りました。来週また挑戦できます。
+            </p>
+          ) : (
+            <button
+              className="btn btn-primary btn-wide"
+              disabled={switching}
+              onClick={nextCycle}
+            >
+              {switching
+                ? "次の周を用意しています…"
+                : `次の周へ（チケット${BATTLEPASS_TICKETS_PER_CYCLE}枚）`}
+            </button>
+          )}
+        </div>
       )}
       <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る

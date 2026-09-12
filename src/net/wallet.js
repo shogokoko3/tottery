@@ -65,17 +65,19 @@ export async function flushPending() {
   let list = readPending();
   for (const ev of [...list]) {
     try {
-      // チケットは earn、無償ジェムは earn-gems
+      // チケットは earn、無償ジェムは earn-gems、バトルパスのマス報酬は pass-reward
       await mirror(
-        ev.gems
-          ? await walletRequest("earn-gems", { id: ev.id, gems: ev.gems })
-          : await walletRequest("earn", { id: ev.id, n: ev.n }),
+        ev.pass
+          ? await walletRequest("pass-reward", { id: ev.id })
+          : ev.gems
+            ? await walletRequest("earn-gems", { id: ev.id, gems: ev.gems })
+            : await walletRequest("earn", { id: ev.id, n: ev.n }),
       );
       list = list.filter((x) => x.id !== ev.id);
       writePending(list);
     } catch (e) {
-      // 上限や形の誤りで拒まれたものは捨てる(残しても二度と通らない)。通信の失敗は残す
-      if (/これ以上|正しくありません|他の人/.test(e.message)) { list = list.filter((x) => x.id !== ev.id); writePending(list); }
+      // 上限・形の誤り・パスの週上限や未所持で拒まれたものは捨てる(残しても二度と通らない)。通信の失敗は残す
+      if (/これ以上|正しくありません|他の人|上限|持っていません/.test(e.message)) { list = list.filter((x) => x.id !== ev.id); writePending(list); }
       else break;
     }
   }
@@ -96,6 +98,17 @@ export async function earnTickets(id, n) {
   if (!WALLET_SERVER || !Number.isSafeInteger(n) || n <= 0) return;
   const list = readPending();
   if (!list.some((x) => x.id === id)) writePending([...list, { id, n, at: Date.now() }]);
+  await flushPending().catch(() => {});
+}
+
+/**
+ * バトルパスのマスをクリアした報酬(チケット1枚)。所持者だけ・週72枚まで(サーバーが数える)。
+ * id は「周と マス」で決まる形(bp:pass:<周>:<マスid>)。同じ id は二度効かない。圏外なら控えて後で送る
+ */
+export async function earnPassTicket(id) {
+  if (!WALLET_SERVER) return;
+  const list = readPending();
+  if (!list.some((x) => x.id === id)) writePending([...list, { id, pass: true, at: Date.now() }]);
   await flushPending().catch(() => {});
 }
 

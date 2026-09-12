@@ -17,7 +17,7 @@ import { CompactSign } from "jose";
 import { Wallet, MIGRATE_TICKETS_MAX, EARN_DAILY_MAX } from "../src/server/wallet.js";
 import { verifyAppleTransaction } from "../src/server/applejws.js";
 import { APPLE_ROOT_G3_PEM } from "../src/server/apple-root-g3.js";
-import { BUNDLE_ID, PRODUCTS, GEM_PACKS, GEM_CONSUME_ORDER, FREE_GEM_EVENT_MAX, FREE_GEM_DAILY_MAX, ADS_PER_DAY, BATTLEPASS_ENTITLEMENT } from "../src/iap/catalog.js";
+import { BUNDLE_ID, PRODUCTS, GEM_PACKS, GEM_CONSUME_ORDER, FREE_GEM_EVENT_MAX, FREE_GEM_DAILY_MAX, ADS_PER_DAY, BATTLEPASS_ENTITLEMENT, BATTLEPASS_GEMS, BATTLEPASS_WEEK_TICKET_MAX, BATTLEPASS_TICKETS_PER_CYCLE, FIRST_PURCHASE_SKIN } from "../src/iap/catalog.js";
 
 let ok = 0; const fails = [];
 const is = (label, got, want) => {
@@ -66,23 +66,56 @@ is("有償は 0 のまま", pick(w.summary("A")).paid, 0);
 console.log("\nジェムの購入(おまけは無償)と使う順");
 const PACK = GEM_PACKS[1]; // 600円のパック。おまけ(free)は catalog から取る(数字が変わっても壊れない)
 const tx = { transactionId: "1000000123", productId: PACK.id, environment: "Production", purchaseDate: T };
-is("600のパックで 有償600 + おまけ(無償)", (() => { const r = w.purchase("A", tx, T); return { paid: r.gemsPaid, free: r.gemsFree }; })(), { paid: PACK.paid, free: EARNED_FREE + PACK.free });
+// 初課金特典: uid "A" は初めての有料購入なので、購入ジェムを2倍(2倍分は無償)＋スキンのフラグ
+const FIRST_BONUS = PACK.paid;
+is("初課金は購入ジェム2倍(おまけは無償)＋スキンのフラグ", (() => { const r = w.purchase("A", tx, T); return { paid: r.gemsPaid, free: r.gemsFree, first: r.firstPurchase, skin: r.firstSkin }; })(), { paid: PACK.paid, free: EARNED_FREE + PACK.free + FIRST_BONUS, first: true, skin: FIRST_PURCHASE_SKIN });
 is("同じ取引を送り直しても二重に加算されない", w.purchase("A", tx, T).duplicate, true);
 is("同じ取引を別の uid で出しても渡らない(世界で一度)", w.purchase("B", tx, T).gems, 0);
 await throws("知らない商品は拒む", () => w.purchase("A", { ...tx, transactionId: "1", productId: "x" }, T), /知らない商品/);
 const beforeT = w.balance("A");
 // 10枚=100ジェムは無償から先に減る
-const freeAfterEx = EARNED_FREE + PACK.free - 100;
+const freeAfterEx = EARNED_FREE + PACK.free + FIRST_BONUS - 100;
 is("両替は無償から先に減る", pick(w.exchange("A", "x-1", 10, T)), { tickets: beforeT + 10, gems: PACK.paid + freeAfterEx, paid: PACK.paid, free: freeAfterEx });
 is("同じ両替は二度効かない", w.exchange("A", "x-1", 10, T).applied, false);
-// バトルパス600: まず無償を使い切り、足りない分を有償から(1つの出来事)
-const paidAfterPass = PACK.paid - (600 - freeAfterEx);
+// バトルパス(BATTLEPASS_GEMS): まず無償を使い切り、足りない分を有償から(1つの出来事)
+const paidAfterPass = PACK.paid - (BATTLEPASS_GEMS - freeAfterEx);
 is("無償で足りない分は有償から、1つの出来事で", (() => { const r = w.buyPass("A", "p-1", T); return { ...pick(r), ent: r.entitlements }; })(), { tickets: beforeT + 10, gems: paidAfterPass, paid: paidAfterPass, free: 0, ent: [BATTLEPASS_ENTITLEMENT] });
 is("既に持っていれば減らさない", w.buyPass("A", "p-2", T).gems, paidAfterPass);
 await throws("合計が足りなければ両替は失敗し", () => w.exchange("A", "x-2", 100, T), /ジェムが足りません/);
 is("失敗した両替でどちらも動かない", pick(w.summary("A")), { tickets: beforeT + 10, gems: paidAfterPass, paid: paidAfterPass, free: 0 });
 is("使う順は無償→有償", GEM_CONSUME_ORDER, ["free", "paid"]);
 is("未使用残高は有償だけを数える(無償は別枠)", (() => { const u = w.unused(); return { unused: u.unusedGems, free: u.unusedFreeGems, issued: u.issuedGems, used: u.usedGems, over: u.over }; })(), { unused: paidAfterPass, free: 0, issued: PACK.paid, used: PACK.paid - paidAfterPass, over: false });
+
+console.log("\n初課金特典は初回だけ(2回目には付かない)");
+{
+  const D = new DatabaseSync(":memory:");
+  const w2 = new Wallet((q, ...a) => D.prepare(q).all(...a));
+  const b = GEM_PACKS[0]; // 120円
+  const p1 = w2.purchase("F", { transactionId: "f1", productId: b.id, environment: "Production", purchaseDate: T }, T);
+  is("初回は2倍(おまけ無償)＋フラグ", { paid: p1.gemsPaid, free: p1.gemsFree, first: p1.firstPurchase }, { paid: b.paid, free: b.free + b.paid, first: true });
+  // 戻り値は残高なので、2回目は差分で見る(特典が付かない=無償が増えないこと)
+  const before2 = w2.summary("F");
+  const p2 = w2.purchase("F", { transactionId: "f2", productId: b.id, environment: "Production", purchaseDate: T }, T);
+  is("2回目は等倍・特典なし", { dPaid: p2.gemsPaid - before2.gemsPaid, dFree: p2.gemsFree - before2.gemsFree, first: p2.firstPurchase, skin: p2.firstSkin }, { dPaid: b.paid, dFree: b.free, first: false, skin: null });
+}
+
+console.log("\nバトルパスのマス報酬(所持者だけ・週72枚・週で戻る)");
+{
+  const D = new DatabaseSync(":memory:");
+  const w2 = new Wallet((q, ...a) => D.prepare(q).all(...a));
+  await throws("持っていないと受け取れない", () => w2.passReward("Z", "bp:pass:1:0-1", T), /バトルパス/);
+  w2.purchase("Z", { transactionId: "z1", productId: GEM_PACKS[5].id, environment: "Production", purchaseDate: T }, T);
+  w2.buyPass("Z", "pz", T);
+  const before = w2.balance("Z");
+  is("マス報酬はチケット1枚", w2.passReward("Z", "bp:pass:1:0-1", T).tickets, before + 1);
+  is("同じマスは二度効かない", w2.passReward("Z", "bp:pass:1:0-1", T).applied, false);
+  let n = 1;
+  while (n < BATTLEPASS_WEEK_TICKET_MAX) { w2.passReward("Z", `bp:pass:9:c${n}`, T); n++; }
+  is("週の上限(72枚=3周)まで受け取れる", w2.passTicketsThisWeek("Z", T), BATTLEPASS_WEEK_TICKET_MAX);
+  await throws("週の上限を超えない", () => w2.passReward("Z", "bp:pass:9:over", T), /上限/);
+  const nextWeek = T + 7 * 24 * 3600 * 1000;
+  is("翌週はまた受け取れる", w2.passReward("Z", "bp:pass:10:0-1", nextWeek).applied, true);
+}
 
 console.log("\n広告リワード(1日 ADS_PER_DAY 回・チケット1枚)");
 {

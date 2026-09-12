@@ -3,10 +3,34 @@
  *
  * 盤が変わるたびに前後を見比べる。同じ盤面を二度数えないよう、
  * reducer の seq を目印にする。チュートリアルでは進めない。
+ * バトルパスを買っていない人は進めない(購入で解放)。新しくクリアしたマスは
+ * その周・そのマスで冪等なチケット1枚を財布へ送る(周72枚まではサーバーが数える)。
  */
 import { useEffect, useRef } from "react";
-import { applyCaptures, capturedIn } from "../game/battlepass.js";
+import { Capacitor } from "@capacitor/core";
+import { applyCaptures, capturedIn, untickedCells, markTicketed } from "../game/battlepass.js";
 import { updatePass } from "../game/battlepass-store.js";
+import { getCollection } from "../skins/store.js";
+import { WALLET_SERVER, earnPassTicket } from "../net/wallet.js";
+import { BATTLEPASS_ENTITLEMENT } from "../iap/catalog.js";
+
+/** バトルパスを持っているか。店の無い環境(Web)は今まで通り解放(行き止まりにしない) */
+function passOwned() {
+  return (
+    !WALLET_SERVER ||
+    !Capacitor.isNativePlatform() ||
+    (getCollection().entitlements || []).includes(BATTLEPASS_ENTITLEMENT)
+  );
+}
+
+/** 新しくクリアしたマスのチケットを財布へ送り、印を付ける */
+function awardTickets(state) {
+  const ids = untickedCells(state);
+  if (!ids.length) return;
+  for (const cellId of ids)
+    earnPassTicket(`bp:pass:${state.cycle}:${cellId}`).catch(() => {});
+  updatePass((s) => markTicketed(s, ids));
+}
 
 export function useBattlePass(state, viewer, disabled) {
   const before = useRef(state);
@@ -19,6 +43,9 @@ export function useBattlePass(state, viewer, disabled) {
     const taken = capturedIn(prev, state, viewer);
     if (!taken) return;
     seen.current = state.seq;
-    updatePass((s) => applyCaptures(s, taken));
+    // 買っていない人は進めない(購入で解放)
+    if (!passOwned()) return;
+    const next = updatePass((s) => applyCaptures(s, taken));
+    awardTickets(next);
   }, [state, viewer, disabled]);
 }

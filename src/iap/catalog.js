@@ -32,14 +32,24 @@ export const GEM_PACKS = [
 export const GEM_CONSUME_ORDER = ["free", "paid"];
 /** ゲーム内の値付け(ジェム)。目安 */
 export const GEM_PER_TICKET = 10;
-export const BATTLEPASS_GEMS = 600;
+/** バトルパス。1,500ジェムで買い切り解放・周回制(2026-09-13 本人の決め) */
+export const BATTLEPASS_GEMS = 1500;
 /** 買い切りの権利の名前(App Store の商品ではない。ジェムで買う) */
 export const BATTLEPASS_ENTITLEMENT = "battlepass";
+/**
+ * バトルパスの周回とチケット。買うと解放。各マスクリアでチケット1枚(1周=24枚)、毎周。
+ * 周回は1週間(UTC月曜始まり)に3回まで=チケット週72枚まで。1周目の完成だけ限定スキン。
+ * 24 は盤の埋めるマス数(5×5から真ん中1つを除く)。tools/check-battlepass.mjs が盤と一致を見張る
+ */
+export const BATTLEPASS_TICKETS_PER_CYCLE = 24;
+export const BATTLEPASS_CYCLES_PER_WEEK = 3;
+export const BATTLEPASS_WEEK_TICKET_MAX =
+  BATTLEPASS_TICKETS_PER_CYCLE * BATTLEPASS_CYCLES_PER_WEEK;
+/** 初課金特典: 初めての有料購入だけ、購入ジェムを2倍(おまけは無償)＋このスキン */
+export const FIRST_PURCHASE_SKIN = "pegasus-knight";
 /** 無償ジェムの獲得(端末の申告)の上限。1回と1日(UTC) */
 export const FREE_GEM_EVENT_MAX = 100;
 export const FREE_GEM_DAILY_MAX = 500; // ミッション等の正規の受け取りが1日で詰まらない量
-/** バトルパスの25マスをそろえたときの無償ジェム。目安 */
-export const BATTLEPASS_COMPLETE_GEMS = 60;
 /** 広告リワード: 広告を1本見るとガチャ1回ぶん(チケット1枚)。1日3回まで */
 export const ADS_PER_DAY = 3;
 export const AD_REWARD_TICKETS = 1;

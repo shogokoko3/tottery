@@ -14,18 +14,23 @@ const {
   capturedIn,
   cellById,
   centerId,
+  cycleDone,
   flipAll,
   gainOf,
   markAssembled,
+  markTicketed,
   normalize,
   openCells,
   rewardSkin,
+  startNewCycle,
   statusOf,
   toggleFlip,
+  untickedCells,
 } = await import("../src/game/battlepass.js");
 const { claimSpecial, normalize: normalizeCollection } =
   await import("../src/skins/collection.js");
 const { POOL } = await import("../src/skins/catalog.js");
+const { BATTLEPASS_TICKETS_PER_CYCLE } = await import("../src/iap/catalog.js");
 
 let ok = 0;
 const fails = [];
@@ -88,7 +93,7 @@ const hasEveryPiece = (order) =>
   JSON.stringify(CELLS.map((_, i) => i));
 const allMisplaced = (order) => order.every((piece, i) => piece !== i);
 const initialOrder = [...s.puzzleOrder];
-is("保存はv3", s.version, 3);
+is("保存はv4", s.version, 4);
 is("初回の絵片に重複・欠落がない", hasEveryPiece(s.puzzleOrder), true);
 is("初回は全25片が正位置と異なる", allMisplaced(s.puzzleOrder), true);
 is("初回は絵が未完成", s.assembled, false);
@@ -372,6 +377,31 @@ is(
   [null, null],
 );
 
+console.log("周回制(チケット対象・次の周・完了)");
+{
+  let s = normalize(null);
+  for (const c of CELLS) if (!c.free) s = { ...s, cleared: [...s.cleared, c.id] };
+  s = normalize(s);
+  is("埋めるマス(チケット対象)は24", CELLS.filter((c) => !c.free).length, 24);
+  is("catalog のチケット/周が盤の埋めるマス数と一致", BATTLEPASS_TICKETS_PER_CYCLE, CELLS.filter((c) => !c.free).length);
+  is("クリア済みは全部チケット対象(真ん中は除く)", untickedCells(s).length, 24);
+  const marked = markTicketed(s, untickedCells(s));
+  is("印を付けると対象が無くなる", untickedCells(marked).length, 0);
+  is("1周目はスキン受取で完了", cycleDone({ ...marked, cycle: 1, claimed: true }), true);
+  is("1周目はスキン未受取だと未完了", cycleDone({ ...marked, cycle: 1, claimed: false }), false);
+  const next = normalize(startNewCycle({ ...marked, cycle: 1, claimed: true }));
+  is("次の周で周が進む", next.cycle, 2);
+  is("次の周で盤はまっさら(真ん中だけ)", next.cleared, [centerId]);
+  is("次の周でチケット対象もまっさら", next.ticketed, []);
+  is("次の周でもスキン受取は保つ", next.claimed, true);
+  is("2周目は完成扱いにしない(また遊べる)", next.assembled, false);
+  let s2 = next;
+  for (const c of CELLS) if (!c.free) s2 = { ...s2, cleared: [...s2.cleared, c.id] };
+  s2 = normalize(s2);
+  is("2周目は全マスクリアで完了", cycleDone(s2), true);
+  is("2周目でもチケット対象は24", untickedCells(s2).length, 24);
+}
+
 console.log("実ストアの初回保存・別タブ・保存失敗");
 const oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
 const oldStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
@@ -421,7 +451,7 @@ try {
   );
   const firstRead = a.getPass();
   is(
-    "初回読込でv3と絵片の順序を永続化",
+    "初回読込でv4と絵片の順序を永続化",
     JSON.parse(storage.get(a.PASS_KEY)),
     firstRead,
   );

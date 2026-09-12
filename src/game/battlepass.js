@@ -133,23 +133,65 @@ export function normalize(raw) {
   // 真ん中は最初から空いている
   const cleared = new Set([centerId, ...keep(v.cleared)]);
   const flipped = new Set(keep(v.flipped).filter((id) => cleared.has(id)));
+  // チケットを渡したマス(真ん中は対象外)。クリア済みの範囲だけ残す
+  const ticketed = new Set(
+    keep(v.ticketed).filter((id) => id !== centerId && cleared.has(id)),
+  );
   // 旧報酬(報酬IDの無いv1はKの天使)の受取済みでは、新報酬を塞がない。
   const claimed = v.rewardId === REWARD_SKIN && v.claimed === true;
+  // 何周目か(周回制、1始まり)。壊れていれば1
+  const cycle = Number.isSafeInteger(v.cycle) && v.cycle >= 1 ? v.cycle : 1;
   return {
-    version: 3,
+    version: 4,
     rewardId: REWARD_SKIN,
+    cycle,
     progress,
     cleared: [...cleared],
     flipped: [...flipped],
+    ticketed: [...ticketed],
     puzzleOrder: validPuzzleOrder(v.puzzleOrder)
       ? [...v.puzzleOrder]
       : newPuzzleOrder(),
     // v2では受取後にも条件へ戻せた。受取済みならめくり数によらず完成扱い。
+    // ただし完成扱いにするのは1周目だけ。2周目以降はスキンが無く、盤はまた遊べる
     assembled:
-      claimed || (v.assembled === true && flipped.size === CELLS.length),
+      (cycle < 2 && claimed) ||
+      (v.assembled === true && flipped.size === CELLS.length),
     claimed,
   };
 }
+
+/**
+ * まだチケットを渡していない、クリア済みのマス(真ん中は対象外)。
+ * 呼ぶ側が earnPassTicket で財布へ送り、markTicketed で印を付ける。
+ */
+export function untickedCells(state) {
+  const ticketed = new Set(state.ticketed || []);
+  return state.cleared.filter((id) => id !== centerId && !ticketed.has(id));
+}
+/** チケットを渡したマスに印を付ける */
+export function markTicketed(state, ids) {
+  return { ...state, ticketed: [...new Set([...(state.ticketed || []), ...ids])] };
+}
+/**
+ * 次の周へ。盤をまっさらにして周を1つ進める。スキンの受取済み(claimed)は保つ
+ * (スキンは1周目だけ)。呼ぶ側が「今週まだ周回できるか」を確かめてから使う。
+ */
+export function startNewCycle(state) {
+  return {
+    ...state,
+    cycle: (state.cycle || 1) + 1,
+    progress: {},
+    cleared: [centerId],
+    flipped: [],
+    ticketed: [],
+    assembled: false,
+    puzzleOrder: newPuzzleOrder(),
+  };
+}
+/** その周を遊び切ったか。1周目はスキン受取まで、2周目以降は全マスクリアで完了 */
+export const cycleDone = (state) =>
+  (state.cycle || 1) >= 2 ? allCleared(state) : state.claimed === true;
 
 /** 縦横に隣り合うか */
 const adjacent = (a, b) =>

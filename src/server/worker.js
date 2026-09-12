@@ -118,6 +118,9 @@ async function handleApi(request, env, url) {
           return call("wallet-exchange", { id: body.id, tickets: body.tickets });
         if (wop === "buy-pass" && eventId(body.id))
           return call("wallet-buypass", { id: body.id });
+        // バトルパスのマスをクリアした報酬(チケット1枚)。所持者だけ・週の上限はサーバーが数える
+        if (wop === "pass-reward" && eventId(body.id))
+          return call("wallet-pass-reward", { id: body.id });
         // 広告を1本見た報酬(チケット1枚)。1日の上限はサーバーが数える
         if (wop === "ad-reward" && eventId(body.id))
           return call("wallet-ad-reward", { id: body.id });
@@ -231,6 +234,7 @@ export class SeasonLedger {
         if (op === "wallet-earn-gems") return w.earnGems(uid, args.id, args.gems, now);
         if (op === "wallet-exchange") return w.exchange(uid, args.id, args.tickets, now);
         if (op === "wallet-buypass") return w.buyPass(uid, args.id, now);
+        if (op === "wallet-pass-reward") return w.passReward(uid, args.id, now);
         if (op === "wallet-ad-reward") return w.adReward(uid, args.id, now);
         if (op === "admin-unused" && uid === OPERATOR_UID) return w.unused();
         if (op === "claim") {
