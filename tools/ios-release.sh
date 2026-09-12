@@ -8,6 +8,8 @@ cd "$(dirname "$0")/.."
 PROJ=ios/App/App.xcodeproj
 ARCHIVE=ios/build/App.xcarchive
 EXPORT=ios/build/export
+# Team ID。指定が無ければプロジェクトに書いてあるもの(Xcode が Signing で書き込む)を使う
+APPLE_TEAM_ID="${APPLE_TEAM_ID:-$(sed -n 's/.*DEVELOPMENT_TEAM = \([A-Z0-9]*\);.*/\1/p' "$PROJ/project.pbxproj" | head -1)}"
 : "${APPLE_TEAM_ID:?APPLE_TEAM_ID(Apple Developer の Team ID、10桁)を設定してください}"
 # ビルド番号は時刻から作る(前回より必ず大きくなる)。見た目の版(MARKETING_VERSION)は Xcode の設定のまま
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
