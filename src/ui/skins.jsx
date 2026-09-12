@@ -52,6 +52,7 @@ import {
 import { updateCollection, useCollection } from "../skins/store.js";
 import { WALLET_SERVER, debitTickets, exchangeGems, newEventId, syncWallet, migrateOnce } from "../net/wallet.js";
 import { shopAvailable, flushPurchases } from "../net/iap.js";
+import { adsAvailable, watchAdForTicket } from "../net/ads.js";
 import { GEM_PER_TICKET } from "../iap/catalog.js";
 import { GemShop } from "./gem-shop.jsx";
 import { CardFace } from "./cards.jsx";
@@ -1077,6 +1078,9 @@ export function SkinsScreen({ onBack, onBattlePass }) {
   const [shopOk, setShopOk] = useState(false);
   const [shop, setShop] = useState(null); // null=閉じている / { products }
   const [buying, setBuying] = useState(false);
+  // 広告リワード。iOS で広告が出せるとき、残り回数を出す
+  const [adsOk, setAdsOk] = useState(false);
+  const [adsLeft, setAdsLeft] = useState(null);
   useEffect(() => {
     let alive = true;
     // 開いたら、控えていた購入を送り直し、端末の枚数を一度だけ引き継ぎ、残高を取り直す
@@ -1086,10 +1090,30 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       try { await syncWallet(); } catch { /* 圏外なら写しのまま */ }
     })();
     shopAvailable().then((ok) => alive && setShopOk(ok));
+    adsAvailable().then((ok) => alive && setAdsOk(ok));
+    // 残り回数はサーバーの財布から(端末では数えない)
+    syncWallet()
+      .then((d) => alive && d && Number.isSafeInteger(d.adsLeftToday) && setAdsLeft(d.adsLeftToday))
+      .catch(() => {});
     return () => {
       alive = false;
     };
   }, []);
+  const watchAd = async () => {
+    if (buying) return;
+    setBuying(true);
+    setMessage("");
+    try {
+      const d = await watchAdForTicket();
+      if (d === null) return; // 途中で閉じた
+      if (Number.isSafeInteger(d.adsLeftToday)) setAdsLeft(d.adsLeftToday);
+      setMessage("ガチャチケットを1枚受け取りました。");
+    } catch (e) {
+      setMessage((e && e.message) || "広告を再生できませんでした。");
+    } finally {
+      setBuying(false);
+    }
+  };
   // ジェムでチケットを買う(両替はサーバーで1つの出来事。足りなければ店を開く)
   const buyTickets = async (n) => {
     if (buying) return;
@@ -1334,6 +1358,14 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                     ジェムを買う
                   </button>
                 )}
+              </div>
+            )}
+            {WALLET_SERVER && !FREE_GACHA && adsOk && adsLeft !== 0 && (
+              <div className="skins-shop-row">
+                <button className="skin-btn" disabled={buying || working} onClick={watchAd}>
+                  広告を見てチケット1枚
+                  <span>{adsLeft == null ? "1日3回" : `今日あと${adsLeft}回`}</span>
+                </button>
               </div>
             )}
             <div className="skins-odds">

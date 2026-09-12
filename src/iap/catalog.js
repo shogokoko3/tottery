@@ -40,6 +40,9 @@ export const FREE_GEM_EVENT_MAX = 100;
 export const FREE_GEM_DAILY_MAX = 500; // ミッション等の正規の受け取りが1日で詰まらない量
 /** バトルパスの25マスをそろえたときの無償ジェム。目安 */
 export const BATTLEPASS_COMPLETE_GEMS = 60;
+/** 広告リワード: 広告を1本見るとガチャ1回ぶん(チケット1枚)。1日3回まで */
+export const ADS_PER_DAY = 3;
+export const AD_REWARD_TICKETS = 1;
 
 export const PRODUCTS = GEM_PACKS.map((p) => ({ ...p, kind: "gems", gems: p.paid + p.free }));
 export const PRODUCT_IDS = PRODUCTS.map((p) => p.id);

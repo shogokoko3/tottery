@@ -92,6 +92,7 @@ const bundleOptions = {
   write: false,
   logLevel: "info",
   define: {
+    __ADMOB_REWARDED_ID__: JSON.stringify(process.env.ADMOB_REWARDED_ID || ""),
     __AUDIO_FILES__: JSON.stringify(audioFiles),
     __HONOR_VERSION__: JSON.stringify(honorVersion),
     __FIELD_FILES__: JSON.stringify(fieldFiles),

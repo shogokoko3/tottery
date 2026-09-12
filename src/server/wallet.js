@@ -15,6 +15,8 @@
  */
 import {
   productOf,
+  ADS_PER_DAY,
+  AD_REWARD_TICKETS,
   GEM_PER_TICKET,
   GEM_CONSUME_ORDER,
   BATTLEPASS_GEMS,
@@ -60,8 +62,17 @@ export class Wallet {
   entitlementsOf(uid) {
     return this.sql("SELECT productId FROM entitlements WHERE uid=?", uid).map((r) => r.productId);
   }
-  summary(uid) {
+  /** 今日(UTC)の広告リワードの使用回数 */
+  adsUsedToday(uid, now) {
+    if (!Number.isFinite(now)) return 0;
+    return this.sql(
+      "SELECT COUNT(*) AS n FROM wallet_ledger WHERE uid=? AND kind='ad' AND ref=?",
+      uid, dayOf(now),
+    )[0].n;
+  }
+  summary(uid, now = null) {
     const r = this.row(uid);
+    const used = now == null ? null : this.adsUsedToday(uid, now);
     return {
       tickets: r.tickets,
       gems: r.gems + r.gems_free,
@@ -70,7 +81,23 @@ export class Wallet {
       entitlements: this.entitlementsOf(uid),
       prices: { ticket: GEM_PER_TICKET, battlepass: BATTLEPASS_GEMS },
       consumeOrder: GEM_CONSUME_ORDER,
+      // 広告リワード。now があるときだけ入れる(いつの「今日」か決まらないと数えられない)
+      adPerDay: ADS_PER_DAY,
+      ...(used == null ? {} : { adsUsedToday: used, adsLeftToday: Math.max(0, ADS_PER_DAY - used) }),
     };
+  }
+  /** 広告を1本見た報酬(チケット1枚)。1日 ADS_PER_DAY 回まで。id で冪等 */
+  adReward(uid, id, now) {
+    const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
+    if (seen) {
+      if (seen.uid !== uid) throw new Error("他の人の出来事です。");
+      return { applied: false, ...this.summary(uid, now) };
+    }
+    if (this.adsUsedToday(uid, now) >= ADS_PER_DAY)
+      throw new Error("今日の広告の回数を使い切りました。");
+    // ref=日付にして、その日の回数を数えられるようにする
+    const r = this.apply(uid, id, { tickets: AD_REWARD_TICKETS }, "ad", dayOf(now), now);
+    return { ...r, ...this.summary(uid, now) };
   }
   /** 出来事 id で冪等に増減する。減らす場合は残高を超えない */
   apply(uid, id, { tickets = 0, gemsPaid = 0, gemsFree = 0 }, kind, ref, now) {

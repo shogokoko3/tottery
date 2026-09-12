@@ -19,6 +19,7 @@
     "check:sync": "node tools/check-profile-sync.mjs"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^8.1.0",
     "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor/core": "^8.5.1",
     "@capacitor/ios": "^8.5.1",

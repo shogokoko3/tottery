@@ -17,7 +17,7 @@ import { CompactSign } from "jose";
 import { Wallet, MIGRATE_TICKETS_MAX, EARN_DAILY_MAX } from "../src/server/wallet.js";
 import { verifyAppleTransaction } from "../src/server/applejws.js";
 import { APPLE_ROOT_G3_PEM } from "../src/server/apple-root-g3.js";
-import { BUNDLE_ID, PRODUCTS, GEM_PACKS, GEM_CONSUME_ORDER, FREE_GEM_EVENT_MAX, FREE_GEM_DAILY_MAX, BATTLEPASS_ENTITLEMENT } from "../src/iap/catalog.js";
+import { BUNDLE_ID, PRODUCTS, GEM_PACKS, GEM_CONSUME_ORDER, FREE_GEM_EVENT_MAX, FREE_GEM_DAILY_MAX, ADS_PER_DAY, BATTLEPASS_ENTITLEMENT } from "../src/iap/catalog.js";
 
 let ok = 0; const fails = [];
 const is = (label, got, want) => {
@@ -83,6 +83,25 @@ await throws("合計が足りなければ両替は失敗し", () => w.exchange("
 is("失敗した両替でどちらも動かない", pick(w.summary("A")), { tickets: beforeT + 10, gems: paidAfterPass, paid: paidAfterPass, free: 0 });
 is("使う順は無償→有償", GEM_CONSUME_ORDER, ["free", "paid"]);
 is("未使用残高は有償だけを数える(無償は別枠)", (() => { const u = w.unused(); return { unused: u.unusedGems, free: u.unusedFreeGems, issued: u.issuedGems, used: u.usedGems, over: u.over }; })(), { unused: paidAfterPass, free: 0, issued: PACK.paid, used: PACK.paid - paidAfterPass, over: false });
+
+console.log("\n広告リワード(1日 ADS_PER_DAY 回・チケット1枚)");
+{
+  const D = new DatabaseSync(":memory:");
+  const q = (x, ...a) => D.prepare(x).all(...a);
+  const aw = new Wallet(q);
+  const T0 = 1_800_000_000_000;
+  let left = ADS_PER_DAY;
+  for (let i = 0; i < ADS_PER_DAY; i++) {
+    const r = aw.adReward("Z", `ad${i}`, T0);
+    left--;
+    is(`広告${i + 1}回目でチケット+1・残り${left}`, [r.tickets, r.adsLeftToday], [i + 1, left]);
+  }
+  await throws("1日の上限を超えて配られない", () => aw.adReward("Z", "adX", T0), /使い切りました/);
+  is("同じ id は二度効かない(残り回数も減らない)", aw.adReward("Z", "ad0", T0).applied, false);
+  is("翌日はまた見られる", aw.adReward("Z", "ad-next", T0 + 86_400_000).adsLeftToday, ADS_PER_DAY - 1);
+  is("要約は now 無しだと残り回数を入れない(いつの今日か決まらない)", "adsLeftToday" in aw.summary("Z"), false);
+  is("要約は now 有りだと残り回数を入れる", Number.isSafeInteger(aw.summary("Z", T0).adsLeftToday), true);
+}
 
 console.log("\n端末からの引き継ぎと旧表の移行");
 is("一度だけ引き継ぐ", pick(w.migrate("C", 40, T)).tickets, 40);

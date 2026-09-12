@@ -118,6 +118,9 @@ async function handleApi(request, env, url) {
           return call("wallet-exchange", { id: body.id, tickets: body.tickets });
         if (wop === "buy-pass" && eventId(body.id))
           return call("wallet-buypass", { id: body.id });
+        // 広告を1本見た報酬(チケット1枚)。1日の上限はサーバーが数える
+        if (wop === "ad-reward" && eventId(body.id))
+          return call("wallet-ad-reward", { id: body.id });
         return json({ error: "見つかりません。" }, 404);
       }
       if (url.pathname === "/api/iap/verify") {
@@ -220,7 +223,7 @@ export class SeasonLedger {
           return l.forget(uid);
         }
         const w = this.wallet;
-        if (op === "wallet-summary") return w.summary(uid);
+        if (op === "wallet-summary") return w.summary(uid, now);
         if (op === "wallet-debit") return w.debit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-purchase") return w.purchase(uid, args.tx, now);
@@ -228,6 +231,7 @@ export class SeasonLedger {
         if (op === "wallet-earn-gems") return w.earnGems(uid, args.id, args.gems, now);
         if (op === "wallet-exchange") return w.exchange(uid, args.id, args.tickets, now);
         if (op === "wallet-buypass") return w.buyPass(uid, args.id, now);
+        if (op === "wallet-ad-reward") return w.adReward(uid, args.id, now);
         if (op === "admin-unused" && uid === OPERATOR_UID) return w.unused();
         if (op === "claim") {
           // 初めて受け取るときだけ、報酬のチケットをその場で財布へ(端末を信じない)。
