@@ -13,10 +13,14 @@ import { seasonApiBase } from "./season.js";
 import { updateCollection } from "../skins/store.js";
 import { newEventId } from "./wallet.js";
 
-// Google が公開しているリワード動画のテスト ID。配信前に本番の広告ユニット ID に差し替える
-const TEST_REWARDED_AD_ID = "ca-app-pub-3940256099942544/1712485313";
+// リワード広告のユニット ID(本物)。build.mjs の define で入る
 const AD_UNIT_ID =
-  (typeof __ADMOB_REWARDED_ID__ !== "undefined" && __ADMOB_REWARDED_ID__) || TEST_REWARDED_AD_ID;
+  (typeof __ADMOB_REWARDED_ID__ !== "undefined" && __ADMOB_REWARDED_ID__) ||
+  "ca-app-pub-3940256099942544/1712485313"; // 万一未定義なら Google のテスト ID
+// テスト広告を出すか(既定 true)。App Store 配信ビルドだけ false=本物の広告。
+// 本物のユニット ID のまま isTesting:true にすると、規約違反にならないテスト広告が出る
+const AD_TESTING =
+  typeof __ADMOB_TESTING__ === "undefined" ? true : __ADMOB_TESTING__;
 
 let admob = null;
 let initialized = false;
@@ -63,7 +67,7 @@ export async function watchAdForTicket() {
     earned = true;
   });
   try {
-    await AdMob.prepareRewardVideoAd({ adId: AD_UNIT_ID });
+    await AdMob.prepareRewardVideoAd({ adId: AD_UNIT_ID, isTesting: AD_TESTING });
     await AdMob.showRewardVideoAd();
   } catch {
     await onReward.remove();

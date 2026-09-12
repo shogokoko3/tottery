@@ -92,7 +92,13 @@ const bundleOptions = {
   write: false,
   logLevel: "info",
   define: {
-    __ADMOB_REWARDED_ID__: JSON.stringify(process.env.ADMOB_REWARDED_ID || ""),
+    // リワード広告のユニット ID(本物)。上書きしたいときだけ ADMOB_REWARDED_ID を渡す
+    __ADMOB_REWARDED_ID__: JSON.stringify(
+      process.env.ADMOB_REWARDED_ID || "ca-app-pub-8562097921065694/4541553185",
+    ),
+    // テスト広告を出すか。既定は true(TestFlight・手元は安全にテスト広告)。
+    // App Store 配信ビルドだけ ADMOB_TESTING=false で本物の広告に
+    __ADMOB_TESTING__: JSON.stringify(process.env.ADMOB_TESTING !== "false"),
     __AUDIO_FILES__: JSON.stringify(audioFiles),
     __HONOR_VERSION__: JSON.stringify(honorVersion),
     __FIELD_FILES__: JSON.stringify(fieldFiles),
