@@ -45,6 +45,8 @@ let soundsLoading = false;
 const nodes = new Map();
 /** いま鳴らしている曲 */
 let current = null;
+/** 次の曲の再生開始待ち。この間も現在の曲を鳴らし続ける。 */
+let pendingTrack = null;
 /** 鳴らしたい曲。解錠前はここに溜まる */
 let wanted = null;
 let unlocked = false;
@@ -167,13 +169,21 @@ function stopNode(id) {
 function apply() {
   if (!unlocked) return;
   const target = conf().muted ? null : wanted;
+  if (pendingTrack?.id === target) return;
+  // 素早い画面切替・消音では、古い再生要求を取り消す。
+  if (pendingTrack) {
+    const obsolete = pendingTrack;
+    pendingTrack = null;
+    obsolete.node.el.pause();
+  }
   if (current === target) return;
-  const from = current;
-  current = target;
-  if (from) stopNode(from);
-  if (!current) return;
+  if (!target) {
+    if (current) stopNode(current);
+    current = null;
+    return;
+  }
 
-  const node = nodeFor(current);
+  const node = nodeFor(target);
   if (!node) return;
   clearTimeout(node.stopTimer);
   // ジングルは毎回頭から。ループする曲は前に鳴っていた続きから戻す
@@ -184,9 +194,31 @@ function apply() {
       // まだ読めていないと弾かれることがある。次の再生で頭から鳴る
     }
   }
-  const started = node.el.play();
-  if (started && started.catch) started.catch(() => {});
-  fade(node, node.track.gain, FADE_MS);
+  const request = { id: target, node };
+  pendingTrack = request;
+  const ready = () => {
+    if (pendingTrack !== request) return;
+    pendingTrack = null;
+    const from = current;
+    current = target;
+    fade(node, node.track.gain, FADE_MS);
+    if (from) stopNode(from);
+  };
+  const failed = () => {
+    if (pendingTrack !== request) return;
+    pendingTrack = null;
+    node.el.pause();
+    // 前の曲を維持し、次の再生要求で再試行できるようにする。
+  };
+  try {
+    // play() の解決は「要求を出した時」ではなく実際の再生開始時。
+    // 先に前の曲を止めると、低速回線では読み込み中に無音になる。
+    const started = node.el.play();
+    if (started?.then) started.then(ready, failed);
+    else ready();
+  } catch {
+    failed();
+  }
 }
 
 /**
