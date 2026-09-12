@@ -46,13 +46,13 @@ is("条件の4種がそろっている", Object.keys(KINDS).sort(), ["battles", 
 // 使用頻度→称号/スキン、レベル→チケット/アイコン、対戦回数→チケット、フォイル→称号
 const kinds = (k) => new Set(MISSIONS.filter((m) => m.kind === k).map((m) => m.reward.type));
 is("使用頻度の褒美は称号かスキン", [...kinds("days")].sort(), ["skin", "title"]);
-is("レベルの褒美はチケットかアイコン", [...kinds("level")].sort(), ["icon", "ticket"]);
-is("対戦回数の褒美はチケット", [...kinds("battles")], ["ticket"]);
+is("レベルの褒美はジェムかアイコン", [...kinds("level")].sort(), ["gems", "icon"]);
+is("対戦回数の褒美はジェム", [...kinds("battles")], ["gems"]);
 is("フォイル獲得の褒美は称号", [...kinds("foil")], ["title"]);
 // 褒美の指し先が実在するか
 const missing = MISSIONS.filter((m) => {
   const r = m.reward;
-  if (r.type === "ticket") return !Number.isInteger(r.amount) || r.amount <= 0;
+  if (r.type === "ticket" || r.type === "gems") return !Number.isInteger(r.amount) || r.amount <= 0;
   if (r.type === "title") return !findTitle(r.id);
   if (r.type === "icon") return !ICONS.some((i) => i.id === r.id);
   if (r.type === "skin") return !skinById(r.id);

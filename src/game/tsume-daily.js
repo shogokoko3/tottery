@@ -1,7 +1,7 @@
 import { missionPeriods } from "./periodic-missions.js";
 
 export const TSUME_PARTICIPATION_ETHER = 50;
-export const TSUME_CLEAR_TICKETS = 1;
+export const TSUME_CLEAR_GEMS = 5;
 // 導入前の日付だけは旧方式を維持する。
 const LEGACY_ORDER = Array.from({ length: 10 }, (_, i) => [
   i * 2 + 1,

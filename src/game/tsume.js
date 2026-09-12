@@ -9,7 +9,7 @@ import {
 import {
   requireTsumeDay,
   sanitizeTsumeProgress,
-  TSUME_CLEAR_TICKETS,
+  TSUME_CLEAR_GEMS,
 } from "./tsume-daily.js";
 
 export const TSUME_QUESTIONS = questions;
@@ -183,12 +183,13 @@ export function clearDailyTsume(collection, day, evidence, at = Date.now()) {
   if (!isTsumeAnswer(tsumeQuestion(today.questionId), evidence))
     throw new Error("この回答では、まだクリアになりません。");
   if (receipt.cleared) return collection;
+  const gems = Number.isSafeInteger(collection.gems) ? collection.gems : 0;
+  const gemsFree = Number.isSafeInteger(collection.gemsFree) ? collection.gemsFree : 0;
   return {
     ...collection,
-    tickets: Math.min(
-      Number.MAX_SAFE_INTEGER,
-      collection.tickets + TSUME_CLEAR_TICKETS,
-    ),
+    // クリアで無償ジェム。端末の写しを増やし、サーバーへは画面側が earnGems で送る
+    gems: gems + TSUME_CLEAR_GEMS,
+    gemsFree: gemsFree + TSUME_CLEAR_GEMS,
     tsume: { days: { ...progress.days, [day]: { ...receipt, cleared: true } } },
   };
 }

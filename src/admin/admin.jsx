@@ -103,6 +103,7 @@ const SORTS = {
 function GiftPicker({ gift, onChange, onRemove }) {
   const kinds = [
     ["ticket", "ガチャチケット"],
+    ["gems", "ジェム"],
     ["ether", "エーテル"],
     ["xp", "経験値"],
     ["title", "称号"],

@@ -17,7 +17,7 @@ import { CompactSign } from "jose";
 import { Wallet, MIGRATE_TICKETS_MAX, EARN_DAILY_MAX } from "../src/server/wallet.js";
 import { verifyAppleTransaction } from "../src/server/applejws.js";
 import { APPLE_ROOT_G3_PEM } from "../src/server/apple-root-g3.js";
-import { BUNDLE_ID, PRODUCTS, GEM_PACKS, GEM_CONSUME_ORDER, FREE_GEM_EVENT_MAX, BATTLEPASS_ENTITLEMENT } from "../src/iap/catalog.js";
+import { BUNDLE_ID, PRODUCTS, GEM_PACKS, GEM_CONSUME_ORDER, FREE_GEM_EVENT_MAX, FREE_GEM_DAILY_MAX, BATTLEPASS_ENTITLEMENT } from "../src/iap/catalog.js";
 
 let ok = 0; const fails = [];
 const is = (label, got, want) => {
@@ -53,14 +53,18 @@ console.log("\n無償ジェム(端末の申告)");
 is("無償ジェムを足せる", pick(w.earnGems("A", "g1", 50, T)).free, 50);
 is("同じ id は二度効かない", w.earnGems("A", "g1", 50, T).applied, false);
 await throws("1回の上限を超えない", () => w.earnGems("A", "g2", FREE_GEM_EVENT_MAX + 1, T), /枚数/);
-for (let i = 0; i < 2; i++) w.earnGems("A", `g3${i}`, 100, T);
-await throws("1日の上限を超えない", () => w.earnGems("A", "g4", 100, T), /これ以上/);
+// 1日の上限まで貯める(上限・1回上限の値に依存しないように計算する)
+let earned = 50, k = 0;
+while (earned + FREE_GEM_EVENT_MAX <= FREE_GEM_DAILY_MAX) { w.earnGems("A", `gg${k++}`, FREE_GEM_EVENT_MAX, T); earned += FREE_GEM_EVENT_MAX; }
+if (earned < FREE_GEM_DAILY_MAX) { w.earnGems("A", "gedge", FREE_GEM_DAILY_MAX - earned, T); earned = FREE_GEM_DAILY_MAX; }
+const EARNED_FREE = earned; // = FREE_GEM_DAILY_MAX
+is("1日の上限まで貯まった", pick(w.summary("A")).free, EARNED_FREE);
+await throws("1日の上限を超えない", () => w.earnGems("A", "gover", 1, T), /これ以上/);
 await throws("端末の申告で有償ジェムは増やせない", () => w.apply("A", "g5", { gemsPaid: 10 }, "earn", null, T), /枚数/);
 is("有償は 0 のまま", pick(w.summary("A")).paid, 0);
 
 console.log("\nジェムの購入(おまけは無償)と使う順");
 const PACK = GEM_PACKS[1]; // 600円のパック。おまけ(free)は catalog から取る(数字が変わっても壊れない)
-const EARNED_FREE = 250; // 上の「無償ジェム」節で貯めた分
 const tx = { transactionId: "1000000123", productId: PACK.id, environment: "Production", purchaseDate: T };
 is("600のパックで 有償600 + おまけ(無償)", (() => { const r = w.purchase("A", tx, T); return { paid: r.gemsPaid, free: r.gemsFree }; })(), { paid: PACK.paid, free: EARNED_FREE + PACK.free });
 is("同じ取引を送り直しても二重に加算されない", w.purchase("A", tx, T).duplicate, true);

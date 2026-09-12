@@ -47,9 +47,9 @@ assert.equal(rows.length, 7);
 assert.equal(rows.filter((m) => m.category === "daily").length, 4);
 assert.equal(rows.filter((m) => m.category === "weekly").length, 3);
 assert.equal(
-  rows.filter((m) => m.reward.type === "ticket").length,
+  rows.filter((m) => m.reward.type === "gems").length,
   4,
-  "tickets: online daily, tsume/wins/king weekly",
+  "gems: online daily, tsume/wins/king weekly",
 );
 // 詰めトッタリー: 今週クリアした日数を数える(先週・来週の分は数えない)
 {
@@ -210,9 +210,9 @@ try {
   for (const row of rows.filter((m) => m.category === "daily"))
     collection = claimPeriodicMission(collection, profile, row.id, monday);
   assert.equal(
-    collection.tickets,
-    1,
-    "daily: one ticket from the online match",
+    collection.gems,
+    5,
+    "daily: 5 free gems from the online match",
   );
   assert.equal(collection.ether, 70, "daily: 10 login + 30 all + 30 gacha");
   const again = claimPeriodicMission(

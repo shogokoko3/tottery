@@ -37,7 +37,7 @@ export const BATTLEPASS_GEMS = 600;
 export const BATTLEPASS_ENTITLEMENT = "battlepass";
 /** 無償ジェムの獲得(端末の申告)の上限。1回と1日(UTC) */
 export const FREE_GEM_EVENT_MAX = 100;
-export const FREE_GEM_DAILY_MAX = 300;
+export const FREE_GEM_DAILY_MAX = 500; // ミッション等の正規の受け取りが1日で詰まらない量
 /** バトルパスの25マスをそろえたときの無償ジェム。目安 */
 export const BATTLEPASS_COMPLETE_GEMS = 60;
 

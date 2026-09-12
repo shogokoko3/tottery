@@ -23,6 +23,7 @@ import { updateCollection } from "../skins/store.js";
 export function giftLabel(gift) {
   if (!gift) return "—";
   if (gift.type === "ticket") return `ガチャチケット ×${gift.amount}`;
+  if (gift.type === "gems") return `ジェム ×${gift.amount}`;
   if (gift.type === "ether")
     return `${ETHER_NAME} ${Number(gift.amount).toLocaleString()}`;
   if (gift.type === "xp") return `経験値 ${gift.amount}`;

@@ -145,7 +145,7 @@ export const PERIODIC_MISSIONS = [
     category: "daily",
     name: "オンライン対戦をする",
     goal: 1,
-    reward: { type: "ticket", amount: 1 },
+    reward: { type: "gems", amount: 5 },
   },
   {
     key: "gacha",
@@ -160,7 +160,7 @@ export const PERIODIC_MISSIONS = [
     name: "詰めトッタリーをクリアする",
     goal: 5,
     segments: true,
-    reward: { type: "ticket", amount: 2 },
+    reward: { type: "gems", amount: 20 },
   },
   {
     key: "wins",
@@ -168,7 +168,7 @@ export const PERIODIC_MISSIONS = [
     name: "オンライン対戦で勝利する",
     goal: 5,
     segments: true,
-    reward: { type: "ticket", amount: 2 },
+    reward: { type: "gems", amount: 20 },
   },
   {
     key: "king",
@@ -176,7 +176,7 @@ export const PERIODIC_MISSIONS = [
     // 実際の名前は periodicMissionRows が今週の数字を入れて作る
     name: "今週の数字を王にしてオンライン対戦で勝利する",
     goal: 1,
-    reward: { type: "ticket", amount: 2 },
+    reward: { type: "gems", amount: 20 },
   },
 ];
 
