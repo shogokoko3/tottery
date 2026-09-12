@@ -15,7 +15,7 @@
  * 問い合わせ先。このアプリ専用のアドレスを用意して入れる。
  * 個人の常用アドレスは入れない — App Store とアプリの中から誰でも読める。
  */
-export const SUPPORT_EMAIL = "tottery.support@gmail.com"; // 2026-09-12 本人が用意したアプリ専用のアドレス
+export const SUPPORT_EMAIL = "TS_manager@tottery.support"; // 2026-09-12 本人が用意したアプリ専用のアドレス(独自ドメイン)
 
 /**
  * プライバシーポリシーを置く場所。誰でも読める URL でなければならない。
