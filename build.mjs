@@ -56,6 +56,25 @@ for (const name of fs.readdirSync("assets/fields")) {
     fs.writeFileSync(`${dir}/${hashed}`, data);
 }
 
+// Version the approved formation scenes independently and load them only on award.
+const honorHash = createHash("sha256");
+function hashHonor(dir) {
+  for (const name of fs.readdirSync(dir).sort()) {
+    const path = `${dir}/${name}`;
+    if (fs.statSync(path).isDirectory()) hashHonor(path);
+    else {
+      honorHash.update(path);
+      honorHash.update(fs.readFileSync(path));
+    }
+  }
+}
+hashHonor("assets/honors");
+const honorVersion = honorHash.digest("hex").slice(0, 12);
+for (const out of ["honors", "dist/honors"]) {
+  fs.rmSync(out, { recursive: true, force: true });
+  fs.cpSync("assets/honors", `${out}/${honorVersion}`, { recursive: true });
+}
+
 /** 束ね方。本体と管理画面で同じ */
 const bundleOptions = {
   bundle: true,
@@ -74,6 +93,7 @@ const bundleOptions = {
   logLevel: "info",
   define: {
     __AUDIO_FILES__: JSON.stringify(audioFiles),
+    __HONOR_VERSION__: JSON.stringify(honorVersion),
     __FIELD_FILES__: JSON.stringify(fieldFiles),
   },
 };

@@ -21,7 +21,16 @@ export function PlayerIcon({ icon, name, side, frame, size = "md" }) {
       style={color ? { "--who": color } : void 0}
       aria-hidden="true"
     >
-      {chosen.mark || (name || "?").slice(0, 1)}
+      {chosen.image ? (
+        <img
+          className="player-emblem"
+          src={chosen.image}
+          alt=""
+          loading="lazy"
+        />
+      ) : (
+        chosen.mark || (name || "?").slice(0, 1)
+      )}
       {frame === "gold-laurel" && (
         <svg className="player-laurel" viewBox="0 0 64 64" aria-hidden="true">
           <g fill="#e6ca7d" stroke="#b08b3c" strokeWidth=".5">

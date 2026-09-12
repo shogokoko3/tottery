@@ -41,3 +41,7 @@
 
 /fields/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Immutable, content-versioned formation scenes and compact emblem icons.
+/honors/*
+  Cache-Control: public, max-age=31536000, immutable

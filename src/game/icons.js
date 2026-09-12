@@ -1,3 +1,4 @@
+import { FORMATION_EMBLEMS } from "./formation-honors.js";
 /**
  * アカウントのアイコン。
  *
@@ -20,6 +21,7 @@ export const ICONS = [
     how: "ミッション「レベル10になる」",
   },
   { id: "star", label: "星", mark: "★", how: "ミッション「レベル30になる」" },
+  ...FORMATION_EMBLEMS,
   { id: "flame", label: "炎", mark: "✦", how: "これから手に入ります" },
 ];
 
@@ -34,6 +36,7 @@ export function findIcon(id) {
 export function hasIcon(profile, id) {
   const icon = findIcon(id);
   if (icon.free) return true;
+  if (icon.titleId && profile?.titles?.includes(icon.titleId)) return true;
   const owned = (profile && profile.icons) || [];
   return owned.includes(id);
 }
