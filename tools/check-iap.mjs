@@ -46,6 +46,8 @@ is("売るのはジェムのパックだけ", PRODUCTS.every((p) => p.kind === "
 is("パックの有償分は商品 ID の円と同じ(1ジェム=1円)", PRODUCTS.every((p) => String(p.paid) === p.id.split(".").pop()), true);
 is("おまけ(無償)は 0 以上で、合計=有償+おまけ", PRODUCTS.every((p) => p.free >= 0 && p.gems === p.paid + p.free), true);
 is("本人の指定: 120円=120、600円=600+120", PRODUCTS.slice(0, 2).map((p) => [p.paid, p.free]), [[120, 0], [600, 120]]);
+is("おまけ率は買うほど上がる(非減少)", (() => { const r = PRODUCTS.map((p) => p.free / p.paid); return r.every((v, i) => i === 0 || v >= r[i - 1] - 1e-9); })(), true);
+is("いちばん大きいパックのおまけは有償の30%", (() => { const p = PRODUCTS[PRODUCTS.length - 1]; return p.free === Math.round(p.paid * 0.3); })(), true);
 is("パックは目録の GEM_PACKS と同じ", PRODUCTS.map((p) => p.id), GEM_PACKS.map((p) => p.id));
 is("ジェムの値付けは正の整数", Number.isSafeInteger(GEM_PER_TICKET) && GEM_PER_TICKET > 0 && Number.isSafeInteger(BATTLEPASS_GEMS) && BATTLEPASS_GEMS > 0, true);
 is("バトルパスは App Store の商品ではない(ジェムで買う)", productOf(BATTLEPASS_ENTITLEMENT), null);
