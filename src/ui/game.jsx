@@ -1084,7 +1084,7 @@ export function GameCore({
   // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない
   let noLimit = !!tutorial || testPlay;
   // 自分が取った駒をバトルパスへ。チュートリアルでは進めない
-  useBattlePass(a, network ? p : cpu ? 0 : a.currentTurn, !!tutorial);
+  useBattlePass(a, network ? p : cpu ? 0 : a.currentTurn, !!tutorial, !!network);
 
   const seasonResult = useSeasonMatch(a, network, round, !!tutorial);
   const boardRef = useRef(null);

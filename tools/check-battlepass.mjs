@@ -94,14 +94,14 @@ is("初回は全25片が正位置と異なる", allMisplaced(s.puzzleOrder), tru
 is("初回は絵が未完成", s.assembled, false);
 is("はじめはフリーだけクリア済み", s.cleared, [centerId]);
 is("はじめに挑戦できるのは縦横の4マス", ids(openCells(s)), [
+  "1-1",
   "1-2",
+  "1-3",
   "2-1",
-  "2-3",
-  "3-2",
 ]);
 is(
   "斜めのマスはまだ開かない",
-  openCells(s).some((c) => c.id === "1-1"),
+  openCells(s).some((c) => c.id === "0-0"),
   false,
 );
 // 真ん中の上のマス(駒を3枚取る)を埋める
@@ -113,13 +113,102 @@ is("3枚取るとクリアになる", s.cleared.includes("1-2"), true);
 is("同じ1手を二度数えない(any5 のマスは3のまま)", s.progress["2-1"], 3);
 is(
   "クリアすると隣が開く",
-  openCells(s).some((c) => c.id === "0-2"),
+  openCells(s).some((c) => c.id === "2-4"),
   true,
 );
 is("開いていないマスには進まない", s.progress["0-0"], undefined);
 const before = { ...s.progress };
 s = applyCaptures(s, []);
 is("何も取らなければ変わらない", s.progress, before);
+
+console.log("難易度の配置・オンライン限定");
+is(
+  "位置は25マスに重複なく分散",
+  new Set(CELLS.map((c) => `${c.row}-${c.col}`)).size,
+  25,
+);
+is(
+  "中央の十字には少数撃破のみ",
+  CELLS.filter((c) => c.group === "first").every(
+    (c) =>
+      !c.onlineOnly && c.goal <= 5 && c.track !== "multi" && c.track !== "king",
+  ),
+  true,
+);
+is(
+  "王・複数撃破・20枚以上は外周",
+  CELLS.filter(
+    (c) => c.track === "king" || c.track === "multi" || c.goal >= 20,
+  ).every((c) => c.ring === 2),
+  true,
+);
+is(
+  "オンライン限定4件は外周",
+  CELLS.filter((c) => c.onlineOnly).map((c) => c.ring),
+  [2, 2, 2, 2],
+);
+for (const cell of CELLS.filter((c) => c.onlineOnly)) {
+  const ready = normalize({
+    cleared: CELLS.filter((c) => c.id !== cell.id).map((c) => c.id),
+  });
+  const take = [{ rank: "10", wasKing: true }, { rank: "2" }];
+  is(`${cell.name}はCPU戦で増えない`, applyCaptures(ready, take), ready);
+  const online = applyCaptures(ready, take, { online: true });
+  is(
+    `${cell.name}はオンライン対戦で増える`,
+    online.progress[cell.id],
+    gainOf(take)[cell.track],
+  );
+  const enough = applyCaptures(
+    ready,
+    Array.from({ length: cell.goal }, () => ({ rank: "10", wasKing: true })),
+    { online: true },
+  );
+  if (cell.track !== "multi")
+    is(`${cell.name}を達成できる`, enough.cleared.includes(cell.id), true);
+}
+const onlineMulti = cellById("4-2");
+let multiState = normalize({
+  cleared: CELLS.filter((c) => c.id !== onlineMulti.id).map((c) => c.id),
+});
+for (let i = 0; i < 3; i++)
+  multiState = applyCaptures(multiState, [{ rank: "2" }, { rank: "3" }], {
+    online: true,
+  });
+is(
+  "オンライン複数撃破は3回で達成",
+  multiState.cleared.includes(onlineMulti.id),
+  true,
+);
+const offlineAny = cellById("0-3");
+const offlineState = normalize({
+  cleared: CELLS.filter((c) => c.id !== offlineAny.id).map((c) => c.id),
+});
+is(
+  "通常ミッションはCPU戦でも進む",
+  applyCaptures(offlineState, [{ rank: "2" }]).progress[offlineAny.id],
+  1,
+);
+const previous = normalize({
+  version: 3,
+  progress: { "0-0": 7, "0-2": 12 },
+  cleared: [centerId, "0-2"],
+  flipped: ["0-2"],
+});
+is(
+  "移動した10枚ミッションは進捗を引き継ぐ",
+  [cellById("0-0").row, cellById("0-0").col, previous.progress["0-0"]],
+  [1, 1, 7],
+);
+is(
+  "オンライン限定への変更でも既存の達成・めくりは維持",
+  [
+    previous.progress["0-2"],
+    previous.cleared.includes("0-2"),
+    previous.flipped.includes("0-2"),
+  ],
+  [12, true, true],
+);
 
 console.log("めくる");
 s = toggleFlip(s, "0-2");

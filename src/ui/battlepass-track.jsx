@@ -8,7 +8,7 @@ import { useEffect, useRef } from "react";
 import { applyCaptures, capturedIn } from "../game/battlepass.js";
 import { updatePass } from "../game/battlepass-store.js";
 
-export function useBattlePass(state, viewer, disabled) {
+export function useBattlePass(state, viewer, disabled, online = false) {
   const before = useRef(state);
   const seen = useRef(-1);
   useEffect(() => {
@@ -19,6 +19,6 @@ export function useBattlePass(state, viewer, disabled) {
     const taken = capturedIn(prev, state, viewer);
     if (!taken) return;
     seen.current = state.seq;
-    updatePass((s) => applyCaptures(s, taken));
-  }, [state, viewer, disabled]);
+    updatePass((s) => applyCaptures(s, taken, { online }));
+  }, [state, viewer, disabled, online]);
 }
