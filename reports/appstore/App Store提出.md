@@ -138,9 +138,22 @@ Tottery is a two-player board game played with a standard deck of cards.
 
 TestFlight に上がっている **1.0 (202609121133)** を選ぶ(新しい公開 URL に向いたビルド)。
 
-## スクリーンショット
+## スクリーンショット(2026-09-12 撮影済み)
 
-`reports/appstore/screenshots/` に iPhone 6.9 インチ(1320×2868)の PNG を置く。
+`reports/appstore/screenshots/` に置いた。シミュレータ(iPhone 17 Pro Max・iPad Pro 13)で撮った実物。
+
+| ファイル | 内容 | 使い方 |
+| --- | --- | --- |
+| iphone-01-title.png | タイトル | 1枚目 |
+| iphone-04-board.png | 9×9 の対局(宮殿の盤面) | 2枚目(いちばん見せたい画面) |
+| iphone-03-hand.png | 手札と引き直し | 3枚目 |
+| iphone-05-tutorial.png | チュートリアル一覧 | 4枚目 |
+| iphone-07-tsume.png | 詰めトッタリー | 5枚目 |
+| iphone-02-home.png | ホーム | 6枚目 |
+| iphone-06-skins.png | ガチャ(「TEST PLAY 無料」の表示あり。下記の判断が済むまで使わない) | 保留 |
+| ipad-01-title.png / ipad-02-home.png | iPad 13 インチ用 | iPad の欄に2枚 |
+
+
 「iPhone 6.9 インチディスプレイ」の欄にドラッグ&ドロップ。6.5 インチ以下の欄は
 6.9 インチのものが流用されるので空欄でよい。iPad を配信対象にしているので
 「iPad 13 インチディスプレイ」(2064×2752)も最低1枚要る(シミュレータ iPad Pro 13 で撮る)。
