@@ -99,6 +99,8 @@ import { MissionsScreen } from "./missions.jsx";
 import { BattlePassScreen } from "./battlepass.jsx";
 import { LettersScreen, useUnreadLetters } from "./letters.jsx";
 import { LoginBonus } from "./loginbonus.jsx";
+import { GemShop } from "./gem-shop.jsx";
+import { shopAvailable } from "../net/iap.js";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 import { sanitizeLoadout } from "../skins/catalog.js";
@@ -319,6 +321,17 @@ export function MenuScreen({
   const unread = useUnreadLetters();
   const passUnlocked = useBattlePassUnlocked();
   const collection = useCollection();
+  // ジェムショップ(iOS だけ)。残高バーから直接開けるようにする
+  const [shopOk, setShopOk] = useState(false);
+  const [shop, setShop] = useState(false);
+  const [shopMsg, setShopMsg] = useState("");
+  useEffect(() => {
+    let alive = true;
+    shopAvailable().then((ok) => alive && setShopOk(ok));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const ready = claimableCount(profile, collection);
   const today = useTsumeDay(now);
   const receipt = tsumeReceipt(collection, today.day);
@@ -343,7 +356,8 @@ export function MenuScreen({
       </button>
 
       <HomeSelf profile={profile} tickets={collection.tickets} />
-      <button className="home-resource-bar" onClick={onSkins} aria-label="ジェムとチケットを確認"><GemAmount amount={collection.gems || 0} size={26} /><span><Ticket size={16} /> {collection.tickets}枚</span><ArrowRight size={14}/></button>
+      <button className="home-resource-bar" onClick={() => (shopOk ? setShop(true) : onSkins())} aria-label={shopOk ? "ジェムを買う・確認" : "ジェムとチケットを確認"}><GemAmount amount={collection.gems || 0} size={26} /><span><Ticket size={16} /> {collection.tickets}枚</span>{shopOk ? <span className="home-resource-buy">ジェムを買う</span> : <ArrowRight size={14}/>}</button>
+      {shopMsg && <p className="mission-message" role="status" aria-live="polite">{shopMsg}</p>}
 
       <button className="home-hero" onClick={onPlay}>
         <span className="home-hero-icon">
@@ -426,6 +440,15 @@ export function MenuScreen({
         ランキングを見る
         <ArrowRight size={14} />
       </button>
+      {shop && (
+        <GemShop
+          gems={collection.gems || 0}
+          gemsPaid={collection.gemsPaid || 0}
+          gemsFree={collection.gemsFree || 0}
+          onClose={() => setShop(false)}
+          onMessage={setShopMsg}
+        />
+      )}
     </div>
   );
 }

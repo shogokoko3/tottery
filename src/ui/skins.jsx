@@ -1360,7 +1360,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 </button>
               </div>
             )}
-            {WALLET_SERVER && !FREE_GACHA && (shopOk || (adsOk && adsLeft !== 0)) && (
+            {WALLET_SERVER && (shopOk || (adsOk && adsLeft !== 0)) && (
               <div className="skins-shop-row">
                 {shopOk && (
                   <button className="skin-btn skin-btn-gold" disabled={buying || working} onClick={() => setShop(true)}>

@@ -344,8 +344,8 @@ export function BattlePassScreen({ onBack, onSkins }) {
       {!owned ? (
         <div className="pass-purchase">
           <p className="hint">
-            バトルパスの購入で解放されます。 所持{" "}
-            <GemAmount amount={collection.gems || 0} />。
+            バトルパスの購入で解放されます（有償ジェムのみ）。 有償ジェム{" "}
+            <GemAmount amount={collection.gemsPaid || 0} />。
           </p>
           <button
             className="btn btn-primary btn-wide"

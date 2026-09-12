@@ -227,7 +227,12 @@ export class Wallet {
   buyPass(uid, id, now) {
     if (this.entitlementsOf(uid).includes(BATTLEPASS_ENTITLEMENT))
       return { applied: false, ...this.summary(uid) };
-    const r = this.spendGems(uid, id, BATTLEPASS_GEMS, "pass", BATTLEPASS_ENTITLEMENT, now);
+    // バトルパスは**有償ジェムだけ**で買う(無償・おまけでは買えない。2026-09-13 本人の決め)。
+    // 冪等: 同じ id が既にあれば apply が applied:false を返し、二重には減らない
+    const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
+    if (!seen && this.row(uid).gems < BATTLEPASS_GEMS)
+      throw new Error(`有償ジェムが足りません(あと${BATTLEPASS_GEMS - this.row(uid).gems})`);
+    const r = this.apply(uid, id, { gemsPaid: -BATTLEPASS_GEMS }, "pass", BATTLEPASS_ENTITLEMENT, now);
     if (r.applied)
       this.sql("INSERT OR IGNORE INTO entitlements VALUES (?,?,?,?)", uid, BATTLEPASS_ENTITLEMENT, id, now);
     return { ...r, ...this.summary(uid) };
