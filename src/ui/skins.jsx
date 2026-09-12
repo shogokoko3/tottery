@@ -1316,8 +1316,13 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 <span>TEST PLAY</span>無料・回数制限なし
               </div>
             ) : (
-              <div className="skins-free">
-                <span>TICKETS</span>ガチャチケット {collection.tickets} 枚
+              <div className="skins-balances">
+                <div className="skins-free">
+                  <span>TICKETS</span>ガチャチケット {collection.tickets} 枚
+                </div>
+                <div className="skins-free">
+                  <span>GEMS</span>ジェム {collection.gems || 0}
+                </div>
               </div>
             )}
             <div className="skins-pull-buttons">
@@ -1345,27 +1350,28 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               </button>
             </div>
             {WALLET_SERVER && !FREE_GACHA && (
-              <div className="skins-shop-row">
-                <span className="skins-gems">ジェム <b>{collection.gems || 0}</b></span>
+              <div className="skins-pull-buttons">
                 <button className="skin-btn" disabled={buying || working} onClick={() => buyTickets(1)}>
                   チケット1枚<span>{GEM_PER_TICKET}ジェム</span>
                 </button>
                 <button className="skin-btn" disabled={buying || working} onClick={() => buyTickets(10)}>
-                  10枚<span>{GEM_PER_TICKET * 10}ジェム</span>
+                  チケット10枚<span>{GEM_PER_TICKET * 10}ジェム</span>
                 </button>
+              </div>
+            )}
+            {WALLET_SERVER && !FREE_GACHA && (shopOk || (adsOk && adsLeft !== 0)) && (
+              <div className="skins-shop-row">
                 {shopOk && (
                   <button className="skin-btn skin-btn-gold" disabled={buying || working} onClick={() => setShop(true)}>
                     ジェムを買う
                   </button>
                 )}
-              </div>
-            )}
-            {WALLET_SERVER && !FREE_GACHA && adsOk && adsLeft !== 0 && (
-              <div className="skins-shop-row">
-                <button className="skin-btn" disabled={buying || working} onClick={watchAd}>
-                  広告を見てチケット1枚
-                  <span>{adsLeft == null ? "1日3回" : `今日あと${adsLeft}回`}</span>
-                </button>
+                {adsOk && adsLeft !== 0 && (
+                  <button className="skin-btn" disabled={buying || working} onClick={watchAd}>
+                    広告を見てチケット1枚
+                    <span>{adsLeft == null ? "1日3回" : `今日あと${adsLeft}回`}</span>
+                  </button>
+                )}
               </div>
             )}
             <div className="skins-odds">

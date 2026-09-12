@@ -5477,8 +5477,10 @@ body:has(.skin-overlay) {
   justify-items: center;
   margin: 8px 0;
 }
-.skins-gems {
-  color: var(--gold);
-  font-weight: 700;
-  margin-right: 6px;
+.skins-balances {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-items: center;
 }
