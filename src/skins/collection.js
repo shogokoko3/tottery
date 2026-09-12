@@ -171,11 +171,24 @@ function finishedId(baseId, random) {
 
 // 現在はテスト用の無料ガチャ。チケット数、購入、対局報酬には依存しない。
 // 抽選と所持への追加を一度に確定し、演出の中断や再読み込みで失わない。
-export function pull(state, amount, random = Math.random) {
+/**
+ * ガチャが無料か。TestFlight のあいだは無料・回数制限なし(2026-09-12 本人の決め)。
+ * **正式リリース(App Store の審査提出)の前に false にする。** そうすると 1回=チケット1枚、
+ * 10回=10枚を消費する。tools/check-submit.mjs がここを見張る
+ */
+export const FREE_GACHA = true;
+/** 1回の召喚で使うチケットの枚数(有料のとき) */
+export const PULL_COST = 1;
+
+export function pull(state, amount, random = Math.random, { free = FREE_GACHA } = {}) {
   if (amount !== 1 && amount !== 10)
     throw new Error("1回または10回を選んでください");
   if (state.pending || state.lastCraft)
     throw new Error("先にガチャ・錬成の結果を確認してください");
+  const cost = free ? 0 : amount * PULL_COST;
+  const tickets = count(state.tickets);
+  if (cost > tickets)
+    throw new Error(`ガチャチケットが足りません(あと${cost - tickets}枚)`);
   const owned = { ...state.owned };
   const acquired = acquiredTotals(state);
   const results = Array.from({ length: amount }, () => {
@@ -189,6 +202,7 @@ export function pull(state, amount, random = Math.random) {
     ...state,
     owned,
     acquired,
+    tickets: tickets - cost,
     draws: state.draws + amount,
     missionDrawDay: missionPeriods().day,
     pending: { results },

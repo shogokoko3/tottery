@@ -80,6 +80,12 @@ const support = read("src/game/support.js") || "";
   "src/game/profile.js の TEST_BUILD を false にする。true のままだと本番でも ?test=1 で時計が止まる",
 );
 
+見る(
+  "ガチャが有料(チケット消費)になっている",
+  /export const FREE_GACHA = false/.test(read("src/skins/collection.js") || ""),
+  "src/skins/collection.js の FREE_GACHA を false にする。TestFlight のあいだは無料のまま(2026-09-12 本人の決め)。正式リリースの前に切り替える",
+);
+
 // ---- iOS の見た目と設定 ----
 
 /**

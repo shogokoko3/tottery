@@ -300,3 +300,19 @@ assert.equal(memory.get(store.COLLECTION_KEY), savedBeforeFailure);
 console.log(
   "フォイル: store連打排他・再読込の結果保持・錬成同時確定・保存失敗保護: OK",
 );
+
+// 有料(FREE_GACHA=false)のとき: 1回=チケット1枚、10回=10枚。足りなければ引けない。無料のときは減らない
+{
+  const paid = { free: false };
+  assert.throws(() => pull(normalize({ tickets: 0 }), 1, sequence([0.65, 0.5]), paid), /チケットが足りません\(あと1枚\)/);
+  assert.throws(() => pull(normalize({ tickets: 9 }), 10, sequence([0.65, 0.5]), paid), /あと1枚/);
+  const one = pull(normalize({ tickets: 3 }), 1, sequence([0.65, 0.5]), paid);
+  assert.equal(one.tickets, 2, "1回で1枚減る");
+  const tenPaid = pull(normalize({ tickets: 10 }), 10, sequence(Array(10).fill([0.65, 0.5]).flat()), paid);
+  assert.equal(tenPaid.tickets, 0, "10回で10枚減る");
+  assert.equal(tenPaid.draws, 10);
+  const freeOne = pull(normalize({ tickets: 3 }), 1, sequence([0.65, 0.5]), { free: true });
+  assert.equal(freeOne.tickets, 3, "無料のときは減らない");
+  assert.equal(pull(normalize({ tickets: 0 }), 1, sequence([0.65, 0.5]), { free: true }).tickets, 0, "無料なら0枚でも引ける");
+  console.log("有料ガチャ(チケット消費)の切り替え OK");
+}

@@ -26,6 +26,8 @@ import {
   shatter,
   unequip,
   foilRevealed,
+  FREE_GACHA,
+  PULL_COST,
 } from "../skins/collection.js";
 import {
   SHARD_NAME,
@@ -1234,23 +1236,37 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             </div>
           </section>
           <div className="skins-summon-controls">
-            <div className="skins-free">
-              <span>TEST PLAY</span>無料・回数制限なし
-            </div>
+            {FREE_GACHA ? (
+              <div className="skins-free">
+                <span>TEST PLAY</span>無料・回数制限なし
+              </div>
+            ) : (
+              <div className="skins-free">
+                <span>TICKETS</span>ガチャチケット {collection.tickets} 枚
+              </div>
+            )}
             <div className="skins-pull-buttons">
               <button
-                disabled={working || !!results}
+                disabled={
+                  working ||
+                  !!results ||
+                  (!FREE_GACHA && collection.tickets < PULL_COST)
+                }
                 className="skin-btn"
                 onClick={() => roll(1)}
               >
-                1回召喚<span>無料</span>
+                1回召喚<span>{FREE_GACHA ? "無料" : `チケット${PULL_COST}枚`}</span>
               </button>
               <button
-                disabled={working || !!results}
+                disabled={
+                  working ||
+                  !!results ||
+                  (!FREE_GACHA && collection.tickets < PULL_COST * 10)
+                }
                 className="skin-btn skin-btn-gold"
                 onClick={() => roll(10)}
               >
-                10回召喚<span>無料</span>
+                10回召喚<span>{FREE_GACHA ? "無料" : `チケット${PULL_COST * 10}枚`}</span>
               </button>
             </div>
             <div className="skins-odds">
