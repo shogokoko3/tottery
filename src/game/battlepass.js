@@ -7,8 +7,8 @@
  *   ・クリアしたマスはひっくり返せる
  *   ・裏の絵はばらばらの順序で現れ、全部めくって組み上がると手に入る
  *
- * マスの条件(CELLS の track と goal)は仮置き。中身が決まったらこの表だけ
- * 差し替えれば、進み方も画面もそのまま動く。
+ * ミッションIDは旧配置の保存キーを維持し、表示位置(row/col)とは分ける。
+ * オンライン限定のマスは実際の通信対戦での撃破だけを追加する。
  */
 import { byId } from "../skins/catalog.js";
 
@@ -41,60 +41,71 @@ export function gainOf(captured) {
 }
 
 /**
- * マスの並び。真ん中から開く順に、やさしいものから置いていく(仮置き)。
- *   first 真ん中の縦横4マス。いちばん先に開く
- *   near  その斜め4マス
- *   far   外側の16マス
+ * IDはミッション固有の保存キー(旧配置由来)。配置変更後も進捗・達成を引き継ぐ。
+ * 中央の十字は少数撃破、内側の斜めは中程度、外周は特殊条件・多数撃破。
+ * 同じ種類が連続しない固定配置にして、再読込のたびには動かさない。
  */
 function buildCells() {
-  const first = [
-    ["any", 3, "駒を3枚取る"],
-    ["any", 5, "駒を5枚取る"],
-    ["multi", 1, "1手で2枚まとめて取る"],
-    ["king", 1, "相手の王を討つ"],
+  const missions = {
+    "1-2": ["any", 3, "駒を3枚取る"],
+    "2-1": ["any", 5, "駒を5枚取る"],
+    "2-3": ["multi", 1, "1手で2枚まとめて取る"],
+    "3-2": ["king", 1, "相手の王を討つ"],
+    "1-1": ["rank:2", 2, "2を2枚取る"],
+    "1-3": ["rank:3", 2, "3を2枚取る"],
+    "3-1": ["rank:4", 2, "4を2枚取る"],
+    "3-3": ["rank:5", 2, "5を2枚取る"],
+    "0-0": ["any", 10, "駒を10枚取る"],
+    "0-1": ["any", 15, "駒を15枚取る"],
+    "0-2": ["any", 20, "駒を20枚取る", true],
+    "0-3": ["any", 30, "駒を30枚取る"],
+    "0-4": ["rank:6", 3, "6を3枚取る"],
+    "1-0": ["rank:7", 3, "7を3枚取る"],
+    "1-4": ["rank:8", 3, "8を3枚取る"],
+    "2-0": ["rank:9", 3, "9を3枚取る"],
+    "2-4": ["rank:10", 3, "10を3枚取る", true],
+    "3-0": ["rank:J", 2, "Jを2枚取る"],
+    "3-4": ["rank:Q", 2, "Qを2枚取る"],
+    "4-0": ["rank:K", 2, "Kを2枚取る"],
+    "4-1": ["rank:A", 2, "Aを2枚取る"],
+    "4-2": ["multi", 3, "1手で2枚まとめて取る(3回)", true],
+    "4-3": ["king", 3, "相手の王を討つ(3回)", true],
+    "4-4": ["king", 5, "相手の王を討つ(5回)"],
+  };
+  const layout = [
+    ["4-4", "1-0", "2-4", "3-4", "0-3"],
+    ["1-4", "0-0", "1-2", "3-1", "0-4"],
+    ["3-2", "2-1", centerId, "1-1", "2-3"],
+    ["4-1", "3-3", "1-3", "0-1", "4-0"],
+    ["4-2", "2-0", "0-2", "3-0", "4-3"],
   ];
-  const near = [
-    ["rank:2", 2, "2を2枚取る"],
-    ["rank:3", 2, "3を2枚取る"],
-    ["rank:4", 2, "4を2枚取る"],
-    ["rank:5", 2, "5を2枚取る"],
-  ];
-  const far = [
-    ["any", 10, "駒を10枚取る"],
-    ["any", 15, "駒を15枚取る"],
-    ["any", 20, "駒を20枚取る"],
-    ["any", 30, "駒を30枚取る"],
-    ["rank:6", 3, "6を3枚取る"],
-    ["rank:7", 3, "7を3枚取る"],
-    ["rank:8", 3, "8を3枚取る"],
-    ["rank:9", 3, "9を3枚取る"],
-    ["rank:10", 3, "10を3枚取る"],
-    ["rank:J", 2, "Jを2枚取る"],
-    ["rank:Q", 2, "Qを2枚取る"],
-    ["rank:K", 2, "Kを2枚取る"],
-    ["rank:A", 2, "Aを2枚取る"],
-    ["multi", 3, "1手で2枚まとめて取る(3回)"],
-    ["king", 3, "相手の王を討つ(3回)"],
-    ["king", 5, "相手の王を討つ(5回)"],
-  ];
-  const pick = { first: 0, near: 0, far: 0 };
-  const cells = [];
-  for (let row = 0; row < SIZE; row++)
-    for (let col = 0; col < SIZE; col++) {
-      const id = `${row}-${col}`;
-      if (id === centerId) {
-        cells.push({ id, row, col, free: true, name: "はじまりの地" });
-        continue;
-      }
-      const dr = Math.abs(row - CENTER);
-      const dc = Math.abs(col - CENTER);
+  return layout.flatMap((line, row) =>
+    line.map((id, col) => {
+      if (id === centerId)
+        return { id, row, col, free: true, name: "はじまりの地" };
+      const [track, goal, title, onlineOnly = false] = missions[id];
+      const dr = Math.abs(row - CENTER),
+        dc = Math.abs(col - CENTER);
       const ring = Math.max(dr, dc);
-      const group = ring > 1 ? "far" : dr + dc === 1 ? "first" : "near";
-      const src = { first, near, far }[group];
-      const [track, goal, name] = src[pick[group]++];
-      cells.push({ id, row, col, free: false, track, goal, name, ring, group });
-    }
-  return cells;
+      return {
+        id,
+        row,
+        col,
+        free: false,
+        track,
+        goal,
+        onlineOnly,
+        name: `${onlineOnly ? "オンライン対戦で" : ""}${title}`,
+        shortName: onlineOnly
+          ? title
+              .replace("1手で2枚まとめて取る(3回)", "2枚まとめ取り(3回)")
+              .replace("相手の王を討つ", "王を討つ")
+          : title,
+        ring,
+        group: ring > 1 ? "far" : dr + dc === 1 ? "first" : "near",
+      };
+    }),
+  );
 }
 
 export const CELLS = buildCells();
@@ -227,13 +238,14 @@ export function statusOf(cell, state) {
  * 進むのは、その時点で挑戦できるマスすべて。1手ぶんは1回だけ数える。
  * この手で新しく開いたマスは、次の手から進む。
  */
-export function applyCaptures(state, captured) {
+export function applyCaptures(state, captured, { online = false } = {}) {
   const gain = gainOf(captured);
   const open = openCells(state);
   const progress = { ...state.progress };
   const cleared = [...state.cleared];
   let changed = false;
   for (const cell of open) {
+    if (cell.onlineOnly && !online) continue;
     const add = gain[cell.track] || 0;
     if (!add) continue;
     progress[cell.id] = (progress[cell.id] || 0) + add;

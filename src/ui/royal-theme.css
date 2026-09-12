@@ -475,3 +475,16 @@
     width: min(100%, 225px);
   }
 }
+
+.pass-scope {
+  color: var(--gold-soft);
+  font-size: 7px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+.pass-cell.is-online .pass-front {
+  gap: 1px;
+}
+.pass-cell.is-online .pass-turn {
+  display: none;
+}

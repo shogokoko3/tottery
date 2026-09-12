@@ -36,7 +36,7 @@ function awardTickets(state) {
   updatePass((s) => markTicketed(s, ids));
 }
 
-export function useBattlePass(state, viewer, disabled) {
+export function useBattlePass(state, viewer, disabled, online = false) {
   const before = useRef(state);
   const seen = useRef(-1);
   useEffect(() => {
@@ -49,7 +49,7 @@ export function useBattlePass(state, viewer, disabled) {
     seen.current = state.seq;
     // 買っていない人は進めない(購入で解放)
     if (!passOwned()) return;
-    const next = updatePass((s) => applyCaptures(s, taken));
+    const next = updatePass((s) => applyCaptures(s, taken, { online }));
     awardTickets(next);
-  }, [state, viewer, disabled]);
+  }, [state, viewer, disabled, online]);
 }

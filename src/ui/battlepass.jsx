@@ -271,7 +271,7 @@ export function BattlePassScreen({ onBack, onSkins }) {
             return (
               <button
                 type="button"
-                className={`pass-cell ${c.free ? "is-free" : ""} ${
+                className={`pass-cell ${c.onlineOnly ? "is-online" : ""} ${c.free ? "is-free" : ""} ${
                   c.cleared ? "is-cleared" : c.open ? "is-open" : "is-locked"
                 } ${flipped ? "is-flipped" : ""}`}
                 key={c.id}
@@ -283,7 +283,14 @@ export function BattlePassScreen({ onBack, onSkins }) {
                 {/* 表は条件、裏は絵柄の一片。押すとくるっと回って入れ替わる */}
                 <span className="pass-inner">
                   <span className="pass-front">
-                    <span className="pass-name">{c.name}</span>
+                    {c.onlineOnly && (
+                      <span className="pass-scope">
+                        オンライン
+                        <br />
+                        対戦で
+                      </span>
+                    )}
+                    <span className="pass-name">{c.shortName || c.name}</span>
                     {!c.free && (
                       <span className="pass-num">
                         {c.now}/{c.goal}
