@@ -1,3 +1,4 @@
+import { GemAmount } from "./gem.jsx";
 /**
  * バトルパスの画面。
  *
@@ -280,14 +281,14 @@ export function BattlePassScreen({ onBack, onSkins }) {
         <div className="pass-purchase">
           <p className="hint">
             25マスがそろいました。スキンを受け取るにはバトルパス({BATTLEPASS_GEMS}ジェム)が必要です。
-            いまのジェム {collection.gems || 0}。
+            所持 <GemAmount amount={collection.gems || 0} />。
           </p>
           <button
             className="btn btn-primary btn-wide"
             disabled={buying}
             onClick={purchase}
           >
-            バトルパスを購入({BATTLEPASS_GEMS}ジェム)
+            バトルパスを購入（<GemAmount amount={BATTLEPASS_GEMS} />）
           </button>
           {shopOk && (
             <button className="btn btn-ghost" disabled={buying} onClick={() => setShop(true)}>
