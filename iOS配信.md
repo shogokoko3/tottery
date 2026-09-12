@@ -1,6 +1,6 @@
 # iOS 配信(TestFlight / App Store)
 
-2026-09-11 作成。Web(https://tottery.shogokoko3.workers.dev/)は `main` へ push すれば配られるが、
+2026-09-11 作成、2026-09-12 に初回の TestFlight 送信に成功(ビルド 202609120952)。Team ID はプロジェクトに入っているので `npm run ios:testflight` だけでよい。Web(https://tottery.shogokoko3.workers.dev/)は `main` へ push すれば配られるが、
 iOS アプリは別に組み立てて Apple へ送る必要がある。手順と、本人にしかできない準備をまとめる。
 
 ## 本人にしかできない準備(最初の1回)
