@@ -4,7 +4,7 @@ import { Ledger } from "./ledger.js";
 import { verifyMatch } from "./verify-match.js";
 import { Wallet } from "./wallet.js";
 import { verifyAppleTransaction } from "./applejws.js";
-import { seasonAt } from "../game/season.js";
+import { seasonAt, seasonRewards } from "../game/season.js";
 
 const json = (data, status = 200) =>
   Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -214,7 +214,16 @@ export class SeasonLedger {
         if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-purchase") return w.purchase(uid, args.tx, now);
         if (op === "wallet-migrate") return w.migrate(uid, args.tickets, now);
-        if (op === "claim") return l.claim(uid, args.id, now);
+        if (op === "claim") {
+          // 初めて受け取るときだけ、報酬のチケットをその場で財布へ(端末を信じない)。
+          // 以前に端末で受け取った分は引き継ぎで来るので、ここで二度は足さない
+          const had = l.sql("SELECT 1 FROM claims WHERE uid=? AND id=?", uid, args.id)[0];
+          const r = l.claim(uid, args.id, now);
+          const reward = seasonRewards(String(args.id).slice(0, 7)).find((x) => x.id === args.id);
+          if (!had && reward && reward.tickets)
+            this.wallet.credit(uid, `season:${args.id}`, reward.tickets, "season", now);
+          return { ...r, wallet: this.wallet.summary(uid) };
+        }
         if (op === "equip") return l.equip(uid, args.back, args.frame, now);
         if (op === "appearance")
           return Object.fromEntries(

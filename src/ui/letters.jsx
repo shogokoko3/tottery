@@ -5,6 +5,14 @@
  * 添付は受け取ったときにだけ配り、受け取った印は端末に控える(二重取りを防ぐ)。
  */
 import { useEffect, useState } from "react";
+import { earnTickets } from "../net/wallet.js";
+/** 手紙のチケットをサーバーの財布にも。id は手紙と何番目かで決まる(やり直しても二重にならない) */
+function creditLetter(letter) {
+  (letter.gifts || []).forEach((g, i) => {
+    if (g && g.type === "ticket")
+      earnTickets(`letter:${letter.id}:${i}`, g.amount).catch(() => {});
+  });
+}
 import { ArrowLeft, Check, Close } from "../icons.jsx";
 import { loadProfile, markLetterTaken } from "../game/profile.js";
 import { giftLabel, giftsLabel, giveGifts } from "../game/gifts.js";
@@ -57,6 +65,7 @@ export function LettersScreen({ onBack }) {
     setMessage("");
     try {
       await giveGifts(letter.gifts);
+      creditLetter(letter);
       // 配り終えてから控える。途中で失敗しても二重取りにならない
       setProfile(markLetterTaken(letter.id));
       setMessage(
@@ -80,6 +89,7 @@ export function LettersScreen({ onBack }) {
     try {
       for (const l of unread) {
         await giveGifts(l.gifts);
+        creditLetter(l);
         last = markLetterTaken(l.id);
         got += 1;
       }

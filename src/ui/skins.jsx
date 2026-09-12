@@ -50,6 +50,10 @@ import {
   totalOfSpares,
 } from "../skins/ether.js";
 import { updateCollection, useCollection } from "../skins/store.js";
+import { WALLET_SERVER, debitTickets, newEventId, syncWallet, migrateOnce } from "../net/wallet.js";
+import { buy, restore, shopAvailable, loadProducts, flushPurchases } from "../net/iap.js";
+import { isVerified } from "../net/auth.js";
+import { signInWithApple } from "../net/apple-signin.js";
 import { CardFace } from "./cards.jsx";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
 import { AREA_BY_RANK, AREA_INFO } from "../game/areas.js";
@@ -1069,6 +1073,69 @@ export function SkinsScreen({ onBack, onBattlePass }) {
   const [working, setWorking] = useState(false),
     [message, setMessage] = useState("");
   const busy = useRef(false);
+  // 店(チケットの購入)。iOS で StoreKit が使えるときだけ出す
+  const [shopOk, setShopOk] = useState(false);
+  const [shop, setShop] = useState(null); // null=閉じている / { products }
+  const [buying, setBuying] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    // 開いたら、控えていた購入を送り直し、端末の枚数を一度だけ引き継ぎ、残高を取り直す
+    (async () => {
+      try { await flushPurchases(); } catch { /* 次に開いたとき */ }
+      try { await migrateOnce(); } catch { /* サーバー側で一度きり */ }
+      try { await syncWallet(); } catch { /* 圏外なら写しのまま */ }
+    })();
+    shopAvailable().then((ok) => alive && setShopOk(ok));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const openShop = async () => {
+    setMessage("");
+    try {
+      setShop({ products: await loadProducts() });
+    } catch {
+      setMessage("商品の一覧を取れませんでした。通信を確認してください。");
+    }
+  };
+  const purchase = async (id) => {
+    if (buying) return;
+    setBuying(true);
+    setMessage("");
+    try {
+      // 財布の鍵は Apple のサインイン。無ければ先に紐づける(機種変更でも残高が残る)
+      if (!isVerified()) {
+        const r = await signInWithApple();
+        if (!r) return;
+      }
+      const r = await buy(id);
+      if (r === null) return;
+      setMessage(r.pending ? "購入を受け付けました。通信が戻ると反映されます。" : "チケットを受け取りました。");
+      setShop(null);
+    } catch (e) {
+      setMessage((e && e.message) || "購入できませんでした。");
+    } finally {
+      setBuying(false);
+    }
+  };
+  const restoreAll = async () => {
+    if (buying) return;
+    setBuying(true);
+    setMessage("");
+    try {
+      if (!isVerified()) {
+        const r = await signInWithApple();
+        if (!r) return;
+      }
+      const { restored } = await restore();
+      await syncWallet().catch(() => {});
+      setMessage(restored ? "購入を復元しました。" : "復元できる購入が見つかりませんでした。");
+    } catch (e) {
+      setMessage((e && e.message) || "復元できませんでした。");
+    } finally {
+      setBuying(false);
+    }
+  };
   const ownedCount = Object.keys(collection.owned).length;
   const foilOwnedCount = FOIL_SKINS.filter(
     (s) => collection.owned[s.id],
@@ -1125,6 +1192,18 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     return next;
   };
   const roll = async (amount) => {
+    if (WALLET_SERVER && !FREE_GACHA) {
+      // 残高の正はサーバー。先にサーバーで減らし、通ったら端末で引く(端末の枚数は減らさない)
+      if (busy.current || collection.pending || collection.lastCraft) return;
+      try {
+        await debitTickets(newEventId("pull"), amount * PULL_COST);
+      } catch (e) {
+        setMessage((e && e.message) || "ガチャチケットを確認できませんでした。");
+        return;
+      }
+      await acquire((s) => pull(s, amount, undefined, { free: true }), "summon");
+      return;
+    }
     await acquire((s) => pull(s, amount), "summon");
   };
   const equipSkin = async (skin) => {
@@ -1271,6 +1350,16 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 10回召喚<span>{FREE_GACHA ? "無料" : `チケット${PULL_COST * 10}枚`}</span>
               </button>
             </div>
+            {shopOk && (
+              <div className="skins-shop-row">
+                <button className="skin-btn" disabled={buying || working} onClick={openShop}>
+                  チケットを買う
+                </button>
+                <button className="btn btn-ghost btn-small" disabled={buying} onClick={restoreAll}>
+                  購入を復元
+                </button>
+              </div>
+            )}
             <div className="skins-odds">
               <span>
                 R <b>{ODDS.R}%</b>
@@ -1741,6 +1830,38 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           </SkinModal>
         ))}
 
+      {shop && (
+        <div className="modal-overlay" role="dialog" aria-label="チケットを買う">
+          <div className="modal-panel">
+            <h3>ガチャチケットを買う</h3>
+            <p className="hint">
+              いまの残高 <b>{collection.tickets}</b> 枚。買ったチケットはアカウント(Apple でのサインイン)に
+              紐づき、機種変更やインストールし直しのあとも残ります。
+            </p>
+            <div className="shop-list">
+              {shop.products.filter((p) => p.kind === "tickets").map((p) => (
+                <button
+                  key={p.id}
+                  className="skin-btn shop-item"
+                  disabled={buying}
+                  onClick={() => purchase(p.id)}
+                >
+                  {p.name}<span>{p.price}</span>
+                </button>
+              ))}
+              {!shop.products.length && (
+                <p className="hint">商品を取れませんでした。少し待ってからお試しください。</p>
+              )}
+            </div>
+            <p className="hint">価格は App Store の表示に従います。</p>
+            <div className="setup-actions">
+              <button className="btn btn-ghost" disabled={buying} onClick={() => setShop(null)}>
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {selected && (
         <SkinModal
           label={`${selected.name}の詳細`}

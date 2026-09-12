@@ -5446,3 +5446,34 @@ body:has(.skin-overlay) {
 .icon-picker-panel{display:flex;flex-direction:column;max-height:calc(100dvh - 32px);overflow:hidden}
 .icon-picker-panel .icon-grid{min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .icon-picker-panel .setup-actions,.icon-picker-panel .modal-head{flex-shrink:0}
+
+/* --- 課金(チケットの店・バトルパスの購入) --- */
+.skins-shop-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.shop-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+.shop-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+.shop-item span {
+  font-weight: 700;
+  color: var(--gold);
+}
+.pass-purchase {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  margin: 8px 0;
+}

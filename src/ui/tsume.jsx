@@ -19,6 +19,8 @@ import {
   clearDailyTsume,
   TSUME_ORDERS,
 } from "../game/tsume.js";
+import { TSUME_CLEAR_TICKETS } from "../game/tsume-daily.js";
+import { earnTickets } from "../net/wallet.js";
 
 export function useTsumeDay(now = Date.now) {
   const [today, setToday] = useState(() => dailyTsume(now()));
@@ -80,6 +82,8 @@ function DailyPuzzle({ today, now, onBack }) {
     await updateCollection((value) =>
       clearDailyTsume(value, today.day, evidence, now()),
     );
+    // サーバーの財布にも。id は日で決まるので、やり直しても二重にならない
+    earnTickets(`tsume:${today.day}`, TSUME_CLEAR_TICKETS).catch(() => {});
   }
   return (
     <section className="tsume-screen" aria-label="詰めトッタリー">
