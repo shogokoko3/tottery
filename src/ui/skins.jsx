@@ -1807,7 +1807,13 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         ))}
 
       {shop && (
-        <GemShop gems={collection.gems || 0} onClose={() => setShop(null)} onMessage={setMessage} />
+        <GemShop
+          gems={collection.gems || 0}
+          gemsPaid={collection.gemsPaid || 0}
+          gemsFree={collection.gemsFree || 0}
+          onClose={() => setShop(null)}
+          onMessage={setMessage}
+        />
       )}
       {selected && (
         <SkinModal

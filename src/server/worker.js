@@ -109,6 +109,9 @@ async function handleApi(request, env, url) {
           return call("wallet-debit", { id: body.id, n: body.n, kind: "pull" });
         if (wop === "earn" && eventId(body.id) && Number.isSafeInteger(body.n) && body.n > 0)
           return call("wallet-credit", { id: body.id, n: body.n, kind: "earn" });
+        // 無償ジェム(ミッションや手紙、バトルパスの完成)。端末の申告なので上限つき
+        if (wop === "earn-gems" && eventId(body.id) && Number.isSafeInteger(body.gems) && body.gems > 0)
+          return call("wallet-earn-gems", { id: body.id, gems: body.gems });
         if (wop === "migrate" && Number.isSafeInteger(body.tickets) && body.tickets >= 0)
           return call("wallet-migrate", { tickets: body.tickets });
         if (wop === "exchange" && eventId(body.id) && Number.isSafeInteger(body.tickets) && body.tickets > 0 && body.tickets <= 100)
@@ -222,6 +225,7 @@ export class SeasonLedger {
         if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-purchase") return w.purchase(uid, args.tx, now);
         if (op === "wallet-migrate") return w.migrate(uid, args.tickets, now);
+        if (op === "wallet-earn-gems") return w.earnGems(uid, args.id, args.gems, now);
         if (op === "wallet-exchange") return w.exchange(uid, args.id, args.tickets, now);
         if (op === "wallet-buypass") return w.buyPass(uid, args.id, now);
         if (op === "admin-unused" && uid === OPERATOR_UID) return w.unused();

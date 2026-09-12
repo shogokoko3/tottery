@@ -121,8 +121,10 @@ export function normalize(raw) {
     // ガチャチケット。ミッションの褒美で増える。
     // いまのガチャは無料のテスト版なので、まだ減らない
     tickets: count(value.tickets),
-    // ジェム(有償)。サーバーの財布の写し。正はサーバー
+    // ジェム。サーバーの財布の写し(正はサーバー)。gems=合計、gemsPaid=有償、gemsFree=無償
     gems: count(value.gems),
+    gemsPaid: count(value.gemsPaid),
+    gemsFree: count(value.gemsFree),
     // 買い切りの権利(サーバーの財布の写し。正はサーバー)
     entitlements: Array.isArray(value.entitlements)
       ? value.entitlements.filter((x) => typeof x === "string" && x.length <= 120)
@@ -213,6 +215,14 @@ export function pull(state, amount, random = Math.random, { free = FREE_GACHA } 
     missionDrawDay: missionPeriods().day,
     pending: { results },
   };
+}
+
+/** 無償ジェムを足す(端末の写し。正はサーバーの財布で、呼び出し側が earnGems で送る) */
+export function addFreeGems(state, n) {
+  const add = Number.isSafeInteger(n) && n > 0 ? n : 0;
+  return add
+    ? { ...state, gems: count(state.gems) + add, gemsFree: count(state.gemsFree) + add }
+    : state;
 }
 
 /** チケットを足す */

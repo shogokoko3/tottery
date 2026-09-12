@@ -258,6 +258,24 @@ export function claimPeriodicMission(collection, profile, id, at = Date.now()) {
     );
   if (row.claimed) return collection;
   if (!row.done) throw new Error("まだミッションの条件を満たしていません。");
+  // 受け取り済みの控え(今の期間のぶんだけ残し、今回の分を足す)
+  const missionClaims = [
+    ...sanitizeMissionClaims(collection.missionClaims).filter((claim) =>
+      rows.some((m) => m.id === claim),
+    ),
+    id,
+  ];
+  // 報酬が gems なら、端末の写し(合計と無償)を増やす。サーバーへは画面側が earnGems で送る
+  if (row.reward.type === "gems") {
+    const g = Number.isSafeInteger(collection.gems) ? collection.gems : 0;
+    const f = Number.isSafeInteger(collection.gemsFree) ? collection.gemsFree : 0;
+    return {
+      ...collection,
+      gems: g + row.reward.amount,
+      gemsFree: f + row.reward.amount,
+      missionClaims,
+    };
+  }
   const field = row.reward.type === "ticket" ? "tickets" : "ether";
   const old =
     Number.isSafeInteger(collection[field]) && collection[field] >= 0
@@ -266,11 +284,6 @@ export function claimPeriodicMission(collection, profile, id, at = Date.now()) {
   return {
     ...collection,
     [field]: Math.min(Number.MAX_SAFE_INTEGER, old + row.reward.amount),
-    missionClaims: [
-      ...sanitizeMissionClaims(collection.missionClaims).filter((claim) =>
-        rows.some((m) => m.id === claim),
-      ),
-      id,
-    ],
+    missionClaims,
   };
 }

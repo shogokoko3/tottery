@@ -5,12 +5,14 @@
  * 添付は受け取ったときにだけ配り、受け取った印は端末に控える(二重取りを防ぐ)。
  */
 import { useEffect, useState } from "react";
-import { earnTickets } from "../net/wallet.js";
+import { earnTickets, earnGems } from "../net/wallet.js";
 /** 手紙のチケットをサーバーの財布にも。id は手紙と何番目かで決まる(やり直しても二重にならない) */
 function creditLetter(letter) {
   (letter.gifts || []).forEach((g, i) => {
     if (g && g.type === "ticket")
       earnTickets(`letter:${letter.id}:${i}`, g.amount).catch(() => {});
+    if (g && g.type === "gems")
+      earnGems(`letter:${letter.id}:${i}`, g.amount).catch(() => {});
   });
 }
 import { ArrowLeft, Check, Close } from "../icons.jsx";

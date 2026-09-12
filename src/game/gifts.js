@@ -10,7 +10,12 @@ import { addXp, grantIcon, grantTitle } from "./profile.js";
 import { findIcon } from "./icons.js";
 import { findTitle } from "./titles.js";
 import { byId as skinById } from "../skins/catalog.js";
-import { addEther, addTickets, grantSkin } from "../skins/collection.js";
+import {
+  addEther,
+  addTickets,
+  grantSkin,
+  addFreeGems,
+} from "../skins/collection.js";
 import { ETHER_NAME } from "../skins/ether.js";
 import { updateCollection } from "../skins/store.js";
 
@@ -43,6 +48,8 @@ export async function giveGift(gift) {
     await updateCollection((s) => grantSkin(s, gift.id));
   if (gift.type === "ticket")
     await updateCollection((s) => addTickets(s, gift.amount));
+  if (gift.type === "gems")
+    await updateCollection((s) => addFreeGems(s, gift.amount));
   if (gift.type === "ether")
     await updateCollection((s) => addEther(s, gift.amount));
 }

@@ -45,6 +45,8 @@ async function mirror(data) {
     ...s,
     tickets: data.tickets,
     gems: Number.isSafeInteger(data.gems) ? data.gems : s.gems || 0,
+    gemsPaid: Number.isSafeInteger(data.gemsPaid) ? data.gemsPaid : s.gemsPaid || 0,
+    gemsFree: Number.isSafeInteger(data.gemsFree) ? data.gemsFree : s.gemsFree || 0,
     entitlements: Array.isArray(data.entitlements) ? data.entitlements : s.entitlements || [],
   }));
   return data;
@@ -63,7 +65,12 @@ export async function flushPending() {
   let list = readPending();
   for (const ev of [...list]) {
     try {
-      await mirror(await walletRequest("earn", { id: ev.id, n: ev.n }));
+      // チケットは earn、無償ジェムは earn-gems
+      await mirror(
+        ev.gems
+          ? await walletRequest("earn-gems", { id: ev.id, gems: ev.gems })
+          : await walletRequest("earn", { id: ev.id, n: ev.n }),
+      );
       list = list.filter((x) => x.id !== ev.id);
       writePending(list);
     } catch (e) {
@@ -95,6 +102,17 @@ export async function earnTickets(id, n) {
 /** ガチャの前に減らす。通れば新しい残高、足りなければ投げる */
 export async function debitTickets(id, n) {
   return mirror(await walletRequest("debit", { id, n }));
+}
+
+/**
+ * 無償ジェムを財布へ(ミッション・手紙・バトルパスの完成など)。id は「何で」「いつ」で
+ * 決まる形にする。同じ id は二度効かない。圏外なら控えて後で送る
+ */
+export async function earnGems(id, n) {
+  if (!WALLET_SERVER || !Number.isSafeInteger(n) || n <= 0) return;
+  const list = readPending();
+  if (!list.some((x) => x.id === id)) writePending([...list, { id, gems: n, at: Date.now() }]);
+  await flushPending().catch(() => {});
 }
 
 /** ジェムでチケットを買う(両替)。通れば新しい残高、足りなければ投げる */

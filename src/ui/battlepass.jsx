@@ -22,9 +22,9 @@ import {
 import { getPass, updatePass, usePass } from "../game/battlepass-store.js";
 import { claimSpecial } from "../skins/collection.js";
 import { useCollection } from "../skins/store.js";
-import { BATTLEPASS_ENTITLEMENT, BATTLEPASS_GEMS } from "../iap/catalog.js";
+import { BATTLEPASS_ENTITLEMENT, BATTLEPASS_GEMS, BATTLEPASS_COMPLETE_GEMS } from "../iap/catalog.js";
 import { shopAvailable } from "../net/iap.js";
-import { WALLET_SERVER, buyPassWithGems, newEventId, syncWallet } from "../net/wallet.js";
+import { WALLET_SERVER, buyPassWithGems, earnGems, newEventId, syncWallet } from "../net/wallet.js";
 import { GemShop } from "./gem-shop.jsx";
 import { Capacitor } from "@capacitor/core";
 import { updateCollection } from "../skins/store.js";
@@ -74,6 +74,12 @@ export function BattlePassScreen({ onBack, onSkins }) {
       alive = false;
     };
   }, []);
+
+  // 25マスをそろえたら無償ジェム。id は盤の版で決まるので、何度開いても一度しか効かない
+  useEffect(() => {
+    if (!allCleared(pass) || !BATTLEPASS_COMPLETE_GEMS) return;
+    earnGems(`bp:complete:v${pass.version || 3}`, BATTLEPASS_COMPLETE_GEMS).catch(() => {});
+  }, [pass]);
 
   // ジェムでバトルパスを買う(サーバーで減らして権利をつける)。足りなければ店を開く
   const purchase = useCallback(async () => {
@@ -316,7 +322,13 @@ export function BattlePassScreen({ onBack, onSkins }) {
         <ArrowLeft size={16} /> ホームに戻る
       </button>
       {shop && (
-        <GemShop gems={collection.gems || 0} onClose={() => setShop(false)} onMessage={setMessage} />
+        <GemShop
+          gems={collection.gems || 0}
+          gemsPaid={collection.gemsPaid || 0}
+          gemsFree={collection.gemsFree || 0}
+          onClose={() => setShop(false)}
+          onMessage={setMessage}
+        />
       )}
     </div>
   );

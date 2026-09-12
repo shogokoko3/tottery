@@ -17,7 +17,7 @@ import { CompactSign } from "jose";
 import { Wallet, MIGRATE_TICKETS_MAX, EARN_DAILY_MAX } from "../src/server/wallet.js";
 import { verifyAppleTransaction } from "../src/server/applejws.js";
 import { APPLE_ROOT_G3_PEM } from "../src/server/apple-root-g3.js";
-import { BUNDLE_ID, PRODUCTS, GEM_PACKS, BATTLEPASS_ENTITLEMENT } from "../src/iap/catalog.js";
+import { BUNDLE_ID, PRODUCTS, GEM_PACKS, GEM_CONSUME_ORDER, FREE_GEM_EVENT_MAX, BATTLEPASS_ENTITLEMENT } from "../src/iap/catalog.js";
 
 let ok = 0; const fails = [];
 const is = (label, got, want) => {
@@ -34,11 +34,11 @@ const db = new DatabaseSync(":memory:");
 const sql = (q, ...a) => db.prepare(q).all(...a);
 const w = new Wallet(sql);
 const T = 1_800_000_000_000;
-const pick = (s) => ({ tickets: s.tickets, gems: s.gems });
-is("最初は 0", pick(w.summary("A")), { tickets: 0, gems: 0 });
-is("チケットの加算", pick(w.credit("A", "e1", 5, "migrate", T)), { tickets: 5, gems: 0 });
+const pick = (s) => ({ tickets: s.tickets, gems: s.gems, paid: s.gemsPaid, free: s.gemsFree });
+is("最初は 0", pick(w.summary("A")), { tickets: 0, gems: 0, paid: 0, free: 0 });
+is("チケットの加算", w.credit("A", "e1", 5, "migrate", T).tickets, 5);
 is("同じ id の加算は二度効かない", w.credit("A", "e1", 5, "migrate", T).applied, false);
-is("減算", pick(w.debit("A", "d1", 3, "pull", T)), { tickets: 2, gems: 0 });
+is("減算", w.debit("A", "d1", 3, "pull", T).tickets, 2);
 is("同じ id の減算も二度効かない", w.debit("A", "d1", 3, "pull", T).applied, false);
 await throws("残高を超える減算は失敗し", () => w.debit("A", "d2", 10, "pull", T), /足りません/);
 is("失敗した減算で残高は動かない", w.balance("A"), 2);
@@ -49,38 +49,54 @@ await throws("遊んで貯める分は1日の上限を超えない", () => w.cre
 is("翌日はまた受け取れる", w.credit("A", "earn10", 1, "earn", T + 86_400_000).applied, true);
 is("1日の上限は定数どおり", EARN_DAILY_MAX, 30);
 
-console.log("\nジェムの購入と両替");
+console.log("\n無償ジェム(端末の申告)");
+is("無償ジェムを足せる", pick(w.earnGems("A", "g1", 50, T)).free, 50);
+is("同じ id は二度効かない", w.earnGems("A", "g1", 50, T).applied, false);
+await throws("1回の上限を超えない", () => w.earnGems("A", "g2", FREE_GEM_EVENT_MAX + 1, T), /枚数/);
+for (let i = 0; i < 2; i++) w.earnGems("A", `g3${i}`, 100, T);
+await throws("1日の上限を超えない", () => w.earnGems("A", "g4", 100, T), /これ以上/);
+await throws("端末の申告で有償ジェムは増やせない", () => w.apply("A", "g5", { gemsPaid: 10 }, "earn", null, T), /枚数/);
+is("有償は 0 のまま", pick(w.summary("A")).paid, 0);
+
+console.log("\nジェムの購入(おまけは無償)と使う順");
 const tx = { transactionId: "1000000123", productId: GEM_PACKS[1].id, environment: "Production", purchaseDate: T };
-is("ジェムのパックの購入で加算(600)", w.purchase("A", tx, T).gems, 600);
+is("600円のパックで 有償600 + 無償120", (() => { const r = w.purchase("A", tx, T); return { paid: r.gemsPaid, free: r.gemsFree }; })(), { paid: 600, free: 250 + 120 });
 is("同じ取引を送り直しても二重に加算されない", w.purchase("A", tx, T).duplicate, true);
 is("同じ取引を別の uid で出しても渡らない(世界で一度)", w.purchase("B", tx, T).gems, 0);
 await throws("知らない商品は拒む", () => w.purchase("A", { ...tx, transactionId: "1", productId: "x" }, T), /知らない商品/);
 const beforeT = w.balance("A");
-is("ジェムでチケットを買う(10枚=100ジェム、1つの出来事)", pick(w.exchange("A", "x-1", 10, T)), { tickets: beforeT + 10, gems: 500 });
+// 無償370・有償600。10枚=100ジェムは無償から
+is("両替は無償から先に減る", pick(w.exchange("A", "x-1", 10, T)), { tickets: beforeT + 10, gems: 870, paid: 600, free: 270 });
 is("同じ両替は二度効かない", w.exchange("A", "x-1", 10, T).applied, false);
-await throws("ジェムが足りなければ両替は失敗し", () => w.exchange("A", "x-2", 100, T), /ジェムが足りません/);
-is("失敗した両替でどちらも動かない", pick(w.summary("A")), { tickets: beforeT + 10, gems: 500 });
-await throws("両替の枚数は 1〜100", () => w.exchange("A", "x-3", 0, T), /枚数/);
-await throws("ジェムが足りなければバトルパスは買えない", () => w.buyPass("A", "p-0", T), /ジェムが足りません/);
-w.purchase("A", { ...tx, transactionId: "1000000124" }, T);
-is("ジェムでバトルパスを買うと権利がつき 600 減る", (() => { const r = w.buyPass("A", "p-1", T); return { gems: r.gems, ent: r.entitlements }; })(), { gems: 500, ent: [BATTLEPASS_ENTITLEMENT] });
-is("既に持っていれば減らさない", w.buyPass("A", "p-2", T).gems, 500);
-is("未使用残高の集計(円=ジェム)", (() => { const u = w.unused(); return { unused: u.unusedGems, issued: u.issuedGems, used: u.usedGems, over: u.over }; })(), { unused: 500, issued: 1200, used: 700, over: false });
+// バトルパス600: 無償270を使い切り、残り330は有償から(1つの出来事)
+is("無償で足りない分は有償から、1つの出来事で", (() => { const r = w.buyPass("A", "p-1", T); return { ...pick(r), ent: r.entitlements }; })(), { tickets: beforeT + 10, gems: 270, paid: 270, free: 0, ent: [BATTLEPASS_ENTITLEMENT] });
+is("既に持っていれば減らさない", w.buyPass("A", "p-2", T).gems, 270);
+await throws("合計が足りなければ両替は失敗し", () => w.exchange("A", "x-2", 100, T), /ジェムが足りません/);
+is("失敗した両替でどちらも動かない", pick(w.summary("A")), { tickets: beforeT + 10, gems: 270, paid: 270, free: 0 });
+is("使う順は無償→有償", GEM_CONSUME_ORDER, ["free", "paid"]);
+is("未使用残高は有償だけを数える(無償は別枠)", (() => { const u = w.unused(); return { unused: u.unusedGems, free: u.unusedFreeGems, issued: u.issuedGems, used: u.usedGems, over: u.over }; })(), { unused: 270, free: 0, issued: 600, used: 330, over: false });
 
 console.log("\n端末からの引き継ぎと旧表の移行");
-is("一度だけ引き継ぐ", pick(w.migrate("C", 40, T)), { tickets: 40, gems: 0 });
+is("一度だけ引き継ぐ", pick(w.migrate("C", 40, T)).tickets, 40);
 is("二度目は何もしない", w.migrate("C", 40, T).applied, false);
 is("上限を超える申告は上限で止める", w.migrate("D", 99999, T).migrated, MIGRATE_TICKETS_MAX);
-// ジェムより前の表(wallet_events)がある DB を開いても、出来事が引き継がれ、gems 列が足される
 const db2 = new DatabaseSync(":memory:");
 const sql2 = (q, ...a) => db2.prepare(q).all(...a);
 sql2("CREATE TABLE wallets (uid TEXT PRIMARY KEY, tickets INTEGER NOT NULL, updated INTEGER)");
 sql2("CREATE TABLE wallet_events (id TEXT PRIMARY KEY, uid TEXT, delta INTEGER, kind TEXT, ref TEXT, at INTEGER)");
 sql2("INSERT INTO wallets VALUES ('old', 7, 1)"); sql2("INSERT INTO wallet_events VALUES ('e-old','old',7,'migrate',NULL,1)");
 const w2 = new Wallet(sql2);
-is("旧表の残高と出来事を引き継ぎ、gems 列が足される", pick(w2.summary("old")), { tickets: 7, gems: 0 });
+is("旧表の残高と出来事を引き継ぎ、gems/gems_free 列が足される", pick(w2.summary("old")), { tickets: 7, gems: 0, paid: 0, free: 0 });
 is("引き継いだ出来事 id は二度効かない", w2.credit("old", "e-old", 7, "migrate", T).applied, false);
-is("消すと財布は空になる", (w.forget("A"), pick(w.summary("A"))), { tickets: 0, gems: 0 });
+// ジェム(有償のみ)の版の表(gems あり・gems_free なし)からも
+const db3 = new DatabaseSync(":memory:");
+const sql3 = (q, ...a) => db3.prepare(q).all(...a);
+sql3("CREATE TABLE wallets (uid TEXT PRIMARY KEY, tickets INTEGER NOT NULL, updated INTEGER, gems INTEGER NOT NULL DEFAULT 0)");
+sql3("CREATE TABLE wallet_ledger (id TEXT PRIMARY KEY, uid TEXT, tickets INTEGER NOT NULL, gems INTEGER NOT NULL, kind TEXT, ref TEXT, at INTEGER)");
+sql3("INSERT INTO wallets VALUES ('mid', 0, 1, 300)");
+const w3 = new Wallet(sql3);
+is("有償だけの版からは gems_free 列を足して引き継ぐ", pick(w3.summary("mid")), { tickets: 0, gems: 300, paid: 300, free: 0 });
+is("消すと財布は空になる", (w.forget("A"), pick(w.summary("A"))), { tickets: 0, gems: 0, paid: 0, free: 0 });
 is("消しても購入の記録は残る(uid は伏せる)", sql("SELECT uid FROM purchases WHERE transactionId=?", "1000000123")[0].uid, "");
 
 console.log("\nApple の取引の署名検証(合成した鎖で本物と同じ手順)");

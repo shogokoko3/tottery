@@ -9,7 +9,7 @@ import { syncWallet } from "../net/wallet.js";
 import { isVerified } from "../net/auth.js";
 import { signInWithApple } from "../net/apple-signin.js";
 
-export function GemShop({ gems, onClose, onMessage }) {
+export function GemShop({ gems, gemsPaid = 0, gemsFree = 0, onClose, onMessage }) {
   const [products, setProducts] = useState(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -61,8 +61,9 @@ export function GemShop({ gems, onClose, onMessage }) {
       <div className="modal-panel">
         <h3>ジェムを買う</h3>
         <p className="hint">
-          いまのジェム <b>{gems}</b>。ジェムはアカウント(Apple でのサインイン)に紐づき、機種変更や
-          インストールし直しのあとも残ります。有効期限はありません。
+          いまのジェム <b>{gems}</b>(有償 {gemsPaid}・無償 {gemsFree})。使うときは無償から先に減ります。
+          ジェムはアカウント(Apple でのサインイン)に紐づき、機種変更やインストールし直しのあとも残ります。
+          有効期限はありません。パックのおまけ分は無償ジェムです。
         </p>
         <div className="shop-list">
           {products === null && <p className="hint">商品を読み込んでいます…</p>}

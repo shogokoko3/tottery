@@ -66,6 +66,8 @@ async function verifyOnServer(jws) {
     ...s,
     tickets: Number.isSafeInteger(data.tickets) ? data.tickets : s.tickets,
     gems: Number.isSafeInteger(data.gems) ? data.gems : s.gems || 0,
+    gemsPaid: Number.isSafeInteger(data.gemsPaid) ? data.gemsPaid : s.gemsPaid || 0,
+    gemsFree: Number.isSafeInteger(data.gemsFree) ? data.gemsFree : s.gemsFree || 0,
     entitlements: Array.isArray(data.entitlements) ? data.entitlements : s.entitlements || [],
   }));
   return data;

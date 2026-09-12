@@ -29,7 +29,7 @@ globalThis.fetch = async (url, init) => {
   return { ok: true, status: 200, json: async () => ({ tickets: 42, entitlements: [] }) };
 };
 const { PRODUCTS, PRODUCT_IDS, GEM_PACKS, GEM_PER_TICKET, BATTLEPASS_GEMS, BATTLEPASS_ENTITLEMENT, productOf } = await import("../src/iap/catalog.js");
-const { earnTickets, flushPending, syncWallet } = await import("../src/net/wallet.js");
+const { earnTickets, earnGems, flushPending, syncWallet } = await import("../src/net/wallet.js");
 const { flushPurchases } = await import("../src/net/iap.js");
 const { getCollection } = await import("../src/skins/store.js");
 
@@ -43,6 +43,9 @@ const pending = () => JSON.parse(store["tottery.wallet.pending.v1"] || "[]").map
 console.log("商品の目録");
 is("商品 id は重複しない", new Set(PRODUCT_IDS).size, PRODUCTS.length);
 is("売るのはジェムのパックだけ", PRODUCTS.every((p) => p.kind === "gems" && Number.isSafeInteger(p.gems) && p.gems > 0), true);
+is("パックの有償分は商品 ID の円と同じ(1ジェム=1円)", PRODUCTS.every((p) => String(p.paid) === p.id.split(".").pop()), true);
+is("おまけ(無償)は 0 以上で、合計=有償+おまけ", PRODUCTS.every((p) => p.free >= 0 && p.gems === p.paid + p.free), true);
+is("本人の指定: 120円=120、600円=600+120", PRODUCTS.slice(0, 2).map((p) => [p.paid, p.free]), [[120, 0], [600, 120]]);
 is("パックは目録の GEM_PACKS と同じ", PRODUCTS.map((p) => p.id), GEM_PACKS.map((p) => p.id));
 is("ジェムの値付けは正の整数", Number.isSafeInteger(GEM_PER_TICKET) && GEM_PER_TICKET > 0 && Number.isSafeInteger(BATTLEPASS_GEMS) && BATTLEPASS_GEMS > 0, true);
 is("バトルパスは App Store の商品ではない(ジェムで買う)", productOf(BATTLEPASS_ENTITLEMENT), null);
@@ -79,6 +82,15 @@ mode = "net"; await flushPurchases();
 is("通信の失敗は残す(次に開いたとき送り直す)", JSON.parse(store["tottery.iap.pending.v1"]).map((x) => x.jws), ["D"]);
 mode = "ok";
 is("syncWallet は残高を返す", (await syncWallet()).tickets, 42);
+
+console.log("\n無償ジェムの控え");
+mode = "net";
+await earnGems("bp:complete:v3", 60);
+is("圏外なら控えに残る(gems つき)", JSON.parse(store["tottery.wallet.pending.v1"]).map((x) => [x.id, x.gems]), [["bp:complete:v3", 60]]);
+mode = "ok"; calls.length = 0;
+await flushPending();
+is("無償ジェムは earn-gems の口へ", calls.some((c) => c.url.endsWith("/api/wallet/earn-gems") && c.body.gems === 60), true);
+is("送れたら控えから消える", pending(), []);
 
 console.log(`\n${ok} 件 ok / ${fails.length} 件 NG`);
 process.exit(fails.length ? 1 : 0);

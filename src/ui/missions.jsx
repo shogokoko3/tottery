@@ -6,7 +6,7 @@
  * 分かれているので、受け取りはここでまとめている。
  */
 import { useEffect, useRef, useState } from "react";
-import { earnTickets } from "../net/wallet.js";
+import { earnTickets, earnGems } from "../net/wallet.js";
 import { ArrowLeft, Check, Crown } from "../icons.jsx";
 import {
   grantMissionTitle,
@@ -62,6 +62,8 @@ export function MissionsScreen({ onBack }) {
       // サーバーの財布にも。id はミッションと日で決まるので、やり直しても二重にならない
       if (mission.reward?.type === "ticket")
         earnTickets(`mission:${mission.id}:${day}`, mission.reward.amount).catch(() => {});
+      if (mission.reward?.type === "gems")
+        earnGems(`mission:${mission.id}:${day}`, mission.reward.amount).catch(() => {});
       return loadProfile();
     }
     const current = loadProfile();
@@ -74,6 +76,8 @@ export function MissionsScreen({ onBack }) {
     await giveGift(mission.reward);
     if (mission.reward.type === "ticket")
       earnTickets(`mission:${mission.id}`, mission.reward.amount).catch(() => {});
+    if (mission.reward.type === "gems")
+      earnGems(`mission:${mission.id}`, mission.reward.amount).catch(() => {});
     return markMissionClaimed(mission.id);
   }
 
