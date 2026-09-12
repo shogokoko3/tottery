@@ -23,24 +23,25 @@ import {
 import { getPass, updatePass, usePass } from "../game/battlepass-store.js";
 import { claimSpecial } from "../skins/collection.js";
 import { useCollection } from "../skins/store.js";
-import { BATTLEPASS_ENTITLEMENT, BATTLEPASS_GEMS, BATTLEPASS_COMPLETE_GEMS } from "../iap/catalog.js";
+import { BATTLEPASS_GEMS, BATTLEPASS_COMPLETE_GEMS } from "../iap/catalog.js";
 import { shopAvailable } from "../net/iap.js";
-import { WALLET_SERVER, buyPassWithGems, earnGems, newEventId, syncWallet } from "../net/wallet.js";
+import {
+  buyPassWithGems,
+  earnGems,
+  newEventId,
+  syncWallet,
+} from "../net/wallet.js";
 import { GemShop } from "./gem-shop.jsx";
-import { Capacitor } from "@capacitor/core";
 import { updateCollection } from "../skins/store.js";
 import { unlockAudio } from "../audio/index.js";
+import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
+import { useBattlePassUnlocked } from "./battlepass-access.js";
 import { BattlePassMagic } from "./battlepass-magic.jsx";
 
 export function BattlePassScreen({ onBack, onSkins }) {
   const pass = usePass();
   const collection = useCollection();
-  // 受け取りにはバトルパスの権利(買い切り)が要る。権利はサーバーの財布にあり、端末はその写し
-  // 店の無い環境(Web)では買えないので、今まで通り無料のまま(行き止まりにしない)
-  const owned =
-    !WALLET_SERVER ||
-    !Capacitor.isNativePlatform() ||
-    (collection.entitlements || []).includes(BATTLEPASS_ENTITLEMENT);
+  const owned = useBattlePassUnlocked();
   const [shopOk, setShopOk] = useState(false);
   const [shop, setShop] = useState(false);
   const [buying, setBuying] = useState(false);
@@ -78,9 +79,12 @@ export function BattlePassScreen({ onBack, onSkins }) {
 
   // 25マスをそろえたら無償ジェム。id は盤の版で決まるので、何度開いても一度しか効かない
   useEffect(() => {
-    if (!allCleared(pass) || !BATTLEPASS_COMPLETE_GEMS) return;
-    earnGems(`bp:complete:v${pass.version || 3}`, BATTLEPASS_COMPLETE_GEMS).catch(() => {});
-  }, [pass]);
+    if (!owned || !allCleared(pass) || !BATTLEPASS_COMPLETE_GEMS) return;
+    earnGems(
+      `bp:complete:v${pass.version || 3}`,
+      BATTLEPASS_COMPLETE_GEMS,
+    ).catch(() => {});
+  }, [pass, owned]);
 
   // ジェムでバトルパスを買う(サーバーで減らして権利をつける)。足りなければ店を開く
   const purchase = useCallback(async () => {
@@ -103,7 +107,7 @@ export function BattlePassScreen({ onBack, onSkins }) {
 
   // 最後の札のめくりを見せてから、同じ25片の並び替えへつなぐ。
   useEffect(() => {
-    if (!pending) {
+    if (!owned || !pending) {
       setAnimationReady(false);
       return;
     }
@@ -112,7 +116,7 @@ export function BattlePassScreen({ onBack, onSkins }) {
       : 560;
     const timer = setTimeout(() => setAnimationReady(true), delay);
     return () => clearTimeout(timer);
-  }, [pending]);
+  }, [pending, owned]);
 
   const claim = useCallback(async () => {
     if (claiming.current || !canClaim(getPass()) || !owned) return;
@@ -147,13 +151,13 @@ export function BattlePassScreen({ onBack, onSkins }) {
   }, []);
 
   function flip(id) {
-    if (pending || assembled) return;
+    if (!owned || pending || assembled) return;
     unlockAudio();
     updatePass((s) => toggleFlip(s, id));
   }
 
   function flipCompleted() {
-    if (pending || assembled) return;
+    if (!owned || pending || assembled) return;
     unlockAudio();
     updatePass((s) => flipAll(s, turned < done));
   }
@@ -161,23 +165,38 @@ export function BattlePassScreen({ onBack, onSkins }) {
   return (
     <div className="setup-wrap">
       <h2>バトルパス</h2>
-      <p className="hint">
-        相手の駒を取ると、真ん中のとなりのマスから埋まっていきます。
-        めくるとランダムな絵の欠片が現れます。25マスすべてを開くと魔法で並び替わり、絵が完成してスキンを獲得できます。
-      </p>
+      {owned && (
+        <p className="hint">
+          相手の駒を取ると、真ん中のとなりのマスから埋まっていきます。
+          めくるとランダムな絵の欠片が現れます。25マスすべてを開くと魔法で並び替わり、絵が完成してスキンを獲得できます。
+        </p>
+      )}
       <p className="pass-reward">
         <Sparkle size={16} /> コンプリート報酬
         <strong>A専用スキン「{skin.name}」</strong>
       </p>
-      <div className="pass-counts">
-        <span>
-          クリア <b>{done}</b>/{CELLS.length}
-        </span>
-        <span>
-          めくった <b>{assembled ? CELLS.length : turned}</b>/{CELLS.length}
-        </span>
-      </div>
-      {pending && animationReady ? (
+      {owned && (
+        <div className="pass-counts">
+          <span>
+            クリア <b>{done}</b>/{CELLS.length}
+          </span>
+          <span>
+            めくった <b>{assembled ? CELLS.length : turned}</b>/{CELLS.length}
+          </span>
+        </div>
+      )}
+      {!owned ? (
+        <div
+          className="pass-locked"
+          aria-label="未購入のバトルパス。購入すると解放されます"
+        >
+          <BattlePassSkinLock className="pass-locked-art" />
+          <div className="pass-locked-caption">
+            <strong>購入して解放</strong>
+            <span>25マスに挑戦し、限定Aスキンを手に入れよう</span>
+          </div>
+        </div>
+      ) : pending && animationReady ? (
         <BattlePassMagic
           imageSrc={imageSrc}
           order={pass.puzzleOrder}
@@ -248,27 +267,30 @@ export function BattlePassScreen({ onBack, onSkins }) {
           })}
         </div>
       )}
-      {assembled ? (
-        <div className="pass-actions">
-          <button
-            className="btn btn-ghost"
-            onClick={() => setShowConditions((v) => !v)}
-          >
-            {showConditions ? "完成したイラストを見る" : "クリアした条件を見る"}
-          </button>
-        </div>
-      ) : (
-        done > 1 &&
-        !pending && (
+      {owned &&
+        (assembled ? (
           <div className="pass-actions">
-            <button className="btn btn-ghost" onClick={flipCompleted}>
-              {turned < done
-                ? "クリアしたマスを全部めくる"
-                : "全部を条件に戻す"}
+            <button
+              className="btn btn-ghost"
+              onClick={() => setShowConditions((v) => !v)}
+            >
+              {showConditions
+                ? "完成したイラストを見る"
+                : "クリアした条件を見る"}
             </button>
           </div>
-        )
-      )}
+        ) : (
+          done > 1 &&
+          !pending && (
+            <div className="pass-actions">
+              <button className="btn btn-ghost" onClick={flipCompleted}>
+                {turned < done
+                  ? "クリアしたマスを全部めくる"
+                  : "全部を条件に戻す"}
+              </button>
+            </div>
+          )
+        ))}
       <p className="mission-message" role="status" aria-live="polite">
         {message}
       </p>
@@ -277,21 +299,32 @@ export function BattlePassScreen({ onBack, onSkins }) {
           <Sparkle size={18} /> スキン獲得
           <strong>A専用「{skin.name}」</strong>
         </p>
-      ) : canClaim(pass) && !owned ? (
+      ) : !owned ? (
         <div className="pass-purchase">
           <p className="hint">
-            25マスがそろいました。スキンを受け取るにはバトルパス({BATTLEPASS_GEMS}ジェム)が必要です。
-            所持 <GemAmount amount={collection.gems || 0} />。
+            バトルパスの購入で25マスが解放されます。 所持{" "}
+            <GemAmount amount={collection.gems || 0} />。
           </p>
           <button
             className="btn btn-primary btn-wide"
             disabled={buying}
             onClick={purchase}
           >
-            バトルパスを購入（<GemAmount amount={BATTLEPASS_GEMS} />）
+            {buying ? (
+              "購入を確認しています…"
+            ) : (
+              <>
+                バトルパスを購入（
+                <GemAmount amount={BATTLEPASS_GEMS} />）
+              </>
+            )}
           </button>
           {shopOk && (
-            <button className="btn btn-ghost" disabled={buying} onClick={() => setShop(true)}>
+            <button
+              className="btn btn-ghost"
+              disabled={buying}
+              onClick={() => setShop(true)}
+            >
               ジェムを買う
             </button>
           )}

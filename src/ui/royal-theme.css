@@ -433,3 +433,45 @@
   align-items: center;
   gap: 6px;
 }
+
+/* 未購入パスはAスキンと同じ鎖で封印する。購入操作は覆わない。 */
+.pass-locked {
+  position: relative;
+  width: min(100%, 300px);
+  margin: 12px auto 16px;
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px #0005;
+}
+.pass-locked-caption {
+  position: absolute;
+  bottom: 0;
+  inset-inline: 0;
+  display: grid;
+  gap: 8px;
+  padding: 36px 16px 20px;
+  text-align: center;
+  background: linear-gradient(transparent, #080e1af2 35%);
+}
+.pass-locked-caption strong {
+  color: var(--gold-soft);
+  font-size: 18px;
+  letter-spacing: 0.12em;
+}
+.pass-locked-caption span {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.skin-pass-lock.home-pass-lock {
+  width: 44px;
+  height: 44px;
+  aspect-ratio: 1;
+  border-radius: 7px;
+}
+@media (max-width: 480px) {
+  .pass-locked {
+    width: min(100%, 225px);
+  }
+}

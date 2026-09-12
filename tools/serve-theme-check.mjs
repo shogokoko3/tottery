@@ -13,6 +13,18 @@ const bundle = await build({
     {
       name: "preview",
       setup(b) {
+        // 購入前後を実際のパス画面で確認する。外部決済は一切呼ばない。
+        b.onLoad({ filter: /src\/ui\/battlepass-access\.js$/ }, () => ({
+          contents: `import {useCollection} from '../skins/store.js';export function useBattlePassUnlocked(){const c=useCollection();return new URLSearchParams(location.search).get('pass')!=='locked'||(c.entitlements||[]).includes('battlepass')}`,
+        }));
+        b.onLoad({ filter: /src\/net\/wallet\.js$/ }, async (args) => ({
+          contents: fs
+            .readFileSync(args.path, "utf8")
+            .replace(
+              'return mirror(await walletRequest("buy-pass", { id }));',
+              'return updateCollection(s=>({...s,entitlements:[...new Set([...(s.entitlements||[]),"battlepass"])]}));',
+            ),
+        }));
         b.onLoad({ filter: /src\/net\/iap\.js$/ }, () => ({
           contents: `import {PRODUCTS} from '../iap/catalog.js';export async function loadProducts(){return PRODUCTS.map(p=>({...p,price:'表示見本'}));}export const shopAvailable=async()=>true;export const flushPurchases=async()=>{};export const buy=async()=>{throw Error('表示見本のため購入はできません')};export const restore=async()=>({restored:0});`,
         }));

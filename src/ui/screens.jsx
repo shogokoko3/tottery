@@ -1,3 +1,5 @@
+import { useBattlePassUnlocked } from "./battlepass-access.js";
+import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { GemAmount } from "./gem.jsx";
 import { seasonRequest, retrySeasonMatches } from "../net/season.js";
 import { AppearanceSeats } from "./season.jsx";
@@ -315,6 +317,7 @@ export function MenuScreen({
   const [profile] = useMissionProfile();
   // 受け取れるミッションの数と、未読のお知らせ。入り口に印を出す
   const unread = useUnreadLetters();
+  const passUnlocked = useBattlePassUnlocked();
   const collection = useCollection();
   const ready = claimableCount(profile, collection);
   const today = useTsumeDay(now);
@@ -404,9 +407,9 @@ export function MenuScreen({
         />
         <HomeTile
           tone="pass"
-          icon={<Grid size={26} />}
+          icon={passUnlocked ? <Grid size={26} /> : <BattlePassSkinLock className="home-pass-lock" />}
           label="バトルパス"
-          note="マスを埋める"
+          note={passUnlocked ? "マスを埋める" : "購入して解放"}
           onClick={onBattlePass}
         />
         <HomeTile
