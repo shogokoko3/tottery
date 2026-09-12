@@ -39,3 +39,14 @@ console.log(
     ? `アプリに入れないものを落とした: ${落とした.join(", ")}`
     : "落とすものは無かった",
 );
+
+// Finder の属性(リソースフォークなど)が付いた素材が混ざると、署名で
+// 「resource fork, Finder information, or similar detritus not allowed」になる(2026-09-12 に当たった)。
+// 写したあとに全部落とす
+import { execFileSync } from "node:child_process";
+try {
+  execFileSync("xattr", ["-cr", PUBLIC_DIR], { stdio: "ignore" });
+  console.log("Finder の属性を落とした: " + PUBLIC_DIR);
+} catch {
+  console.warn("xattr が使えなかった(署名で detritus と言われたら手で xattr -cr " + PUBLIC_DIR + ")");
+}

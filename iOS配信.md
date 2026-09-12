@@ -42,6 +42,8 @@ sh tools/ios-release.sh all
 
 ## つまずいたら
 
+- 「Your team has no devices」… 開発用の署名にはチームに iPhone が1台要る。iPhone を USB でつないでおけば
+  `-allowProvisioningDeviceRegistration`(スクリプトに入れてある)が自動で登録する。2026-09-12 に初回のアーカイブでこれに当たった
 - 「No signing certificate」… Xcode の Accounts でチームが選べているか。`-allowProvisioningUpdates` が
   証明書とプロファイルを自動で作る。
 - 「No profiles for 'com.shogokoko.tottery'」… App Store Connect / Identifiers に Bundle ID が無い。

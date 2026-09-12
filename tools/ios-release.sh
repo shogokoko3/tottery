@@ -17,7 +17,7 @@ if [ "$step" = "archive" ] || [ "$step" = "all" ]; then
   rm -rf "$ARCHIVE"
   xcodebuild -project "$PROJ" -scheme App -configuration Release -sdk iphoneos \
     -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
-    -allowProvisioningUpdates \
+    -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
     DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
     archive
   echo "アーカイブ完了: $ARCHIVE (ビルド番号 $BUILD_NUMBER)"
