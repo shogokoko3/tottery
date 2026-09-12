@@ -19,10 +19,10 @@ export const SUPPORT_EMAIL = "TS_manager@tottery.support"; // 2026-09-12 本人�
 
 /**
  * プライバシーポリシーを置く場所。誰でも読める URL でなければならない。
- * 配信先は Cloudflare Workers(tottery.shogokoko3.workers.dev)。
+ * 配信先は Cloudflare Workers(tottery.tsmanager.workers.dev)。
  */
 // build.mjs が プライバシーポリシー.md から privacy.html を作り、dist/ に置く
-export const PRIVACY_URL = "https://tottery.shogokoko3.workers.dev/privacy";
+export const PRIVACY_URL = "https://tottery.tsmanager.workers.dev/privacy";
 
 /** 連絡先が決まっているか。画面はこれを見て出し分ける */
 export function hasSupportContact() {

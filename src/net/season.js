@@ -4,7 +4,7 @@ import { applySeasonReceipts } from "../game/season.js";
 import { grantTitle } from "../game/profile.js";
 
 /** シーズン API の置き場所(Cloudflare Worker)。Web は同じオリジンなので相対でよい */
-export const SEASON_API_ORIGIN = "https://tottery.shogokoko3.workers.dev";
+export const SEASON_API_ORIGIN = "https://tottery.tsmanager.workers.dev";
 
 /**
  * API の土台。iOS アプリ(capacitor://localhost)では相対パスが届かないので絶対 URL にする。

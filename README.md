@@ -1,6 +1,6 @@
 # トッタリー
 
-運営画面は [運営管理](https://tottery.shogokoko3.workers.dev/admin) から開けます。登録済みの運営用メールアドレス・パスワードでサインインしてください。[操作手順](運営管理の使い方.md)をまとめています。
+運営画面は [運営管理](https://tottery.tsmanager.workers.dev/admin) から開けます。登録済みの運営用メールアドレス・パスワードでサインインしてください。[操作手順](運営管理の使い方.md)をまとめています。
 
 > **表示名は「トッタリー」**（2026-09-08 に「Tottery」から戻した）。
 > 上のバー・ブラウザの見出し・ホーム画面追加時の名前・スキン画面・管理画面を統一。
@@ -420,7 +420,7 @@ R から 0.65×10 = 6.5、SR から 0.32×20 = 6.4、SSR から 0.03×375 = 11.2
 - [THIRD-PARTY.md](THIRD-PARTY.md) — 同梱している第三者ソフトウェアの表示
 - [プライバシーポリシー.md](プライバシーポリシー.md) — 公開している本文。`npm run build` が
   [privacy.template.html](privacy.template.html) に流し込んで `privacy.html` と `dist/privacy.html` を作り、
-  本番では **https://tottery.shogokoko3.workers.dev/privacy** で開ける(手元は `/privacy`)。
+  本番では **https://tottery.tsmanager.workers.dev/privacy** で開ける(手元は `/privacy`)。
   連絡先は [src/game/support.js](src/game/support.js) の `SUPPORT_EMAIL` から埋まる。
   アプリの設定の「プライバシーポリシー」も同じ URL(`PRIVACY_URL`)を指す
 
