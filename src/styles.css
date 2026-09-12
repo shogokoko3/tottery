@@ -965,6 +965,17 @@ h3 {
   touch-action: pan-y;
   overscroll-behavior: contain;
 }
+/* 予備札の配置(ReservePlacer)は重ねた画面の中にある。中の盤(mini-board)と空きマスは
+   ドラッグ配置のため touch-action:none だが、そのせいで盤の上を縦になぞっても画面を
+   送れず、小さい端末で「ここに置く」まで届かなかった。重ねた画面の中の盤に限って
+   縦の指の動きを通す。掴む対象(札=.reserve-source/.reserve-pick、置いた駒=.mini-piece)は
+   それ自身が touch-action:none のままなので、ドラッグ配置はこれまで通り効く。
+   布陣(PlaceStep/KingStep)は .arrange-layout で modal-overlay の外なので影響しない。
+   (2026-09-12 本人の指摘: Kのチュートリアルで予備札の5を置くとき盤がスクロールを食う) */
+.modal-overlay .mini-board,
+.modal-overlay .mini-cell {
+  touch-action: pan-y;
+}
 /* 重ねた画面が出ているあいだ、下の画面のスクロールを止める */
 body:has(.modal-overlay),
 body:has(.notice-sheet),
