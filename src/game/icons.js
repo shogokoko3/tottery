@@ -21,7 +21,8 @@ export const ICONS = [
     how: "ミッション「レベル10になる」",
   },
   { id: "star", label: "星", mark: "★", how: "ミッション「レベル30になる」" },
-  ...FORMATION_EMBLEMS,
+  // 布陣の紋章。エリア(フォイル)で手に入るので、フォイルを持たないうちは一覧に出さない
+  ...FORMATION_EMBLEMS.map((e) => ({ ...e, foil: true })),
   { id: "flame", label: "炎", mark: "✦", how: "これから手に入ります" },
 ];
 

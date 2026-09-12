@@ -610,7 +610,9 @@ function ForgePanel({
         )}
       </div>
 
-      {foilView && foilKnown && (
+      {/* フォイル加工(通算獲得の記念)は、フォイルを持たないうちも出す。
+          進み具合と手に入れる道筋を見せるため。交換・所持の一覧は下で伏せる */}
+      {foilView && (
         <section
           id="forge-foil-milestones"
           className="forge-section forge-milestones"
@@ -1186,16 +1188,16 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         >
           錬成
         </button>
-        {/* フォイルを1枚でも持つと開く。欠片と交換・フォイル加工はこちら。錬成と対の名前 */}
-        {foilKnown && (
-          <button
-            role="tab"
-            aria-selected={tab === "foil"}
-            onClick={() => setTab("foil")}
-          >
-            加工
-          </button>
-        )}
+        {/* 欠片と交換・フォイル加工はこちら。錬成と対の名前。
+            フォイルを持たないうちも開ける(通算獲得の進み具合を見せ、手に入れる道筋を知らせる)。
+            交換と所持の一覧は、フォイルを1枚持つまで中で伏せる */}
+        <button
+          role="tab"
+          aria-selected={tab === "foil"}
+          onClick={() => setTab("foil")}
+        >
+          加工
+        </button>
       </div>
       {tab === "gacha" ? (
         <div className="skins-gacha" role="tabpanel" aria-label="ガチャ">
@@ -1376,7 +1378,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             </div>
           </section>
         </div>
-      ) : tab === "forge" || (tab === "foil" && foilKnown) ? (
+      ) : tab === "forge" || tab === "foil" ? (
         <ForgePanel
           collection={collection}
           foilKnown={foilKnown}

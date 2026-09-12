@@ -94,6 +94,9 @@ const EMPTY = {
   plays: 0,
   // 対戦だけの数(チュートリアルを含めない)。ミッションの条件に使う
   battles: 0,
+  // 対戦だけの勝ち・引き分け。戦績の表示に使う(plays/wins は全体の数で、称号などが使う)
+  battleWins: 0,
+  battleDraws: 0,
   wins: 0,
   draws: 0,
   // 経験値。レベルはここから毎回導くので、レベルは保存しない
@@ -142,6 +145,19 @@ export function loadProfile() {
   const saved = read(KEY) || read(OLD_KEY);
   if (!saved) return { ...EMPTY };
   const savedDraws = Number(saved.draws);
+  // 対戦だけの数と、その勝ち・引き分け。古い保存には無いので、全体の数から
+  // 見積もる(対戦の数を超えない)。以後は recordGame が対戦だけを数える
+  const battles =
+    Number(Number.isFinite(saved.battles) ? saved.battles : saved.plays) || 0;
+  const wins = Number(saved.wins) || 0;
+  const draws =
+    Number.isSafeInteger(savedDraws) && savedDraws > 0 ? savedDraws : 0;
+  const battleWins = Number.isFinite(saved.battleWins)
+    ? Math.max(0, Number(saved.battleWins))
+    : Math.min(wins, battles);
+  const battleDraws = Number.isFinite(saved.battleDraws)
+    ? Math.max(0, Number(saved.battleDraws))
+    : Math.min(draws, battles);
   return {
     id: typeof saved.id === "string" && saved.id ? saved.id : null,
     name: normalizeName(saved.name || ""),
@@ -158,10 +174,11 @@ export function loadProfile() {
       ? saved.secrets.filter((x) => typeof x === "string")
       : [],
     plays: Number(saved.plays) || 0,
-    battles:
-      Number(Number.isFinite(saved.battles) ? saved.battles : saved.plays) || 0,
-    wins: Number(saved.wins) || 0,
-    draws: Number.isSafeInteger(savedDraws) && savedDraws > 0 ? savedDraws : 0,
+    battles,
+    battleWins,
+    battleDraws,
+    wins,
+    draws,
     // 経験値を持たない古い保存は、それまでの対局数ぶんを配って引き継ぐ
     xp:
       Number(
@@ -354,6 +371,8 @@ export function grantIcon(id) {
 export function recordGame(won, opts) {
   const profile = loadProfile();
   const draw = won === null;
+  // 呼び出し側はチュートリアルなら必ず opts.tutorial を立てる(tutorialId は勝ったときだけ)
+  const isTutorial = !!(opts && opts.tutorial);
   const foeRating = opts && opts.foeRating;
   const rated = typeof foeRating === "number";
   const before =
@@ -389,7 +408,10 @@ export function recordGame(won, opts) {
       },
       opts?.at,
     ),
-    battles: profile.battles + (opts && opts.tutorial ? 0 : 1),
+    battles: profile.battles + (isTutorial ? 0 : 1),
+    // 対戦だけの勝ち・引き分け(戦績の表示用)。チュートリアルは数えない
+    battleWins: profile.battleWins + (!isTutorial && won === true ? 1 : 0),
+    battleDraws: profile.battleDraws + (!isTutorial && draw ? 1 : 0),
     wins: profile.wins + (won ? 1 : 0),
     draws: profile.draws + (draw ? 1 : 0),
     xp: profile.xp + gained,

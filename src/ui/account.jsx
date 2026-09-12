@@ -155,9 +155,12 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
   const { season } = useCollection();
   const progress = levelProgress(profile);
   const level = progress.level;
-  const rate = profile.plays
-    ? Math.round((profile.wins / profile.plays) * 100)
-    : null;
+  // 戦績は対戦だけ(チュートリアルを含めない)。plays/wins は全体の数で、
+  // 称号の判定などが使うのでそのまま残し、ここでは対戦の数を出す
+  const battles = profile.battles || 0;
+  const battleWins = profile.battleWins || 0;
+  const battleDraws = profile.battleDraws || 0;
+  const rate = battles ? Math.round((battleWins / battles) * 100) : null;
 
   return (
     <div className="account-card">
@@ -210,15 +213,15 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
 
       <div className="stat-row">
         <div className="stat">
-          <b>{profile.plays}</b>
+          <b>{battles}</b>
           <span>対局</span>
         </div>
         <div className="stat">
-          <b>{profile.wins}</b>
+          <b>{battleWins}</b>
           <span>勝ち</span>
         </div>
         <div className="stat">
-          <b>{profile.draws || 0}</b>
+          <b>{battleDraws}</b>
           <span>引き分け</span>
         </div>
         <div className="stat">
@@ -263,6 +266,9 @@ export function IconPickModal({ onClose, onSaved }) {
         <div className="icon-grid">
           {ICONS.map((icon) => {
             const owned = hasIcon(profile, icon.id);
+            // エリア(フォイル)で手に入るアイコンは、フォイルを1枚も持たないうちは
+            // 見せない(称号と同じ決まり。手に入れたものは出す)
+            if (icon.foil && !owned && !foilRevealed(getCollection())) return null;
             return (
               <button
                 className={`icon-choice ${picked === icon.id ? "icon-choice-on" : ""} ${
@@ -279,9 +285,13 @@ export function IconPickModal({ onClose, onSaved }) {
             );
           })}
         </div>
-        <p className="hint">
-          紋章アイコンは、対応する布陣の称号を獲得すると使えます。
-        </p>
+        {ICONS.some(
+          (i) => i.foil && (hasIcon(profile, i.id) || foilRevealed(getCollection())),
+        ) && (
+          <p className="hint">
+            紋章アイコンは、対応する布陣の称号を獲得すると使えます。
+          </p>
+        )}
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onClose}>
             やめる
