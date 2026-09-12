@@ -46,9 +46,11 @@ async function handleApi(request, env, url) {
       return json({ ok: true, version: 1, season: seasonAt() });
     const adminSession = url.pathname === "/api/admin/session";
     const adminSeason = url.pathname === "/api/admin/season";
+    const adminWallet = url.pathname === "/api/admin/wallet";
     if (
       !adminSession &&
       !adminSeason &&
+      !adminWallet &&
       !/^\/api\/(season|wallet|iap)\//.test(url.pathname)
     )
       return json({ error: "見つかりません。" }, 404);
@@ -82,7 +84,7 @@ async function handleApi(request, env, url) {
         return uid === OPERATOR_UID
           ? json({ uid })
           : json({ error: "運営権限がありません。" }, 403);
-      if (adminSeason && uid !== OPERATOR_UID)
+      if ((adminSeason || adminWallet) && uid !== OPERATOR_UID)
         return json({ error: "運営権限がありません。" }, 403);
       const ledger = env.SEASONS.get(env.SEASONS.idFromName("monthly-v1"));
       const call = (op, args = {}) =>
@@ -95,6 +97,8 @@ async function handleApi(request, env, url) {
       if (adminSeason) {
         return call("admin-summary");
       }
+      // 未使用残高(資金決済法の集計)。運営だけ
+      if (adminWallet) return call("admin-unused");
       // ---- 財布(サーバー側のチケット残高)と課金 ----
       // 出来事の id は端末が作る(やり直しで二重にならない)。形だけここで見る
       const eventId = (x) => (typeof x === "string" && /^[\w:.-]{1,128}$/.test(x) ? x : null);
@@ -107,6 +111,10 @@ async function handleApi(request, env, url) {
           return call("wallet-credit", { id: body.id, n: body.n, kind: "earn" });
         if (wop === "migrate" && Number.isSafeInteger(body.tickets) && body.tickets >= 0)
           return call("wallet-migrate", { tickets: body.tickets });
+        if (wop === "exchange" && eventId(body.id) && Number.isSafeInteger(body.tickets) && body.tickets > 0 && body.tickets <= 100)
+          return call("wallet-exchange", { id: body.id, tickets: body.tickets });
+        if (wop === "buy-pass" && eventId(body.id))
+          return call("wallet-buypass", { id: body.id });
         return json({ error: "見つかりません。" }, 404);
       }
       if (url.pathname === "/api/iap/verify") {
@@ -214,6 +222,9 @@ export class SeasonLedger {
         if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-purchase") return w.purchase(uid, args.tx, now);
         if (op === "wallet-migrate") return w.migrate(uid, args.tickets, now);
+        if (op === "wallet-exchange") return w.exchange(uid, args.id, args.tickets, now);
+        if (op === "wallet-buypass") return w.buyPass(uid, args.id, now);
+        if (op === "admin-unused" && uid === OPERATOR_UID) return w.unused();
         if (op === "claim") {
           // 初めて受け取るときだけ、報酬のチケットをその場で財布へ(端末を信じない)。
           // 以前に端末で受け取った分は引き継ぎで来るので、ここで二度は足さない

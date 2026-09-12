@@ -50,10 +50,10 @@ import {
   totalOfSpares,
 } from "../skins/ether.js";
 import { updateCollection, useCollection } from "../skins/store.js";
-import { WALLET_SERVER, debitTickets, newEventId, syncWallet, migrateOnce } from "../net/wallet.js";
-import { buy, restore, shopAvailable, loadProducts, flushPurchases } from "../net/iap.js";
-import { isVerified } from "../net/auth.js";
-import { signInWithApple } from "../net/apple-signin.js";
+import { WALLET_SERVER, debitTickets, exchangeGems, newEventId, syncWallet, migrateOnce } from "../net/wallet.js";
+import { shopAvailable, flushPurchases } from "../net/iap.js";
+import { GEM_PER_TICKET } from "../iap/catalog.js";
+import { GemShop } from "./gem-shop.jsx";
 import { CardFace } from "./cards.jsx";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
 import { AREA_BY_RANK, AREA_INFO } from "../game/areas.js";
@@ -1090,48 +1090,18 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       alive = false;
     };
   }, []);
-  const openShop = async () => {
-    setMessage("");
-    try {
-      setShop({ products: await loadProducts() });
-    } catch {
-      setMessage("商品の一覧を取れませんでした。通信を確認してください。");
-    }
-  };
-  const purchase = async (id) => {
+  // ジェムでチケットを買う(両替はサーバーで1つの出来事。足りなければ店を開く)
+  const buyTickets = async (n) => {
     if (buying) return;
     setBuying(true);
     setMessage("");
     try {
-      // 財布の鍵は Apple のサインイン。無ければ先に紐づける(機種変更でも残高が残る)
-      if (!isVerified()) {
-        const r = await signInWithApple();
-        if (!r) return;
-      }
-      const r = await buy(id);
-      if (r === null) return;
-      setMessage(r.pending ? "購入を受け付けました。通信が戻ると反映されます。" : "チケットを受け取りました。");
-      setShop(null);
+      await exchangeGems(newEventId("xchg"), n);
+      setMessage(`ガチャチケットを${n}枚受け取りました。`);
     } catch (e) {
-      setMessage((e && e.message) || "購入できませんでした。");
-    } finally {
-      setBuying(false);
-    }
-  };
-  const restoreAll = async () => {
-    if (buying) return;
-    setBuying(true);
-    setMessage("");
-    try {
-      if (!isVerified()) {
-        const r = await signInWithApple();
-        if (!r) return;
-      }
-      const { restored } = await restore();
-      await syncWallet().catch(() => {});
-      setMessage(restored ? "購入を復元しました。" : "復元できる購入が見つかりませんでした。");
-    } catch (e) {
-      setMessage((e && e.message) || "復元できませんでした。");
+      const m = (e && e.message) || "";
+      if (/ジェムが足りません/.test(m) && shopOk) setShop(true);
+      setMessage(m || "両替できませんでした。");
     } finally {
       setBuying(false);
     }
@@ -1350,14 +1320,20 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 10回召喚<span>{FREE_GACHA ? "無料" : `チケット${PULL_COST * 10}枚`}</span>
               </button>
             </div>
-            {shopOk && (
+            {WALLET_SERVER && !FREE_GACHA && (
               <div className="skins-shop-row">
-                <button className="skin-btn" disabled={buying || working} onClick={openShop}>
-                  チケットを買う
+                <span className="skins-gems">ジェム <b>{collection.gems || 0}</b></span>
+                <button className="skin-btn" disabled={buying || working} onClick={() => buyTickets(1)}>
+                  チケット1枚<span>{GEM_PER_TICKET}ジェム</span>
                 </button>
-                <button className="btn btn-ghost btn-small" disabled={buying} onClick={restoreAll}>
-                  購入を復元
+                <button className="skin-btn" disabled={buying || working} onClick={() => buyTickets(10)}>
+                  10枚<span>{GEM_PER_TICKET * 10}ジェム</span>
                 </button>
+                {shopOk && (
+                  <button className="skin-btn skin-btn-gold" disabled={buying || working} onClick={() => setShop(true)}>
+                    ジェムを買う
+                  </button>
+                )}
               </div>
             )}
             <div className="skins-odds">
@@ -1831,36 +1807,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         ))}
 
       {shop && (
-        <div className="modal-overlay" role="dialog" aria-label="チケットを買う">
-          <div className="modal-panel">
-            <h3>ガチャチケットを買う</h3>
-            <p className="hint">
-              いまの残高 <b>{collection.tickets}</b> 枚。買ったチケットはアカウント(Apple でのサインイン)に
-              紐づき、機種変更やインストールし直しのあとも残ります。
-            </p>
-            <div className="shop-list">
-              {shop.products.filter((p) => p.kind === "tickets").map((p) => (
-                <button
-                  key={p.id}
-                  className="skin-btn shop-item"
-                  disabled={buying}
-                  onClick={() => purchase(p.id)}
-                >
-                  {p.name}<span>{p.price}</span>
-                </button>
-              ))}
-              {!shop.products.length && (
-                <p className="hint">商品を取れませんでした。少し待ってからお試しください。</p>
-              )}
-            </div>
-            <p className="hint">価格は App Store の表示に従います。</p>
-            <div className="setup-actions">
-              <button className="btn btn-ghost" disabled={buying} onClick={() => setShop(null)}>
-                閉じる
-              </button>
-            </div>
-          </div>
-        </div>
+        <GemShop gems={collection.gems || 0} onClose={() => setShop(null)} onMessage={setMessage} />
       )}
       {selected && (
         <SkinModal

@@ -5477,3 +5477,8 @@ body:has(.skin-overlay) {
   justify-items: center;
   margin: 8px 0;
 }
+.skins-gems {
+  color: var(--gold);
+  font-weight: 700;
+  margin-right: 6px;
+}

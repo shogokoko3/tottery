@@ -121,6 +121,8 @@ export function normalize(raw) {
     // ガチャチケット。ミッションの褒美で増える。
     // いまのガチャは無料のテスト版なので、まだ減らない
     tickets: count(value.tickets),
+    // ジェム(有償)。サーバーの財布の写し。正はサーバー
+    gems: count(value.gems),
     // 買い切りの権利(サーバーの財布の写し。正はサーバー)
     entitlements: Array.isArray(value.entitlements)
       ? value.entitlements.filter((x) => typeof x === "string" && x.length <= 120)

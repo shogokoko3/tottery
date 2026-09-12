@@ -65,6 +65,7 @@ async function verifyOnServer(jws) {
   await updateCollection((s) => ({
     ...s,
     tickets: Number.isSafeInteger(data.tickets) ? data.tickets : s.tickets,
+    gems: Number.isSafeInteger(data.gems) ? data.gems : s.gems || 0,
     entitlements: Array.isArray(data.entitlements) ? data.entitlements : s.entitlements || [],
   }));
   return data;
@@ -92,7 +93,7 @@ export async function buy(productId) {
   if (!c) throw new Error("知らない商品です。");
   let tx;
   try {
-    tx = await p.purchaseProduct({ productIdentifier: productId, productType: "inapp", isConsumable: c.kind === "tickets" });
+    tx = await p.purchaseProduct({ productIdentifier: productId, productType: "inapp", isConsumable: c.kind !== "entitlement" });
   } catch (e) {
     if (/cancel/i.test(String(e && e.message))) return null;
     throw new Error("購入を完了できませんでした。");

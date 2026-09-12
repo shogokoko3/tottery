@@ -1,16 +1,23 @@
 /**
- * サーバー側の財布。uid ごとのチケット残高と、買い切りの権利。
+ * サーバー側の財布。uid ごとのチケット(遊んで貯まる)とジェム(有償)の残高、買い切りの権利。
  *
  * 決まり:
- *  - 加算も減算も「出来事の id」で冪等にする(同じ id は二度効かない)。通信の
- *    やり直しで二重に増えたり減ったりしない
+ *  - 加算も減算も「出来事の id」で冪等にする(同じ id は二度効かない)。通信のやり直しで
+ *    二重に増えたり減ったりしない。両替(ジェム→チケット)も1つの出来事
  *  - 減算は残高を超えない(足りなければ失敗して残高は動かない)
- *  - 購入は Apple の取引 ID で冪等。チケットは世界で一度だけ加算、買い切りの権利は
- *    Apple が所有を証明するので、復元した uid にも渡す
- *  - 端末にあった分の引き継ぎは uid ごとに一度きり。上限つき(端末の値は信じきれない)
+ *  - 購入(ジェム)は Apple の取引 ID で冪等。世界で一度だけ加算
+ *  - 遊んで貯める分(チケット)は端末の申告なので、1回/1日の上限で抑える
+ *  - 端末にあったチケットの引き継ぎは uid ごとに一度きり。上限つき
+ *  - ジェムは有償のみ・期限なし。未使用残高(円=ジェム)は unused() で集計する
+ *    (資金決済法: 3月末・9月末の残高が1,000万円を超えたら届出と供託)
  * SQL は既存の Ledger と同じ口(query, ...params) => rows で受ける。
  */
-import { productOf } from "../iap/catalog.js";
+import {
+  productOf,
+  GEM_PER_TICKET,
+  BATTLEPASS_GEMS,
+  BATTLEPASS_ENTITLEMENT,
+} from "../iap/catalog.js";
 
 export const MIGRATE_TICKETS_MAX = 500;
 /** 遊んで貯める分(kind=earn)は端末の申告なので、1回と1日(UTC)の上限で抑える */
@@ -22,56 +29,73 @@ const cap = (n, max) => (Number.isSafeInteger(n) && n > 0 ? Math.min(n, max) : 0
 export class Wallet {
   constructor(sql) {
     this.sql = sql;
-    sql("CREATE TABLE IF NOT EXISTS wallets (uid TEXT PRIMARY KEY, tickets INTEGER NOT NULL, updated INTEGER)");
+    sql("CREATE TABLE IF NOT EXISTS wallets (uid TEXT PRIMARY KEY, tickets INTEGER NOT NULL, updated INTEGER, gems INTEGER NOT NULL DEFAULT 0)");
+    // ジェムより前に作られた表には列を足す(あれば失敗するだけ)
+    try { sql("ALTER TABLE wallets ADD COLUMN gems INTEGER NOT NULL DEFAULT 0"); } catch { /* 既にある */ }
+    sql("CREATE TABLE IF NOT EXISTS wallet_ledger (id TEXT PRIMARY KEY, uid TEXT, tickets INTEGER NOT NULL, gems INTEGER NOT NULL, kind TEXT, ref TEXT, at INTEGER)");
+    sql("CREATE INDEX IF NOT EXISTS wallet_ledger_uid ON wallet_ledger(uid, at)");
+    // 旧 wallet_events(チケットだけ)を引き継ぐ。id が同じなら二度は入らない
     sql("CREATE TABLE IF NOT EXISTS wallet_events (id TEXT PRIMARY KEY, uid TEXT, delta INTEGER, kind TEXT, ref TEXT, at INTEGER)");
-    sql("CREATE INDEX IF NOT EXISTS wallet_events_uid ON wallet_events(uid, at)");
+    sql("INSERT OR IGNORE INTO wallet_ledger SELECT id, uid, delta, 0, kind, ref, at FROM wallet_events");
     sql("CREATE TABLE IF NOT EXISTS purchases (transactionId TEXT PRIMARY KEY, uid TEXT, productId TEXT, environment TEXT, purchasedAt INTEGER, grantedAt INTEGER)");
     sql("CREATE TABLE IF NOT EXISTS entitlements (uid TEXT, productId TEXT, transactionId TEXT, at INTEGER, PRIMARY KEY(uid, productId))");
     sql("CREATE TABLE IF NOT EXISTS migrations (uid TEXT PRIMARY KEY, tickets INTEGER, at INTEGER)");
   }
-  balance(uid) {
-    const row = this.sql("SELECT tickets FROM wallets WHERE uid=?", uid)[0];
-    return row ? row.tickets : 0;
+  row(uid) {
+    return this.sql("SELECT tickets, gems FROM wallets WHERE uid=?", uid)[0] || { tickets: 0, gems: 0 };
   }
+  balance(uid) { return this.row(uid).tickets; }
+  gems(uid) { return this.row(uid).gems; }
   entitlementsOf(uid) {
     return this.sql("SELECT productId FROM entitlements WHERE uid=?", uid).map((r) => r.productId);
   }
   summary(uid) {
-    return { tickets: this.balance(uid), entitlements: this.entitlementsOf(uid) };
+    const r = this.row(uid);
+    return {
+      tickets: r.tickets,
+      gems: r.gems,
+      entitlements: this.entitlementsOf(uid),
+      prices: { ticket: GEM_PER_TICKET, battlepass: BATTLEPASS_GEMS },
+    };
   }
   /** 出来事 id で冪等に増減する。減らす場合は残高を超えない */
-  apply(uid, id, delta, kind, ref, now) {
+  apply(uid, id, { tickets = 0, gems = 0 }, kind, ref, now) {
     if (typeof id !== "string" || !/^[\w:.-]{1,128}$/.test(id))
       throw new Error("出来事の id が正しくありません。");
-    if (!Number.isSafeInteger(delta) || delta === 0 || Math.abs(delta) > 100000)
-      throw new Error("枚数が正しくありません。");
-    const seen = this.sql("SELECT uid FROM wallet_events WHERE id=?", id)[0];
+    for (const d of [tickets, gems])
+      if (!Number.isSafeInteger(d) || Math.abs(d) > 1000000)
+        throw new Error("枚数が正しくありません。");
+    if (tickets === 0 && gems === 0) throw new Error("枚数が正しくありません。");
+    const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) {
       if (seen.uid !== uid) throw new Error("他の人の出来事です。");
-      return { applied: false, tickets: this.balance(uid) };
+      return { applied: false, ...this.summary(uid) };
     }
     if (kind === "earn") {
-      if (delta < 0 || delta > EARN_EVENT_MAX) throw new Error("枚数が正しくありません。");
+      if (gems !== 0 || tickets < 0 || tickets > EARN_EVENT_MAX)
+        throw new Error("枚数が正しくありません。");
       const today = this.sql(
-        "SELECT COALESCE(SUM(delta),0) AS n FROM wallet_events WHERE uid=? AND kind='earn' AND ref=?",
+        "SELECT COALESCE(SUM(tickets),0) AS n FROM wallet_ledger WHERE uid=? AND kind='earn' AND ref=?",
         uid, dayOf(now),
       )[0].n;
-      if (today + delta > EARN_DAILY_MAX) throw new Error("今日はこれ以上受け取れません。");
+      if (today + tickets > EARN_DAILY_MAX) throw new Error("今日はこれ以上受け取れません。");
       ref = dayOf(now);
     }
-    const before = this.balance(uid);
-    if (delta < 0 && before + delta < 0)
-      throw new Error(`ガチャチケットが足りません(あと${-delta - before}枚)`);
-    this.sql("INSERT INTO wallet_events VALUES (?,?,?,?,?,?)", id, uid, delta, kind, ref ?? null, now);
+    const before = this.row(uid);
+    if (tickets < 0 && before.tickets + tickets < 0)
+      throw new Error(`ガチャチケットが足りません(あと${-tickets - before.tickets}枚)`);
+    if (gems < 0 && before.gems + gems < 0)
+      throw new Error(`ジェムが足りません(あと${-gems - before.gems})`);
+    this.sql("INSERT INTO wallet_ledger VALUES (?,?,?,?,?,?,?)", id, uid, tickets, gems, kind, ref ?? null, now);
     this.sql(
-      "INSERT INTO wallets VALUES (?,?,?) ON CONFLICT(uid) DO UPDATE SET tickets=tickets+excluded.tickets, updated=excluded.updated",
-      uid, delta, now,
+      "INSERT INTO wallets (uid, tickets, updated, gems) VALUES (?,?,?,?) ON CONFLICT(uid) DO UPDATE SET tickets=tickets+excluded.tickets, gems=gems+excluded.gems, updated=excluded.updated",
+      uid, tickets, now, gems,
     );
-    return { applied: true, tickets: before + delta };
+    return { applied: true, ...this.summary(uid) };
   }
-  credit(uid, id, n, kind, now) { return this.apply(uid, id, n, kind, null, now); }
-  debit(uid, id, n, kind, now) { return this.apply(uid, id, -n, kind, null, now); }
-  /** 検証済みの Apple の取引を財布に反映する。取引 ID で冪等 */
+  credit(uid, id, n, kind, now) { return this.apply(uid, id, { tickets: n }, kind, null, now); }
+  debit(uid, id, n, kind, now) { return this.apply(uid, id, { tickets: -n }, kind, null, now); }
+  /** 検証済みの Apple の取引(ジェムのパック)を財布に反映する。取引 ID で冪等 */
   purchase(uid, tx, now) {
     const product = productOf(tx.productId);
     if (!product) throw new Error("知らない商品の取引です。");
@@ -80,18 +104,24 @@ export class Wallet {
       this.sql("INSERT INTO purchases VALUES (?,?,?,?,?,?)",
         tx.transactionId, uid, tx.productId, tx.environment, Number(tx.purchaseDate) || now, now);
     let granted = false;
-    if (product.kind === "tickets") {
-      // チケットは世界で一度だけ。別の uid で既に渡していれば、ここでは渡さない
-      if (!prior) granted = this.credit(uid, `iap:${tx.transactionId}`, product.tickets, "purchase", now).applied;
-    } else {
-      // 買い切りの権利は、Apple が所有を証明している uid に渡す(復元で別の uid に来てもよい)
-      const has = this.sql("SELECT 1 FROM entitlements WHERE uid=? AND productId=?", uid, tx.productId)[0];
-      if (!has) {
-        this.sql("INSERT INTO entitlements VALUES (?,?,?,?)", uid, tx.productId, tx.transactionId, now);
-        granted = true;
-      }
-    }
+    // ジェムは世界で一度だけ。別の uid で既に渡していれば、ここでは渡さない
+    if (!prior) granted = this.apply(uid, `iap:${tx.transactionId}`, { gems: product.gems }, "purchase", tx.productId, now).applied;
     return { granted, duplicate: !!prior, product: product.id, ...this.summary(uid) };
+  }
+  /** ジェムでチケットを買う(両替)。1つの出来事なので、片方だけ効くことはない */
+  exchange(uid, id, tickets, now) {
+    if (!Number.isSafeInteger(tickets) || tickets < 1 || tickets > 100)
+      throw new Error("枚数が正しくありません。");
+    return this.apply(uid, id, { gems: -tickets * GEM_PER_TICKET, tickets }, "exchange", null, now);
+  }
+  /** ジェムでバトルパス(買い切りの権利)を買う。既に持っていれば減らさない */
+  buyPass(uid, id, now) {
+    if (this.entitlementsOf(uid).includes(BATTLEPASS_ENTITLEMENT))
+      return { applied: false, ...this.summary(uid) };
+    const r = this.apply(uid, id, { gems: -BATTLEPASS_GEMS }, "pass", BATTLEPASS_ENTITLEMENT, now);
+    if (r.applied)
+      this.sql("INSERT OR IGNORE INTO entitlements VALUES (?,?,?,?)", uid, BATTLEPASS_ENTITLEMENT, id, now);
+    return { ...r, ...this.summary(uid) };
   }
   /** 端末にあったチケットを一度だけ引き継ぐ(上限つき) */
   migrate(uid, tickets, now) {
@@ -102,9 +132,20 @@ export class Wallet {
     if (n) this.credit(uid, `migrate:${uid}`, n, "migrate", now);
     return { applied: true, migrated: n, ...this.summary(uid) };
   }
+  /**
+   * 未使用残高(運営用)。ジェムは1ジェム=1円で発行するので、合計がそのまま円。
+   * 資金決済法: 3月末・9月末にこれが1,000万円を超えたら、2か月以内に届出、半分以上を供託
+   */
+  unused() {
+    const r = this.sql("SELECT COUNT(*) AS holders, COALESCE(SUM(gems),0) AS gems FROM wallets WHERE gems>0")[0];
+    const issued = this.sql("SELECT COALESCE(SUM(gems),0) AS n FROM wallet_ledger WHERE kind='purchase'")[0].n;
+    const used = -this.sql("SELECT COALESCE(SUM(gems),0) AS n FROM wallet_ledger WHERE gems<0")[0].n;
+    return { holders: r.holders, unusedGems: r.gems, issuedGems: issued, usedGems: used, yen: r.gems, threshold: 10000000, over: r.gems > 10000000 };
+  }
   /** 自分の記録を消す(5.1.1(v))。購入の記録は会計のため残す(uid は伏せる) */
   forget(uid) {
     this.sql("DELETE FROM wallets WHERE uid=?", uid);
+    this.sql("DELETE FROM wallet_ledger WHERE uid=?", uid);
     this.sql("DELETE FROM wallet_events WHERE uid=?", uid);
     this.sql("DELETE FROM entitlements WHERE uid=?", uid);
     this.sql("DELETE FROM migrations WHERE uid=?", uid);

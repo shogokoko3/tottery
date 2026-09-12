@@ -22,11 +22,10 @@ import {
 import { getPass, updatePass, usePass } from "../game/battlepass-store.js";
 import { claimSpecial } from "../skins/collection.js";
 import { useCollection } from "../skins/store.js";
-import { BATTLEPASS_PRODUCT } from "../iap/catalog.js";
-import { buy, restore, shopAvailable, loadProducts } from "../net/iap.js";
-import { WALLET_SERVER } from "../net/wallet.js";
-import { isVerified } from "../net/auth.js";
-import { signInWithApple } from "../net/apple-signin.js";
+import { BATTLEPASS_ENTITLEMENT, BATTLEPASS_GEMS } from "../iap/catalog.js";
+import { shopAvailable } from "../net/iap.js";
+import { WALLET_SERVER, buyPassWithGems, newEventId, syncWallet } from "../net/wallet.js";
+import { GemShop } from "./gem-shop.jsx";
 import { Capacitor } from "@capacitor/core";
 import { updateCollection } from "../skins/store.js";
 import { unlockAudio } from "../audio/index.js";
@@ -40,9 +39,9 @@ export function BattlePassScreen({ onBack, onSkins }) {
   const owned =
     !WALLET_SERVER ||
     !Capacitor.isNativePlatform() ||
-    (collection.entitlements || []).includes(BATTLEPASS_PRODUCT);
+    (collection.entitlements || []).includes(BATTLEPASS_ENTITLEMENT);
   const [shopOk, setShopOk] = useState(false);
-  const [price, setPrice] = useState("");
+  const [shop, setShop] = useState(false);
   const [buying, setBuying] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -66,63 +65,34 @@ export function BattlePassScreen({ onBack, onSkins }) {
     };
   }, []);
 
-  // 店が出せる端末(iOS)なら、StoreKit の表示価格を取る
+  // 店が出せる端末(iOS)か。開いたら残高を取り直す
   useEffect(() => {
     let alive = true;
-    shopAvailable().then(async (ok) => {
-      if (!alive) return;
-      setShopOk(ok);
-      if (!ok) return;
-      try {
-        const p = (await loadProducts()).find((x) => x.id === BATTLEPASS_PRODUCT);
-        if (alive && p) setPrice(p.price);
-      } catch {
-        /* 値段が取れなくても購入ボタンは出す(StoreKit の画面で確認できる) */
-      }
-    });
+    shopAvailable().then((ok) => alive && setShopOk(ok));
+    syncWallet().catch(() => {});
     return () => {
       alive = false;
     };
   }, []);
 
+  // ジェムでバトルパスを買う(サーバーで減らして権利をつける)。足りなければ店を開く
   const purchase = useCallback(async () => {
     if (buying) return;
     setBuying(true);
     setMessage("");
     try {
-      if (!isVerified()) {
-        const r = await signInWithApple();
-        if (!r) return; // 取り消し
-      }
-      const r = await buy(BATTLEPASS_PRODUCT);
-      if (r === null) return; // 取り消し
-      if (mounted.current)
-        setMessage(r.pending ? "購入を受け付けました。通信が戻ると反映されます。" : "バトルパスを手に入れました。");
+      await buyPassWithGems(newEventId("pass"));
+      if (mounted.current) setMessage("バトルパスを手に入れました。");
     } catch (e) {
-      if (mounted.current) setMessage((e && e.message) || "購入できませんでした。");
+      const m = (e && e.message) || "購入できませんでした。";
+      if (mounted.current) {
+        setMessage(m);
+        if (/ジェムが足りません/.test(m) && shopOk) setShop(true);
+      }
     } finally {
       if (mounted.current) setBuying(false);
     }
-  }, [buying]);
-
-  const restorePass = useCallback(async () => {
-    if (buying) return;
-    setBuying(true);
-    setMessage("");
-    try {
-      if (!isVerified()) {
-        const r = await signInWithApple();
-        if (!r) return;
-      }
-      const { restored } = await restore();
-      if (mounted.current)
-        setMessage(restored ? "購入を復元しました。" : "復元できる購入が見つかりませんでした。");
-    } catch (e) {
-      if (mounted.current) setMessage((e && e.message) || "復元できませんでした。");
-    } finally {
-      if (mounted.current) setBuying(false);
-    }
-  }, [buying]);
+  }, [buying, shopOk]);
 
   // 最後の札のめくりを見せてから、同じ25片の並び替えへつなぐ。
   useEffect(() => {
@@ -303,21 +273,19 @@ export function BattlePassScreen({ onBack, onSkins }) {
       ) : canClaim(pass) && !owned ? (
         <div className="pass-purchase">
           <p className="hint">
-            25マスがそろいました。スキンを受け取るにはバトルパスの購入が必要です。
-            {shopOk ? "" : " 購入は iOS アプリで行えます。"}
+            25マスがそろいました。スキンを受け取るにはバトルパス({BATTLEPASS_GEMS}ジェム)が必要です。
+            いまのジェム {collection.gems || 0}。
           </p>
+          <button
+            className="btn btn-primary btn-wide"
+            disabled={buying}
+            onClick={purchase}
+          >
+            バトルパスを購入({BATTLEPASS_GEMS}ジェム)
+          </button>
           {shopOk && (
-            <button
-              className="btn btn-primary btn-wide"
-              disabled={buying}
-              onClick={purchase}
-            >
-              バトルパスを購入{price ? `(${price})` : ""}
-            </button>
-          )}
-          {shopOk && (
-            <button className="btn btn-ghost" disabled={buying} onClick={restorePass}>
-              購入を復元
+            <button className="btn btn-ghost" disabled={buying} onClick={() => setShop(true)}>
+              ジェムを買う
             </button>
           )}
         </div>
@@ -347,6 +315,9 @@ export function BattlePassScreen({ onBack, onSkins }) {
       <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る
       </button>
+      {shop && (
+        <GemShop gems={collection.gems || 0} onClose={() => setShop(false)} onMessage={setMessage} />
+      )}
     </div>
   );
 }

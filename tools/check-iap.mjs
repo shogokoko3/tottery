@@ -28,7 +28,7 @@ globalThis.fetch = async (url, init) => {
   if (mode === "server") return { ok: false, status: 500, json: async () => ({ error: "x" }) };
   return { ok: true, status: 200, json: async () => ({ tickets: 42, entitlements: [] }) };
 };
-const { PRODUCTS, PRODUCT_IDS, BATTLEPASS_PRODUCT, productOf } = await import("../src/iap/catalog.js");
+const { PRODUCTS, PRODUCT_IDS, GEM_PACKS, GEM_PER_TICKET, BATTLEPASS_GEMS, BATTLEPASS_ENTITLEMENT, productOf } = await import("../src/iap/catalog.js");
 const { earnTickets, flushPending, syncWallet } = await import("../src/net/wallet.js");
 const { flushPurchases } = await import("../src/net/iap.js");
 const { getCollection } = await import("../src/skins/store.js");
@@ -42,9 +42,10 @@ const pending = () => JSON.parse(store["tottery.wallet.pending.v1"] || "[]").map
 
 console.log("商品の目録");
 is("商品 id は重複しない", new Set(PRODUCT_IDS).size, PRODUCTS.length);
-is("種類は tickets か entitlement だけ", PRODUCTS.every((p) => ["tickets", "entitlement"].includes(p.kind)), true);
-is("チケットの商品は枚数を持つ", PRODUCTS.filter((p) => p.kind === "tickets").every((p) => Number.isSafeInteger(p.tickets) && p.tickets > 0), true);
-is("バトルパスは目録にある", productOf(BATTLEPASS_PRODUCT)?.kind, "entitlement");
+is("売るのはジェムのパックだけ", PRODUCTS.every((p) => p.kind === "gems" && Number.isSafeInteger(p.gems) && p.gems > 0), true);
+is("パックは目録の GEM_PACKS と同じ", PRODUCTS.map((p) => p.id), GEM_PACKS.map((p) => p.id));
+is("ジェムの値付けは正の整数", Number.isSafeInteger(GEM_PER_TICKET) && GEM_PER_TICKET > 0 && Number.isSafeInteger(BATTLEPASS_GEMS) && BATTLEPASS_GEMS > 0, true);
+is("バトルパスは App Store の商品ではない(ジェムで買う)", productOf(BATTLEPASS_ENTITLEMENT), null);
 
 console.log("\n遊んで貯める分の控え");
 mode = "net";

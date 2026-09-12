@@ -44,6 +44,7 @@ async function mirror(data) {
   await updateCollection((s) => ({
     ...s,
     tickets: data.tickets,
+    gems: Number.isSafeInteger(data.gems) ? data.gems : s.gems || 0,
     entitlements: Array.isArray(data.entitlements) ? data.entitlements : s.entitlements || [],
   }));
   return data;
@@ -94,6 +95,16 @@ export async function earnTickets(id, n) {
 /** ガチャの前に減らす。通れば新しい残高、足りなければ投げる */
 export async function debitTickets(id, n) {
   return mirror(await walletRequest("debit", { id, n }));
+}
+
+/** ジェムでチケットを買う(両替)。通れば新しい残高、足りなければ投げる */
+export async function exchangeGems(id, tickets) {
+  return mirror(await walletRequest("exchange", { id, tickets }));
+}
+
+/** ジェムでバトルパス(買い切りの権利)を買う。足りなければ投げる */
+export async function buyPassWithGems(id) {
+  return mirror(await walletRequest("buy-pass", { id }));
 }
 
 /** 端末にあった枚数を一度だけ引き継ぐ */
