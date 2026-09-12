@@ -2,6 +2,8 @@ import { API_KEY, OPERATOR_UID } from "../net/auth.js";
 import { DB_URL } from "../net/firebase.js";
 import { Ledger } from "./ledger.js";
 import { verifyMatch } from "./verify-match.js";
+import { Wallet } from "./wallet.js";
+import { verifyAppleTransaction } from "./applejws.js";
 import { seasonAt } from "../game/season.js";
 
 const json = (data, status = 200) =>
@@ -32,7 +34,7 @@ export default {
     // iOS アプリからの事前確認(preflight)。シーズンの口だけ
     if (
       request.method === "OPTIONS" &&
-      url.pathname.startsWith("/api/season/")
+      /^\/api\/(season|wallet|iap)\//.test(url.pathname)
     )
       return withCors(new Response(null, { status: 204 }), request);
     return withCors(await handleApi(request, env, url), request);
@@ -47,7 +49,7 @@ async function handleApi(request, env, url) {
     if (
       !adminSession &&
       !adminSeason &&
-      !url.pathname.startsWith("/api/season/")
+      !/^\/api\/(season|wallet|iap)\//.test(url.pathname)
     )
       return json({ error: "見つかりません。" }, 404);
     if (request.method !== "POST")
@@ -93,6 +95,39 @@ async function handleApi(request, env, url) {
       if (adminSeason) {
         return call("admin-summary");
       }
+      // ---- 財布(サーバー側のチケット残高)と課金 ----
+      // 出来事の id は端末が作る(やり直しで二重にならない)。形だけここで見る
+      const eventId = (x) => (typeof x === "string" && /^[\w:.-]{1,128}$/.test(x) ? x : null);
+      if (url.pathname.startsWith("/api/wallet/")) {
+        const wop = url.pathname.slice("/api/wallet/".length);
+        if (wop === "summary") return call("wallet-summary");
+        if (wop === "debit" && eventId(body.id) && Number.isSafeInteger(body.n) && body.n > 0 && body.n <= 100)
+          return call("wallet-debit", { id: body.id, n: body.n, kind: "pull" });
+        if (wop === "earn" && eventId(body.id) && Number.isSafeInteger(body.n) && body.n > 0)
+          return call("wallet-credit", { id: body.id, n: body.n, kind: "earn" });
+        if (wop === "migrate" && Number.isSafeInteger(body.tickets) && body.tickets >= 0)
+          return call("wallet-migrate", { tickets: body.tickets });
+        return json({ error: "見つかりません。" }, 404);
+      }
+      if (url.pathname === "/api/iap/verify") {
+        // Apple の署名は非同期に検証し、通ったものだけを台帳(同期)へ渡す
+        let tx;
+        try {
+          tx = await verifyAppleTransaction(body.jws);
+        } catch (e) {
+          return json({ error: e.message }, 400);
+        }
+        return call("wallet-purchase", {
+          tx: {
+            transactionId: tx.transactionId,
+            productId: tx.productId,
+            environment: tx.environment,
+            purchaseDate: tx.purchaseDate,
+          },
+        });
+      }
+      if (url.pathname.startsWith("/api/iap/"))
+        return json({ error: "見つかりません。" }, 404);
       const op = url.pathname.slice("/api/season/".length);
       if (op === "finish") {
         if (
@@ -149,9 +184,10 @@ async function handleApi(request, env, url) {
 export class SeasonLedger {
   constructor(ctx) {
     this.ctx = ctx;
-    this.ledger = new Ledger((query, ...params) =>
-      ctx.storage.sql.exec(query, ...params).toArray(),
-    );
+    const sql = (query, ...params) =>
+      ctx.storage.sql.exec(query, ...params).toArray();
+    this.ledger = new Ledger(sql);
+    this.wallet = new Wallet(sql);
   }
   async fetch(request) {
     const { op, uid, ...args } = await request.json(),
@@ -168,7 +204,16 @@ export class SeasonLedger {
         if (op === "summary") return l.summary(uid, now);
         if (op === "admin-summary" && uid === OPERATOR_UID)
           return l.adminSummary(now);
-        if (op === "forget") return l.forget(uid);
+        if (op === "forget") {
+          this.wallet.forget(uid);
+          return l.forget(uid);
+        }
+        const w = this.wallet;
+        if (op === "wallet-summary") return w.summary(uid);
+        if (op === "wallet-debit") return w.debit(uid, args.id, args.n, args.kind, now);
+        if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
+        if (op === "wallet-purchase") return w.purchase(uid, args.tx, now);
+        if (op === "wallet-migrate") return w.migrate(uid, args.tickets, now);
         if (op === "claim") return l.claim(uid, args.id, now);
         if (op === "equip") return l.equip(uid, args.back, args.frame, now);
         if (op === "appearance")
