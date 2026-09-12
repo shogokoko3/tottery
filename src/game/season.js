@@ -129,7 +129,8 @@ export function applySeasonReceipts(collection, data) {
   }
   return {
     ...collection,
-    tickets,
+    // サーバーの財布が残高を返したときはそれが正(足し算しない)
+    tickets: Number.isSafeInteger(data.wallet?.tickets) ? data.wallet.tickets : tickets,
     season: {
       uid: data.uid,
       applied: [...applied],

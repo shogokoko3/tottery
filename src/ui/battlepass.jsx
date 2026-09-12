@@ -21,12 +21,29 @@ import {
 } from "../game/battlepass.js";
 import { getPass, updatePass, usePass } from "../game/battlepass-store.js";
 import { claimSpecial } from "../skins/collection.js";
+import { useCollection } from "../skins/store.js";
+import { BATTLEPASS_PRODUCT } from "../iap/catalog.js";
+import { buy, restore, shopAvailable, loadProducts } from "../net/iap.js";
+import { WALLET_SERVER } from "../net/wallet.js";
+import { isVerified } from "../net/auth.js";
+import { signInWithApple } from "../net/apple-signin.js";
+import { Capacitor } from "@capacitor/core";
 import { updateCollection } from "../skins/store.js";
 import { unlockAudio } from "../audio/index.js";
 import { BattlePassMagic } from "./battlepass-magic.jsx";
 
 export function BattlePassScreen({ onBack, onSkins }) {
   const pass = usePass();
+  const collection = useCollection();
+  // 受け取りにはバトルパスの権利(買い切り)が要る。権利はサーバーの財布にあり、端末はその写し
+  // 店の無い環境(Web)では買えないので、今まで通り無料のまま(行き止まりにしない)
+  const owned =
+    !WALLET_SERVER ||
+    !Capacitor.isNativePlatform() ||
+    (collection.entitlements || []).includes(BATTLEPASS_PRODUCT);
+  const [shopOk, setShopOk] = useState(false);
+  const [price, setPrice] = useState("");
+  const [buying, setBuying] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [animationReady, setAnimationReady] = useState(false);
@@ -49,6 +66,64 @@ export function BattlePassScreen({ onBack, onSkins }) {
     };
   }, []);
 
+  // 店が出せる端末(iOS)なら、StoreKit の表示価格を取る
+  useEffect(() => {
+    let alive = true;
+    shopAvailable().then(async (ok) => {
+      if (!alive) return;
+      setShopOk(ok);
+      if (!ok) return;
+      try {
+        const p = (await loadProducts()).find((x) => x.id === BATTLEPASS_PRODUCT);
+        if (alive && p) setPrice(p.price);
+      } catch {
+        /* 値段が取れなくても購入ボタンは出す(StoreKit の画面で確認できる) */
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const purchase = useCallback(async () => {
+    if (buying) return;
+    setBuying(true);
+    setMessage("");
+    try {
+      if (!isVerified()) {
+        const r = await signInWithApple();
+        if (!r) return; // 取り消し
+      }
+      const r = await buy(BATTLEPASS_PRODUCT);
+      if (r === null) return; // 取り消し
+      if (mounted.current)
+        setMessage(r.pending ? "購入を受け付けました。通信が戻ると反映されます。" : "バトルパスを手に入れました。");
+    } catch (e) {
+      if (mounted.current) setMessage((e && e.message) || "購入できませんでした。");
+    } finally {
+      if (mounted.current) setBuying(false);
+    }
+  }, [buying]);
+
+  const restorePass = useCallback(async () => {
+    if (buying) return;
+    setBuying(true);
+    setMessage("");
+    try {
+      if (!isVerified()) {
+        const r = await signInWithApple();
+        if (!r) return;
+      }
+      const { restored } = await restore();
+      if (mounted.current)
+        setMessage(restored ? "購入を復元しました。" : "復元できる購入が見つかりませんでした。");
+    } catch (e) {
+      if (mounted.current) setMessage((e && e.message) || "復元できませんでした。");
+    } finally {
+      if (mounted.current) setBuying(false);
+    }
+  }, [buying]);
+
   // 最後の札のめくりを見せてから、同じ25片の並び替えへつなぐ。
   useEffect(() => {
     if (!pending) {
@@ -63,7 +138,7 @@ export function BattlePassScreen({ onBack, onSkins }) {
   }, [pending]);
 
   const claim = useCallback(async () => {
-    if (claiming.current || !canClaim(getPass())) return;
+    if (claiming.current || !canClaim(getPass()) || !owned) return;
     claiming.current = true;
     setBusy(true);
     setMessage("");
@@ -81,14 +156,14 @@ export function BattlePassScreen({ onBack, onSkins }) {
       claiming.current = false;
       if (mounted.current) setBusy(false);
     }
-  }, [skin.id, skin.name]);
+  }, [skin.id, skin.name, owned]);
 
-  // 完成後だけ自動付与。保存失敗時には完成状態を保ち、明示的に再試行できる。
+  // 完成後だけ自動付与(権利があるとき)。保存失敗時には完成状態を保ち、明示的に再試行できる。
   useEffect(() => {
-    if (!canClaim(pass) || attempted.current) return;
+    if (!canClaim(pass) || attempted.current || !owned) return;
     attempted.current = true;
     claim();
-  }, [pass, claim]);
+  }, [pass, claim, owned]);
 
   const finishMagic = useCallback(() => {
     updatePass(markAssembled);
@@ -225,6 +300,27 @@ export function BattlePassScreen({ onBack, onSkins }) {
           <Sparkle size={18} /> スキン獲得
           <strong>A専用「{skin.name}」</strong>
         </p>
+      ) : canClaim(pass) && !owned ? (
+        <div className="pass-purchase">
+          <p className="hint">
+            25マスがそろいました。スキンを受け取るにはバトルパスの購入が必要です。
+            {shopOk ? "" : " 購入は iOS アプリで行えます。"}
+          </p>
+          {shopOk && (
+            <button
+              className="btn btn-primary btn-wide"
+              disabled={buying}
+              onClick={purchase}
+            >
+              バトルパスを購入{price ? `(${price})` : ""}
+            </button>
+          )}
+          {shopOk && (
+            <button className="btn btn-ghost" disabled={buying} onClick={restorePass}>
+              購入を復元
+            </button>
+          )}
+        </div>
       ) : canClaim(pass) ? (
         <button
           className="btn btn-primary btn-wide"

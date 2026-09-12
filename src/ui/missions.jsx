@@ -6,6 +6,7 @@
  * 分かれているので、受け取りはここでまとめている。
  */
 import { useEffect, useRef, useState } from "react";
+import { earnTickets } from "../net/wallet.js";
 import { ArrowLeft, Check, Crown } from "../icons.jsx";
 import {
   grantMissionTitle,
@@ -54,9 +55,13 @@ export function MissionsScreen({ onBack }) {
   /** 1件ぶんを配る。控えるのは配り終えてから(途中で失敗しても二重取りにならない) */
   async function give(mission) {
     if (mission.periodic) {
+      const day = touchDay();
       await updateCollection((collection) =>
-        claimPeriodicMission(collection, touchDay(), mission.id),
+        claimPeriodicMission(collection, day, mission.id),
       );
+      // サーバーの財布にも。id はミッションと日で決まるので、やり直しても二重にならない
+      if (mission.reward?.type === "ticket")
+        earnTickets(`mission:${mission.id}:${day}`, mission.reward.amount).catch(() => {});
       return loadProfile();
     }
     const current = loadProfile();
@@ -67,6 +72,8 @@ export function MissionsScreen({ onBack }) {
     if (mission.reward.type === "title")
       return grantMissionTitle(mission.id, mission.reward.id);
     await giveGift(mission.reward);
+    if (mission.reward.type === "ticket")
+      earnTickets(`mission:${mission.id}`, mission.reward.amount).catch(() => {});
     return markMissionClaimed(mission.id);
   }
 

@@ -121,6 +121,10 @@ export function normalize(raw) {
     // ガチャチケット。ミッションの褒美で増える。
     // いまのガチャは無料のテスト版なので、まだ減らない
     tickets: count(value.tickets),
+    // 買い切りの権利(サーバーの財布の写し。正はサーバー)
+    entitlements: Array.isArray(value.entitlements)
+      ? value.entitlements.filter((x) => typeof x === "string" && x.length <= 120)
+      : [],
     season: sanitizeSeasonCache(value.season),
     tsume: sanitizeTsumeProgress(value.tsume),
     missionClaims: sanitizeMissionClaims(value.missionClaims),

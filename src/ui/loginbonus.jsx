@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { Check, Ticket } from "../icons.jsx";
 import { dayKey, loadProfile, markBonusTaken } from "../game/profile.js";
+import { earnTickets } from "../net/wallet.js";
 import {
   cycleOf,
   cycleRows,
@@ -40,6 +41,9 @@ export function LoginBonus() {
     setBusy(true);
     // 先に配ってから控える。途中で失敗しても、配ったぶんは手元に残る
     await giveGift(rewardOf(day));
+    // サーバーの財布にも足す。id は「何回目のボーナスか」で決まるので、やり直しても二重にならない
+    if (rewardOf(day).type === "ticket")
+      earnTickets(`login:${profile.bonusTaken}`, amount).catch(() => {});
     markBonusTaken();
     setDone(true);
     setBusy(false);
