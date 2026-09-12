@@ -140,7 +140,7 @@ for (const skin of POOL) {
   // The actual acquisition functions determine the same status through all routes.
   const baseRoll = (threshold + rate(skin) / 2) / 100;
   threshold += rate(skin);
-  const fromPull = pull(normalize(null), 1, sequence([baseRoll, 0.005]));
+  const fromPull = pull(normalize(null), 1, sequence([baseRoll, 0.005]), { free: true });
   const fromCraft = craft(
     normalize({ ether: CRAFT[skin.rarity] }),
     skin.id,
@@ -161,7 +161,7 @@ for (const skin of POOL) {
       true,
     );
   }
-  const ordinaryPull = pull(normalize(null), 1, sequence([baseRoll, 0.5]));
+  const ordinaryPull = pull(normalize(null), 1, sequence([baseRoll, 0.5]), { free: true });
   const ordinaryCraft = craft(
     normalize({ ether: CRAFT[skin.rarity] }),
     skin.id,

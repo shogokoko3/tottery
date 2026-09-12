@@ -186,8 +186,8 @@ Date.now = () => monday;
 try {
   assert.throws(() => pull(collection, 2));
   assert.equal(collection.missionDrawDay, null);
-  assert.throws(() => pull(collection, 1, () => NaN));
-  collection = pull(collection, 10, () => 0.5);
+  assert.throws(() => pull(collection, 1, () => NaN, { free: true }));
+  collection = pull(collection, 10, () => 0.5, { free: true });
   assert.equal(collection.missionDrawDay, "2026-09-07");
   assert.equal(
     periodicMissionRows(profile, collection, monday).find(

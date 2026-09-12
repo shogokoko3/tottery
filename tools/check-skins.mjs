@@ -58,7 +58,7 @@ assert.equal(draw(() => 0.97).rarity, "SSR");
 for (const bad of [-1, 1, NaN, Infinity]) assert.throws(() => draw(() => bad));
 
 const fresh = normalize(null);
-let state = pull(fresh, 10, () => 0.65);
+let state = pull(fresh, 10, () => 0.65, { free: true });
 assert.equal(fresh.draws, 0);
 assert.equal(state.owned["elf-male"], 10);
 assert.equal(state.pending.results.filter((r) => r.isNew).length, 1);
@@ -87,6 +87,7 @@ for (let i = 0; i < 120; i++)
       let n = 0;
       return () => (n++ % 2 === 0 ? 0 : 0.5);
     })(),
+    { free: true },
   );
 assert.equal(state.draws, 1210);
 assert.equal(state.owned["zombie-male"], 1200);
@@ -135,8 +136,8 @@ memory.set(
 );
 assert.equal(getCollection().equipped["6"], "elf-male");
 const concurrent = await Promise.allSettled([
-  updateCollection((s) => pull(s, 10, () => 0)),
-  updateCollection((s) => pull(s, 10, () => 0)),
+  updateCollection((s) => pull(s, 10, () => 0, { free: true })),
+  updateCollection((s) => pull(s, 10, () => 0, { free: true })),
 ]);
 assert.deepEqual(
   concurrent.map((r) => r.status),

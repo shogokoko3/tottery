@@ -76,7 +76,7 @@ const near = normalize({
   ether: 80,
 });
 for (const finish of [0.5, 0]) {
-  const result = pull(near, 1, sequence([0.65, finish]));
+  const result = pull(near, 1, sequence([0.65, finish]), { free: true });
   assert.equal(result.acquired[id], 100);
   assert.equal(result.pending.results[0].id, finish === 0 ? foil : id);
   assert.equal(
@@ -99,6 +99,7 @@ const ten = pull(
   sequence(
     Array.from({ length: 10 }, (_, i) => [0.65, i % 2 ? 0 : 0.5]).flat(),
   ),
+  { free: true },
 );
 assert.equal(ten.acquired[id], 105);
 assert.equal(saved(ten).acquired[id], 105);
@@ -169,7 +170,7 @@ reward = clearResults(saved(reward));
 assert.equal(saved(dismantleAll(reward)).acquired[id], 100);
 assert.equal(grantSkin(reward, id).acquired[id], 101);
 assert.equal(grantSkin(reward, foil).acquired[id], 101);
-assert.equal(pull(reward, 1, sequence([0.65, 0])).acquired[id], 101);
+assert.equal(pull(reward, 1, sequence([0.65, 0]), { free: true }).acquired[id], 101);
 
 for (const bad of [
   undefined,

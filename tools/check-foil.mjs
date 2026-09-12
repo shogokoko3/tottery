@@ -82,7 +82,7 @@ for (const skin of POOL) {
   start += rate(skin);
   for (const finish of [0, 0.009999999, 0.01, 0.999999999]) {
     const random = sequence([baseRoll, finish]);
-    const result = pull(fresh(), 1, random);
+    const result = pull(fresh(), 1, random, { free: true });
     const id = finish < FOIL_CHANCE ? foilId(skin.id) : skin.id;
     assert.deepEqual(result.pending.results, [{ id, isNew: true }]);
     assert.deepEqual(result.owned, { [id]: 1 });
@@ -95,7 +95,7 @@ let foils = 0;
 for (let i = 0; i < 10000; i++) {
   const baseRoll = (i + 0.5) / 10000;
   const random = sequence([baseRoll, (i % 100) / 100]);
-  const id = pull(fresh(), 1, random).pending.results[0].id;
+  const id = pull(fresh(), 1, random, { free: true }).pending.results[0].id;
   assert.equal(baseSkinId(id), draw(() => baseRoll).id);
   histogram[byId(id).rarity]++;
   if (byId(id).foil) foils++;
@@ -106,7 +106,7 @@ assert.equal(foils, 100);
 // 10連も1枚ずつ独立。通常版所持済みでも初フォイルはNEW、同束の2枚目は重複。
 const finishes = [0, 0, 0.01, 0.5, 0, 0.5, 0.5, 0.5, 0.5, 0.5];
 const tenRandom = sequence(finishes.flatMap((n) => [0.65, n]));
-let ten = pull(normalize({ owned: { "elf-male": 1 } }), 10, tenRandom);
+let ten = pull(normalize({ owned: { "elf-male": 1 } }), 10, tenRandom, { free: true });
 assert.equal(tenRandom.calls(), 20);
 assert.deepEqual(ten.pending.results.slice(0, 3), [
   { id: "elf-male:foil", isNew: true },
@@ -118,7 +118,7 @@ assert.equal(ten.owned["elf-male:foil"], 3);
 assert.equal(ten.draws, 10);
 let repeated = fresh();
 for (let i = 0; i < 102; i++)
-  repeated = pull(completed(repeated), 1, sequence([0, i < 100 ? 0.5 : 0]));
+  repeated = pull(completed(repeated), 1, sequence([0, i < 100 ? 0.5 : 0]), { free: true });
 assert.equal(repeated.owned["zombie-male"], 100, "100回でも確定枠は加えない");
 assert.equal(repeated.owned["zombie-male:foil"], 2, "連続当選を抑制しない");
 
@@ -185,12 +185,12 @@ assert.deepEqual(made.lastCraft, { id: "elf-male:foil", isNew: false });
 assert.equal(made.owned["elf-male"], 3);
 assert.equal(made.owned["elf-male:foil"], 2);
 assert.throws(() => craft(made, "elf-male", noRandom), /結果/);
-assert.throws(() => pull(made, 1, noRandom), /結果/);
+assert.throws(() => pull(made, 1, noRandom, { free: true }), /結果/);
 assert.throws(() => craft(ten, "elf-male", noRandom), /結果/);
 assert.throws(() => craft(fresh(), "elf-male", noRandom), /足りません/);
 for (const bad of [-1, 1, NaN, Infinity]) {
   const before = normalize({ ether: 80 });
-  assert.throws(() => pull(before, 1, sequence([0.65, bad])), /乱数/);
+  assert.throws(() => pull(before, 1, sequence([0.65, bad]), { free: true }), /乱数/);
   assert.throws(() => craft(before, "elf-male", () => bad), /乱数/);
   assert.equal(before.ether, 80);
   assert.deepEqual(before.owned, {});
@@ -249,8 +249,8 @@ const store = await import("../src/skins/store.js?foil-check");
 assert.equal(store.COLLECTION_KEY, "tottery.skins.v1", "保存キーを変更しない");
 const gachaRandom = sequence([0.65, 0]);
 const gachaOutcomes = await Promise.allSettled([
-  store.updateCollection((state) => pull(state, 1, gachaRandom)),
-  store.updateCollection((state) => pull(state, 1, gachaRandom)),
+  store.updateCollection((state) => pull(state, 1, gachaRandom, { free: true })),
+  store.updateCollection((state) => pull(state, 1, gachaRandom, { free: true })),
 ]);
 assert.deepEqual(
   gachaOutcomes.map((r) => r.status),

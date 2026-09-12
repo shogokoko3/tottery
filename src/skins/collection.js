@@ -180,11 +180,11 @@ function finishedId(baseId, random) {
 // 現在はテスト用の無料ガチャ。チケット数、購入、対局報酬には依存しない。
 // 抽選と所持への追加を一度に確定し、演出の中断や再読み込みで失わない。
 /**
- * ガチャが無料か。TestFlight のあいだは無料・回数制限なし(2026-09-12 本人の決め)。
- * **正式リリース(App Store の審査提出)の前に false にする。** そうすると 1回=チケット1枚、
- * 10回=10枚を消費する。tools/check-submit.mjs がここを見張る
+ * ガチャが無料か。2026-09-13 本人の指示で false に(実際の経済＝チケット消費で試す)。
+ * false のとき 1回=チケット1枚、10回=10枚を消費する。無料に戻すなら true。
+ * tools/check-submit.mjs は提出前に false であることを見張る
  */
-export const FREE_GACHA = true;
+export const FREE_GACHA = false;
 /** 1回の召喚で使うチケットの枚数(有料のとき) */
 export const PULL_COST = 1;
 
