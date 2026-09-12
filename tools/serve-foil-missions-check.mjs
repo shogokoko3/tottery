@@ -27,6 +27,7 @@ const result = await build({
           return {ok:true};
         }
         export async function dropOldRows(){return;}
+        export async function registerPlayer(){return {profile:{},sync:Promise.resolve({ok:false})};}
         export async function syncPlayer(){return false;}`,
         loader: "js",
       }));

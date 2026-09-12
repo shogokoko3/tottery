@@ -22,7 +22,7 @@ const result = await build({
         }));
         b.onLoad({ filter: /src\/net\/players\.js$/ }, () => ({
           loader: "js",
-          contents: `export async function publishPlayer(){};export async function dropOldRows(){};export async function syncPlayer(){return false;}`,
+          contents: `export async function publishPlayer(){};export async function registerPlayer(){return {profile:{},sync:Promise.resolve({ok:false})}};export async function dropOldRows(){};export async function syncPlayer(){return false;}`,
         }));
         b.onLoad({ filter: /src\/ui\/game\.jsx$/ }, () => {
           let s = fs.readFileSync("src/ui/game.jsx", "utf8");

@@ -16,7 +16,7 @@ const result = await build({
       setup(b) {
         b.onLoad({ filter: /src\/net\/players\.js$/ }, () => ({
           contents:
-            "export async function publishPlayer(){} export async function dropOldRows(){} export async function syncPlayer(){return false;}",
+            "export async function publishPlayer(){};export async function registerPlayer(){return {profile:{},sync:Promise.resolve({ok:false})}} export async function dropOldRows(){} export async function syncPlayer(){return false;}",
           loader: "js",
         }));
         b.onLoad({ filter: /src\/net\/letters\.js$/ }, () => ({

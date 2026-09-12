@@ -11,7 +11,8 @@
  * 「消す」はサーバーの記録を消すだけで、端末は次の起動でまた載る。
  */
 import { DB_URL } from "./firebase.js";
-import { authedFetch } from "./auth.js";
+import { authedFetch, ensureAuth } from "./auth.js";
+import { adoptUid, saveName } from "../game/profile.js";
 
 const TIMEOUT_MS = 8000;
 
@@ -47,6 +48,31 @@ export async function readPlayer(id) {
 
 /** 成績とプロフィールを一つの更新として保存する。 */
 export const publishPlayer = publishProfile;
+
+/**
+ * 名前を決めて登録する(はじめての「はじめる」)。
+ *
+ * 台帳の鍵は Firebase の uid で、ルールは auth.uid === $uid の行しか書かせない。
+ * 名前を保存した直後にそのまま載せると、起動時の匿名サインインがまだ
+ * 終わっていないときに端末製の鍵(p…)で送ってしまい 401 になる。
+ * 「成績を保存できていません」のトーストが、登録した直後に出るのはこれ。
+ *
+ * 先にサインインを待ち、鍵を uid にそろえてから名前を保存して載せる。
+ * 通っていない(圏外など)ときは載せない。送っても弾かれるだけなので、
+ * 起動時の同期(syncPlayer)が通信の戻ったあとに拾う。
+ *
+ * 返り値の sync は台帳への公開の約束。画面は待たずに次へ進んでよい。
+ */
+export async function registerPlayer(rawName) {
+  const auth = await ensureAuth();
+  if (auth) adoptUid(auth.uid);
+  const profile = saveName(rawName);
+  const sync =
+    auth && profile.id === auth.uid
+      ? publishPlayer(profile, { since: Date.now() })
+      : Promise.resolve({ ok: false });
+  return { profile, sync };
+}
 
 /** 起動時: 記録を確かめ、使用停止なら true を返す。そうでなければ置き直す */
 /**

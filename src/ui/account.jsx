@@ -21,7 +21,7 @@ import {
 import { availableTitles, hasTitle, titleOf } from "../game/titles.js";
 import { foilRevealed } from "../skins/collection.js";
 import { getCollection } from "../skins/store.js";
-import { publishPlayer } from "../net/players.js";
+import { publishPlayer, registerPlayer } from "../net/players.js";
 import { ICONS, hasIcon } from "../game/icons.js";
 import { Check, Close, Sparkle } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
@@ -52,16 +52,20 @@ function NameField({ value, onChange, error }) {
 export function NameSetupScreen({ onDone, notice }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
 
-  function submit() {
+  async function submit() {
     const bad = nameError(value);
     if (bad) {
       setError(bad);
       return;
     }
-    const next = saveName(value);
-    // 登録した人の台帳へ。はじめてなので登録日も書く
-    publishPlayer(next, { since: Date.now() });
+    if (busy) return;
+    setBusy(true);
+    // 先にサインインを待ち、鍵を uid にそろえてから台帳へ載せる。
+    // 保存した直後に載せると、サインイン前なら端末製の鍵で送って弾かれる(401)
+    const { profile: next } = await registerPlayer(value);
+    setBusy(false);
     onDone(next);
   }
 
@@ -86,7 +90,11 @@ export function NameSetupScreen({ onDone, notice }) {
           }}
           error={error}
         />
-        <button className="btn btn-primary btn-wide" onClick={submit}>
+        <button
+          className="btn btn-primary btn-wide"
+          onClick={submit}
+          disabled={busy}
+        >
           <Sparkle size={16} /> はじめる
         </button>
       </div>

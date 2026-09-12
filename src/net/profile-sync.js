@@ -103,6 +103,11 @@ function enqueue(entry) {
 export function publishProfile(profile, extra) {
   const record = profileRecord(profile);
   if (!record) return Promise.resolve({ ok: false });
+  // 鍵が自分の uid でない行は、ルール(auth.uid === $uid)で必ず弾かれる。
+  // 送っても 401 と「保存できていません」の通知が出るだけなので送らない。
+  // 端末の記録は adoptUid で uid に付け替えられ、起動時の同期が載せ直す
+  const uid = myUid();
+  if (uid && profile.id !== uid) return Promise.resolve({ ok: false });
   const entry = {
     id: profile.id,
     record,
