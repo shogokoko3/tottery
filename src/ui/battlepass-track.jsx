@@ -9,16 +9,20 @@
 import { useEffect, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
 import { applyCaptures, capturedIn, untickedCells, markTicketed } from "../game/battlepass.js";
-import { updatePass } from "../game/battlepass-store.js";
+import { getPass, updatePass } from "../game/battlepass-store.js";
 import { getCollection } from "../skins/store.js";
 import { WALLET_SERVER, earnPassTicket } from "../net/wallet.js";
 import { BATTLEPASS_ENTITLEMENT } from "../iap/catalog.js";
 
-/** バトルパスを持っているか。店の無い環境(Web)は今まで通り解放(行き止まりにしない) */
+/**
+ * バトルパスを持っているか。battlepass-access.js の useBattlePassUnlocked と同じ判定。
+ * 店の無い環境(Web)は今まで通り解放。1周目を受け取り済み(claimed)なら以後も解放
+ */
 function passOwned() {
   return (
     !WALLET_SERVER ||
     !Capacitor.isNativePlatform() ||
+    getPass().claimed === true ||
     (getCollection().entitlements || []).includes(BATTLEPASS_ENTITLEMENT)
   );
 }

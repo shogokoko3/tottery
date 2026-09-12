@@ -5484,3 +5484,19 @@ body:has(.skin-overlay) {
   flex-wrap: wrap;
   align-items: center;
 }
+
+/* 深紅のジェム。承認済みの絵柄を大小共通で使う。 */
+.gem-icon { display: inline-block; flex: none; vertical-align: middle; overflow: visible; }
+.tottery-root .gem-amount { display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; vertical-align: middle; font-size: inherit; font-weight: 600; letter-spacing: normal; color: var(--text); }
+.gem-amount b { font-variant-numeric: tabular-nums; }
+.tottery-root .gem-amount .gem-unit { font-size: .8em; color: var(--text-dim); font-weight: 400; letter-spacing: normal; }
+.gem-shop-balance { display: flex; justify-content: center; align-items: center; gap: 20px; padding: 18px 12px; margin: 12px 0; border: 1px solid var(--line); border-radius: 12px; background: radial-gradient(ellipse at 25% 50%, #54233366, transparent 70%), var(--bg); }
+.gem-shop-balance > div { display: grid; gap: 8px; }
+.gem-shop-balance small { color: var(--gold-soft); }
+.gem-shop-balance .gem-amount { justify-content: flex-start; font-size: 23px; }
+.gem-shop-balance p { margin: 0; font-size: 12px; color: var(--text-dim); }
+.shop-item .gem-pack-name { display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0; color: var(--text); }
+.shop-item .gem-pack-price { flex: none; white-space: nowrap; margin-left: 10px; }
+@media (max-width: 420px) { .gem-shop-balance { gap: 14px; } .shop-item .gem-pack-name { font-size: 13px; gap: 8px; } }
+
+.tottery-root .skins-free .gem-amount, .tottery-root .skins-free .gem-unit { border: 0; padding: 0; margin: 0; background: none; font-family: inherit; }

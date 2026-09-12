@@ -1,5 +1,6 @@
+import { GemAmount } from "./gem.jsx";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, Crown, RotateCcw, Ticket } from "../icons.jsx";
+import { ArrowLeft, Check, Crown, RotateCcw } from "../icons.jsx";
 import { playSound } from "../audio/index.js";
 import { useCollection, updateCollection } from "../skins/store.js";
 import { CardBack, CardFace } from "./cards.jsx";
@@ -95,7 +96,7 @@ function DailyPuzzle({ today, now, onBack }) {
             参加 · エーテル50 {receipt?.joined && <Check size={14} />}
           </span>
           <span className={receipt?.cleared ? "received" : ""}>
-            <Ticket size={14} /> クリア · チケット1枚{" "}
+            クリア · <GemAmount amount={TSUME_CLEAR_GEMS} size={22} />{" "}
             {receipt?.cleared && <Check size={14} />}
           </span>
         </div>
@@ -438,7 +439,7 @@ function PuzzleAttempt({ q, receipt, onClear, onRetry }) {
               ? "報酬を保存しています…"
               : pending
                 ? "正解です。報酬の保存を再試行してください。"
-                : "ガチャチケット1枚 · 本日の報酬受取済み"}
+                : <><GemAmount amount={TSUME_CLEAR_GEMS} /> · 本日の報酬受取済み</>}
           </span>
         </div>
       )}

@@ -1,3 +1,4 @@
+import { GemAmount } from "./gem.jsx";
 /**
  * 通常ミッションの画面。
  *
@@ -132,8 +133,7 @@ export function MissionsScreen({ onBack }) {
       <header className="missions-heading">
         <h2>ミッション</h2>
         <div className="level-badge">
-          <Crown size={16} />
-          <span>ガチャチケット {collection.tickets}枚</span>
+          <GemAmount amount={collection.gems || 0} size={26} />
           <small>条件を満たすと受け取れます</small>
         </div>
         {category === "daily" && (
@@ -256,7 +256,7 @@ export function MissionsScreen({ onBack }) {
                 <small>
                   {m.now}
                   {m.unit ?? KINDS[m.kind]?.unit} / {m.goal}
-                  {m.unit ?? KINDS[m.kind]?.unit} · {rewardLabel(m.reward)}
+                  {m.unit ?? KINDS[m.kind]?.unit} · {m.reward.type === "gems" ? <GemAmount amount={m.reward.amount} size={22} /> : rewardLabel(m.reward)}
                 </small>
                 {m.claimed ? (
                   <span className="mission-done">受け取り済み</span>

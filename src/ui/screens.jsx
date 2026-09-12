@@ -1,3 +1,6 @@
+import { useBattlePassUnlocked } from "./battlepass-access.js";
+import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
+import { GemAmount } from "./gem.jsx";
 import { seasonRequest, retrySeasonMatches } from "../net/season.js";
 import { AppearanceSeats } from "./season.jsx";
 import {
@@ -85,6 +88,7 @@ import { dropOldRows, syncPlayer } from "../net/players.js";
 import { ensureAuth, myUid } from "../net/auth.js";
 import { SeatsProvider } from "./names.jsx";
 import STYLES from "../styles.css";
+import ROYAL_STYLES from "./royal-theme.css";
 import SKIN_STYLES from "../skins/styles.css";
 import AREA_STYLES from "./area-effects.css";
 import SEASON_STYLES from "./season.css";
@@ -151,7 +155,7 @@ export function GameShell({
   let goHome = onHome || onBack;
   return (
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
-      <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES + AREA_STYLES}</style>
+      <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES + AREA_STYLES + ROYAL_STYLES}</style>
       <header className="top-bar">
         {/* 戻る釦が無いときは空のまま。飾りの王冠を置いていたが、
             押せそうに見えて何も起きないので外した。
@@ -313,6 +317,7 @@ export function MenuScreen({
   const [profile] = useMissionProfile();
   // 受け取れるミッションの数と、未読のお知らせ。入り口に印を出す
   const unread = useUnreadLetters();
+  const passUnlocked = useBattlePassUnlocked();
   const collection = useCollection();
   const ready = claimableCount(profile, collection);
   const today = useTsumeDay(now);
@@ -338,6 +343,7 @@ export function MenuScreen({
       </button>
 
       <HomeSelf profile={profile} tickets={collection.tickets} />
+      <button className="home-resource-bar" onClick={onSkins} aria-label="ジェムとチケットを確認"><GemAmount amount={collection.gems || 0} size={26} /><span><Ticket size={16} /> {collection.tickets}枚</span><ArrowRight size={14}/></button>
 
       <button className="home-hero" onClick={onPlay}>
         <span className="home-hero-icon">
@@ -401,9 +407,9 @@ export function MenuScreen({
         />
         <HomeTile
           tone="pass"
-          icon={<Grid size={26} />}
+          icon={passUnlocked ? <Grid size={26} /> : <BattlePassSkinLock className="home-pass-lock" />}
           label="バトルパス"
-          note="マスを埋める"
+          note={passUnlocked ? "マスを埋める" : "購入して解放"}
           onClick={onBattlePass}
         />
         <HomeTile

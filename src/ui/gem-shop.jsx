@@ -1,3 +1,4 @@
+import { GemIcon, GemAmount } from "./gem.jsx";
 /**
  * ジェム(有償の通貨)の店。iOS で StoreKit が使えるときだけ出す。
  * 商品と表示価格は StoreKit から。購入の前に Apple サインインを求める(財布の鍵)。
@@ -61,10 +62,12 @@ export function GemShop({ gems, gemsPaid = 0, gemsFree = 0, onClose, onMessage }
   };
   return (
     <div className="modal-overlay" role="dialog" aria-label="ジェムを買う">
-      <div className="modal-panel">
-        <h3>ジェムを買う</h3>
+      <div className="modal-panel gem-shop-panel">
+        <div className="modal-head"><h3>ジェムを買う</h3><button className="btn btn-ghost btn-small" disabled={busy} onClick={onClose}>閉じる</button></div>
+        <div className="gem-shop-scroll">
+        <div className="gem-shop-balance"><GemIcon size={104} /><div><small>所持ジェム</small><GemAmount amount={gems} size={28} /><p>有償 {gemsPaid.toLocaleString("ja-JP")} · 無償 {gemsFree.toLocaleString("ja-JP")}</p></div></div>
         <p className="hint">
-          いまのジェム <b>{gems}</b>(有償 {gemsPaid}・無償 {gemsFree})。使うときは無償から先に減ります。
+          使うときは無償ジェムから先に減ります。
           ジェムはアカウント(Apple でのサインイン)に紐づき、機種変更やインストールし直しのあとも残ります。
           有効期限はありません。パックのおまけ分は無償ジェムです。
         </p>
@@ -78,8 +81,8 @@ export function GemShop({ gems, gemsPaid = 0, gemsFree = 0, onClose, onMessage }
                 disabled={busy}
                 onClick={() => purchase(p.id)}
               >
-                {p.name}
-                <span>{p.price}</span>
+                <span className="gem-pack-name"><GemIcon size={38} />{p.name}</span>
+                <span className="gem-pack-price">{p.price}</span>
               </button>
             ))}
           {products && !products.length && (
@@ -89,6 +92,7 @@ export function GemShop({ gems, gemsPaid = 0, gemsFree = 0, onClose, onMessage }
         <p className="hint">
           価格は App Store の表示に従います。ジェムはこのゲームの中でだけ使え、払い戻しはできません。
         </p>
+        </div>
         <div className="setup-actions">
           <button className="btn btn-ghost btn-small" disabled={busy} onClick={restoreAll}>
             購入を確かめ直す

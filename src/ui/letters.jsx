@@ -1,3 +1,4 @@
+import { GemAmount } from "./gem.jsx";
 /**
  * 運営からのお知らせ(コードの上では letters)。
  *
@@ -151,7 +152,7 @@ export function LettersScreen({ onBack }) {
               <span className="notice-chips">
                 {l.gifts.map((g, i) => (
                   <span className="notice-chip" key={i}>
-                    {giftLabel(g)}
+                    {g.type === "gems" ? <GemAmount amount={g.amount} size={22} /> : giftLabel(g)}
                   </span>
                 ))}
               </span>
@@ -190,7 +191,7 @@ export function LettersScreen({ onBack }) {
                   <span className="notice-gifts-label">添付</span>
                   <ul>
                     {shown.gifts.map((g, i) => (
-                      <li key={i}>{giftLabel(g)}</li>
+                      <li key={i}>{g.type === "gems" ? <GemAmount amount={g.amount} size={22} /> : giftLabel(g)}</li>
                     ))}
                   </ul>
                 </div>

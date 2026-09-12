@@ -1,3 +1,4 @@
+import { GemIcon, GemAmount } from "./gem.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cardBackImg } from "../assets.js";
 import {
@@ -1321,7 +1322,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                   <span>TICKETS</span>ガチャチケット {collection.tickets} 枚
                 </div>
                 <div className="skins-free">
-                  <span>GEMS</span>ジェム {collection.gems || 0}
+                  <GemAmount amount={collection.gems || 0} size={28} />
                 </div>
               </div>
             )}
@@ -1352,10 +1353,10 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             {WALLET_SERVER && !FREE_GACHA && (
               <div className="skins-pull-buttons">
                 <button className="skin-btn" disabled={buying || working} onClick={() => buyTickets(1)}>
-                  チケット1枚<span>{GEM_PER_TICKET}ジェム</span>
+                  チケット1枚<GemAmount amount={GEM_PER_TICKET} size={20} />
                 </button>
                 <button className="skin-btn" disabled={buying || working} onClick={() => buyTickets(10)}>
-                  チケット10枚<span>{GEM_PER_TICKET * 10}ジェム</span>
+                  チケット10枚<GemAmount amount={GEM_PER_TICKET * 10} size={20} />
                 </button>
               </div>
             )}
@@ -1363,7 +1364,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               <div className="skins-shop-row">
                 {shopOk && (
                   <button className="skin-btn skin-btn-gold" disabled={buying || working} onClick={() => setShop(true)}>
-                    ジェムを買う
+                    <GemIcon size={24} /> ジェムを買う
                   </button>
                 )}
                 {adsOk && adsLeft !== 0 && (
