@@ -1,4 +1,4 @@
-# App Store 提出用の文章と答え(2026-09-12)
+# App Store 提出用の文章と答え(2026-09-12、2026-09-14 に一言と課金の記述を更新)
 
 App Store Connect に貼るための下書き。文字数は Apple の上限に収めてある。
 貼る場所は「配信」タブ → 左「App Store」→「iOS App 1.0」。
@@ -8,19 +8,21 @@ App Store Connect に貼るための下書き。文字数は Apple の上限に�
 | 欄 | 値 | 上限 |
 | --- | --- | --- |
 | 名前 | トッタリー | 30 |
-| サブタイトル | 札で戦う、二人の陣取り | 30 |
+| サブタイトル | 配られた札で陣を組み、隠れた王を討て | 30 |
 
 ## プロモーションテキスト(170字。審査なしでいつでも変えられる)
 
 ```
-トランプの札を駒にして、相手の王を討つ二人対戦。5×5の短期戦から9×9の本格戦まで。チュートリアル13話で、ルールは遊びながら覚えられます。
+毎回ランダムに配られたトランプの札で陣形を組み、相手の隠された王を討つ心理戦のボードゲーム。王はお互い伏せたまま。動きから王を読み、読まれないように動かす。5×5の短期戦から9×9の本格戦まで。ルールはチュートリアルで遊びながら覚えられます。
 ```
 
 ## 説明文(4000字まで)
 
 ```
-トッタリーは、トランプの札を駒にして戦う二人対戦のボードゲームです。
-配られた札から軍を組み、自陣に並べ、王を一枚選ぶ。相手の王を討てば勝ちです。
+トッタリーは、毎回ランダムに配られたトランプの札で陣形を組み、
+相手の隠された王を討つ、二人対戦の心理戦ボードゲームです。
+配られた札から軍を組み、自陣に並べ、王を一枚選ぶ。王はお互いに伏せたまま。
+動きから相手の王を読み、自分の王は読まれないように動かす。相手の王を討てば勝ちです。
 
 ■ 札ごとに動きが違う
 2は縦横に1マス、3は斜めに1マス。6と8は偶数・奇数のマスをまとめて取り、
@@ -28,11 +30,13 @@ App Store Connect に貼るための下書き。文字数は Apple の上限に�
 JとQを1枚ずつしか置けません。Aは動けませんが、盤の駒を入れ替える力があります。
 
 ■ どれが王かは、相手には見えない
-王は伏せたまま。取られた駒が同じ数字の仲間を道連れにしたり、
-王が倒れても同じ数字の駒が王位を継いだり。相手の王がどれかを読み合う駆け引きが軸です。
+王は伏せたまま。ふつうの駒より遠くへ動ける王の力を使えば強いが、動けば正体が知れる。
+取られた駒が同じ数字の仲間を道連れにしたり、王が倒れても同じ数字の駒が王位を継いだり。
+相手の王がどれかを読み合う駆け引きが、このゲームの軸です。
 
 ■ 5×5の短期戦と、9×9の本格戦
 5枚で戦う5×5はひと勝負が数分。9枚で戦う9×9は、布陣の組み方から勝負が始まります。
+配られる札は毎回違うので、同じ陣形は二度と組めません。
 数字を並べたストレート、マークをそろえたフラッシュの布陣ボーナスも。
 
 ■ 遊び方は13話のチュートリアルで
@@ -58,13 +62,15 @@ JとQを1枚ずつしか置けません。Aは動けませんが、盤の駒を�
 通信対戦の相手の名前は本名ではなくニックネームです。
 不適切な相手は通報・ブロックできます。
 
-課金要素はなく、広告もありません。
+対局はすべて無料で遊べます。王のスキンはガチャで手に入り、ガチャのチケットは
+遊んで貯めるほか、ジェム(アプリ内課金)や、自分で選んで見る広告1本で1枚。
+提供割合はガチャの画面に表示しています。
 ```
 
 ## キーワード(100字。カンマ区切り、スペース不要)
 
 ```
-ボードゲーム,カードゲーム,トランプ,対戦,二人,将棋,チェス,陣取り,戦略,オンライン対戦,詰め,パズル,テーブルゲーム
+ボードゲーム,カードゲーム,トランプ,対戦,二人,将棋,チェス,陣取り,心理戦,読み合い,戦略,オンライン対戦,詰め,テーブルゲーム
 ```
 
 ## URL
@@ -103,7 +109,7 @@ JとQを1枚ずつしか置けません。Aは動けませんが、盤の駒を�
 | 成人向けまたはわいせつなテーマ | なし |
 | ホラー・恐怖 | なし |
 | 医療または治療に関する情報 | なし |
-| ギャンブルとコンテスト | なし(ガチャはゲーム内通貨のみで、現金は使わない) |
+| ギャンブルとコンテスト | なし(ガチャは見た目のスキンだけ。チケットはジェム=アプリ内課金でも買えるが、換金・賭けは無い。提供割合は表示済み) |
 | 制限のない Web アクセス | いいえ |
 | ギャンブル(シミュレーション含む) | いいえ |
 | ユーザー生成コンテンツ | あり(ニックネーム。通報・ブロックあり) |
@@ -125,7 +131,8 @@ Tottery is a two-player board game played with a standard deck of cards.
 - Single-device play: Home > 対戦する > CPUと対戦する.
 - Online random match is unlocked after finishing tutorial episode 8. To test online play quickly, use "フレンドとマッチする" (friend room): create a room on one device and enter the 4-letter code on another device (or on the web version at https://tottery.tsmanager.workers.dev/).
 - User-generated content is limited to nicknames. Every online opponent can be reported (通報) and blocked (見えなくする) from the match screen and results screen. Reports go to the operator (TS_manager@tottery.support).
-- The in-game gacha uses only in-game currency earned by playing. There are no in-app purchases and no ads.
+- Each game deals a random hand of cards; players build a formation from it and secretly pick one card as their king. The core is a mind game: reading which hidden piece is the opponent's king from how it moves.
+- Monetization: cosmetic king skins come from a gacha paid with tickets. Tickets are earned by playing, bought with Gems (consumable in-app purchase), or granted for watching one optional rewarded ad (AdMob, user-initiated only). All game modes are fully playable without purchase. Drop rates are displayed on the gacha screen.
 ```
 
 ## バージョン情報(このバージョンの新機能)
@@ -136,7 +143,8 @@ Tottery is a two-player board game played with a standard deck of cards.
 
 ## ビルド
 
-TestFlight に上がっている **1.0 (202609121133)** を選ぶ(新しい公開 URL に向いたビルド)。
+TestFlight に上がっている **1.0 (202609140151)**(2026-09-14。レベルで開く札・チュートリアルを飛ばす入り)を選ぶ。
+第1話の入りの2枚(8748b8a)はこのビルドには載っていない。載せるなら送り直す。
 
 ## スクリーンショット(2026-09-12 撮影済み)
 
@@ -174,12 +182,13 @@ TestFlight に上がっている **1.0 (202609121133)** を選ぶ(新しい公�
 
 ## 課金・広告を入れるとき(本人の予定: 正式配信時)
 
-TestFlight のあいだは無料・課金なし・広告なし。配信時に入れる予定(2026-09-12 本人)。そのときに変わるもの:
+2026-09-13 にコード側は入った(ジェムのアプリ内課金 `src/iap/`、リワード広告 `src/net/ads.js`、`FREE_GACHA = false`)。
+上の説明文・審査メモはそれに合わせて書き換え済み(2026-09-14)。App Store Connect 側で残っているもの:
 
 - **DSA(デジタルサービス法)の申告**: いまは「トレーダーではありません」で申告済み。課金を入れて EU で配るなら「トレーダー」に変えて
   住所・電話・メールを製品ページに公開する。自宅住所を出さないなら、公開用の住所を用意するか **配信国から EU を外す**(個人なら現実的)。
 - **有料アプリ契約**(ビジネス → 契約)に同意し、銀行口座と税務情報を登録。済むまで課金アイテムは審査に出せない。日数がかかるので先に始める。
-- App Store Connect で課金アイテムを作り、審査に出す。`FREE_GACHA` を false にし、チケットの購入導線を実装する。
-- 説明文と審査メモの「課金要素はなく、広告もありません」を書き換える。
-- 広告を入れるなら「アプリのプライバシー」に広告用のデータを足し、トラッキングするなら ATT(許可ダイアログ)を実装する。
+- App Store Connect のジェム商品(gems.120〜10000)に審査用スクリーンショットを付け、アプリと一緒に審査に出す。
+- 「アプリのプライバシー」に広告(AdMob)ぶんのデータ収集を足す。ATT の許可文(NSUserTrackingUsageDescription)は Info.plist に入れてある。
+- 配信ビルドは `ADMOB_TESTING=false`(本物の広告)で作る。TestFlight のビルドはテスト広告のまま。
 - ガチャの提供割合の表示は必須のまま(すでにある)。
