@@ -121,7 +121,7 @@ JとQを1枚ずつしか置けません。Aは動けませんが、盤の駒を�
 Tottery is a two-player board game played with a standard deck of cards.
 
 - No account or sign-in is required. Players choose a nickname on first launch.
-- The tutorial (Home > チュートリアル) teaches the rules in 13 short episodes; Episode 1 takes about 3 minutes.
+- The tutorial (Home > チュートリアル) teaches the rules in 13 short episodes; Episode 1 takes about a minute.
 - Single-device play: Home > 対戦する > CPUと対戦する.
 - Online random match is unlocked after finishing tutorial episode 8. To test online play quickly, use "フレンドとマッチする" (friend room): create a room on one device and enter the 4-letter code on another device (or on the web version at https://tottery.tsmanager.workers.dev/).
 - User-generated content is limited to nicknames. Every online opponent can be reported (通報) and blocked (見えなくする) from the match screen and results screen. Reports go to the operator (TS_manager@tottery.support).

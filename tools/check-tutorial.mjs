@@ -51,6 +51,7 @@ import {
   currentStepIndex,
   foeAction,
   matchesNeed,
+  openingState,
   upcomingNeedStep,
 } from "../src/game/tutorial.js";
 import { automaticAreaAction } from "../src/game/area-presentation.js";
@@ -201,6 +202,15 @@ for (const tut of ALL_TUTORIALS) {
     "カードプールが守られている",
     s.players[0].hand.every((c) => tut.pool.includes(c.rank)),
   );
+  // 盤が並んだところから始める話は、画面と同じ下ごしらえを通す
+  if (tut.opening) {
+    s = openingState(tut, ADJUDICATION_RULE_VERSION);
+    ok("下ごしらえで対局が始まる", s.phase === "play" && s.currentTurn === 0);
+    ok(
+      "下ごしらえの王が指定どおり",
+      s.players[0].kingId === tut.opening.kingId,
+    );
+  }
 
   stretched = [];
   // Kの力で盤に出てくる札。教えたばかりの採用枚数と食い違わないか見る
@@ -504,6 +514,8 @@ for (const tut of ALL_TUTORIALS) {
  */
 console.log("\n布陣のやり直し");
 for (const tut of ALL_TUTORIALS) {
+  // 盤が並んだところから始める話には、並べる場面が無い
+  if (tut.opening) continue;
   let s = reducer(
     { phase: "intro" },
     {

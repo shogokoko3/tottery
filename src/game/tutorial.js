@@ -12,6 +12,7 @@
  *   end    最後の1枚。閉じるとチュートリアルを抜ける
  */
 import { CARD_POOLS, PLAYER_META, SUITS } from "./constants.js";
+import { reducer } from "./reducer.js";
 
 const SUIT_OF = { S: "spade", H: "heart", D: "diamond", C: "club" };
 
@@ -96,18 +97,24 @@ const myTurnOrEnd = (s) =>
 /**
  * はじめの一局。
  *
- * 覚えることを「一局を終える」だけに絞ってある。サイコロ、引き直し、
- * 布陣、王を決める、駒を動かす、相手を取る、相手の王を討つ。ここまで。
+ * 2026-09-13 に作り替えた。テスターの感想「操作はできたが、何をしているのか
+ * 分からないまま置いていかれた。1話終えてもまだ続くのかと思った」を受けて、
+ * 覚えることを「動きで王を見抜き、討つ」だけに絞る。サイコロ・引き直し・布陣は
+ * 台本(opening)が済ませておき、盤が並んだところから始める。
+ *   1手目: 5♠ で相手の駒を取る(取るまで正体は分からない)
+ *   相手: 王の 2♦ が c5 から c2 へ、まっすぐ3マス進む。素の 2〜5 は2マスまで。
+ *         3マス動けるのは王だけ(同じ数字の枚数ぶん伸びる)。動きで王が割れる
+ *   2手目: 4♠ で c2 の王を討って勝ち。勝利画面で正体(2♦)が開く
+ * 並べ方・引き直しは第2話で自分の手でやる。(2026-09-13 本人の方針
+ * 「相手の駒の進むマスから王を判定して、明らかにして、討つ」)
  *
  * 王位の継承も道連れも、この回では起こらない。相手の王を 2♦ にして、
  * 相手の軍に2をもう1枚置かないので継承が起きない。王が4でも5でも
- * ないので道連れも起きない。「王を取られたら負け」と言った同じ回で
- * 「取られたけど負けていない」を見せると、初めての人には矛盾に映る。
- * その2つは第2話でまとめて扱う。
+ * ないので道連れも起きない。
  */
 const EP1_DECK = fill(
   [
-    // あなたの手札6枚。5♥ が余分
+    // あなたの手札6枚。5♥ が余分(opening で捨てる)
     "2S",
     "3S",
     "4S",
@@ -131,7 +138,7 @@ const EP1 = {
   // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
   xp: 100,
   title: "第1話 はじめの一局",
-  subtitle: "並べて、動かして、王を討つ",
+  subtitle: "相手の王を討て",
   pool: CARD_POOLS.basic,
   poolLabel: "2 〜 5",
   boardSize: 5,
@@ -140,92 +147,41 @@ const EP1 = {
   dice: [6, 2],
   deck: EP1_DECK,
   reserveOrder: EP1_DECK.slice(12).map((c) => c.id),
+  /**
+   * 盤が並んだところから始めるための、あなたの側の下ごしらえ。
+   * 5♥ を捨て、a1 2♥ / b1 2♠ / c1 4♠(王) / d1 3♠ / c2 5♠ と並べる。
+   * openingState() が対局開始まで進める
+   */
+  opening: {
+    discardIds: ["t5"],
+    placement: {
+      t2: { row: 4, col: 2 },
+      t3: { row: 3, col: 2 },
+      t0: { row: 4, col: 1 },
+      t1: { row: 4, col: 3 },
+      t4: { row: 4, col: 0 },
+    },
+    kingId: "t2",
+  },
   foe: {
     discardIds: [],
-    // 王は c5 の 2♦
-    //
-    // 4♦ を c4 に置く。ここから c3 へ降りてくるので、王の 4♠ は素の射程
-    // (縦横2マス)だけで討ち取れる。4・5の王は自分の距離が伸びないので、
-    // ここは素の動きだけで話が済む(伸びるのは王以外の同じ数字のほう)
+    // 王は c5 の 2♦。c 列は空けておく(王がまっすぐ3マス降りてくる道)
     placement: {
       t6: { row: 0, col: 2 },
-      t8: { row: 1, col: 2 },
+      t8: { row: 0, col: 3 },
       t7: { row: 0, col: 0 },
       t9: { row: 1, col: 0 },
       t10: { row: 0, col: 4 },
     },
     kingId: "t6",
-    // こちらの駒を取りには来ない
-    moves: [
-      { pieceId: "t8", row: 2, col: 2 },
-      { pieceId: "t10", row: 1, col: 3 },
-    ],
+    // 王が c5 → c2 へ3マス。2の王は同じ数字が1枚なので 1+2=3 マス動ける。
+    // あなたの王(c1)の目の前に来るので、次の1手で討てる
+    moves: [{ pieceId: "t6", row: 3, col: 2 }],
   },
   steps: [
     {
-      text: "相手の王を取れば勝ちです。まずサイコロで先手を決めます。",
-      need: { type: "ROLL_DICE_SINGLE" },
-      focus: { button: true },
-    },
-    {
-      at: atMulligan,
-      text: "いらない札は捨てて引き直せます。5 は 5♠ で足りるので、光った 5♥ をタップ。",
-      need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t5" },
-      focus: { cards: ["t5"] },
-    },
-    {
-      text: "「引き直して確定」を押します。",
-      need: { type: "CONFIRM_MULLIGAN" },
-      focus: { button: true },
-    },
-    {
-      at: atPlace,
-      text: "6枚から5枚を自陣にならべます。4♠ は縦横に2マスまで。光ったマス c1 へ。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t2", row: 4, col: 2 },
-      focus: { cards: ["t2"], cells: [{ row: 4, col: 2 }] },
-    },
-    {
-      text: "5♠ を c2 へ。カードを持つと、動ける先が光ります。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t3", row: 3, col: 2 },
-      focus: { cards: ["t3"], cells: [{ row: 3, col: 2 }] },
-    },
-    {
-      text: "2♠ を b1 へ。2は縦横に1マス動けます。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t0", row: 4, col: 1 },
-      focus: { cards: ["t0"], cells: [{ row: 4, col: 1 }] },
-    },
-    {
-      text: "3♠ を d1 へ。3は斜めに1マス。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t1", row: 4, col: 3 },
-      focus: { cards: ["t1"], cells: [{ row: 4, col: 3 }] },
-    },
-    {
-      text: "2♥ を a1 へ。これで5枚そろいます。",
-      need: { type: "SETUP_PLACE_CARD", cardId: "t4", row: 4, col: 0 },
-      focus: { cards: ["t4"], cells: [{ row: 4, col: 0 }] },
-    },
-    {
-      text: "「王を選ぶ」を押します。",
-      need: { type: "SETUP_GOTO_KING_STEP" },
-      focus: { button: true },
-    },
-    {
-      at: atKing,
-      text: "取られたら負けの1枚を決めます。光った c1 の 4♠ をタップ。",
-      need: { type: "SETUP_PICK_KING", cardId: "t2" },
-      focus: { cells: [{ row: 4, col: 2 }] },
-    },
-    {
-      text: "「布陣を確定」を押します。",
-      need: { type: "SETUP_CONFIRM" },
-      focus: { button: true },
-    },
-    {
       at: myTurn,
-      text: "駒をタップしてから、光ったマスをタップして動かします。",
-    },
-    {
-      text: "c2 の 5♠ は斜めに2マス。a4 の相手を取ります。",
+      text: "相手の王を取れば勝ち。盤は並べてあります。c2 の 5♠ をタップして、光った a4 へ。",
       need: { type: "MOVE_PIECE", pieceId: "t3", row: 1, col: 0 },
       focus: {
         cells: [
@@ -236,32 +192,24 @@ const EP1 = {
     },
     {
       at: myTurn,
-      text: "取る手には必ず確認が出ます。相手の札は取るまで分かりません。王がどれかも同じです。",
-    },
-    {
-      text: "王も動かせます。c1 の 4♠ を c3 へ。2マス進んで相手を取ります。",
-      need: { type: "MOVE_PIECE", pieceId: "t2", row: 2, col: 2 },
-      focus: {
-        cells: [
-          { row: 4, col: 2 },
-          { row: 2, col: 2 },
-        ],
-      },
+      text: "相手の駒が c5 から c2 へ、まっすぐ3マス。ふつうの 2〜5 は2マスまで。3マス動けるのは王だけです。",
+      focus: { pieces: ["t6"] },
     },
     {
       at: myTurn,
-      text: "続けてプレイを進めてみましょう。4♠ を2マス先の c5 へ。",
-      need: { type: "MOVE_PIECE", pieceId: "t2", row: 0, col: 2 },
+      text: "光っている駒が相手の王。c1 の 4♠ で取って、討ち取りましょう。",
+      need: { type: "MOVE_PIECE", pieceId: "t2", row: 3, col: 2 },
       focus: {
+        pieces: ["t6"],
         cells: [
-          { row: 2, col: 2 },
-          { row: 0, col: 2 },
+          { row: 4, col: 2 },
+          { row: 3, col: 2 },
         ],
       },
     },
     {
       at: atEnd,
-      text: "相手の王を討って勝ちです。これが一局の流れです。",
+      text: "相手の王を討って勝ち。王は伏せられていても、動きで分かる。読み合って、討つ。それがトッタリーです。",
       end: true,
     },
   ],
@@ -2551,6 +2499,77 @@ export function foeAction(state, tut, moveIdx, legalMovesOf) {
   }
 
   return null;
+}
+
+/* ---------------- 盤が並んだところから始める ---------------- */
+
+/**
+ * 台本に opening があれば、サイコロ・引き直し・布陣を済ませた状態を作る。
+ * 画面(game.jsx)と検査(tools/check-tutorial.mjs)が同じものを使う。
+ * あなたの側は opening の捨て札・並べ方・王で、相手の側は foe の台本で進める
+ */
+export function openingState(tut, ruleVersion) {
+  let s = reducer(
+    { phase: "intro" },
+    {
+      type: "START_SETUP",
+      ruleVersion,
+      size: tut.boardSize,
+      setupMode: "simultaneous",
+      deck: tut.deck.map((c) => ({ ...c })),
+      pool: tut.pool,
+      handSize: tut.handSize,
+      scripted: !tut.bonus,
+      ...(tut.areas ? { areas: true, loadouts: tut.loadouts } : {}),
+    },
+  );
+  const op = tut.opening;
+  if (!op) return s;
+  for (let guard = 0; guard < 200 && s.phase !== "play"; guard++) {
+    const before = s;
+    if (s.interstitial) {
+      s = reducer(s, { type: "DISMISS_INTERSTITIAL" });
+      continue;
+    }
+    if (s.setupEffects) {
+      s = reducer(s, { type: "DISMISS_SETUP_EFFECTS" });
+      continue;
+    }
+    if (s.phase === "dice") {
+      if (s.diceIdx === 0 || s.diceIdx === 1)
+        s =
+          s.dice[s.diceIdx] === null
+            ? reducer(s, {
+                type: "ROLL_DICE_SINGLE",
+                value: tut.dice[s.diceIdx] || 1,
+              })
+            : reducer(s, { type: "NEXT_DICE_STEP" });
+      else if (s.diceIdx === 2) s = reducer(s, { type: "GOTO_MULLIGAN" });
+      else if (s.diceIdx === 3) s = reducer(s, { type: "REROLL_DICE" });
+      else s = reducer(s, { type: "NEXT_DICE_STEP" });
+    } else if (s.phase === "mulligan") {
+      s =
+        s.mulliganIdx === 0
+          ? reducer(s, {
+              type: "CONFIRM_MULLIGAN",
+              discardIds: [...op.discardIds],
+              reserveOrder: [...tut.reserveOrder],
+            })
+          : reducer(s, foeAction(s, tut, 0, () => []));
+    } else if (s.phase === "setup") {
+      if (!s.setupDone[0])
+        s = reducer(s, {
+          type: "SETUP_CONFIRM",
+          player: 0,
+          placement: op.placement,
+          kingId: op.kingId,
+        });
+      else if (!s.setupDone[1]) s = reducer(s, foeAction(s, tut, 0, () => []));
+    }
+    if (s === before) throw new Error(`${tut.title}: opening が進まない(${s.phase})`);
+  }
+  if (s.phase !== "play") throw new Error(`${tut.title}: opening が対局まで届かない`);
+  return s;
 }
 
 /* ---------------- 案内を画面に追従させる ---------------- */

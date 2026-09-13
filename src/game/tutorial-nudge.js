@@ -26,7 +26,7 @@ export function homeTutorialNudge(profile) {
   const next = nextTutorial(profile);
   if (!next || next.id > ONLINE_GATE_EPISODES) return null;
   if (next.id === 1)
-    return { kind: "start", text: "まずはここから。第1話は3分ほど", next };
+    return { kind: "start", text: "まずはここから。第1話は1分ほど", next };
   return { kind: "next", text: `次は ${next.title}`, next };
 }
 

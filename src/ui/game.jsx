@@ -40,6 +40,7 @@ import {
   nameOf,
   playerLabel,
   shortPlayerLabel,
+  SUIT_SYMBOL,
 } from "../game/constants.js";
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
@@ -119,6 +120,7 @@ import {
 } from "./setup.jsx";
 import { CaptureConfirm } from "./overlays.jsx";
 import { TutorialSheet } from "./tutorial.jsx";
+import { openingState } from "../game/tutorial.js";
 import {
   FREE_ACTIONS,
   currentStepIndex,
@@ -852,7 +854,27 @@ export function GameView({
         {tutorial && won && (
           <>
             <p className="hint">{tutorial.title}</p>
+            {(() => {
+              // 討った相手の王の正体をここで開く。「どれが王かは取るまで分からない」を結果で伝える
+              const foeKing = Object.values(state.pieces).find(
+                (q) => q.owner !== youAre && q.isKing,
+              );
+              return foeKing ? (
+                <div className="tutorial-reveal">
+                  <CardFace
+                    owner={foeKing.owner}
+                    rank={foeKing.rank}
+                    suit={foeKing.suit}
+                    size="sm"
+                  />
+                  <p>
+                    相手の王は <b>{foeKing.rank}{SUIT_SYMBOL[foeKing.suit]}</b> でした
+                  </p>
+                </div>
+              ) : null;
+            })()}
             <p>{tutorial.steps.find((step) => step.end)?.text}</p>
+            <p className="tutorial-tagline">相手の王を討て。</p>
           </>
         )}
         {lost && (
@@ -1274,6 +1296,11 @@ export function GameCore({
     y(tutorial && a.currentTurn === 1 ? { ...autoArea, __foe: !0 } : autoArea);
   }, [a, fxBusy, network, cpu]);
   (0, useEffect)(() => {
+    // 盤が並んだところから始める話(第1話)。台本が下ごしらえを済ませた状態を置く
+    if (a.phase === "intro" && matchRatings.ready && tutorial && tutorial.opening) {
+      u(() => openingState(tutorial, GAME_RULE_VERSION));
+      return;
+    }
     a.phase === "intro" &&
       matchRatings.ready &&
       ((network && p !== 0) ||

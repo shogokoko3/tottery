@@ -1003,6 +1003,29 @@ body:has(.skin-overlay) {
 .gameover-panel {
   text-align: center;
 }
+/* 第1話の勝利: 討った相手の王の正体と、タイトルの言葉を返す */
+.tutorial-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+.tutorial-reveal p {
+  margin: 0;
+  font-size: 15px;
+}
+.tutorial-reveal b {
+  color: var(--gold-soft);
+  font-size: 18px;
+}
+.tutorial-tagline {
+  font-family: "Shippori Mincho", serif;
+  font-size: 20px;
+  letter-spacing: 0.12em;
+  color: var(--gold-soft);
+  margin: 8px 0 2px;
+}
 .tutorial-complete {
   margin-top: 18px;
   padding-top: 14px;

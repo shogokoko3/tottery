@@ -1483,7 +1483,7 @@ function TotteryScreens() {
                   <div className="modal-panel tutorial-offer">
                     <h3>はじめまして</h3>
                     <p className="hint">
-                      遊び方は第1話で3分ほどで覚えられます。先に見ておきますか？
+                      第1話は1分。相手の王を討つところまで、まず一度やってみますか？
                     </p>
                     <p className="hint">ホームの「チュートリアル」からいつでも始められます。</p>
                     <div className="setup-actions">
