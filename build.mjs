@@ -102,6 +102,9 @@ const bundleOptions = {
     __AUDIO_FILES__: JSON.stringify(audioFiles),
     __HONOR_VERSION__: JSON.stringify(honorVersion),
     __FIELD_FILES__: JSON.stringify(fieldFiles),
+    // このビルドの番号(強制アップデートの判定に使う)。iOS ビルドでは ios-release.sh が
+    // BUILD_NUMBER(=CURRENT_PROJECT_VERSION)を渡す。Web ビルドや手元では 0(＝ゲート無効)
+    __APP_BUILD__: JSON.stringify(Number(process.env.BUILD_NUMBER) || 0),
   },
 };
 

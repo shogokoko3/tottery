@@ -13,6 +13,8 @@ APPLE_TEAM_ID="${APPLE_TEAM_ID:-$(sed -n 's/.*DEVELOPMENT_TEAM = \([A-Z0-9]*\);.
 : "${APPLE_TEAM_ID:?APPLE_TEAM_ID(Apple Developer の Team ID、10桁)を設定してください}"
 # ビルド番号は時刻から作る(前回より必ず大きくなる)。見た目の版(MARKETING_VERSION)は Xcode の設定のまま
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
+# build.mjs(npm run ios:sync)がこの番号を __APP_BUILD__ に埋める。強制アップデートの判定に使う
+export BUILD_NUMBER
 step="${1:-all}"
 if [ "$step" = "archive" ] || [ "$step" = "all" ]; then
   npm run ios:sync
@@ -37,4 +39,5 @@ if [ "$step" = "upload" ] || [ "$step" = "all" ]; then
       -exportOptionsPlist ios/ExportOptions.plist -allowProvisioningUpdates
   fi
   echo "TestFlight へ送りました。App Store Connect の TestFlight で処理が終わるのを待ってください(10〜30分)"
+  echo "このビルドの番号: $BUILD_NUMBER  ← 旧版を強制アップデートさせるには、Worker の環境変数 MIN_APP_BUILD をこの番号にする"
 fi

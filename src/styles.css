@@ -5500,3 +5500,9 @@ body:has(.skin-overlay) {
 @media (max-width: 420px) { .gem-shop-balance { gap: 14px; } .shop-item .gem-pack-name { font-size: 13px; gap: 8px; } }
 
 .tottery-root .skins-free .gem-amount, .tottery-root .skins-free .gem-unit { border: 0; padding: 0; margin: 0; background: none; font-family: inherit; }
+
+/* 強制アップデートの覆い(iOS で最低ビルド未満のとき、アプリ全体を覆う) */
+.update-gate { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(6, 12, 26, 0.95); }
+.update-gate-box { max-width: 360px; width: 100%; text-align: center; background: #0e1730; border: 1px solid #2a3a5e; border-radius: 16px; padding: 28px 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+.update-gate-box h2 { color: #e7c877; margin: 0 0 10px; }
+.update-gate-box .hint { margin: 0 0 18px; }

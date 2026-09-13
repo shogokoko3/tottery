@@ -1,6 +1,7 @@
-import { Component, StrictMode } from "react";
+import { Component, StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { armAudioUnlock } from "./audio/index.js";
+import { checkAppVersion } from "./net/app-version.js";
 import { TotteryApp } from "./ui/screens.jsx";
 
 /**
@@ -45,6 +46,51 @@ class Boundary extends Component {
   }
 }
 
+/**
+ * 起動時の強制アップデート。iOS で最低ビルド番号未満なら、更新の案内で覆う。
+ * 判定できるまでは普通にアプリを出し(フェイルオープン)、ブロックが決まったら上に重ねる。
+ */
+function VersionGate({ children }) {
+  const [block, setBlock] = useState(null); // null=OK / { storeUrl }=要更新
+  useEffect(() => {
+    let alive = true;
+    checkAppVersion()
+      .then((r) => {
+        if (alive && r && r.blocked) setBlock({ storeUrl: r.storeUrl });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return (
+    <>
+      {children}
+      {block && (
+        <div className="update-gate" role="alertdialog" aria-label="アップデートが必要です">
+          <div className="update-gate-box">
+            <h2>アップデートしてください</h2>
+            <p className="hint">
+              新しいバージョンがあります。続けるには App Store で更新してください。
+            </p>
+            <button
+              className="btn btn-primary btn-wide"
+              onClick={() =>
+                window.open(
+                  block.storeUrl || "https://apps.apple.com/app/id6811241552",
+                  "_system",
+                )
+              }
+            >
+              App Store を開く
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // 音は最初に画面を触るまで鳴らせない決まりになっている。
 // 最初のタップを待ち受けて、そこで解錠する
 armAudioUnlock();
@@ -52,7 +98,9 @@ armAudioUnlock();
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <Boundary>
-      <TotteryApp />
+      <VersionGate>
+        <TotteryApp />
+      </VersionGate>
     </Boundary>
   </StrictMode>,
 );
