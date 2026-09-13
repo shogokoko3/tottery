@@ -35,8 +35,10 @@ assert.match(ep1.steps[1].text, /王を討つ.*伏せ.*読み合う心理戦/, "
 assert.deepEqual(ep1.steps[1].focus.pieces, ["t6", "t7", "t8", "t9", "t10"], "2枚目は相手の駒を光らせる");
 assert.deepEqual(ep1.steps[2].moveGuide, { ranks: ["2", "3", "4", "5"] }, "3枚目: この対局の駒の動きの一覧(先に見せる)");
 assert.equal(ep1.steps[2].overlay, true, "一覧は盤の上に重ねる");
-assert.ok(ep1.steps[3].need, "4枚目から操作");
-for (const st of ep1.steps.slice(0, 4)) assert.ok(st.text.length <= 60, `札は短く(${st.text.length}字)`);
+assert.deepEqual(ep1.steps[3].moveGuide, { ranks: ["2", "3", "4", "5"], kings: true }, "4枚目: 王の力も先に見せる(王の話が突然にならない)");
+assert.match(ep1.steps[3].text, /王.*2 と 3.*遠く.*4 と 5.*仲間/);
+assert.ok(ep1.steps[4].need, "5枚目から操作");
+for (const st of ep1.steps.slice(0, 5)) assert.ok(st.text.length <= 60, `札は短く(${st.text.length}字)`);
 
 const legal = (st, owner, p) =>
   getLegalMoves(p, st.board, st.boardSize, st.players[owner].armyRankCounts, kingRankOf(st, owner));
@@ -83,6 +85,8 @@ assert.deepEqual([hintStep.moveHint.from, hintStep.moveHint.to], [{ row: 0, col:
   const c = moveHintCandidates(hintStep.moveHint);
   assert.deepEqual(c.plain.map((x) => x.ok), [false, false, false, false], "素の 2〜5 はどれも届かない");
   assert.deepEqual(c.kings.filter((x) => x.ok).map((x) => x.rank), ["2"], "届くのは 2 の王だけ");
+  assert.deepEqual(c.kings.map((x) => x.ok), [true, false, false, false], "3・4・5 の王は候補から消える");
+  assert.match(hintStep.moveHint.verdict, /斜めの 3 は消えて.*まっすぐの 2 だけ.*2 の王/, "なぜ 2 の王に絞れるかを言う");
 }
 // 2手目: 4♠ で王を討つ
 s = flow(move(s, "t2", 3, 2));
@@ -165,17 +169,22 @@ export const render=(state, tutorial)=>renderToStaticMarkup(<SeatsProvider value
   const { render, renderSheet } = createRequire(import.meta.url)(outfile);
   const guide = renderSheet(ep1.steps[2]);
   assert.match(guide, /move-guide/, "動きの一覧(判定なし)が描ける");
-  assert.equal((guide.match(/class="move-hint-row"/g) || []).length, 4, "2〜5 の4行");
+  assert.equal((guide.match(/class="move-hint-row ?"/g) || []).length, 4, "2〜5 の4行");
   assert.ok(!/✗|○/.test(guide), "先に見せる一覧には ✗○ を付けない");
+  const kingGuide = renderSheet(ep1.steps[3]);
+  assert.equal((kingGuide.match(/の王<\/b>/g) || []).length, 4, "王の力は4つ並ぶ");
+  assert.match(kingGuide, /仲間の 4 を伸ばす/);
+  assert.ok(!/✗|○/.test(kingGuide));
   const intro = renderSheet(ep1.steps[0]);
   assert.match(intro, /毎回ランダムに配られ/, "1枚目の札が描ける");
   assert.match(intro, /次へ/, "読む札は「次へ」で進む");
   const sheet = renderSheet(hintStep);
   assert.match(sheet, /c5 → c2/, "一覧の見出しに動いた道");
   assert.match(sheet, /2 の王/, "2 の王が候補に出る");
-  assert.match(sheet, /王の効果/, "届く理由が王の効果だけだと言う");
-  assert.match(sheet, /あれが王です/);
-  assert.equal((sheet.match(/✗/g) || []).length, 4, "素の 2〜5 に ✗");
+  assert.match(sheet, /あれは 2 の王です/);
+  assert.equal((sheet.match(/の王<\/b>/g) || []).length, 4, "王の候補を4つとも並べる");
+  assert.equal((sheet.match(/✗/g) || []).length, 7, "素の 2〜5 と、3・4・5 の王に ✗");
+  assert.equal((sheet.match(/○/g) || []).length, 1, "○ は 2 の王だけ");
   const html = render(s, ep1);
   assert.match(html, /チュートリアルクリア/);
   assert.match(html, /相手の王は/);

@@ -35,17 +35,29 @@ import { ArrowLeft, ArrowRight, Check, Crown, Hand, Lock } from "../icons.jsx";
  * 動きの一覧。相手の駒が from → to へ動いたとき、どの数字ならそう動けるかを図で並べる。
  * 素の駒で届かず、王でだけ届く数字があれば、それが「王が割れた」印
  */
-/** 駒の動きの一覧(判定なし)。対局の初めに「この対局の駒はこう動く」を見せる */
+/** 王にしたときの力を、一覧の1行に収まる長さで(同じ数字が1枚のとき) */
+export const KING_ROW_TEXT = {
+  2: "縦横に、同じ数字の枚数ぶん遠くへ(1枚なら3マス)",
+  3: "斜めに、同じ数字の枚数ぶん遠くへ(1枚なら3マス)",
+  4: "自分は2マスのまま。仲間の 4 を伸ばす",
+  5: "自分は2マスのまま。仲間の 5 を伸ばす",
+};
+
+/**
+ * 駒の動きの一覧(判定なし)。対局の初めに「この対局の駒はこう動く」を見せる。
+ * kings を立てると、同じ数字を王にしたときの力を並べる
+ */
 export function MoveGuidePanel({ guide }) {
+  const kings = !!guide.kings;
   return (
-    <div className="move-hint move-guide" role="group" aria-label="駒の動き">
+    <div className="move-hint move-guide" role="group" aria-label={kings ? "王の力" : "駒の動き"}>
       <div className="move-hint-rows">
         {guide.ranks.map((rank) => (
-          <div className="move-hint-row" key={rank}>
-            <MoveDiagram rank={rank} gridSize={5} />
+          <div className={`move-hint-row ${kings ? "is-king" : ""}`} key={rank}>
+            <MoveDiagram rank={rank} isKing={kings} gridSize={kings ? 7 : 5} />
             <span className="move-hint-label">
-              <b>{rank}</b>
-              <small>{MOVE_TEXT[rank]}</small>
+              <b>{kings ? `${rank} の王` : rank}</b>
+              <small>{kings ? KING_ROW_TEXT[rank] || "" : MOVE_TEXT[rank]}</small>
             </span>
           </div>
         ))}
@@ -73,23 +85,25 @@ export function MoveHintPanel({ hint }) {
             <span className="move-hint-mark">{c.ok ? "○" : "✗"}</span>
           </div>
         ))}
-        {kingHits.map((c) => (
-          <div className="move-hint-row is-ok is-king" key={`k${c.rank}`}>
+        {/* 王の候補は全部並べる。「なぜその王に絞れるか」は、消える王が見えて初めて分かる */}
+        {kings.map((c) => (
+          <div className={`move-hint-row is-king ${c.ok ? "is-ok" : "is-no"}`} key={`k${c.rank}`}>
             <MoveDiagram rank={c.rank} isKing gridSize={7} />
             <span className="move-hint-label">
               <b>{c.rank} の王</b>
-              <small>王は、同じ数字の枚数ぶん遠くへ動ける</small>
+              <small>{KING_ROW_TEXT[c.rank] || "王の力"}</small>
             </span>
-            <span className="move-hint-mark">○</span>
+            <span className="move-hint-mark">{c.ok ? "○" : "✗"}</span>
           </div>
         ))}
       </div>
       <p className="move-hint-verdict">
-        {kingHits.length
-          ? `素の駒では届かない。届く理由は王の効果(同じ数字の枚数ぶん遠くへ動ける)だけ。届くのは ${kingHits
-              .map((c) => `${c.rank} の王`)
-              .join("・")}。だから、あれが王です。`
-          : "どの駒でも届きます。"}
+        {hint.verdict ||
+          (kingHits.length
+            ? `素の駒では届かない。王の力で届くのは ${kingHits
+                .map((c) => `${c.rank} の王`)
+                .join("・")} だけ。だから、あれが王です。`
+            : "どの駒でも届きます。")}
       </p>
     </div>
   );

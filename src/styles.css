@@ -2418,9 +2418,11 @@ body:has(.skin-overlay) {
   opacity: 1;
 }
 .move-hint-row.is-king {
-  grid-column: 1 / -1;
   grid-template-columns: 56px 1fr auto;
   background: rgba(212, 175, 55, 0.12);
+}
+.move-guide .move-hint-row.is-king {
+  grid-template-columns: 56px 1fr;
 }
 .move-hint-row.is-king .move-diagram {
   width: 56px;
@@ -3493,6 +3495,10 @@ body:has(.skin-overlay) {
   align-items: flex-end;
 }
 .tutorial-sheet-front .tutorial-sheet-inner {
+  /* 一覧が長いときは札の中でスクロール。画面からはみ出させない */
+  max-height: calc(100vh - 32px - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: 14px;
   border-bottom-color: var(--gold);
   border-color: var(--gold);

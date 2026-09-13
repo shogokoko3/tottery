@@ -2433,9 +2433,11 @@ body:has(.skin-overlay) {
   opacity: 1;
 }
 .move-hint-row.is-king {
-  grid-column: 1 / -1;
   grid-template-columns: 56px 1fr auto;
   background: rgba(212, 175, 55, 0.12);
+}
+.move-guide .move-hint-row.is-king {
+  grid-template-columns: 56px 1fr;
 }
 .move-hint-row.is-king .move-diagram {
   width: 56px;
@@ -3508,6 +3510,10 @@ body:has(.skin-overlay) {
   align-items: flex-end;
 }
 .tutorial-sheet-front .tutorial-sheet-inner {
+  /* \u4E00\u89A7\u304C\u9577\u3044\u3068\u304D\u306F\u672D\u306E\u4E2D\u3067\u30B9\u30AF\u30ED\u30FC\u30EB\u3002\u753B\u9762\u304B\u3089\u306F\u307F\u51FA\u3055\u305B\u306A\u3044 */
+  max-height: calc(100vh - 32px - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: 14px;
   border-bottom-color: var(--gold);
   border-color: var(--gold);
