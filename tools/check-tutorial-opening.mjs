@@ -26,8 +26,15 @@ assert.deepEqual(at("t2"), [4, 2], "4♠ は c1");
 assert.deepEqual(at("t3"), [3, 2], "5♠ は c2");
 assert.equal(s.players[0].kingId, "t2", "王は 4♠");
 assert.equal(s.players[1].kingId, "t6", "相手の王は 2♦");
-assert.equal(currentStepIndex(ep1, s, 0), 0, "案内は最初の一手から");
+assert.equal(currentStepIndex(ep1, s, 0), 0, "案内は最初の札から");
 assert.equal(ep1.steps.filter((x) => x.need).length, 2, "必須の操作は2つだけ");
+// 盤に入る前に、どんなゲームかを読む札が2枚(操作は求めない)
+assert.ok(!ep1.steps[0].need && !ep1.steps[1].need, "最初の2枚は読むだけ");
+assert.match(ep1.steps[0].text, /トランプ.*二人対戦.*王を討てば勝ち/, "1枚目: ゲームの一言");
+assert.match(ep1.steps[1].text, /あなた.*相手.*王.*見えません/, "2枚目: 陣と伏せた王");
+assert.deepEqual(ep1.steps[1].focus.pieces, ["t6", "t7", "t8", "t9", "t10"], "2枚目は相手の駒を光らせる");
+assert.ok(ep1.steps[2].need, "3枚目から操作");
+for (const st of ep1.steps.slice(0, 3)) assert.ok(st.text.length <= 60, `札は短く(${st.text.length}字)`);
 
 const legal = (st, owner, p) =>
   getLegalMoves(p, st.board, st.boardSize, st.players[owner].armyRankCounts, kingRankOf(st, owner));
@@ -133,6 +140,9 @@ export const render=(state, tutorial)=>renderToStaticMarkup(<SeatsProvider value
   if (typeof globalThis.Image === "undefined") globalThis.Image = class { set src(_) {} };
   if (typeof globalThis.Audio === "undefined") globalThis.Audio = class { play() {} pause() {} };
   const { render, renderSheet } = createRequire(import.meta.url)(outfile);
+  const intro = renderSheet(ep1.steps[0]);
+  assert.match(intro, /相手の王を討てば勝ちです/, "1枚目の札が描ける");
+  assert.match(intro, /次へ/, "読む札は「次へ」で進む");
   const sheet = renderSheet(hintStep);
   assert.match(sheet, /c5 → c2/, "一覧の見出しに動いた道");
   assert.match(sheet, /2 の王/, "2 の王が候補に出る");
@@ -147,4 +157,4 @@ export const render=(state, tutorial)=>renderToStaticMarkup(<SeatsProvider value
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });
 }
-console.log("第1話: 盤が並んだところから2手で王を討つ・3マスは王だけ・勝利画面に正体と「相手の王を討て。」 OK");
+console.log("第1話: ゲームの一言→盤が並んだところから2手で王を討つ・3マスは王だけ・勝利画面に正体と「相手の王を討て。」 OK");
