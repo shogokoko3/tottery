@@ -84,7 +84,9 @@ import {
   wantRematch,
 } from "../net/firebase.js";
 import { myUid } from "../net/auth.js";
-import { achieveSecret, grantTitle, loadProfile } from "../game/profile.js";
+import { achieveSecret, grantTitle, loadProfile,
+  skipTutorials,
+} from "../game/profile.js";
 import { fortressCorner, matchFormations } from "../game/bonus.js";
 import { chanceLabel } from "../game/secrets.js";
 import {
@@ -2005,6 +2007,15 @@ export function GameCore({
           // 駒やマスを光らせている札は下寄せにして、盤の真ん中を空ける
           low={tutHasTarget}
           onNext={() => setTutStep(tutIdx + 1)}
+          // この話を飛ばす: 終えたのと同じ扱い(経験値も同じ)で、次の話へ
+          onSkip={() => {
+            const after = skipTutorials([tutorial]);
+            publishPlayer(after);
+            if (nextTutorial && onNextTutorial) onNextTutorial();
+            else if (onTutorialList) onTutorialList();
+            else onExit();
+          }}
+          skipXp={tutorial.xp || 0}
         />
       ) : tutHold ? (
         <TutorialSheet

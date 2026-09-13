@@ -4617,6 +4617,22 @@ body:has(.skin-overlay) {
 .tutorial-offer {
   text-align: center;
 }
+/* チュートリアルを飛ばす。案内の札では一番下に小さく、一覧では一番下に */
+.tutorial-skip {
+  display: block;
+  margin: 8px auto 0;
+  background: none;
+  border: 0;
+  padding: 6px 10px;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.tutorial-skip-all {
+  margin-top: 6px;
+  color: var(--text-dim);
+}
 .home-wide-arrow {
   color: var(--text-dim);
   opacity: 0.6;

@@ -13,8 +13,10 @@ import {
   levelOf,
   loadProfile,
   MAX_LEVEL,
+  skipTutorials,
   toNextLevel,
 } from "../game/profile.js";
+import { publishPlayer } from "../net/players.js";
 import { ArrowLeft, ArrowRight, Check, Crown, Hand, Lock } from "../icons.jsx";
 
 /**
@@ -73,6 +75,40 @@ export function MoveHintPanel({ hint }) {
   );
 }
 
+/**
+ * 「飛ばす」の確認。選ぶ→確認→確定の二段(操作の決まりと同じ)。
+ * what は飛ばす対象の言い方(「この話」「残りの N 話」)、gain は入る経験値
+ */
+function SkipConfirm({ what, gain, level, onCancel, onConfirm }) {
+  return (
+    <div className="modal-overlay">
+      <div className="modal-panel tutorial-offer">
+        <h3>{what}を飛ばしますか？</h3>
+        <p className="hint">
+          終えたのと同じ扱いになります。経験値 {gain.toLocaleString()} が入り
+          {level ? `、レベル ${level} に上がります` : "ます"}。
+        </p>
+        <p className="hint">飛ばした話はあとからいつでも遊べます(経験値は入りません)。</p>
+        <div className="setup-actions">
+          <button className="btn btn-ghost" onClick={onCancel}>
+            やめる
+          </button>
+          <button className="btn btn-primary" onClick={onConfirm}>
+            飛ばす
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 飛ばしたあとのレベル(上がらなければ null) */
+function levelAfterSkip(profile, gain) {
+  const before = levelOf(profile);
+  const after = levelOf({ ...profile, xp: profile.xp + gain });
+  return after > before ? after : null;
+}
+
 export function TutorialSheet({
   step,
   index,
@@ -81,7 +117,11 @@ export function TutorialSheet({
   front,
   low,
   nudge,
+  // この話を飛ばす(確認のあと)。無ければ出さない
+  onSkip = null,
+  skipXp = 0,
 }) {
+  const [confirm, setConfirm] = useState(false);
   if (!step) return null;
   return (
     <div
@@ -91,6 +131,18 @@ export function TutorialSheet({
       role="status"
       aria-live="polite"
     >
+      {confirm && (
+        <SkipConfirm
+          what="この話"
+          gain={skipXp}
+          level={levelAfterSkip(loadProfile(), skipXp)}
+          onCancel={() => setConfirm(false)}
+          onConfirm={() => {
+            setConfirm(false);
+            onSkip();
+          }}
+        />
+      )}
       <div className="tutorial-sheet-inner">
         <div className="tutorial-progress">
           {Array.from({ length: total }).map((_, i) => (
@@ -108,6 +160,15 @@ export function TutorialSheet({
             {step.end ? "とじる" : "次へ"} <ArrowRight size={16} />
           </button>
         )}
+        {onSkip && !step.end && (
+          <button
+            type="button"
+            className="tutorial-skip"
+            onClick={() => setConfirm(true)}
+          >
+            この話を飛ばす
+          </button>
+        )}
       </div>
     </div>
   );
@@ -115,9 +176,13 @@ export function TutorialSheet({
 
 /** チュートリアルの一覧。レベルが足りない話には鍵がかかる */
 export function TutorialSelect({ onStart, onBack }) {
-  const [profile] = useState(() => loadProfile());
+  const [profile, setProfile] = useState(() => loadProfile());
   const level = levelOf(profile);
   const next = toNextLevel(profile);
+  // まだ終えていない話(本編の12話)。飛ばすのはこれだけ。番外は含めない
+  const left = TUTORIALS.filter((t) => !profile.cleared.includes(t.id));
+  const leftXp = left.reduce((n, t) => n + t.xp, 0);
+  const [confirmSkip, setConfirmSkip] = useState(false);
   // 番外の話は、フォイルのスキンを1枚でも持っていると開く(効果盤面が使える条件と同じ。
   // 入手の経路は見ず、いま持っているかだけで決める)
   const [hasFoil] = useState(() => {
@@ -172,6 +237,31 @@ export function TutorialSelect({ onStart, onBack }) {
           );
         })}
       </div>
+      {/* ルールを知っている人は飛ばせる。終えたのと同じ扱い(経験値も同じだけ入る) */}
+      {left.length > 0 && (
+        <button
+          className="btn btn-ghost tutorial-skip-all"
+          onClick={() => setConfirmSkip(true)}
+        >
+          {left.length === TUTORIALS.length
+            ? "チュートリアルを飛ばす"
+            : `残りの ${left.length} 話を飛ばす`}
+        </button>
+      )}
+      {confirmSkip && (
+        <SkipConfirm
+          what={left.length === TUTORIALS.length ? "全12話" : `残りの ${left.length} 話`}
+          gain={leftXp}
+          level={levelAfterSkip(profile, leftXp)}
+          onCancel={() => setConfirmSkip(false)}
+          onConfirm={() => {
+            setConfirmSkip(false);
+            const after = skipTutorials(left);
+            setProfile(after);
+            publishPlayer(after);
+          }}
+        />
+      )}
       <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る
       </button>

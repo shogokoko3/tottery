@@ -590,6 +590,54 @@ export function hasCleared(id, profile) {
   return (profile || loadProfile()).cleared.includes(id);
 }
 
+/**
+ * チュートリアルを飛ばす。終えたことにして、初回ぶんの経験値も同じだけ配る
+ * (終えたのと同じ扱い。飛ばした話はあとからいつでも遊べるが、経験値は入らない)。
+ * 対局の数(plays)や対戦の数には数えない。
+ * tutorials は { id, xp } の並び。もう終えている話は飛ばさない(経験値も入らない)。
+ * 戻り値は addXp と同じ形(gained / levelBefore / levelAfter / xpNoticeId)に skipped(飛ばした id)を足したもの
+ */
+export function skipTutorials(tutorials) {
+  const profile = loadProfile();
+  const todo = (tutorials || []).filter(
+    (t) => t && Number.isInteger(t.id) && !profile.cleared.includes(t.id),
+  );
+  const gained = todo.reduce(
+    (n, t) => n + (Number.isFinite(t.xp) && t.xp > 0 ? Math.floor(t.xp) : 0),
+    0,
+  );
+  if (!todo.length)
+    return {
+      ...profile,
+      gained: 0,
+      skipped: [],
+      levelBefore: levelProgress(profile).level,
+      levelAfter: levelProgress(profile).level,
+      leveledUp: false,
+      xpNoticeId: null,
+    };
+  const levelBefore = levelProgress(profile).level;
+  const next = {
+    ...profile,
+    xp: profile.xp + gained,
+    cleared: [...profile.cleared, ...todo.map((t) => t.id)],
+  };
+  saveProfile(next);
+  const levelAfter = levelProgress(next).level;
+  const xpNoticeId = gained
+    ? publishXpNotice({ beforeXp: profile.xp, afterXp: next.xp, source: "tutorial-skip" })
+    : null;
+  return {
+    ...next,
+    gained,
+    skipped: todo.map((t) => t.id),
+    levelBefore,
+    levelAfter,
+    leveledUp: levelAfter > levelBefore,
+    xpNoticeId,
+  };
+}
+
 /** 経験値を足す。対局以外(有償ガチャなど)から呼ぶ */
 export function addXp(amount, { source = "reward" } = {}) {
   const profile = loadProfile();
