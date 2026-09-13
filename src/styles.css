@@ -3512,6 +3512,56 @@ body:has(.skin-overlay) {
   width: 100%;
   margin-top: 12px;
 }
+/* 盤を隠さない置き方(src/ui/tutorial-dock.js が場所を測る)。
+   盤の右か下に札を固定し、背景は暗くしない。盤の駒の動きを見ながら読める。
+   指は引き続きここで受け止める(読んでいる間は盤を触らせない) */
+.tutorial-sheet-front.tutorial-sheet-dock {
+  display: block;
+  background: transparent;
+  padding: 0;
+}
+.tutorial-sheet-front.tutorial-sheet-dock .tutorial-sheet-inner {
+  position: fixed;
+  margin: 0;
+  max-width: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+  /* 盤の中身より少し明るく、境がはっきり分かるように */
+  background: linear-gradient(180deg, #1a3157 0%, #0f1f3a 100%);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.75);
+}
+.tutorial-sheet-front.tutorial-sheet-dock-below .tutorial-sheet-inner {
+  border-radius: 14px 14px 0 0;
+  padding: 12px 14px calc(28px + env(safe-area-inset-bottom));
+}
+/* 盤の下は高さが限られる。文と一覧を少し詰め、下端に「続きがある」影を置く */
+.tutorial-sheet-front.tutorial-sheet-dock-below .tutorial-line {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.tutorial-sheet-dock-below .move-hint-row {
+  padding: 4px 8px;
+  gap: 6px;
+}
+.tutorial-sheet-dock-below .move-hint-verdict {
+  font-size: 13px;
+  margin-top: 6px;
+}
+.tutorial-sheet-front.tutorial-sheet-dock-below .tutorial-next {
+  margin-top: 8px;
+}
+.tutorial-sheet-front.tutorial-sheet-dock-below .tutorial-sheet-inner::after {
+  content: "";
+  display: block;
+  position: sticky;
+  bottom: calc(-28px - env(safe-area-inset-bottom));
+  height: 26px;
+  margin: -26px -14px 0;
+  background: linear-gradient(rgba(15, 31, 58, 0), #0f1f3a);
+  pointer-events: none;
+}
 
 /* ===== 通報・ブロック・記録の削除 =====
    App Store のガイドライン 1.2(利用者が作った文章)と 5.1.1(v)(記録の削除)

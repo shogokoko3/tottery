@@ -83,6 +83,22 @@ assert.equal(s.phase, "gameover");
 assert.equal(s.winner, 0, "あなたの勝ち");
 assert.equal(s.pieces.t6.alive, false);
 
+// 説明の札の置き場所: 盤を隠さない(右に幅があれば右、無ければ下、どちらも無理なら重ねる)
+{
+  const { dockSheet } = await import("../src/ui/tutorial-dock.js");
+  const phone = dockSheet({ top: 56, left: 12, right: 378, bottom: 440 }, 390, 844);
+  assert.equal(phone.side, "below", "縦の電話: 盤の下");
+  assert.equal(phone.style.top, 448);
+  assert.ok(phone.style.maxHeight > 300 && phone.style.top + phone.style.maxHeight <= 844, "画面に収まり、中でスクロール");
+  assert.ok(phone.style.left >= 10 && phone.style.left + phone.style.width <= 390);
+  const desk = dockSheet({ top: 230, left: 320, right: 1150, bottom: 1060 }, 2000, 1250);
+  assert.equal(desk.side, "right", "広い画面: 盤の右");
+  assert.ok(desk.style.left > 1150 && desk.style.left + desk.style.width <= 2000);
+  assert.equal(desk.style.top, 230, "盤の上端にそろえる");
+  assert.equal(dockSheet({ top: 8, left: 100, right: 420, bottom: 352 }, 700, 360), null, "小さな横向き: 置けないので従来どおり重ねる");
+  assert.equal(dockSheet(null, 390, 844), null);
+}
+
 // 勝利画面
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tottery-ep1-"));
 try {

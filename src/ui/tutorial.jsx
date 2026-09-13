@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { dockSheet } from "./tutorial-dock.js";
 import {
   TUTORIALS,
   EXTRA_TUTORIALS,
@@ -122,12 +123,40 @@ export function TutorialSheet({
   skipXp = 0,
 }) {
   const [confirm, setConfirm] = useState(false);
+  // 前面の札は盤を隠さない場所(右か下)に置く。盤の駒の動きを見ながら読めるように。
+  // 置き場所は盤の位置から測るので、画面の大きさやスクロールが変わるたびに測り直す
+  const [dock, setDock] = useState(null);
+  useEffect(() => {
+    if (!front || typeof document === "undefined") {
+      setDock(null);
+      return undefined;
+    }
+    let last = "";
+    const place = () => {
+      const board = document.querySelector(".board-frame");
+      const d = board
+        ? dockSheet(board.getBoundingClientRect(), window.innerWidth, window.innerHeight)
+        : null;
+      const key = JSON.stringify(d);
+      if (key !== last) {
+        last = key;
+        setDock(d);
+      }
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [front, step]);
   if (!step) return null;
   return (
     <div
       className={`tutorial-sheet ${front ? "tutorial-sheet-front" : ""} ${
         front && low ? "tutorial-sheet-low" : ""
-      }`}
+      } ${front && dock ? `tutorial-sheet-dock tutorial-sheet-dock-${dock.side}` : ""}`}
       role="status"
       aria-live="polite"
     >
@@ -143,7 +172,10 @@ export function TutorialSheet({
           }}
         />
       )}
-      <div className="tutorial-sheet-inner">
+      <div
+        className="tutorial-sheet-inner"
+        style={front && dock ? dock.style : undefined}
+      >
         <div className="tutorial-progress">
           {Array.from({ length: total }).map((_, i) => (
             <span className={i <= index ? "on" : ""} key={i} />
