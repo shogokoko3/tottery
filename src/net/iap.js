@@ -24,12 +24,15 @@ async function store() {
   return plugin;
 }
 
-/** 店を出せるか(iOS で、旗が立っていて、StoreKit が使える) */
+/**
+ * 店の入口を出すか。iOS ネイティブで旗が立っていれば出す。
+ * 以前は StoreKit の isBillingSupported() も見ていたが、有料App契約の反映直後などに
+ * false/不安定になり、入口(「ジェムを買う」)が丸ごと消えてしまった。入口の判定は
+ * 確実な「iOSネイティブか」だけにして、実際に買えない・商品が無いときは店の中で
+ * 「商品を取れませんでした」やエラーで知らせる(loadProducts / buy が扱う)。
+ */
 export async function shopAvailable() {
-  if (!SHOP_ENABLED) return false;
-  const p = await store();
-  if (!p) return false;
-  try { return !!(await p.isBillingSupported()).isBillingSupported; } catch { return false; }
+  return SHOP_ENABLED && Capacitor.isNativePlatform();
 }
 
 /** 商品の一覧(表示価格は StoreKit のもの) */
