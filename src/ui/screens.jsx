@@ -70,8 +70,17 @@ import {
   hasName,
   isTestPlay,
   loadProfile,
+  levelOf,
   levelProgress,
 } from "../game/profile.js";
+import {
+  ALL_CARDS_LEVEL,
+  BOARD9_LEVEL,
+  boardOpen,
+  cardUnlockText,
+  handSizeForLevel,
+  poolForLevel,
+} from "../game/card-unlock.js";
 import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { titleOf } from "../game/titles.js";
 import { PlayerIcon } from "./playericon.jsx";
@@ -819,8 +828,11 @@ export function RulesSelectScreen({
   // CPU戦で、相手のエリア(定石)を選べるとき。null なら出さない
   cpuArea = null,
   onCpuArea = null,
+  // 手元の対局のときの自分のレベル。札と 9×9 をレベルで絞る。null なら絞らない(オンライン)
+  level = null,
 }) {
-  let [a, u] = (0, useState)(initialSize);
+  const locked9 = level !== null && !boardOpen(9, level);
+  let [a, u] = (0, useState)(locked9 && initialSize === 9 ? 5 : initialSize);
   return (
     <div className="setup-wrap">
       <h2>ルール設定</h2>
@@ -846,6 +858,7 @@ export function RulesSelectScreen({
               className={`board-choice ${a === i ? "active" : ""}`}
               onClick={() => u(i)}
               aria-pressed={a === i}
+              disabled={i === 9 && locked9}
               key={i}
             >
               <div
@@ -872,10 +885,19 @@ export function RulesSelectScreen({
                     <b className="board-choice-ranked">ランキングに載ります</b>
                   </>
                 )}
+                {i === 9 && locked9 && (
+                  <>
+                    <br />
+                    <b className="board-choice-lock">Lv{BOARD9_LEVEL} で開きます</b>
+                  </>
+                )}
               </small>
             </button>
           ))}
         </div>
+        {level !== null && (
+          <p className="hint card-unlock-hint">{cardUnlockText(level)}</p>
+        )}
       </div>
       {onCpuArea && a === 9 && (
         <div className="rule-section">
@@ -919,6 +941,16 @@ export function RulesSelectScreen({
           </div>
         </div>
       )}
+      {/* フォイルは持っているが札を絞っているレベル: エリア練習は定石の札がそろってから */}
+      {!onCpuArea &&
+        a === 9 &&
+        level !== null &&
+        poolForLevel(level) &&
+        foilRevealed(getCollection()) && (
+          <p className="hint">
+            CPUのエリアを選ぶ練習は、すべての札が開く Lv{ALL_CARDS_LEVEL} からです。
+          </p>
+        )}
       {note && <p className="hint">{note}</p>}
       <div className="setup-actions">
         <button className="btn btn-ghost" onClick={onBack}>
@@ -1359,6 +1391,10 @@ function TotteryScreens() {
     (u(b), setRound(0), t("game"));
   }
   let [p, w] = (0, useState)(!1);
+  // 手元の対局(CPU戦・同じ端末)で使える札は、自分のレベルで決まる。
+  // 全部開いていれば null(絞らない)。src/game/card-unlock.js
+  const localLevel = levelOf(loadProfile());
+  const localPool = poolForLevel(localLevel);
   function z(b) {
     if (o === "online") saveOnlineSize(b);
     (f(b), o === "room" && w(!0), t(o));
@@ -1430,7 +1466,7 @@ function TotteryScreens() {
             ? [
                 collection.equipped,
                 // エリアを選んだCPU戦は、王の数字にフォイルを必ず持たせる(でないとエリアが立たない)
-                cpuArea && cpuArea.king && i === 9 && foilRevealed(collection)
+                cpuArea && cpuArea.king && i === 9 && foilRevealed(collection) && !localPool
                   ? ensureCpuFoil(cpuSkins, cpuArea.king)
                   : cpuSkins,
               ]
@@ -1450,8 +1486,11 @@ function TotteryScreens() {
             cpu={d}
             // フォイルを初めて手に入れるまでは、エリアを選ぶ欄そのものを出さない(選べても渡さない)
             cpuArea={
-              d && !tut && i === 9 && foilRevealed(collection) ? cpuArea : null
+              d && !tut && i === 9 && foilRevealed(collection) && !localPool ? cpuArea : null
             }
+            // 手元の対局は、レベルで開いている札だけを配る。オンライン・チュートリアルは絞らない
+            pool={!a && !tut ? localPool : null}
+            handSize={!a && !tut ? handSizeForLevel(localLevel) : null}
             tutorial={tut}
             nextTutorial={nextTutorial}
             onNextTutorial={
@@ -1596,6 +1635,8 @@ function TotteryScreens() {
             <RulesSelectScreen
               ranked={o === "online" || o === "room"}
               initialSize={o === "online" ? loadOnlineSize() : 5}
+              // 手元の対局は、レベルで札と 9×9 を絞る(src/game/card-unlock.js)
+              level={o === "online" || o === "room" ? null : localLevel}
               onStart={z}
               onBack={() => t(rulesFrom)}
               backLabel={
@@ -1607,7 +1648,7 @@ function TotteryScreens() {
               // 相手のエリアを選べるのは CPU戦で、フォイルを持っている(エリアを知っている)人だけ
               cpuArea={cpuArea ? cpuArea.type : null}
               onCpuArea={
-                d && !tut && foilRevealed(collection)
+                d && !tut && foilRevealed(collection) && !localPool
                   ? (type) =>
                       setCpuArea(
                         // "none" は盤面エリアを立てない素の対局。王は決めない

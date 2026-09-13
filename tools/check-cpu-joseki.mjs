@@ -204,9 +204,9 @@ assert.ok(totalChecks >= 12, `伏せ札の不変性を十分な回数見た(${to
 // 画面の配線: エリアを選ぶ欄と、選んだエリアの受け渡しは、フォイルを初めて手に入れた人(foilRevealed)にだけ
 {
   const src = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
-  const gate = /onCpuArea=\{\s*d && !tut && foilRevealed\(collection\)/;
-  assert.ok(gate.test(src), "CPUのエリアを選ぶ欄は foilRevealed で隠す");
-  const pass = /cpuArea=\{\s*d && !tut && i === 9 && foilRevealed\(collection\) \? cpuArea : null/;
+  const gate = /onCpuArea=\{\s*d && !tut && foilRevealed\(collection\) && !localPool/;
+  assert.ok(gate.test(src), "CPUのエリアを選ぶ欄は foilRevealed で隠す(札を絞るレベルでも出さない)");
+  const pass = /cpuArea=\{\s*d && !tut && i === 9 && foilRevealed\(collection\) && !localPool \? cpuArea : null/;
   assert.ok(pass.test(src), "選んだエリアの受け渡しも foilRevealed で止める");
   assert.ok(/ensureCpuFoil\(cpuSkins, cpuArea\.king\)/.test(src), "CPUの王の数字にフォイルを持たせる");
 }

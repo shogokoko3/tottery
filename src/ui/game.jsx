@@ -1055,6 +1055,9 @@ export function GameCore({
   cpu,
   // CPU戦で選んだ相手のエリア({ type, king })。定石の札を配り、定石の指し方で戦う
   cpuArea = null,
+  // レベルで絞った札(src/game/card-unlock.js)。手元の対局だけ。null なら全部
+  pool = null,
+  handSize = null,
   tutorial,
   round = 0,
   onRematch,
@@ -1319,14 +1322,20 @@ export function GameCore({
           !(cpu && cpuArea && cpuArea.type === "none")
             ? { areas: true, loadouts: skins }
             : null),
-          // エリアを選んだCPU戦は、CPU(後手の席)に定石の札を積んだ山札で始める
+          // エリアを選んだCPU戦は、CPU(後手の席)に定石の札を積んだ山札で始める。
+          // 札を絞っているレベルでは定石の札がそろわないので積まない
           ...(cpu &&
           !network &&
           !tutorial &&
+          !pool &&
           cpuArea &&
           cpuArea.king &&
           (boardSize || 5) === 9
             ? { deck: josekiDeck(cpuArea.type, cpuArea.king) }
+            : null),
+          // レベルで開いている札だけを配る(手元の対局。オンラインは相手と同じ山札なので絞らない)
+          ...(pool && !network && !tutorial
+            ? { pool, ...(handSize ? { handSize } : null) }
             : null),
           // 第13話(盤面エリア)は台本が装備を持つ
           ...(tutorial && tutorial.areas

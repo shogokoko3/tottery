@@ -5191,6 +5191,21 @@ body:has(.skin-overlay) {
   color: var(--gold);
   font-size: 11px;
 }
+/* \u30EC\u30D9\u30EB\u3067\u9589\u3058\u3066\u3044\u308B\u76E4(9\xD79 \u306F Lv4 \u304B\u3089) */
+.board-choice:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.board-choice:disabled:hover {
+  border-color: var(--line);
+}
+.board-choice-lock {
+  color: var(--text);
+  font-size: 11px;
+}
+.card-unlock-hint {
+  margin-top: 8px;
+}
 
 .profile-sync-notice {
   position: fixed;
