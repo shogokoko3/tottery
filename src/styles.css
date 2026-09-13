@@ -2425,6 +2425,9 @@ body:has(.skin-overlay) {
 .move-hint-row.is-king .move-diagram {
   width: 56px;
 }
+.move-guide .move-hint-row {
+  grid-template-columns: 44px 1fr;
+}
 .move-hint-label {
   display: flex;
   flex-direction: column;

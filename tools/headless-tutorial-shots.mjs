@@ -37,21 +37,24 @@ async function run(w, h, mobile, label) {
     console.log("ep1:", await clickText("第1話"));
   }
   await sleep(2500);
-  await shot(`${label}-intro1`);
-  console.log("next1:", await clickText("次へ")); await sleep(600);
-  await shot(`${label}-intro2`);
-  console.log("next2:", await clickText("次へ")); await sleep(600);
-  await shot(`${label}-need`);
+  // 読む札を「次へ」で進めながら1枚ずつ撮る(操作の札まで)
+  for (let n = 1; n <= 6; n++) {
+    await shot(`${label}-card${n}`);
+    if (!(await clickText("次へ"))) break;
+    await sleep(600);
+  }
   console.log("c2:", await clickCell(17)); await sleep(500);
   console.log("a4:", await clickCell(5)); await sleep(800);
   for (let i = 0; i < 12; i++) {
-    if (await ev(`!!document.querySelector(".move-hint")`)) break;
+    if (await ev(`!!document.querySelector(".tutorial-sheet-front") && !document.querySelector(".modal-overlay")`)) break;
     const bs = await buttons(); console.log("wait", i, bs);
     let hit = false;
     for (const t of ["取る", "確認した", "討つ", "確定", "とじる", "閉じる", "OK"]) { if (await clickText(t)) { hit = true; break; } }
     await sleep(hit ? 1200 : 1500);
   }
   await sleep(800);
+  await shot(`${label}-see`);
+  console.log("see→hint:", await clickText("次へ")); await sleep(700);
   await shot(`${label}-hint`);
   console.log("measure:", await ev(`JSON.stringify({sheet:document.querySelector(".tutorial-sheet-inner")?.getBoundingClientRect(),board:document.querySelector(".board-frame")?.getBoundingClientRect(),cls:document.querySelector(".tutorial-sheet")?.className,hint:!!document.querySelector(".move-hint")})`));
 }

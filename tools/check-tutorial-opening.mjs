@@ -33,8 +33,10 @@ assert.ok(!ep1.steps[0].need && !ep1.steps[1].need, "最初の2枚は読むだ�
 assert.match(ep1.steps[0].text, /トランプ.*二人対戦.*ランダム.*陣形/, "1枚目: 毎回ランダムの札から陣形を組む");
 assert.match(ep1.steps[1].text, /王を討つ.*伏せ.*読み合う心理戦/, "2枚目: 伏せた王を読み合う心理戦");
 assert.deepEqual(ep1.steps[1].focus.pieces, ["t6", "t7", "t8", "t9", "t10"], "2枚目は相手の駒を光らせる");
-assert.ok(ep1.steps[2].need, "3枚目から操作");
-for (const st of ep1.steps.slice(0, 3)) assert.ok(st.text.length <= 60, `札は短く(${st.text.length}字)`);
+assert.deepEqual(ep1.steps[2].moveGuide, { ranks: ["2", "3", "4", "5"] }, "3枚目: この対局の駒の動きの一覧(先に見せる)");
+assert.equal(ep1.steps[2].overlay, true, "一覧は盤の上に重ねる");
+assert.ok(ep1.steps[3].need, "4枚目から操作");
+for (const st of ep1.steps.slice(0, 4)) assert.ok(st.text.length <= 60, `札は短く(${st.text.length}字)`);
 
 const legal = (st, owner, p) =>
   getLegalMoves(p, st.board, st.boardSize, st.players[owner].armyRankCounts, kingRankOf(st, owner));
@@ -66,11 +68,16 @@ const foe = foeAction(s, ep1, 0, (p) => legal(s, 1, p));
 assert.deepEqual([foe.type, foe.pieceId, foe.row, foe.col], ["MOVE_PIECE", "t6", 3, 2]);
 s = flow(reducer(s, foe));
 assert.deepEqual(at("t6"), [3, 2], "相手の王が c2 に来た");
-// 案内: 動きの一覧で「2の王」だけが届くと示し、王の駒を光らせる → 討つ手
+// 案内: まず盤で動きを確かめる札(盤を隠さない)→ 次の札で動きの一覧を盤の上に重ね、「2の王」だけが届くと示す → 討つ手
 const idx = currentStepIndex(ep1, s, 1);
-const hintStep = ep1.steps[idx];
-assert.ok(hintStep.focus.pieces.includes("t6"), "説明は相手の王を光らせる");
-assert.ok(hintStep.moveHint, "説明に動きの一覧が付く");
+const seeStep = ep1.steps[idx];
+assert.ok(!seeStep.moveHint && !seeStep.overlay, "動いた直後の札は盤を隠さず、動きを見てもらう");
+assert.ok(seeStep.focus.pieces.includes("t6"), "動いた駒を光らせる");
+assert.deepEqual(seeStep.focus.cells, [{ row: 0, col: 2 }, { row: 3, col: 2 }], "c5 と c2 を光らせる");
+assert.match(seeStep.text, /c5 から c2/);
+const hintStep = ep1.steps[idx + 1];
+assert.ok(hintStep.moveHint, "次の札に動きの一覧が付く");
+assert.equal(hintStep.overlay, true, "一覧は盤の上に重ねる(動きを見たあとなので)");
 assert.deepEqual([hintStep.moveHint.from, hintStep.moveHint.to], [{ row: 0, col: 2 }, { row: 3, col: 2 }]);
 {
   const c = moveHintCandidates(hintStep.moveHint);
@@ -156,6 +163,10 @@ export const render=(state, tutorial)=>renderToStaticMarkup(<SeatsProvider value
   if (typeof globalThis.Image === "undefined") globalThis.Image = class { set src(_) {} };
   if (typeof globalThis.Audio === "undefined") globalThis.Audio = class { play() {} pause() {} };
   const { render, renderSheet } = createRequire(import.meta.url)(outfile);
+  const guide = renderSheet(ep1.steps[2]);
+  assert.match(guide, /move-guide/, "動きの一覧(判定なし)が描ける");
+  assert.equal((guide.match(/class="move-hint-row"/g) || []).length, 4, "2〜5 の4行");
+  assert.ok(!/✗|○/.test(guide), "先に見せる一覧には ✗○ を付けない");
   const intro = renderSheet(ep1.steps[0]);
   assert.match(intro, /毎回ランダムに配られ/, "1枚目の札が描ける");
   assert.match(intro, /次へ/, "読む札は「次へ」で進む");

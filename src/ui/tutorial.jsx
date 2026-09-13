@@ -35,6 +35,25 @@ import { ArrowLeft, ArrowRight, Check, Crown, Hand, Lock } from "../icons.jsx";
  * 動きの一覧。相手の駒が from → to へ動いたとき、どの数字ならそう動けるかを図で並べる。
  * 素の駒で届かず、王でだけ届く数字があれば、それが「王が割れた」印
  */
+/** 駒の動きの一覧(判定なし)。対局の初めに「この対局の駒はこう動く」を見せる */
+export function MoveGuidePanel({ guide }) {
+  return (
+    <div className="move-hint move-guide" role="group" aria-label="駒の動き">
+      <div className="move-hint-rows">
+        {guide.ranks.map((rank) => (
+          <div className="move-hint-row" key={rank}>
+            <MoveDiagram rank={rank} gridSize={5} />
+            <span className="move-hint-label">
+              <b>{rank}</b>
+              <small>{MOVE_TEXT[rank]}</small>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function MoveHintPanel({ hint }) {
   const { plain, kings } = moveHintCandidates(hint);
   const size = hint.size || 5;
@@ -121,13 +140,15 @@ export function TutorialSheet({
   // この話を飛ばす(確認のあと)。無ければ出さない
   onSkip = null,
   skipXp = 0,
+  // 盤の上に重ねて出す(一覧のような読ませたい札)。盤の下は読まれにくい
+  overlay = false,
 }) {
   const [confirm, setConfirm] = useState(false);
   // 前面の札は盤を隠さない場所(右か下)に置く。盤の駒の動きを見ながら読めるように。
   // 置き場所は盤の位置から測るので、画面の大きさやスクロールが変わるたびに測り直す
   const [dock, setDock] = useState(null);
   useEffect(() => {
-    if (!front || typeof document === "undefined") {
+    if (!front || overlay || typeof document === "undefined") {
       setDock(null);
       return undefined;
     }
@@ -150,7 +171,7 @@ export function TutorialSheet({
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [front, step]);
+  }, [front, overlay, step]);
   if (!step) return null;
   return (
     <div
@@ -182,6 +203,7 @@ export function TutorialSheet({
           ))}
         </div>
         <p className="tutorial-line">{step.text}</p>
+        {step.moveGuide && <MoveGuidePanel guide={step.moveGuide} />}
         {step.moveHint && <MoveHintPanel hint={step.moveHint} />}
         {step.hold ? null : step.need ? (
           <p className={`tutorial-wait ${nudge ? "tutorial-nudge" : ""}`}>

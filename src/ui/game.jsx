@@ -2006,6 +2006,7 @@ export function GameCore({
           front={!tutActive.need && !a.captureReveal && !a.pendingKingChoice}
           // 駒やマスを光らせている札は下寄せにして、盤の真ん中を空ける
           low={tutHasTarget}
+          overlay={!!tutActive.overlay}
           onNext={() => setTutStep(tutIdx + 1)}
           // この話を飛ばす: 終えたのと同じ扱い(経験値も同じ)で、次の話へ
           onSkip={() => {
