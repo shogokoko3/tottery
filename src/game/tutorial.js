@@ -13,6 +13,7 @@
  */
 import { CARD_POOLS, PLAYER_META, SUITS } from "./constants.js";
 import { reducer } from "./reducer.js";
+import { emptyBoard, getLegalMoves } from "./board.js";
 
 const SUIT_OF = { S: "spade", H: "heart", D: "diamond", C: "club" };
 
@@ -192,7 +193,15 @@ const EP1 = {
     },
     {
       at: myTurn,
-      text: "相手の駒が c5 から c2 へ、まっすぐ3マス。ふつうの 2〜5 は2マスまで。3マス動けるのは王だけです。",
+      text: "相手の駒が c5 から c2 へ、まっすぐ3マス。どの駒ならこう動けるか、動きの一覧で確かめます。",
+      // 動きの一覧: 素の 2〜5 では届かず、同じ数字の枚数ぶん伸びる「2の王」だけが届く
+      moveHint: {
+        pieceId: "t6",
+        from: { row: 0, col: 2 },
+        to: { row: 3, col: 2 },
+        ranks: ["2", "3", "4", "5"],
+        size: 5,
+      },
       focus: { pieces: ["t6"] },
     },
     {
@@ -2499,6 +2508,40 @@ export function foeAction(state, tut, moveIdx, legalMovesOf) {
   }
 
   return null;
+}
+
+/* ---------------- 動きの一覧で王を見抜く ---------------- */
+
+/**
+ * 「from から to へ動いた駒は、どの数字でありうるか」を、空の盤で数字ごとに確かめる。
+ *   plain … 王でない素の駒(同じ数字は1枚として)
+ *   kings … その数字の王(同じ数字が1枚のとき。2・3 の王は 1+2 マス、4・5 の王は素のまま)
+ * 画面(MoveHintPanel)と検査が同じものを使う
+ */
+export function moveHintCandidates(hint) {
+  const size = hint.size || 5;
+  const reach = (rank, isKing) => {
+    const board = emptyBoard(size);
+    const piece = {
+      id: "hint",
+      rank,
+      suit: "spade",
+      owner: 1,
+      isKing,
+      row: hint.from.row,
+      col: hint.from.col,
+      alive: true,
+      history: [],
+    };
+    board[piece.row][piece.col] = piece;
+    return getLegalMoves(piece, board, size, { [rank]: 1 }, isKing ? rank : null).some(
+      (m) => m.row === hint.to.row && m.col === hint.to.col,
+    );
+  };
+  return {
+    plain: hint.ranks.map((rank) => ({ rank, ok: reach(rank, false) })),
+    kings: hint.ranks.map((rank) => ({ rank, ok: reach(rank, true) })),
+  };
 }
 
 /* ---------------- 盤が並んだところから始める ---------------- */

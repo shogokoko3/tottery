@@ -2383,6 +2383,74 @@ body:has(.skin-overlay) {
 }
 
 /* 説明は1〜2行に収める。読ませるより、動かしてもらう */
+/* 動きの一覧(第1話: どの駒ならこう動けるか) */
+.move-hint {
+  margin: 4px 0 10px;
+}
+.move-hint-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--gold-soft);
+}
+.move-hint-rows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.move-hint-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(8, 17, 32, 0.6);
+}
+.move-hint-row .move-diagram {
+  width: 44px;
+}
+.move-hint-row.is-no {
+  opacity: 0.55;
+}
+.move-hint-row.is-ok {
+  border-color: var(--gold);
+  opacity: 1;
+}
+.move-hint-row.is-king {
+  grid-column: 1 / -1;
+  grid-template-columns: 56px 1fr auto;
+  background: rgba(212, 175, 55, 0.12);
+}
+.move-hint-row.is-king .move-diagram {
+  width: 56px;
+}
+.move-hint-label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  min-width: 0;
+}
+.move-hint-label b {
+  font-size: 14px;
+}
+.move-hint-label small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.move-hint-mark {
+  font-size: 16px;
+  font-weight: 700;
+}
+.is-ok .move-hint-mark {
+  color: var(--gold-soft);
+}
+.move-hint-verdict {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--gold-soft);
+}
 .tutorial-line {
   margin: 10px 0 12px;
   font-size: 15px;

@@ -13,7 +13,7 @@ import { build } from "esbuild";
 import { reducer } from "../src/game/reducer.js";
 import { getLegalMoves, kingRankOf } from "../src/game/board.js";
 import { GAME_RULE_VERSION } from "../src/game/rule-version.js";
-import { TUTORIALS, openingState, foeAction, currentStepIndex } from "../src/game/tutorial.js";
+import { TUTORIALS, openingState, foeAction, currentStepIndex, moveHintCandidates } from "../src/game/tutorial.js";
 
 const ep1 = TUTORIALS[0];
 assert.equal(ep1.id, 1);
@@ -59,9 +59,17 @@ const foe = foeAction(s, ep1, 0, (p) => legal(s, 1, p));
 assert.deepEqual([foe.type, foe.pieceId, foe.row, foe.col], ["MOVE_PIECE", "t6", 3, 2]);
 s = flow(reducer(s, foe));
 assert.deepEqual(at("t6"), [3, 2], "相手の王が c2 に来た");
-// 案内: 王の駒を光らせる説明 → 討つ手
+// 案内: 動きの一覧で「2の王」だけが届くと示し、王の駒を光らせる → 討つ手
 const idx = currentStepIndex(ep1, s, 1);
-assert.ok(ep1.steps[idx].focus.pieces.includes("t6"), "説明は相手の王を光らせる");
+const hintStep = ep1.steps[idx];
+assert.ok(hintStep.focus.pieces.includes("t6"), "説明は相手の王を光らせる");
+assert.ok(hintStep.moveHint, "説明に動きの一覧が付く");
+assert.deepEqual([hintStep.moveHint.from, hintStep.moveHint.to], [{ row: 0, col: 2 }, { row: 3, col: 2 }]);
+{
+  const c = moveHintCandidates(hintStep.moveHint);
+  assert.deepEqual(c.plain.map((x) => x.ok), [false, false, false, false], "素の 2〜5 はどれも届かない");
+  assert.deepEqual(c.kings.filter((x) => x.ok).map((x) => x.rank), ["2"], "届くのは 2 の王だけ");
+}
 // 2手目: 4♠ で王を討つ
 s = flow(move(s, "t2", 3, 2));
 assert.equal(s.phase, "gameover");
@@ -77,6 +85,8 @@ try {
       resolveDir: process.cwd(),
       loader: "jsx",
       contents: `import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';import {GameView} from './src/ui/game.jsx';import {SeatsProvider} from './src/ui/names.jsx';
+import {TutorialSheet} from './src/ui/tutorial.jsx';
+export const renderSheet=(step)=>renderToStaticMarkup(<TutorialSheet step={step} index={1} total={4} onNext={()=>{}} front />);
 export const render=(state, tutorial)=>renderToStaticMarkup(<SeatsProvider value={{names:["しんき","CPU"],icons:[null,null],titles:[null,null],skins:[{},{}]}}><GameView state={state} size={5} viewer={0} youAre={0} dispatch={()=>{}} onExit={()=>{}} tutorial={tutorial} nextTutorial={null} onNextTutorial={null} onTutorialList={()=>{}} rating={null} rematch={null} seasonResult={{active:false}} /></SeatsProvider>);`,
     },
     bundle: true,
@@ -122,7 +132,13 @@ export const render=(state, tutorial)=>renderToStaticMarkup(<SeatsProvider value
   globalThis.window = globalThis;
   if (typeof globalThis.Image === "undefined") globalThis.Image = class { set src(_) {} };
   if (typeof globalThis.Audio === "undefined") globalThis.Audio = class { play() {} pause() {} };
-  const { render } = createRequire(import.meta.url)(outfile);
+  const { render, renderSheet } = createRequire(import.meta.url)(outfile);
+  const sheet = renderSheet(hintStep);
+  assert.match(sheet, /c5 → c2/, "一覧の見出しに動いた道");
+  assert.match(sheet, /2 の王/, "2 の王が候補に出る");
+  assert.match(sheet, /王の効果/, "届く理由が王の効果だけだと言う");
+  assert.match(sheet, /あれが王です/);
+  assert.equal((sheet.match(/✗/g) || []).length, 4, "素の 2〜5 に ✗");
   const html = render(s, ep1);
   assert.match(html, /チュートリアルクリア/);
   assert.match(html, /相手の王は/);
