@@ -51,10 +51,16 @@ async function handleApi(request, env, url) {
     const adminSession = url.pathname === "/api/admin/session";
     const adminSeason = url.pathname === "/api/admin/season";
     const adminWallet = url.pathname === "/api/admin/wallet";
+    const adminGrant = url.pathname === "/api/admin/grant";
+    const adminPurchases = url.pathname === "/api/admin/purchases";
+    const adminGacha = url.pathname === "/api/admin/gacha";
     if (
       !adminSession &&
       !adminSeason &&
       !adminWallet &&
+      !adminGrant &&
+      !adminPurchases &&
+      !adminGacha &&
       !/^\/api\/(season|wallet|iap)\//.test(url.pathname)
     )
       return json({ error: "見つかりません。" }, 404);
@@ -88,7 +94,10 @@ async function handleApi(request, env, url) {
         return uid === OPERATOR_UID
           ? json({ uid })
           : json({ error: "運営権限がありません。" }, 403);
-      if ((adminSeason || adminWallet) && uid !== OPERATOR_UID)
+      if (
+        (adminSeason || adminWallet || adminGrant || adminPurchases || adminGacha) &&
+        uid !== OPERATOR_UID
+      )
         return json({ error: "運営権限がありません。" }, 403);
       const ledger = env.SEASONS.get(env.SEASONS.idFromName("monthly-v1"));
       const call = (op, args = {}) =>
@@ -103,6 +112,11 @@ async function handleApi(request, env, url) {
       }
       // 未使用残高(資金決済法の集計)。運営だけ
       if (adminWallet) return call("admin-unused");
+      // 運営: 手動付与・購入履歴・ガチャ履歴。相手の uid は body.uid
+      if (adminGrant)
+        return call("admin-grant", { targetUid: body.uid, tickets: body.tickets, gemsFree: body.gemsFree, id: body.id });
+      if (adminPurchases) return call("admin-purchases", { targetUid: body.uid });
+      if (adminGacha) return call("admin-gacha", { targetUid: body.uid });
       // ---- 財布(サーバー側のチケット残高)と課金 ----
       // 出来事の id は端末が作る(やり直しで二重にならない)。形だけここで見る
       const eventId = (x) => (typeof x === "string" && /^[\w:.-]{1,128}$/.test(x) ? x : null);
@@ -128,6 +142,9 @@ async function handleApi(request, env, url) {
         // 広告を1本見た報酬(チケット1枚)。1日の上限はサーバーが数える
         if (wop === "ad-reward" && eventId(body.id))
           return call("wallet-ad-reward", { id: body.id });
+        // ガチャの結果を記録(運営の履歴用)。端末の申告。残高は動かさない
+        if (wop === "log-pull" && Array.isArray(body.items))
+          return call("wallet-log-pull", { items: body.items.slice(0, 20) });
         return json({ error: "見つかりません。" }, 404);
       }
       if (url.pathname === "/api/iap/verify") {
@@ -240,7 +257,14 @@ export class SeasonLedger {
         if (op === "wallet-buypass") return w.buyPass(uid, args.id, now);
         if (op === "wallet-pass-reward") return w.passReward(uid, args.id, now);
         if (op === "wallet-ad-reward") return w.adReward(uid, args.id, now);
+        if (op === "wallet-log-pull") return w.logGacha(uid, args.items, now);
         if (op === "admin-unused" && uid === OPERATOR_UID) return w.unused();
+        if (op === "admin-grant" && uid === OPERATOR_UID)
+          return w.adminGrant(args.targetUid, { tickets: args.tickets, gemsFree: args.gemsFree }, args.id, now);
+        if (op === "admin-purchases" && uid === OPERATOR_UID)
+          return w.purchaseHistory(args.targetUid);
+        if (op === "admin-gacha" && uid === OPERATOR_UID)
+          return w.gachaHistory(args.targetUid);
         if (op === "claim") {
           // 初めて受け取るときだけ、報酬のチケットをその場で財布へ(端末を信じない)。
           // 以前に端末で受け取った分は引き継ぎで来るので、ここで二度は足さない

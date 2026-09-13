@@ -58,6 +58,9 @@ export class Wallet {
     sql("CREATE TABLE IF NOT EXISTS purchases (transactionId TEXT PRIMARY KEY, uid TEXT, productId TEXT, environment TEXT, purchasedAt INTEGER, grantedAt INTEGER)");
     sql("CREATE TABLE IF NOT EXISTS entitlements (uid TEXT, productId TEXT, transactionId TEXT, at INTEGER, PRIMARY KEY(uid, productId))");
     sql("CREATE TABLE IF NOT EXISTS migrations (uid TEXT PRIMARY KEY, tickets INTEGER, at INTEGER)");
+    // ガチャの履歴(運営が見る)。1回引くごとに1行。端末が結果を申告する
+    sql("CREATE TABLE IF NOT EXISTS gacha_log (id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, skinId TEXT, isNew INTEGER NOT NULL DEFAULT 0, at INTEGER)");
+    sql("CREATE INDEX IF NOT EXISTS gacha_log_uid ON gacha_log(uid, at)");
   }
   row(uid) {
     return (
@@ -245,6 +248,43 @@ export class Wallet {
     this.sql("INSERT INTO migrations VALUES (?,?,?)", uid, n, now);
     if (n) this.credit(uid, `migrate:${uid}`, n, "migrate", now);
     return { applied: true, migrated: n, ...this.summary(uid) };
+  }
+  /** 運営が手で付与する(チケット・無償ジェム)。上限は無いが桁は見張る。id で冪等 */
+  adminGrant(uid, { tickets = 0, gemsFree = 0 }, id, now) {
+    if (typeof uid !== "string" || !uid) throw new Error("相手のuidが必要です。");
+    const t = Number(tickets) || 0;
+    const g = Number(gemsFree) || 0;
+    if (!Number.isSafeInteger(t) || !Number.isSafeInteger(g) || t < 0 || g < 0 || t > 100000 || g > 100000)
+      throw new Error("枚数が正しくありません。");
+    if (t === 0 && g === 0) throw new Error("付与する数を入れてください。");
+    // 有償ジェムは付与しない(資金決済法の未使用残高は「買った分」だけにするため、付与は無償)
+    return this.apply(uid, id, { tickets: t, gemsFree: g }, "grant", null, now);
+  }
+  /** 購入履歴(運営用)。uid を渡せばその人、無ければ全体の新しい順 */
+  purchaseHistory(uid) {
+    const rows = uid
+      ? this.sql("SELECT transactionId, uid, productId, environment, purchasedAt, grantedAt FROM purchases WHERE uid=? ORDER BY grantedAt DESC LIMIT 200", uid)
+      : this.sql("SELECT transactionId, uid, productId, environment, purchasedAt, grantedAt FROM purchases ORDER BY grantedAt DESC LIMIT 200");
+    return { purchases: rows };
+  }
+  /** ガチャの結果を記録する(端末の申告)。1回引くごとに呼ばれ、引いた札を残す */
+  logGacha(uid, items, now) {
+    if (!Array.isArray(items) || !items.length) return { logged: 0 };
+    let n = 0;
+    for (const it of items.slice(0, 20)) {
+      const skinId = it && typeof it.id === "string" ? it.id.slice(0, 64) : null;
+      if (!skinId) continue;
+      this.sql("INSERT INTO gacha_log (uid, skinId, isNew, at) VALUES (?,?,?,?)", uid, skinId, it.isNew ? 1 : 0, now);
+      n++;
+    }
+    return { logged: n };
+  }
+  /** ガチャ履歴(運営用)。uid を渡せばその人、無ければ全体の新しい順 */
+  gachaHistory(uid) {
+    const rows = uid
+      ? this.sql("SELECT uid, skinId, isNew, at FROM gacha_log WHERE uid=? ORDER BY at DESC LIMIT 200", uid)
+      : this.sql("SELECT uid, skinId, isNew, at FROM gacha_log ORDER BY at DESC LIMIT 200");
+    return { gacha: rows };
   }
   /**
    * 未使用残高(運営用)。**有償ジェムだけ**。1ジェム=1円で発行するので合計がそのまま円。

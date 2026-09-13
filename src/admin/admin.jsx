@@ -25,7 +25,13 @@ import { giftsLabel } from "../game/gifts.js";
 import { TITLES } from "../game/titles.js";
 import { ICONS } from "../game/icons.js";
 import { SKINS } from "../skins/catalog.js";
-import { verifyOperatorSession, readAdminSeason } from "./session.js";
+import {
+  verifyOperatorSession,
+  readAdminSeason,
+  grantResources,
+  readPurchases,
+  readGacha,
+} from "./session.js";
 import {
   isRankedRecord,
   worldGamesOf,
@@ -323,6 +329,123 @@ function AdminApp() {
         setNotice(null);
       }}
     />
+  );
+}
+
+/** 運営ツール: チケット/ジェムの手動付与・購入履歴・ガチャ履歴 */
+function AdminTools() {
+  const [gUid, setGUid] = useState("");
+  const [gTickets, setGTickets] = useState("");
+  const [gGems, setGGems] = useState("");
+  const [gMsg, setGMsg] = useState("");
+  const [gBusy, setGBusy] = useState(false);
+  const grant = async () => {
+    setGMsg("");
+    const uid = gUid.trim();
+    const tickets = Number(gTickets) || 0;
+    const gemsFree = Number(gGems) || 0;
+    if (!uid) return setGMsg("相手の uid を入れてください。");
+    if (tickets <= 0 && gemsFree <= 0)
+      return setGMsg("チケットかジェムの数を入れてください。");
+    setGBusy(true);
+    try {
+      const r = await grantResources(uid, { tickets, gemsFree });
+      setGMsg(`付与しました。残高 チケット${r.tickets} / ジェム${r.gems}（無償${r.gemsFree}）`);
+      setGTickets("");
+      setGGems("");
+    } catch (e) {
+      setGMsg((e && e.message) || "付与できませんでした。");
+    } finally {
+      setGBusy(false);
+    }
+  };
+
+  const [pUid, setPUid] = useState("");
+  const [purchases, setPurchases] = useState(null);
+  const [pBusy, setPBusy] = useState(false);
+  const [pErr, setPErr] = useState("");
+  const loadPurchases = async () => {
+    setPErr("");
+    setPBusy(true);
+    try {
+      const r = await readPurchases(pUid.trim());
+      setPurchases(r.purchases || []);
+    } catch (e) {
+      setPErr((e && e.message) || "読み込めませんでした。");
+    } finally {
+      setPBusy(false);
+    }
+  };
+
+  const [gaUid, setGaUid] = useState("");
+  const [gacha, setGacha] = useState(null);
+  const [gaBusy, setGaBusy] = useState(false);
+  const [gaErr, setGaErr] = useState("");
+  const loadGacha = async () => {
+    setGaErr("");
+    setGaBusy(true);
+    try {
+      const r = await readGacha(gaUid.trim());
+      setGacha(r.gacha || []);
+    } catch (e) {
+      setGaErr((e && e.message) || "読み込めませんでした。");
+    } finally {
+      setGaBusy(false);
+    }
+  };
+
+  return (
+    <section className="admin-card" id="admin-tools">
+      <h2>ツール</h2>
+
+      <h3>チケット・ジェムの手動付与</h3>
+      <p className="admin-help">
+        相手の uid と、付与する数を入れます（付与するジェムは無償ジェムです）。
+      </p>
+      <input className="admin-input" placeholder="相手の uid" value={gUid} onChange={(e) => setGUid(e.target.value)} />
+      <input className="admin-input" type="number" placeholder="チケット" value={gTickets} onChange={(e) => setGTickets(e.target.value)} />
+      <input className="admin-input" type="number" placeholder="ジェム(無償)" value={gGems} onChange={(e) => setGGems(e.target.value)} />
+      <button className="btn btn-ghost btn-small" disabled={gBusy} onClick={grant}>付与する</button>
+      {gMsg && <p className="admin-help" role="status">{gMsg}</p>}
+
+      <h3>購入履歴</h3>
+      <input className="admin-input" placeholder="uid（空なら全体）" value={pUid} onChange={(e) => setPUid(e.target.value)} />
+      <button className="btn btn-ghost btn-small" disabled={pBusy} onClick={loadPurchases}>表示</button>
+      {pErr && <p className="admin-error">{pErr}</p>}
+      {purchases && (
+        <div className="admin-rows">
+          {purchases.map((p) => (
+            <div className="admin-row" key={p.transactionId}>
+              <div className="admin-row-main">
+                <div>{p.productId}</div>
+                <div className="admin-id">{p.uid}</div>
+              </div>
+              <div className="admin-row-side">{when(p.grantedAt)}・{p.environment}</div>
+            </div>
+          ))}
+          {!purchases.length && <p className="admin-help">なし</p>}
+        </div>
+      )}
+
+      <h3>ガチャ履歴</h3>
+      <input className="admin-input" placeholder="uid（空なら全体）" value={gaUid} onChange={(e) => setGaUid(e.target.value)} />
+      <button className="btn btn-ghost btn-small" disabled={gaBusy} onClick={loadGacha}>表示</button>
+      {gaErr && <p className="admin-error">{gaErr}</p>}
+      {gacha && (
+        <div className="admin-rows">
+          {gacha.map((g, i) => (
+            <div className="admin-row" key={i}>
+              <div className="admin-row-main">
+                <div>{g.skinId}{g.isNew ? " ★新規" : ""}</div>
+                <div className="admin-id">{g.uid}</div>
+              </div>
+              <div className="admin-row-side">{when(g.at)}</div>
+            </div>
+          ))}
+          {!gacha.length && <p className="admin-help">なし</p>}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -790,6 +913,8 @@ function AdminDashboard({ onSignOut }) {
             )}
           </div>
         </section>
+
+        <AdminTools />
 
         <section className="admin-card" id="admin-ranks">
           <h2>9×9オンライン・通算成績</h2>

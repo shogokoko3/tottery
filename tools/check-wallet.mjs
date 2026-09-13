@@ -223,5 +223,28 @@ const apple = new X509Certificate(APPLE_ROOT_G3_PEM);
 is("埋め込んだ Apple Root CA - G3 が読める", apple.subject.includes("Apple Root CA - G3"), true);
 is("Apple の根の指紋が公開されているものと一致", Buffer.from(await apple.getThumbprint("SHA-256")).toString("hex"), "63343abfb89a6a03ebb57e9b3f5fa7be7c4f5c756f3017b3a8c488c3653e9179");
 
+console.log("\n運営ツール(手動付与・購入履歴・ガチャ履歴)");
+{
+  const D = new DatabaseSync(":memory:");
+  const w2 = new Wallet((q, ...a) => D.prepare(q).all(...a));
+  // 手動付与: チケット+無償ジェム。有償は動かさない
+  const r = w2.adminGrant("U", { tickets: 5, gemsFree: 30 }, "g1", T);
+  is("手動付与(チケット・無償ジェム、有償は0)", { t: r.tickets, gems: r.gems, paid: r.gemsPaid, free: r.gemsFree }, { t: 5, gems: 30, paid: 0, free: 30 });
+  is("同じidの付与は二度効かない", w2.adminGrant("U", { tickets: 5, gemsFree: 30 }, "g1", T).applied, false);
+  await throws("0の付与は拒む", () => w2.adminGrant("U", { tickets: 0, gemsFree: 0 }, "g2", T), /付与する数/);
+  await throws("uid無しは拒む", () => w2.adminGrant("", { tickets: 1 }, "g3", T), /uid/);
+  // 購入履歴
+  w2.purchase("U", { transactionId: "h1", productId: GEM_PACKS[0].id, environment: "Sandbox", purchaseDate: T }, T);
+  const ph = w2.purchaseHistory("U").purchases;
+  is("購入履歴にその取引が出る", [ph.length, ph[0].transactionId, ph[0].productId], [1, "h1", GEM_PACKS[0].id]);
+  is("全体の購入履歴も読める", w2.purchaseHistory().purchases.length >= 1, true);
+  // ガチャ履歴
+  is("ガチャ結果を記録できる", w2.logGacha("U", [{ id: "elf-male", isNew: true }, { id: "zombie-male", isNew: false }], T).logged, 2);
+  const g = w2.gachaHistory("U").gacha;
+  is("ガチャ履歴が新しい順で読める", [g.length, g.some((x) => x.skinId === "elf-male" && x.isNew === 1)], [2, true]);
+  is("空の記録は0件", w2.logGacha("U", [], T).logged, 0);
+  is("uid無しの全体ガチャ履歴も読める", w2.gachaHistory().gacha.length >= 2, true);
+}
+
 console.log(`\n${ok} 件 ok / ${fails.length} 件 NG`);
 process.exit(fails.length ? 1 : 0);

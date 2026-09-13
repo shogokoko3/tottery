@@ -138,6 +138,18 @@ export async function buyPassWithGems(id) {
   return mirror(await walletRequest("buy-pass", { id }));
 }
 
+/** ガチャの結果を運営の履歴に残す。残高は動かさない。記録が落ちても遊びは止めない */
+export async function logPull(items) {
+  if (!WALLET_SERVER || !Array.isArray(items) || !items.length) return;
+  try {
+    await walletRequest("log-pull", {
+      items: items.slice(0, 20).map((r) => ({ id: r.id, isNew: !!r.isNew })),
+    });
+  } catch {
+    /* 履歴は best-effort */
+  }
+}
+
 /** 端末にあった枚数を一度だけ引き継ぐ */
 export async function migrateOnce() {
   if (!WALLET_SERVER) return null;

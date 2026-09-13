@@ -51,7 +51,7 @@ import {
   totalOfSpares,
 } from "../skins/ether.js";
 import { updateCollection, useCollection } from "../skins/store.js";
-import { WALLET_SERVER, debitTickets, exchangeGems, newEventId, syncWallet, migrateOnce } from "../net/wallet.js";
+import { WALLET_SERVER, debitTickets, exchangeGems, newEventId, syncWallet, migrateOnce, logPull } from "../net/wallet.js";
 import { shopAvailable, flushPurchases } from "../net/iap.js";
 import { adsAvailable, watchAdForTicket } from "../net/ads.js";
 import { GEM_PER_TICKET } from "../iap/catalog.js";
@@ -1196,10 +1196,12 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         setMessage((e && e.message) || "ガチャチケットを確認できませんでした。");
         return;
       }
-      await acquire((s) => pull(s, amount, undefined, { free: true }), "summon");
+      const next = await acquire((s) => pull(s, amount, undefined, { free: true }), "summon");
+      if (next?.pending?.results) logPull(next.pending.results);
       return;
     }
-    await acquire((s) => pull(s, amount), "summon");
+    const next = await acquire((s) => pull(s, amount), "summon");
+    if (next?.pending?.results) logPull(next.pending.results);
   };
   const equipSkin = async (skin) => {
     if (await run((s) => equip(s, skin.id)))
