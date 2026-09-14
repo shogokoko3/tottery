@@ -5692,8 +5692,10 @@ body:has(.skin-overlay) {
 .gem-shop-balance .gem-amount { justify-content: flex-start; font-size: 23px; }
 .gem-shop-balance p { margin: 0; font-size: 12px; color: var(--text-dim); }
 .shop-item .gem-pack-name { display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0; color: var(--text); }
+/* \u30D1\u30C3\u30AF\u306E\u7D75\u3002\u91D1\u984D\u304C\u5927\u304D\u3044\u307B\u3069\u5B9D\u77F3\u304C\u5897\u3048\u308B\u7D75\u67C4(1\u7C92\u21923\u7C92\u2192\u5C71\u2192\u888B\u2192\u5B9D\u7BB1\u2192\u5927\u304D\u306A\u5B9D\u7BB1) */
+.shop-item .gem-pack-art { width: 68px; height: 68px; flex: none; border-radius: 10px; object-fit: cover; border: 1px solid var(--line); background: #0a1421; }
 .shop-item .gem-pack-price { flex: none; white-space: nowrap; margin-left: 10px; }
-@media (max-width: 420px) { .gem-shop-balance { gap: 14px; } .shop-item .gem-pack-name { font-size: 13px; gap: 8px; } }
+@media (max-width: 420px) { .gem-shop-balance { gap: 14px; } .shop-item .gem-pack-name { font-size: 13px; gap: 8px; } .shop-item .gem-pack-art { width: 58px; height: 58px; } }
 
 .tottery-root .skins-free .gem-amount, .tottery-root .skins-free .gem-unit { border: 0; padding: 0; margin: 0; background: none; font-family: inherit; }
 

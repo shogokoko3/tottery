@@ -5677,8 +5677,10 @@ body:has(.skin-overlay) {
 .gem-shop-balance .gem-amount { justify-content: flex-start; font-size: 23px; }
 .gem-shop-balance p { margin: 0; font-size: 12px; color: var(--text-dim); }
 .shop-item .gem-pack-name { display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0; color: var(--text); }
+/* パックの絵。金額が大きいほど宝石が増える絵柄(1粒→3粒→山→袋→宝箱→大きな宝箱) */
+.shop-item .gem-pack-art { width: 68px; height: 68px; flex: none; border-radius: 10px; object-fit: cover; border: 1px solid var(--line); background: #0a1421; }
 .shop-item .gem-pack-price { flex: none; white-space: nowrap; margin-left: 10px; }
-@media (max-width: 420px) { .gem-shop-balance { gap: 14px; } .shop-item .gem-pack-name { font-size: 13px; gap: 8px; } }
+@media (max-width: 420px) { .gem-shop-balance { gap: 14px; } .shop-item .gem-pack-name { font-size: 13px; gap: 8px; } .shop-item .gem-pack-art { width: 58px; height: 58px; } }
 
 .tottery-root .skins-free .gem-amount, .tottery-root .skins-free .gem-unit { border: 0; padding: 0; margin: 0; background: none; font-family: inherit; }
 

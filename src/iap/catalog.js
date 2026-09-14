@@ -22,11 +22,36 @@ export const SHOP_ENABLED = true;
 export const GEM_PACKS = [
   // おまけ(無償)は買うほど率が上がる。120=0% / 600=10% / 1500≈15%(230) / 3000=20% / 5000=25% / 10000=30%
   { id: `${BUNDLE_ID}.gems.120`, paid: 120, free: 0, name: "120ジェム" },
-  { id: `${BUNDLE_ID}.gems.600`, paid: 600, free: 60, name: "600ジェム＋おまけ60" },
-  { id: `${BUNDLE_ID}.gems.1500`, paid: 1500, free: 230, name: "1,500ジェム＋おまけ230" },
-  { id: `${BUNDLE_ID}.gems.3000`, paid: 3000, free: 600, name: "3,000ジェム＋おまけ600" },
-  { id: `${BUNDLE_ID}.gems.5000`, paid: 5000, free: 1250, name: "5,000ジェム＋おまけ1,250" },
-  { id: `${BUNDLE_ID}.gems.10000`, paid: 10000, free: 3000, name: "10,000ジェム＋おまけ3,000" },
+  {
+    id: `${BUNDLE_ID}.gems.600`,
+    paid: 600,
+    free: 60,
+    name: "600ジェム＋おまけ60",
+  },
+  {
+    id: `${BUNDLE_ID}.gems.1500`,
+    paid: 1500,
+    free: 230,
+    name: "1,500ジェム＋おまけ230",
+  },
+  {
+    id: `${BUNDLE_ID}.gems.3000`,
+    paid: 3000,
+    free: 600,
+    name: "3,000ジェム＋おまけ600",
+  },
+  {
+    id: `${BUNDLE_ID}.gems.5000`,
+    paid: 5000,
+    free: 1250,
+    name: "5,000ジェム＋おまけ1,250",
+  },
+  {
+    id: `${BUNDLE_ID}.gems.10000`,
+    paid: 10000,
+    free: 3000,
+    name: "10,000ジェム＋おまけ3,000",
+  },
 ];
 /** 使う順。無償を先に減らし、足りない分を有償から */
 export const GEM_CONSUME_ORDER = ["free", "paid"];
@@ -54,6 +79,13 @@ export const FREE_GEM_DAILY_MAX = 500; // ミッション等の正規の受け�
 export const ADS_PER_DAY = 3;
 export const AD_REWARD_TICKETS = 1;
 
-export const PRODUCTS = GEM_PACKS.map((p) => ({ ...p, kind: "gems", gems: p.paid + p.free }));
+/** パックの絵(2026-09-14、本人の原画 1024px を 512px の WebP に)。assets/skins/gems/ → skins/gems/ で配る */
+export const packImage = (paid) => `skins/gems/gem-pack-${paid}.webp`;
+export const PRODUCTS = GEM_PACKS.map((p) => ({
+  ...p,
+  kind: "gems",
+  gems: p.paid + p.free,
+  image: packImage(p.paid),
+}));
 export const PRODUCT_IDS = PRODUCTS.map((p) => p.id);
 export const productOf = (id) => PRODUCTS.find((p) => p.id === id) || null;

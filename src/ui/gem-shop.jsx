@@ -16,12 +16,15 @@ export function GemShop({
   gemsFree = 0,
   onClose,
   onMessage,
+  // 確認画面・検査用。渡すと StoreKit を呼ばずにこの一覧を出す
+  initialProducts = null,
 }) {
-  const [products, setProducts] = useState(null);
+  const [products, setProducts] = useState(initialProducts);
   const [loadError, setLoadError] = useState("");
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
+    if (initialProducts) return undefined;
     let alive = true;
     setProducts(null);
     setLoadError("");
@@ -127,7 +130,16 @@ export function GemShop({
                   onClick={() => purchase(p.id)}
                 >
                   <span className="gem-pack-name">
-                    <GemIcon size={38} />
+                    {p.image ? (
+                      <img
+                        className="gem-pack-art"
+                        src={p.image}
+                        alt=""
+                        loading="lazy"
+                      />
+                    ) : (
+                      <GemIcon size={38} />
+                    )}
                     {p.name}
                   </span>
                   <span className="gem-pack-price">{p.price}</span>

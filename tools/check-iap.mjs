@@ -29,6 +29,14 @@ globalThis.fetch = async (url, init) => {
   return { ok: true, status: 200, json: async () => ({ tickets: 42, entitlements: [] }) };
 };
 const { PRODUCTS, PRODUCT_IDS, GEM_PACKS, GEM_PER_TICKET, BATTLEPASS_GEMS, BATTLEPASS_ENTITLEMENT, productOf } = await import("../src/iap/catalog.js");
+{
+  const fs = await import("node:fs");
+  for (const p of PRODUCTS) {
+    const path = `assets/${p.image}`;
+    if (!fs.existsSync(path)) { console.log(`  NG   パックの絵が無い: ${path}`); process.exitCode = 1; }
+  }
+  console.log(`  ok   パックの絵 ${PRODUCTS.length} 枚が assets/skins/gems にある`);
+}
 const { earnTickets, earnGems, flushPending, syncWallet } = await import("../src/net/wallet.js");
 const { flushPurchases } = await import("../src/net/iap.js");
 const { getCollection } = await import("../src/skins/store.js");
