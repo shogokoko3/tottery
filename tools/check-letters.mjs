@@ -195,7 +195,7 @@ console.log("\n置き場を宛先ごとに分ける");
     "2通と記念配布(campaigns.js の期間内ぶん)が1本にまとまる",
     got.ok && got.list.length === 2 + campaignLetters().length,
   );
-  const camp = got.list.find((l) => l.campaign);
+  const camp = got.list.find((l) => l.id === "campaign:release-2026-09");
   t(
     "記念配布は全員宛て・チケット添付・campaign の印つき",
     camp &&
@@ -205,7 +205,19 @@ console.log("\n置き場を宛先ごとに分ける");
       isCampaignLetter(camp) &&
       isFor(camp, "uidA", camp.at + 1),
   );
-  t("記念配布は期間前には出ない", campaignLetters(camp.at - 1).length === 0);
+  t(
+    "記念配布は期間前には出ない",
+    !campaignLetters(camp.at - 1).some((l) => l.id === camp.id),
+  );
+  const pre = got.list.find((l) => l.id === "campaign:prerelease-2026-09");
+  t(
+    "リリース前限定の300枚は期限つきで出る",
+    pre && pre.gifts[0].amount === 300 && pre.until > pre.at,
+  );
+  t(
+    "リリース前限定は期限を過ぎると出ない",
+    !campaignLetters(pre.until).some((l) => l.id === pre.id),
+  );
   t(
     "運営の手紙は campaign の印を持たない",
     !isCampaignLetter(got.list.find((l) => l.id === "a1")),

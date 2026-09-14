@@ -65,6 +65,10 @@ console.log("記念配布(campaigns.js)");
   const row = sql("SELECT kind, ref FROM wallet_ledger WHERE id=?", `campaign:${c.id}:CAMP1`)[0];
   is("kind は campaign で記録される", [row.kind, row.ref], ["campaign", c.id]);
   is("campaignOf は id で引ける", campaignOf(c.id).tickets, 50);
+  const pre = campaignOf("prerelease-2026-09");
+  is("リリース前限定は300枚・期限つき", [pre.tickets, pre.until > pre.from, pre.prerelease], [300, true, true]);
+  is("期限内は受け取れる(50枚とは別に)", w.campaign("CAMP1", pre.id, pre.from + 1000).tickets, 360);
+  await throws("期限を過ぎたら断る", () => w.campaign("CAMP3", pre.id, pre.until), /期間外/);
 }
 
 console.log("\n無償ジェム(端末の申告)");
