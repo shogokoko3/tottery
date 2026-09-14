@@ -44,6 +44,7 @@ import {
 } from "../game/constants.js";
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
+import { noteRandomResult } from "../game/bot-match.js";
 import {
   isNotableLog,
   autoArrange,
@@ -1915,6 +1916,8 @@ export function GameCore({
     xpNoticeRef.current = after.xpNoticeId;
     setRatingResult(after.delta === null ? null : after);
     publishPlayer(after);
+    // ランダムマッチの結果を控える。人に負けたら、次のランダムマッチは Bot(src/game/bot-match.js)
+    if ((network && network.random) || bot) noteRandomResult({ won, vsBot: !!bot });
   }, [a.phase, a.winner, matchRatings.ready]);
 
   // 経験値で先に決着を知らせない。撃破札と映像の後でゲージを出す。

@@ -7,7 +7,9 @@
  * (2026-09-14、本人の指示「1600ポイント到達するまではその Bot とマッチング」)
  *
  * 決まり:
- *  - 判定は自分の持ち点だけ。1600 以上になった瞬間から、掲示(人)で探す
+ *  - 1600 未満でも、まず掲示(人)で探す。人が見つからないまま BOT_WAIT_MS 経ったら Bot に切り替える
+ *  - 直前のランダムマッチで人に負けていたら、次は探さずにすぐ Bot(1敗したら Bot)。Bot 戦を1局すると元に戻る
+ *  - 1600 以上になった瞬間から、Bot は出ない(人だけ)
  *  - Bot との 9×9 は持ち点に数える(人との対局と同じ Elo)。だから勝てば 1600 に届く
  *  - Bot の持ち点は自分の近く(±80)。同格として +16/-16 を基本にする
  *  - サーバーのシーズン台帳には送らない(部屋が無いので verifyMatch を通せない)。
@@ -63,6 +65,66 @@ export function makeBot(myRating, myName = null, rng = Math.random) {
   const base = normalizeRating(myRating ?? START_RATING);
   const rating = Math.max(1200, Math.min(1650, base + Math.round(rng() * 160 - 80)));
   return { id: `bot:${name}`, name, icon, rating };
+}
+
+/** 人を探す時間。これだけ経っても人と組めなければ Bot に切り替える */
+export const BOT_WAIT_MS = 8000;
+
+/** 「1敗したら次は Bot」の印。端末に置く */
+const NOW_KEY = "tottery.bot-match.v1";
+
+function storageOf(storage) {
+  try {
+    return storage || localStorage;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ランダムマッチの結果を控える。人に負けたら次は Bot、
+ * 人に勝つか引き分けるか、Bot と1局したら元に戻る
+ */
+export function noteRandomResult({ won, vsBot }, storage = null) {
+  const st = storageOf(storage);
+  if (!st) return;
+  try {
+    if (!vsBot && won === false) st.setItem(NOW_KEY, "1");
+    else st.removeItem(NOW_KEY);
+  } catch {
+    /* 保存できない端末では、毎回まず人を探す */
+  }
+}
+
+/** 直前に人に負けていて、次はすぐ Bot にする番か */
+export function wantsBotNow(storage = null) {
+  const st = storageOf(storage);
+  try {
+    return !!st && st.getItem(NOW_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Bot 戦を始めたら印を消す(途中で抜けても、次はまた人から) */
+export function clearBotNow(storage = null) {
+  const st = storageOf(storage);
+  try {
+    st && st.removeItem(NOW_KEY);
+  } catch {
+    /* 消せなくても害は無い */
+  }
+}
+
+/**
+ * ランダムマッチを開いたときの Bot の扱い。
+ *   "none"     … Bot は出ない(持ち点 1600 以上)
+ *   "now"      … 探さずにすぐ Bot(直前に人に負けた)
+ *   "fallback" … まず人を探し、BOT_WAIT_MS 経っても組めなければ Bot
+ */
+export function botPlan(rating, storage = null) {
+  if (!matchesBot(rating)) return "none";
+  return wantsBotNow(storage) ? "now" : "fallback";
 }
 
 /** 「探しています…」を見せる時間(2〜6秒)。すぐ出ると作り物に見える */

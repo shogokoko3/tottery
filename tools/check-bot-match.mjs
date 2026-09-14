@@ -15,7 +15,7 @@ globalThis.localStorage = {
     delete store[k];
   },
 };
-const { BOT_UNTIL_RATING, BOT_NAMES, matchesBot, makeBot, botSearchDelay } = await import("../src/game/bot-match.js");
+const { BOT_UNTIL_RATING, BOT_WAIT_MS, BOT_NAMES, matchesBot, makeBot, botSearchDelay, botPlan, noteRandomResult, wantsBotNow, clearBotNow } = await import("../src/game/bot-match.js");
 const { ICONS } = await import("../src/game/icons.js");
 const { START_RATING, nextRating } = await import("../src/game/rating.js");
 const { loadProfile, recordGame } = await import("../src/game/profile.js");
@@ -83,15 +83,48 @@ assert.equal(matchesBot("abc"), true);
   assert.ok(p.rating < before);
 }
 
+// 3b. 人が先。負けたら次は Bot、Bot と1局したら元に戻る
+{
+  const mem = () => { const m = {}; return { getItem: (k) => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: (k) => { delete m[k]; } }; };
+  const st = mem();
+  assert.ok(BOT_WAIT_MS >= 5000 && BOT_WAIT_MS <= 15000, `人を探す時間は数秒(${BOT_WAIT_MS}ms)`);
+  assert.equal(botPlan(1500, st), "fallback", "1600 未満: まず人を探し、時間切れで Bot");
+  assert.equal(botPlan(1600, st), "none", "1600 以上: Bot は出ない");
+  noteRandomResult({ won: false, vsBot: false }, st);
+  assert.equal(wantsBotNow(st), true, "人に負けたら次は Bot");
+  assert.equal(botPlan(1500, st), "now");
+  assert.equal(botPlan(1650, st), "none", "負けていても 1600 以上なら人だけ");
+  noteRandomResult({ won: false, vsBot: true }, st);
+  assert.equal(wantsBotNow(st), false, "Bot と1局(負けでも)したら元に戻る");
+  noteRandomResult({ won: false, vsBot: false }, st);
+  clearBotNow(st);
+  assert.equal(wantsBotNow(st), false, "Bot 戦を始めた時点で印を消す(途中で抜けても次は人から)");
+  noteRandomResult({ won: false, vsBot: false }, st);
+  noteRandomResult({ won: true, vsBot: false }, st);
+  assert.equal(wantsBotNow(st), false, "人に勝てば元に戻る");
+  noteRandomResult({ won: false, vsBot: false }, st);
+  noteRandomResult({ won: null, vsBot: false }, st);
+  assert.equal(wantsBotNow(st), false, "引き分けでも元に戻る");
+  const broken = { getItem: () => { throw new Error("x"); }, setItem: () => { throw new Error("x"); }, removeItem: () => { throw new Error("x"); } };
+  assert.equal(botPlan(1500, broken), "fallback", "保存できない端末では毎回まず人を探す");
+  noteRandomResult({ won: false, vsBot: false }, broken);
+}
+
 // 4. 配線
 {
   const screens = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
-  assert.ok(/if \(onBotReady && matchesBot\(myRating\(\)\)\) \{\s*const bot = makeBot\(myRating\(\), myName\(\)\);/.test(screens), "掲示に行く前に、持ち点で Bot を出す");
-  assert.ok(/botSearchDelay\(\)/.test(screens), "数秒「探しています」を見せる");
+  assert.ok(/const planRef = useRef\(onBotReady \? botPlan\(myRating\(\)\) : "none"\);/.test(screens), "Bot の扱いは開いた時点で botPlan で決める");
+  assert.ok(/const plan = planRef\.current;/.test(screens), "探す効果はその決めを使う");
+  assert.ok(/if \(plan === "now"\) \{\s*const bot = makeBot\(myRating\(\), myName\(\)\);/.test(screens), "直前に人に負けていたら、探さずに Bot");
+  assert.ok(/botSearchDelay\(\)/.test(screens), "そのときも数秒「探しています」を見せる");
+  assert.ok(/plan === "fallback"\s*\? setTimeout\(\(\) => \{\s*if \(o\.current\) return;\s*o\.current = !0;\s*onBotReady\(makeBot\(myRating\(\), myName\(\)\)\);\s*\}, BOT_WAIT_MS\)/.test(screens), "まず人を探し、BOT_WAIT_MS で Bot に切り替える(探すのを止める)");
+  assert.ok(/if \(fallback\) clearTimeout\(fallback\);/.test(screens), "画面を離れたら切り替えの予約を消す");
+  assert.ok(/l === "error" && planRef\.current !== "fallback" \? \(/.test(screens), "通信の誤りでも、Bot に切り替える予約があれば「探しています」のまま");
+  assert.ok(/onBotReady=\{\(b\) => \{\s*clearBotNow\(\);/.test(screens), "Bot 戦を始めたら「次は Bot」の印を消す");
   assert.ok(/bot=\{d && !tut \? bot : null\}/.test(screens), "GameCore に Bot を渡す");
   assert.ok(/pool=\{!a && !tut && !bot \? localPool : null\}/.test(screens), "Bot 戦は札を絞らない(人との対局と同じ)");
   assert.ok(/onNextMatch=\{\(a && a\.random\) \|\| bot \? nextRandomMatch : null\}/.test(screens), "Bot 戦のあとも「次の相手と対戦する」");
-  assert.ok(/onBotReady=\{\(b\) => \{\s*setCpuSkins\(createCpuLoadout\(\)\);\s*setCpuArea\(null\);\s*setBot\(b\);/.test(screens), "Bot は CPU 戦の作りで始める(エリア指定なし)");
+  assert.ok(/onBotReady=\{\(b\) => \{\s*clearBotNow\(\);\s*setCpuSkins\(createCpuLoadout\(\)\);\s*setCpuArea\(null\);\s*setBot\(b\);/.test(screens), "Bot は CPU 戦の作りで始める(エリア指定なし)");
   assert.ok(/\? bot\.name\s*: cpuArea && cpuArea\.king/.test(screens), "相手の名前は Bot の名前");
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
   assert.ok(/const ranked = \(!!network \|\| !!bot\) && a\.boardSize === 9;/.test(game), "Bot の 9×9 は持ち点に数える");
@@ -99,5 +132,6 @@ assert.equal(matchesBot("abc"), true);
   assert.ok(/online: !!network && !tutorial,/.test(game), "ミッションのオンライン回数には数えない(network のときだけ)");
   assert.ok(/useSeasonMatch\(a, network, round, !!tutorial\)/.test(game), "シーズン台帳は network のときだけ(Bot は送らない)");
   assert.ok(/tutorial \|\| bot \? "相手の番です"/.test(game), "Bot 戦で「CPU」と出さない");
+  assert.ok(/if \(\(network && network\.random\) \|\| bot\) noteRandomResult\(\{ won, vsBot: !!bot \}\);/.test(game), "ランダムマッチの結果を控える(人に負けたら次は Bot)");
 }
 console.log("ランダムマッチの練習相手(Bot): 判定・人物・持ち点が 1600 に届く・配線 OK");

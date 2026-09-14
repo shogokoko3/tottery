@@ -86,7 +86,7 @@ import { titleOf } from "../game/titles.js";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
 import { onlineGate, onlineGateLabel } from "../game/online-gate.js";
-import { matchesBot, makeBot, botSearchDelay } from "../game/bot-match.js";
+import { botPlan, makeBot, botSearchDelay, clearBotNow, BOT_WAIT_MS } from "../game/bot-match.js";
 import {
   homeTutorialNudge,
   markFirstTutorialOffered,
@@ -531,6 +531,8 @@ function safeRating(v) {
 
 export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady = null }) {
   const loadout = useRef(mySkins()).current;
+  // Bot の扱い(src/game/bot-match.js)。開いた時点で決めて、この画面のあいだ変えない
+  const planRef = useRef(onBotReady ? botPlan(myRating()) : "none");
   let [l, n] = (0, useState)("searching"),
     [a, u] = (0, useState)(""),
     f = (0, useRef)(null),
@@ -619,9 +621,12 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady =
       [],
     ),
     (0, useEffect)(() => {
-      // 持ち点が 1600 に届くまでは、掲示に行かず Bot と組む(src/game/bot-match.js)。
-      // 数秒「探しています」を見せてから始める
-      if (onBotReady && matchesBot(myRating())) {
+      // 持ち点が 1600 に届くまでの練習相手(Bot、src/game/bot-match.js)。
+      //   直前に人に負けていたら、探さずに数秒「探しています」を見せてから Bot。
+      //   それ以外はまず人を探し、BOT_WAIT_MS 経っても組めなければ Bot に切り替える
+      //   (画面を離れるときの後片付けが掲示と部屋を消す)
+      const plan = planRef.current;
+      if (plan === "now") {
         const bot = makeBot(myRating(), myName());
         const timer = setTimeout(() => {
           if (!o.current) onBotReady(bot);
@@ -631,6 +636,14 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady =
           clearTimeout(timer);
         };
       }
+      const fallback =
+        plan === "fallback"
+          ? setTimeout(() => {
+              if (o.current) return;
+              o.current = !0;
+              onBotReady(makeBot(myRating(), myName()));
+            }, BOT_WAIT_MS)
+          : null;
       (async () => {
         // 待ち合わせの掲示は uid で名乗る。ルール側が「持ち主だけが動かせる」
         // ようにしてあるので、端末ごとの仮のidでは掲示できない
@@ -789,8 +802,13 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady =
           ((f.current = v), n("waiting"));
         }
       })();
+      return () => {
+        if (fallback) clearTimeout(fallback);
+      };
     }, []),
-    l === "error" ? (
+    // 人を探せなかった(通信が無いなど)ときも、Bot に切り替える予約があるなら
+    // 「探しています」のまま待つ。誤りの画面を数秒見せてから対局が始まるのを避ける
+    l === "error" && planRef.current !== "fallback" ? (
       <div className="center-stage">
         <h2>マッチングできませんでした</h2>
         <p
@@ -1631,6 +1649,7 @@ function TotteryScreens() {
               onRoomReady={v}
               // 持ち点 1600 未満: Bot と組む。中身は CPU 戦の作りをそのまま使う
               onBotReady={(b) => {
+                clearBotNow();
                 setCpuSkins(createCpuLoadout());
                 setCpuArea(null);
                 setBot(b);

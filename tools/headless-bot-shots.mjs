@@ -15,6 +15,10 @@ const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id
 ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id && pending[m.id]) { m.error ? pending[m.id].rej(new Error(JSON.stringify(m.error))) : pending[m.id].res(m.result); delete pending[m.id]; } };
 await new Promise((r) => (ws.onopen = r));
 await send("Page.enable"); await send("Runtime.enable");
+// Firebase(掲示・認証)には行かせない。本物の待機中の人と組んでしまわないため。
+// 人が見つからない → BOT_WAIT_MS で Bot に切り替わる道を見る
+await send("Network.enable");
+await send("Network.setBlockedURLs", { urls: ["*firebaseio.com*", "*googleapis.com*", "*firebase*"] });
 const ev = async (expr) => { const r = await send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(JSON.stringify(r.exceptionDetails).slice(0, 400)); return r.result.value; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = async (name) => { const r = await send("Page.captureScreenshot", { format: "png" }); fs.writeFileSync(`${S}/${name}.png`, Buffer.from(r.data, "base64")); console.log("shot", name); };
@@ -64,7 +68,9 @@ async function run(w, h, mobile, label) {
   console.log("start:", await waitClick("ゲームを始める")); await sleep(800);
   await shot(`${label}-searching`);
   console.log("searching text:", await ev(`document.querySelector(".center-stage h2")?.textContent`));
-  await sleep(6500);
+  await sleep(4000);
+  console.log("after 4s:", await ev(`document.querySelector(".center-stage h2")?.textContent`));
+  await sleep(7000);
   await shot(`${label}-bot-game`);
   // サイコロ→引き直し→布陣まで、出ている釦を押して進め、相手の名前が画面に出るのを見る
   let misses = 0;
