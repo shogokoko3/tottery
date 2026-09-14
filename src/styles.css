@@ -4696,6 +4696,23 @@ body:has(.skin-overlay) {
   z-index: 60;
   pointer-events: auto;
 }
+/* 対局画面の右上の「飛ばす」。チュートリアル中はいつでも押せる */
+.top-right .tutorial-skip-top {
+  width: auto;
+  min-width: 44px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  text-decoration: underline;
+}
+.tutorial-skip-options {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
 .tutorial-skip-all {
   margin-top: 6px;
   color: var(--text-dim);

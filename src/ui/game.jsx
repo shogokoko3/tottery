@@ -122,7 +122,7 @@ import {
   territoryOwnerOf,
 } from "./setup.jsx";
 import { CaptureConfirm } from "./overlays.jsx";
-import { TutorialSheet } from "./tutorial.jsx";
+import { TutorialSheet, TutorialSkipMenu } from "./tutorial.jsx";
 import { openingState } from "../game/tutorial.js";
 import {
   FREE_ACTIONS,
@@ -2039,6 +2039,26 @@ export function GameCore({
         />
       ) : null;
 
+  // 上の「飛ばす」。案内の札が出ていない場面でも、チュートリアルの途中でいつでも押せる
+  const skipMenu = tutorial ? (
+    <TutorialSkipMenu
+      tutorial={tutorial}
+      onSkipThis={() => {
+        const after = skipTutorials([tutorial]);
+        publishPlayer(after);
+        if (nextTutorial && onNextTutorial) onNextTutorial();
+        else if (onTutorialList) onTutorialList();
+        else onExit();
+      }}
+      onSkipAll={(left) => {
+        const after = skipTutorials(left);
+        publishPlayer(after);
+        if (onTutorialList) onTutorialList();
+        else onExit();
+      }}
+    />
+  ) : null;
+
   const presentationSheet = (
     <>
       {tutSheet}
@@ -2092,6 +2112,7 @@ export function GameCore({
   if (d)
     return (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2114,6 +2135,7 @@ export function GameCore({
   if (o)
     return (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2132,6 +2154,7 @@ export function GameCore({
   if (a.phase === "intro" || !matchRatings.ready)
     return (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2155,6 +2178,7 @@ export function GameCore({
   if (a.captureReveal && !holdFx && !fxBusy)
     return (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2182,6 +2206,7 @@ export function GameCore({
   if (a.pendingKingChoice && !a.captureReveal && !fxBusy)
     return network && a.pendingKingChoice.owner !== p ? (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2195,6 +2220,7 @@ export function GameCore({
       </GameShell>
     ) : (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2211,6 +2237,7 @@ export function GameCore({
   if (a.setupEffects)
     return (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2238,6 +2265,7 @@ export function GameCore({
   if (network && setupWaiting(a) && !fxBusy)
     return (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2253,6 +2281,7 @@ export function GameCore({
   if (a.interstitial && !a.captureReveal && !network && !cpu && !fxBusy)
     return (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2277,6 +2306,7 @@ export function GameCore({
     if (a.diceIdx === 3)
       return (
         <GameShell
+        topExtra={skipMenu}
           sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
@@ -2326,6 +2356,7 @@ export function GameCore({
     return E !== null ? (
       cpu && E !== 0 ? (
         <GameShell
+        topExtra={skipMenu}
           sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
@@ -2339,6 +2370,7 @@ export function GameCore({
         </GameShell>
       ) : network && E !== p ? (
         <GameShell
+        topExtra={skipMenu}
           sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
@@ -2352,6 +2384,7 @@ export function GameCore({
         </GameShell>
       ) : (
         <GameShell
+        topExtra={skipMenu}
           sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
@@ -2380,6 +2413,7 @@ export function GameCore({
       )
     ) : (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2438,6 +2472,7 @@ export function GameCore({
     if (cpu && a.mulliganIdx !== 0)
       return (
         <GameShell
+        topExtra={skipMenu}
           sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
@@ -2464,6 +2499,7 @@ export function GameCore({
     if (network && a.mulliganIdx !== p)
       return (
         <GameShell
+        topExtra={skipMenu}
           sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
@@ -2486,6 +2522,7 @@ export function GameCore({
       be = new Set(U._mulliganSelected || []);
     return (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2547,6 +2584,7 @@ export function GameCore({
     if (a.setupDone[me])
       return (
         <GameShell
+        topExtra={skipMenu}
           sheet={presentationSheet}
           focusButton={tutButton}
           showRules={i}
@@ -2574,6 +2612,7 @@ export function GameCore({
       );
     return (
       <GameShell
+        topExtra={skipMenu}
         sheet={presentationSheet}
         focusButton={tutButton}
         showRules={i}
@@ -2640,6 +2679,7 @@ export function GameCore({
     areaChoice && areaCands.includes(areaChoice) ? a.pieces[areaChoice] : null;
   return (
     <GameShell
+        topExtra={skipMenu}
       sheet={presentationSheet}
       focusButton={tutButton}
       showRules={i}

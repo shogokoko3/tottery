@@ -160,6 +160,8 @@ export function GameShell({
   title,
   sheet,
   focusButton,
+  // 右上に足す釦(チュートリアル中の「飛ばす」など)。無ければ何も出ない
+  topExtra = null,
 }) {
   let [i, f] = (0, useState)(!1);
   // 上の「トッタリー」を押すとタイトルへ。対局中は onBack と同じ扱いにして、
@@ -195,6 +197,7 @@ export function GameShell({
           <span className="brand">{title || "トッタリー"}</span>
         )}
         <div className="top-right">
+          {topExtra}
           <button
             className="icon-btn"
             onClick={() => setShowRules(!0)}

@@ -156,6 +156,103 @@ function SkipConfirm({ what, gain, level, onCancel, onConfirm }) {
     : createPortal(node, document.body);
 }
 
+/**
+ * 対局画面の上に置く「飛ばす」。チュートリアルの途中でいつでも押せる
+ * (案内の札が出ていない待ちの場面や、サイコロ・撃破の札の間でも)。
+ * 押す → 「この話」か「残りの全話」を選ぶ → 確認 → 確定、の三段。
+ * onSkipThis() はこの話を飛ばす、onSkipAll(left) は残りの本編を全部飛ばす(left は未了の話)
+ */
+export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll }) {
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState(null); // "this" | "all"
+  if (!tutorial) return null;
+  const profile = loadProfile();
+  const left = TUTORIALS.filter((t) => !profile.cleared.includes(t.id));
+  const leftXp = left.reduce((n, t) => n + t.xp, 0);
+  const thisXp = profile.cleared.includes(tutorial.id) ? 0 : tutorial.xp || 0;
+  const isMain = TUTORIALS.some((t) => t.id === tutorial.id);
+  const chooser = (
+    <div className="modal-overlay tutorial-skip-confirm">
+      <div className="modal-panel tutorial-offer">
+        <h3>チュートリアルを飛ばす</h3>
+        <p className="hint">
+          飛ばした話は終えたのと同じ扱いになり、あとからいつでも遊べます。
+        </p>
+        <div className="tutorial-skip-options">
+          <button
+            className="btn btn-primary btn-wide"
+            onClick={() => {
+              setOpen(false);
+              setTarget("this");
+            }}
+          >
+            この話を飛ばす
+            {thisXp ? `（経験値 ${thisXp.toLocaleString()}）` : ""}
+          </button>
+          {isMain && left.length > 1 && (
+            <button
+              className="btn btn-ghost btn-wide"
+              onClick={() => {
+                setOpen(false);
+                setTarget("all");
+              }}
+            >
+              残りの {left.length} 話をすべて飛ばす（経験値{" "}
+              {leftXp.toLocaleString()}）
+            </button>
+          )}
+          <button
+            className="btn btn-ghost btn-wide"
+            onClick={() => setOpen(false)}
+          >
+            やめる
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+  return (
+    <>
+      <button
+        type="button"
+        className="icon-btn plain tutorial-skip-top"
+        onClick={() => setOpen(true)}
+        aria-label="チュートリアルを飛ばす"
+      >
+        飛ばす
+      </button>
+      {open &&
+        (typeof document === "undefined"
+          ? chooser
+          : createPortal(chooser, document.body))}
+      {target === "this" && (
+        <SkipConfirm
+          what="この話"
+          gain={thisXp}
+          level={levelAfterSkip(profile, thisXp)}
+          onCancel={() => setTarget(null)}
+          onConfirm={() => {
+            setTarget(null);
+            onSkipThis();
+          }}
+        />
+      )}
+      {target === "all" && (
+        <SkipConfirm
+          what={`残りの ${left.length} 話`}
+          gain={leftXp}
+          level={levelAfterSkip(profile, leftXp)}
+          onCancel={() => setTarget(null)}
+          onConfirm={() => {
+            setTarget(null);
+            onSkipAll(left);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
 /** 飛ばしたあとのレベル(上がらなければ null) */
 function levelAfterSkip(profile, gain) {
   const before = levelOf(profile);

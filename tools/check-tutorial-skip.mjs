@@ -84,5 +84,14 @@ const reset = () => {
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
   assert.ok(/const after = skipTutorials\(\[tutorial\]\);\s*publishPlayer\(after\);\s*if \(nextTutorial && onNextTutorial\) onNextTutorial\(\);/.test(game), "対局中に飛ばすと、その話を終えた扱いで次の話へ");
   assert.ok(/skipXp=\{tutorial\.xp \|\| 0\}/.test(game));
+  // 途中でも飛ばせる: 上の釦(TutorialSkipMenu)を対局画面の全ての GameShell に渡す
+  assert.ok(/export function TutorialSkipMenu\(/.test(ui), "上の「飛ばす」がある");
+  assert.ok(/残りの \{left\.length\} 話をすべて飛ばす/.test(ui), "残りの全話も選べる");
+  const shells = (game.match(/<GameShell\n/g) || []).length;
+  const wired = (game.match(/topExtra=\{skipMenu\}/g) || []).length;
+  assert.ok(shells > 0 && shells === wired, `対局画面の GameShell 全部に「飛ばす」を渡す(${wired}/${shells})`);
+  assert.ok(/onSkipAll=\{\(left\) => \{\s*const after = skipTutorials\(left\);\s*publishPlayer\(after\);/.test(game), "残りの全話を飛ばすと一覧へ");
+  const shell = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
+  assert.ok(/\{topExtra\}/.test(shell), "GameShell が右上に釦を出す");
 }
 console.log("チュートリアルを飛ばす: 全部・二重なし・1話だけ・配線 OK");
