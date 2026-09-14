@@ -11,7 +11,12 @@ import { Capacitor } from "@capacitor/core";
 import { ensureAuth } from "./auth.js";
 import { seasonApiBase } from "./season.js";
 import { updateCollection } from "../skins/store.js";
-import { PRODUCTS, PRODUCT_IDS, SHOP_ENABLED, productOf } from "../iap/catalog.js";
+import {
+  PRODUCTS,
+  PRODUCT_IDS,
+  SHOP_ENABLED,
+  productOf,
+} from "../iap/catalog.js";
 
 const PENDING_KEY = "tottery.iap.pending.v1";
 let plugin = null;
@@ -35,11 +40,24 @@ export async function shopAvailable() {
   return SHOP_ENABLED && Capacitor.isNativePlatform();
 }
 
-/** 商品の一覧(表示価格は StoreKit のもの) */
+/** StoreKit の応答をいつまで待つか。商品が未整備・圏外だと返ってこないことがあり、画面が「読み込み中」で止まる */
+export const PRODUCTS_TIMEOUT_MS = 12000;
+function withTimeout(promise, ms, why) {
+  return Promise.race([
+    promise,
+    new Promise((_r, reject) => setTimeout(() => reject(new Error(why)), ms)),
+  ]);
+}
+
+/** 商品の一覧(表示価格は StoreKit のもの)。時間切れ・失敗は投げる(呼ぶ側が知らせる) */
 export async function loadProducts() {
   const p = await store();
   if (!p) return [];
-  const { products } = await p.getProducts({ productIdentifiers: PRODUCT_IDS, productType: "inapp" });
+  const { products } = await withTimeout(
+    p.getProducts({ productIdentifiers: PRODUCT_IDS, productType: "inapp" }),
+    PRODUCTS_TIMEOUT_MS,
+    "App Store から商品の一覧が返ってきませんでした。",
+  );
   return PRODUCTS.map((c) => {
     const s = products.find((x) => x.identifier === c.id);
     return s ? { ...c, price: s.priceString, title: s.title || c.name } : null;
@@ -47,11 +65,19 @@ export async function loadProducts() {
 }
 
 function readPending() {
-  try { const v = JSON.parse(localStorage.getItem(PENDING_KEY) || "[]"); return Array.isArray(v) ? v : []; }
-  catch { return []; }
+  try {
+    const v = JSON.parse(localStorage.getItem(PENDING_KEY) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
 }
 function writePending(list) {
-  try { localStorage.setItem(PENDING_KEY, JSON.stringify(list)); } catch { /* 次回 getPurchases で拾える */ }
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+  } catch {
+    /* 次回 getPurchases で拾える */
+  }
 }
 
 async function verifyOnServer(jws) {
@@ -59,23 +85,40 @@ async function verifyOnServer(jws) {
   if (!auth) throw new Error("通信を確認して、もう一度お試しください。");
   const res = await fetch(`${seasonApiBase()}/api/iap/verify`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.idToken}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${auth.idToken}`,
+    },
     body: JSON.stringify({ jws }),
     signal: AbortSignal.timeout(20000),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) { const e = new Error(data.error || "購入を確認できませんでした。"); e.status = res.status; throw e; }
+  if (!res.ok) {
+    const e = new Error(data.error || "購入を確認できませんでした。");
+    e.status = res.status;
+    throw e;
+  }
   await updateCollection((s) => {
     const next = {
       ...s,
       tickets: Number.isSafeInteger(data.tickets) ? data.tickets : s.tickets,
       gems: Number.isSafeInteger(data.gems) ? data.gems : s.gems || 0,
-      gemsPaid: Number.isSafeInteger(data.gemsPaid) ? data.gemsPaid : s.gemsPaid || 0,
-      gemsFree: Number.isSafeInteger(data.gemsFree) ? data.gemsFree : s.gemsFree || 0,
-      entitlements: Array.isArray(data.entitlements) ? data.entitlements : s.entitlements || [],
+      gemsPaid: Number.isSafeInteger(data.gemsPaid)
+        ? data.gemsPaid
+        : s.gemsPaid || 0,
+      gemsFree: Number.isSafeInteger(data.gemsFree)
+        ? data.gemsFree
+        : s.gemsFree || 0,
+      entitlements: Array.isArray(data.entitlements)
+        ? data.entitlements
+        : s.entitlements || [],
     };
     // 初課金特典のスキン(サーバーが初回と判定したときだけ・一度きり)。2倍ジェムはサーバーで反映済み
-    if (data.firstPurchase && data.firstSkin && !(next.owned || {})[data.firstSkin])
+    if (
+      data.firstPurchase &&
+      data.firstSkin &&
+      !(next.owned || {})[data.firstSkin]
+    )
       next.owned = { ...(next.owned || {}), [data.firstSkin]: 1 };
     return next;
   });
@@ -92,11 +135,15 @@ export async function flushPurchases() {
   for (const ev of [...list]) {
     try {
       const data = await verifyOnServer(ev.jws);
-      if (data && data.firstPurchase) firstPurchase = { skin: data.firstSkin || null };
-      list = list.filter((x) => x.jws !== ev.jws); writePending(list);
+      if (data && data.firstPurchase)
+        firstPurchase = { skin: data.firstSkin || null };
+      list = list.filter((x) => x.jws !== ev.jws);
+      writePending(list);
     } catch (e) {
-      if (e.status === 400) { list = list.filter((x) => x.jws !== ev.jws); writePending(list); }
-      else break;
+      if (e.status === 400) {
+        list = list.filter((x) => x.jws !== ev.jws);
+        writePending(list);
+      } else break;
     }
   }
   return { firstPurchase };
@@ -110,14 +157,22 @@ export async function buy(productId) {
   if (!c) throw new Error("知らない商品です。");
   let tx;
   try {
-    tx = await p.purchaseProduct({ productIdentifier: productId, productType: "inapp", isConsumable: c.kind !== "entitlement" });
+    tx = await p.purchaseProduct({
+      productIdentifier: productId,
+      productType: "inapp",
+      isConsumable: c.kind !== "entitlement",
+    });
   } catch (e) {
     if (/cancel/i.test(String(e && e.message))) return null;
     throw new Error("購入を完了できませんでした。");
   }
-  if (!tx || !tx.jwsRepresentation) throw new Error("購入の記録を受け取れませんでした。");
+  if (!tx || !tx.jwsRepresentation)
+    throw new Error("購入の記録を受け取れませんでした。");
   // 先に控えてから送る。送る途中で落ちても、次に開いたとき送り直せる
-  writePending([...readPending(), { jws: tx.jwsRepresentation, at: Date.now() }]);
+  writePending([
+    ...readPending(),
+    { jws: tx.jwsRepresentation, at: Date.now() },
+  ]);
   const { firstPurchase } = await flushPurchases();
   return readPending().some((x) => x.jws === tx.jwsRepresentation)
     ? { pending: true, firstPurchase }
@@ -128,12 +183,21 @@ export async function buy(productId) {
 export async function restore() {
   const p = await store();
   if (!p) return { restored: 0 };
-  try { await p.restorePurchases(); } catch { /* 復元に失敗しても getPurchases で拾えることがある */ }
+  try {
+    await p.restorePurchases();
+  } catch {
+    /* 復元に失敗しても getPurchases で拾えることがある */
+  }
   const { purchases } = await p.getPurchases({ productType: "inapp" });
   let n = 0;
   for (const tx of purchases || []) {
     if (!tx.jwsRepresentation) continue;
-    try { await verifyOnServer(tx.jwsRepresentation); n++; } catch { /* 二重や返金は無視 */ }
+    try {
+      await verifyOnServer(tx.jwsRepresentation);
+      n++;
+    } catch {
+      /* 二重や返金は無視 */
+    }
   }
   return { restored: n };
 }
