@@ -58,10 +58,17 @@ export async function loadProducts() {
     PRODUCTS_TIMEOUT_MS,
     "App Store から商品の一覧が返ってきませんでした。",
   );
-  return PRODUCTS.map((c) => {
+  const found = PRODUCTS.map((c) => {
     const s = products.find((x) => x.identifier === c.id);
     return s ? { ...c, price: s.priceString, title: s.title || c.name } : null;
   }).filter(Boolean);
+  // 1つも返らないのは、App Store Connect 側の商品がまだ配信に乗っていない(提出準備完了の直後など)か、
+  // 商品 ID の不一致。件数を文言に入れて、切り分けの手がかりにする
+  if (!found.length)
+    throw new Error(
+      `App Store が商品を返しませんでした(${products.length}件受信、対象 ${PRODUCT_IDS.length}件)。商品の反映待ちの可能性があります。`,
+    );
+  return found;
 }
 
 function readPending() {

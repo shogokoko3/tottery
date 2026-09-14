@@ -4694,14 +4694,22 @@ body:has(.skin-overlay) {
 /* \u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB\u3092\u98DB\u3070\u3059\u3002\u6848\u5185\u306E\u672D\u3067\u306F\u4E00\u756A\u4E0B\u306B\u5C0F\u3055\u304F\u3001\u4E00\u89A7\u3067\u306F\u4E00\u756A\u4E0B\u306B */
 .tutorial-skip {
   display: block;
-  margin: 8px auto 0;
+  margin: 4px auto 0;
   background: none;
   border: 0;
-  padding: 6px 10px;
+  /* \u6307\u3067\u62BC\u305B\u308B\u9AD8\u3055(44px)\u3092\u78BA\u4FDD\u3059\u308B\u3002\u6587\u5B57\u306F\u5C0F\u3055\u3044\u307E\u307E\u3067\u3088\u3044 */
+  min-height: 44px;
+  padding: 10px 16px;
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 12px;
   text-decoration: underline;
   cursor: pointer;
+  pointer-events: auto;
+}
+/* \u98DB\u3070\u3059\u306E\u78BA\u8A8D\u306F\u672D\u306E\u5916(body \u76F4\u4E0B)\u306B\u51FA\u3059\u3002\u6483\u7834\u306E\u672D\u306A\u3069\u3068\u540C\u3058\u5C64 */
+.tutorial-skip-confirm {
+  z-index: 60;
+  pointer-events: auto;
 }
 .tutorial-skip-all {
   margin-top: 6px;

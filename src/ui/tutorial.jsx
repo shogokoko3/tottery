@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { dockSheet } from "./tutorial-dock.js";
 import {
   TUTORIALS,
@@ -50,14 +51,20 @@ export const KING_ROW_TEXT = {
 export function MoveGuidePanel({ guide }) {
   const kings = !!guide.kings;
   return (
-    <div className="move-hint move-guide" role="group" aria-label={kings ? "王の力" : "駒の動き"}>
+    <div
+      className="move-hint move-guide"
+      role="group"
+      aria-label={kings ? "王の力" : "駒の動き"}
+    >
       <div className="move-hint-rows">
         {guide.ranks.map((rank) => (
           <div className={`move-hint-row ${kings ? "is-king" : ""}`} key={rank}>
             <MoveDiagram rank={rank} isKing={kings} gridSize={kings ? 7 : 5} />
             <span className="move-hint-label">
               <b>{kings ? `${rank} の王` : rank}</b>
-              <small>{kings ? KING_ROW_TEXT[rank] || "" : MOVE_TEXT[rank]}</small>
+              <small>
+                {kings ? KING_ROW_TEXT[rank] || "" : MOVE_TEXT[rank]}
+              </small>
             </span>
           </div>
         ))}
@@ -76,7 +83,10 @@ export function MoveHintPanel({ hint }) {
       <p className="move-hint-title">{path} に動ける駒は?</p>
       <div className="move-hint-rows">
         {plain.map((c) => (
-          <div className={`move-hint-row ${c.ok ? "is-ok" : "is-no"}`} key={c.rank}>
+          <div
+            className={`move-hint-row ${c.ok ? "is-ok" : "is-no"}`}
+            key={c.rank}
+          >
             <MoveDiagram rank={c.rank} gridSize={5} />
             <span className="move-hint-label">
               <b>{c.rank}</b>
@@ -87,7 +97,10 @@ export function MoveHintPanel({ hint }) {
         ))}
         {/* 王の候補は全部並べる。「なぜその王に絞れるか」は、消える王が見えて初めて分かる */}
         {kings.map((c) => (
-          <div className={`move-hint-row is-king ${c.ok ? "is-ok" : "is-no"}`} key={`k${c.rank}`}>
+          <div
+            className={`move-hint-row is-king ${c.ok ? "is-ok" : "is-no"}`}
+            key={`k${c.rank}`}
+          >
             <MoveDiagram rank={c.rank} isKing gridSize={7} />
             <span className="move-hint-label">
               <b>{c.rank} の王</b>
@@ -114,15 +127,19 @@ export function MoveHintPanel({ hint }) {
  * what は飛ばす対象の言い方(「この話」「残りの N 話」)、gain は入る経験値
  */
 function SkipConfirm({ what, gain, level, onCancel, onConfirm }) {
-  return (
-    <div className="modal-overlay">
+  // 札(.tutorial-sheet)の中に置くと、札の pointer-events: none や z-index を引き継いで
+  // 指が届かない・後ろに隠れることがある。body 直下に出して、他のモーダルと同じ層に置く
+  const node = (
+    <div className="modal-overlay tutorial-skip-confirm">
       <div className="modal-panel tutorial-offer">
         <h3>{what}を飛ばしますか？</h3>
         <p className="hint">
           終えたのと同じ扱いになります。経験値 {gain.toLocaleString()} が入り
           {level ? `、レベル ${level} に上がります` : "ます"}。
         </p>
-        <p className="hint">飛ばした話はあとからいつでも遊べます(経験値は入りません)。</p>
+        <p className="hint">
+          飛ばした話はあとからいつでも遊べます(経験値は入りません)。
+        </p>
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onCancel}>
             やめる
@@ -134,6 +151,9 @@ function SkipConfirm({ what, gain, level, onCancel, onConfirm }) {
       </div>
     </div>
   );
+  return typeof document === "undefined"
+    ? node
+    : createPortal(node, document.body);
 }
 
 /** 飛ばしたあとのレベル(上がらなければ null) */
@@ -170,7 +190,11 @@ export function TutorialSheet({
     const place = () => {
       const board = document.querySelector(".board-frame");
       const d = board
-        ? dockSheet(board.getBoundingClientRect(), window.innerWidth, window.innerHeight)
+        ? dockSheet(
+            board.getBoundingClientRect(),
+            window.innerWidth,
+            window.innerHeight,
+          )
         : null;
       const key = JSON.stringify(d);
       if (key !== last) {
@@ -278,7 +302,10 @@ export function TutorialSelect({ onStart, onBack }) {
           : "全12話。ここまでで、52枚すべての動きと王の力がそろいます。"}
       </p>
       <div className="menu-list">
-        {[...TUTORIALS, ...EXTRA_TUTORIALS.filter((t) => !t.needsFoil || hasFoil)].map((t) => {
+        {[
+          ...TUTORIALS,
+          ...EXTRA_TUTORIALS.filter((t) => !t.needsFoil || hasFoil),
+        ].map((t) => {
           const locked = level < t.level;
           return (
             <button
@@ -294,8 +321,7 @@ export function TutorialSelect({ onStart, onBack }) {
               <span className="menu-item-side">
                 {locked ? (
                   <>
-                    <Lock size={14} />{" "}
-                    Lv.{t.level}
+                    <Lock size={14} /> Lv.{t.level}
                   </>
                 ) : (
                   <>カード {t.poolLabel}</>
@@ -318,7 +344,11 @@ export function TutorialSelect({ onStart, onBack }) {
       )}
       {confirmSkip && (
         <SkipConfirm
-          what={left.length === TUTORIALS.length ? "全12話" : `残りの ${left.length} 話`}
+          what={
+            left.length === TUTORIALS.length
+              ? "全12話"
+              : `残りの ${left.length} 話`
+          }
           gain={leftXp}
           level={levelAfterSkip(profile, leftXp)}
           onCancel={() => setConfirmSkip(false)}

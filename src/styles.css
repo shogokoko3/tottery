@@ -4679,14 +4679,22 @@ body:has(.skin-overlay) {
 /* チュートリアルを飛ばす。案内の札では一番下に小さく、一覧では一番下に */
 .tutorial-skip {
   display: block;
-  margin: 8px auto 0;
+  margin: 4px auto 0;
   background: none;
   border: 0;
-  padding: 6px 10px;
+  /* 指で押せる高さ(44px)を確保する。文字は小さいままでよい */
+  min-height: 44px;
+  padding: 10px 16px;
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 12px;
   text-decoration: underline;
   cursor: pointer;
+  pointer-events: auto;
+}
+/* 飛ばすの確認は札の外(body 直下)に出す。撃破の札などと同じ層 */
+.tutorial-skip-confirm {
+  z-index: 60;
+  pointer-events: auto;
 }
 .tutorial-skip-all {
   margin-top: 6px;
