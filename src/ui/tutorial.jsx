@@ -122,13 +122,19 @@ export function MoveHintPanel({ hint }) {
   );
 }
 
+/** 札の外に出す先。色の変数を持つ画面の根。無ければ body */
+const portalRoot = () =>
+  document.querySelector(".tottery-root") || document.body;
+
 /**
  * 「飛ばす」の確認。選ぶ→確認→確定の二段(操作の決まりと同じ)。
  * what は飛ばす対象の言い方(「この話」「残りの N 話」)、gain は入る経験値
  */
 function SkipConfirm({ what, gain, level, onCancel, onConfirm }) {
   // 札(.tutorial-sheet)の中に置くと、札の pointer-events: none や z-index を引き継いで
-  // 指が届かない・後ろに隠れることがある。body 直下に出して、他のモーダルと同じ層に置く
+  // 指が届かない・後ろに隠れることがある。札の外に出して、他のモーダルと同じ層に置く。
+  // 出す先は body ではなく画面の根(.tottery-root)。色の変数(--gold-soft など)はそこで
+  // 定義されていて、body 直下だと文字が黒・背景なしになる(2026-09-14 本人の指摘)
   const node = (
     <div className="modal-overlay tutorial-skip-confirm">
       <div className="modal-panel tutorial-offer">
@@ -153,7 +159,7 @@ function SkipConfirm({ what, gain, level, onCancel, onConfirm }) {
   );
   return typeof document === "undefined"
     ? node
-    : createPortal(node, document.body);
+    : createPortal(node, portalRoot());
 }
 
 /**
@@ -224,7 +230,7 @@ export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll }) {
       {open &&
         (typeof document === "undefined"
           ? chooser
-          : createPortal(chooser, document.body))}
+          : createPortal(chooser, portalRoot()))}
       {target === "this" && (
         <SkipConfirm
           what="この話"
