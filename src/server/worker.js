@@ -127,6 +127,9 @@ async function handleApi(request, env, url) {
           return call("wallet-debit", { id: body.id, n: body.n, kind: "pull" });
         if (wop === "earn" && eventId(body.id) && Number.isSafeInteger(body.n) && body.n > 0)
           return call("wallet-credit", { id: body.id, n: body.n, kind: "earn" });
+        // 記念配布(src/game/campaigns.js)。枚数はサーバーが台帳から読む。uid ごとに一度きり
+        if (wop === "campaign" && typeof body.campaign === "string" && /^[\w.-]{1,64}$/.test(body.campaign))
+          return call("wallet-campaign", { campaign: body.campaign });
         // 無償ジェム(ミッションや手紙、バトルパスの完成)。端末の申告なので上限つき
         if (wop === "earn-gems" && eventId(body.id) && Number.isSafeInteger(body.gems) && body.gems > 0)
           return call("wallet-earn-gems", { id: body.id, gems: body.gems });
@@ -250,6 +253,7 @@ export class SeasonLedger {
         if (op === "wallet-summary") return w.summary(uid, now);
         if (op === "wallet-debit") return w.debit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
+        if (op === "wallet-campaign") return w.campaign(uid, args.campaign, now);
         if (op === "wallet-purchase") return w.purchase(uid, args.tx, now);
         if (op === "wallet-migrate") return w.migrate(uid, args.tickets, now);
         if (op === "wallet-earn-gems") return w.earnGems(uid, args.id, args.gems, now);

@@ -25,7 +25,10 @@ async function walletRequest(op, body = {}) {
   try {
     res = await fetch(`${seasonApiBase()}/api/wallet/${op}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.idToken}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${auth.idToken}`,
+      },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(20000),
     });
@@ -33,7 +36,11 @@ async function walletRequest(op, body = {}) {
     throw new Error("通信を確認して、もう一度お試しください。");
   }
   let data;
-  try { data = await res.json(); } catch { throw new Error("財布を読み込めませんでした。"); }
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error("財布を読み込めませんでした。");
+  }
   if (!res.ok) throw new Error(data.error || "財布を読み込めませんでした。");
   return data;
 }
@@ -45,19 +52,33 @@ async function mirror(data) {
     ...s,
     tickets: data.tickets,
     gems: Number.isSafeInteger(data.gems) ? data.gems : s.gems || 0,
-    gemsPaid: Number.isSafeInteger(data.gemsPaid) ? data.gemsPaid : s.gemsPaid || 0,
-    gemsFree: Number.isSafeInteger(data.gemsFree) ? data.gemsFree : s.gemsFree || 0,
-    entitlements: Array.isArray(data.entitlements) ? data.entitlements : s.entitlements || [],
+    gemsPaid: Number.isSafeInteger(data.gemsPaid)
+      ? data.gemsPaid
+      : s.gemsPaid || 0,
+    gemsFree: Number.isSafeInteger(data.gemsFree)
+      ? data.gemsFree
+      : s.gemsFree || 0,
+    entitlements: Array.isArray(data.entitlements)
+      ? data.entitlements
+      : s.entitlements || [],
   }));
   return data;
 }
 
 function readPending() {
-  try { const v = JSON.parse(localStorage.getItem(PENDING_KEY) || "[]"); return Array.isArray(v) ? v : []; }
-  catch { return []; }
+  try {
+    const v = JSON.parse(localStorage.getItem(PENDING_KEY) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
 }
 function writePending(list) {
-  try { localStorage.setItem(PENDING_KEY, JSON.stringify(list)); } catch { /* 保存できなくても次で拾う */ }
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+  } catch {
+    /* 保存できなくても次で拾う */
+  }
 }
 
 /** 溜めていた加算を送る。送れた分だけ消す */
@@ -77,8 +98,12 @@ export async function flushPending() {
       writePending(list);
     } catch (e) {
       // 上限・形の誤り・パスの週上限や未所持で拒まれたものは捨てる(残しても二度と通らない)。通信の失敗は残す
-      if (/これ以上|正しくありません|他の人|上限|持っていません/.test(e.message)) { list = list.filter((x) => x.id !== ev.id); writePending(list); }
-      else break;
+      if (
+        /これ以上|正しくありません|他の人|上限|持っていません/.test(e.message)
+      ) {
+        list = list.filter((x) => x.id !== ev.id);
+        writePending(list);
+      } else break;
     }
   }
 }
@@ -97,7 +122,8 @@ export async function syncWallet() {
 export async function earnTickets(id, n) {
   if (!WALLET_SERVER || !Number.isSafeInteger(n) || n <= 0) return;
   const list = readPending();
-  if (!list.some((x) => x.id === id)) writePending([...list, { id, n, at: Date.now() }]);
+  if (!list.some((x) => x.id === id))
+    writePending([...list, { id, n, at: Date.now() }]);
   await flushPending().catch(() => {});
 }
 
@@ -108,8 +134,17 @@ export async function earnTickets(id, n) {
 export async function earnPassTicket(id) {
   if (!WALLET_SERVER) return;
   const list = readPending();
-  if (!list.some((x) => x.id === id)) writePending([...list, { id, pass: true, at: Date.now() }]);
+  if (!list.some((x) => x.id === id))
+    writePending([...list, { id, pass: true, at: Date.now() }]);
   await flushPending().catch(() => {});
+}
+
+/**
+ * 記念配布(src/game/campaigns.js)を受け取る。サーバーが枚数を決めて uid ごとに一度だけ足す。
+ * 通れば新しい残高(applied が false なら受け取り済み)。圏外なら投げる(控えない。手紙は残るので後で押せる)
+ */
+export async function claimCampaign(campaignId) {
+  return mirror(await walletRequest("campaign", { campaign: campaignId }));
 }
 
 /** ガチャの前に減らす。通れば新しい残高、足りなければ投げる */
@@ -124,7 +159,8 @@ export async function debitTickets(id, n) {
 export async function earnGems(id, n) {
   if (!WALLET_SERVER || !Number.isSafeInteger(n) || n <= 0) return;
   const list = readPending();
-  if (!list.some((x) => x.id === id)) writePending([...list, { id, gems: n, at: Date.now() }]);
+  if (!list.some((x) => x.id === id))
+    writePending([...list, { id, gems: n, at: Date.now() }]);
   await flushPending().catch(() => {});
 }
 
@@ -153,10 +189,18 @@ export async function logPull(items) {
 /** 端末にあった枚数を一度だけ引き継ぐ */
 export async function migrateOnce() {
   if (!WALLET_SERVER) return null;
-  try { if (localStorage.getItem(MIGRATED_KEY)) return null; } catch { /* 読めなければ送って、サーバー側の一度きりに任せる */ }
+  try {
+    if (localStorage.getItem(MIGRATED_KEY)) return null;
+  } catch {
+    /* 読めなければ送って、サーバー側の一度きりに任せる */
+  }
   const local = getCollection().tickets || 0;
   const data = await walletRequest("migrate", { tickets: local });
-  try { localStorage.setItem(MIGRATED_KEY, "1"); } catch { /* 次回はサーバーが弾く */ }
+  try {
+    localStorage.setItem(MIGRATED_KEY, "1");
+  } catch {
+    /* 次回はサーバーが弾く */
+  }
   return mirror(data);
 }
 

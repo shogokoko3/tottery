@@ -26,6 +26,7 @@ import {
   FREE_GEM_EVENT_MAX,
   FREE_GEM_DAILY_MAX,
 } from "../iap/catalog.js";
+import { campaignOf, campaignOpen } from "../game/campaigns.js";
 
 export const MIGRATE_TICKETS_MAX = 500;
 /** 遊んで貯める分(kind=earn)は端末の申告なので、1回と1日(UTC)の上限で抑える */
@@ -181,6 +182,17 @@ export class Wallet {
     return { applied: true, ...this.summary(uid) };
   }
   credit(uid, id, n, kind, now) { return this.apply(uid, id, { tickets: n }, kind, null, now); }
+  /**
+   * 記念配布(src/game/campaigns.js)。uid ごとに一度きり。枚数は台帳から読む(端末は id だけ送る)。
+   * 出来事 id に uid を含めるのは、台帳の id が全体で一意(他の人の出来事を弾く)なため
+   */
+  campaign(uid, campaignId, now) {
+    const c = campaignOf(campaignId);
+    if (!c) throw new Error("その配布はありません。");
+    if (!campaignOpen(c, now)) throw new Error("この配布は期間外です。");
+    const r = this.apply(uid, `campaign:${c.id}:${uid}`, { tickets: c.tickets }, "campaign", c.id, now);
+    return { ...r, campaign: c.id, tickets_granted: r.applied ? c.tickets : 0 };
+  }
   debit(uid, id, n, kind, now) { return this.apply(uid, id, { tickets: -n }, kind, null, now); }
   /** 無償ジェムを足す(端末の申告。上限つき) */
   earnGems(uid, id, n, now) { return this.apply(uid, id, { gemsFree: n }, "earn", null, now); }

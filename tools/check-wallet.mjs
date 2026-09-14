@@ -30,6 +30,7 @@ const throws = async (label, fn, re) => {
 };
 
 console.log("財布");
+import { CAMPAIGNS, campaignOf } from "../src/game/campaigns.js";
 const db = new DatabaseSync(":memory:");
 const sql = (q, ...a) => db.prepare(q).all(...a);
 const w = new Wallet(sql);
@@ -48,6 +49,23 @@ for (let i = 0; i < 3; i++) w.credit("A", `earn${i}`, 10, "earn", T);
 await throws("遊んで貯める分は1日の上限を超えない", () => w.credit("A", "earn9", 1, "earn", T), /これ以上/);
 is("翌日はまた受け取れる", w.credit("A", "earn10", 1, "earn", T + 86_400_000).applied, true);
 is("1日の上限は定数どおり", EARN_DAILY_MAX, 30);
+
+console.log("記念配布(campaigns.js)");
+{
+  const c = CAMPAIGNS[0];
+  is("台帳にリリース記念(50枚)がある", [c.id, c.tickets], ["release-2026-09", 50]);
+  const t0 = c.from + 1000;
+  await throws("知らない配布は断る", () => w.campaign("CAMP1", "nope", t0), /ありません/);
+  await throws("期間前は断る", () => w.campaign("CAMP1", c.id, c.from - 1), /期間外/);
+  const got = w.campaign("CAMP1", c.id, t0);
+  is("受け取ると台帳の枚数だけ増える(端末は枚数を送らない)", [got.applied, got.tickets, got.tickets_granted], [true, 50, 50]);
+  is("同じ uid は二度受け取れない", [w.campaign("CAMP1", c.id, t0 + 1).applied, w.summary("CAMP1").tickets], [false, 50]);
+  is("別の uid も受け取れる(出来事 id は uid ごと)", w.campaign("CAMP2", c.id, t0).tickets, 50);
+  is("記念配布は earn の1日上限に数えない", w.credit("CAMP1", "camp1-earn", 10, "earn", t0).applied, true);
+  const row = sql("SELECT kind, ref FROM wallet_ledger WHERE id=?", `campaign:${c.id}:CAMP1`)[0];
+  is("kind は campaign で記録される", [row.kind, row.ref], ["campaign", c.id]);
+  is("campaignOf は id で引ける", campaignOf(c.id).tickets, 50);
+}
 
 console.log("\n無償ジェム(端末の申告)");
 is("無償ジェムを足せる", pick(w.earnGems("A", "g1", 50, T)).free, 50);

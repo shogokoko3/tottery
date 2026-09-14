@@ -23,6 +23,8 @@ const {
   deleteLetter,
 } = await import("../src/net/letters.js");
 const { giftLabel, giftsLabel } = await import("../src/game/gifts.js");
+const { campaignLetters, isCampaignLetter } =
+  await import("../src/game/campaigns.js");
 const { loadProfile, markLetterTaken, saveName } =
   await import("../src/game/profile.js");
 
@@ -189,7 +191,25 @@ console.log("\n置き場を宛先ごとに分ける");
     "他人宛ての置き場は読まない",
     !seen.some((r) => r.url.includes("letters/to/") && !r.url.includes("uidA")),
   );
-  t("2通が1本にまとまる", got.ok && got.list.length === 2);
+  t(
+    "2通と記念配布(campaigns.js の期間内ぶん)が1本にまとまる",
+    got.ok && got.list.length === 2 + campaignLetters().length,
+  );
+  const camp = got.list.find((l) => l.campaign);
+  t(
+    "記念配布は全員宛て・チケット添付・campaign の印つき",
+    camp &&
+      camp.to === "all" &&
+      camp.gifts[0].type === "ticket" &&
+      camp.gifts[0].amount === 50 &&
+      isCampaignLetter(camp) &&
+      isFor(camp, "uidA", camp.at + 1),
+  );
+  t("記念配布は期間前には出ない", campaignLetters(camp.at - 1).length === 0);
+  t(
+    "運営の手紙は campaign の印を持たない",
+    !isCampaignLetter(got.list.find((l) => l.id === "a1")),
+  );
 
   seen.length = 0;
   await readLetters(null);
@@ -197,6 +217,16 @@ console.log("\n置き場を宛先ごとに分ける");
     "uid がまだ無ければ全員宛てだけ読む",
     seen.length === 1 && seen[0].url.includes("letters/all"),
   );
+  const onlineFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("offline");
+  };
+  const offline = await readLetters("uidA");
+  t(
+    "圏外でも記念配布だけは出る(受け取りは財布に頼む)",
+    !offline.ok && offline.list.length === campaignLetters().length,
+  );
+  globalThis.fetch = onlineFetch;
 
   seen.length = 0;
   await sendLetter({ to: "all", subject: "みんなへ" });

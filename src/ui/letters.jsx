@@ -6,7 +6,8 @@ import { GemAmount } from "./gem.jsx";
  * 添付は受け取ったときにだけ配り、受け取った印は端末に控える(二重取りを防ぐ)。
  */
 import { useEffect, useState } from "react";
-import { earnTickets, earnGems } from "../net/wallet.js";
+import { earnTickets, earnGems, claimCampaign } from "../net/wallet.js";
+import { isCampaignLetter } from "../game/campaigns.js";
 /** 手紙のチケットをサーバーの財布にも。id は手紙と何番目かで決まる(やり直しても二重にならない) */
 function creditLetter(letter) {
   (letter.gifts || []).forEach((g, i) => {
@@ -20,6 +21,20 @@ import { ArrowLeft, Check, Close } from "../icons.jsx";
 import { loadProfile, markLetterTaken } from "../game/profile.js";
 import { giftLabel, giftsLabel, giveGifts } from "../game/gifts.js";
 import { isFor, readLetters } from "../net/letters.js";
+
+/**
+ * 1通ぶんを配る。記念配布はサーバーの財布が枚数を決めて足す(端末では足さない。
+ * 残高は写しとして戻る)。圏外なら投げるので、控えは付かず、次に開いたときまた押せる。
+ * 受け取り済み(applied が false)は、そのまま控えるだけ
+ */
+async function deliver(letter) {
+  if (isCampaignLetter(letter)) {
+    await claimCampaign(letter.campaign);
+    return;
+  }
+  await giveGifts(letter.gifts);
+  creditLetter(letter);
+}
 
 /** その日の0時 */
 const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -67,8 +82,7 @@ export function LettersScreen({ onBack }) {
     setBusy(true);
     setMessage("");
     try {
-      await giveGifts(letter.gifts);
-      creditLetter(letter);
+      await deliver(letter);
       // 配り終えてから控える。途中で失敗しても二重取りにならない
       setProfile(markLetterTaken(letter.id));
       setMessage(
@@ -91,8 +105,7 @@ export function LettersScreen({ onBack }) {
     let last = profile;
     try {
       for (const l of unread) {
-        await giveGifts(l.gifts);
-        creditLetter(l);
+        await deliver(l);
         last = markLetterTaken(l.id);
         got += 1;
       }
@@ -152,7 +165,11 @@ export function LettersScreen({ onBack }) {
               <span className="notice-chips">
                 {l.gifts.map((g, i) => (
                   <span className="notice-chip" key={i}>
-                    {g.type === "gems" ? <GemAmount amount={g.amount} size={22} /> : giftLabel(g)}
+                    {g.type === "gems" ? (
+                      <GemAmount amount={g.amount} size={22} />
+                    ) : (
+                      giftLabel(g)
+                    )}
                   </span>
                 ))}
               </span>
@@ -191,7 +208,13 @@ export function LettersScreen({ onBack }) {
                   <span className="notice-gifts-label">添付</span>
                   <ul>
                     {shown.gifts.map((g, i) => (
-                      <li key={i}>{g.type === "gems" ? <GemAmount amount={g.amount} size={22} /> : giftLabel(g)}</li>
+                      <li key={i}>
+                        {g.type === "gems" ? (
+                          <GemAmount amount={g.amount} size={22} />
+                        ) : (
+                          giftLabel(g)
+                        )}
+                      </li>
                     ))}
                   </ul>
                 </div>

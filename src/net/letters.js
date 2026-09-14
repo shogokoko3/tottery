@@ -16,6 +16,7 @@
  */
 import { DB_URL } from "./firebase.js";
 import { authedFetch } from "./auth.js";
+import { campaignLetters } from "../game/campaigns.js";
 
 const TIMEOUT_MS = 8000;
 /** 一度に読む手紙の数 */
@@ -106,16 +107,18 @@ async function readFrom(path) {
  * 選り分けていた。つまり他人宛ての件名・本文・添付・宛先が、通信としては
  * 全員に渡っていた。分けたので、届く前に絞られる。
  */
-export async function readLetters(myUid) {
+export async function readLetters(myUid, now = Date.now()) {
+  // 記念配布(campaigns.js)はサーバーを読まなくても出る。受け取りは財布に頼む
+  const fixed = campaignLetters(now);
   try {
     const [all, mine] = await Promise.all([
       readFrom("letters/all"),
       myUid ? readFrom(`letters/to/${myUid}`) : Promise.resolve([]),
     ]);
-    const list = [...all, ...mine].sort((a, b) => b.at - a.at);
+    const list = [...fixed, ...all, ...mine].sort((a, b) => b.at - a.at);
     return { ok: true, list };
   } catch {
-    return { ok: false, list: [] };
+    return { ok: false, list: fixed };
   }
 }
 
