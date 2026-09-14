@@ -7,6 +7,7 @@ import {
   needsUpdate,
   minAppBuild,
   appStoreUrl,
+  updateUrl,
   MIN_APP_BUILD_DEFAULT,
 } from "../src/server/app-version.js";
 
@@ -43,6 +44,9 @@ is("桁の違う番号も数として比べる", needsUpdate(202609131000, 20260
 
 console.log("\nApp Store のURL");
 is("URLの形が正しい", /^https:\/\/apps\.apple\.com\/app\/id\d+$/.test(appStoreUrl()), true);
+is("更新ページ: 未設定なら App Store", updateUrl({}), appStoreUrl());
+is("更新ページ: TestFlight のパブリックリンクに差し替えられる", updateUrl({ APP_UPDATE_URL: "https://testflight.apple.com/join/Nr2JracD" }), "https://testflight.apple.com/join/Nr2JracD");
+is("更新ページ: apple.com 以外・http は使わない", [updateUrl({ APP_UPDATE_URL: "http://testflight.apple.com/join/x" }), updateUrl({ APP_UPDATE_URL: "https://example.com/" })], [appStoreUrl(), appStoreUrl()]);
 
 console.log(`\n${ok} ok / ${fail.length} NG`);
 process.exit(fail.length ? 1 : 0);

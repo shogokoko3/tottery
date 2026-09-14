@@ -4,7 +4,7 @@ import { Ledger } from "./ledger.js";
 import { verifyMatch } from "./verify-match.js";
 import { Wallet } from "./wallet.js";
 import { verifyAppleTransaction } from "./applejws.js";
-import { minAppBuild, appStoreUrl } from "./app-version.js";
+import { minAppBuild, updateUrl } from "./app-version.js";
 import { seasonAt, seasonRewards } from "../game/season.js";
 
 const json = (data, status = 200) =>
@@ -47,7 +47,7 @@ async function handleApi(request, env, url) {
       return json({ ok: true, version: 1, season: seasonAt() });
     // 強制アップデートの最低ビルド番号(公開GET)。アプリが起動時に読む。0=ブロックしない
     if (url.pathname === "/api/app-version" && request.method === "GET")
-      return json({ minBuild: minAppBuild(env), storeUrl: appStoreUrl() });
+      return json({ minBuild: minAppBuild(env), storeUrl: updateUrl(env) });
     const adminSession = url.pathname === "/api/admin/session";
     const adminSeason = url.pathname === "/api/admin/season";
     const adminWallet = url.pathname === "/api/admin/wallet";

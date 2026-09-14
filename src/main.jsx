@@ -67,11 +67,19 @@ function VersionGate({ children }) {
     <>
       {children}
       {block && (
-        <div className="update-gate" role="alertdialog" aria-label="アップデートが必要です">
+        <div
+          className="update-gate"
+          role="alertdialog"
+          aria-label="アップデートが必要です"
+        >
           <div className="update-gate-box">
             <h2>アップデートしてください</h2>
             <p className="hint">
-              新しいバージョンがあります。続けるには App Store で更新してください。
+              新しいバージョンがあります。続けるには
+              {/testflight\.apple\.com/.test(block.storeUrl || "")
+                ? " TestFlight "
+                : " App Store "}
+              で更新してください。
             </p>
             <button
               className="btn btn-primary btn-wide"
@@ -82,7 +90,9 @@ function VersionGate({ children }) {
                 )
               }
             >
-              App Store を開く
+              {/testflight\.apple\.com/.test(block.storeUrl || "")
+                ? "TestFlight を開く"
+                : "App Store を開く"}
             </button>
           </div>
         </div>

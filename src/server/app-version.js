@@ -15,6 +15,19 @@ export const MIN_APP_BUILD_DEFAULT = 0;
 export const APP_STORE_ID = "6811241552";
 export const appStoreUrl = () => `https://apps.apple.com/app/id${APP_STORE_ID}`;
 
+/**
+ * 更新ページの URL。環境変数 APP_UPDATE_URL(https のみ)があればそれ、無ければ App Store。
+ * TestFlight の期間は App Store にまだ無いので、パブリックリンク(testflight.apple.com/join/…)を入れる。
+ * 正式リリース後は空にして App Store に戻す(wrangler.jsonc の vars)
+ */
+export function updateUrl(env) {
+  const u =
+    env && typeof env.APP_UPDATE_URL === "string"
+      ? env.APP_UPDATE_URL.trim()
+      : "";
+  return /^https:\/\/[\w.-]+\.apple\.com\/\S*$/.test(u) ? u : appStoreUrl();
+}
+
 /** 環境変数から最低ビルド番号を読む。正の整数でなければ既定(0=ブロックしない) */
 export function minAppBuild(env) {
   const n = Number(env && env.MIN_APP_BUILD);

@@ -9,6 +9,13 @@
     "binding": "ASSETS",
     "run_worker_first": ["/api/*"]
   },
+  // 強制アップデート(src/server/app-version.js)。MIN_APP_BUILD は締め出す上限のビルド番号("0"=誰も締め出さない)。
+  // APP_UPDATE_URL は更新ページ。TestFlight の期間はパブリックリンク、正式リリース後は "" にして App Store へ戻す。
+  // ここに書いた値が正で、ダッシュボードの値は deploy のたびに上書きされる
+  "vars": {
+    "MIN_APP_BUILD": "0",
+    "APP_UPDATE_URL": "https://testflight.apple.com/join/Nr2JracD"
+  },
   "durable_objects": {"bindings": [{"name": "SEASONS", "class_name": "SeasonLedger"}]},
   "migrations": [{"tag": "season-v1", "new_sqlite_classes": ["SeasonLedger"]}]
 }
