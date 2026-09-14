@@ -115,8 +115,8 @@ import {
   const screens = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
   assert.ok(/const localLevel = levelOf\(loadProfile\(\)\)/.test(screens), "自分のレベルから");
   assert.ok(/const localPool = poolForLevel\(localLevel\)/.test(screens), "レベルから札を出す");
-  assert.ok(/pool=\{!a && !tut \? localPool : null\}/.test(screens), "オンライン・チュートリアルは絞らない");
-  assert.ok(/handSize=\{!a && !tut \? handSizeForLevel\(localLevel\) : null\}/.test(screens), "手札の枚数も");
+  assert.ok(/pool=\{!a && !tut && !bot \? localPool : null\}/.test(screens), "オンライン・チュートリアル・Bot は絞らない");
+  assert.ok(/handSize=\{!a && !tut && !bot \? handSizeForLevel\(localLevel\) : null\}/.test(screens), "手札の枚数も");
   assert.ok(/level=\{o === "online" \|\| o === "room" \? null : localLevel\}/.test(screens), "ルール設定はオンラインでは絞らない");
   assert.ok(/disabled=\{i === 9 && locked9\}/.test(screens), "閉じている 9×9 は押せない");
   assert.ok(/foilRevealed\(collection\) && !localPool/.test(screens), "定石CPUは絞るレベルでは出さない");

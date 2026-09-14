@@ -70,7 +70,8 @@ console.log("\n画面の作り(9×9のオンラインだけに渡している)")
   }
   is(
     "相手の持ち点は、その条件のときだけ渡す",
-    /const foeRating =\s*ranked && matchRatings\.ratings/.test(src),
+    // ランダムマッチの練習相手(Bot)は 9×9 なら持ち点に数える。相手の点は Bot の人物の点(src/game/bot-match.js)
+    /const foeRating = !ranked\s*\? null\s*: bot\s*\? bot\.rating\s*: matchRatings\.ratings/.test(src),
     true,
   );
   is(

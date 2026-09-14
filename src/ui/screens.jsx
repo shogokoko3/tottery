@@ -86,6 +86,7 @@ import { titleOf } from "../game/titles.js";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
 import { onlineGate, onlineGateLabel } from "../game/online-gate.js";
+import { matchesBot, makeBot, botSearchDelay } from "../game/bot-match.js";
 import {
   homeTutorialNudge,
   markFirstTutorialOffered,
@@ -528,7 +529,7 @@ function safeRating(v) {
   return Number.isFinite(n) ? Math.max(0, Math.min(4000, Math.round(n))) : null;
 }
 
-export function RandomMatchScreen({ onBack, onRoomReady, boardSize }) {
+export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady = null }) {
   const loadout = useRef(mySkins()).current;
   let [l, n] = (0, useState)("searching"),
     [a, u] = (0, useState)(""),
@@ -618,6 +619,18 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize }) {
       [],
     ),
     (0, useEffect)(() => {
+      // 持ち点が 1600 に届くまでは、掲示に行かず Bot と組む(src/game/bot-match.js)。
+      // 数秒「探しています」を見せてから始める
+      if (onBotReady && matchesBot(myRating())) {
+        const bot = makeBot(myRating(), myName());
+        const timer = setTimeout(() => {
+          if (!o.current) onBotReady(bot);
+        }, botSearchDelay());
+        return () => {
+          o.current = !0;
+          clearTimeout(timer);
+        };
+      }
       (async () => {
         // 待ち合わせの掲示は uid で名乗る。ルール側が「持ち主だけが動かせる」
         // ようにしてあるので、端末ごとの仮のidでは掲示できない
@@ -1295,6 +1308,8 @@ function TotteryScreens() {
   const [cpuSkins, setCpuSkins] = useState({});
   // CPU戦で選んだ相手のエリア({ type, king })。null なら相手が手札から王を選ぶ
   const [cpuArea, setCpuArea] = useState(null);
+  // ランダムマッチの練習相手(Bot)。持ち点 1600 未満のあいだ、人の代わりに当たる。中身は CPU
+  const [bot, setBot] = useState(null);
   // はじめて遊ぶときは、まず名前を決めてもらう
   let [named, setNamed] = (0, useState)(() => hasName()),
     [e, t] = (0, useState)("home"),
@@ -1370,11 +1385,11 @@ function TotteryScreens() {
   }
   // 対局後の「戻る」。オンラインとCPU戦は、初期画面まで戻さず「対戦相手を選ぶ」へ
   function backToMatching() {
-    (u(null), m(!1), setTut(null), t("matching"));
+    (u(null), m(!1), setTut(null), setBot(null), t("matching"));
   }
   // 連戦。同じ盤の大きさのまま、次の相手を探しに行く(RandomMatchScreen は開くと同時に探し始める)
   function nextRandomMatch() {
-    (u(null), m(!1), setTut(null), setRound(0), t("online"));
+    (u(null), m(!1), setTut(null), setBot(null), setRound(0), t("online"));
   }
   function startTutorial(chosen) {
     (u(null), setTut(chosen), m(!0), r("game"), t("game"));
@@ -1445,15 +1460,17 @@ function TotteryScreens() {
               me,
               tut
                 ? null
-                : cpuArea && cpuArea.king && i === 9
-                  ? `CPU(${JOSEKI_INFO[cpuArea.type].label})`
-                  : "CPU",
+                : bot
+                  ? bot.name
+                  : cpuArea && cpuArea.king && i === 9
+                    ? `CPU(${JOSEKI_INFO[cpuArea.type].label})`
+                    : "CPU",
             ]
           : [null, null],
       icons = a
         ? a.icons || [null, null]
         : d
-          ? [mine.icon, null]
+          ? [mine.icon, bot ? bot.icon : null]
           : [null, null],
       // 称号はマッチした相手と交わすもの。CPU戦・同じ端末では渡さない
       titles = a ? a.titles || [null, null] : [null, null],
@@ -1488,9 +1505,11 @@ function TotteryScreens() {
             cpuArea={
               d && !tut && i === 9 && foilRevealed(collection) && !localPool ? cpuArea : null
             }
-            // 手元の対局は、レベルで開いている札だけを配る。オンライン・チュートリアルは絞らない
-            pool={!a && !tut ? localPool : null}
-            handSize={!a && !tut ? handSizeForLevel(localLevel) : null}
+            // ランダムマッチの練習相手。人との対局と同じ扱い(持ち点が動く、札は絞らない)
+            bot={d && !tut ? bot : null}
+            // 手元の対局は、レベルで開いている札だけを配る。オンライン・チュートリアル・Bot は絞らない
+            pool={!a && !tut && !bot ? localPool : null}
+            handSize={!a && !tut && !bot ? handSizeForLevel(localLevel) : null}
             tutorial={tut}
             nextTutorial={nextTutorial}
             onNextTutorial={
@@ -1499,7 +1518,7 @@ function TotteryScreens() {
             onTutorialList={showTutorials}
             onExit={tut ? s : backToMatching}
             exitLabel={tut ? "タイトルに戻る" : "対戦相手を選ぶに戻る"}
-            onNextMatch={a && a.random ? nextRandomMatch : null}
+            onNextMatch={(a && a.random) || bot ? nextRandomMatch : null}
           />
         </AppearanceSeats>
       </SeatsProvider>
@@ -1582,6 +1601,7 @@ function TotteryScreens() {
               onCpu={() => {
                 setCpuSkins(createCpuLoadout());
                 setCpuArea(null);
+                setBot(null);
                 (u(null),
                   m(!0),
                   setTut(null),
@@ -1609,6 +1629,13 @@ function TotteryScreens() {
               boardSize={i}
               onBack={() => t("matching")}
               onRoomReady={v}
+              // 持ち点 1600 未満: Bot と組む。中身は CPU 戦の作りをそのまま使う
+              onBotReady={(b) => {
+                setCpuSkins(createCpuLoadout());
+                setCpuArea(null);
+                setBot(b);
+                (u(null), m(!0), setTut(null), setRound(0), r("game"), t("game"));
+              }}
             />
           ),
           room: (

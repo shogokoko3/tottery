@@ -1060,6 +1060,9 @@ export function GameCore({
   // レベルで絞った札(src/game/card-unlock.js)。手元の対局だけ。null なら全部
   pool = null,
   handSize = null,
+  // ランダムマッチの練習相手({ id, name, icon, rating })。cpu と一緒に立つ。
+  // 持ち点は人との対局と同じに動かし、シーズン台帳とミッションのオンライン回数には数えない
+  bot = null,
   tutorial,
   round = 0,
   onRematch,
@@ -1405,7 +1408,8 @@ export function GameCore({
         ? josekiCpuAction(a, T, cpuArea.type, cpuArea.king)
         : cpuAction(a, T);
     if (!E) return;
-    let U = foeWait(a, E, 1000),
+    // Bot は人らしく、少し考える時間を足す(0.5〜2.5秒の揺れ)
+    let U = foeWait(a, E, 1000) + (bot ? 500 + Math.floor(Math.random() * 2000) : 0),
       be = setTimeout(() => {
         E.type === "__CPU_SHUFFLE"
           ? (y({
@@ -1879,9 +1883,15 @@ export function GameCore({
     // 持ち点(とランキング)に数えるのは、**9×9のオンライン対戦だけ**。
     // 5×5は短期戦で運の割合が大きく、同じ物差しに載せると持ち点が
     // 実力を表さなくなる。CPU戦とチュートリアルは相手の強さが決まらない
-    const ranked = !!network && a.boardSize === 9;
-    const foeRating =
-      ranked && matchRatings.ratings ? matchRatings.ratings[1 - p] : null;
+    // Bot(ランダムマッチの練習相手)も 9×9 なら持ち点に数える。相手の点は Bot の人物の点
+    const ranked = (!!network || !!bot) && a.boardSize === 9;
+    const foeRating = !ranked
+      ? null
+      : bot
+        ? bot.rating
+        : matchRatings.ratings
+          ? matchRatings.ratings[1 - p]
+          : null;
     // チュートリアルは話ごとの経験値。対戦の数には数えない
     const after = recordGame(won, {
       online: !!network && !tutorial,
@@ -1892,7 +1902,7 @@ export function GameCore({
       kingRank: kingRankOf(a, network ? p : 0),
       deferXpNotice: true,
       ...(typeof foeRating === "number"
-        ? { foeRating, startRating: matchRatings.ratings[p] }
+        ? { foeRating, ...(bot ? null : { startRating: matchRatings.ratings[p] }) }
         : null),
       ...(tutorial
         ? {
@@ -2438,7 +2448,9 @@ export function GameCore({
             text={
               tutorial
                 ? "相手がカードを選んでいます…"
-                : "CPUがカードを選んでいます…"
+                : bot
+                  ? "相手がカードを選んでいます…"
+                  : "CPUがカードを選んでいます…"
             }
             hand={a.players[0].hand}
             viewer={0}
@@ -2549,7 +2561,9 @@ export function GameCore({
             limitMs={setupLimitMs(a.boardSize) + KING_LIMIT_MS}
             text={
               cpu && !tutorial
-                ? "CPUが布陣を決めています…"
+                ? bot
+                  ? "相手が布陣を決めています…"
+                  : "CPUが布陣を決めています…"
                 : "相手が布陣を決めています…"
             }
           />
@@ -2727,7 +2741,7 @@ export function GameCore({
             }}
           >
             <Dice size={14} className="spin-icon" />{" "}
-            {tutorial ? "相手の番です" : "CPUが考えています…"}
+            {tutorial || bot ? "相手の番です" : "CPUが考えています…"}
           </p>
         )}
         <AreaEffectNotice effect={areaFx} names={names} />
