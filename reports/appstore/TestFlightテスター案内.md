@@ -5,7 +5,7 @@
 ## 1. インストール
 
 1. App Store から **TestFlight** アプリを入れる（無料）。
-2. 招待リンクを iPhone / iPad で開く: **【ここにパブリックリンク】**
+2. 招待リンクを iPhone / iPad で開く: **https://testflight.apple.com/join/Nr2JracD**
 3. TestFlight の画面で「インストール」を押す。以後の更新も TestFlight から届きます。
 4. 対応機種は iOS 15 以上の iPhone / iPad。テスト版は 90 日で期限が切れます（更新すれば延びます）。
 
