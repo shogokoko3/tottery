@@ -850,6 +850,24 @@ export function KingStep({
  * Kの予備札を盤に出す。置き場所はタップかドラッグで決め、仮置きを見てから「ここに置く」で確定する
  * (以前はマスをタップした瞬間に置いていた。2026-09-11 本人の指摘で確認を挟む)
  */
+/** 予備札を指でつかむまでの長押し(ms)。これより前に動かすと画面送り */
+const LONG_PRESS_MS = 220;
+
+/** その要素を送っている(縦に溢れて overflow が auto/scroll の)いちばん近い親。無ければ null */
+function scrollParentOf(el) {
+  let n = el && el.parentElement;
+  while (n && n !== document.body) {
+    const cs = getComputedStyle(n);
+    if (
+      n.scrollHeight > n.clientHeight + 1 &&
+      /(auto|scroll)/.test(cs.overflowY)
+    )
+      return n;
+    n = n.parentElement;
+  }
+  return null;
+}
+
 export function ReservePlacer({ state, dispatch, size, focus }) {
   let n = state.kPlacement.owner,
     [a, u] = territoryRows(size, n),
@@ -863,8 +881,7 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
   const [hover, setHover] = (0, useState)(null);
   const boardRef = useRef(null);
   const chosen = cards[Math.min(pick, cards.length - 1)];
-  const open = (row, col) =>
-    row >= a && row <= u && !state.board[row][col];
+  const open = (row, col) => row >= a && row <= u && !state.board[row][col];
   const cellUnder = (x, y) => {
     const el = document.elementFromPoint(x, y);
     const cell = el && el.closest ? el.closest("[data-cell]") : null;
@@ -873,34 +890,59 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
     const [row, col] = cell.dataset.cell.split("-").map(Number);
     return open(row, col) ? { row, col } : null;
   };
-  /** 札(または仮置きの駒)を掴む。動かさず離せばタップ、動かして離せばドラッグ */
+  /**
+   * 札(または仮置きの駒)を掴む。
+   * 指(タッチ)では **長押し**でつかむ。長押しの前に動かしたら画面送り(スクロール)、
+   * 動かさず離せばタップ(その札を選ぶ)。マウスはすぐつかむ。
+   * 札の上を触ると必ずドラッグになり、9×9 では長い画面を送れなかった(本人の指摘 2026-09-15)。
+   * 札は touch-action:none のままなので、画面送りは自分で scrollTop を動かす
+   */
   function startDrag(e, idx, fromTarget) {
     if (e.button != null && e.button !== 0) return;
     e.preventDefault();
     const startX = e.clientX,
       startY = e.clientY;
+    const touch = e.pointerType !== "mouse";
+    const scroller = scrollParentOf(e.currentTarget);
+    const scrollTop0 = scroller ? scroller.scrollTop : 0;
     let moved = false;
+    // wait: 長押し待ち / scroll: 画面送り / drag: つかんでいる
+    let mode = touch ? "wait" : "drag";
     if (idx !== pick) {
       setPick(idx);
       setTarget(null);
     }
-    setDrag({ x: startX, y: startY, idx });
+    const lift = () => {
+      mode = "drag";
+      setDrag({ x: startX, y: startY, idx });
+    };
+    const timer = touch ? setTimeout(lift, LONG_PRESS_MS) : null;
+    if (!touch) lift();
     const move = (ev) => {
-      if (
-        Math.abs(ev.clientX - startX) > 8 ||
-        Math.abs(ev.clientY - startY) > 8
-      )
-        moved = true;
+      const dx = ev.clientX - startX,
+        dy = ev.clientY - startY;
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) moved = true;
+      if (mode === "wait") {
+        if (!moved) return;
+        clearTimeout(timer);
+        mode = "scroll";
+      }
+      if (mode === "scroll") {
+        if (scroller) scroller.scrollTop = scrollTop0 - dy;
+        return;
+      }
       setDrag((d) => (d ? { ...d, x: ev.clientX, y: ev.clientY } : d));
       setHover(moved ? cellUnder(ev.clientX, ev.clientY) : null);
     };
     const up = (ev) => {
+      clearTimeout(timer);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
       setDrag(null);
       setHover(null);
-      if (!moved) return;
+      // 画面送り、または長押し前のタップ(選ぶだけ)
+      if (mode !== "drag" || !moved) return;
       const at = cellUnder(ev.clientX, ev.clientY);
       // 仮置きの駒を盤の外へ運んだら置き直し
       if (!at) {
@@ -951,7 +993,13 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
       ...state.players[n].armyRankCounts,
       [chosen.rank]: (state.players[n].armyRankCounts[chosen.rank] || 0) + 1,
     };
-    for (const m of getLegalMoves(piece, board, size, counts, kingRankOf(state, n)))
+    for (const m of getLegalMoves(
+      piece,
+      board,
+      size,
+      counts,
+      kingRankOf(state, n),
+    ))
       reach.add(`${m.row}-${m.col}`);
   }
   return (
@@ -960,8 +1008,8 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
         <h3>予備札を配置</h3>
         <p className="hint">
           {cards.length > 1
-            ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスをタップするか札をドラッグして置き場所を決めます。`
-            : "Kの効果で引いた1枚。自陣の空きマスをタップするか、札をドラッグして置き場所を決めます。"}
+            ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスをタップするか、札を長押しして盤へドラッグします。`
+            : "Kの効果で引いた1枚。自陣の空きマスをタップするか、札を長押しして盤へドラッグします。"}
           置き場所を決めてから「ここに置く」で確定します。
           <span className="legend-dot" aria-hidden="true" />
           はその駒が動ける先です。

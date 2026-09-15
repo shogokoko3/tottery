@@ -5055,9 +5055,15 @@ body:has(.skin-overlay) {
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
+  /* 長押しでつかむので、iOS の画像の長押しメニューを出さない */
+  -webkit-touch-callout: none;
 }
 .reserve-pick {
   touch-action: none;
+  -webkit-touch-callout: none;
+}
+.modal-overlay .mini-piece-preview {
+  -webkit-touch-callout: none;
 }
 .mini-cell-target {
   box-shadow: inset 0 0 0 2px var(--gold);

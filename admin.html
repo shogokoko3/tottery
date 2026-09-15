@@ -5070,9 +5070,15 @@ body:has(.skin-overlay) {
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
+  /* \u9577\u62BC\u3057\u3067\u3064\u304B\u3080\u306E\u3067\u3001iOS \u306E\u753B\u50CF\u306E\u9577\u62BC\u3057\u30E1\u30CB\u30E5\u30FC\u3092\u51FA\u3055\u306A\u3044 */
+  -webkit-touch-callout: none;
 }
 .reserve-pick {
   touch-action: none;
+  -webkit-touch-callout: none;
+}
+.modal-overlay .mini-piece-preview {
+  -webkit-touch-callout: none;
 }
 .mini-cell-target {
   box-shadow: inset 0 0 0 2px var(--gold);
