@@ -232,6 +232,38 @@ export async function ensureAuth() {
  *
  * この口は管理画面からだけ呼ぶ。ゲームの匿名認証とは保存先を分ける。
  */
+/**
+ * 運営のパスワード再設定のメールを送る(Firebase の sendOobCode)。
+ * 管理画面の「パスワードを忘れた」から。届いたメールのリンクで新しいパスワードを決める。
+ * 本人がコンソールの手順で迷ったので、画面から一押しで送れるようにした(2026-09-16)
+ */
+export async function sendOperatorPasswordReset(email) {
+  if (!API_KEY) throw new Error("API キーが入っていません");
+  const res = await withTimeout(
+    fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestType: "PASSWORD_RESET", email }),
+      },
+    ),
+    TIMEOUT_MS,
+  );
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const why = (d.error || {}).message || `HTTP ${res.status}`;
+    throw new Error(
+      why.includes("EMAIL_NOT_FOUND")
+        ? "そのメールアドレスは登録されていません"
+        : why.includes("TOO_MANY_ATTEMPTS")
+          ? "試行が多すぎます。しばらく待ってからお試しください"
+          : `メールを送れませんでした(${why})`,
+    );
+  }
+  return true;
+}
+
 export async function signInAsOperator(email, password) {
   if (!API_KEY) throw new Error("API キーが入っていません");
   const res = await withTimeout(

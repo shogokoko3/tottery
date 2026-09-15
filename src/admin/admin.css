@@ -294,3 +294,9 @@
   border-radius: 4px;
   user-select: all;
 }
+
+/* サインイン画面の「パスワードを忘れた」。フォームの下に控えめに */
+.admin-reset-link {
+  display: block;
+  margin: 12px auto 0;
+}

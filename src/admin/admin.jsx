@@ -6,6 +6,7 @@ import {
   OPERATOR_UID,
   authedFetch,
   signInAsOperator,
+  sendOperatorPasswordReset,
   signOut,
   useOperatorSlot,
 } from "../net/auth.js";
@@ -181,6 +182,27 @@ function OperatorGate({ onDone, notice }) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(notice || null);
+  // パスワードの再設定メール。送ったら文言で知らせる
+  const [resetNote, setResetNote] = useState("");
+  async function sendReset() {
+    setError(null);
+    setResetNote("");
+    if (!email.trim()) {
+      setError("先にメールアドレスを入れてください。");
+      return;
+    }
+    setBusy(true);
+    try {
+      await sendOperatorPasswordReset(email.trim());
+      setResetNote(
+        `${email.trim()} に再設定のメールを送りました。届いたメールのリンクを開いて新しいパスワードを決め、ここに戻ってサインインしてください。`,
+      );
+    } catch (err) {
+      setError((err && err.message) || String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -267,6 +289,19 @@ function OperatorGate({ onDone, notice }) {
               {error}
             </p>
           )}
+          {resetNote && (
+            <p className="hint" role="status">
+              {resetNote}
+            </p>
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost btn-small admin-reset-link"
+            disabled={busy}
+            onClick={sendReset}
+          >
+            パスワードを忘れた(再設定のメールを送る)
+          </button>
           <a className="admin-game-link" href="/">
             ゲームへ戻る
           </a>
@@ -350,7 +385,9 @@ function AdminTools() {
     setGBusy(true);
     try {
       const r = await grantResources(uid, { tickets, gemsFree });
-      setGMsg(`付与しました。残高 チケット${r.tickets} / ジェム${r.gems}（無償${r.gemsFree}）`);
+      setGMsg(
+        `付与しました。残高 チケット${r.tickets} / ジェム${r.gems}（無償${r.gemsFree}）`,
+      );
       setGTickets("");
       setGGems("");
     } catch (e) {
@@ -402,15 +439,53 @@ function AdminTools() {
       <p className="admin-help">
         相手の uid と、付与する数を入れます（付与するジェムは無償ジェムです）。
       </p>
-      <input className="admin-input" placeholder="相手の uid" value={gUid} onChange={(e) => setGUid(e.target.value)} />
-      <input className="admin-input" type="number" placeholder="チケット" value={gTickets} onChange={(e) => setGTickets(e.target.value)} />
-      <input className="admin-input" type="number" placeholder="ジェム(無償)" value={gGems} onChange={(e) => setGGems(e.target.value)} />
-      <button className="btn btn-ghost btn-small" disabled={gBusy} onClick={grant}>付与する</button>
-      {gMsg && <p className="admin-help" role="status">{gMsg}</p>}
+      <input
+        className="admin-input"
+        placeholder="相手の uid"
+        value={gUid}
+        onChange={(e) => setGUid(e.target.value)}
+      />
+      <input
+        className="admin-input"
+        type="number"
+        placeholder="チケット"
+        value={gTickets}
+        onChange={(e) => setGTickets(e.target.value)}
+      />
+      <input
+        className="admin-input"
+        type="number"
+        placeholder="ジェム(無償)"
+        value={gGems}
+        onChange={(e) => setGGems(e.target.value)}
+      />
+      <button
+        className="btn btn-ghost btn-small"
+        disabled={gBusy}
+        onClick={grant}
+      >
+        付与する
+      </button>
+      {gMsg && (
+        <p className="admin-help" role="status">
+          {gMsg}
+        </p>
+      )}
 
       <h3>購入履歴</h3>
-      <input className="admin-input" placeholder="uid（空なら全体）" value={pUid} onChange={(e) => setPUid(e.target.value)} />
-      <button className="btn btn-ghost btn-small" disabled={pBusy} onClick={loadPurchases}>表示</button>
+      <input
+        className="admin-input"
+        placeholder="uid（空なら全体）"
+        value={pUid}
+        onChange={(e) => setPUid(e.target.value)}
+      />
+      <button
+        className="btn btn-ghost btn-small"
+        disabled={pBusy}
+        onClick={loadPurchases}
+      >
+        表示
+      </button>
       {pErr && <p className="admin-error">{pErr}</p>}
       {purchases && (
         <div className="admin-rows">
@@ -420,7 +495,9 @@ function AdminTools() {
                 <div>{p.productId}</div>
                 <div className="admin-id">{p.uid}</div>
               </div>
-              <div className="admin-row-side">{when(p.grantedAt)}・{p.environment}</div>
+              <div className="admin-row-side">
+                {when(p.grantedAt)}・{p.environment}
+              </div>
             </div>
           ))}
           {!purchases.length && <p className="admin-help">なし</p>}
@@ -428,15 +505,29 @@ function AdminTools() {
       )}
 
       <h3>ガチャ履歴</h3>
-      <input className="admin-input" placeholder="uid（空なら全体）" value={gaUid} onChange={(e) => setGaUid(e.target.value)} />
-      <button className="btn btn-ghost btn-small" disabled={gaBusy} onClick={loadGacha}>表示</button>
+      <input
+        className="admin-input"
+        placeholder="uid（空なら全体）"
+        value={gaUid}
+        onChange={(e) => setGaUid(e.target.value)}
+      />
+      <button
+        className="btn btn-ghost btn-small"
+        disabled={gaBusy}
+        onClick={loadGacha}
+      >
+        表示
+      </button>
       {gaErr && <p className="admin-error">{gaErr}</p>}
       {gacha && (
         <div className="admin-rows">
           {gacha.map((g, i) => (
             <div className="admin-row" key={i}>
               <div className="admin-row-main">
-                <div>{g.skinId}{g.isNew ? " ★新規" : ""}</div>
+                <div>
+                  {g.skinId}
+                  {g.isNew ? " ★新規" : ""}
+                </div>
                 <div className="admin-id">{g.uid}</div>
               </div>
               <div className="admin-row-side">{when(g.at)}</div>
@@ -1135,8 +1226,7 @@ function AdminDashboard({ onSignOut }) {
               type="button"
               className="btn btn-ghost btn-small"
               disabled={
-                busy ||
-                !(rooms || []).some((r) => staleRoom(r, Date.now()))
+                busy || !(rooms || []).some((r) => staleRoom(r, Date.now()))
               }
               onClick={sweepRooms}
             >
