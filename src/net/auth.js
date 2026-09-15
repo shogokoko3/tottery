@@ -284,7 +284,8 @@ export function providerOf(idToken) {
     const fb = payload.firebase || {};
     // sign_in_provider が本命。取り直しで匿名に戻る端があっても、
     // identities に apple.com が残っていれば本人確認済みとみなす
-    if (fb.sign_in_provider && fb.sign_in_provider !== "anonymous") return fb.sign_in_provider;
+    if (fb.sign_in_provider && fb.sign_in_provider !== "anonymous")
+      return fb.sign_in_provider;
     if (fb.identities && fb.identities["apple.com"]) return "apple.com";
     return "anonymous";
   } catch {
@@ -311,6 +312,21 @@ export function isVerified() {
  *
  * 返り値は新しい held。失敗したら投げる。
  */
+/** iOS アプリの中で動いているときだけバンドル ID(Capacitor が window に置く)。Web と検査では "" */
+function iosBundleId() {
+  try {
+    const cap = globalThis.Capacitor;
+    return cap &&
+      typeof cap.isNativePlatform === "function" &&
+      cap.isNativePlatform() &&
+      cap.getPlatform() === "ios"
+      ? "com.shogokoko.tottery"
+      : "";
+  } catch {
+    return "";
+  }
+}
+
 export async function linkAppleIdentity({ identityToken, rawNonce }) {
   if (!API_KEY) throw new Error("API キーが入っていません");
   if (!identityToken) throw new Error("Apple のトークンがありません");
@@ -325,14 +341,15 @@ export async function linkAppleIdentity({ identityToken, rawNonce }) {
     };
     // 現在の匿名 idToken を添えると「紐づけ」になる(uid を保つ)
     if (withCurrent && cur && cur.idToken) body.idToken = cur.idToken;
+    // iOS アプリからは、Firebase の iOS SDK と同じくバンドル ID を添える。Apple のトークンの
+    // 宛先(aud)はアプリのバンドル ID なので、Firebase にどの iOS アプリからかを知らせて照合させる
+    // (2026-09-15、実機で「宛先が Services ID と合わない」と断られた)
+    const headers = { "Content-Type": "application/json" };
+    if (iosBundleId()) headers["X-Ios-Bundle-Identifier"] = iosBundleId();
     return withTimeout(
       fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
+        { method: "POST", headers, body: JSON.stringify(body) },
       ),
       TIMEOUT_MS,
     );
