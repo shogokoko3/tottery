@@ -179,7 +179,7 @@ export function Piece({
       {frozen && (
         <span
           className="frozen-badge"
-          aria-label={`凍結・残り${frozenTurns}手番`}
+          aria-label={`凍結・残り${frozenTurns}ターン`}
         >
           ❄<b>{frozenTurns || ""}</b>
         </span>

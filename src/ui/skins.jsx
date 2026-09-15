@@ -51,7 +51,15 @@ import {
   totalOfSpares,
 } from "../skins/ether.js";
 import { updateCollection, useCollection } from "../skins/store.js";
-import { WALLET_SERVER, debitTickets, exchangeGems, newEventId, syncWallet, migrateOnce, logPull } from "../net/wallet.js";
+import {
+  WALLET_SERVER,
+  debitTickets,
+  exchangeGems,
+  newEventId,
+  syncWallet,
+  migrateOnce,
+  logPull,
+} from "../net/wallet.js";
 import { shopAvailable, flushPurchases } from "../net/iap.js";
 import { adsAvailable, watchAdForTicket } from "../net/ads.js";
 import { GEM_PER_TICKET } from "../iap/catalog.js";
@@ -100,7 +108,7 @@ function SkinAreaNote({ skin, owned, equipped }) {
         このフォイルを <b>{skin.rank}</b> に装備し、<b>{skin.rank} を王</b>
         にすると使えます（9×9の対局のみ・自分の手番の初めに1回まで）。
         {!owned
-          ? " まだ持っていません。ガチャ・錬成でのフォイル獲得、または同じキャラの通算100回入手による加工で手に入ります。"
+          ? " まだ持っていません。ガチャや錬成でフォイルを引くか、同じキャラを通算100枚集めて加工すると手に入ります。"
           : equipped
             ? " いま装備中です。"
             : " 持っています。装備すると使えます。"}
@@ -895,7 +903,7 @@ function ForgePanel({
           )}
           <p className="skins-note forge-protection">
             {foilKnown
-              ? `通常版とフォイルは別々に最後の1枚を保護します。ここで崩すのは通常版だけです。フォイルのダブりは「加工」タブで${SHARD_NAME}にします(エーテルにはなりません)。`
+              ? `最後の1枚は通常版・フォイルそれぞれ守られます。ここで崩すのは通常版だけです。フォイルのダブりは「加工」タブで${SHARD_NAME}にします(エーテルにはなりません)。`
               : "最後の1枚は保護され、一括で崩す対象になりません。"}
           </p>
         </section>
@@ -1086,15 +1094,33 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     let alive = true;
     // 開いたら、控えていた購入を送り直し、端末の枚数を一度だけ引き継ぎ、残高を取り直す
     (async () => {
-      try { await flushPurchases(); } catch { /* 次に開いたとき */ }
-      try { await migrateOnce(); } catch { /* サーバー側で一度きり */ }
-      try { await syncWallet(); } catch { /* 圏外なら写しのまま */ }
+      try {
+        await flushPurchases();
+      } catch {
+        /* 次に開いたとき */
+      }
+      try {
+        await migrateOnce();
+      } catch {
+        /* サーバー側で一度きり */
+      }
+      try {
+        await syncWallet();
+      } catch {
+        /* 圏外なら写しのまま */
+      }
     })();
     shopAvailable().then((ok) => alive && setShopOk(ok));
     adsAvailable().then((ok) => alive && setAdsOk(ok));
     // 残り回数はサーバーの財布から(端末では数えない)
     syncWallet()
-      .then((d) => alive && d && Number.isSafeInteger(d.adsLeftToday) && setAdsLeft(d.adsLeftToday))
+      .then(
+        (d) =>
+          alive &&
+          d &&
+          Number.isSafeInteger(d.adsLeftToday) &&
+          setAdsLeft(d.adsLeftToday),
+      )
       .catch(() => {});
     return () => {
       alive = false;
@@ -1193,10 +1219,15 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       try {
         await debitTickets(newEventId("pull"), amount * PULL_COST);
       } catch (e) {
-        setMessage((e && e.message) || "ガチャチケットを確認できませんでした。");
+        setMessage(
+          (e && e.message) || "ガチャチケットを確認できませんでした。",
+        );
         return;
       }
-      const next = await acquire((s) => pull(s, amount, undefined, { free: true }), "summon");
+      const next = await acquire(
+        (s) => pull(s, amount, undefined, { free: true }),
+        "summon",
+      );
       if (next?.pending?.results) logPull(next.pending.results);
       return;
     }
@@ -1338,7 +1369,8 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 className="skin-btn"
                 onClick={() => roll(1)}
               >
-                1回召喚<span>{FREE_GACHA ? "無料" : `チケット${PULL_COST}枚`}</span>
+                1回召喚
+                <span>{FREE_GACHA ? "無料" : `チケット${PULL_COST}枚`}</span>
               </button>
               <button
                 disabled={
@@ -1349,30 +1381,53 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 className="skin-btn skin-btn-gold"
                 onClick={() => roll(10)}
               >
-                10回召喚<span>{FREE_GACHA ? "無料" : `チケット${PULL_COST * 10}枚`}</span>
+                10回召喚
+                <span>
+                  {FREE_GACHA ? "無料" : `チケット${PULL_COST * 10}枚`}
+                </span>
               </button>
             </div>
             {WALLET_SERVER && !FREE_GACHA && (
               <div className="skins-pull-buttons">
-                <button className="skin-btn" disabled={buying || working} onClick={() => buyTickets(1)}>
-                  チケット1枚<GemAmount amount={GEM_PER_TICKET} size={20} />
+                <button
+                  className="skin-btn"
+                  disabled={buying || working}
+                  onClick={() => buyTickets(1)}
+                >
+                  チケット1枚
+                  <GemAmount amount={GEM_PER_TICKET} size={20} />
                 </button>
-                <button className="skin-btn" disabled={buying || working} onClick={() => buyTickets(10)}>
-                  チケット10枚<GemAmount amount={GEM_PER_TICKET * 10} size={20} />
+                <button
+                  className="skin-btn"
+                  disabled={buying || working}
+                  onClick={() => buyTickets(10)}
+                >
+                  チケット10枚
+                  <GemAmount amount={GEM_PER_TICKET * 10} size={20} />
                 </button>
               </div>
             )}
             {WALLET_SERVER && (shopOk || (adsOk && adsLeft !== 0)) && (
               <div className="skins-shop-row">
                 {shopOk && (
-                  <button className="skin-btn skin-btn-gold" disabled={buying || working} onClick={() => setShop(true)}>
+                  <button
+                    className="skin-btn skin-btn-gold"
+                    disabled={buying || working}
+                    onClick={() => setShop(true)}
+                  >
                     <GemIcon size={24} /> ジェムを買う
                   </button>
                 )}
                 {adsOk && adsLeft !== 0 && (
-                  <button className="skin-btn" disabled={buying || working} onClick={watchAd}>
+                  <button
+                    className="skin-btn"
+                    disabled={buying || working}
+                    onClick={watchAd}
+                  >
                     広告を見てチケット1枚
-                    <span>{adsLeft == null ? "1日3回" : `今日あと${adsLeft}回`}</span>
+                    <span>
+                      {adsLeft == null ? "1日3回" : `今日あと${adsLeft}回`}
+                    </span>
                   </button>
                 )}
               </div>

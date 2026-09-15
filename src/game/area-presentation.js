@@ -140,8 +140,8 @@ export function areaEventText(event, stage) {
         ? "森が正体を知らせた・自分だけに表示"
         : "森の力で駒を見抜かれた",
       ice: event.extended
-        ? `凍結期間を追加・残り${event.frozenTurns}手番`
-        : `凍結・${event.own ? "相手" : "自分"}の${event.frozenTurns}手番は移動できない`,
+        ? `凍結を延長・残り${event.frozenTurns}ターン`
+        : `凍結・${event.own ? "相手" : "自分"}の${event.frozenTurns}ターンは動けない`,
       sky: `10へ変身・${event.own ? "自軍" : "相手"}の10は同じ1体で2回行動`,
       palace: `${event.from} → ${event.to} に昇格・${event.usesTurn === false ? "続けて駒を動かせる" : "相手の手番へ"}`,
       thaw: "再び動けるようになった",

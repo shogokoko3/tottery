@@ -60,8 +60,8 @@ for (const [type, action, ownText, foeText] of [
   [
     "ice",
     { type: "USE_AREA", picks: ["fx5"] },
-    "凍結・相手の3手番は移動できない",
-    "凍結・自分の3手番は移動できない",
+    "凍結・相手の3ターンは動けない",
+    "凍結・自分の3ターンは動けない",
   ],
   [
     "sky",

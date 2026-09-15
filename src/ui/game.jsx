@@ -394,7 +394,7 @@ function AdjudicationResult({ state, names }) {
     <section className="adjudication-result" aria-label="判定結果の内訳">
       <p>
         {result.reason === "no-legal-action"
-          ? "手番側に合法な行動がなく、対局を進められないため判定しました。"
+          ? "手番側に指せる手がなく、対局を続けられないため判定になりました。"
           : "駒の動ける範囲から、どちらの王も討てない局面と判定しました。"}
       </p>
       <div className="adjudication-scores">
@@ -554,7 +554,7 @@ export function GameView({
             <div className="area-frozen-result">
               <span aria-hidden="true">❄</span>
               <b>氷のエリアによる決着</b>
-              <p>凍結により指せる手がなくなったため、対局が終了しました。</p>
+              <p>凍って指せる手がなくなったため、対局が終わりました。</p>
             </div>
           )}
           <AdjudicationResult state={state} names={names} />
@@ -907,7 +907,7 @@ export function GameView({
           <div className="area-frozen-result">
             <span aria-hidden="true">❄</span>
             <b>氷のエリアによる決着</b>
-            <p>凍結により指せる手がなくなったため、対局が終了しました。</p>
+            <p>凍って指せる手がなくなったため、対局が終わりました。</p>
           </div>
         )}
         <AdjudicationResult state={state} names={names} />

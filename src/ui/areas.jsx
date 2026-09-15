@@ -90,10 +90,10 @@ export function AreaBar({
               disabled={!doubleLeft || !doubleTargets.length}
               title={
                 !doubleLeft
-                  ? "この試合の2段階昇格は使用済みです"
+                  ? "この局の2段階昇格は使用済みです"
                   : !doubleTargets.length
                     ? "2段階昇格できる駒がありません"
-                    : "1試合に1回だけ使えます"
+                    : "1局に1回だけ使えます"
               }
               onClick={() => setPicking(2)}
             >
