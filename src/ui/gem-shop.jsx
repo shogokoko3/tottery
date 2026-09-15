@@ -13,6 +13,7 @@ import {
   reportDiag,
   currentLoadStage,
   APP_BUILD_LABEL,
+  APP_BUILD,
 } from "../net/iap.js";
 
 /** 店の見張り。iap.js の打ち切り(12秒)より少し長く */
@@ -86,7 +87,11 @@ export function GemShop({
         if (!alive || settled) return;
         settled = true;
         setProducts(p);
-        reportDiag({ count: p.length, ms: Date.now() - started });
+        reportDiag({
+          build: APP_BUILD,
+          count: p.length,
+          ms: Date.now() - started,
+        });
       })
       .catch(fail);
     return () => {

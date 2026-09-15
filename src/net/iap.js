@@ -14,6 +14,7 @@ import { APP_BUILD } from "./app-version.js";
 
 /** 画面に出すビルド番号(Web は "(Web)") */
 export const APP_BUILD_LABEL = APP_BUILD ? String(APP_BUILD) : "(Web)";
+export { APP_BUILD };
 import { updateCollection } from "../skins/store.js";
 import {
   PRODUCTS,
