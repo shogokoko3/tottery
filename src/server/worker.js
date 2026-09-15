@@ -1,4 +1,7 @@
 import { API_KEY, OPERATOR_UID } from "../net/auth.js";
+
+/** 購入の検証の本文の上限。applejws.js が受ける JWS(16384)+包み */
+export const VERIFY_BODY_MAX = 20480;
 import { DB_URL } from "../net/firebase.js";
 import { Ledger } from "./ledger.js";
 import { verifyMatch } from "./verify-match.js";
@@ -70,10 +73,13 @@ async function handleApi(request, env, url) {
     if (request.method !== "POST")
       return json({ error: "POSTを使用してください。" }, 405);
     try {
-      if (Number(request.headers.get("content-length") || 0) > 4096)
+      // 本文の上限。購入の検証だけは Apple の取引(JWS。証明書3枚つきで 6KB ほど)が入るので広い
+      // (2026-09-15、実機の購入が 413 で弾かれ「反映待ち」のまま残った)
+      const maxBody = url.pathname === "/api/iap/verify" ? VERIFY_BODY_MAX : 4096;
+      if (Number(request.headers.get("content-length") || 0) > maxBody)
         return json({ error: "リクエストが大きすぎます。" }, 413);
       const raw = await request.text();
-      if (raw.length > 4096)
+      if (raw.length > maxBody)
         return json({ error: "リクエストが大きすぎます。" }, 413);
       const body = JSON.parse(raw || "{}");
       const token = request.headers

@@ -232,6 +232,7 @@ async function verifyOnServer(jws) {
 export async function flushPurchases() {
   let list = readPending();
   let firstPurchase = null;
+  let lastError = "";
   for (const ev of [...list]) {
     try {
       const data = await verifyOnServer(ev.jws);
@@ -243,10 +244,18 @@ export async function flushPurchases() {
       if (e.status === 400) {
         list = list.filter((x) => x.jws !== ev.jws);
         writePending(list);
-      } else break;
+      } else {
+        // 理由を控えに残す(店の知らせと診断に出す。2026-09-15 の 413 のような切り分けのため)
+        lastError = `${e.status ? `${e.status} ` : ""}${(e && e.message) || ""}`;
+        list = list.map((x) =>
+          x.jws === ev.jws ? { ...x, err: lastError } : x,
+        );
+        writePending(list);
+        break;
+      }
     }
   }
-  return { firstPurchase };
+  return { firstPurchase, lastError };
 }
 
 /** 買う。ユーザーが取り消したら null。通れば財布の反映結果 */
@@ -273,9 +282,9 @@ export async function buy(productId) {
     ...readPending(),
     { jws: tx.jwsRepresentation, at: Date.now() },
   ]);
-  const { firstPurchase } = await flushPurchases();
+  const { firstPurchase, lastError } = await flushPurchases();
   return readPending().some((x) => x.jws === tx.jwsRepresentation)
-    ? { pending: true, firstPurchase }
+    ? { pending: true, firstPurchase, reason: lastError }
     : { pending: false, firstPurchase };
 }
 

@@ -104,5 +104,14 @@ await flushPending();
 is("無償ジェムは earn-gems の口へ", calls.some((c) => c.url.endsWith("/api/wallet/earn-gems") && c.body.gems === 60), true);
 is("送れたら控えから消える", pending(), []);
 
+// サーバーの本文の上限: 購入の検証は Apple の取引(JWS、証明書3枚つきで 6KB ほど)が入る大きさ
+{
+  const fs = await import("node:fs");
+  const worker = fs.readFileSync(new URL("../src/server/worker.js", import.meta.url), "utf8");
+  const m = worker.match(/VERIFY_BODY_MAX = (\d+)/);
+  is("購入の検証の本文の上限が JWS の上限(16384)より大きい", !!m && Number(m[1]) >= 16384 + 256, true);
+  is("上限は /api/iap/verify だけに使う", /url\.pathname === "\/api\/iap\/verify" \? VERIFY_BODY_MAX : 4096/.test(worker), true);
+}
+
 console.log(`\n${ok} 件 ok / ${fails.length} 件 NG`);
 process.exit(fails.length ? 1 : 0);

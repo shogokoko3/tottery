@@ -119,7 +119,7 @@ export function GemShop({
       else
         say(
           r.pending
-            ? "購入を受け付けました。通信が戻ると反映されます。"
+            ? `購入を受け付けました。通信が戻ると反映されます。${r.reason ? `(${r.reason})` : ""}`
             : "ジェムを受け取りました。",
         );
       onClose();
