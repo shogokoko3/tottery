@@ -530,7 +530,10 @@ function DeleteMeModal({ onClose, onDeleted }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={step === "running" ? undefined : onClose}>
+    <div
+      className="modal-overlay"
+      onClick={step === "running" ? undefined : onClose}
+    >
       <div
         className="modal-panel settings-panel"
         onClick={(e) => e.stopPropagation()}
@@ -558,7 +561,10 @@ function DeleteMeModal({ onClose, onDeleted }) {
               <button className="btn btn-primary btn-wide" onClick={onClose}>
                 やめる
               </button>
-              <button className="btn btn-ghost btn-wide btn-danger" onClick={run}>
+              <button
+                className="btn btn-ghost btn-wide btn-danger"
+                onClick={run}
+              >
                 消す
               </button>
             </div>
@@ -806,12 +812,15 @@ export function QuitConfirm({ onCancel, onQuit, network }) {
           対局をやめますか?
         </h3>
         <p className="hint">
-          今の対局は最初からやり直しになります。
-          {network && (
+          {network ? (
             <>
+              オンライン対戦では、途中でやめると<b>降参</b>になります。
               <br />
-              オンライン対戦の場合、相手の画面はそのまま残ります。
+              相手の勝ちとして勝敗がつき、持ち点(月間シーズンの成績)を清算します。
+              相手には「降参」と伝わります。
             </>
+          ) : (
+            "今の対局は最初からやり直しになります。"
           )}
         </p>
         <div
@@ -825,7 +834,8 @@ export function QuitConfirm({ onCancel, onQuit, network }) {
             対局を続ける
           </button>
           <button className="btn btn-ghost" onClick={onQuit}>
-            <ArrowLeft size={16} /> やめてタイトルに戻る
+            <ArrowLeft size={16} />{" "}
+            {network ? "降参してホームに戻る" : "やめてタイトルに戻る"}
           </button>
         </div>
       </div>

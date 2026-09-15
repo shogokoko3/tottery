@@ -1047,6 +1047,9 @@ function foeWait(state, act, playMs) {
   return state.phase === "play" ? playMs : 400;
 }
 
+/** 途中でやめるとき、降参の手が部屋に届くのを待つ時間(ms)。記録の送信は3回まで再試行するので、これで足りる */
+const QUIT_RESIGN_GRACE_MS = 1200;
+
 export function GameCore({
   onExit,
   // 対局後の「戻る」の行き先の名前。対戦相手を選ぶ画面へ戻すときはその旨を書く
@@ -1677,6 +1680,25 @@ export function GameCore({
     tidyRoom();
     onExit();
   }
+  /**
+   * 対局を途中でやめる。
+   * オンラインで対局が始まっていれば、やめる＝降参として扱い、相手の勝ちで成績(持ち点)を清算する
+   * (本人の指示 2026-09-16)。降参の手を部屋へ送ってから片付ける(記録の照合は部屋の手順を読むので、
+   * 送る前に部屋を消すと相手の記録も通らない)。手元・CPU の対局はそのまま抜ける
+   */
+  function quitGame() {
+    // Bot(ランダムマッチの練習相手)も 9×9 なら持ち点に数えるので、同じく降参にする
+    const inPlay =
+      (!!network || !!bot) &&
+      (a.phase === "play" || a.phase === "setup") &&
+      a.resignedBy == null;
+    if (!inPlay) {
+      leaveGame();
+      return;
+    }
+    y({ type: "RESIGN", player: P });
+    setTimeout(leaveGame, QUIT_RESIGN_GRACE_MS);
+  }
   /** 連戦。部屋の片付けは抜けるときと同じで、その足で次の相手を探しに行く */
   function nextMatch() {
     tidyRoom();
@@ -2143,10 +2165,10 @@ export function GameCore({
         netInfo={N}
       >
         <QuitConfirm
-          network={network}
+          network={network || bot}
           onCancel={() => r(!1)}
           onQuit={() => {
-            (r(!1), leaveGame());
+            (r(!1), quitGame());
           }}
         />
       </GameShell>
