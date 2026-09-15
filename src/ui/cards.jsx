@@ -145,9 +145,13 @@ export function Piece({
     i = piece.owner === viewer || !!piece.revealed || !!known;
   const mark =
     piece.mark === "sky" ? "空" : piece.mark === "palace" ? "宮" : null;
+  // 相手の駒が表向き(公開・見抜き)だと自分の駒と見分けにくい(本人の指摘 2026-09-15)。
+  // 相手の表向きの駒だけ、相手の色の枠(記録の盤面と同じ side-ring)で囲む。伏せ札は裏面が相手の色
+  const foeFace = i && piece.owner !== viewer;
   return (
     <div
-      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""} ${justRevealed ? "piece-unveiled" : ""} ${frozen ? "piece-frozen" : ""}`}
+      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""} ${justRevealed ? "piece-unveiled" : ""} ${frozen ? "piece-frozen" : ""} ${foeFace ? "side-ring piece-foe-face" : ""}`}
+      style={foeFace ? { "--who": u.color } : undefined}
     >
       {i ? (
         <CardFace
