@@ -10,6 +10,7 @@
 import { Capacitor } from "@capacitor/core";
 import { ensureAuth } from "./auth.js";
 import { seasonApiBase } from "./season.js";
+import { APP_BUILD } from "./app-version.js";
 import { updateCollection } from "../skins/store.js";
 import {
   PRODUCTS,
@@ -49,25 +50,53 @@ function withTimeout(promise, ms, why) {
   ]);
 }
 
+/**
+ * 店の切り分け用の情報。商品が並ばないとき、画面の下に小さく出す(本人がスクリーンショットで
+ * 知らせてくれる。2026-09-15)。ビルド番号・App Store のストアの国・商品の問い合わせにかかった秒数。
+ * ストアの国が取れて商品が 0 件なら App Store Connect 側(反映待ち・契約)、国も取れなければ端末側。
+ */
+export async function storeDiagnostics(elapsedMs = null) {
+  const out = { build: APP_BUILD, storefront: "", elapsedMs };
+  try {
+    const p = await store();
+    if (!p) return out;
+    const r = await withTimeout(p.getStorefront(), 6000, "storefront timeout");
+    out.storefront = (r && r.countryCode) || "(不明)";
+  } catch {
+    out.storefront = "(取れない)";
+  }
+  return out;
+}
+
 /** 商品の一覧(表示価格は StoreKit のもの)。時間切れ・失敗は投げる(呼ぶ側が知らせる) */
 export async function loadProducts() {
   const p = await store();
   if (!p) return [];
-  const { products } = await withTimeout(
-    p.getProducts({ productIdentifiers: PRODUCT_IDS, productType: "inapp" }),
-    PRODUCTS_TIMEOUT_MS,
-    "App Store から商品の一覧が返ってきませんでした。",
-  );
+  const started = Date.now();
+  let products;
+  try {
+    ({ products } = await withTimeout(
+      p.getProducts({ productIdentifiers: PRODUCT_IDS, productType: "inapp" }),
+      PRODUCTS_TIMEOUT_MS,
+      "App Store から商品の一覧が返ってきませんでした。",
+    ));
+  } catch (e) {
+    if (e) e.elapsedMs = Date.now() - started;
+    throw e;
+  }
   const found = PRODUCTS.map((c) => {
     const s = products.find((x) => x.identifier === c.id);
     return s ? { ...c, price: s.priceString, title: s.title || c.name } : null;
   }).filter(Boolean);
   // 1つも返らないのは、App Store Connect 側の商品がまだ配信に乗っていない(提出準備完了の直後など)か、
   // 商品 ID の不一致。件数を文言に入れて、切り分けの手がかりにする
-  if (!found.length)
-    throw new Error(
+  if (!found.length) {
+    const e = new Error(
       `App Store が商品を返しませんでした(${products.length}件受信、対象 ${PRODUCT_IDS.length}件)。商品の反映待ちの可能性があります。`,
     );
+    e.elapsedMs = Date.now() - started;
+    throw e;
+  }
   return found;
 }
 

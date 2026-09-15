@@ -5,7 +5,7 @@ import { GemIcon, GemAmount } from "./gem.jsx";
  * ガチャ画面とバトルパスの両方から使う。
  */
 import { useEffect, useState } from "react";
-import { buy, restore, loadProducts } from "../net/iap.js";
+import { buy, restore, loadProducts, storeDiagnostics } from "../net/iap.js";
 import { syncWallet } from "../net/wallet.js";
 import { isVerified } from "../net/auth.js";
 import { signInWithApple } from "../net/apple-signin.js";
@@ -21,6 +21,8 @@ export function GemShop({
 }) {
   const [products, setProducts] = useState(initialProducts);
   const [loadError, setLoadError] = useState("");
+  // 商品が並ばないときの切り分け(ビルド・ストアの国・秒数)。失敗のときだけ取る
+  const [diag, setDiag] = useState(null);
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -28,12 +30,16 @@ export function GemShop({
     let alive = true;
     setProducts(null);
     setLoadError("");
+    setDiag(null);
     loadProducts()
       .then((p) => alive && setProducts(p))
       .catch((e) => {
         if (!alive) return;
         setProducts([]);
         setLoadError((e && e.message) || "");
+        storeDiagnostics(e && e.elapsedMs)
+          .then((d) => alive && setDiag(d))
+          .catch(() => {});
       });
     return () => {
       alive = false;
@@ -159,6 +165,14 @@ export function GemShop({
                 >
                   もう一度読み込む
                 </button>
+                {diag && (
+                  <p className="hint gem-shop-diag">
+                    診断: ビルド {diag.build || "(Web)"} · ストア{" "}
+                    {diag.storefront || "(不明)"}
+                    {diag.elapsedMs != null &&
+                      ` · ${(diag.elapsedMs / 1000).toFixed(1)}秒`}
+                  </p>
+                )}
               </>
             )}
           </div>

@@ -5714,3 +5714,10 @@ body:has(.skin-overlay) {
 .update-gate-box { max-width: 360px; width: 100%; text-align: center; background: #0e1730; border: 1px solid #2a3a5e; border-radius: 16px; padding: 28px 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
 .update-gate-box h2 { color: #e7c877; margin: 0 0 10px; }
 .update-gate-box .hint { margin: 0 0 18px; }
+
+/* ジェムの店: 商品が並ばないときの切り分け(小さく、薄く) */
+.gem-shop-diag {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 6px;
+}

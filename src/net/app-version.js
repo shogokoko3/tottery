@@ -10,7 +10,8 @@ import { Capacitor } from "@capacitor/core";
 import { seasonApiBase } from "./season.js";
 
 // このビルドの番号(build.mjs が埋める)。Web や手元・テストでは 0(＝ゲート無効)
-const APP_BUILD = typeof __APP_BUILD__ !== "undefined" ? __APP_BUILD__ : 0;
+export const APP_BUILD =
+  typeof __APP_BUILD__ !== "undefined" ? __APP_BUILD__ : 0;
 const FALLBACK_STORE_URL = "https://apps.apple.com/app/id6811241552";
 
 /**
