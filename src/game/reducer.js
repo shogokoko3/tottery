@@ -3,7 +3,11 @@ import { areaEvent } from "./area-presentation.js";
 import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
 import { adjudicatePosition, withInitialArmies } from "./adjudication.js";
-import { hasAdjudicationRules, hasBonusAckRules } from "./rule-version.js";
+import {
+  hasAdjudicationRules,
+  hasBonusAckRules,
+  REVENGE_NO_RESERVE_RULE_VERSION,
+} from "./rule-version.js";
 import {
   discardCards,
   replenishReserve,
@@ -665,14 +669,18 @@ export function removePiece(state, pieceId, opts) {
             },
           },
           opts.by,
-          { by: null, viaCounter: true },
+          { by: null, viaCounter: true, viaRevenge: true },
         );
       }
     }
   }
 
-  // 王がKのとき、自分のJかQが倒されると予備札を1枚引ける
-  if (dead.rank === "J" || dead.rank === "Q") {
+  // 王がKのとき、自分のJかQが倒されると予備札を1枚引ける。
+  // 版15から: 道連れ(王が4・5の側の同ランクを取ったとき)で倒れた J・Q では引かない
+  // (本人の指示 2026-09-16。海のエリアの道連れに K の見返りまで付くのをやめる)
+  const byRevenge =
+    !!opts.viaRevenge && state.ruleVersion >= REVENGE_NO_RESERVE_RULE_VERSION;
+  if ((dead.rank === "J" || dead.rank === "Q") && !byRevenge) {
     const owner = next.players[dead.owner];
     const king = owner.kingId ? next.pieces[owner.kingId] : null;
     // まとめ取りで J と Q が同時に倒れると、2枚めくれることがある。
@@ -770,7 +778,8 @@ function freezeDeaths(state) {
     if (p.alive && board[p.row][p.col]?.id === p.id) board[p.row][p.col] = p;
   next = { ...state, pieces, board };
   for (const p of Object.values(pieces)) {
-    if (!p.alive || p.owner !== player || (p.frozenTurns || 0) < limit) continue;
+    if (!p.alive || p.owner !== player || (p.frozenTurns || 0) < limit)
+      continue;
     if (!next.pieces[p.id]?.alive) continue;
     next = {
       ...next,

@@ -20,7 +20,10 @@
 //     (2026-09-11 本人の依頼。オンラインだけ。ACK_SETUP_EFFECTS を送り合い、そろうまで指し手を受け付けない)。
 // 14: 海の引き寄せで、斜めの先が埋まっていても縦か横に寄れば中央に近づくならそちらへ寄る
 //     (2026-09-16 本人の指摘。通信の手の形式は変わらない。旧版の対局の再生は変わらない)。
-export const GAME_RULE_VERSION = 14;
+// 15: 道連れ(王が4・5)で倒れた J・Q では、K の王の予備札を引かない(2026-09-16 本人の指示。
+//     通信の手の形式は変わらない。旧版の対局の再生は変わらない)。
+export const GAME_RULE_VERSION = 15;
+export const REVENGE_NO_RESERVE_RULE_VERSION = 15;
 export const SEA_SLIDE_RULE_VERSION = 14;
 export const BONUS_ACK_RULE_VERSION = 13;
 export const ADJUDICATION_RULE_VERSION = 1;
