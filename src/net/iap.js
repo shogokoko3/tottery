@@ -25,11 +25,32 @@ import {
 const PENDING_KEY = "tottery.iap.pending.v1";
 let plugin = null;
 
+/**
+ * 使うメソッドだけを持つ薄い包み。
+ * Capacitor のプラグインは Proxy で、どんな名前でもメソッドを返す(`then` も)。async 関数から
+ * そのまま return / await すると thenable と見なされて `then()` がネイティブ呼び出しになり、
+ * 永遠に戻らない(2026-09-15 に踏んだ。店が「読み込んでいます…」から進まなかった原因。
+ * 12秒の打ち切りより前で止まっていたので打ち切りも効かなかった)。
+ * 包みには then が無いので、そのまま返してよい
+ */
+const METHODS = [
+  "getProducts",
+  "getStorefront",
+  "purchaseProduct",
+  "restorePurchases",
+  "getPurchases",
+];
+function wrap(proxy) {
+  const o = {};
+  for (const m of METHODS) o[m] = (options) => proxy[m](options);
+  return o;
+}
+
 async function store() {
   if (plugin) return plugin;
   if (!Capacitor.isNativePlatform()) return null;
   const m = await import("@capgo/native-purchases");
-  plugin = m.NativePurchases;
+  plugin = wrap(m.NativePurchases);
   return plugin;
 }
 
@@ -51,6 +72,18 @@ function withTimeout(promise, ms, why) {
     promise,
     new Promise((_r, reject) => setTimeout(() => reject(new Error(why)), ms)),
   ]);
+}
+
+// いまどこまで進んだか(店の読み込み中の行と診断に出す)。console にも残す(Xcode で読める)
+let loadStage = "未着手";
+export const currentLoadStage = () => loadStage;
+function stage(s) {
+  loadStage = s;
+  try {
+    console.log(`[iap] ${s}`);
+  } catch {
+    /* 無視 */
+  }
 }
 
 /**
@@ -96,8 +129,10 @@ export async function reportDiag(d) {
 
 /** 商品の一覧(表示価格は StoreKit のもの)。時間切れ・失敗は投げる(呼ぶ側が知らせる) */
 export async function loadProducts() {
+  stage("プラグイン読み込み");
   const p = await store();
   if (!p) return [];
+  stage("商品の問い合わせ");
   const started = Date.now();
   let products;
   try {
@@ -107,9 +142,11 @@ export async function loadProducts() {
       "App Store から商品の一覧が返ってきませんでした。",
     ));
   } catch (e) {
+    stage("問い合わせに失敗");
     if (e) e.elapsedMs = Date.now() - started;
     throw e;
   }
+  stage(`応答あり(${products.length}件)`);
   const found = PRODUCTS.map((c) => {
     const s = products.find((x) => x.identifier === c.id);
     return s ? { ...c, price: s.priceString, title: s.title || c.name } : null;

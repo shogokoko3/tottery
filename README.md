@@ -1482,3 +1482,8 @@ CPU・オンライン9×9で布陣称号を獲得した本人に、土・海・�
 (uid ごとに最新の1件。`src/server/wallet.js` の iap_diag)、運営は `node tools/iap-diag.mjs` で読む
 (Worker の秘密 `DIAG_TOKEN`。読み取り専用で、この一覧しか読めない。手元の
 `~/.config/tottery/diag-token` から読む)。運営の Firebase トークンでも `/api/admin/diag` を読める。
+
+**Capacitor のプラグインを async 関数からそのまま返さない(2026-09-15)**: プラグインは Proxy で、`then` も
+メソッドとして返す。`return plugin` / `await plugin` すると thenable 扱いで `then()` がネイティブ呼び出しになり、
+永遠に戻らない。店が「読み込んでいます…」から進まなかった原因。`src/net/iap.js` は使うメソッドだけの包み(`wrap`)
+を返す。`tools/check-iap-native.mjs` が、偽の Proxy(then もメソッド)で問い合わせが届くことを見張る。

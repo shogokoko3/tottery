@@ -11,8 +11,12 @@ import {
   loadProducts,
   storeDiagnostics,
   reportDiag,
+  currentLoadStage,
   APP_BUILD_LABEL,
 } from "../net/iap.js";
+
+/** 店の見張り。iap.js の打ち切り(12秒)より少し長く */
+const WATCHDOG_MS = 15000;
 import { syncWallet } from "../net/wallet.js";
 import { isVerified } from "../net/auth.js";
 import { signInWithApple } from "../net/apple-signin.js";
@@ -42,34 +46,49 @@ export function GemShop({
     setDiag(null);
     setWaited(0);
     const started = Date.now();
-    const tick = setInterval(
-      () => alive && setWaited(Math.floor((Date.now() - started) / 1000)),
-      1000,
-    );
+    let settled = false;
+    // 失敗の扱い(打ち切りも同じ道)。診断を取ってから画面とサーバーへ
+    const fail = (e) => {
+      if (!alive || settled) return;
+      settled = true;
+      setProducts([]);
+      setLoadError((e && e.message) || "");
+      storeDiagnostics(e && e.elapsedMs)
+        .then((d) => {
+          if (!alive) return;
+          setDiag(d);
+          reportDiag({
+            build: d.build,
+            storefront: d.storefront,
+            ms: d.elapsedMs,
+            count: 0,
+            error: (e && e.message) || "",
+          });
+        })
+        .catch(() => {});
+    };
+    // 経過秒を刻む。iap.js の打ち切りが効かない端末があった(2026-09-15、実機とシミュレータで再現)ので、
+    // この時計でも見張り、WATCHDOG_MS を過ぎたら段階つきで打ち切る
+    const tick = setInterval(() => {
+      if (!alive) return;
+      const ms = Date.now() - started;
+      setWaited(Math.floor(ms / 1000));
+      if (!settled && ms >= WATCHDOG_MS) {
+        const e = new Error(
+          `App Store から応答がありません(段階: ${currentLoadStage()})。`,
+        );
+        e.elapsedMs = ms;
+        fail(e);
+      }
+    }, 1000);
     loadProducts()
       .then((p) => {
-        if (!alive) return;
+        if (!alive || settled) return;
+        settled = true;
         setProducts(p);
         reportDiag({ count: p.length, ms: Date.now() - started });
       })
-      .catch((e) => {
-        if (!alive) return;
-        setProducts([]);
-        setLoadError((e && e.message) || "");
-        storeDiagnostics(e && e.elapsedMs)
-          .then((d) => {
-            if (!alive) return;
-            setDiag(d);
-            reportDiag({
-              build: d.build,
-              storefront: d.storefront,
-              ms: d.elapsedMs,
-              count: 0,
-              error: (e && e.message) || "",
-            });
-          })
-          .catch(() => {});
-      });
+      .catch(fail);
     return () => {
       alive = false;
       clearInterval(tick);
@@ -158,7 +177,7 @@ export function GemShop({
               <p className="hint">
                 商品を読み込んでいます…
                 <span className="gem-shop-diag">
-                  {waited}秒 · ビルド {APP_BUILD_LABEL}
+                  {waited}秒 · ビルド {APP_BUILD_LABEL} · {currentLoadStage()}
                 </span>
               </p>
             )}
