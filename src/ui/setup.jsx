@@ -890,12 +890,16 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
     const [row, col] = cell.dataset.cell.split("-").map(Number);
     return open(row, col) ? { row, col } : null;
   };
+  /** 指が盤(mini-board)の上にあるか */
+  const overBoard = (x, y) => {
+    const b = boardRef.current && boardRef.current.getBoundingClientRect();
+    return !!b && x >= b.left && x <= b.right && y >= b.top && y <= b.bottom;
+  };
   /**
-   * 札(または仮置きの駒)を掴む。
-   * 指(タッチ)では **長押し**でつかむ。長押しの前に動かしたら画面送り(スクロール)、
-   * 動かさず離せばタップ(その札を選ぶ)。マウスはすぐつかむ。
-   * 札の上を触ると必ずドラッグになり、9×9 では長い画面を送れなかった(本人の指摘 2026-09-15)。
-   * 札は touch-action:none のままなので、画面送りは自分で scrollTop を動かす
+   * 盤の上に仮置きした駒を掴んで置き直す(盤の外の札からは始めない)。
+   * 指(タッチ)では長押しでつかむ。長押しの前に動かしたら画面送り(スクロール)、
+   * 動かさず離せば何もしない。マウスはすぐつかむ。
+   * 駒は touch-action:none のままなので、画面送りは自分で scrollTop を動かす
    */
   function startDrag(e, idx, fromTarget) {
     if (e.button != null && e.button !== 0) return;
@@ -914,7 +918,12 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
     }
     const lift = () => {
       mode = "drag";
-      setDrag({ x: startX, y: startY, idx });
+      setDrag({
+        x: startX,
+        y: startY,
+        idx,
+        onBoard: overBoard(startX, startY),
+      });
     };
     const timer = touch ? setTimeout(lift, LONG_PRESS_MS) : null;
     if (!touch) lift();
@@ -931,18 +940,24 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
         if (scroller) scroller.scrollTop = scrollTop0 - dy;
         return;
       }
-      setDrag((d) => (d ? { ...d, x: ev.clientX, y: ev.clientY } : d));
+      // つかんだ札の絵は、指が盤の上に来てから出す(盤の外に札が出ない。本人の指摘 2026-09-15)
+      const onBoard = overBoard(ev.clientX, ev.clientY);
+      setDrag((d) => (d ? { ...d, x: ev.clientX, y: ev.clientY, onBoard } : d));
       setHover(moved ? cellUnder(ev.clientX, ev.clientY) : null);
     };
+    // 指が離れた合図は pointerup だけに頼らない。iOS で届かないことがあり、つかんだ状態
+    // (札の絵)が残った(本人の指摘 2026-09-15)。touchend/touchcancel・画面の切り替えでも必ず解く
+    let done = false;
     const up = (ev) => {
+      if (done) return;
+      done = true;
       clearTimeout(timer);
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      window.removeEventListener("pointercancel", up);
+      for (const [t, f] of listeners) window.removeEventListener(t, f);
+      document.removeEventListener("visibilitychange", up);
       setDrag(null);
       setHover(null);
-      // 画面送り、または長押し前のタップ(選ぶだけ)
-      if (mode !== "drag" || !moved) return;
+      // 画面送り、または長押し前のタップ(選ぶだけ)、または合図の取りこぼし
+      if (mode !== "drag" || !moved || !ev || ev.type !== "pointerup") return;
       const at = cellUnder(ev.clientX, ev.clientY);
       // 仮置きの駒を盤の外へ運んだら置き直し
       if (!at) {
@@ -951,9 +966,16 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
       }
       setTarget(at);
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", up);
+    const listeners = [
+      ["pointermove", move],
+      ["pointerup", up],
+      ["pointercancel", up],
+      ["touchend", () => setTimeout(() => up(null), 0)],
+      ["touchcancel", () => up(null)],
+      ["blur", () => up(null)],
+    ];
+    for (const [t, f] of listeners) window.addEventListener(t, f);
+    document.addEventListener("visibilitychange", up);
   }
   const confirm = () => {
     if (!target || !open(target.row, target.col)) return;
@@ -1008,29 +1030,33 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
         <h3>予備札を配置</h3>
         <p className="hint">
           {cards.length > 1
-            ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスをタップするか、札を長押しして盤へドラッグします。`
-            : "Kの効果で引いた1枚。自陣の空きマスをタップするか、札を長押しして盤へドラッグします。"}
-          置き場所を決めてから「ここに置く」で確定します。
+            ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスをタップして置き場所を決めます。`
+            : "Kの効果で引いた1枚。自陣の空きマスをタップして置き場所を決めます。"}
+          置いた駒はドラッグで動かせます。置き場所を決めてから「ここに置く」で確定します。
           <span className="legend-dot" aria-hidden="true" />
           はその駒が動ける先です。
         </p>
+        {/* 盤の外(説明の札)は触っても画面送りだけ。つかむのは盤の上に仮置きした駒だけ
+            (本人の指摘 2026-09-15「盤面外はスクロール以外できない」) */}
         {cards.length > 1 ? (
           <div className="reserve-picks">
             {cards.map((c, idx) => (
               <button
                 key={c.id}
-                className={`reserve-pick ${chosen.id === c.id ? "reserve-pick-on" : ""} ${drag && drag.idx === idx ? "hand-card-lifted" : ""}`}
-                onPointerDown={(e) => startDrag(e, idx, false)}
+                className={`reserve-pick ${chosen.id === c.id ? "reserve-pick-on" : ""}`}
+                onClick={() => {
+                  if (idx !== pick) {
+                    setPick(idx);
+                    setTarget(null);
+                  }
+                }}
               >
                 <CardGuide rank={c.rank} suit={c.suit} placing />
               </button>
             ))}
           </div>
         ) : (
-          <div
-            className={`reserve-source ${drag ? "hand-card-lifted" : ""}`}
-            onPointerDown={(e) => startDrag(e, 0, false)}
-          >
+          <div className="reserve-source">
             <CardGuide rank={chosen.rank} suit={chosen.suit} placing />
           </div>
         )}
@@ -1141,7 +1167,7 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
           </button>
         </div>
       </div>
-      {drag && (
+      {drag && drag.onBoard && (
         <div className="drag-ghost" style={{ left: drag.x, top: drag.y }}>
           <CardFace
             owner={n}

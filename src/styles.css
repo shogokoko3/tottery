@@ -5048,20 +5048,20 @@ body:has(.skin-overlay) {
   opacity: 1;
 }
 /* 予備札の仮置き。置き場所を決めてから「ここに置く」で確定する */
+/* 説明の札(盤の外)。触っても画面送りだけで、つかめない(2026-09-15 本人の指摘) */
 .reserve-source {
   display: flex;
   justify-content: center;
-  cursor: grab;
-  touch-action: none;
+  touch-action: pan-y;
   -webkit-user-select: none;
   user-select: none;
-  /* 長押しでつかむので、iOS の画像の長押しメニューを出さない */
   -webkit-touch-callout: none;
 }
 .reserve-pick {
-  touch-action: none;
+  touch-action: pan-y;
   -webkit-touch-callout: none;
 }
+/* 盤の上の仮置きの駒だけがつかめる(長押し) */
 .modal-overlay .mini-piece-preview {
   -webkit-touch-callout: none;
 }
