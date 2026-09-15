@@ -206,7 +206,8 @@ assert.ok(totalChecks >= 12, `伏せ札の不変性を十分な回数見た(${to
   const src = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
   const gate = /onCpuArea=\{\s*d && !tut && foilRevealed\(collection\) && !localPool/;
   assert.ok(gate.test(src), "CPUのエリアを選ぶ欄は foilRevealed で隠す(札を絞るレベルでも出さない)");
-  const pass = /cpuArea=\{\s*d && !tut && i === 9 && foilRevealed\(collection\) && !localPool \? cpuArea : null/;
+  // Bot(ランダムマッチの練習相手)は札を絞るレベルでもエリアを持つ(2026-09-16)。foilRevealed の門はどちらも通す
+  const pass = /cpuArea=\{\s*d && !tut && i === 9 && foilRevealed\(collection\) && \(!localPool \|\| bot\) \? cpuArea : null/;
   assert.ok(pass.test(src), "選んだエリアの受け渡しも foilRevealed で止める");
   assert.ok(/ensureCpuFoil\(cpuSkins, cpuArea\.king\)/.test(src), "CPUの王の数字にフォイルを持たせる");
 }

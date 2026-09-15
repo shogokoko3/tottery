@@ -624,7 +624,7 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady =
       [],
     ),
     (0, useEffect)(() => {
-      // 持ち点が 1600 に届くまでの練習相手(Bot、src/game/bot-match.js)。
+      // 持ち点が 1750 に届くまでの練習相手(Bot、src/game/bot-match.js)。
       //   直前に人に負けていたら、探さずに数秒「探しています」を見せてから Bot。
       //   それ以外はまず人を探し、BOT_WAIT_MS 経っても組めなければ Bot に切り替える
       //   (画面を離れるときの後片付けが掲示と部屋を消す)
@@ -1329,7 +1329,7 @@ function TotteryScreens() {
   const [cpuSkins, setCpuSkins] = useState({});
   // CPU戦で選んだ相手のエリア({ type, king })。null なら相手が手札から王を選ぶ
   const [cpuArea, setCpuArea] = useState(null);
-  // ランダムマッチの練習相手(Bot)。持ち点 1600 未満のあいだ、人の代わりに当たる。中身は CPU
+  // ランダムマッチの練習相手(Bot)。持ち点 1750 未満のあいだ、人の代わりに当たる。中身は CPU(強さ3段階)
   const [bot, setBot] = useState(null);
   // はじめて遊ぶときは、まず名前を決めてもらう
   let [named, setNamed] = (0, useState)(() => hasName()),
@@ -1504,7 +1504,7 @@ function TotteryScreens() {
             ? [
                 collection.equipped,
                 // エリアを選んだCPU戦は、王の数字にフォイルを必ず持たせる(でないとエリアが立たない)
-                cpuArea && cpuArea.king && i === 9 && foilRevealed(collection) && !localPool
+                cpuArea && cpuArea.king && i === 9 && foilRevealed(collection) && (!localPool || bot)
                   ? ensureCpuFoil(cpuSkins, cpuArea.king)
                   : cpuSkins,
               ]
@@ -1524,7 +1524,7 @@ function TotteryScreens() {
             cpu={d}
             // フォイルを初めて手に入れるまでは、エリアを選ぶ欄そのものを出さない(選べても渡さない)
             cpuArea={
-              d && !tut && i === 9 && foilRevealed(collection) && !localPool ? cpuArea : null
+              d && !tut && i === 9 && foilRevealed(collection) && (!localPool || bot) ? cpuArea : null
             }
             // ランダムマッチの練習相手。人との対局と同じ扱い(持ち点が動く、札は絞らない)
             bot={d && !tut ? bot : null}
@@ -1650,11 +1650,12 @@ function TotteryScreens() {
               boardSize={i}
               onBack={() => t("matching")}
               onRoomReady={v}
-              // 持ち点 1600 未満: Bot と組む。中身は CPU 戦の作りをそのまま使う
+              // 持ち点 1750 未満: Bot と組む。中身は CPU 戦の作りをそのまま使う
               onBotReady={(b) => {
                 clearBotNow();
                 setCpuSkins(createCpuLoadout());
-                setCpuArea(null);
+                // Bot のエリアは6種を均等に(人物が持つ)。エリアを知らない(フォイルを持たない)人には立てない
+                setCpuArea(b.area && b.king && foilRevealed(collection) ? { type: b.area, king: b.king } : null);
                 setBot(b);
                 (u(null), m(!0), setTut(null), setRound(0), r("game"), t("game"));
               }}

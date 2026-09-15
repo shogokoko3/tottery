@@ -44,7 +44,7 @@ import {
 } from "../game/constants.js";
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
-import { noteRandomResult } from "../game/bot-match.js";
+import { noteRandomResult, botAction } from "../game/bot-match.js";
 import {
   isNotableLog,
   autoArrange,
@@ -1411,6 +1411,8 @@ export function GameCore({
       cpuArea && cpuArea.king
         ? josekiCpuAction(a, T, cpuArea.type, cpuArea.king)
         : cpuAction(a, T);
+    // Bot の強さ(3段階)。弱い段階は移動の一部をでたらめな合法手に差し替える
+    if (bot) E = botAction(a, T, E, bot);
     if (!E) return;
     // Bot は人らしく、少し考える時間を足す(0.5〜2.5秒の揺れ)
     let U = foeWait(a, E, 1000) + (bot ? 500 + Math.floor(Math.random() * 2000) : 0),
