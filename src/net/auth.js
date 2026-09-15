@@ -327,7 +327,11 @@ function iosBundleId() {
   }
 }
 
-export async function linkAppleIdentity({ identityToken, rawNonce }) {
+export async function linkAppleIdentity({
+  identityToken,
+  rawNonce,
+  link = true,
+}) {
   if (!API_KEY) throw new Error("API キーが入っていません");
   if (!identityToken) throw new Error("Apple のトークンがありません");
   const cur = await ensureAuth();
@@ -354,22 +358,24 @@ export async function linkAppleIdentity({ identityToken, rawNonce }) {
       TIMEOUT_MS,
     );
   };
-  let res = await post(true);
-  let d = await res.json().catch(() => ({}));
+  const res = await post(link);
+  const d = await res.json().catch(() => ({}));
   if (!res.ok) {
     const why = (d.error || {}).message || `HTTP ${res.status}`;
-    // その Apple id が別の口座に既にある。添え物なしでその口座へ入り直す
+    // その Apple id が別の口座に既にある。Apple のトークンは一度しか使えない
+    // (同じものを送り直すと MISSING_OR_INVALID_NONCE「Duplicate credential」で断られる。
+    // 2026-09-15 に実機で踏んだ)ので、ここでは送り直さず、呼ぶ側に新しいトークンを
+    // 取り直してもらう(apple-signin.js が authorize をやり直して link=false で入り直す)
     if (
-      why.includes("FEDERATED_USER_ID_ALREADY_LINKED") ||
-      why.includes("EMAIL_EXISTS")
+      link &&
+      (why.includes("FEDERATED_USER_ID_ALREADY_LINKED") ||
+        why.includes("EMAIL_EXISTS"))
     ) {
-      res = await post(false);
-      d = await res.json().catch(() => ({}));
+      const e = new Error("この Apple アカウントは別の口座に紐づいています。");
+      e.code = "ALREADY_LINKED";
+      throw e;
     }
-    if (!res.ok) {
-      const w2 = (d.error || {}).message || `HTTP ${res.status}`;
-      throw new Error(`Apple の本人確認につなげませんでした(${w2})`);
-    }
+    throw new Error(`Apple の本人確認につなげませんでした(${why})`);
   }
   // 返ってきた refreshToken を控える。以後の取り直しはこれを使うので、
   // 取り直した合言葉も apple.com のままになる(匿名に戻らない)

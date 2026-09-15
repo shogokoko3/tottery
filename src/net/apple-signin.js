@@ -14,30 +14,54 @@ export const appleSignInAvailable = () =>
   Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 
 async function sha256hex(text) {
-  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const d = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(text),
+  );
+  return [...new Uint8Array(d)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /** 紐づける。取り消したら null、既に紐づいていれば { already: true } */
 export async function signInWithApple() {
   if (isVerified()) return { already: true };
-  if (!appleSignInAvailable()) throw new Error("Apple でのサインインは iOS アプリで行えます。");
-  const { SignInWithApple } = await import("@capacitor-community/apple-sign-in");
-  const rawNonce = crypto.randomUUID() + crypto.randomUUID();
-  let res;
+  if (!appleSignInAvailable())
+    throw new Error("Apple でのサインインは iOS アプリで行えます。");
+  const { SignInWithApple } =
+    await import("@capacitor-community/apple-sign-in");
+  // Apple に署名してもらう。トークンは一度しか使えないので、呼ぶたびに新しい nonce で取る
+  const authorize = async () => {
+    const rawNonce = crypto.randomUUID() + crypto.randomUUID();
+    let res;
+    try {
+      res = await SignInWithApple.authorize({
+        clientId: BUNDLE_ID,
+        redirectURI: "https://tottery-66e0f.firebaseapp.com/__/auth/handler",
+        scopes: "name email",
+        nonce: await sha256hex(rawNonce),
+      });
+    } catch (e) {
+      if (/cancel|1001/i.test(String(e && (e.message || e.code)))) return null;
+      throw new Error("Apple のサインインを完了できませんでした。");
+    }
+    const identityToken = res && res.response && res.response.identityToken;
+    if (!identityToken)
+      throw new Error("Apple からの返事を受け取れませんでした。");
+    return { identityToken, rawNonce };
+  };
+  const first = await authorize();
+  if (!first) return null;
   try {
-    res = await SignInWithApple.authorize({
-      clientId: BUNDLE_ID,
-      redirectURI: "https://tottery-66e0f.firebaseapp.com/__/auth/handler",
-      scopes: "name email",
-      nonce: await sha256hex(rawNonce),
-    });
+    await linkAppleIdentity({ ...first, link: true });
+    return { linked: true };
   } catch (e) {
-    if (/cancel|1001/i.test(String(e && (e.message || e.code)))) return null;
-    throw new Error("Apple のサインインを完了できませんでした。");
+    if (!e || e.code !== "ALREADY_LINKED") throw e;
   }
-  const identityToken = res && res.response && res.response.identityToken;
-  if (!identityToken) throw new Error("Apple からの返事を受け取れませんでした。");
-  await linkAppleIdentity({ identityToken, rawNonce });
-  return { linked: true };
+  // その Apple アカウントは別の口座に既に紐づいている(入れ直しなど)。
+  // 同じトークンは送り直せないので、Apple にもう一度署名してもらい、添え物なしでその口座へ入る
+  const again = await authorize();
+  if (!again) return null;
+  await linkAppleIdentity({ ...again, link: false });
+  return { linked: true, switched: true };
 }
