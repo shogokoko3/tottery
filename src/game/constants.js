@@ -104,6 +104,23 @@ export const MOVE_TEXT = {
   K: "縦横斜めに何マスでも。10と同じ跳び方もできる。王にする時のみ1枚採用できる。",
 };
 
+/**
+ * 動きの説明のうち、採用(布陣)のときだけ意味がある但し書き。
+ * 予備札から盤に出すときは「2枚まで採用可」「王にする時のみ採用」が、その札を置けないかの
+ * ように読めてしまう(本人の指摘 2026-09-15)。置く場面では moveOnlyText で外す
+ */
+export const ADOPTION_NOTES = [
+  "2枚まで採用可(王がKなら1枚)。",
+  "王にする時のみ1枚採用できる。",
+];
+
+/** 採用の但し書きを外した、動きだけの説明 */
+export function moveOnlyText(rank) {
+  let t = MOVE_TEXT[rank] || "";
+  for (const n of ADOPTION_NOTES) t = t.replace(n, "");
+  return t.trim();
+}
+
 /** そのランクを王にしたときの追加能力 */
 export const KING_TEXT = {
   A: "この駒だけ1ターンに2回入れ替えを使える(1回で終えてもよい)。移動はできない。",

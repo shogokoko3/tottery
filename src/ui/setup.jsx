@@ -974,7 +974,7 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
                 className={`reserve-pick ${chosen.id === c.id ? "reserve-pick-on" : ""} ${drag && drag.idx === idx ? "hand-card-lifted" : ""}`}
                 onPointerDown={(e) => startDrag(e, idx, false)}
               >
-                <CardGuide rank={c.rank} suit={c.suit} />
+                <CardGuide rank={c.rank} suit={c.suit} placing />
               </button>
             ))}
           </div>
@@ -983,7 +983,7 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
             className={`reserve-source ${drag ? "hand-card-lifted" : ""}`}
             onPointerDown={(e) => startDrag(e, 0, false)}
           >
-            <CardGuide rank={chosen.rank} suit={chosen.suit} />
+            <CardGuide rank={chosen.rank} suit={chosen.suit} placing />
           </div>
         )}
         <div

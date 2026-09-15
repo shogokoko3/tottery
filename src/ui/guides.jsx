@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { emptyBoard, getLegalMoves } from "../game/board.js";
-import { KING_TEXT, MOVE_TEXT, RANKS } from "../game/constants.js";
+import {
+  KING_TEXT,
+  MOVE_TEXT,
+  RANKS,
+  moveOnlyText,
+} from "../game/constants.js";
 import { Close } from "../icons.jsx";
 import { CardFace } from "./cards.jsx";
 import { AreaGuide } from "./area-guide.jsx";
@@ -72,7 +77,18 @@ export function MoveDiagram({ rank, isKing = !1, gridSize = 7 }) {
     </div>
   );
 }
-export function CardGuide({ rank, suit, isKing = !1, compact = !1 }) {
+/**
+ * 札の説明(絵・動きの図・文)。
+ * placing: 予備札から盤に出す場面。採用の但し書き(2枚まで採用可、王にする時のみ)は
+ * その札を置けないかのように読めるので外す(2026-09-15)
+ */
+export function CardGuide({
+  rank,
+  suit,
+  isKing = !1,
+  compact = !1,
+  placing = !1,
+}) {
   return (
     <div className={`card-guide ${compact ? "card-guide-compact" : ""}`}>
       <div className="cg-head">
@@ -83,7 +99,9 @@ export function CardGuide({ rank, suit, isKing = !1, compact = !1 }) {
         )}
         <MoveDiagram rank={rank} isKing={isKing} />
       </div>
-      <p className="cg-text">{MOVE_TEXT[rank]}</p>
+      <p className="cg-text">
+        {placing ? moveOnlyText(rank) : MOVE_TEXT[rank]}
+      </p>
       {isKing && <p className="cg-king">王の効果: {KING_TEXT[rank]}</p>}
     </div>
   );
