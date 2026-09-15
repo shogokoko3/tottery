@@ -5,7 +5,14 @@ import { GemIcon, GemAmount } from "./gem.jsx";
  * ガチャ画面とバトルパスの両方から使う。
  */
 import { useEffect, useState } from "react";
-import { buy, restore, loadProducts, storeDiagnostics } from "../net/iap.js";
+import {
+  buy,
+  restore,
+  loadProducts,
+  storeDiagnostics,
+  reportDiag,
+  APP_BUILD_LABEL,
+} from "../net/iap.js";
 import { syncWallet } from "../net/wallet.js";
 import { isVerified } from "../net/auth.js";
 import { signInWithApple } from "../net/apple-signin.js";
@@ -23,6 +30,8 @@ export function GemShop({
   const [loadError, setLoadError] = useState("");
   // 商品が並ばないときの切り分け(ビルド・ストアの国・秒数)。失敗のときだけ取る
   const [diag, setDiag] = useState(null);
+  // 読み込み中の経過秒(画面写真だけで「何秒待ったか」「どのビルドか」が分かるように)
+  const [waited, setWaited] = useState(0);
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -31,18 +40,39 @@ export function GemShop({
     setProducts(null);
     setLoadError("");
     setDiag(null);
+    setWaited(0);
+    const started = Date.now();
+    const tick = setInterval(
+      () => alive && setWaited(Math.floor((Date.now() - started) / 1000)),
+      1000,
+    );
     loadProducts()
-      .then((p) => alive && setProducts(p))
+      .then((p) => {
+        if (!alive) return;
+        setProducts(p);
+        reportDiag({ count: p.length, ms: Date.now() - started });
+      })
       .catch((e) => {
         if (!alive) return;
         setProducts([]);
         setLoadError((e && e.message) || "");
         storeDiagnostics(e && e.elapsedMs)
-          .then((d) => alive && setDiag(d))
+          .then((d) => {
+            if (!alive) return;
+            setDiag(d);
+            reportDiag({
+              build: d.build,
+              storefront: d.storefront,
+              ms: d.elapsedMs,
+              count: 0,
+              error: (e && e.message) || "",
+            });
+          })
           .catch(() => {});
       });
     return () => {
       alive = false;
+      clearInterval(tick);
     };
   }, [reload]);
   const say = (m) => onMessage && onMessage(m);
@@ -125,7 +155,12 @@ export function GemShop({
           </p>
           <div className="shop-list">
             {products === null && (
-              <p className="hint">商品を読み込んでいます…</p>
+              <p className="hint">
+                商品を読み込んでいます…
+                <span className="gem-shop-diag">
+                  {waited}秒 · ビルド {APP_BUILD_LABEL}
+                </span>
+              </p>
             )}
             {products &&
               products.map((p) => (

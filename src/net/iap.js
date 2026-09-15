@@ -11,6 +11,9 @@ import { Capacitor } from "@capacitor/core";
 import { ensureAuth } from "./auth.js";
 import { seasonApiBase } from "./season.js";
 import { APP_BUILD } from "./app-version.js";
+
+/** 画面に出すビルド番号(Web は "(Web)") */
+export const APP_BUILD_LABEL = APP_BUILD ? String(APP_BUILD) : "(Web)";
 import { updateCollection } from "../skins/store.js";
 import {
   PRODUCTS,
@@ -66,6 +69,29 @@ export async function storeDiagnostics(elapsedMs = null) {
     out.storefront = "(取れない)";
   }
   return out;
+}
+
+/**
+ * 店の診断をサーバーに控える(本人の端末の結果を、運営が /api/admin/diag で読むため)。
+ * 失敗しても何もしない。Web では送らない
+ */
+export async function reportDiag(d) {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    const auth = await ensureAuth();
+    if (!auth) return;
+    await fetch(`${seasonApiBase()}/api/iap/diag`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${auth.idToken}`,
+      },
+      body: JSON.stringify({ diag: d }),
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    /* 診断は送れなくてよい */
+  }
 }
 
 /** 商品の一覧(表示価格は StoreKit のもの)。時間切れ・失敗は投げる(呼ぶ側が知らせる) */

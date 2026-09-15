@@ -54,6 +54,8 @@ async function handleApi(request, env, url) {
     const adminGrant = url.pathname === "/api/admin/grant";
     const adminPurchases = url.pathname === "/api/admin/purchases";
     const adminGacha = url.pathname === "/api/admin/gacha";
+    // 店の診断の一覧。運営の Firebase トークンか、読み取り専用の秘密(DIAG_TOKEN。wrangler secret)で読める
+    const adminDiag = url.pathname === "/api/admin/diag";
     if (
       !adminSession &&
       !adminSeason &&
@@ -61,6 +63,7 @@ async function handleApi(request, env, url) {
       !adminGrant &&
       !adminPurchases &&
       !adminGacha &&
+      !adminDiag &&
       !/^\/api\/(season|wallet|iap)\//.test(url.pathname)
     )
       return json({ error: "見つかりません。" }, 404);
@@ -78,6 +81,11 @@ async function handleApi(request, env, url) {
         ?.match(/^Bearer (\S+)$/)?.[1];
       if (!token || token.length > 4096)
         return json({ error: "本人確認が必要です。" }, 401);
+      // 診断の一覧だけは、秘密のトークン(読み取り専用)でも通す。運営が手元の curl で読むため
+      if (adminDiag && env.DIAG_TOKEN && token.length >= 32 && token === env.DIAG_TOKEN) {
+        const ledger0 = env.SEASONS.get(env.SEASONS.idFromName("monthly-v1"));
+        return ledger0.fetch(new Request("https://ledger/", { method: "POST", body: JSON.stringify({ op: "admin-diag", uid: OPERATOR_UID }) }));
+      }
       const auth = await remote(
         `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${API_KEY}`,
         {
@@ -95,7 +103,7 @@ async function handleApi(request, env, url) {
           ? json({ uid })
           : json({ error: "運営権限がありません。" }, 403);
       if (
-        (adminSeason || adminWallet || adminGrant || adminPurchases || adminGacha) &&
+        (adminSeason || adminWallet || adminGrant || adminPurchases || adminGacha || adminDiag) &&
         uid !== OPERATOR_UID
       )
         return json({ error: "運営権限がありません。" }, 403);
@@ -117,6 +125,7 @@ async function handleApi(request, env, url) {
         return call("admin-grant", { targetUid: body.uid, tickets: body.tickets, gemsFree: body.gemsFree, id: body.id });
       if (adminPurchases) return call("admin-purchases", { targetUid: body.uid });
       if (adminGacha) return call("admin-gacha", { targetUid: body.uid });
+      if (adminDiag) return call("admin-diag");
       // ---- 財布(サーバー側のチケット残高)と課金 ----
       // 出来事の id は端末が作る(やり直しで二重にならない)。形だけここで見る
       const eventId = (x) => (typeof x === "string" && /^[\w:.-]{1,128}$/.test(x) ? x : null);
@@ -167,6 +176,9 @@ async function handleApi(request, env, url) {
           },
         });
       }
+      // 店の診断(端末の申告)。商品の問い合わせの結果を控える。値の切り詰めは財布側
+      if (url.pathname === "/api/iap/diag" && body.diag && typeof body.diag === "object")
+        return call("wallet-diag", { diag: body.diag });
       if (url.pathname.startsWith("/api/iap/"))
         return json({ error: "見つかりません。" }, 404);
       const op = url.pathname.slice("/api/season/".length);
@@ -262,6 +274,8 @@ export class SeasonLedger {
         if (op === "wallet-pass-reward") return w.passReward(uid, args.id, now);
         if (op === "wallet-ad-reward") return w.adReward(uid, args.id, now);
         if (op === "wallet-log-pull") return w.logGacha(uid, args.items, now);
+        if (op === "wallet-diag") return w.logDiag(uid, args.diag, now);
+        if (op === "admin-diag" && uid === OPERATOR_UID) return w.diagList();
         if (op === "admin-unused" && uid === OPERATOR_UID) return w.unused();
         if (op === "admin-grant" && uid === OPERATOR_UID)
           return w.adminGrant(args.targetUid, { tickets: args.tickets, gemsFree: args.gemsFree }, args.id, now);

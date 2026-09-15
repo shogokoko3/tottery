@@ -62,6 +62,9 @@ export class Wallet {
     // ガチャの履歴(運営が見る)。1回引くごとに1行。端末が結果を申告する
     sql("CREATE TABLE IF NOT EXISTS gacha_log (id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, skinId TEXT, isNew INTEGER NOT NULL DEFAULT 0, at INTEGER)");
     sql("CREATE INDEX IF NOT EXISTS gacha_log_uid ON gacha_log(uid, at)");
+    // 店の診断(端末が App Store に商品を問い合わせた結果の控え。uid ごとに最新の1件)。
+    // 本人の端末で「商品を読み込んでいます…」から進まない件の切り分け用(2026-09-15)。運営だけが読む
+    sql("CREATE TABLE IF NOT EXISTS iap_diag (uid TEXT PRIMARY KEY, at INTEGER, build INTEGER, storefront TEXT, count INTEGER, error TEXT, ms INTEGER)");
   }
   row(uid) {
     return (
@@ -308,8 +311,24 @@ export class Wallet {
     const used = -this.sql("SELECT COALESCE(SUM(gems),0) AS n FROM wallet_ledger WHERE gems<0")[0].n;
     return { holders: r.holders, unusedGems: r.paid, unusedFreeGems: r.free, issuedGems: issued, usedGems: used, yen: r.paid, threshold: 10000000, over: r.paid > 10000000 };
   }
+  /** 店の診断を控える(端末の申告)。値は形だけ見て切り詰める。uid ごとに最新の1件だけ残す */
+  logDiag(uid, d, now) {
+    const o = d && typeof d === "object" ? d : {};
+    const int = (v) => (Number.isSafeInteger(v) && v >= 0 ? v : null);
+    const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : "");
+    this.sql(
+      "INSERT OR REPLACE INTO iap_diag (uid, at, build, storefront, count, error, ms) VALUES (?,?,?,?,?,?,?)",
+      uid, now, int(o.build), str(o.storefront, 16), int(o.count), str(o.error, 200), int(o.ms),
+    );
+    return { ok: true };
+  }
+  /** 店の診断の一覧(運営用)。新しい順 */
+  diagList() {
+    return { diag: this.sql("SELECT uid, at, build, storefront, count, error, ms FROM iap_diag ORDER BY at DESC LIMIT 100") };
+  }
   /** 自分の記録を消す(5.1.1(v))。購入の記録は会計のため残す(uid は伏せる) */
   forget(uid) {
+    this.sql("DELETE FROM iap_diag WHERE uid=?", uid);
     this.sql("DELETE FROM wallets WHERE uid=?", uid);
     this.sql("DELETE FROM wallet_ledger WHERE uid=?", uid);
     this.sql("DELETE FROM wallet_events WHERE uid=?", uid);

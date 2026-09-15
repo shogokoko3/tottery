@@ -268,5 +268,23 @@ console.log("\n運営ツール(手動付与・購入履歴・ガチャ履歴)");
   is("uid無しの全体ガチャ履歴も読める", w2.gachaHistory().gacha.length >= 2, true);
 }
 
+// 店の診断: uid ごとに最新の1件。長い値は切り詰め、消去で消える
+{
+  const D = new DatabaseSync(":memory:");
+  const dw = new Wallet((q, ...a) => D.prepare(q).all(...a));
+  dw.logDiag("u1", { build: 202609151314, storefront: "JPN", count: 0, error: "x".repeat(500), ms: 1200 }, 1000);
+  dw.logDiag("u1", { build: 202609151314, storefront: "JPN", count: 6, ms: 900 }, 2000);
+  dw.logDiag("u2", { build: "bad", storefront: 5, count: -1, error: null, ms: 1.5 }, 3000);
+  const rows = dw.diagList().diag;
+  assert.equal(rows.length, 2, "uid ごとに1件");
+  assert.equal(rows[0].uid, "u2", "新しい順");
+  assert.deepEqual([rows[0].build, rows[0].storefront, rows[0].count, rows[0].error, rows[0].ms], [null, "", null, "", null], "形が違う値は空");
+  assert.equal(rows[1].count, 6, "最新で上書き");
+  assert.equal(rows[1].error, "", "成功のときは error が空");
+  dw.forget("u1");
+  assert.equal(dw.diagList().diag.length, 1, "消去で消える");
+  console.log("店の診断: uid ごとに最新1件・切り詰め・消去 OK");
+}
+
 console.log(`\n${ok} 件 ok / ${fails.length} 件 NG`);
 process.exit(fails.length ? 1 : 0);

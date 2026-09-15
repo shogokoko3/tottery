@@ -5721,3 +5721,6 @@ body:has(.skin-overlay) {
   opacity: 0.7;
   margin-top: 6px;
 }
+p.hint > span.gem-shop-diag {
+  display: block;
+}
