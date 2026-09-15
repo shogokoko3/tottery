@@ -8,10 +8,11 @@
 import assert from "node:assert/strict";
 import { reducer, autoPickKing, setupWaiting } from "../src/game/reducer.js";
 import { buildDeck, territoryRows, totalSlots, getLegalMoves, kingRankOf } from "../src/game/board.js";
-import { GAME_RULE_VERSION, hasBonusAckRules } from "../src/game/rule-version.js";
+import { GAME_RULE_VERSION, BONUS_ACK_RULE_VERSION, hasBonusAckRules } from "../src/game/rule-version.js";
 import { acceptAct, NET_ACTIONS } from "../src/net/sync.js";
 
-assert.equal(GAME_RULE_VERSION, 13);
+assert.equal(GAME_RULE_VERSION, 14);
+assert.equal(BONUS_ACK_RULE_VERSION, 13);
 assert.equal(hasBonusAckRules(13), true);
 assert.equal(hasBonusAckRules(12), false);
 assert.ok(NET_ACTIONS.has("ACK_SETUP_EFFECTS"), "確認の合図は通信で送る");

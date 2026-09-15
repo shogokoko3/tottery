@@ -30,6 +30,7 @@
  * (`loadouts: [{rank: skinId}, {rank: skinId}]`)を渡した対局で働く。
  * ルール変更時は GAME_RULE_VERSION を上げ、開始済み対局の処理を保つ。
  */
+import { SEA_SLIDE_RULE_VERSION } from "./rule-version.js";
 import { RANKS, PLAYER_META } from "./constants.js";
 import { getLegalMoves, kingRankOf, squareName } from "./board.js";
 
@@ -57,7 +58,7 @@ export const AREA_INFO = Object.freeze({
   },
   sea: {
     name: "海のエリア",
-    text: "毎手番の初めに任意発動。相手の全駒を中央へ最大1マス引き寄せる。自分の駒は動かず、行き先が埋まった駒はそのまま。発動後も移動できる。",
+    text: "毎手番の初めに任意発動。相手の全駒を中央へ最大1マス引き寄せる(斜めの先が埋まっていれば縦か横で寄る)。自分の駒は動かず、寄れる空きマスが無い駒はそのまま。発動後も移動できる。",
     usesTurn: false,
     needsPiece: false,
   },
@@ -258,8 +259,7 @@ export function iceCandidates(state, player) {
   return alivePieces(state, 1 - player)
     .filter(
       (p) =>
-        (kingOk || !p.isKing) &&
-        (recurringIce(state) || !isFrozen(state, p)),
+        (kingOk || !p.isKing) && (recurringIce(state) || !isFrozen(state, p)),
     )
     .map((p) => p.id)
     .sort();
@@ -642,8 +642,28 @@ export function useArea(state, action) {
  * 中央に近い駒から順に(同じ距離なら手番側の駒、次に行・列の順)、
  * 中央方向へ縦・横・斜めに最大1マス進める。進み先が埋まっていれば動かさない。
  * 取りは起きない。版11からは相手の駒だけを流す(自分の駒は動かない)。
+ * 版14から: 斜めの先が埋まっていても、縦か横に1マス寄れば中央に近づく(端からの距離が縮む)なら
+ * そちらへ寄る(本人の指摘 2026-09-16「空きマスがあれば詰めて寄るところ寄り切っていない」)。
+ * 中央の行・列にいる駒は横へは逸れない(近づく先が真っすぐの1マスしか無い)。
  * 版8〜10の対局は全駒を流し、版7以前の対局には旧処理を適用する。
  */
+export function seaSlidesAround(state) {
+  return state.ruleVersion >= SEA_SLIDE_RULE_VERSION;
+}
+/** 版14: その駒が海で寄れる先。近い順(斜め→縦→横)。中央への距離が縮む空きマスだけ */
+export function seaStepsFor(p, c, board, slides) {
+  const dist = (r, col) => Math.max(Math.abs(r - c), Math.abs(col - c));
+  const sr = Math.sign(c - p.row),
+    sc = Math.sign(c - p.col);
+  const cands = [[p.row + sr, p.col + sc]];
+  if (slides && sr !== 0 && sc !== 0)
+    cands.push([p.row + sr, p.col], [p.row, p.col + sc]);
+  const d0 = dist(p.row, p.col);
+  return cands.filter(
+    ([r, col]) =>
+      (r !== p.row || col !== p.col) && dist(r, col) < d0 && !board[r][col],
+  );
+}
 export function seaPullsOwn(state) {
   return AREA_TUNING.seaPullsOwn || !(state.ruleVersion >= 11);
 }
@@ -665,10 +685,11 @@ export function seaPull(state) {
   const board = state.board.map((row) => [...row]),
     pieces = { ...state.pieces },
     moves = [];
+  const slides = seaSlidesAround(state);
   for (const p of order) {
-    const row = p.row + Math.sign(c - p.row),
-      col = p.col + Math.sign(c - p.col);
-    if ((row === p.row && col === p.col) || board[row][col]) continue;
+    const step = seaStepsFor(p, c, board, slides)[0];
+    if (!step) continue;
+    const [row, col] = step;
     const q = {
       ...p,
       row,

@@ -14,7 +14,7 @@ import {
   initialState,
 } from "../src/game/reducer.js";
 import { enrichAction } from "../src/game/actions.js";
-import { AREA_TUNING } from "../src/game/areas.js";
+import { AREA_TUNING, seaPull } from "../src/game/areas.js";
 import { cpuAction } from "../src/game/cpu.js";
 import {
   getLegalMoves,
@@ -338,6 +338,41 @@ console.log("海: 中央へ引き寄せる");
   is("中央 5×5 に 18体全部が入る", near, 18);
   is("手番は消費しない", t.currentTurn, 0);
   is("直前の手は消える(演出の誤発火を防ぐ)", t.lastMove, null);
+}
+
+console.log("海(版14): 斜めの先が埋まっていれば縦か横で寄る");
+{
+  // 9×9 の中央は (4,4)。相手(青=1)の駒 a を (0,1) に、行き先の斜め (1,2) を自分(赤=0)の駒で塞ぐ。
+  // 縦に1マス寄った (1,1) は距離 3 で近づく(空き)。横の (0,2) は距離 4 のままなので候補にならない
+  const mk = (id, owner, row, col) => ({ id, owner, row, col, rank: "2", suit: "spade", alive: true, isKing: false, history: [] });
+  const build = (ruleVersion, list) => {
+    const board = Array.from({ length: 9 }, () => Array(9).fill(null));
+    const pieces = {};
+    for (const p of list) { pieces[p.id] = p; board[p.row][p.col] = p; }
+    return { boardSize: 9, ruleVersion, currentTurn: 0, board, pieces, log: [] };
+  };
+  const a = mk("a", 1, 0, 1), blocker = mk("b", 0, 1, 2);
+  const t14 = seaPull(build(14, [a, blocker]));
+  is("版14: 斜めが塞がれていても縦に寄る", [t14.pieces.a.row, t14.pieces.a.col], [1, 1]);
+  is("版14: 盤も一致", t14.board[1][1] && t14.board[1][1].id, "a");
+  const t13 = seaPull(build(13, [a, blocker]));
+  is("版13: 斜めが塞がれていればその場に残る(旧対局の再生は変わらない)", [t13.pieces.a.row, t13.pieces.a.col], [0, 1]);
+  // 横に寄るべき形: (1,0) の駒。斜め (2,1) が塞がれ、縦 (2,0) は距離 4 のまま、横 (1,1) は距離 3
+  const h = mk("h", 1, 1, 0), hb = mk("hb", 0, 2, 1);
+  const th = seaPull(build(14, [h, hb]));
+  is("版14: 縦では近づかない形なら横に寄る", [th.pieces.h.row, th.pieces.h.col], [1, 1]);
+  // 中央の列にいる駒 (0,4): 真っすぐ (1,4) が塞がれていれば横へは逸れない
+  const m = mk("m", 1, 0, 4), mb = mk("mb", 0, 1, 4);
+  const tm = seaPull(build(14, [m, mb]));
+  is("版14: 中央の列の駒は横へ逸れない", [tm.pieces.m.row, tm.pieces.m.col], [0, 4]);
+  // 斜めが空いていれば従来どおり斜め
+  const d = mk("d", 1, 0, 1);
+  const td = seaPull(build(14, [d]));
+  is("版14: 斜めが空いていれば斜め", [td.pieces.d.row, td.pieces.d.col], [1, 2]);
+  // 手番側(自分)の駒は版11以降は流されない
+  const own = mk("own", 0, 0, 0);
+  const to = seaPull(build(14, [own]));
+  is("版14: 自分の駒は動かない", [to.pieces.own.row, to.pieces.own.col], [0, 0]);
 }
 
 console.log("海(版11): 相手の駒だけ流される");
