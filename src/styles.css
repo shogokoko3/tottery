@@ -193,6 +193,26 @@ h3 {
   flex-direction: column;
   align-items: stretch;
 }
+/* 対局後のボタンは 2×2 固定: 左上 振り返り / 右上 マッチングへ / 左下 ホームへ / 右下 もう一度 */
+.gameover-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+.gameover-grid .btn {
+  min-width: 0;
+  padding-inline: 8px;
+  white-space: nowrap;
+}
+.gameover-grid .go-review { grid-area: 1 / 1; }
+.gameover-grid .go-match { grid-area: 1 / 2; }
+.gameover-grid .go-home { grid-area: 2 / 1; }
+.gameover-grid .go-again { grid-area: 2 / 2; }
+.gameover-grid .hint {
+  grid-column: 1 / -1;
+  margin: 0;
+}
 .intro h1 {
   font-size: 42px;
   margin: 0 0 10px;

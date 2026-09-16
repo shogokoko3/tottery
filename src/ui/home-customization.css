@@ -565,7 +565,7 @@
 }
 .home-character-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--home-character-count, 3), minmax(0, 1fr));
   gap: 8px;
 }
 .home-character-option {

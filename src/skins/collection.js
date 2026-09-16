@@ -23,7 +23,7 @@ const count = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : 0);
 const addCount = (a, b) => Math.min(Number.MAX_SAFE_INTEGER, a + b);
 export const FOIL_MILESTONE = 100;
 
-// 初めて得た天使・悪魔の表示も獲得と一緒に確定する。既存の選択は維持する。
+// 初めて得たキャラのホーム表示も獲得と一緒に確定する。既存の選択は維持する。
 function withHomePortraits(state) {
   return { ...state, homePortraits: homePortraitsOf(state) };
 }

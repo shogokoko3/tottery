@@ -231,17 +231,96 @@ for (const [theme, family] of [
     "明示的に選んだQも追加獲得で変えない",
   );
 }
-assert.deepEqual(homePortraitsOf(all), { heaven: "angel-k", hell: "demon-k" });
-for (const theme of [
-  "default",
-  "earth",
-  "sea",
-  "forest",
-  "ice",
-  "sky",
-  "__proto__",
-  null,
-]) {
+// 2〜9も所持フォイルの本人を表示。ペアの片方しか持たないときも正しく選ぶ。
+const areaCharacters = [
+  ["earth", ["zombie-male", "zombie-female"], "zombie-male"],
+  ["sea", ["pirate-male", "pirate-female"], "pirate-male"],
+  ["forest", ["elf-male", "elf-female"], "elf-female"],
+  ["ice", ["viking-male", "viking-female"], "viking-female"],
+];
+for (const [theme, characters, canonical] of areaCharacters) {
+  for (const baseId of characters) {
+    const other = characters.find((id) => id !== baseId);
+    const single = grantSkin(normalize(null), foilId(baseId));
+    assert.deepEqual(unlockedHomePortraits(single, theme), [baseId]);
+    assert.equal(homePortraitOf(single, theme), baseId);
+    assert.deepEqual(single.homePortraits, { [theme]: baseId });
+    assert.equal(
+      single.homeTheme,
+      "default",
+      "獲得だけではホーム領域を変えない",
+    );
+    assert.deepEqual(
+      normalize(single),
+      single,
+      "獲得時に表示キャラも同時に保存できる",
+    );
+    assert.throws(() => setHomePortrait(single, theme, other), /フォイル/);
+    const normal = normalize({ owned: { [baseId]: 100 } });
+    assert.deepEqual(unlockedHomePortraits(normal, theme), []);
+    assert.equal(homePortraitOf(normal, theme), null);
+    assert.throws(() => setHomePortrait(normal, theme, baseId), /フォイル/);
+    const later = grantSkin(single, foilId(other));
+    assert.equal(
+      homePortraitOf(later, theme),
+      baseId,
+      "もう一人を獲得しても表示は維持",
+    );
+    const switched = setHomePortrait(later, theme, other);
+    const saved = normalize(JSON.parse(JSON.stringify(switched)));
+    assert.equal(
+      homePortraitOf(saved, theme),
+      other,
+      "ペアのもう一人への選択が保存される",
+    );
+    assert.equal(
+      homePortraitOf(grantSkin(saved, foilId(baseId)), theme),
+      other,
+    );
+    for (const wrongTheme of ids.filter((id) => id !== theme))
+      assert.throws(() => setHomePortrait(all, wrongTheme, baseId), /領域/);
+    assert.deepEqual(
+      normalize({
+        owned: { [foilId(baseId)]: 1 },
+        homePortraits: { [theme]: other },
+      }).homePortraits,
+      { [theme]: baseId },
+      "未所持の選択を保存から読んだ場合は所持キャラへ戻す",
+    );
+    for (const count of [0, -1, 0.5, "1", true, NaN, Infinity, 2 ** 53])
+      assert.equal(
+        homePortraitOf({ owned: { [foilId(baseId)]: count } }, theme),
+        null,
+      );
+  }
+  const oldSave = normalize({
+    owned: Object.fromEntries(
+      [...characters].reverse().map((id) => [foilId(id), 1]),
+    ),
+    homePortraits: { heaven: "angel-k" },
+  });
+  assert.deepEqual(
+    unlockedHomePortraits(oldSave, theme),
+    characters,
+    "カードの数字順で並ぶ",
+  );
+  assert.equal(
+    homePortraitOf(oldSave, theme),
+    canonical,
+    "旧保存は承認済みの既定キャラを優先",
+  );
+  assert.deepEqual(normalize(JSON.parse(JSON.stringify(oldSave))), oldSave);
+}
+const allDefaultPortraits = {
+  earth: "zombie-male",
+  sea: "pirate-male",
+  forest: "elf-female",
+  ice: "viking-female",
+  heaven: "angel-k",
+  hell: "demon-k",
+};
+assert.deepEqual(homePortraitsOf(all), allDefaultPortraits);
+for (const theme of ["default", "sky", "__proto__", null]) {
   assert.deepEqual(unlockedHomePortraits(all, theme), []);
   assert.equal(homePortraitOf(all, theme), null);
   assert.throws(() => setHomePortrait(all, theme, "angel-j"), /領域/);
@@ -268,7 +347,7 @@ for (const invalid of [
 ])
   assert.deepEqual(
     normalize({ ...all, homePortraits: invalid }).homePortraits,
-    { heaven: "angel-k", hell: "demon-k" },
+    allDefaultPortraits,
   );
 assert.deepEqual(
   normalize({
@@ -303,7 +382,7 @@ assert.deepEqual(
   portraitChanged,
   {
     ...portraitState,
-    homePortraits: { heaven: "angel-j", hell: "demon-q" },
+    homePortraits: { ...portraitState.homePortraits, heaven: "angel-j" },
   },
   "片方のキャラだけを変更し、通貨・所持・装備・獲得結果・他領域を保持",
 );

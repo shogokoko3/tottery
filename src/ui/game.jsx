@@ -66,6 +66,7 @@ import {
   Dice,
   Flag,
   Globe,
+  Home,
   Info,
   RotateCcw,
   Shuffle,
@@ -432,6 +433,8 @@ export function GameView({
   dispatch,
   onExit,
   exitLabel = "タイトルに戻る",
+  // ホームへ(対局後の左下)。チュートリアルは onExit がタイトルへ戻すので渡さない
+  onHome = null,
   onNextMatch,
   tutorial,
   nextTutorial,
@@ -961,36 +964,49 @@ export function GameView({
             )}
           </div>
         )}
-        <div
-          className="setup-actions"
-          style={{
-            marginTop: 16,
-          }}
-        >
+        {/*
+          対局後のボタンは 2×2 に固定(本人の指示 2026-09-17):
+          左上 振り返り / 右上 マッチングへ / 左下 ホームへ / 右下 もう一度遊ぶ。
+          再戦の案内文は全幅で下に出す。チュートリアルは 右上=一覧、左下=タイトル、右下なし
+        */}
+        <div className="gameover-grid" role="group" aria-label="対局後の操作">
           <button
-            className={`btn ${tutorial && won ? "btn-ghost" : "btn-primary"}`}
+            className={`btn ${tutorial && won ? "btn-ghost" : "btn-primary"} go-review`}
             onClick={() => o(!0)}
           >
-            <Info size={16} /> 対局を振り返る
+            <Info size={16} /> 対戦の振り返り
           </button>
-        </div>
-        <div
-          className="setup-actions"
-          style={{
-            marginTop: 10,
-          }}
-        >
-          {/* チュートリアルは同じ台本をなぞるだけなので、もう一度は出さない */}
-          {tutorial && onTutorialList && (!won || nextTutorial) && (
-            <button className="btn btn-ghost" onClick={onTutorialList}>
-              チュートリアル一覧へ
+          {tutorial ? (
+            // チュートリアルは同じ台本をなぞるだけなので、もう一度は出さない
+            onTutorialList &&
+            (!won || nextTutorial) && (
+              <button className="btn btn-ghost go-match" onClick={onTutorialList}>
+                チュートリアル一覧へ
+              </button>
+            )
+          ) : onNextMatch ? (
+            // ランダムマッチ・Bot は、同じ相手との再戦を待たずに次の相手を探せる(連戦)
+            <button className="btn btn-primary go-match" onClick={onNextMatch}>
+              <Globe size={16} /> マッチングへ
             </button>
+          ) : (
+            onExit && (
+              // 手元の対局は、対戦相手を選ぶ画面へ
+              <button className="btn btn-ghost go-match" onClick={onExit}>
+                <Globe size={16} /> マッチングへ
+              </button>
+            )
           )}
-          {/* ランダムマッチは、同じ相手との再戦を待たずに次の相手を探せる(連戦) */}
-          {onNextMatch && (
-            <button className="btn btn-primary" onClick={onNextMatch}>
-              <Globe size={16} /> 次の相手と対戦する
+          {onHome ? (
+            <button className="btn btn-ghost go-home" onClick={onHome}>
+              <Home size={16} /> ホームへ
             </button>
+          ) : (
+            onExit && (
+              <button className="btn btn-ghost go-home" onClick={onExit}>
+                <Home size={16} /> {exitLabel}
+              </button>
+            )
           )}
           {tutorial ? null : rematch ? (
             // オンラインは両者の合意で始める。片方だけで盤を作り直すと、
@@ -1006,29 +1022,24 @@ export function GameView({
               </p>
             ) : (
               <>
-                {rematch.foeAsked && (
-                  <p className="hint">相手はもう一度遊びたいようです</p>
-                )}
                 <button
-                  className="btn btn-ghost"
+                  className="btn btn-ghost go-again"
                   onClick={rematch.ask}
                   disabled={seasonResult?.status === "saving"}
                 >
                   <RotateCcw size={16} /> もう一度遊ぶ
                 </button>
+                {rematch.foeAsked && (
+                  <p className="hint">相手はもう一度遊びたいようです</p>
+                )}
               </>
             )
           ) : (
             <button
-              className="btn btn-ghost"
+              className="btn btn-ghost go-again"
               onClick={() => dispatch({ type: "NEW_GAME" })}
             >
               <RotateCcw size={16} /> もう一度遊ぶ
-            </button>
-          )}
-          {onExit && (
-            <button className="btn btn-ghost" onClick={onExit}>
-              {exitLabel}
             </button>
           )}
         </div>
@@ -1056,6 +1067,8 @@ export function GameCore({
   onExit,
   // 対局後の「戻る」の行き先の名前。対戦相手を選ぶ画面へ戻すときはその旨を書く
   exitLabel,
+  // 対局後の「ホームへ」。部屋を片付けてから戻る。無ければ左下は onExit
+  onHome = null,
   // ランダムマッチで、同じ相手を待たずに次の相手を探す(連戦)。無ければ出さない
   onNextMatch,
   network,
@@ -1718,6 +1731,10 @@ export function GameCore({
   function nextMatch() {
     tidyRoom();
     onNextMatch();
+  }
+  function goHome() {
+    tidyRoom();
+    onHome();
   }
 
   // 取る手は必ず一度確認する
@@ -3279,7 +3296,9 @@ export function GameCore({
             dispatch={y}
             onExit={leaveGame}
             exitLabel={exitLabel}
-            onNextMatch={network && onNextMatch ? nextMatch : null}
+            onHome={onHome ? goHome : null}
+            // Bot(ランダムマッチの練習相手)は network を持たないが、連戦はできる
+            onNextMatch={(network || bot) && onNextMatch ? nextMatch : null}
             tutorial={tutorial}
             nextTutorial={nextTutorial}
             onNextTutorial={onNextTutorial}

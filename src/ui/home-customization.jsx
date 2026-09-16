@@ -16,13 +16,17 @@ import {
 } from "../skins/home-themes.js";
 
 const asset = (file) => `skins/home-v1/${file}`;
-const PALACE_PORTRAITS = {
+const HOME_PORTRAITS = {
+  earth: ["zombie-male", "zombie-female"],
+  sea: ["pirate-male", "pirate-female"],
+  forest: ["elf-male", "elf-female"],
+  ice: ["viking-male", "viking-female"],
   heaven: ["angel-j", "angel-q", "angel-k"],
   hell: ["demon-j", "demon-q", "demon-k"],
 };
 function portraitView(theme, id) {
   const skin = byId(id);
-  const character = PALACE_PORTRAITS[theme.id]?.includes(id) ? skin : null;
+  const character = HOME_PORTRAITS[theme.id]?.includes(id) ? skin : null;
   return {
     name: character?.name || theme.name,
     image:
@@ -31,9 +35,14 @@ function portraitView(theme, id) {
         : asset(`${theme.id}-king.webp`),
     position:
       character && character.rank !== "K"
-        ? theme.id === "hell"
-          ? "50% 10%"
-          : "50% 20%"
+        ? {
+            earth: "50% 5%",
+            sea: "50% 0%",
+            forest: "50% 12%",
+            ice: "50% 8%",
+            heaven: "50% 20%",
+            hell: "50% 10%",
+          }[theme.id]
         : "50% 50%",
   };
 }
@@ -148,11 +157,11 @@ export function HomeCustomizationModal({ onClose }) {
   const unlocked = unlockedHomeThemes(collection);
   const choice = choices.find((item) => item.id === selected) || ORIGINAL;
   const theme = findHomeTheme(choice.id);
-  const characters = PALACE_PORTRAITS[choice.id];
+  const characters = HOME_PORTRAITS[choice.id];
   const portraitId =
     portraits[choice.id] ||
     homePortraitOf(collection, choice.id) ||
-    characters?.[2];
+    characters?.[0];
   const portrait = theme && portraitView(theme, portraitId);
   const ownedPortraits = unlockedHomePortraits(collection, choice.id);
   const available =
@@ -242,7 +251,10 @@ export function HomeCustomizationModal({ onClose }) {
           >
             <h3>ホームに迎えるキャラ</h3>
             <p>対応するキャラのフォイルで解放</p>
-            <div className="home-character-grid">
+            <div
+              className="home-character-grid"
+              style={{ "--home-character-count": characters.length }}
+            >
               {characters.map((id) => {
                 const skin = byId(id);
                 const open = ownedPortraits.includes(id);

@@ -153,6 +153,14 @@ export const Play = (props) => (
   </IconBase>
 );
 
+export const Home = (props) => (
+  <IconBase {...props}>
+    <path d="M3 11l9-7 9 7" />
+    <path d="M5 10v10h14V10" />
+    <path d="M10 20v-6h4v6" />
+  </IconBase>
+);
+
 export const Flag = (props) => (
   <IconBase {...props}>
     <path d="M5 21V4" />

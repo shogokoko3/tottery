@@ -112,10 +112,18 @@ export function setHomeTheme(collection, id) {
   return { ...collection, homeTheme: id };
 }
 
-const PORTRAIT_THEMES = ["heaven", "hell"];
-const PORTRAIT_RANKS = ["J", "Q", "K"];
+const DEFAULT_PORTRAITS = Object.freeze({
+  earth: "zombie-male",
+  sea: "pirate-male",
+  forest: "elf-female",
+  ice: "viking-female",
+  heaven: "angel-k",
+  hell: "demon-k",
+});
+const PORTRAIT_THEMES = Object.keys(DEFAULT_PORTRAITS);
+const PORTRAIT_RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "J", "Q", "K"];
 
-/** 天界・魔界の表示に選べる通常版ID。対応するフォイルの所持が必要。 */
+/** 各領域の表示に選べる通常版ID。対応するフォイルの所持が必要。 */
 export function unlockedHomePortraits(collection, theme) {
   if (!PORTRAIT_THEMES.includes(theme)) return [];
   const reward = ownedHomeRewards(collection).find(
@@ -129,7 +137,7 @@ export function unlockedHomePortraits(collection, theme) {
     .map((skin) => skin.baseId);
 }
 
-/** 旧保存は所持中のK・Q・Jの順で選ぶ。選択済みなら新たな獲得で変えない。 */
+/** 旧保存は所持中の既定キャラを優先。選択済みなら新たな獲得で変えない。 */
 export function homePortraitOf(collection, theme) {
   const available = unlockedHomePortraits(collection, theme);
   const saved = collection?.homePortraits;
@@ -139,7 +147,9 @@ export function homePortraitOf(collection, theme) {
       : null;
   return available.includes(selected)
     ? selected
-    : available[available.length - 1] || null;
+    : available.includes(DEFAULT_PORTRAITS[theme])
+      ? DEFAULT_PORTRAITS[theme]
+      : available[available.length - 1] || null;
 }
 
 /** 有効な選択だけ保存する。初めての表示で選んだキャラも次回から維持する。 */
