@@ -6,7 +6,7 @@
  *  - 買えるのは持っていないフォイルだけ。セットの一部を持っていれば、残りを按分の値段で
  *  - **有償ジェムだけで払う**(無償ジェムは使えない。src/server/wallet.js の paidOnly)
  *  - 商品10(A のフォイル)は「A のフォイル以外の全カードをそろえた人」にだけ見せる(secret)。
- *    そろうまでは存在すら出さない。絵(assets/skins/foils/genie-magician.webp)ができるまで pending
+ *    そろうまでは存在すら出さない。購入時にもサーバーへ同期した所持一覧を全件照合する。
  *  - サーバーとアプリの両方がこのファイルを読む(値段はサーバーがここから決める。端末の言い値は使わない)
  */
 import { ALL_SKINS, POOL, baseSkinId, byId, foilId } from "./catalog.js";
@@ -67,14 +67,13 @@ export const FOIL_PRODUCTS = Object.freeze(
       skins: ["demon-k"],
       price: 5000,
     },
-    // 全カードをそろえた人だけ。絵ができるまで pending(見せない・売らない)
+    // 全カードをそろえた人だけ。有償購入済みの札はサーバーに保存して復元する。
     {
       id: "foil-a",
       name: "A のフォイル",
       skins: ["genie-magician"],
       price: 2000,
       secret: true,
-      pending: true,
     },
   ].map(Object.freeze),
 );
@@ -104,6 +103,18 @@ export function ownsAllButSecret(collection) {
   );
   return ALL_SKINS.every(
     (s) => secretFoils.has(s.id) || (owned[s.id] || 0) > 0,
+  );
+}
+
+/** 図鑑・種類数・通常/フォイル切替で使う、シークレット版の公開条件。 */
+export function skinVisibleInCollection(collection, skin) {
+  if (!skin) return false;
+  if (!skin.secret) return true;
+  const product = FOIL_PRODUCTS.find(
+    (p) => p.secret && p.skins.some((id) => foilId(id) === skin.id),
+  );
+  return !!product && !product.pending && (
+    (collection?.owned?.[skin.id] || 0) > 0 || ownsAllButSecret(collection)
   );
 }
 

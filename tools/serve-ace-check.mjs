@@ -59,7 +59,7 @@ function CardChecks(){
  </section>;
 }
 function App(){
- const [mode,setMode]=useState(null),[key,setKey]=useState(0);
+ const [mode,setMode]=useState({label:'Aフォイル魔法',foil:true}),[key,setKey]=useState(0);
  const [message,setMessage]=useState('');
  const collection=useCollection();
  const go=async(label,fixture)=>{await updateCollection(s=>({...s,motion:fixture.motion||'full'}));setMode({label,...fixture});setKey(k=>k+1);};
@@ -73,10 +73,13 @@ function App(){
  ['王A 2回',{size:9,count:0,king:true}],['包囲から王位継承',{size:9,count:6,succession:true}],
  ['短縮10体',{size:9,count:10,motion:'short'}],['演出なし',{size:9,count:10,motion:'off'}],
  ['相手視点',{size:9,count:10,viewer:1}],['味方敵混在',{size:5,count:0,mixed:true}],
+ ['Aフォイル魔法',{foil:true}],['Aフォイル 敵3体',{foil:true,enemyOnly:true}],
+ ['Aフォイル 凍結解除',{foil:true,enemyOnly:true,frozen:true}],
+ ['Aフォイル 短縮',{foil:true,motion:'short'}],['Aフォイル 演出なし',{foil:true,motion:'off'}],
  ].map(([label,fixture])=><button key={label} onClick={()=>go(label,fixture)}>{label}</button>)}
  </nav><p style={{textAlign:'center',color:'#f2ead9'}}>ローカル実機確認 · {mode?.label || 'Aの盤面カード・装備'}</p>
  <p role="status" style={{textAlign:'center',color:'#f2ead9'}}>A所持枚数: {collection.owned[magician]||0} / equipped.A: {collection.equipped.A||'未装備'} {message}</p>
- {mode?<SeatsProvider value={{skins:[collection.equipped,mode.succession?{'2':'zombie-male'}:{}]}}><GameCore key={key} fixture={mode} onExit={()=>setMode(null)} /></SeatsProvider>:<main style={{maxWidth:740,margin:'auto',padding:'0 10px',boxSizing:'border-box'}}><CardChecks/><SkinsScreen /></main>}</>;
+ {mode?<SeatsProvider value={{skins:[mode.foil?{...collection.equipped,A:magician+':foil'}:collection.equipped,mode.succession?{'2':'zombie-male'}:{}]}}><GameCore key={key} fixture={mode} onExit={()=>setMode(null)} /></SeatsProvider>:<main style={{maxWidth:740,margin:'auto',padding:'0 10px',boxSizing:'border-box'}}><CardChecks/><SkinsScreen /></main>}</>;
 }
 createRoot(document.getElementById('root')).render(<StrictMode><App /></StrictMode>);
 `,
@@ -97,8 +100,9 @@ createRoot(document.getElementById('root')).render(<StrictMode><App /></StrictMo
               )
               .replace(
                 "(0, useState)(initialState)",
-                "(0, useState)(() => acePosition(fixture))",
+                "(0, useState)(() => fixture.foil ? aceFoilPosition(fixture) : acePosition(fixture))",
               )
+              .replace("(0, useRef)(isTestPlay()).current", "(0, useRef)(true).current")
               .replaceAll(
                 "network ? p : cpu ? 0 : null",
                 "fixture.viewer ?? null",
@@ -107,7 +111,7 @@ createRoot(document.getElementById('root')).render(<StrictMode><App /></StrictMo
                 "P = network ? p : cpu ? 0 : (aceMagic.viewer ?? a.currentTurn)",
                 "P = fixture.viewer ?? (aceMagic.viewer ?? a.currentTurn)",
               ) +
-            '\nimport {acePosition} from "../../tools/fixtures/ace-position.mjs";',
+            '\nimport {acePosition} from "../../tools/fixtures/ace-position.mjs";\nimport {aceFoilPosition} from "../../tools/fixtures/ace-foil-position.mjs";',
         }));
       },
     },
@@ -135,6 +139,9 @@ const mime = {
 };
 http
   .createServer((req, res) => {
+    // This preview embeds production components, but cannot send any request
+    // to authentication, Firebase, purchases, or another external service.
+    res.setHeader("Content-Security-Policy", "connect-src 'self'");
     const name = decodeURIComponent(
       new URL(req.url, "http://localhost").pathname,
     );

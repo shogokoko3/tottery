@@ -103,7 +103,11 @@ function BoardMagic({ entry, boardRef, control, onFinish, onPhase }) {
         drawCard: cardPainter(entry.event, entry.loadouts, board),
         playSound: (kind, { speed }) => {
           const stop = playSound(
-            kind === "capture" ? "aceCapture" : "aceSwap",
+            entry.event.kind === "ace-foil"
+              ? "aceFoil"
+              : kind === "capture"
+                ? "aceCapture"
+                : "aceSwap",
             { rate: speed },
           );
           const release = duckMusic(duration(entry.event) / speed);
@@ -158,7 +162,10 @@ export function useAceMagic(state, loadouts, { disabled, viewer, boardRef }) {
         viewer: viewingPlayer,
         loadouts,
         short: collection.motion === "short",
-        stage: collection.motion === "full" ? "film" : "board",
+        stage:
+          event.kind !== "ace-foil" && collection.motion === "full"
+            ? "film"
+            : "board",
         defeatSeq: event.defeated.length ? state.lastDefeat?.seq : null,
       }
     : null;
@@ -234,7 +241,9 @@ export function useAceMagic(state, loadouts, { disabled, viewer, boardRef }) {
       entry?.stage === "board" ? (
         <div className="ace-magic-status" role="status">
           <span>
-            マジカルシルクハット
+            {entry.event.kind === "ace-foil"
+              ? "Aフォイルの魔法"
+              : "マジカルシルクハット"}
             {entry.event.defeated.length
               ? ` · ${entry.event.defeated.length}体を包囲`
               : " · 入れ替え"}

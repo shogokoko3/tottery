@@ -4,6 +4,7 @@ import { cardBackImg } from "../assets.js";
 import {
   SKINS,
   ALL_SKINS,
+  ALL_FOIL_SKINS,
   FOIL_SKINS,
   POOL,
   ODDS,
@@ -81,11 +82,12 @@ import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { FoilOfferSheet } from "./foil-offer.jsx";
-import { foilOffers, bandOf } from "../skins/foil-shop.js";
-import { grantFoils, addEther } from "../skins/collection.js";
+import { foilOffers, bandOf, skinVisibleInCollection } from "../skins/foil-shop.js";
+import { addEther } from "../skins/collection.js";
 import { buyFoil, buyEther } from "../net/wallet.js";
 import { FoilAcquisition } from "./foil-acquisition.jsx";
 import { FOIL_INITIAL_HOLD_MS } from "../skins/foil-acquisition.js";
+import { SummonIntro } from "./summon-intro.jsx";
 
 const foilPct = FOIL_CHANCE * 100;
 /**
@@ -94,6 +96,15 @@ const foilPct = FOIL_CHANCE * 100;
  * 「フォイル版を手に入れると開く」ことを伝える
  */
 function SkinAreaNote({ skin, owned, equipped }) {
+  if (skin.id === "genie-magician:foil")
+    return (
+      <div className="skins-area-note">
+        <b>マジカルシャッフル · 9×9</b>
+        <p>Aが王でなくても、毎回の自分の手番に任意で1回発動。
+          自軍のAと王を除く駒からランダムな3体の位置を入れ替えます。
+          相手の王も対象です。発動後も通常の移動ができます。</p>
+      </div>
+    );
   const type = AREA_BY_RANK[skin.rank];
   if (!type) return null;
   const info = AREA_INFO[type];
@@ -358,6 +369,10 @@ function RevealCard({
  * 結果は先に保存してあるので、途中で閉じても失わない。
  */
 function SummonReveal({ results, onFinish, reduce }) {
+  const [intro, setIntro] = useState(!reduce);
+  const revealRef = useRef(null);
+  const finishIntro = useCallback(() => setIntro(false), []);
+  useEffect(() => { if (reduce) setIntro(false); }, [reduce]);
   const [flipped, setFlipped] = useState(() => results.map(() => false));
   const [completed, setCompleted] = useState(() => results.map(() => false));
   const [raritiesReady, setRaritiesReady] = useState(() =>
@@ -423,10 +438,10 @@ function SummonReveal({ results, onFinish, reduce }) {
   return (
     <SkinModal
       label="スキン召喚"
-      onClose={onFinish}
+      onClose={intro ? finishIntro : onFinish}
       className="skin-summon-overlay"
     >
-      <div className={`skin-reveal omen-${omen}`}>
+      <div ref={revealRef} inert={intro || undefined} aria-hidden={intro || undefined} className={`skin-reveal omen-${omen} ${intro ? "summon-intro-active" : "summon-arrived"}`}>
         <div className="reveal-omen" aria-hidden="true" />
         <p className="reveal-caption" role="status">
           {allComplete
@@ -481,6 +496,7 @@ function SummonReveal({ results, onFinish, reduce }) {
           )}
         </div>
       </div>
+      {intro && <SummonIntro results={results} targetRef={revealRef} onFinish={finishIntro} />}
     </SkinModal>
   );
 }
@@ -1218,8 +1234,10 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       setBuying(false);
     }
   };
-  const ownedCount = Object.keys(collection.owned).length;
-  const foilOwnedCount = FOIL_SKINS.filter(
+  const visibleSkins = ALL_SKINS.filter((s) => skinVisibleInCollection(collection, s));
+  const visibleFoils = ALL_FOIL_SKINS.filter((s) => skinVisibleInCollection(collection, s));
+  const ownedCount = visibleSkins.filter((s) => collection.owned[s.id]).length;
+  const foilOwnedCount = visibleFoils.filter(
     (s) => collection.owned[s.id],
   ).length;
   const shine = !reduce;
@@ -1277,19 +1295,23 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     if (WALLET_SERVER && !FREE_GACHA) {
       // 残高の正はサーバー。先にサーバーで減らし、通ったら端末で引く(端末の枚数は減らさない)
       if (busy.current || collection.pending || collection.lastCraft) return;
+      busy.current = true;
+      setWorking(true);
+      setMessage("");
       try {
         await debitTickets(newEventId("pull"), amount * PULL_COST);
+        setAcquisitionMode(reduce || collection.motion !== "full" ? "area" : "summon");
+        const next = await updateCollection((s) => pull(s, amount, undefined, { free: true }));
+        if (next?.pending?.results) logPull(next.pending.results);
       } catch (e) {
+        setAcquisitionMode(null);
         setMessage(
           (e && e.message) || "ガチャチケットを確認できませんでした。",
         );
-        return;
+      } finally {
+        busy.current = false;
+        setWorking(false);
       }
-      const next = await acquire(
-        (s) => pull(s, amount, undefined, { free: true }),
-        "summon",
-      );
-      if (next?.pending?.results) logPull(next.pending.results);
       return;
     }
     const next = await acquire((s) => pull(s, amount), "summon");
@@ -1325,7 +1347,6 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     setMessage("");
     try {
       await buyFoil(offer.product.id, offer.skins);
-      await updateCollection((s) => grantFoils(s, offer.skins));
       setMessage(`「${offer.product.name}」のフォイルを受け取りました。`);
       return true;
     } catch (e) {
@@ -1341,7 +1362,8 @@ export function SkinsScreen({ onBack, onBattlePass }) {
   // フォイルを1枚も持たないうちは、フォイル関連を画面に出さない(確率の明記は除く)
   const foilKnown = foilRevealed(collection);
   const shown = SKINS.flatMap((s) => {
-    const foil = foilKnown ? byId(foilId(s.id)) : null;
+    const candidate = foilKnown ? byId(foilId(s.id)) : null;
+    const foil = skinVisibleInCollection(collection, candidate) ? candidate : null;
     return foil ? [s, foil] : [s];
   }).filter(
     (s) =>
@@ -1358,11 +1380,11 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         </div>
         <p>
           所持 <strong>{ownedCount}</strong>
-          <span> / {foilKnown ? ALL_SKINS.length : SKINS.length}</span>
+          <span> / {foilKnown ? visibleSkins.length : SKINS.length}</span>
           {foilKnown && (
             <small className="skins-owned-breakdown">
               通常 {ownedCount - foilOwnedCount}/{SKINS.length} · フォイル{" "}
-              {foilOwnedCount}/{FOIL_SKINS.length}
+              {foilOwnedCount}/{visibleFoils.length}
             </small>
           )}
         </p>
@@ -1707,7 +1729,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               {[
                 ["all", "すべての仕上げ"],
                 ["normal", `通常版 ${SKINS.length}種`],
-                ["foil", `フォイル ${FOIL_SKINS.length}種`],
+                ["foil", `フォイル ${visibleFoils.length}種`],
               ].map(([id, label]) => (
                 <button
                   key={id}
@@ -2007,6 +2029,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           gemsPaid={collection.gemsPaid || 0}
           working={working}
           onBuy={buyFoilOffer}
+          message={message}
           onClose={() => setFoilOffer(null)}
           onShop={shopOk ? () => setShop(true) : null}
         />
@@ -2072,7 +2095,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                   equipped={collection.equipped[selected.rank] === selected.id}
                 />
               )}
-              {foilKnown && byId(foilId(baseSkinId(selected.id))) && (
+              {foilKnown && skinVisibleInCollection(collection, byId(foilId(baseSkinId(selected.id)))) && (
                 <div
                   className="skins-variant-switch"
                   aria-label="このキャラの仕上げ"
@@ -2099,7 +2122,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                   ))}
                 </div>
               )}
-              {selected.foil && (
+              {selected.foil && !selected.secret && (
                 <>
                   <p className="skins-note">
                     箔の部分だけが光るフォイル版。ガチャ・錬成で、このキャラを獲得したときに
@@ -2121,6 +2144,11 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                     フォイル加工の進捗を見る
                   </button>
                 </>
+              )}
+              {selected.secret && (
+                <p className="skins-note">
+                  すべての通常カードとほかのフォイルをそろえた人だけが、有償ジェム2,000で購入できる特別なフォイルです。
+                </p>
               )}
               {selectedLocked ? (
                 <div className="skins-pass-unlock">
@@ -2167,7 +2195,9 @@ export function SkinsScreen({ onBack, onBattlePass }) {
               <p className="skins-note">
                 同じ数字の全スートに適用。
                 <br />
-                カードの能力や動ける範囲は変わりません。
+                {selected.id === "genie-magician:foil"
+                  ? "9×9では通常のAの能力に加えて、マジカルシャッフルを使えます。"
+                  : "カードの能力や動ける範囲は変わりません。"}
               </p>
               {collection.owned[selected.id] ? (
                 <button
@@ -2182,6 +2212,17 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                   {collection.equipped[selected.rank] === selected.id
                     ? "装備を外す"
                     : `${selected.rank}のカードに装備`}
+                </button>
+              ) : selected.secret ? (
+                <button
+                  className="skin-btn skin-btn-gold"
+                  disabled={working || !foilOffers(collection).some(o => o.product.secret)}
+                  onClick={() => {
+                    setSelected(null);
+                    setFoilOffer({ exclude: [] });
+                  }}
+                >
+                  有償ジェム2,000で購入
                 </button>
               ) : selected.acquisition === "battlepass" ? (
                 <button

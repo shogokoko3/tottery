@@ -176,6 +176,7 @@ for (const bad of [
   undefined,
   "no-such",
   "genie-magician",
+  "genie-magician:foil",
   "pegasus-knight",
   foil,
 ]) {

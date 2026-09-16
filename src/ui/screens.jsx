@@ -242,13 +242,20 @@ export function HomeScreen({ onStart }) {
   return (
     <div className="intro title-hero">
       <div className="title-hero-visual">
-        <img className="title-bg" src={titleBgImg} alt="" draggable="false" />
+        <img
+          className="title-bg"
+          src={titleBgImg}
+          alt="トッタリー — 相手の王を討て"
+          width={660}
+          height={1173}
+          draggable="false"
+        />
         <button
-          className="btn btn-primary btn-large intro-start"
+          type="button"
+          className="title-start-button"
+          aria-label="ゲームスタート"
           onClick={onStart}
-        >
-          ゲームスタート <ArrowRight size={18} />
-        </button>
+        />
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { shuffle, buildDeck } from "./board.js";
 import { AREA_TUNING, forestCandidates, iceCandidates } from "./areas.js";
+import { aceFoilCandidates, canUseAceFoil } from "./ace-foil.js";
 
 /**
  * 手番の乱数をアクション側に焼き込む。
@@ -22,6 +23,18 @@ export function enrichAction(action, state) {
       };
     case "CONFIRM_SHUFFLE":
       return { ...action, order: shuffle([0, 1, 2]) };
+    case "USE_ACE_FOIL": {
+      const player =
+        action.player === undefined ? state.currentTurn : action.player;
+      const can = canUseAceFoil(state, player, action.aId ?? null);
+      if (!can.ok) return action;
+      return {
+        ...action,
+        aId: can.aId,
+        pickIds: shuffle(aceFoilCandidates(state, player)).slice(0, 3),
+        order: Math.random() < 0.5 ? [1, 2, 0] : [2, 0, 1],
+      };
+    }
     case "USE_AREA": {
       // 盤面エリアの乱数。土は当たり外れ、森は見抜く駒の並び
       const area = state.areas && state.areas[state.currentTurn];

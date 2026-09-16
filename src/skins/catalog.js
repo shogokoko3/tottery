@@ -227,7 +227,7 @@ export const baseSkinId = (id) =>
     ? id.slice(0, -FOIL_SUFFIX.length)
     : id;
 export const foilId = (id) => `${baseSkinId(id)}${FOIL_SUFFIX}`;
-export const FOIL_SKINS = POOL.map((skin) => ({
+const makeFoil = (skin) => ({
   ...skin,
   id: foilId(skin.id),
   baseId: skin.id,
@@ -236,8 +236,19 @@ export const FOIL_SKINS = POOL.map((skin) => ({
   image: `skins/foils/${skin.id}.webp`,
   card: `skins/foils/${skin.id}.webp`,
   boardCard: `skins/foils/${skin.id}.webp`,
-}));
-export const ALL_SKINS = [...SKINS, ...FOIL_SKINS];
+});
+// 通常のフォイルはガチャ・錬成・獲得ミッションの対象15種に限定する。
+export const FOIL_SKINS = POOL.map(makeFoil);
+// Aは全カード収集後の有償商品。通常版のバトルパスとは別の入手経路。
+export const SPECIAL_FOIL_SKINS = [
+  {
+    ...makeFoil(SKINS.find((skin) => skin.id === "genie-magician")),
+    secret: true,
+    acquisition: "foil-shop",
+  },
+];
+export const ALL_FOIL_SKINS = [...FOIL_SKINS, ...SPECIAL_FOIL_SKINS];
+export const ALL_SKINS = [...SKINS, ...ALL_FOIL_SKINS];
 export const byId = (id) => ALL_SKINS.find((s) => s.id === id);
 export const ODDS = Object.freeze({ R: 65, SR: 32, SSR: 3 });
 // フォイルも同じキャラクターとしての割合。仕上げの1%は別に示す。

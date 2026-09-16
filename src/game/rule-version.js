@@ -22,7 +22,10 @@
 //     (2026-09-16 本人の指摘。通信の手の形式は変わらない。旧版の対局の再生は変わらない)。
 // 15: 道連れ(王が4・5)で倒れた J・Q では、K の王の予備札を引かない(2026-09-16 本人の指示。
 //     通信の手の形式は変わらない。旧版の対局の再生は変わらない)。
-export const GAME_RULE_VERSION = 15;
+// 16: Aのフォイル魔法。通常の行動前に毎手番1回、ランダムな3体を循環させる。
+//     自分のA・王を除き、手番・追加行動を使わず、包囲取りも起こさない。
+export const GAME_RULE_VERSION = 16;
+export const ACE_FOIL_RULE_VERSION = 16;
 export const REVENGE_NO_RESERVE_RULE_VERSION = 15;
 export const SEA_SLIDE_RULE_VERSION = 14;
 export const BONUS_ACK_RULE_VERSION = 13;

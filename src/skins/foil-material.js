@@ -14,7 +14,7 @@ export function loadFoilMasks() {
     const timeout = setTimeout(() => controller.abort(), 8000);
     // Like all skin URLs, resolve next to index.html, including subdirectory hosting.
     masksPromise = fetch(
-      new URL("skins/foils/masks.json?v=background-glints-1", document.baseURI),
+      new URL("skins/foils/masks.json?v=ace-foil-2", document.baseURI),
       {
         signal: controller.signal,
       },

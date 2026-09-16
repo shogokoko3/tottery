@@ -1,5 +1,6 @@
 import { boardFieldTheme } from "./field-presentation.js";
 import { areaEvent } from "./area-presentation.js";
+import { aceFoilOrderOk, useAceFoil } from "./ace-foil.js";
 import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
 import { adjudicatePosition, withInitialArmies } from "./adjudication.js";
@@ -70,6 +71,7 @@ const RECEIVABLE = {
   SETUP_CONFIRM: ["setup"],
   MOVE_PIECE: ["play"],
   USE_AREA: ["play"],
+  USE_ACE_FOIL: ["play"],
   CONFIRM_SHUFFLE: ["play"],
   SKIP_EXTRA_ACTION: ["play"],
   SKIP_RESERVE_PLACEMENT: ["play"],
@@ -86,6 +88,7 @@ function expectedActor(state, type) {
   switch (type) {
     case "MOVE_PIECE":
     case "USE_AREA":
+    case "USE_ACE_FOIL":
     case "CONFIRM_SHUFFLE":
     case "SKIP_EXTRA_ACTION":
       return state.currentTurn;
@@ -358,6 +361,14 @@ function seedsPresent(state, action) {
         new Set(action.order).size === 3 &&
         action.order.every((i) => i === 0 || i === 1 || i === 2)
       );
+    case "USE_ACE_FOIL":
+      return (
+        typeof action.aId === "string" &&
+        Array.isArray(action.pickIds) &&
+        action.pickIds.length === 3 &&
+        action.pickIds.every((id) => typeof id === "string") &&
+        aceFoilOrderOk(action.order)
+      );
     case "USE_AREA": {
       // 土の50%と森の3体は、送り主が焼き込んだ結果を使う(両者で揃える)
       const area = state.areas && state.areas[state.currentTurn];
@@ -485,6 +496,8 @@ export function initialState() {
     currentTurn: 0,
     lastMove: null,
     lastSwap: null,
+    /** 各側がAフォイルを発動した手番。Aが複数いても手番に1回だけ。 */
+    aceFoilUsedTurn: [null, null],
     resignedBy: null,
     extraMoveFor: null,
     extraUsed: false,
@@ -1012,6 +1025,7 @@ export function setupWaiting(state) {
 const WAITS_FOR_ACK = new Set([
   "MOVE_PIECE",
   "USE_AREA",
+  "USE_ACE_FOIL",
   "CONFIRM_SHUFFLE",
   "SKIP_EXTRA_ACTION",
   "PLACE_RESERVE_CARD",
@@ -1768,6 +1782,9 @@ function coreReducer(state, action) {
       else if (picks.length < 2) picks = [...picks, action.id];
       return { ...state, shuffleMode: { ...state.shuffleMode, picks } };
     }
+
+    case "USE_ACE_FOIL":
+      return useAceFoil(state, action);
 
     case "CONFIRM_SHUFFLE": {
       const aId = action.aId || (state.shuffleMode && state.shuffleMode.aId);

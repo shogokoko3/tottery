@@ -138,6 +138,10 @@ async function handleApi(request, env, url) {
       if (url.pathname.startsWith("/api/wallet/")) {
         const wop = url.pathname.slice("/api/wallet/".length);
         if (wop === "summary") return call("wallet-summary");
+        // 所持一覧を本人の保存分として同期する。購入条件は財布側で全種類を照合する。
+        // 端末保存が現行の取得元であり、この同期を取得証明とは扱わない。
+        if (wop === "collection" && Array.isArray(body.ownedIds))
+          return call("wallet-collection", { ownedIds: body.ownedIds });
         if (wop === "debit" && eventId(body.id) && Number.isSafeInteger(body.n) && body.n > 0 && body.n <= 100)
           return call("wallet-debit", { id: body.id, n: body.n, kind: "pull" });
         if (wop === "earn" && eventId(body.id) && Number.isSafeInteger(body.n) && body.n > 0)
@@ -288,6 +292,7 @@ export class SeasonLedger {
         if (op === "wallet-earn-gems") return w.earnGems(uid, args.id, args.gems, now);
         if (op === "wallet-exchange") return w.exchange(uid, args.id, args.tickets, now);
         if (op === "wallet-foil") return w.buyFoil(uid, args.product, args.skins, now);
+        if (op === "wallet-collection") return w.syncCollection(uid, args.ownedIds, now);
         if (op === "wallet-ether") return w.buyEther(uid, args.id, args.gems, now);
         if (op === "wallet-buypass") return w.buyPass(uid, args.id, now);
         if (op === "wallet-pass-reward") return w.passReward(uid, args.id, now);

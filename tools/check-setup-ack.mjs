@@ -11,7 +11,7 @@ import { buildDeck, territoryRows, totalSlots, getLegalMoves, kingRankOf } from 
 import { GAME_RULE_VERSION, BONUS_ACK_RULE_VERSION, hasBonusAckRules } from "../src/game/rule-version.js";
 import { acceptAct, NET_ACTIONS } from "../src/net/sync.js";
 
-assert.equal(GAME_RULE_VERSION, 15);
+assert.ok(GAME_RULE_VERSION >= BONUS_ACK_RULE_VERSION);
 assert.equal(BONUS_ACK_RULE_VERSION, 13);
 assert.equal(hasBonusAckRules(13), true);
 assert.equal(hasBonusAckRules(12), false);

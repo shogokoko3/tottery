@@ -309,7 +309,7 @@ console.log("\n運営ツール(手動付与・購入履歴・ガチャ履歴)");
   is("無償は触らない", after.gemsFree, before.gemsFree);
   is("同じ札は二度買えない", fw.buyFoil("F", "foil-jq-angel", ["angel-q"], 50).applied, false);
   try { fw.buyFoil("F", "foil-a", ["genie-magician"], 60); } catch (e) { msg = e.message; }
-  is("pending の商品は売らない", /その商品はありません/.test(msg), true);
+  is("全カードをそろえていなければAは買えない", /購入条件/.test(msg), true);
   try { fw.buyFoil("F", "foil-10", ["angel-k"], 70); } catch (e) { msg = e.message; }
   is("商品外の札は断る", /正しくありません/.test(msg), true);
 }

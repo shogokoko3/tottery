@@ -19,6 +19,8 @@ export const SOUNDS = {
   // マジシャン専用に合成したオリジナル音源（効果音ラボの素材ではない）。
   aceSwap: { file: "se-ace-swap.m4a", gain: 1 },
   aceCapture: { file: "se-ace-capture.m4a", gain: 1 },
+  // 指パッチン0.23秒、帽子0.48秒。tools/prepare-ace-foil-sound.pyで合成。
+  aceFoil: { file: "se-ace-foil.m4a", gain: 1 },
 };
 
 /**

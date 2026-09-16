@@ -1,0 +1,88 @@
+.summon-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow: hidden;
+  background: transparent;
+  --scene-opacity: 1;
+  --label-opacity: 0;
+}
+.summon-scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: var(--scene-opacity);
+}
+.summon-cinema-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--scene-opacity);
+  background:
+    linear-gradient(#02070c55, transparent 24%, transparent 66%, #02070c9c),
+    radial-gradient(ellipse at 50% 45%, transparent 47%, #02070c70);
+}
+.summon-world-name {
+  position: absolute;
+  top: max(34px, calc(env(safe-area-inset-top) + 16px));
+  left: 14px;
+  right: 14px;
+  text-align: center;
+  color: #f5e7c6;
+  opacity: var(--label-opacity);
+  text-shadow:
+    0 2px 8px #000,
+    0 0 20px #000;
+}
+.summon-world-name span {
+  display: block;
+  font:
+    500 10px/1.7 "Shippori Mincho",
+    serif;
+  letter-spacing: 0.24em;
+  color: #d4c4a5;
+}
+.summon-world-name strong {
+  display: block;
+  margin-top: 7px;
+  font:
+    600 clamp(19px, 5vw, 26px)/1.5 "Shippori Mincho",
+    serif;
+  letter-spacing: 0.22em;
+}
+.summon-world-name i {
+  display: block;
+  margin: 12px auto 0;
+  width: 110px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #d7b77b, transparent);
+}
+.summon-flight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.summon-flight-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  object-fit: cover;
+  border-radius: 10px;
+  opacity: 0;
+  will-change: transform;
+  transform-origin: center;
+}
+.skin-reveal.summon-intro-active {
+  pointer-events: none;
+}
+.skin-reveal.summon-intro-active > * {
+  visibility: hidden;
+}
+.skin-reveal.summon-arrived .reveal-card {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .summon-intro {
+    display: none;
+  }
+}

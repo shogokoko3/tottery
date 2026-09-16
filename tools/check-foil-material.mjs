@@ -43,5 +43,5 @@ for (const [id, entry] of Object.entries(entries)) {
   }
 }
 console.log(
-  "15 foil characters × 3 sizes: gradients, existing-background sparkle, face/skin guards OK",
+  `${Object.keys(entries).length} foil characters × 3 sizes: gradients, existing-background sparkle, face/skin guards OK`,
 );

@@ -2,6 +2,7 @@ const api = (() => {
   "use strict";
   const SKIN_ID = "genie-magician";
   const DURATION = Object.freeze({ swap: 2400, capture: 4000 });
+  const FOIL_SNAP_MS = 480;
   const squareKey = (p) => `${p.row},${p.col}`;
   const bySquare = (a, b) => a.row - b.row || a.col - b.col;
   const validCell = (p, n) =>
@@ -20,14 +21,18 @@ const api = (() => {
     const signs = cells.map((a, i) => cross(a, cells[(i + 1) % 3], p));
     return !(signs.some((s) => s < 0) && signs.some((s) => s > 0));
   }
-  function publicPiece(piece, viewer) {
+  function publicPiece(piece, viewer, state) {
     const result = {
       row: piece.row,
       col: piece.col,
       owner: piece.owner,
       face: "back",
     };
-    if (piece.owner === viewer || piece.revealed === true) {
+    if (
+      piece.owner === viewer ||
+      piece.revealed === true ||
+      state?.known?.[viewer]?.[piece.id]
+    ) {
       result.face = "front";
       result.rank = String(piece.rank);
       result.suit = piece.suit;
@@ -44,13 +49,15 @@ const api = (() => {
   ) {
     const swap = after?.lastSwap;
     const n = before?.board?.length;
+    const foil = swap?.kind === "ace-foil";
+    const equipped = loadouts?.[swap?.owner]?.A;
     if (
       before?.phase !== "play" ||
       !["play", "gameover"].includes(after?.phase) ||
       ![5, 9].includes(n) ||
       !swap ||
       swap.owner !== before.currentTurn ||
-      loadouts?.[swap.owner]?.A !== skinId
+      ![skinId, `${skinId}:foil`].includes(equipped)
     )
       return null;
     if (
@@ -65,7 +72,21 @@ const api = (() => {
     if (new Set(cells.map(squareKey)).size !== 3) return null;
     const previous = cells.map((p) => before.board[p.row]?.[p.col]);
     if (previous.some((p) => !p?.alive)) return null;
-    if (!previous.some((p) => p.rank === "A" && p.owner === swap.owner))
+    if (foil) {
+      const caster = before.pieces?.[swap.aId];
+      if (
+        n !== 9 ||
+        equipped !== `${skinId}:foil` ||
+        swap.seq === before.lastSwap?.seq ||
+        !caster?.alive ||
+        caster.rank !== "A" ||
+        caster.owner !== swap.owner ||
+        previous.some(
+          (p) => p.owner === swap.owner && (p.rank === "A" || p.isKing),
+        )
+      )
+        return null;
+    } else if (!previous.some((p) => p.rank === "A" && p.owner === swap.owner))
       return null;
     const next = previous.map((p) => after.pieces?.[p.id]);
     const keys = new Set(cells.map(squareKey));
@@ -75,32 +96,46 @@ const api = (() => {
           !p?.alive ||
           !keys.has(squareKey(p)) ||
           !Array.isArray(p.history) ||
-          p.history.length !== (previous[i].history?.length || 0) + 1,
+          p.history.length !==
+            (previous[i].history?.length || 0) +
+              1 +
+              Number(previous[i].frozenUntil != null) ||
+          (foil && squareKey(p) === squareKey(previous[i])),
       )
     )
       return null;
     if (new Set(next.map(squareKey)).size !== 3) return null;
     const allAllies = previous.every((p) => p.owner === swap.owner);
-    const defeated = allAllies
-      ? Object.values(before.pieces || {}).filter(
-          (p) =>
-            p.alive &&
-            p.owner !== swap.owner &&
-            after.pieces?.[p.id]?.alive === false &&
-            pointInTriangle(p, cells),
-        )
-      : [];
+    const defeated =
+      allAllies && !foil
+        ? Object.values(before.pieces || {}).filter(
+            (p) =>
+              p.alive &&
+              p.owner !== swap.owner &&
+              after.pieces?.[p.id]?.alive === false &&
+              pointInTriangle(p, cells),
+          )
+        : [];
     return {
+      ...(foil ? { kind: "ace-foil" } : {}),
       size: n,
       cells,
-      beforeCards: previous.map((p) => publicPiece(p, viewer)).sort(bySquare),
-      afterCards: next.map((p) => publicPiece(p, viewer)).sort(bySquare),
-      defeated: defeated.map((p) => publicPiece(p, viewer)).sort(bySquare),
+      beforeCards: previous
+        .map((p) => publicPiece(p, viewer, before))
+        .sort(bySquare),
+      afterCards: next.map((p) => publicPiece(p, viewer, after)).sort(bySquare),
+      defeated: defeated
+        .map((p) => publicPiece(p, viewer, before))
+        .sort(bySquare),
     };
   }
   function validateEvent(event) {
     const n = event?.size;
     if (![5, 9].includes(n)) throw new TypeError("Board size must be 5 or 9.");
+    if (event.kind === "ace-foil" && (n !== 9 || event.defeated?.length !== 0))
+      throw new TypeError(
+        "A foil only shuffles three cards on a 9 by 9 board.",
+      );
     if (
       event.cells?.length !== 3 ||
       !event.cells.every((p) => validCell(p, n)) ||
@@ -141,12 +176,20 @@ const api = (() => {
     return event;
   }
   function duration(event) {
-    return event.defeated.length ? DURATION.capture : DURATION.swap;
+    return event.kind === "ace-foil"
+      ? FOIL_SNAP_MS + DURATION.swap
+      : event.defeated.length
+        ? DURATION.capture
+        : DURATION.swap;
   }
   function phaseAt(event, t) {
     const count = event.defeated.length;
     if (t >= duration(event))
       return count ? `完了：${count}体撃破` : "完了：入れ替え";
+    if (event.kind === "ace-foil") {
+      if (t < FOIL_SNAP_MS) return "指パッチン：フォイル魔法を発動";
+      t -= FOIL_SNAP_MS;
+    }
     if (t < 420) return "開幕：3つのシルクハット";
     if (t < 800) return "吸い込み：駒が帽子の中へ";
     if (t < 1620) return "シャッフル：紫の煙で中身を隠す";
@@ -327,6 +370,70 @@ const api = (() => {
       star(10, 0, 2, 0.9, t / 500);
       ctx.restore();
     }
+    function snap(t) {
+      const enter = rise(t, 0, 140),
+        click = rise(t, 180, 280),
+        alpha = enter * (1 - rise(t, 450, 690));
+      if (alpha <= 0) return;
+      ctx.save();
+      ctx.translate(50, 18);
+      ctx.scale(0.58 * enter, 0.58 * enter);
+      ctx.globalAlpha = alpha;
+      ctx.rotate(-0.12 + click * 0.18);
+      glow(0, 0, 22, 0.35);
+      ctx.fillStyle = "#efe5d6";
+      ctx.strokeStyle = "#bca683";
+      ctx.lineWidth = 0.7;
+      // A gloved palm and raised index finger. The middle finger snaps down
+      // from the thumb; the short starburst appears at their contact point.
+      ctx.beginPath();
+      ctx.moveTo(-6, 14);
+      ctx.lineTo(-9, 5);
+      ctx.bezierCurveTo(-13, -1, -13, -7, -10, -8);
+      ctx.bezierCurveTo(-7, -9, -6, -4, -4, -1);
+      ctx.lineTo(-6, -17);
+      ctx.bezierCurveTo(-6, -22, -1, -23, 0, -18);
+      ctx.lineTo(2, -5);
+      ctx.bezierCurveTo(9, -7, 14, 0, 11, 7);
+      ctx.lineTo(7, 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(1, 1);
+      ctx.quadraticCurveTo(
+        16 - click * 10,
+        -18 + click * 26,
+        4,
+        -5 + click * 10,
+      );
+      ctx.lineCap = "round";
+      ctx.lineWidth = 4.5;
+      ctx.strokeStyle = "#fff4e6";
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-9, 1);
+      ctx.quadraticCurveTo(-3, -7, 4, -5);
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = "#6e426c";
+      ctx.fillRect(-7, 11, 15, 5);
+      ctx.fillStyle = "#e8c673";
+      ctx.fillRect(-7, 10.5, 15, 1.1);
+      const burst = Math.sin(Math.PI * rise(t, 225, 480));
+      star(5, -7, 6 * burst, alpha * burst, Math.PI / 4);
+      for (let i = 0; i < 5; i++) {
+        const angle = -2.6 + i * 0.72;
+        star(
+          5 + Math.cos(angle) * 16,
+          -7 + Math.sin(angle) * 16,
+          burst * 1.7,
+          alpha * burst,
+          angle,
+        );
+      }
+      ctx.restore();
+    }
     function confetti(x, y, power, alpha, seed) {
       for (let i = 0; i < Math.round(44 * settings.sparkles); i++) {
         const a = i * 2.399 + seed,
@@ -421,7 +528,9 @@ const api = (() => {
     ) {
       settings.sparkles = Math.max(0.5, Math.min(1.5, sparkles));
       const n = event.size,
-        t = Math.max(0, Math.min(duration(event), time));
+        elapsed = Math.max(0, Math.min(duration(event), time)),
+        foil = event.kind === "ace-foil",
+        t = Math.max(0, elapsed - (foil ? FOIL_SNAP_MS : 0));
       unit = Math.min(1, 5.58 / n);
       const position = (p) => [
         (((flip ? n - 1 - p.col : p.col) + 0.5) * 100) / n,
@@ -594,8 +703,9 @@ const api = (() => {
               i,
             );
         });
-        wand(t, (1 - rise(t, 410, 720)) * enter);
+        if (!foil) wand(t, (1 - rise(t, 410, 720)) * enter);
       }
+      if (foil && !guide) snap(elapsed);
       if (!guide && event.defeated.length && t >= 2240) {
         const h = rise(t, 2240, 2450),
           hf = rise(t, 3250, 3570),

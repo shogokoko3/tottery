@@ -4,13 +4,13 @@
  *  - ガチャの15キャラのフォイルが、商品1〜9 にちょうど1回ずつ入る
  *  - 買えるのは持っていないフォイルだけ。セットの片方を持っていれば残りを按分
  *  - 引いた帯は勧めない(exclude)
- *  - 商品10(A のフォイル)は全カードをそろえた人にだけ。絵ができるまで pending で出さない
+ *  - 商品10(A のフォイル)は全カードをそろえた人にだけ
  *  - 配線: 結果を閉じたら出す・買ったら所持に足す・サーバーは有償だけで払う
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { FOIL_PRODUCTS, productOf, priceFor, bandOf, ownsAllButSecret, foilOffers, coversPool } from "../src/skins/foil-shop.js";
-import { ALL_SKINS, foilId } from "../src/skins/catalog.js";
+import { FOIL_PRODUCTS, productOf, priceFor, bandOf, ownsAllButSecret, skinVisibleInCollection, foilOffers, coversPool } from "../src/skins/foil-shop.js";
+import { ALL_SKINS, byId, foilId } from "../src/skins/catalog.js";
 
 assert.equal(coversPool(), true, "15キャラのフォイルが商品1〜9にちょうど1回ずつ");
 const prices = Object.fromEntries(FOIL_PRODUCTS.map((p) => [p.id, p.price]));
@@ -19,7 +19,7 @@ assert.deepEqual(prices, {
   "foil-10": 5000, "foil-jq-angel": 5000, "foil-jq-demon": 5000, "foil-k-angel": 5000, "foil-k-demon": 5000, "foil-a": 2000,
 });
 assert.equal(productOf("foil-a").secret, true);
-assert.equal(productOf("foil-a").pending, true, "A の絵ができるまで pending");
+assert.ok(!productOf("foil-a").pending, "A の絵と購入条件の接続後に公開");
 assert.equal(productOf("nope"), null);
 
 // 按分
@@ -43,23 +43,37 @@ assert.ok(!some.some((o) => o.product.id === "foil-10"), "引いた帯は出な�
 const half = some.find((o) => o.product.id === "foil-2-3");
 assert.deepEqual([half.skins, half.price, half.partial], [["zombie-female"], 750, true], "片方を持っていれば残りを按分");
 
-// A: 全カード(A のフォイル以外)をそろえたときだけ見える(pending が外れたら)
+// A: 全カード(A のフォイル以外)をそろえたときだけ見える
 const everything = Object.fromEntries(ALL_SKINS.map((s) => [s.id, 1]));
 delete everything[foilId("genie-magician")];
 assert.equal(ownsAllButSecret({ owned: everything }), true);
-assert.equal(ownsAllButSecret({ owned: { ...everything, "zombie-male": 0 } }), false);
-assert.ok(!foilOffers({ owned: everything }).some((o) => o.product.id === "foil-a"), "pending のあいだは全部そろえても出ない");
+for (const id of Object.keys(everything))
+  assert.equal(ownsAllButSecret({ owned: { ...everything, [id]: 0 } }), false, `${id}も全カードの条件に必要`);
+assert.equal(ownsAllButSecret({ owned: { [foilId("genie-magician")]: 1 } }), false);
+assert.equal(ownsAllButSecret(null), false);
+assert.deepEqual(foilOffers({ owned: everything }).map((offer) => [offer.product.id, offer.price]), [["foil-a", 2000]], "全収集後はAだけを有償2,000で案内");
+assert.deepEqual(foilOffers({ owned: { ...everything, [foilId("genie-magician")]: 1 } }), [], "Aも所持済みなら購入を案内しない");
 assert.ok(!JSON.stringify(foilOffers({ owned: {} })).includes("genie"), "そろえるまで A の存在を出さない");
+const secretSkin = byId(foilId("genie-magician"));
+assert.equal(skinVisibleInCollection({ owned: {} }, secretSkin), false, "未収集なら図鑑にも存在を出さない");
+assert.equal(skinVisibleInCollection({ owned: everything }, secretSkin), true, "全収集後に図鑑へ公開");
+assert.equal(skinVisibleInCollection({ owned: { [secretSkin.id]: 1 } }, secretSkin), true, "購入済みは復元後にも表示");
+assert.equal(skinVisibleInCollection({ owned: {} }, byId("genie-magician")), true, "A通常版は既存の図鑑に残す");
+assert.equal(skinVisibleInCollection({ owned: {} }, byId("angel-j:foil")), true);
+assert.equal(skinVisibleInCollection({ owned: {} }, null), false);
 
 // 配線
 const skins = readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
 assert.ok(/if \(next && pulledFoils\.length && WALLET_SERVER\)/.test(skins), "ガチャでフォイルが出て結果を閉じたら出す(Web でも有償ジェムがあれば買える)");
 assert.ok(/onShop=\{shopOk \? \(\) => setShop\(true\) : null\}/.test(skins), "ジェムを買う釦は iOS だけ");
 assert.ok(/setFoilOffer\(\{ exclude \}\)/.test(skins), "引いた帯を除いて出す");
-assert.ok(/await buyFoil\(offer\.product\.id, offer\.skins\);\s*await updateCollection\(\(s\) => grantFoils\(s, offer\.skins\)\);/.test(skins), "買えたら所持に足す");
+assert.ok(/await buyFoil\(offer\.product\.id, offer\.skins\);/.test(skins), "購入APIを使う");
+assert.ok(!/grantFoils\(s, offer\.skins\)/.test(skins), "画面で再送のたびに重複付与しない");
+const clientWallet = readFileSync(new URL("../src/net/wallet.js", import.meta.url), "utf8");
+assert.ok(/data\.purchasedFoils/.test(clientWallet) && /!next\.owned\[id\]/.test(clientWallet), "支払済みカードの未所持分を応答から復元");
 assert.ok(/\{foilOffer && !shop && \(\s*<FoilOfferSheet/.test(skins), "ジェムの店の下には出さない");
 const worker = readFileSync(new URL("../src/server/worker.js", import.meta.url), "utf8");
 assert.ok(/wop === "foil"/.test(worker) && /call\("wallet-foil", \{ product: body\.product, skins: body\.skins \}\)/.test(worker), "サーバーの口");
 const wallet = readFileSync(new URL("../src/server/wallet.js", import.meta.url), "utf8");
-assert.ok(/\{ paidOnly: true \}\);\s*return \{ \.\.\.r, product: product\.id/.test(wallet), "有償ジェムだけで払う");
-console.log("フォイルの直接購入: 値段・15キャラを網羅・按分・帯を除く・A は秘密(pending)・配線 OK");
+assert.ok(/this\.spendGems\(uid, id, price, "foil",[^\n]+\{ paidOnly: true \}\)/.test(wallet), "有償ジェムだけで払う");
+console.log("フォイルの直接購入: 値段・15キャラを網羅・按分・帯を除く・A全収集条件・購入復元の配線 OK");

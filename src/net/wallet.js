@@ -12,6 +12,8 @@
 import { ensureAuth } from "./auth.js";
 import { seasonApiBase } from "./season.js";
 import { updateCollection, getCollection } from "../skins/store.js";
+import { byId } from "../skins/catalog.js";
+import { grantSkin } from "../skins/collection.js";
 
 /** チケットをサーバーの財布で持つか。false なら今まで通り端末だけ */
 export const WALLET_SERVER = true;
@@ -48,20 +50,27 @@ async function walletRequest(op, body = {}) {
 /** サーバーの残高・権利を端末の写しへ */
 async function mirror(data) {
   if (!Number.isSafeInteger(data.tickets)) return data;
-  await updateCollection((s) => ({
-    ...s,
-    tickets: data.tickets,
-    gems: Number.isSafeInteger(data.gems) ? data.gems : s.gems || 0,
-    gemsPaid: Number.isSafeInteger(data.gemsPaid)
-      ? data.gemsPaid
-      : s.gemsPaid || 0,
-    gemsFree: Number.isSafeInteger(data.gemsFree)
-      ? data.gemsFree
-      : s.gemsFree || 0,
-    entitlements: Array.isArray(data.entitlements)
-      ? data.entitlements
-      : s.entitlements || [],
-  }));
+  await updateCollection((s) => {
+    // 購入済みの最低1枚を復元する。応答再送を「もう1枚取得」にしない。
+    let next = s;
+    for (const id of data.purchasedFoils || []) {
+      if (byId(id)?.foil && !next.owned[id]) next = grantSkin(next, id);
+    }
+    return {
+      ...next,
+      tickets: data.tickets,
+      gems: Number.isSafeInteger(data.gems) ? data.gems : s.gems || 0,
+      gemsPaid: Number.isSafeInteger(data.gemsPaid)
+        ? data.gemsPaid
+        : s.gemsPaid || 0,
+      gemsFree: Number.isSafeInteger(data.gemsFree)
+        ? data.gemsFree
+        : s.gemsFree || 0,
+      entitlements: Array.isArray(data.entitlements)
+        ? data.entitlements
+        : s.entitlements || [],
+    };
+  });
   return data;
 }
 
@@ -171,7 +180,17 @@ export async function buyEther(id, gems) {
 
 /** フォイルを有償ジェムで買う(src/skins/foil-shop.js)。通れば新しい残高、足りなければ投げる */
 export async function buyFoil(product, skins) {
+  // 購入ごとに最新の所持を登録し、サーバーも保存済み全カードを照合する。
+  await syncCollection();
   return mirror(await walletRequest("foil", { product, skins }));
+}
+
+/** 現行の端末所持一覧を同期。secretFoilEligibleは保存した一覧の再照合結果。 */
+export async function syncCollection() {
+  const ownedIds = Object.entries(getCollection().owned)
+    .filter(([id, count]) => byId(id) && Number.isSafeInteger(count) && count > 0)
+    .map(([id]) => id);
+  return mirror(await walletRequest("collection", { ownedIds }));
 }
 
 /** ジェムでチケットを買う(両替)。通れば新しい残高、足りなければ投げる */

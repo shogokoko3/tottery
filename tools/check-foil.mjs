@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import {
   ALL_SKINS,
+  ALL_FOIL_SKINS,
   FOIL_CHANCE,
   FOIL_SKINS,
   FOIL_SUFFIX,
   ODDS,
   POOL,
   SKINS,
+  SPECIAL_FOIL_SKINS,
   baseSkinId,
   byId,
   draw,
@@ -23,6 +25,7 @@ import {
   shatter,
   equip,
   grantSkin,
+  grantFoils,
   normalize,
   pull,
 } from "../src/skins/collection.js";
@@ -36,6 +39,8 @@ import {
   spares,
   totalOfSpares,
 } from "../src/skins/ether.js";
+import { exchangeCheck } from "../src/skins/shards.js";
+import { createCpuLoadout, ensureCpuFoil } from "../src/skins/cpu-loadout.js";
 
 const sequence = (values) => {
   let calls = 0;
@@ -55,8 +60,10 @@ assert.equal(FOIL_CHANCE, 0.01);
 assert.equal(SKINS.length, 17);
 assert.equal(POOL.length, 15);
 assert.equal(FOIL_SKINS.length, 15);
-assert.equal(ALL_SKINS.length, 32);
-assert.equal(new Set(ALL_SKINS.map((s) => s.id)).size, 32);
+assert.equal(SPECIAL_FOIL_SKINS.length, 1);
+assert.equal(ALL_FOIL_SKINS.length, 16);
+assert.equal(ALL_SKINS.length, 33);
+assert.equal(new Set(ALL_SKINS.map((s) => s.id)).size, 33);
 assert.deepEqual(ODDS, { R: 65, SR: 32, SSR: 3 });
 assert.equal(baseSkinId("elf-male:foil"), "elf-male");
 assert.equal(baseSkinId("elf-male"), "elf-male");
@@ -72,8 +79,38 @@ for (const base of POOL) {
     assert.equal(foil[key], `skins/foils/${base.id}.webp`);
   assert.ok(!POOL.includes(foil), "仕上げをキャラ抽選の候補に混ぜない");
 }
-for (const id of ["pegasus-knight:foil", "genie-magician:foil", "evil:foil"])
+for (const id of ["pegasus-knight:foil", "evil:foil"])
   assert.equal(byId(id), undefined);
+
+const ace = byId("genie-magician");
+const aceFoil = byId(foilId(ace.id));
+assert.equal(aceFoil.rarity, "SPECIAL");
+assert.equal(aceFoil.secret, true);
+assert.equal(aceFoil.acquisition, "foil-shop");
+assert.equal(ace.acquisition, "battlepass", "A通常版はバトルパスのまま");
+assert.equal(aceFoil.baseId, ace.id);
+assert.equal(aceFoil.foil, true);
+assert.deepEqual(aceFoil.videos, ace.videos);
+for (const key of ["image", "card", "boardCard"])
+  assert.equal(aceFoil[key], "skins/foils/genie-magician.webp");
+assert.ok(!POOL.includes(aceFoil));
+assert.ok(!FOIL_SKINS.includes(aceFoil), "Aは通常15種の獲得ミッション外");
+assert.equal(rate(aceFoil), 0);
+assert.equal(costOf(aceFoil), null);
+assert.equal(craftCheck(normalize({ ether: 99999 }), aceFoil.id).ok, false);
+assert.equal(exchangeCheck(normalize({ shards: 99999 }), aceFoil.id).ok, false);
+assert.throws(() => claimSpecial(fresh(), aceFoil.id), /特別スキン/, "Aフォイルを通常版の無料付与経路で受け取れない");
+const ownedAce = equip(grantFoils(fresh(), [ace.id]), aceFoil.id);
+assert.deepEqual(ownedAce.owned, { [aceFoil.id]: 1 });
+assert.deepEqual(ownedAce.equipped, { A: aceFoil.id });
+assert.deepEqual(normalize(JSON.parse(JSON.stringify(ownedAce))), ownedAce);
+assert.deepEqual(ownedAce.acquired, {}, "Aフォイルは通算100回の対象外");
+for (const roll of [0, 0.999999]) {
+  const cpu = createCpuLoadout(() => roll);
+  assert.equal(cpu.A, ace.id, "Aフォイル追加後もCPUのAは通常版");
+  assert.equal(cpu["10"], roll === 0 ? "dragon-knight:foil" : "pegasus-knight");
+  assert.equal(ensureCpuFoil(cpu, "A").A, ace.id);
+}
 
 // どのキャラクターでも決定後に別の乱数を1回だけ使う。1%ちょうどは通常版。
 let start = 0;
@@ -147,7 +184,7 @@ assert.deepEqual(
     A: "genie-magician:foil",
     K: "evil:foil",
   }),
-  { 6: "elf-male:foil" },
+  { 6: "elf-male:foil", A: "genie-magician:foil" },
 );
 assert.throws(() =>
   equip(normalize({ owned: { "elf-male": 2 } }), "elf-male:foil"),

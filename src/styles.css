@@ -185,10 +185,6 @@ h3 {
     transparent 70%
   );
 }
-.intro-start {
-  width: min(72vw, 300px);
-  justify-content: center;
-}
 .win-card {
   width: min(40vw, 140px);
   margin: 10px auto 4px;
@@ -1456,18 +1452,43 @@ body:has(.skin-overlay) {
   align-items: center;
   justify-content: flex-end;
 }
-.title-bg {
+.title-hero-visual {
+  position: relative;
   width: 100%;
   max-width: 430px;
+}
+.title-bg {
+  width: 100%;
+  height: auto;
   display: block;
   border-radius: 10px;
 }
-.title-hero .intro-start {
+/* The 660 × 1173 artwork already paints the start button.
+ * Keep its hit area on the same image coordinates at every screen width. */
+.title-start-button {
   position: absolute;
-  bottom: 6%;
+  top: 88.15%;
   left: 50%;
-  transform: translateX(-50%);
-  width: min(66%, 290px);
+  transform: translate(-50%, -50%);
+  width: 61%;
+  height: 11.25%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.title-start-button:focus-visible {
+  outline: 2px solid #f0dba5;
+  outline-offset: 3px;
+}
+.title-start-button:active {
+  background: rgba(255, 243, 191, 0.12);
 }
 .die-stage {
   display: flex;
@@ -5846,4 +5867,22 @@ p.hint > span.gem-shop-diag {
   gap: 12px;
   justify-items: center;
   text-align: center;
+}
+.foil-offer-confirm .foil-offer-arts {
+  justify-content: center;
+  gap: 12px;
+}
+.foil-offer-confirm .foil-offer-art {
+  width: clamp(78px, 27vw, 132px);
+  height: auto;
+  aspect-ratio: 3 / 4;
+  border: 1px solid rgba(216, 184, 102, 0.65);
+  box-shadow: 0 8px 24px #0007;
+}
+.foil-offer-confirm .setup-actions {
+  width: min(100%, 300px);
+}
+.foil-offer-confirm .setup-actions .btn {
+  min-width: 90px;
+  white-space: nowrap;
 }

@@ -17,6 +17,8 @@ import { useEffect, useRef, useState } from "react";
 import { useGameBgm, useGameSounds } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
 import { enrichAction } from "../game/actions.js";
+import { ACE_FOIL_SKIN_ID, canUseAceFoil } from "../game/ace-foil.js";
+import { ACE_FOIL_RULE_VERSION } from "../game/rule-version.js";
 import {
   isFrozen,
   isKnownTo,
@@ -1189,6 +1191,16 @@ export function GameCore({
   let tutIdx = tutorial ? currentStepIndex(tutorial, a, tutStep) : -1;
   function y(E) {
     if (fxBusy) return;
+    if (
+      E.type === "USE_ACE_FOIL" &&
+      (pendingCapture ||
+        a.captureReveal ||
+        areaPick ||
+        a.selectedId ||
+        a.shuffleMode ||
+        !canUseAceFoil(a, network ? p : cpu ? 0 : a.currentTurn).ok)
+    )
+      return;
     if (a.captureReveal && E.type === "VIEW_LOG") return;
     // どの駒を動かすかをアクション自身に持たせる。
     // 台本の照合にも、通信で相手へ送るときにも要る
@@ -1256,6 +1268,7 @@ export function GameCore({
         (E.type === "ROLL_DICE_SINGLE" && E.value == null) ||
         (E.type === "CONFIRM_MULLIGAN" && !E.reserveOrder) ||
         (E.type === "CONFIRM_SHUFFLE" && !E.order) ||
+        (E.type === "USE_ACE_FOIL" && (!E.aId || !E.pickIds || !E.order)) ||
         (E.type === "USE_AREA" && !E.picks && E.hit == null);
       let be = network
         ? enrichAction(withLocalContext(E, U), U)
@@ -2701,6 +2714,22 @@ export function GameCore({
   // 段階を切り替えて候補から外れた駒は選び直してもらう
   const areaChosen =
     areaChoice && areaCands.includes(areaChoice) ? a.pieces[areaChoice] : null;
+  const aceFoil = canUseAceFoil(a, P);
+  const showAceFoil =
+    !tutorial &&
+    a.phase === "play" &&
+    R === 9 &&
+    a.areasEnabled &&
+    a.ruleVersion >= ACE_FOIL_RULE_VERSION &&
+    a.ruleVersion <= GAME_RULE_VERSION &&
+    a.areaLoadouts?.[P]?.A === ACE_FOIL_SKIN_ID &&
+    Object.values(a.pieces).some(
+      (piece) =>
+        piece.alive &&
+        piece.owner === P &&
+        piece.rank === "A" &&
+        a.board[piece.row]?.[piece.col]?.id === piece.id,
+    );
   return (
     <GameShell
         topExtra={skipMenu}
@@ -2759,6 +2788,33 @@ export function GameCore({
           />
         )}
         {aceMagic.controls}
+        {showAceFoil && (
+          <div className="action-bar" role="group" aria-label="Aフォイルの魔法">
+            <span>
+              <b>Aフォイルの魔法</b>
+              <br />
+              自分のA・王を除く3体をランダムに入れ替え。発動後も通常の行動ができます。
+            </span>
+            <button
+              className="btn btn-primary"
+              disabled={
+                !x ||
+                !aceFoil.ok ||
+                !!pendingCapture ||
+                !!a.selectedId ||
+                !!a.shuffleMode ||
+                !!areaPick
+              }
+              title={aceFoil.why || "毎手番1回・通常の行動前に任意発動"}
+              onClick={() => y({ type: "USE_ACE_FOIL" })}
+            >
+              <Sparkle size={16} />
+              {a.aceFoilUsedTurn?.[P] === (a.turnNo || 0)
+                ? "この手番は発動済み"
+                : "フォイル魔法を発動"}
+            </button>
+          </div>
+        )}
         {pendingCapture && (
           <CaptureConfirm
             count={pendingCapture.count}

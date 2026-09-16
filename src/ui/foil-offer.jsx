@@ -17,6 +17,7 @@ export function FoilOfferSheet({
   onBuy,
   onClose,
   onShop,
+  message = "",
 }) {
   const [picked, setPicked] = useState(null); // 確認中の商品
   if (!offers.length) return null;
@@ -136,6 +137,7 @@ export function FoilOfferSheet({
           ))}
         </div>
       )}
+      {message && <p className="skins-message" role="status">{message}</p>}
     </SkinModal>
   );
 }

@@ -379,7 +379,8 @@ export function claimEarly(state) {
 }
 
 export function claimSpecial(state, id) {
-  if (byId(id)?.rarity !== "SPECIAL")
+  const skin = byId(id);
+  if (skin?.rarity !== "SPECIAL" || skin.foil)
     throw new Error("特別スキンを選んでください");
   if (state.owned[id]) return state;
   return { ...state, owned: { ...state.owned, [id]: 1 } };

@@ -31,7 +31,8 @@ import {
   etherFor,
 } from "../iap/catalog.js";
 import { campaignOf, campaignOpen } from "../game/campaigns.js";
-import { productOf as foilProductOf, priceFor as foilPriceFor } from "../skins/foil-shop.js";
+import { productOf as foilProductOf, priceFor as foilPriceFor, ownsAllButSecret } from "../skins/foil-shop.js";
+import { ALL_SKINS, byId as skinById, foilId } from "../skins/catalog.js";
 
 export const MIGRATE_TICKETS_MAX = 500;
 /** 遊んで貯める分(kind=earn)は端末の申告なので、1回と1日(UTC)の上限で抑える */
@@ -48,6 +49,8 @@ const cap = (n, max) => (Number.isSafeInteger(n) && n > 0 ? Math.min(n, max) : 0
 const addColumn = (sql, table, col) => {
   try { sql(`ALTER TABLE ${table} ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`); } catch { /* 既にある */ }
 };
+const foilEventId = (uid, product, skins) =>
+  `foil:${uid}:${product}:${[...skins].sort().join("+")}`;
 
 export class Wallet {
   constructor(sql) {
@@ -64,6 +67,10 @@ export class Wallet {
     sql("CREATE TABLE IF NOT EXISTS purchases (transactionId TEXT PRIMARY KEY, uid TEXT, productId TEXT, environment TEXT, purchasedAt INTEGER, grantedAt INTEGER)");
     sql("CREATE TABLE IF NOT EXISTS entitlements (uid TEXT, productId TEXT, transactionId TEXT, at INTEGER, PRIMARY KEY(uid, productId))");
     sql("CREATE TABLE IF NOT EXISTS migrations (uid TEXT PRIMARY KEY, tickets INTEGER, at INTEGER)");
+    // 端末の所持一覧の写し。既存ゲームと同じ端末申告モデルであり、取得の独立した証明ではない。
+    sql("CREATE TABLE IF NOT EXISTS collection_skins (uid TEXT NOT NULL, skinId TEXT NOT NULL, syncedAt INTEGER, PRIMARY KEY(uid, skinId))");
+    // 有償購入した札は端末の所持同期とは別に保持し、端末消失後にも復元できる。
+    sql("CREATE TABLE IF NOT EXISTS foil_purchases (uid TEXT NOT NULL, skinId TEXT NOT NULL, eventId TEXT NOT NULL, at INTEGER, PRIMARY KEY(uid, skinId))");
     // ガチャの履歴(運営が見る)。1回引くごとに1行。端末が結果を申告する
     sql("CREATE TABLE IF NOT EXISTS gacha_log (id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, skinId TEXT, isNew INTEGER NOT NULL DEFAULT 0, at INTEGER)");
     sql("CREATE INDEX IF NOT EXISTS gacha_log_uid ON gacha_log(uid, at)");
@@ -81,6 +88,64 @@ export class Wallet {
   gems(uid) { const r = this.row(uid); return r.gems + r.gems_free; }
   entitlementsOf(uid) {
     return this.sql("SELECT productId FROM entitlements WHERE uid=?", uid).map((r) => r.productId);
+  }
+  /** 旧購入も支払済み台帳から復元。端末の申告ではシークレットを付与しない。 */
+  restoreFoilPurchases(uid) {
+    const rows = this.sql(
+      "SELECT id, ref, at FROM wallet_ledger WHERE uid=? AND kind='foil' AND gems<0 AND gems_free=0 AND tickets=0",
+      uid,
+    );
+    for (const row of rows) {
+      if (typeof row.ref !== "string") continue;
+      const split = row.ref.indexOf(":");
+      if (split < 1) continue;
+      const product = foilProductOf(row.ref.slice(0, split));
+      const skins = row.ref.slice(split + 1).split(",");
+      if (foilPriceFor(product, skins) === null ||
+          row.id !== foilEventId(uid, product.id, skins)) continue;
+      this.rememberFoils(uid, skins, row.id, row.at);
+    }
+  }
+  rememberFoils(uid, skins, eventId, now) {
+    for (const baseId of skins)
+      this.sql(
+        "INSERT OR IGNORE INTO foil_purchases (uid, skinId, eventId, at) VALUES (?,?,?,?)",
+        uid, foilId(baseId), eventId, now,
+      );
+  }
+  purchasedFoilsOf(uid) {
+    this.restoreFoilPurchases(uid);
+    return this.sql("SELECT skinId FROM foil_purchases WHERE uid=? ORDER BY skinId", uid)
+      .map((r) => r.skinId);
+  }
+  collectionOf(uid, purchased = this.purchasedFoilsOf(uid)) {
+    const rows = this.sql("SELECT skinId FROM collection_skins WHERE uid=?", uid);
+    return { owned: Object.fromEntries([...rows.map((r) => r.skinId), ...purchased].map((id) => [id, 1])) };
+  }
+  /**
+   * 認証済みuidの端末所持一覧を置換する。全入力を先に検査し、壊れた同期で既存一覧を消さない。
+   * Aフォイルの申告は購入記録の代わりにしない。正規購入済みのAも支払台帳から復元する。
+   * 呼出元のtransactionSyncで一覧更新と応答を一括確定する。
+   */
+  syncCollection(uid, ownedIds, now) {
+    if (!Array.isArray(ownedIds) || ownedIds.length > ALL_SKINS.length ||
+        new Set(ownedIds).size !== ownedIds.length ||
+        [...ownedIds].some((id) => typeof id !== "string" || !skinById(id)))
+      throw new Error("所持カードの一覧が正しくありません。");
+    this.sql("DELETE FROM collection_skins WHERE uid=?", uid);
+    for (const id of ownedIds) {
+      if (skinById(id).secret) continue;
+      this.sql("INSERT INTO collection_skins (uid, skinId, syncedAt) VALUES (?,?,?)", uid, id, now);
+    }
+    return this.summary(uid, now);
+  }
+  /** 公開中の商品の購入条件。completeフラグは受け取らず、保存済みの全IDを照合する。 */
+  checkFoilOwnership(uid, product, skins) {
+    const collection = this.collectionOf(uid);
+    if (product.secret && !ownsAllButSecret(collection))
+      throw new Error("このフォイルの購入条件を満たしていません。");
+    if (skins.some((id) => collection.owned[foilId(id)]))
+      throw new Error("このフォイルはすでに持っています。");
   }
   /** 今日(UTC)の広告リワードの使用回数 */
   adsUsedToday(uid, now) {
@@ -102,12 +167,15 @@ export class Wallet {
     const r = this.row(uid);
     const used = now == null ? null : this.adsUsedToday(uid, now);
     const passWeek = now == null ? null : this.passTicketsThisWeek(uid, now);
+    const purchasedFoils = this.purchasedFoilsOf(uid);
     return {
       tickets: r.tickets,
       gems: r.gems + r.gems_free,
       gemsPaid: r.gems,
       gemsFree: r.gems_free,
       entitlements: this.entitlementsOf(uid),
+      purchasedFoils,
+      secretFoilEligible: ownsAllButSecret(this.collectionOf(uid, purchasedFoils)),
       prices: { ticket: GEM_PER_TICKET, ticketBundle: TICKET_BUNDLE, battlepass: BATTLEPASS_GEMS, ether: ETHER_EXCHANGE },
       consumeOrder: GEM_CONSUME_ORDER,
       // 広告リワード。now があるときだけ入れる(いつの「今日」か決まらないと数えられない)
@@ -150,7 +218,7 @@ export class Wallet {
   }
   /** 出来事 id で冪等に増減する。減らす場合は残高を超えない */
   apply(uid, id, { tickets = 0, gemsPaid = 0, gemsFree = 0 }, kind, ref, now) {
-    if (typeof id !== "string" || !/^[\w:.-]{1,128}$/.test(id))
+    if (typeof id !== "string" || !/^[\w:.+-]{1,128}$/.test(id))
       throw new Error("出来事の id が正しくありません。");
     for (const d of [tickets, gemsPaid, gemsFree])
       if (!Number.isSafeInteger(d) || Math.abs(d) > 1000000)
@@ -233,12 +301,23 @@ export class Wallet {
    */
   buyFoil(uid, productId, skins, now) {
     const product = foilProductOf(productId);
-    if (!product || product.pending) throw new Error("その商品はありません。");
+    if (!product) throw new Error("その商品はありません。");
     const price = foilPriceFor(product, skins);
     if (price === null) throw new Error("買う札の指定が正しくありません。");
-    const id = `foil:${uid}:${product.id}:${[...skins].sort().join("+")}`;
+    const id = foilEventId(uid, product.id, skins);
+    const prior = this.sql("SELECT uid, kind, gems FROM wallet_ledger WHERE id=?", id)[0];
+    // 支払済みの同一要求は、所持同期の変化・再非公開・残高不足より先に復元する。
+    if (prior) {
+      if (prior.uid !== uid || prior.kind !== "foil" || prior.gems >= 0)
+        throw new Error("購入の記録を確認できませんでした。");
+      return { applied: false, ...this.summary(uid), product: product.id, skins: [...skins], price: -prior.gems };
+    }
+    if (product.pending) throw new Error("その商品はありません。");
+    this.checkFoilOwnership(uid, product, skins);
+    // WorkerのtransactionSyncが減算と付与をまとめて確定し、途中の例外では両方を戻す。
     const r = this.spendGems(uid, id, price, "foil", `${product.id}:${skins.join(",")}`, now, {}, { paidOnly: true });
-    return { ...r, product: product.id, skins: [...skins], price };
+    this.rememberFoils(uid, skins, id, now);
+    return { ...r, ...this.summary(uid), product: product.id, skins: [...skins], price };
   }
   /** 検証済みの Apple の取引(ジェムのパック)を財布に反映する。取引 ID で冪等。円の分は有償、おまけは無償 */
   purchase(uid, tx, now) {
@@ -366,6 +445,8 @@ export class Wallet {
   }
   /** 自分の記録を消す(5.1.1(v))。購入の記録は会計のため残す(uid は伏せる) */
   forget(uid) {
+    this.sql("DELETE FROM collection_skins WHERE uid=?", uid);
+    this.sql("DELETE FROM foil_purchases WHERE uid=?", uid);
     this.sql("DELETE FROM iap_diag WHERE uid=?", uid);
     this.sql("DELETE FROM wallets WHERE uid=?", uid);
     this.sql("DELETE FROM wallet_ledger WHERE uid=?", uid);

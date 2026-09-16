@@ -1,4 +1,4 @@
-import { SKINS, byId, foilId } from "./catalog.js";
+import { SKINS, FOIL_SKINS } from "./catalog.js";
 import { areaSkinOk } from "../game/areas.js";
 
 // CPUは所持データを使わず、限定・バトルパスを含む全スキンから装備する。
@@ -12,7 +12,8 @@ export function createCpuLoadout(random = Math.random) {
   return Object.fromEntries(
     [...groups].map(([rank, skins]) => {
       const skin = skins[Math.floor(random() * skins.length)];
-      return [rank, byId(foilId(skin.id))?.id || skin.id];
+      // CPUは通常の15種だけフォイル化する。A・天馬騎士は通常版を使う。
+      return [rank, FOIL_SKINS.find((foil) => foil.baseId === skin.id)?.id || skin.id];
     }),
   );
 }
@@ -23,8 +24,6 @@ export function createCpuLoadout(random = Math.random) {
  */
 export function ensureCpuFoil(loadout, rank) {
   if (!rank || areaSkinOk(loadout?.[rank])) return loadout;
-  const foil = SKINS.map((skin) => byId(foilId(skin.id))).find(
-    (skin) => skin && skin.rank === rank,
-  );
+  const foil = FOIL_SKINS.find((skin) => skin.rank === rank);
   return foil ? { ...loadout, [rank]: foil.id } : loadout;
 }
