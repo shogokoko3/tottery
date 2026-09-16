@@ -24,26 +24,30 @@ const HOME_PORTRAITS = {
   heaven: ["angel-j", "angel-q", "angel-k"],
   hell: ["demon-j", "demon-q", "demon-k"],
 };
+// Each scene includes its character and environment in one wide illustration.
+const HOME_SCENES = {
+  "zombie-male": "earth-king.webp",
+  "zombie-female": "characters/zombie-female.webp",
+  "pirate-male": "sea-king.webp",
+  "pirate-female": "characters/pirate-female.webp",
+  "elf-male": "characters/elf-male.webp",
+  "elf-female": "forest-king.webp",
+  "viking-male": "characters/viking-male.webp",
+  "viking-female": "ice-king.webp",
+  "angel-j": "characters/angel-j.webp",
+  "angel-q": "characters/angel-q.webp",
+  "angel-k": "heaven-king.webp",
+  "demon-j": "characters/demon-j.webp",
+  "demon-q": "characters/demon-q.webp",
+  "demon-k": "hell-king.webp",
+};
 function portraitView(theme, id) {
   const skin = byId(id);
   const character = HOME_PORTRAITS[theme.id]?.includes(id) ? skin : null;
   return {
     name: character?.name || theme.name,
-    image:
-      character && character.rank !== "K"
-        ? character.image
-        : asset(`${theme.id}-king.webp`),
-    position:
-      character && character.rank !== "K"
-        ? {
-            earth: "50% 5%",
-            sea: "50% 0%",
-            forest: "50% 12%",
-            ice: "50% 8%",
-            heaven: "50% 20%",
-            hell: "50% 10%",
-          }[theme.id]
-        : "50% 50%",
+    image: asset(character ? HOME_SCENES[id] : `${theme.id}-king.webp`),
+    position: "50% 50%",
   };
 }
 export const findHomeTheme = (id) =>
