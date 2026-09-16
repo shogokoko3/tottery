@@ -66,12 +66,12 @@ assert.equal(iap.currentLoadStage(), "問い合わせに失敗");
 
 // 2) 応答があれば商品になる(表示価格は StoreKit のもの)
 globalThis.__pluginImpl = {
-  getProducts: async () => ({ products: [{ identifier: "com.shogokoko.tottery.gems.120", priceString: "¥160", title: "120ジェム" }] }),
+  getProducts: async () => ({ products: [{ identifier: "com.shogokoko.tottery.gems.150", priceString: "¥150", title: "150ジェム" }] }),
   getStorefront: async () => ({ countryCode: "JPN" }),
 };
 const got = await within(iap.loadProducts(), 1000);
 assert.equal(got.length, 1);
-assert.equal(got[0].price, "¥160");
+assert.equal(got[0].price, "¥150");
 assert.match(iap.currentLoadStage(), /応答あり\(1件\)/);
 const d = await within(iap.storeDiagnostics(123), 1000);
 assert.deepEqual(d, { build: 7, storefront: "JPN", elapsedMs: 123 });

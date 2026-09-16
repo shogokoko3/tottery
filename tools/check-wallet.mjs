@@ -15,6 +15,7 @@ import { DatabaseSync } from "node:sqlite";
 import { X509CertificateGenerator, X509Certificate } from "@peculiar/x509";
 import { CompactSign } from "jose";
 import { Wallet, MIGRATE_TICKETS_MAX, EARN_DAILY_MAX } from "../src/server/wallet.js";
+import { ticketsPrice, etherFor } from "../src/iap/catalog.js";
 import { verifyAppleTransaction } from "../src/server/applejws.js";
 import { APPLE_ROOT_G3_PEM } from "../src/server/apple-root-g3.js";
 import { BUNDLE_ID, PRODUCTS, GEM_PACKS, GEM_CONSUME_ORDER, FREE_GEM_EVENT_MAX, FREE_GEM_DAILY_MAX, ADS_PER_DAY, BATTLEPASS_ENTITLEMENT, BATTLEPASS_GEMS, BATTLEPASS_WEEK_TICKET_MAX, BATTLEPASS_TICKETS_PER_CYCLE, FIRST_PURCHASE_SKIN } from "../src/iap/catalog.js";
@@ -95,14 +96,19 @@ is("同じ取引を送り直しても二重に加算されない", w.purchase("A
 is("同じ取引を別の uid で出しても渡らない(世界で一度)", w.purchase("B", tx, T).gems, 0);
 await throws("知らない商品は拒む", () => w.purchase("A", { ...tx, transactionId: "1", productId: "x" }, T), /知らない商品/);
 const beforeT = w.balance("A");
-// 10枚=100ジェムは無償から先に減る
-const freeAfterEx = EARNED_FREE + PACK.free + FIRST_BONUS - 100;
-is("両替は無償から先に減る", pick(w.exchange("A", "x-1", 10, T)), { tickets: beforeT + 10, gems: PACK.paid + freeAfterEx, paid: PACK.paid, free: freeAfterEx });
+// 10枚=1,200ジェム(TICKET_BUNDLE。2026-09-16 本人の決め)は無償から先に減り、足りない分を有償から
+const exPrice = ticketsPrice(10);
+is("10枚まとめ売りは 1,200", exPrice, 1200);
+is("1枚は 150、11枚は 1,350", [ticketsPrice(1), ticketsPrice(11)], [150, 1350]);
+const freeBefore = EARNED_FREE + PACK.free + FIRST_BONUS;
+const freeAfterEx = Math.max(0, freeBefore - exPrice);
+const paidAfterEx = PACK.paid - Math.max(0, exPrice - freeBefore);
+is("両替は無償から先に減る", pick(w.exchange("A", "x-1", 10, T)), { tickets: beforeT + 10, gems: paidAfterEx + freeAfterEx, paid: paidAfterEx, free: freeAfterEx });
 is("同じ両替は二度効かない", w.exchange("A", "x-1", 10, T).applied, false);
 // バトルパスは**有償ジェムだけ**で買う(無償・おまけでは買えない。2026-09-13 本人の決め)
 // A は有償600・無償が多いが、有償が1500に足りないので買えない
 await throws("有償が足りないとバトルパスは買えない(無償では不可)", () => w.buyPass("A", "p-1", T), /有償ジェム/);
-is("買えなかったのでAの残高は動かない", pick(w.summary("A")), { tickets: beforeT + 10, gems: PACK.paid + freeAfterEx, paid: PACK.paid, free: freeAfterEx });
+is("買えなかったのでAの残高は動かない", pick(w.summary("A")), { tickets: beforeT + 10, gems: paidAfterEx + freeAfterEx, paid: paidAfterEx, free: freeAfterEx });
 is("使う順(両替など)は無償→有償", GEM_CONSUME_ORDER, ["free", "paid"]);
 {
   // 有償が足りる uid: 有償だけが 1500 減り、無償は動かない
@@ -306,6 +312,26 @@ console.log("\n運営ツール(手動付与・購入履歴・ガチャ履歴)");
   is("pending の商品は売らない", /その商品はありません/.test(msg), true);
   try { fw.buyFoil("F", "foil-10", ["angel-k"], 70); } catch (e) { msg = e.message; }
   is("商品外の札は断る", /正しくありません/.test(msg), true);
+}
+
+// 無償ジェムをエーテルに(10 → 20)。**無償だけ**で払い、有償は溶かさない。10 の倍数だけ
+{
+  const D = new DatabaseSync(":memory:");
+  const ew = new Wallet((q, ...a) => D.prepare(q).all(...a));
+  ew.purchase("G", { transactionId: "t-eth", productId: "com.shogokoko.tottery.gems.600", environment: "Sandbox", purchaseDate: 1 }, 10);
+  const b = ew.summary("G"); // 有償600・無償(初回2倍600+おまけ60)
+  const r = ew.buyEther("G", "eth-1", 100, 20);
+  is("100 無償ジェム → 200 エーテル", r.ether, 200);
+  is("無償だけ減る", [r.gemsFree, r.gemsPaid], [b.gemsFree - 100, b.gemsPaid]);
+  is("同じ id は二度効かず ether 0", ew.buyEther("G", "eth-1", 100, 30).ether, 0);
+  let msg = "";
+  try { ew.buyEther("G", "eth-2", 15, 40); } catch (e) { msg = e.message; }
+  is("10 の倍数でなければ断る", /正しくありません/.test(msg), true);
+  try { ew.buyEther("G", "eth-3", 10000, 50); } catch (e) { msg = e.message; }
+  is("1,000 を超える量は断る", /正しくありません/.test(msg), true);
+  try { ew.buyEther("G", "eth-4", 1000, 60); } catch (e) { msg = e.message; }
+  is("無償が足りなければ有償があっても失敗", /無償ジェムが足りません/.test(msg), true);
+  is("catalog の換算", [etherFor(10), etherFor(50), etherFor(1000), etherFor(1010), etherFor(7)], [20, 100, 2000, null, null]);
 }
 
 console.log(`\n${ok} 件 ok / ${fails.length} 件 NG`);

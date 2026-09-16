@@ -25,6 +25,10 @@ import {
   FIRST_PURCHASE_SKIN,
   FREE_GEM_EVENT_MAX,
   FREE_GEM_DAILY_MAX,
+  TICKET_BUNDLE,
+  ticketsPrice,
+  ETHER_EXCHANGE,
+  etherFor,
 } from "../iap/catalog.js";
 import { campaignOf, campaignOpen } from "../game/campaigns.js";
 import { productOf as foilProductOf, priceFor as foilPriceFor } from "../skins/foil-shop.js";
@@ -104,7 +108,7 @@ export class Wallet {
       gemsPaid: r.gems,
       gemsFree: r.gems_free,
       entitlements: this.entitlementsOf(uid),
-      prices: { ticket: GEM_PER_TICKET, battlepass: BATTLEPASS_GEMS },
+      prices: { ticket: GEM_PER_TICKET, ticketBundle: TICKET_BUNDLE, battlepass: BATTLEPASS_GEMS, ether: ETHER_EXCHANGE },
       consumeOrder: GEM_CONSUME_ORDER,
       // 広告リワード。now があるときだけ入れる(いつの「今日」か決まらないと数えられない)
       adPerDay: ADS_PER_DAY,
@@ -201,7 +205,7 @@ export class Wallet {
   /** 無償ジェムを足す(端末の申告。上限つき) */
   earnGems(uid, id, n, now) { return this.apply(uid, id, { gemsFree: n }, "earn", null, now); }
   /** ジェムを使う。無償→有償の順に取り崩し、1つの出来事にする。extra は同時に足すもの(両替のチケットなど) */
-  spendGems(uid, id, amount, kind, ref, now, extra = {}, { paidOnly = false } = {}) {
+  spendGems(uid, id, amount, kind, ref, now, extra = {}, { paidOnly = false, freeOnly = false } = {}) {
     if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("枚数が正しくありません。");
     const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) return this.apply(uid, id, { gemsPaid: -1 }, kind, ref, now); // 冪等の判定だけ通す
@@ -211,6 +215,11 @@ export class Wallet {
     if (paidOnly) {
       if (pools.paid < amount) throw new Error(`有償ジェムが足りません(あと${amount - pools.paid})`);
       return this.apply(uid, id, { ...extra, gemsPaid: -amount }, kind, ref, now);
+    }
+    // 無償だけで払う品(エーテル両替)は有償に触れない
+    if (freeOnly) {
+      if (pools.free < amount) throw new Error(`無償ジェムが足りません(あと${amount - pools.free})`);
+      return this.apply(uid, id, { ...extra, gemsFree: -amount }, kind, ref, now);
     }
     if (pools.free + pools.paid < amount)
       throw new Error(`ジェムが足りません(あと${amount - pools.free - pools.paid})`);
@@ -258,7 +267,17 @@ export class Wallet {
   exchange(uid, id, tickets, now) {
     if (!Number.isSafeInteger(tickets) || tickets < 1 || tickets > 100)
       throw new Error("枚数が正しくありません。");
-    return this.spendGems(uid, id, tickets * GEM_PER_TICKET, "exchange", null, now, { tickets });
+    return this.spendGems(uid, id, ticketsPrice(tickets), "exchange", null, now, { tickets });
+  }
+  /**
+   * 無償ジェムをエーテルに(src/iap/catalog.js の ETHER_EXCHANGE)。**無償だけ**で払う(有償は溶かさない)。
+   * エーテルは端末の持ち物なので、ここでは減らすだけ。返り値の ether を端末が足す
+   */
+  buyEther(uid, id, gems, now) {
+    const ether = etherFor(gems);
+    if (ether === null) throw new Error("ジェムの数が正しくありません(10 の倍数、1,000 まで)。");
+    const r = this.spendGems(uid, id, gems, "ether", null, now, {}, { freeOnly: true });
+    return { ...r, ether: r.applied ? ether : 0 };
   }
   /** ジェムでバトルパス(買い切りの権利)を買う。既に持っていれば減らさない */
   buyPass(uid, id, now) {

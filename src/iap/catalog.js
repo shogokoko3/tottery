@@ -8,7 +8,7 @@
  *  - 無償: パックのおまけ、ミッションや手紙、バトルパスの完成などで手に入る分
  *  - 使うときは無償→有償の順(GEM_CONSUME_ORDER)。定数1つで変えられる
  * パックは 2026-09-12 に本人が決めた(有償=円と同額、端数のおまけ=無償):
- *  120円=120 / 600円=600+120 / 1,500円=1,500+180 / 3,000円=3,000+450 /
+ *  150円=150(2026-09-16 に 120 から) / 600円=600+60 / 1,500円=1,500+230 / 3,000円=3,000+600 /
  *  5,000円=5,000+850 / 10,000円=10,000+2,000
  * 値付け(チケット1枚・バトルパス)と獲得量は目安で、あとで相談して決める。
  * 商品 ID は円で固定する(おまけを変えても App Store の商品を作り直さない)
@@ -21,7 +21,8 @@ export const SHOP_ENABLED = true;
 /** ジェムのパック(消耗型)。paid は円の価格と同じ、free はおまけ(無償) */
 export const GEM_PACKS = [
   // おまけ(無償)は買うほど率が上がる。120=0% / 600=10% / 1500≈15%(230) / 3000=20% / 5000=25% / 10000=30%
-  { id: `${BUNDLE_ID}.gems.120`, paid: 120, free: 0, name: "120ジェム" },
+  // 120 → 150 に(2026-09-16 本人の決め。ガチャ1回 150 ジェムをちょうど買える最小のパック)
+  { id: `${BUNDLE_ID}.gems.150`, paid: 150, free: 0, name: "150ジェム" },
   {
     id: `${BUNDLE_ID}.gems.600`,
     paid: 600,
@@ -55,8 +56,37 @@ export const GEM_PACKS = [
 ];
 /** 使う順。無償を先に減らし、足りない分を有償から */
 export const GEM_CONSUME_ORDER = ["free", "paid"];
-/** ゲーム内の値付け(ジェム)。目安 */
-export const GEM_PER_TICKET = 10;
+/**
+ * ゲーム内の値付け(ジェム)。2026-09-16 本人の決め: ガチャチケット1枚 150、10枚まとめて 1,200
+ * (1ジェム=1円なので、有償ガチャは 1回 ¥150 / 10連 ¥1,200。割引は「1枚→10枚」の1段だけ)。
+ * 10 ジェム=1枚だった頃(2026-09-12〜16)は 1回 ¥10 になっていた
+ */
+export const GEM_PER_TICKET = 150;
+export const TICKET_BUNDLE = Object.freeze({ tickets: 10, gems: 1200 });
+/** n 枚のチケットの値段(ジェム)。10枚ごとにまとめ売りの値段、端数は1枚ずつ */
+export function ticketsPrice(n) {
+  if (!Number.isSafeInteger(n) || n <= 0) return null;
+  const bundles = Math.floor(n / TICKET_BUNDLE.tickets);
+  return (
+    bundles * TICKET_BUNDLE.gems + (n % TICKET_BUNDLE.tickets) * GEM_PER_TICKET
+  );
+}
+/**
+ * 無償ジェムをエーテルに(2026-09-16 本人の決め: 10 → 20)。**無償だけ**で払う。
+ * ガチャ1回(10 ジェム相当だった頃の崩し分 ≒ 24)よりやや不利にして、ガチャの価値を守る
+ */
+export const ETHER_EXCHANGE = Object.freeze({ gems: 10, ether: 20, max: 1000 });
+/** gems(無償)をエーテルにするとき得られる量。10 の倍数でなければ null */
+export function etherFor(gems) {
+  if (
+    !Number.isSafeInteger(gems) ||
+    gems <= 0 ||
+    gems % ETHER_EXCHANGE.gems !== 0 ||
+    gems > ETHER_EXCHANGE.max
+  )
+    return null;
+  return (gems / ETHER_EXCHANGE.gems) * ETHER_EXCHANGE.ether;
+}
 /** バトルパス。1,500ジェムで買い切り解放・周回制(2026-09-13 本人の決め) */
 export const BATTLEPASS_GEMS = 1500;
 /** 買い切りの権利の名前(App Store の商品ではない。ジェムで買う) */

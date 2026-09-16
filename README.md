@@ -1523,3 +1523,12 @@ CPU・オンライン9×9で布陣称号を獲得した本人に、土・海・�
 - 商品10 は「A のフォイル以外の全カード(通常版・フォイル)を持っている人」にだけ見せ、それまで存在を出さない
   (`ownsAllButSecret`)。絵 `assets/skins/foils/genie-magician.webp`(と masks.json)ができたら `pending` を外す
 - 画面は `src/ui/foil-offer.jsx`(選ぶ→確認→買う)。足りなければ「ジェムを買う」へ。検査は `tools/check-foil-shop.mjs`、`tools/check-wallet.mjs`
+
+## ジェムの値付けの見直し(2026-09-16)
+
+- **ガチャチケット: 1枚 150 ジェム、10枚まとめて 1,200 ジェム**(`GEM_PER_TICKET` / `TICKET_BUNDLE`、値段は `ticketsPrice(n)`)。
+  1ジェム=1円なので有償ガチャは 1回 ¥150 / 10連 ¥1,200(`ガチャ価格の目安.md` の結論どおり)。以前は 10 ジェム=1枚で 1回 ¥10 になっていた
+- **120 ジェムのパックを 150 に**(`gems.150`)。ガチャ1回をちょうど買える最小のパック。App Store Connect の商品は `node tools/asc-iap-create.mjs 150`
+  で作り、審査用スクリーンショットは `tools/asc-iap-screenshots.mjs`。旧 120 の商品は残すがアプリからは出さない
+- **無償ジェムをエーテルに**: 10 → 20(`ETHER_EXCHANGE`、`/api/wallet/ether`、錬成タブ)。**無償だけ**で払う(有償は溶かさない)。
+  ガチャ1回を崩した分(約24)よりやや不利にして、ガチャの価値を守る。無償ジェムの役割は「錬成とバトルパス」に寄せる

@@ -62,7 +62,12 @@ import {
 } from "../net/wallet.js";
 import { shopAvailable, flushPurchases } from "../net/iap.js";
 import { adsAvailable, watchAdForTicket } from "../net/ads.js";
-import { GEM_PER_TICKET } from "../iap/catalog.js";
+import {
+  GEM_PER_TICKET,
+  TICKET_BUNDLE,
+  ETHER_EXCHANGE,
+  etherFor,
+} from "../iap/catalog.js";
 import { GemShop } from "./gem-shop.jsx";
 import { CardFace } from "./cards.jsx";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
@@ -77,8 +82,8 @@ import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { FoilOfferSheet } from "./foil-offer.jsx";
 import { foilOffers, bandOf } from "../skins/foil-shop.js";
-import { grantFoils } from "../skins/collection.js";
-import { buyFoil } from "../net/wallet.js";
+import { grantFoils, addEther } from "../skins/collection.js";
+import { buyFoil, buyEther } from "../net/wallet.js";
 import { FoilAcquisition } from "./foil-acquisition.jsx";
 import { FOIL_INITIAL_HOLD_MS } from "../skins/foil-acquisition.js";
 
@@ -536,6 +541,8 @@ function ForgePanel({
   foilKnown = true,
   // "ether": 崩す・作る・目安。"foil": 欠片と交換・フォイル加工。画面を分けて情報を絞る
   view = "ether",
+  // 無償ジェムをエーテルに(サーバーの財布があるときだけ)
+  onEther = null,
 }) {
   const [pick, setPick] = useState("SSR");
   const foilView = view === "foil";
@@ -627,6 +634,36 @@ function ForgePanel({
           </div>
         )}
       </div>
+      {!foilView && onEther && (
+        <section
+          className="forge-section forge-ether-exchange"
+          aria-label="無償ジェムをエーテルに"
+        >
+          <div className="forge-head">
+            <h3>無償ジェムを{ETHER_NAME}に</h3>
+            <p className="skins-note">
+              無償ジェム {ETHER_EXCHANGE.gems} → {ETHER_NAME}{" "}
+              {ETHER_EXCHANGE.ether}。有償ジェムは使いません。いま無償ジェム{" "}
+              <b>{(collection.gemsFree || 0).toLocaleString()}</b>
+            </p>
+          </div>
+          <div className="skins-pull-buttons">
+            {[10, 50, 100].map((g) => (
+              <button
+                key={g}
+                className="skin-btn"
+                disabled={working || (collection.gemsFree || 0) < g}
+                onClick={() => onEther(g)}
+              >
+                ジェム{g}
+                <span>
+                  → {ETHER_NAME} {etherFor(g)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* フォイル加工(通算獲得の記念)は、フォイルを持たないうちも出す。
           進み具合と手に入れる道筋を見せるため。交換・所持の一覧は下で伏せる */}
@@ -1163,6 +1200,24 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       setBuying(false);
     }
   };
+  // 無償ジェムをエーテルに(無償だけ。サーバーで減らし、通ったら端末のエーテルを足す)
+  const buyEtherWith = async (gems) => {
+    if (buying || busy.current) return;
+    setBuying(true);
+    setMessage("");
+    try {
+      const d = await buyEther(newEventId("ether"), gems);
+      const got = Number.isSafeInteger(d && d.ether)
+        ? d.ether
+        : etherFor(gems) || 0;
+      if (got > 0) await updateCollection((s) => addEther(s, got));
+      setMessage(`無償ジェム ${gems} を ${ETHER_NAME} ${got} にしました。`);
+    } catch (e) {
+      setMessage((e && e.message) || "両替できませんでした。");
+    } finally {
+      setBuying(false);
+    }
+  };
   const ownedCount = Object.keys(collection.owned).length;
   const foilOwnedCount = FOIL_SKINS.filter(
     (s) => collection.owned[s.id],
@@ -1441,8 +1496,8 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                   disabled={buying || working}
                   onClick={() => buyTickets(10)}
                 >
-                  チケット10枚
-                  <GemAmount amount={GEM_PER_TICKET * 10} size={20} />
+                  チケット{TICKET_BUNDLE.tickets}枚
+                  <GemAmount amount={TICKET_BUNDLE.gems} size={20} />
                 </button>
               </div>
             )}
@@ -1585,7 +1640,8 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           view={tab === "foil" ? "foil" : "ether"}
           run={run}
           acquire={acquire}
-          working={working}
+          working={working || buying}
+          onEther={WALLET_SERVER ? buyEtherWith : null}
           onPick={setSelected}
           message={message}
           setMessage={setMessage}
