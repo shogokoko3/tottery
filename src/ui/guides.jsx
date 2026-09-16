@@ -78,6 +78,28 @@ export function MoveDiagram({ rank, isKing = !1, gridSize = 7 }) {
   );
 }
 /**
+ * 王にしたときの図。
+ * 4・5 の王は自分ではなく仲間の同じ数字を伸ばすので、図を1つにすると「王がこう動く」と読めてしまう
+ * (本人の指摘 2026-09-16)。王自身(2マスのまま)と仲間(伸びた)の2つを、名札つきで並べる
+ */
+export function KingMoveFigure({ rank, gridSize = 7 }) {
+  if (rank !== "4" && rank !== "5")
+    return <MoveDiagram rank={rank} isKing gridSize={gridSize} />;
+  return (
+    <div className="md-pair">
+      <figure>
+        <MoveDiagram rank={rank} gridSize={gridSize} />
+        <figcaption>王(2マスのまま)</figcaption>
+      </figure>
+      <figure>
+        <MoveDiagram rank={rank} isKing gridSize={gridSize} />
+        <figcaption>仲間の{rank}(伸びる)</figcaption>
+      </figure>
+    </div>
+  );
+}
+
+/**
  * 札の説明(絵・動きの図・文)。
  * placing: 予備札から盤に出す場面。採用の但し書き(2枚まで採用可、王にする時のみ)は
  * その札を置けないかのように読めるので外す(2026-09-15)
@@ -97,7 +119,7 @@ export function CardGuide({
         ) : (
           <div className="cg-rank">{rank}</div>
         )}
-        <MoveDiagram rank={rank} isKing={isKing} />
+        {isKing ? <KingMoveFigure rank={rank} /> : <MoveDiagram rank={rank} />}
       </div>
       <p className="cg-text">
         {placing ? moveOnlyText(rank) : MOVE_TEXT[rank]}
@@ -188,7 +210,7 @@ export function RulesPanel({ onClose, initialTab = "moves" }) {
             <div className="rule-row" key={n}>
               <div className="rule-diagram">
                 <div className="rule-rank">{n}</div>
-                <MoveDiagram rank={n} isKing={t} />
+                {t ? <KingMoveFigure rank={n} /> : <MoveDiagram rank={n} />}
               </div>
               <div className="rule-desc">{t ? KING_TEXT[n] : MOVE_TEXT[n]}</div>
             </div>

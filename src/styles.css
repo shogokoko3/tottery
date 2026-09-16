@@ -5736,3 +5736,39 @@ body:has(.skin-overlay) {
 p.hint > span.gem-shop-diag {
   display: block;
 }
+
+/* 4・5 の王の図: 王自身(2マスのまま)と仲間(伸びる)を名札つきで並べる(2026-09-16 本人の指摘) */
+.md-pair {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+.md-pair figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.md-pair figcaption {
+  font-size: 9px;
+  line-height: 1.2;
+  color: var(--gold-soft);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.md-pair .move-diagram {
+  width: 56px;
+}
+.rule-diagram:has(.md-pair) {
+  width: 124px;
+}
+.move-hint-row.is-king {
+  grid-template-columns: auto 1fr auto;
+}
+.move-guide .move-hint-row.is-king {
+  grid-template-columns: auto 1fr;
+}
+.move-hint-row .md-pair .move-diagram {
+  width: 44px;
+}

@@ -8,7 +8,7 @@ import {
 } from "../game/tutorial.js";
 import { MOVE_TEXT, SUIT_SYMBOL } from "../game/constants.js";
 import { squareName } from "../game/board.js";
-import { MoveDiagram } from "./guides.jsx";
+import { MoveDiagram, KingMoveFigure } from "./guides.jsx";
 import { getCollection } from "../skins/store.js";
 import { foilRevealed } from "../skins/collection.js";
 import {
@@ -59,7 +59,11 @@ export function MoveGuidePanel({ guide }) {
       <div className="move-hint-rows">
         {guide.ranks.map((rank) => (
           <div className={`move-hint-row ${kings ? "is-king" : ""}`} key={rank}>
-            <MoveDiagram rank={rank} isKing={kings} gridSize={kings ? 7 : 5} />
+            {kings ? (
+              <KingMoveFigure rank={rank} />
+            ) : (
+              <MoveDiagram rank={rank} gridSize={5} />
+            )}
             <span className="move-hint-label">
               <b>{kings ? `${rank} の王` : rank}</b>
               <small>
@@ -101,7 +105,7 @@ export function MoveHintPanel({ hint }) {
             className={`move-hint-row is-king ${c.ok ? "is-ok" : "is-no"}`}
             key={`k${c.rank}`}
           >
-            <MoveDiagram rank={c.rank} isKing gridSize={7} />
+            <KingMoveFigure rank={c.rank} />
             <span className="move-hint-label">
               <b>{c.rank} の王</b>
               <small>{KING_ROW_TEXT[c.rank] || "王の力"}</small>
