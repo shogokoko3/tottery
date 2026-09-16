@@ -1546,6 +1546,7 @@ function TotteryScreens() {
             onTutorialList={showTutorials}
             onExit={tut ? s : backToMatching}
             exitLabel={tut ? "タイトルに戻る" : "対戦相手を選ぶに戻る"}
+            onHome={tut ? null : goHome}
             onNextMatch={(a && a.random) || bot ? nextRandomMatch : null}
           />
         </AppearanceSeats>

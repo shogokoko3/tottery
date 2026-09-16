@@ -208,6 +208,26 @@ h3 {
   flex-direction: column;
   align-items: stretch;
 }
+/* \u5BFE\u5C40\u5F8C\u306E\u30DC\u30BF\u30F3\u306F 2\xD72 \u56FA\u5B9A: \u5DE6\u4E0A \u632F\u308A\u8FD4\u308A / \u53F3\u4E0A \u30DE\u30C3\u30C1\u30F3\u30B0\u3078 / \u5DE6\u4E0B \u30DB\u30FC\u30E0\u3078 / \u53F3\u4E0B \u3082\u3046\u4E00\u5EA6 */
+.gameover-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+.gameover-grid .btn {
+  min-width: 0;
+  padding-inline: 8px;
+  white-space: nowrap;
+}
+.gameover-grid .go-review { grid-area: 1 / 1; }
+.gameover-grid .go-match { grid-area: 1 / 2; }
+.gameover-grid .go-home { grid-area: 2 / 1; }
+.gameover-grid .go-again { grid-area: 2 / 2; }
+.gameover-grid .hint {
+  grid-column: 1 / -1;
+  margin: 0;
+}
 .intro h1 {
   font-size: 42px;
   margin: 0 0 10px;
