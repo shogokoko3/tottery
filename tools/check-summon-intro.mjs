@@ -69,13 +69,18 @@ assert.doesNotMatch(ui, /debitTickets|updateCollection|Math\.random/);
 assert.ok(fs.statSync("assets/skins/summon/gate-relief.webp").size > 10000);
 for (const world of ["earth", "sea", "forest", "ice", "sky", "heaven", "hell"])
   assert.ok(fs.statSync(`assets/skins/summon/${world}-hall.webp`).size > 10000);
-for (const world of Object.keys(SUMMON_WORLDS))
+for (const world of Object.keys(SUMMON_WORLDS)) {
   assert.ok(
     fs.statSync(
       `assets/skins/summon/art-v3/${SUMMON_ARCHITECTURE[world].asset || `${world}.webp`}`,
     ).size > 10000,
     `召喚建築 ${world} が配信元に含まれる`,
   );
+  assert.ok(
+    fs.statSync(`assets/skins/summon/interior-v4/${world}.webp`).size > 10000,
+    `門の奥の空間 ${world} が配信元に含まれる`,
+  );
+}
 
 // Exercise the real preview startup with delayed assets, failure, and world
 // changes. Never expose an untextured frame or leave the controls stuck waiting.

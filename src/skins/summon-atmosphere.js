@@ -21,89 +21,139 @@ const noiseGLSL = /* glsl */ `
   }
 `;
 
+// Fog stays close to the floor; the few motes change character with the world.
+const atmosphere = {
+  earth: { fog: 0.018, count: 5, speed: 0.038, direction: 1, dust: "#adceb6" },
+  sea: { fog: 0.02, count: 6, speed: 0.046, direction: 1, dust: "#b2e0e8" },
+  forest: { fog: 0.016, count: 7, speed: 0.032, direction: 1, dust: "#d4e8a8" },
+  ice: { fog: 0.024, count: 10, speed: 0.064, direction: -1, dust: "#dceeff" },
+  sky: { fog: 0.024, count: 5, speed: 0.03, direction: 1, dust: "#deedff" },
+  heaven: { fog: 0.016, count: 7, speed: 0.028, direction: 1, dust: "#f3deb0" },
+  hell: { fog: 0.014, count: 9, speed: 0.078, direction: 1, dust: "#ff9c55" },
+};
+
 const colorValue = (color) =>
   color?.isColor ? color.clone() : new T.Color(color);
 
 /**
- * Receding mist behind the actual pointed doorway. The provided geometry is
- * adopted by the returned Mesh and is disposed by the scene's normal cleanup.
- * Coordinates follow pointedOutline(3, 7.3, 10.8), with y=0 on the landing.
+ * The painted world beyond the doorway, with restrained atmosphere at its floor.
+ * Geometry and material belong to the returned mesh. The caller owns the texture.
  */
-export function makeSummonPortal(color = "#d8c29b", geometry) {
+export function makeSummonPortal({
+  texture,
+  world = "earth",
+  gold = false,
+  color = "#d8c29b",
+  geometry,
+}) {
   if (!geometry?.isBufferGeometry) {
     throw new TypeError("makeSummonPortal requires the doorway geometry");
   }
+  if (!texture?.isTexture) {
+    throw new TypeError("makeSummonPortal requires the interior texture");
+  }
+  const theme = atmosphere[world] || atmosphere.earth;
+  const dust = new T.Color(theme.dust);
+  if (gold) dust.lerp(new T.Color("#ffe0a8"), 0.28);
   const material = new T.ShaderMaterial({
-    name: "summon-receding-mist",
+    name: "summon-painted-interior",
     uniforms: {
+      uMap: { value: texture },
       uTime: { value: 0 },
       uReveal: { value: 0 },
       uColor: { value: colorValue(color) },
+      uDustColor: { value: dust },
+      uFogStrength: { value: theme.fog },
+      uParticleCount: { value: theme.count },
+      uParticleMotion: { value: new T.Vector2(theme.speed, theme.direction) },
+      uEmbers: { value: world === "hell" ? 1 : 0 },
     },
     depthWrite: true,
-    toneMapped: true,
+    toneMapped: false,
     side: T.DoubleSide,
     vertexShader: /* glsl */ `
-      varying vec2 vDoor;
+      varying vec2 vUv;
       void main() {
-        vDoor = position.xy;
+        vUv = uv;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
     fragmentShader: /* glsl */ `
       precision highp float;
+      uniform sampler2D uMap;
       uniform float uTime;
       uniform float uReveal;
       uniform vec3 uColor;
-      varying vec2 vDoor;
+      uniform vec3 uDustColor;
+      uniform float uFogStrength;
+      uniform float uParticleCount;
+      uniform vec2 uParticleMotion;
+      uniform float uEmbers;
+      varying vec2 vUv;
       ${noiseGLSL}
 
       void main() {
-        vec2 p = vec2(vDoor.x / 3.0, (vDoor.y - 4.9) / 5.9);
+        // Never displace or fade the painted architecture as the doors open.
+        vec3 painted = texture2D(uMap, vUv).rgb;
         float reveal = smoothstep(0.0, 1.0, uReveal);
-        float t = uTime * 0.065;
-        float depth = length(p * vec2(1.0, 0.80));
+        float activity = 0.2 + 0.8 * reveal;
+        float sides = smoothstep(0.0, 0.035, vUv.x)
+                    * smoothstep(0.0, 0.035, 1.0 - vUv.x);
+        float bottom = smoothstep(0.0, 0.025, vUv.y);
+        vec3 result = painted * (0.965 + 0.035 * sides)
+                              * (0.975 + 0.025 * bottom);
 
-        // Two slowly travelling banks give a sense of distance. Their scale
-        // differs, so the interior never resembles a flat coloured panel.
-        vec2 drift = vec2(t * 0.15, -t * 0.31);
-        float farMist = mistNoise(p * 2.2 + drift + vec2(3.7, 8.1));
-        vec2 warp = vec2(farMist - 0.5, farMist * 0.37);
-        float nearMist = mistNoise(p * vec2(3.0, 4.8) + warp * 1.25
-                                + vec2(-t * 0.34, t * 0.52));
-        float centre = exp(-dot(p * vec2(1.65, 1.14), p * vec2(1.65, 1.14)));
-        float distantLight = centre * (0.19 + farMist * 0.34);
-        float cloud = smoothstep(0.26, 0.75, nearMist)
-                    * exp(-depth * depth * 1.7);
+        // Thin drifting wisps occupy only the lowest third of the artwork.
+        float floorMask = 1.0 - smoothstep(0.09, 0.30, vUv.y);
+        float floorBank = exp(-pow((vUv.y - 0.085) / 0.095, 2.0));
+        float t = uTime * 0.025;
+        float farMist = mistNoise(vUv * vec2(5.0, 16.0)
+                               + vec2(t * 0.7, -t * 0.15));
+        float nearMist = mistNoise(vUv * vec2(9.0, 25.0)
+                                + vec2(-t * 1.1, t * 0.2));
+        float wisps = smoothstep(0.37, 0.72, farMist * 0.6 + nearMist * 0.4);
+        float fog = floorMask * floorBank * wisps * uFogStrength * activity;
+        vec3 fogColor = mix(uColor * 0.22, painted, 0.45);
+        result = mix(result, fogColor, fog);
 
-        // The jambs stay dark, with a warmer diffused source further inside.
-        // No rotating rings, strobing, or rapid exposure changes.
-        vec3 deepShadow = vec3(0.003, 0.0045, 0.009);
-        vec3 middleFog = mix(uColor * 0.28, vec3(0.11, 0.14, 0.18), 0.52);
-        vec3 fogLight = mix(uColor, vec3(0.91, 0.94, 1.0), 0.54);
-        vec3 result = deepShadow + middleFog * cloud * (0.22 + reveal * 0.46);
-        // A distant source and broad light through the mist make an interior,
-        // rather than a flat grey cutout between the opening leaves.
-        vec2 source = p - vec2(0.0, 0.08);
-        float core = exp(-dot(source * vec2(2.9, 2.0), source * vec2(2.9, 2.0)));
-        float shafts = pow(0.5 + 0.5 * sin(atan(source.y, source.x) * 13.0 + farMist * 1.4), 8.0);
-        float radial = exp(-depth * 2.7) * shafts * .22;
-        result += fogLight * distantLight * (0.035 + reveal * 1.3);
-        result += mix(uColor, vec3(1.0, 0.96, 0.86), .5) * (core * 2.8 + radial) * reveal;
-        result += uColor * cloud * .27 * reveal;
-        // The floor's mist is denser but does not make a glowing border.
-        float lowMist = exp(-pow((vDoor.y - 0.8) / 1.55, 2.0))
-                      * exp(-p.x * p.x * 2.2);
-        result += middleFog * lowMist * (0.03 + 0.13 * reveal)
-                * (0.45 + farMist * 0.55);
+        // Existing painted highlights respond by less than one percent.
+        float brightness = dot(painted, vec3(0.2126, 0.7152, 0.0722));
+        float highlight = smoothstep(0.22, 0.75, brightness);
+        result += painted * highlight * floorMask * (farMist - 0.5)
+                * 0.012 * activity;
+
+        // Sparse dust, snow, or embers. Every position depends on absolute time,
+        // so scrubbing or pausing a preview reproduces the same exact frame.
+        vec2 pixel = fwidth(vUv);
+        float feather = max(pixel.x * 0.65, pixel.y) * 0.65;
+        float motes = 0.0;
+        for (int i = 0; i < 10; i++) {
+          float index = float(i);
+          if (index >= uParticleCount) continue;
+          float seed = hash21(vec2(index + 1.7, 8.3));
+          float offset = hash21(vec2(index + 4.2, 1.1));
+          float lifetime = fract(seed + uTime * uParticleMotion.x
+                               * (0.65 + offset * 0.7));
+          float travel = uParticleMotion.y > 0.0 ? lifetime : 1.0 - lifetime;
+          vec2 position = vec2(0.08 + offset * 0.84, 0.025 + travel * 0.25);
+          position.x += sin(uTime * 0.17 + seed * 18.0) * 0.012;
+          vec2 delta = (vUv - position) * vec2(0.65, 1.0);
+          delta.y *= mix(1.0, 0.65, uEmbers);
+          float radius = mix(0.0009, 0.0017, seed);
+          float point = 1.0 - smoothstep(radius, radius + feather, length(delta));
+          float fade = smoothstep(0.0, 0.16, lifetime)
+                     * (1.0 - smoothstep(0.75, 1.0, lifetime));
+          motes += point * fade * (0.35 + seed * 0.35);
+        }
+        result += uDustColor * motes * activity * (0.16 + 0.1 * uEmbers)
+                * floorMask;
         gl_FragColor = vec4(result, 1.0);
-        #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }
     `,
   });
   const portal = new T.Mesh(geometry, material);
-  portal.name = "mist-beyond-summoning-door";
+  portal.name = "painted-world-beyond-summoning-door";
   portal.castShadow = false;
   portal.receiveShadow = false;
   portal.userData.update = (seconds, reveal = 0) => {
