@@ -161,7 +161,6 @@ export function useAceMagic(state, loadouts, { disabled, viewer, boardRef }) {
         before: before.current,
         viewer: viewingPlayer,
         loadouts,
-        short: collection.motion === "short",
         stage:
           event.kind !== "ace-foil" && collection.motion === "full"
             ? "film"

@@ -604,34 +604,33 @@ function DeleteMeModal({ onClose, onDeleted }) {
 }
 
 /**
- * 対局中の演出(装備した駒が相手を取ったときの動画、A の魔法)の長さ。
+ * 対局中の演出(装備した駒が相手を取ったときの動画、A の魔法)を出すかどうか。オン/オフだけ(2026-09-17 本人の指示)。
  * 召喚(ガチャ)の演出はここでは変えず、スキン画面の召喚ボタンの横で変える(2026-09-17 本人の指示)
  */
 export function BattleMotionSettings() {
   const collection = useCollection();
   const [error, setError] = useState("");
+  const on = collection.motion !== "off";
   return (
-    <div className="battle-motion-settings">
-      <label>
-        演出の長さ
-        <select
-          aria-label="対局中の演出の長さ"
-          value={collection.motion}
-          onChange={(e) => {
-            const motion = e.target.value;
+    <div className="settings-list battle-motion-settings">
+      <div className="settings-row">
+        <span>対局中の演出（動画）</span>
+        <button
+          className="btn btn-ghost btn-small"
+          aria-pressed={on}
+          onClick={() => {
+            const motion = on ? "off" : "full";
             setError("");
             updateCollection((s) => ({ ...s, motion })).catch((err) =>
               setError(err.message),
             );
           }}
         >
-          <option value="full">通常（動画＋盤面演出）</option>
-          <option value="short">短縮（動画なし・2秒まで）</option>
-          <option value="off">演出なし</option>
-        </select>
-      </label>
+          {on ? "出さない" : "出す"}
+        </button>
+      </div>
       <p className="settings-note">
-        装備した駒が相手を取ったときの動画と、A の魔法の演出に効きます。召喚の演出はスキン画面の召喚ボタンの横で変えられます。
+        いまは{on ? "出します" : "出しません"}。装備した駒が相手を取ったときの動画と、A の魔法の演出に効きます。召喚の演出はスキン画面の召喚ボタンの横で変えられます。
       </p>
       {error && <p className="settings-note settings-error">{error}</p>}
     </div>

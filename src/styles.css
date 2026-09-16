@@ -3174,29 +3174,6 @@ body:has(.skin-overlay) {
   /* 中身が縦に長いので、画面をもう少し使う */
   max-height: 88vh;
 }
-/* 対局中の演出の長さ(設定画面)。見た目は「シーズンの装飾」の欄に合わせる */
-.battle-motion-settings {
-  text-align: left;
-}
-.battle-motion-settings label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
-  margin: 10px 0;
-}
-.battle-motion-settings select {
-  max-width: 65%;
-  min-height: 44px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  color: var(--text);
-  background: var(--bg);
-  padding: 8px;
-  font-family: inherit;
-  font-size: 14px;
-}
 .settings-note {
   margin: 0 0 6px;
   font-size: 11px;

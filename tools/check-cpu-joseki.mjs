@@ -210,5 +210,13 @@ assert.ok(totalChecks >= 12, `伏せ札の不変性を十分な回数見た(${to
   const pass = /cpuArea=\{\s*d && !tut && i === 9 && foilRevealed\(collection\) && \(!localPool \|\| bot\) \? cpuArea : null/;
   assert.ok(pass.test(src), "選んだエリアの受け渡しも foilRevealed で止める");
   assert.ok(/ensureCpuFoil\(cpuSkins, cpuArea\.king\)/.test(src), "CPUの王の数字にフォイルを持たせる");
+  // 「エリアなし」は CPU のエリアだけ無し(2026-09-17)。自分のエリアは装備どおり
+  assert.ok(/cpuArea && cpuArea\.type === "none" && i === 9 && d && !tut\s*\? stripFoils\(cpuSkins\)/.test(src), "エリアなしは CPU の装備からフォイルを外す");
+  const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
+  assert.ok(!/cpuArea\.type === "none"/.test(game), "エリアなしでも START_SETUP の areas は付ける(自分のエリアは立つ)");
+  const { baseSkinId, FOIL_SKINS } = await import("../src/skins/catalog.js");
+  const { createCpuLoadout } = await import("../src/skins/cpu-loadout.js");
+  const stripped = Object.fromEntries(Object.entries(createCpuLoadout(seeded(7))).map(([r, id]) => [r, baseSkinId(id)]));
+  assert.ok(Object.values(stripped).every((id) => !FOIL_SKINS.some((f) => f.id === id)), "外したあとにフォイルが残らない");
 }
 console.log("定石CPU: 山札・王とエリア・布陣・対局・伏せ札の不変性・思考時間・フォイル前は隠す OK");

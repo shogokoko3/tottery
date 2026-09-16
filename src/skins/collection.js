@@ -165,10 +165,9 @@ export function normalize(raw) {
     }),
     draws: count(value.draws),
     earlyClaimed: value.earlyClaimed === true,
-    // 対局中の演出(装備した駒の動画・A の魔法)。通常/短縮(2秒まで)/なし。設定画面で変える
-    motion: ["full", "short", "off"].includes(value.motion)
-      ? value.motion
-      : "full",
+    // 対局中の演出(装備した駒の動画・A の魔法)。"full" か "off" だけ(2026-09-17 本人の指示で「短縮」を廃止)。
+    // 以前の「短縮」は短くしたい人の選択なので off に寄せる。設定画面で変える
+    motion: ["short", "off"].includes(value.motion) ? "off" : "full",
     // 召喚(ガチャ)の演出。"full" か "skip"。召喚ボタンの横で変える(2026-09-17 本人の指示で対局の演出と分けた)。
     // 以前は「短縮」「なし」がガチャも飛ばしていたので、その保存には skip を引き継ぐ
     summonMotion:

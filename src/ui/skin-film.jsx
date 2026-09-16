@@ -122,7 +122,6 @@ export function useBattleFilm(
         <SkinFilm
           key={active.key}
           skin={active.skin}
-          short={collection.motion === "short"}
           onClose={() => setQueue((q) => q.slice(1))}
         />
       ) : null,

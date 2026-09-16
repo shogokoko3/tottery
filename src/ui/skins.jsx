@@ -1807,7 +1807,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       )}
       <div className="skins-preferences">
         <p>
-          音は右上の設定に従います。対局中の演出(動画)の長さも右上の設定で変えられます。所持・装備はこのブラウザーに保存されます。
+          音は右上の設定に従います。対局中の演出(動画)を出すかどうかは右上の設定で変えられます。所持・装備はこのブラウザーに保存されます。
         </p>
       </div>
       <p className="skins-message" role="status">

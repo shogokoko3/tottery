@@ -123,7 +123,7 @@ import { GemShop } from "./gem-shop.jsx";
 import { shopAvailable } from "../net/iap.js";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
-import { sanitizeLoadout } from "../skins/catalog.js";
+import { baseSkinId, sanitizeLoadout } from "../skins/catalog.js";
 import { createCpuLoadout, ensureCpuFoil } from "../skins/cpu-loadout.js";
 import {
   JOSEKI_AREAS,
@@ -983,7 +983,7 @@ export function RulesSelectScreen({
               onClick={() => onCpuArea("none")}
             >
               <b>エリアなし</b>
-              <small>どちらも盤面エリアを使わず、素の対局</small>
+              <small>相手だけ盤面エリアなし。自分のエリアは装備どおり</small>
             </button>
             {JOSEKI_AREAS.map((type) => (
               <button
@@ -1358,6 +1358,9 @@ function TotteryScreens() {
   const [cpuSkins, setCpuSkins] = useState({});
   // CPU戦で選んだ相手のエリア({ type, king })。null なら相手が手札から王を選ぶ
   const [cpuArea, setCpuArea] = useState(null);
+  // CPU の装備からフォイルを外す(「エリアなし」用。フォイルの王でしかエリアは立たない)
+  const stripFoils = (loadout) =>
+    Object.fromEntries(Object.entries(loadout || {}).map(([rank, id]) => [rank, baseSkinId(id)]));
   // ランダムマッチの練習相手(Bot)。持ち点 1750 未満のあいだ、人の代わりに当たる。中身は CPU(強さ3段階)
   const [bot, setBot] = useState(null);
   // はじめて遊ぶときは、まず名前を決めてもらう
@@ -1532,10 +1535,13 @@ function TotteryScreens() {
           : d
             ? [
                 collection.equipped,
-                // エリアを選んだCPU戦は、王の数字にフォイルを必ず持たせる(でないとエリアが立たない)
-                cpuArea && cpuArea.king && i === 9 && foilRevealed(collection) && (!localPool || bot)
-                  ? ensureCpuFoil(cpuSkins, cpuArea.king)
-                  : cpuSkins,
+                // エリアを選んだCPU戦は、王の数字にフォイルを必ず持たせる(でないとエリアが立たない)。
+                // 「エリアなし」は CPU の装備からフォイルを外し、CPU のエリアだけ立てない(自分のエリアは装備どおり)
+                cpuArea && cpuArea.type === "none" && i === 9 && d && !tut
+                  ? stripFoils(cpuSkins)
+                  : cpuArea && cpuArea.king && i === 9 && foilRevealed(collection) && (!localPool || bot)
+                    ? ensureCpuFoil(cpuSkins, cpuArea.king)
+                    : cpuSkins,
               ]
             : [collection.equipped, collection.equipped];
     return (
@@ -1731,7 +1737,7 @@ function TotteryScreens() {
                 d && !tut && foilRevealed(collection) && !localPool
                   ? (type) =>
                       setCpuArea(
-                        // "none" は盤面エリアを立てない素の対局。王は決めない
+                        // "none" は CPU のエリアだけ立てない(装備からフォイルを外す)。王は決めない
                         type === "none"
                           ? { type: "none", king: null }
                           : type
