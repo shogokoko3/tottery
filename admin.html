@@ -5757,13 +5757,37 @@ body:has(.skin-overlay) {
 .icon-picker-panel .setup-actions,.icon-picker-panel .modal-head{flex-shrink:0}
 
 /* --- \u8AB2\u91D1(\u30C1\u30B1\u30C3\u30C8\u306E\u5E97\u30FB\u30D0\u30C8\u30EB\u30D1\u30B9\u306E\u8CFC\u5165) --- */
+/* \u5E83\u544A(\u5DE6)\u3068\u30B8\u30A7\u30E0\u3092\u8CB7\u3046(\u53F3)\u3092\u96A3\u308A\u5408\u308F\u305B\u306B\u30021\u3064\u3060\u3051\u306E\u3068\u304D\u306F\u5168\u5E45 */
 .skins-shop-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+  max-width: 560px;
+  margin: 10px auto 0;
+}
+.skins-shop-row .skin-btn:only-child {
+  grid-column: 1 / -1;
+}
+.skins-shop-row .skins-ad-btn {
+  line-height: 1.5;
+  padding: 10px 12px;
+}
+.skins-shop-row .skins-ad-btn span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #c4b79e;
+  white-space: nowrap;
+}
+.skins-shop-row .skins-gem-btn {
   display: flex;
-  gap: 10px;
-  justify-content: center;
   align-items: center;
-  margin-top: 10px;
-  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  font-size: 14px;
+  white-space: nowrap;
+  padding-inline: 8px;
 }
 .shop-list {
   display: grid;

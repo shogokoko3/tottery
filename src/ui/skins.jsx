@@ -1539,25 +1539,28 @@ export function SkinsScreen({ onBack, onBattlePass }) {
             )}
             {WALLET_SERVER && (shopOk || (adsOk && adsLeft !== 0)) && (
               <div className="skins-shop-row">
+                {/* 左に広告、右にジェム(本人の指示 2026-09-17)。広告の文は3行に分けて読みやすく */}
+                {adsOk && adsLeft !== 0 && (
+                  <button
+                    className="skin-btn skins-ad-btn"
+                    disabled={buying || working}
+                    onClick={watchAd}
+                  >
+                    広告を見て
+                    <br />
+                    チケット1枚
+                    <span>
+                      {adsLeft == null ? "1日3回まで" : `今日はあと${adsLeft}回`}
+                    </span>
+                  </button>
+                )}
                 {shopOk && (
                   <button
-                    className="skin-btn skin-btn-gold"
+                    className="skin-btn skin-btn-gold skins-gem-btn"
                     disabled={buying || working}
                     onClick={() => setShop(true)}
                   >
                     <GemIcon size={24} /> ジェムを買う
-                  </button>
-                )}
-                {adsOk && adsLeft !== 0 && (
-                  <button
-                    className="skin-btn"
-                    disabled={buying || working}
-                    onClick={watchAd}
-                  >
-                    広告を見てチケット1枚
-                    <span>
-                      {adsLeft == null ? "1日3回" : `今日あと${adsLeft}回`}
-                    </span>
                   </button>
                 )}
               </div>
