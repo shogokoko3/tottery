@@ -1,5 +1,6 @@
 import { HomeCustomizationButton } from "./home-customization.jsx";
 import { AppearanceSettings } from "./season.jsx";
+import { useCollection, updateCollection } from "../skins/store.js";
 import { useEffect, useState } from "react";
 import {
   MUSIC_CREDIT,
@@ -602,6 +603,41 @@ function DeleteMeModal({ onClose, onDeleted }) {
   );
 }
 
+/**
+ * 対局中の演出(装備した駒が相手を取ったときの動画、A の魔法)の長さ。
+ * 召喚(ガチャ)の演出はここでは変えず、スキン画面の召喚ボタンの横で変える(2026-09-17 本人の指示)
+ */
+export function BattleMotionSettings() {
+  const collection = useCollection();
+  const [error, setError] = useState("");
+  return (
+    <div className="battle-motion-settings">
+      <label>
+        演出の長さ
+        <select
+          aria-label="対局中の演出の長さ"
+          value={collection.motion}
+          onChange={(e) => {
+            const motion = e.target.value;
+            setError("");
+            updateCollection((s) => ({ ...s, motion })).catch((err) =>
+              setError(err.message),
+            );
+          }}
+        >
+          <option value="full">通常（動画＋盤面演出）</option>
+          <option value="short">短縮（動画なし・2秒まで）</option>
+          <option value="off">演出なし</option>
+        </select>
+      </label>
+      <p className="settings-note">
+        装備した駒が相手を取ったときの動画と、A の魔法の演出に効きます。召喚の演出はスキン画面の召喚ボタンの横で変えられます。
+      </p>
+      {error && <p className="settings-note settings-error">{error}</p>}
+    </div>
+  );
+}
+
 export function SettingsModal({ onClose }) {
   const [profile, setProfile] = useState(() => loadProfile());
   // "name" は名前を変える画面、"icon" はアイコンを選ぶ画面
@@ -663,6 +699,8 @@ export function SettingsModal({ onClose }) {
         <div className="settings-list">
           <HomeCustomizationButton settings />
         </div>
+        <p className="settings-head">対局中の演出</p>
+        <BattleMotionSettings />
         <p className="settings-head">音</p>
         <SoundSettings />
 

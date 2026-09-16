@@ -1281,7 +1281,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     // Mark only local, fresh acquisitions before the store emits its saved result.
     // A screen restored from storage starts with null and never replays this change.
     setAcquisitionMode(
-      reduce || collection.motion !== "full"
+      reduce || collection.summonMotion === "skip"
         ? "area"
         : kind === "summon"
           ? "summon"
@@ -1300,7 +1300,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       setMessage("");
       try {
         await debitTickets(newEventId("pull"), amount * PULL_COST);
-        setAcquisitionMode(reduce || collection.motion !== "full" ? "area" : "summon");
+        setAcquisitionMode(reduce || collection.summonMotion === "skip" ? "area" : "summon");
         const next = await updateCollection((s) => pull(s, amount, undefined, { free: true }));
         if (next?.pending?.results) logPull(next.pending.results);
       } catch (e) {
@@ -1475,6 +1475,20 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 </div>
               </div>
             )}
+            {/* 召喚の演出を飛ばすかどうかは、召喚ボタンのすぐそばで(対局中の演出とは別の設定) */}
+            <label className="skins-summon-motion">
+              <input
+                type="checkbox"
+                checked={collection.summonMotion === "skip"}
+                disabled={working}
+                onChange={(e) => {
+                  const summonMotion = e.target.checked ? "skip" : "full";
+                  run((s) => ({ ...s, summonMotion }));
+                }}
+              />
+              召喚の演出を飛ばす
+              <small>門とカードの演出を省き、結果をすぐ出します</small>
+            </label>
             <div className="skins-pull-buttons">
               <button
                 disabled={
@@ -1792,24 +1806,8 @@ export function SkinsScreen({ onBack, onBattlePass }) {
         </div>
       )}
       <div className="skins-preferences">
-        <label>
-          演出の長さ
-          <select
-            aria-label="演出の長さ"
-            value={collection.motion}
-            disabled={working}
-            onChange={(e) => {
-              const motion = e.target.value;
-              run((s) => ({ ...s, motion }));
-            }}
-          >
-            <option value="full">通常（動画＋盤面演出）</option>
-            <option value="short">短縮（最大2秒・ガチャ省略）</option>
-            <option value="off">演出なし</option>
-          </select>
-        </label>
         <p>
-          音は右上の設定に従います。所持・装備はこのブラウザーに保存されます。
+          音は右上の設定に従います。対局中の演出(動画)の長さも右上の設定で変えられます。所持・装備はこのブラウザーに保存されます。
         </p>
       </div>
       <p className="skins-message" role="status">
@@ -1870,7 +1868,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           <SummonReveal
             results={collection.pending.results}
             onFinish={finishAcquisition}
-            reduce={reduce || collection.motion !== "full"}
+            reduce={reduce || collection.summonMotion === "skip"}
           />
         ) : acquisitionMode === "foil" &&
           craftResult &&
@@ -1878,12 +1876,12 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           <CraftedFoilReveal
             result={craftResult}
             onFinish={finishAcquisition}
-            reduce={reduce || collection.motion !== "full"}
+            reduce={reduce || collection.summonMotion === "skip"}
           />
         ) : acquisitionMode === "area" && areaRewards.length > 0 ? (
           <AreaAcquisition
             rewards={areaRewards}
-            reduce={reduce || collection.motion !== "full"}
+            reduce={reduce || collection.summonMotion === "skip"}
             onFinish={() => setAcquisitionMode(null)}
           />
         ) : (
