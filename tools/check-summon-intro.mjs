@@ -21,26 +21,36 @@ for (const [id, world] of Object.entries({
   "demon-k": "hell",
 }))
   assert.equal(summonWorldForSkin(byId(id)), world);
+// 門の世界は引いた札から1枚をランダムに(2026-09-17 本人の指示)。SSR や フォイルを優先しない。
+// 門の色はこれまでどおり: フォイルがあれば金、なければ銅
 assert.deepEqual(
-  summonPlan(draw("angel-k", "zombie-male")),
+  summonPlan(draw("angel-k", "zombie-male"), 0),
   { world: "heaven", gold: false, count: 2 },
-  "ordinary SSR must keep bronze gate",
+  "pick=0 で1枚目(天界)。SSR でも銅の門",
 );
 assert.deepEqual(
-  summonPlan(draw("angel-k", "zombie-male:foil")),
-  { world: "earth", gold: true, count: 2 },
-  "a foil's area takes priority over a normal SSR",
+  summonPlan(draw("angel-k", "zombie-male"), 0.99),
+  { world: "earth", gold: false, count: 2 },
+  "pick=0.99 で2枚目(土)。SSR を引いていても土になれる",
 );
-assert.equal(
-  summonPlan(draw("demon-j:foil", "angel-k:foil")).world,
-  "hell",
-  "ties follow first drawn card",
-);
-assert.equal(
-  summonPlan(draw("elf-male:foil", "angel-k:foil")).world,
-  "heaven",
-  "highest rarity foil leads",
-);
+assert.equal(summonPlan(draw("angel-k", "zombie-male:foil"), 0).gold, true, "フォイルがあれば金の門");
+{
+  const results = draw("angel-k", "zombie-male", "elf-male", "viking-female");
+  const a = summonPlan(results).world;
+  assert.equal(summonPlan(results).world, a, "同じ結果なら再表示でも同じ門");
+  const worlds = new Set(results.map((r) => summonWorldForSkin(byId(r.id))));
+  assert.ok(worlds.has(a), "選ばれる世界は引いた札のどれか");
+}
+{
+  // 10連を並びを変えて多数作ると、世界は札の構成に応じて散らばる(天界/魔界ばかりにならない)
+  const pool = ["zombie-male", "pirate-female", "elf-male", "viking-female", "dragon-knight", "angel-q", "demon-k"];
+  const seen = new Set();
+  for (let i = 0; i < 200; i++) {
+    const ids = Array.from({ length: 10 }, (_, k) => pool[(i + k * 3) % pool.length]);
+    seen.add(summonPlan(draw(...ids)).world);
+  }
+  assert.ok(seen.size >= 5, `世界が散らばる(${[...seen].join(",")})`);
+}
 for (const count of [1, 10])
   assert.equal(summonPlan(draw(...Array(count).fill("elf-male"))).count, count);
 for (const [time, stage] of [
