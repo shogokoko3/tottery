@@ -20,6 +20,7 @@ import {
   markAssembled,
   rewardSkin,
   startNewCycle,
+  completeCycle,
   statusOf,
   toggleFlip,
 } from "../game/battlepass.js";
@@ -69,7 +70,9 @@ export function BattlePassScreen({ onBack, onSkins }) {
   const assembled = firstCycle && (pass.assembled || pass.claimed);
   // 今週あと何周できるか(1周=24枚)。null は未取得
   const cyclesLeft =
-    passLeft == null ? null : Math.floor(passLeft / BATTLEPASS_TICKETS_PER_CYCLE);
+    passLeft == null
+      ? null
+      : Math.floor(passLeft / BATTLEPASS_TICKETS_PER_CYCLE);
 
   useEffect(() => {
     mounted.current = true;
@@ -92,6 +95,16 @@ export function BattlePassScreen({ onBack, onSkins }) {
       alive = false;
     };
   }, []);
+
+  // 運営が「クリア状態」にした印(サーバーの passComplete)を見て、盤を埋めてスキンを受け取る。
+  // 同じ印は二度当てない(pass.grantedAt に控える)
+  useEffect(() => {
+    const at = collection.passComplete;
+    if (!at || pass.grantedAt === at) return;
+    updatePass((s) => completeCycle(s, at));
+    updateCollection((s) => claimSpecial(s, skin.id)).catch(() => {});
+    setMessage("運営がバトルパスをクリア状態にしました。");
+  }, [collection.passComplete, pass.grantedAt, skin.id]);
 
   // ジェムでバトルパスを買う(サーバーで減らして権利をつける)。足りなければ店を開く
   const purchase = useCallback(async () => {
@@ -207,7 +220,9 @@ export function BattlePassScreen({ onBack, onSkins }) {
       )}
       <p className="pass-reward">
         <Sparkle size={16} /> 各マスでチケット1枚
-        {firstCycle && <strong>・1周目の完成でA専用スキン「{skin.name}」</strong>}
+        {firstCycle && (
+          <strong>・1周目の完成でA専用スキン「{skin.name}」</strong>
+        )}
       </p>
       {owned && (
         <div className="pass-counts">
@@ -404,7 +419,8 @@ export function BattlePassScreen({ onBack, onSkins }) {
         <div className="pass-purchase">
           {cyclesLeft === 0 ? (
             <p className="hint">
-              今週の周回（{BATTLEPASS_CYCLES_PER_WEEK}回）を使い切りました。来週また挑戦できます。
+              今週の周回（{BATTLEPASS_CYCLES_PER_WEEK}
+              回）を使い切りました。来週また挑戦できます。
             </p>
           ) : (
             <button

@@ -152,10 +152,14 @@ export function normalize(raw) {
   const claimed = v.rewardId === REWARD_SKIN && v.claimed === true;
   // 何周目か(周回制、1始まり)。壊れていれば1
   const cycle = Number.isSafeInteger(v.cycle) && v.cycle >= 1 ? v.cycle : 1;
+  // 運営が「クリア状態」にした印(サーバーの passComplete の時刻)。同じ印は二度当てない
+  const grantedAt =
+    Number.isSafeInteger(v.grantedAt) && v.grantedAt > 0 ? v.grantedAt : null;
   return {
     version: 4,
     rewardId: REWARD_SKIN,
     cycle,
+    grantedAt,
     progress,
     cleared: [...cleared],
     flipped: [...flipped],
@@ -182,7 +186,10 @@ export function untickedCells(state) {
 }
 /** チケットを渡したマスに印を付ける */
 export function markTicketed(state, ids) {
-  return { ...state, ticketed: [...new Set([...(state.ticketed || []), ...ids])] };
+  return {
+    ...state,
+    ticketed: [...new Set([...(state.ticketed || []), ...ids])],
+  };
 }
 /**
  * 次の周へ。盤をまっさらにして周を1つ進める。スキンの受取済み(claimed)は保つ
@@ -200,6 +207,25 @@ export function startNewCycle(state) {
     puzzleOrder: newPuzzleOrder(),
   };
 }
+/**
+ * 運営が1周目を「クリア状態」にする(本人の指示 2026-09-16)。
+ * 全マスをクリア・めくり・チケット受取済みにし、絵を完成・スキン受取済みにする。
+ * 2周目以降ならスキンは受け取り済みなので、その周の盤を埋めるだけ。at は印(二度当てない)
+ */
+export function completeCycle(state, at) {
+  const all = CELLS.map((c) => c.id);
+  const first = (state.cycle || 1) < 2;
+  return {
+    ...state,
+    grantedAt: at,
+    cleared: all,
+    flipped: all,
+    ticketed: all.filter((id) => id !== centerId),
+    assembled: first ? true : state.assembled,
+    claimed: first ? true : state.claimed,
+  };
+}
+
 /** その周を遊び切ったか。1周目はスキン受取まで、2周目以降は全マスクリアで完了 */
 export const cycleDone = (state) =>
   (state.cycle || 1) >= 2 ? allCleared(state) : state.claimed === true;

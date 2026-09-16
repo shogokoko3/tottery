@@ -69,6 +69,10 @@ async function mirror(data) {
       entitlements: Array.isArray(data.entitlements)
         ? data.entitlements
         : s.entitlements || [],
+      // 運営がバトルパスをクリア状態にした印(時刻)。端末はこれを見て盤を埋める
+      passComplete: Number.isSafeInteger(data.passComplete)
+        ? data.passComplete
+        : s.passComplete || null,
     };
   });
   return data;
@@ -188,7 +192,9 @@ export async function buyFoil(product, skins) {
 /** 現行の端末所持一覧を同期。secretFoilEligibleは保存した一覧の再照合結果。 */
 export async function syncCollection() {
   const ownedIds = Object.entries(getCollection().owned)
-    .filter(([id, count]) => byId(id) && Number.isSafeInteger(count) && count > 0)
+    .filter(
+      ([id, count]) => byId(id) && Number.isSafeInteger(count) && count > 0,
+    )
     .map(([id]) => id);
   return mirror(await walletRequest("collection", { ownedIds }));
 }

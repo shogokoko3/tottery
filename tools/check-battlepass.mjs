@@ -634,5 +634,21 @@ try {
   else delete globalThis.localStorage;
 }
 
+// 運営が「クリア状態」にする(completeCycle)。1周目は全マス・めくり・受取済み、2周目以降は盤を埋めるだけ。印は二度当てない
+{
+  const { completeCycle, normalize: np, canClaim: cc, allCleared: ac, untickedCells: uc, cycleDone: cd, CELLS: cells } = await import("../src/game/battlepass.js");
+  const s1 = completeCycle(np({}), 1000);
+  is("1周目: 全マスクリア", ac(s1), true);
+  is("1周目: 全部めくり済み・完成・受取済み", [s1.flipped.length, s1.assembled, s1.claimed], [cells.length, true, true]);
+  is("1周目: チケットは配り済み(二重に配らない)", uc(s1).length, 0);
+  is("1周目: 受け取り済みなので canClaim は偽", cc(s1), false);
+  is("印が残る(保存しても)", np(s1).grantedAt, 1000);
+  is("その周は遊び切った扱い", cd(s1), true);
+  const s2 = completeCycle(np({ cycle: 2, claimed: true, rewardId: "genie-magician" }), 2000);
+  is("2周目: 盤は埋まり、スキンの印は保つ", [ac(s2), s2.claimed, s2.cycle], [true, true, 2]);
+  const src = (await import("node:fs")).readFileSync(new URL("../src/ui/battlepass.jsx", import.meta.url), "utf8");
+  is("画面: サーバーの passComplete を見て埋める", /if \(!at \|\| pass\.grantedAt === at\) return;\s*updatePass\(\(s\) => completeCycle\(s, at\)\);/.test(src), true);
+}
+
 console.log(`\n${ok} ok / ${fails.length} fail`);
 process.exit(fails.length ? 1 : 0);

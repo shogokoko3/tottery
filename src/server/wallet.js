@@ -77,6 +77,8 @@ export class Wallet {
     // 店の診断(端末が App Store に商品を問い合わせた結果の控え。uid ごとに最新の1件)。
     // 本人の端末で「商品を読み込んでいます…」から進まない件の切り分け用(2026-09-15)。運営だけが読む
     sql("CREATE TABLE IF NOT EXISTS iap_diag (uid TEXT PRIMARY KEY, at INTEGER, build INTEGER, storefront TEXT, count INTEGER, error TEXT, ms INTEGER)");
+    // 運営がバトルパスを「クリア状態」にした印。summary の passComplete で端末に伝え、端末が盤を埋める
+    sql("CREATE TABLE IF NOT EXISTS pass_grants (uid TEXT PRIMARY KEY, at INTEGER)");
   }
   row(uid) {
     return (
@@ -174,6 +176,7 @@ export class Wallet {
       gemsPaid: r.gems,
       gemsFree: r.gems_free,
       entitlements: this.entitlementsOf(uid),
+      passComplete: this.sql("SELECT at FROM pass_grants WHERE uid=?", uid)[0]?.at ?? null,
       purchasedFoils,
       secretFoilEligible: ownsAllButSecret(this.collectionOf(uid, purchasedFoils)),
       prices: { ticket: GEM_PER_TICKET, ticketBundle: TICKET_BUNDLE, battlepass: BATTLEPASS_GEMS, ether: ETHER_EXCHANGE },
@@ -392,6 +395,17 @@ export class Wallet {
     // 有償ジェムは付与しない(資金決済法の未使用残高は「買った分」だけにするため、付与は無償)
     return this.apply(uid, id, { tickets: t, gemsFree: g }, "grant", null, now);
   }
+  /**
+   * 運営: バトルパスをクリア状態にする(本人の指示 2026-09-16)。
+   * 権利(解放)が無ければ付け、印(pass_grants)を置く。盤そのものは端末にあるので、端末が summary の
+   * passComplete を見て埋める(src/ui/battlepass.jsx)。二度押しても印の時刻が進むだけ
+   */
+  adminPassComplete(uid, now) {
+    if (typeof uid !== "string" || !uid) throw new Error("相手のuidが必要です。");
+    this.sql("INSERT OR IGNORE INTO entitlements (uid, productId, transactionId, at) VALUES (?,?,?,?)", uid, BATTLEPASS_ENTITLEMENT, `grant:${now}`, now);
+    this.sql("INSERT OR REPLACE INTO pass_grants (uid, at) VALUES (?,?)", uid, now);
+    return { ok: true, uid, ...this.summary(uid, now) };
+  }
   /** 購入履歴(運営用)。uid を渡せばその人、無ければ全体の新しい順 */
   purchaseHistory(uid) {
     const rows = uid
@@ -448,6 +462,7 @@ export class Wallet {
     this.sql("DELETE FROM collection_skins WHERE uid=?", uid);
     this.sql("DELETE FROM foil_purchases WHERE uid=?", uid);
     this.sql("DELETE FROM iap_diag WHERE uid=?", uid);
+    this.sql("DELETE FROM pass_grants WHERE uid=?", uid);
     this.sql("DELETE FROM wallets WHERE uid=?", uid);
     this.sql("DELETE FROM wallet_ledger WHERE uid=?", uid);
     this.sql("DELETE FROM wallet_events WHERE uid=?", uid);

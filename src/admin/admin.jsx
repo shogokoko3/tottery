@@ -32,6 +32,7 @@ import {
   grantResources,
   readPurchases,
   readGacha,
+  completeBattlePass,
 } from "./session.js";
 import {
   isRankedRecord,
@@ -431,6 +432,25 @@ function AdminTools() {
     }
   };
 
+  const [bpUid, setBpUid] = useState("");
+  const [bpBusy, setBpBusy] = useState(false);
+  const [bpMsg, setBpMsg] = useState("");
+  const completePass = async () => {
+    setBpMsg("");
+    const uid = bpUid.trim();
+    if (!uid) return setBpMsg("相手の uid を入れてください。");
+    setBpBusy(true);
+    try {
+      const r = await completeBattlePass(uid);
+      setBpMsg(
+        `クリア状態にしました(uid ${r.uid})。その人が次にバトルパスを開くと反映されます。`,
+      );
+    } catch (e) {
+      setBpMsg((e && e.message) || "できませんでした。");
+    } finally {
+      setBpBusy(false);
+    }
+  };
   return (
     <section className="admin-card" id="admin-tools">
       <h2>ツール</h2>
@@ -469,6 +489,30 @@ function AdminTools() {
       {gMsg && (
         <p className="admin-help" role="status">
           {gMsg}
+        </p>
+      )}
+
+      <h3>バトルパスをクリア状態にする</h3>
+      <p className="admin-help">
+        相手の uid
+        を入れます。解放の権利を付け、その人が次にバトルパスを開いたときに全マスがクリア済み・スキン受取済みになります。
+      </p>
+      <input
+        className="admin-input"
+        placeholder="相手の uid"
+        value={bpUid}
+        onChange={(e) => setBpUid(e.target.value)}
+      />
+      <button
+        className="btn btn-ghost btn-small"
+        disabled={bpBusy}
+        onClick={completePass}
+      >
+        クリア状態にする
+      </button>
+      {bpMsg && (
+        <p className="admin-help" role="status">
+          {bpMsg}
         </p>
       )}
 

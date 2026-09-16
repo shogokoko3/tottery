@@ -334,5 +334,22 @@ console.log("\n運営ツール(手動付与・購入履歴・ガチャ履歴)");
   is("catalog の換算", [etherFor(10), etherFor(50), etherFor(1000), etherFor(1010), etherFor(7)], [20, 100, 2000, null, null]);
 }
 
+// 運営: バトルパスをクリア状態に(権利を付け、summary に passComplete の印)
+{
+  const D = new DatabaseSync(":memory:");
+  const pw = new Wallet((q, ...a) => D.prepare(q).all(...a));
+  is("印が無ければ null", pw.summary("Z").passComplete, null);
+  const r = pw.adminPassComplete("Z", 777);
+  is("権利が付く", r.entitlements.includes("battlepass"), true);
+  is("印は時刻", r.passComplete, 777);
+  is("二度目は印の時刻が進む", pw.adminPassComplete("Z", 888).passComplete, 888);
+  is("権利は1つのまま", pw.summary("Z").entitlements.filter((e) => e === "battlepass").length, 1);
+  pw.forget("Z");
+  is("消去で印も消える", pw.summary("Z").passComplete, null);
+  let msg = "";
+  try { pw.adminPassComplete("", 1); } catch (e) { msg = e.message; }
+  is("uid が無ければ断る", /uid/.test(msg), true);
+}
+
 console.log(`\n${ok} 件 ok / ${fails.length} 件 NG`);
 process.exit(fails.length ? 1 : 0);

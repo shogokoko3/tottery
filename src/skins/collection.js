@@ -131,6 +131,11 @@ export function normalize(raw) {
           (x) => typeof x === "string" && x.length <= 120,
         )
       : [],
+    // 運営がバトルパスをクリア状態にした印(サーバーの写し)
+    passComplete:
+      Number.isSafeInteger(value.passComplete) && value.passComplete > 0
+        ? value.passComplete
+        : null,
     season: sanitizeSeasonCache(value.season),
     tsume: sanitizeTsumeProgress(value.tsume),
     missionClaims: sanitizeMissionClaims(value.missionClaims),

@@ -59,6 +59,7 @@ async function handleApi(request, env, url) {
     const adminGacha = url.pathname === "/api/admin/gacha";
     // 店の診断の一覧。運営の Firebase トークンか、読み取り専用の秘密(DIAG_TOKEN。wrangler secret)で読める
     const adminDiag = url.pathname === "/api/admin/diag";
+    const adminPass = url.pathname === "/api/admin/pass-complete";
     if (
       !adminSession &&
       !adminSeason &&
@@ -67,6 +68,7 @@ async function handleApi(request, env, url) {
       !adminPurchases &&
       !adminGacha &&
       !adminDiag &&
+      !adminPass &&
       !/^\/api\/(season|wallet|iap)\//.test(url.pathname)
     )
       return json({ error: "見つかりません。" }, 404);
@@ -109,7 +111,7 @@ async function handleApi(request, env, url) {
           ? json({ uid })
           : json({ error: "運営権限がありません。" }, 403);
       if (
-        (adminSeason || adminWallet || adminGrant || adminPurchases || adminGacha || adminDiag) &&
+        (adminSeason || adminWallet || adminGrant || adminPurchases || adminGacha || adminDiag || adminPass) &&
         uid !== OPERATOR_UID
       )
         return json({ error: "運営権限がありません。" }, 403);
@@ -132,6 +134,7 @@ async function handleApi(request, env, url) {
       if (adminPurchases) return call("admin-purchases", { targetUid: body.uid });
       if (adminGacha) return call("admin-gacha", { targetUid: body.uid });
       if (adminDiag) return call("admin-diag");
+      if (adminPass) return call("admin-pass-complete", { targetUid: body.uid });
       // ---- 財布(サーバー側のチケット残高)と課金 ----
       // 出来事の id は端末が作る(やり直しで二重にならない)。形だけここで見る
       const eventId = (x) => (typeof x === "string" && /^[\w:.-]{1,128}$/.test(x) ? x : null);
@@ -300,6 +303,7 @@ export class SeasonLedger {
         if (op === "wallet-log-pull") return w.logGacha(uid, args.items, now);
         if (op === "wallet-diag") return w.logDiag(uid, args.diag, now);
         if (op === "admin-diag" && uid === OPERATOR_UID) return w.diagList();
+        if (op === "admin-pass-complete" && uid === OPERATOR_UID) return w.adminPassComplete(args.targetUid, now);
         if (op === "admin-unused" && uid === OPERATOR_UID) return w.unused();
         if (op === "admin-grant" && uid === OPERATOR_UID)
           return w.adminGrant(args.targetUid, { tickets: args.tickets, gemsFree: args.gemsFree }, args.id, now);

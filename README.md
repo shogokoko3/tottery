@@ -1538,3 +1538,10 @@ CPU・オンライン9×9で布陣称号を獲得した本人に、土・海・�
 `@capacitor-community/apple-sign-in` 7.1.0 の Package.swift は capacitor-swift-pm を 7.x に縛っていて、Capacitor 8 の
 このアプリでは xcodebuild が依存解決で止まる。`npm install` / `npm ci` のあとに `tools/patch-plugins.mjs`(postinstall)が
 下限を 8.0.0 に書き換える。node_modules を入れ直したら、自動で走る。
+
+### 運営: バトルパスをクリア状態にする(2026-09-16)
+
+管理画面「ツール → バトルパスをクリア状態にする」に uid を入れると、サーバーが解放の権利を付け、印(`pass_grants`)を置く。
+本人の端末が次にバトルパスを開くと、財布の写し(`passComplete`)を見て `completeCycle` で全マスをクリア・めくり・
+チケット配り済みにし、1周目ならスキンも受取済みにする。盤は端末にしかないので、この二段になっている。
+`/api/admin/pass-complete`(運営だけ)。検査は check-wallet・check-battlepass。
