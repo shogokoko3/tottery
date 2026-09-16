@@ -8,8 +8,10 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = path.resolve(new URL(".", import.meta.url).pathname, "..");
+// パスに日本語が入る(トッタリー)。URL の pathname は %E3… になるので fileURLToPath で戻す
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const target = path.join(root, "node_modules/@capacitor-community/apple-sign-in/Package.swift");
 if (!fs.existsSync(target)) {
   console.log("patch-plugins: apple-sign-in の Package.swift が無い(未インストール)。何もしない");
