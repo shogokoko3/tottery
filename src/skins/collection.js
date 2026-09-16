@@ -154,9 +154,18 @@ export function normalize(raw) {
     equipped,
     draws: count(value.draws),
     earlyClaimed: value.earlyClaimed === true,
+    // 対局中の演出(装備した駒の動画・A の魔法)。通常/短縮(2秒まで)/なし。設定画面で変える
     motion: ["full", "short", "off"].includes(value.motion)
       ? value.motion
       : "full",
+    // 召喚(ガチャ)の演出。"full" か "skip"。召喚ボタンの横で変える(2026-09-17 本人の指示で対局の演出と分けた)。
+    // 以前は「短縮」「なし」がガチャも飛ばしていたので、その保存には skip を引き継ぐ
+    summonMotion:
+      value.summonMotion === "skip" || value.summonMotion === "full"
+        ? value.summonMotion
+        : ["short", "off"].includes(value.motion)
+          ? "skip"
+          : "full",
     pending: results.length ? { results } : null,
     lastCraft:
       byId(value.lastCraft?.id) && owned[value.lastCraft.id]
