@@ -2788,31 +2788,40 @@ export function GameCore({
           />
         )}
         {aceMagic.controls}
+        {/* エリアの札と同じ作り(帯＋小さな「発動」)。盤と間を空ける(本人の指摘 2026-09-17) */}
         {showAceFoil && (
-          <div className="action-bar" role="group" aria-label="Aフォイルの魔法">
-            <span>
-              <b>Aフォイルの魔法</b>
-              <br />
-              自分のA・王を除く3体をランダムに入れ替え。発動後も通常の行動ができます。
-            </span>
-            <button
-              className="btn btn-primary"
-              disabled={
-                !x ||
-                !aceFoil.ok ||
-                !!pendingCapture ||
-                !!a.selectedId ||
-                !!a.shuffleMode ||
-                !!areaPick
-              }
-              title={aceFoil.why || "毎手番1回・通常の行動前に任意発動"}
-              onClick={() => y({ type: "USE_ACE_FOIL" })}
+          <div className="area-bar ace-foil-bar" role="group" aria-label="Aフォイルの魔法">
+            <span
+              className="area-chip area-chip-ace"
+              title="Aフォイルの魔法: 自分のA・王を除く3体をランダムに入れ替える。毎手番1回、通常の行動の前に。発動後も通常の行動ができる"
             >
-              <Sparkle size={16} />
-              {a.aceFoilUsedTurn?.[P] === (a.turnNo || 0)
-                ? "この手番は発動済み"
-                : "フォイル魔法を発動"}
-            </button>
+              <b>Aフォイル</b>
+              <small>
+                {a.aceFoilUsedTurn?.[P] === (a.turnNo || 0)
+                  ? "この手番は発動済み"
+                  : "毎手番1回・行動前に"}
+              </small>
+            </span>
+            {a.aceFoilUsedTurn?.[P] !== (a.turnNo || 0) && (
+              <button
+                className="btn btn-primary btn-small"
+                disabled={
+                  !x ||
+                  !aceFoil.ok ||
+                  !!pendingCapture ||
+                  !!a.selectedId ||
+                  !!a.shuffleMode ||
+                  !!areaPick
+                }
+                title={aceFoil.why || "毎手番1回・通常の行動前に任意発動"}
+                onClick={() => y({ type: "USE_ACE_FOIL" })}
+              >
+                発動
+              </button>
+            )}
+            {x && !aceFoil.ok && aceFoil.why && (
+              <small className="area-why">{aceFoil.why}</small>
+            )}
           </div>
         )}
         {pendingCapture && (

@@ -5427,6 +5427,9 @@ body:has(.skin-overlay) {
 .area-chip-ice { border-color: rgba(160, 220, 255, 0.7); }
 .area-chip-sky { border-color: rgba(150, 130, 230, 0.7); }
 .area-chip-palace { border-color: rgba(212, 175, 55, 0.7); }
+/* Aフォイルの魔法(ランプのマジシャンの色)。エリアの帯と同じ作りで、盤とは間を空ける */
+.area-chip-ace { border-color: rgba(211, 167, 235, 0.75); }
+.ace-foil-bar { margin: 0 0 12px; }
 .area-why {
   width: 100%;
   text-align: center;
@@ -5885,4 +5888,67 @@ p.hint > span.gem-shop-diag {
 .foil-offer-confirm .setup-actions .btn {
   min-width: 90px;
   white-space: nowrap;
+}
+
+/* =========================================================================
+   対局画面の盤の上をコンパクトに(2026-09-17 本人の指摘: 盤面以外の要素が増えて確認しづらい)
+   時計 → 手番 → エリア(? も同じ行) → Aフォイル の4段に収め、盤を上へ
+   ========================================================================= */
+.area-bar > .area-chip {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+  text-align: center;
+}
+.area-bar > .area-help {
+  flex: 0 0 auto;
+}
+.area-bar .area-why {
+  flex: 1 0 100%;
+  text-align: center;
+}
+@media (max-width: 480px) {
+  .clock-panel .clock-cell {
+    padding: 6px 8px;
+  }
+  .clock-time {
+    font-size: 20px;
+  }
+  /* 「追加 あと N回」の文字で足りるので、点の列は出さない */
+  .clock-extension-pips {
+    display: none !important;
+  }
+  .clock-extension-count {
+    font-size: 11px;
+  }
+  /* 決まりの文(30秒以下なら+10秒)は時計の説明で読める。盤の上には出さない */
+  .clock-rule-hint {
+    display: none;
+  }
+  .turn-bar {
+    font-size: 12px;
+    margin: 6px 0;
+  }
+  .area-bar {
+    gap: 6px;
+    margin: 0 0 8px;
+  }
+  .area-chip {
+    padding: 3px 8px;
+    font-size: 11px;
+    gap: 4px;
+  }
+  .area-chip small {
+    font-size: 10px;
+  }
+  .area-help {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
+  }
+  .ace-foil-bar {
+    margin: 0 0 8px;
+  }
 }
