@@ -21,35 +21,42 @@ for (const [id, world] of Object.entries({
   "demon-k": "hell",
 }))
   assert.equal(summonWorldForSkin(byId(id)), world);
-// 門の世界は7つから均等に選び、引いた札とは結びつけない(2026-09-17 本人の指示: 門で SSR が推測できないように)。
+// 門の世界は引いた札から1枚を均等に(2026-09-17 本人の決定)。SSR やフォイルを優先しない。
 // 門の色はこれまでどおり: フォイルがあれば金、なければ銅
 assert.deepEqual(
   summonPlan(draw("angel-k", "zombie-male"), 0),
-  { world: "earth", gold: false, count: 2 },
-  "pick=0 で土。SSR を引いていても土になれる。SSR でも銅の門",
+  { world: "heaven", gold: false, count: 2 },
+  "pick=0 で1枚目(天界)。SSR でも銅の門",
 );
 assert.deepEqual(
-  summonPlan(draw("zombie-male", "zombie-male"), 0.99),
-  { world: "hell", gold: false, count: 2 },
-  "pick=0.99 で魔界。SSR が無くても魔界になれる",
+  summonPlan(draw("angel-k", "zombie-male"), 0.99),
+  { world: "earth", gold: false, count: 2 },
+  "pick=0.99 で2枚目(土)。SSR を引いていても土になれる",
 );
 assert.equal(summonPlan(draw("angel-k", "zombie-male:foil"), 0).gold, true, "フォイルがあれば金の門");
+assert.equal(summonPlan(draw("angel-k")).world, "heaven", "1回召喚は引いた札の世界(本人了承)");
 {
   const results = draw("angel-k", "zombie-male", "elf-male", "viking-female");
-  assert.equal(summonPlan(results).world, summonPlan(results).world, "同じ結果なら再表示でも同じ門");
+  const a = summonPlan(results).world;
+  assert.equal(summonPlan(results).world, a, "同じ結果なら再表示でも同じ門");
+  const worlds = new Set(results.map((r) => summonWorldForSkin(byId(r.id))));
+  assert.ok(worlds.has(a), "選ばれる世界は引いた札のどれか");
 }
 {
-  // 抽選結果を変えながら多数作ると、7つの世界がどれもしっかり出る(偏りは 2 倍以内)
+  // 10連を並びを変えて多数作ると、世界は札の構成に応じて散らばる(天界/魔界ばかりにならない)
   const pool = ["zombie-male", "pirate-female", "elf-male", "viking-female", "dragon-knight", "angel-q", "demon-k"];
-  const cnt = {};
-  for (let i = 0; i < 1400; i++) {
-    const ids = Array.from({ length: 10 }, (_, k) => pool[(i * 3 + k * 5 + (i % 4)) % pool.length]).map((id, k) => (k === i % 10 ? `${id}` : id));
+  const seen = new Set();
+  let ssr = 0;
+  for (let i = 0; i < 200; i++) {
+    const ids = Array.from({ length: 10 }, (_, k) => pool[(i + k * 3) % pool.length]);
+    // 未知の id は札にならないが乱数の種は変える(並びが7通りしかないので種を散らす)
     const w = summonPlan(draw(...ids, `x${i}`)).world;
-    cnt[w] = (cnt[w] || 0) + 1;
+    seen.add(w);
+    if (w === "heaven" || w === "hell") ssr++;
   }
-  const counts = Object.values(cnt);
-  assert.equal(counts.length, 7, `7つの世界がすべて出る(${JSON.stringify(cnt)})`);
-  assert.ok(Math.max(...counts) <= 2 * Math.min(...counts), `偏りすぎない(${JSON.stringify(cnt)})`);
+  assert.ok(seen.size >= 5, `世界が散らばる(${[...seen].join(",")})`);
+  // 天界/魔界の札は 10 枚中 3 枚前後(2/7)。門もその程度にとどまる
+  assert.ok(ssr < 80, `天界/魔界ばかりにならない(${ssr}/200)`);
 }
 for (const count of [1, 10])
   assert.equal(summonPlan(draw(...Array(count).fill("elf-male"))).count, count);

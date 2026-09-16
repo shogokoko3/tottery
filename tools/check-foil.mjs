@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   ALL_SKINS,
   ALL_FOIL_SKINS,
@@ -110,6 +111,11 @@ for (const roll of [0, 0.999999]) {
   assert.equal(cpu.A, ace.id, "Aフォイル追加後もCPUのAは通常版");
   assert.equal(cpu["10"], roll === 0 ? "dragon-knight:foil" : "pegasus-knight");
   assert.equal(ensureCpuFoil(cpu, "A").A, ace.id);
+  assert.ok(!Object.values(cpu).includes(aceFoil.id), "CPU は A フォイルを持たない(全カード所持の例外)");
+}
+{
+  const src = fs.readFileSync("src/skins/cpu-loadout.js", "utf8");
+  assert.match(src, /SPECIAL_FOIL_SKINS/, "CPU の装備は特別フォイル(A)を明示的に除く");
 }
 
 // どのキャラクターでも決定後に別の乱数を1回だけ使う。1%ちょうどは通常版。

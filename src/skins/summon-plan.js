@@ -89,27 +89,21 @@ function drawSeed(results) {
 }
 
 /**
- * 門の世界は、7つの世界から**均等に**選ぶ(本人の指示 2026-09-17)。
- * 引いた札から選ぶと、どんな重み付けでも門を見た時点で中身(SSR など)が推測できてしまうので、
- * 札とは結びつけない(カモフラージュ)。乱数は保存済みの抽選結果から決まる(drawSeed)ので、
- * 結果を変えず、再表示でも同じ門になる。門の色は変えない: フォイルが1枚でもあれば金、なければ銅
+ * 門の世界は、引いた札の中から1枚を均等に選んで決める(本人の決定 2026-09-17)。
+ * 門と引いた札に関係を持たせる(門の世界の札が来ないと騙された感覚になる)。
+ * 一方で SSR を優先すると門で中身が分かるので、レアやフォイルは優先しない。10連なら 9 割は SSR 以外の世界になる。
+ * 1回召喚は札の世界がそのまま門になるが、本人は問題なしとした。
+ * 乱数は保存済みの抽選結果から決まる(drawSeed)ので、結果を変えず、再表示でも同じ門になる。
+ * 門の色は変えない: フォイルが1枚でもあれば金、なければ銅
  */
-export const SUMMON_WORLD_ORDER = Object.freeze([
-  "earth",
-  "sea",
-  "forest",
-  "ice",
-  "sky",
-  "heaven",
-  "hell",
-]);
 export function summonPlan(results, pick = null) {
   const skins = results.map((r) => byId(r.id)).filter(Boolean);
   const foils = skins.filter((s) => s.foil);
   const u = typeof pick === "number" ? pick : drawSeed(results);
-  const n = SUMMON_WORLD_ORDER.length;
-  const world = SUMMON_WORLD_ORDER[Math.min(n - 1, Math.floor(u * n))];
-  return { world, gold: foils.length > 0, count: results.length };
+  const lead = skins.length
+    ? skins[Math.min(skins.length - 1, Math.floor(u * skins.length))]
+    : null;
+  return { world: summonWorldForSkin(lead), gold: foils.length > 0, count: results.length };
 }
 
 export const smooth = (x) => {
