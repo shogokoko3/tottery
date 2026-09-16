@@ -1020,6 +1020,53 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
     }),
   );
 
+  // 詳細設定(2026-09-17): START_SETUP の custom と SETUP_CONFIRM の revealIds
+  allow(
+    "詳細設定を載せた開始の手は積める",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NyyyyyyyyyyyyyyyyyC"], A, {
+      type: "START_SETUP",
+      by: "uidA",
+      __id: "a-9",
+      custom: { ranks: { 0: "2", 1: "3", 2: "4", 3: "5" }, areas: "guest", reveal: { count: 2, king: true, choose: false } },
+    }),
+  );
+  deny(
+    "詳細設定に知らない欄は積めない",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NyyyyyyyyyyyyyyyyyD"], A, {
+      type: "START_SETUP",
+      by: "uidA",
+      __id: "a-9",
+      custom: { ranks: { 0: "2" }, bogus: true },
+    }),
+  );
+  deny(
+    "公開の枚数は 8 まで",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NyyyyyyyyyyyyyyyyyE"], A, {
+      type: "START_SETUP",
+      by: "uidA",
+      __id: "a-9",
+      custom: { reveal: { count: 99 } },
+    }),
+  );
+  allow(
+    "自分で選んだ公開の駒を載せた布陣の確定は積める",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NyyyyyyyyyyyyyyyyyF"], A, {
+      type: "SETUP_CONFIRM",
+      by: "uidA",
+      __id: "a-9",
+      revealIds: { 0: "c1", 1: "c2" },
+    }),
+  );
+  deny(
+    "公開の駒は 8 枚まで",
+    canWrite(room, ["rooms", "ABCD", "acts", "-NyyyyyyyyyyyyyyyyyG"], A, {
+      type: "SETUP_CONFIRM",
+      by: "uidA",
+      __id: "a-9",
+      revealIds: { 8: "c9" },
+    }),
+  );
+
   console.log("\n手番の中身と、止められた人の名乗り");
   // 手の中身は、入れ替えや布陣のように入れ子を持つので形を決められない。
   // 欄の数(24)と件数(1000)で抑えるところまでが限界で、

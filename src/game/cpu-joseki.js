@@ -16,7 +16,7 @@ import {
   maxAdopt,
   shuffle,
   territoryRows,
-  totalSlots,
+  armySlots,
 } from "./board.js";
 import {
   AREA_BY_RANK,
@@ -131,7 +131,7 @@ const PRIORITY = {
 /** 優先度で 9 枚を貪欲に選ぶ。王の数字が手札に無ければ null */
 export function planByPriority(state, player, kingRank, priority) {
   const hand = state.players[player].hand,
-    slots = totalSlots(state.boardSize);
+    slots = armySlots(state);
   const king = hand.find((c) => c.rank === kingRank);
   if (!king) return null;
   const cards = [king],

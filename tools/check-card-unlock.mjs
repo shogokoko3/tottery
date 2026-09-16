@@ -122,7 +122,8 @@ import {
   assert.ok(/disabled=\{i === 9 && locked9\}/.test(screens), "閉じている 9×9 は押せない");
   assert.ok(/foilRevealed\(collection\) && !localPool/.test(screens), "定石CPUは絞るレベルでは出さない");
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
-  assert.ok(/\.\.\.\(pool && !network && !tutorial\s*\? \{ pool, \.\.\.\(handSize \? \{ handSize \} : null\) \}/.test(game), "START_SETUP に pool を載せる(手元だけ)");
-  assert.ok(/!tutorial &&\s*!pool &&\s*cpuArea/.test(game), "定石の山札は絞らないときだけ");
+  // 詳細設定で札を絞っているときは、レベルの絞りより詳細設定を優先する(2026-09-17)
+  assert.ok(/\.\.\.\(pool && !network && !tutorial && !customRules\s*\? \{ pool, \.\.\.\(handSize \? \{ handSize \} : null\) \}/.test(game), "START_SETUP に pool を載せる(手元だけ)");
+  assert.ok(/!tutorial &&\s*!pool &&\s*!customRules &&\s*cpuArea/.test(game), "定石の山札は絞らないときだけ");
 }
 console.log("レベルで開く札: 段・チュートリアルとの整合・5×5と9×9の開始・配線 OK");

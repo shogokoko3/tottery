@@ -42,6 +42,16 @@ export function totalSlots(size) {
   return size === 5 ? 5 : 9;
 }
 
+/**
+ * その対局で盤に置く駒の数。詳細設定(src/game/custom-rules.js)で使う札を減らすと
+ * START_SETUP が state.armySize に小さい数を入れる。無ければ盤の決まり(5/9)
+ */
+export function armySlots(state) {
+  return Number.isInteger(state?.armySize) && state.armySize > 0
+    ? state.armySize
+    : totalSlots(state?.boardSize);
+}
+
 /** 自陣の行範囲 [先頭行, 末尾行] */
 export function territoryRows(size, player) {
   const rows = size === 5 ? 2 : 3;

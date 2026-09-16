@@ -1,4 +1,4 @@
-import { totalSlots, maxAdopt, territoryRows, getLegalMoves } from "./board.js";
+import { armySlots, maxAdopt, territoryRows, getLegalMoves } from "./board.js";
 import { areaForKing, areaSkinOk } from "./areas.js";
 
 export const CARD_VALUE = {
@@ -36,7 +36,7 @@ export function chooseArmyPlan(
   options = {},
 ) {
   const hand = state.players[player].hand,
-    slots = totalSlots(state.boardSize);
+    slots = armySlots(state);
   let best = null;
   for (const king of hand) {
     if (

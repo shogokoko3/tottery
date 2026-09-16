@@ -33,8 +33,7 @@ export function FoilOfferSheet({
           <h2>ほかのフォイルも</h2>
           <p className="skins-note">
             持っていないフォイルを<b>有償ジェム</b>
-            で買えます(無償ジェムは使えません)。
-            セットの片方を持っていれば、残りの1枚ぶんの値段です。
+            で買えます(無償ジェムは使えません)。セットの片方を持っていれば、残りの1枚ぶんの値段です。
           </p>
           <p className="skins-note foil-offer-balance">
             有償ジェム <b>{yen(gemsPaid)}</b>

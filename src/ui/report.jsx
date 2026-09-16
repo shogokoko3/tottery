@@ -98,8 +98,7 @@ export function PlayerActionModal({ target, onClose, onChanged }) {
           <div className="report-body">
             <p className="report-done">通報を受け付けました。</p>
             <p className="hint">
-              運営が中身を確かめ、24時間以内に対応します。あわせてこの人を
-              見えなくすることもできます。
+              運営が中身を確かめ、24時間以内に対応します。あわせてこの人を見えなくすることもできます。
             </p>
             <button className="btn btn-ghost report-choice" onClick={hide}>
               <b>この人を見えなくする</b>

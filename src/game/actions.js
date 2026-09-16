@@ -1,6 +1,7 @@
 import { shuffle, buildDeck } from "./board.js";
 import { AREA_TUNING, forestCandidates, iceCandidates } from "./areas.js";
 import { aceFoilCandidates, canUseAceFoil } from "./ace-foil.js";
+import { normalizeRanks } from "./custom-rules.js";
 
 /**
  * 手番の乱数をアクション側に焼き込む。
@@ -12,7 +13,10 @@ export function enrichAction(action, state) {
     case "START_SETUP":
       return {
         ...action,
-        deck: shuffle(buildDeck(action.pool)).map((c) => ({ ...c })),
+        // 詳細設定で使う札を絞っていれば、その札だけで山札を作る
+        deck: shuffle(
+          buildDeck(action.pool || (action.custom && normalizeRanks(action.custom.ranks)) || null),
+        ).map((c) => ({ ...c })),
       };
     case "ROLL_DICE_SINGLE":
       return { ...action, value: 1 + Math.floor(Math.random() * 6) };

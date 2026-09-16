@@ -136,7 +136,8 @@ import {
 } from "../game/tutorial.js";
 import { isTestPlay, recordGame } from "../game/profile.js";
 import { releaseXpNotice } from "../game/xp-notices.js";
-import { GAME_RULE_VERSION, hasAreaRules } from "../game/rule-version.js";
+import { GAME_RULE_VERSION, hasAreaRules, hasCustomRules } from "../game/rule-version.js";
+import { isDefaultCustom, loadoutsForCustom, normalizeCustom } from "../game/custom-rules.js";
 import {
   CLOCK_EXTENSION_LIMIT,
   CLOCK_EXTENSION_THRESHOLD_MS,
@@ -811,8 +812,7 @@ export function GameView({
                     onPick={replay[v] ? setAt : void 0}
                     key={v}
                   />
-                ))
-              ) : (
+                ))) : (
                 <li>特筆すべき出来事はありませんでした</li>
               )}
             </ol>
@@ -983,14 +983,12 @@ export function GameView({
               <button className="btn btn-ghost go-match" onClick={onTutorialList}>
                 チュートリアル一覧へ
               </button>
-            )
-          ) : onNextMatch ? (
+            )) : onNextMatch ? (
             // ランダムマッチ・Bot は、同じ相手との再戦を待たずに次の相手を探せる(連戦)
             <button className="btn btn-primary go-match" onClick={onNextMatch}>
               <Globe size={16} /> マッチングへ
             </button>
-          ) : (
-            onExit && (
+          ) : (onExit && (
               // 手元の対局は、対戦相手を選ぶ画面へ
               <button className="btn btn-ghost go-match" onClick={onExit}>
                 <Globe size={16} /> マッチングへ
@@ -1001,8 +999,7 @@ export function GameView({
             <button className="btn btn-ghost go-home" onClick={onHome}>
               <Home size={16} /> ホームへ
             </button>
-          ) : (
-            onExit && (
+          ) : (onExit && (
               <button className="btn btn-ghost go-home" onClick={onExit}>
                 <Home size={16} /> {exitLabel}
               </button>
@@ -1033,8 +1030,7 @@ export function GameView({
                   <p className="hint">相手はもう一度遊びたいようです</p>
                 )}
               </>
-            )
-          ) : (
+            )) : (
             <button
               className="btn btn-ghost go-again"
               onClick={() => dispatch({ type: "NEW_GAME" })}
@@ -1076,6 +1072,9 @@ export function GameCore({
   cpu,
   // CPU戦で選んだ相手のエリア({ type, king })。定石の札を配り、定石の指し方で戦う
   cpuArea = null,
+  // 詳細設定(src/game/custom-rules.js)。ホスト(始める側)の設定が START_SETUP に載って相手にも届く。
+  // 通信は両者が版17以上のときだけ。チュートリアル・ランダムマッチでは使わない
+  custom = null,
   // レベルで絞った札(src/game/card-unlock.js)。手元の対局だけ。null なら全部
   pool = null,
   handSize = null,
@@ -1091,11 +1090,12 @@ export function GameCore({
 }) {
   const names = useNames();
   const { skins } = useSeats();
-  // 近くの端末との対戦(network.nearby)は通信の外なので、持ち点もシーズンも照合できない。数えない
+  // 持ち点・シーズンに数えるのはランダムマッチ(network.random)の 9×9 だけ。
+  // フレンド対戦(合言葉・近くの端末)はランキングに載らない(本人の指示 2026-09-17)
   const matchRatings = useMatchRatings(
     network,
     round,
-    !!network && !network.nearby && boardSize === 9 && !tutorial,
+    !!network && !!network.random && boardSize === 9 && !tutorial,
   );
   const pausedAt = useRef(null);
   let [a, u] = (0, useState)(initialState),
@@ -1136,7 +1136,7 @@ export function GameCore({
   // 自分が取った駒をバトルパスへ。チュートリアルでは進めない
   useBattlePass(a, network ? p : cpu ? 0 : a.currentTurn, !!tutorial, !!network);
 
-  const seasonResult = useSeasonMatch(a, network, round, !!tutorial || !!network?.nearby);
+  const seasonResult = useSeasonMatch(a, network, round, !!tutorial || !network?.random);
   const boardRef = useRef(null);
   const aceMagic = useAceMagic(a, skins, {
     disabled: !!tutorial,
@@ -1340,6 +1340,12 @@ export function GameCore({
       u(() => openingState(tutorial, GAME_RULE_VERSION));
       return;
     }
+    // 詳細設定が効くか(クラシックと同じ設定なら載せない)
+    const customRules =
+      custom && !tutorial && !isDefaultCustom(normalizeCustom(custom, boardSize || 5)) &&
+      (!network || hasCustomRules(network.ruleVersion))
+        ? normalizeCustom(custom, boardSize || 5)
+        : null;
     a.phase === "intro" &&
       matchRatings.ready &&
       ((network && p !== 0) ||
@@ -1353,24 +1359,28 @@ export function GameCore({
           // AREA_RULE_VERSION 以上(両者が新しい端末)のときだけ
           // CPU戦の「エリアなし」は CPU の装備からフォイルを外すことで CPU のエリアだけを立てない
           // (screens.jsx)。自分のエリアは装備どおり立つ(2026-09-17 本人の指示)
+          // 詳細設定のエリアの側(両方/自分だけ/相手だけ/なし)は、立てない側の装備からフォイルを外して伝える
           ...(!tutorial &&
           (boardSize || 5) === 9 &&
-          (!network || hasAreaRules(network.ruleVersion))
-            ? { areas: true, loadouts: skins }
+          (!network || hasAreaRules(network.ruleVersion)) &&
+          !(customRules && customRules.areas === "none")
+            ? { areas: true, loadouts: loadoutsForCustom(customRules, skins) }
             : null),
+          ...(customRules ? { custom: customRules } : null),
           // エリアを選んだCPU戦は、CPU(後手の席)に定石の札を積んだ山札で始める。
           // 札を絞っているレベルでは定石の札がそろわないので積まない
           ...(cpu &&
           !network &&
           !tutorial &&
           !pool &&
+          !customRules &&
           cpuArea &&
           cpuArea.king &&
           (boardSize || 5) === 9
             ? { deck: josekiDeck(cpuArea.type, cpuArea.king) }
             : null),
           // レベルで開いている札だけを配る(手元の対局。オンラインは相手と同じ山札なので絞らない)
-          ...(pool && !network && !tutorial
+          ...(pool && !network && !tutorial && !customRules
             ? { pool, ...(handSize ? { handSize } : null) }
             : null),
           // 第13話(盤面エリア)は台本が装備を持つ
@@ -1936,11 +1946,12 @@ export function GameCore({
     if (recordedRef.current || !matchRatings.ready) return;
     recordedRef.current = !0;
     const won = a.winner === null ? null : a.winner === (network ? p : 0);
-    // 持ち点(とランキング)に数えるのは、**9×9のオンライン対戦だけ**。
+    // 持ち点(とランキング)に数えるのは、**9×9のランダムマッチだけ**。
     // 5×5は短期戦で運の割合が大きく、同じ物差しに載せると持ち点が
-    // 実力を表さなくなる。CPU戦とチュートリアルは相手の強さが決まらない
-    // Bot(ランダムマッチの練習相手)も 9×9 なら持ち点に数える。相手の点は Bot の人物の点
-    const ranked = (!!network || !!bot) && a.boardSize === 9 && !network?.nearby;
+    // 実力を表さなくなる。CPU戦とチュートリアルは相手の強さが決まらない。
+    // フレンド対戦(合言葉・近くの端末)も数えない(本人の指示 2026-09-17。知り合い同士で点を回せてしまう)
+    // Bot(ランダムマッチの練習相手)は 9×9 なら持ち点に数える。相手の点は Bot の人物の点
+    const ranked = (!!(network && network.random) || !!bot) && a.boardSize === 9;
     const foeRating = !ranked
       ? null
       : bot
@@ -2187,8 +2198,7 @@ export function GameCore({
         />
       </GameShell>
     );
-  if (o)
-    return (
+  if (o)return (
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
@@ -2199,6 +2209,7 @@ export function GameCore({
       >
         <QuitConfirm
           network={network || bot}
+          counts={(!!(network && network.random) || !!bot) && a.boardSize === 9}
           onCancel={() => r(!1)}
           onQuit={() => {
             (r(!1), quitGame());
@@ -2206,8 +2217,7 @@ export function GameCore({
         />
       </GameShell>
     );
-  if (a.phase === "intro" || !matchRatings.ready)
-    return (
+  if (a.phase === "intro" || !matchRatings.ready)return (
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
@@ -2230,8 +2240,7 @@ export function GameCore({
         />
       </GameShell>
     );
-  if (a.captureReveal && !holdFx && !fxBusy)
-    return (
+  if (a.captureReveal && !holdFx && !fxBusy)return (
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
@@ -2258,8 +2267,7 @@ export function GameCore({
         />
       </GameShell>
     );
-  if (a.pendingKingChoice && !a.captureReveal && !fxBusy)
-    return network && a.pendingKingChoice.owner !== p ? (
+  if (a.pendingKingChoice && !a.captureReveal && !fxBusy)return network && a.pendingKingChoice.owner !== p ? (
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
@@ -2289,8 +2297,7 @@ export function GameCore({
       </GameShell>
     );
   // 布陣ボーナスは対局が始まる前に、どのモードでも必ず知らせる
-  if (a.setupEffects)
-    return (
+  if (a.setupEffects)return (
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
@@ -2317,8 +2324,7 @@ export function GameCore({
       </GameShell>
     );
   // 相手がまだ布陣ボーナスを読んでいる。そろうまで盤は出さない(持ち時間も止まっている)
-  if (network && setupWaiting(a) && !fxBusy)
-    return (
+  if (network && setupWaiting(a) && !fxBusy)return (
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
@@ -2333,8 +2339,7 @@ export function GameCore({
         <WaitingScreen text="相手が布陣ボーナスを確認しています…" />
       </GameShell>
     );
-  if (a.interstitial && !a.captureReveal && !network && !cpu && !fxBusy)
-    return (
+  if (a.interstitial && !a.captureReveal && !network && !cpu && !fxBusy)return (
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
@@ -2408,8 +2413,7 @@ export function GameCore({
         </GameShell>
       );
     let E = a.diceIdx >= 2 ? null : a.diceIdx;
-    return E !== null ? (
-      cpu && E !== 0 ? (
+    return E !== null ? (cpu && E !== 0 ? (
         <GameShell
         topExtra={skipMenu}
           sheet={presentationSheet}
@@ -2465,8 +2469,7 @@ export function GameCore({
             }
           />
         </GameShell>
-      )
-    ) : (
+      )) : (
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
@@ -2551,8 +2554,7 @@ export function GameCore({
           />
         </GameShell>
       );
-    if (network && a.mulliganIdx !== p)
-      return (
+    if (network && a.mulliganIdx !== p)return (
         <GameShell
         topExtra={skipMenu}
           sheet={presentationSheet}
@@ -2763,7 +2765,7 @@ export function GameCore({
       <div className="play-wrap">
         {network && a.ruleVersion !== GAME_RULE_VERSION && (
           <p className="hint">
-            この対局は従来ルールで進行します。新しい持ち時間・判定ルールを使うには、両者ともページを再読み込みして新しい対局を始めてください。
+            この対局は従来ルールで進みます。新しいルールを使うには、両者が再読み込みして新しい対局を始めてください。
           </p>
         )}
         {!tutorial && (

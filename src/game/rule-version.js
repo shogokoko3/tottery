@@ -24,7 +24,10 @@
 //     通信の手の形式は変わらない。旧版の対局の再生は変わらない)。
 // 16: Aのフォイル魔法。通常の行動前に毎手番1回、ランダムな3体を循環させる。
 //     自分のA・王を除き、手番・追加行動を使わず、包囲取りも起こさない。
-export const GAME_RULE_VERSION = 16;
+// 17: 詳細設定(src/game/custom-rules.js)。START_SETUP の custom(使う札・エリアの側・公開)と
+//     SETUP_CONFIRM の revealIds(自分で選んだ公開)が通信に載る(2026-09-17 本人の指示)。
+export const GAME_RULE_VERSION = 17;
+export const CUSTOM_RULES_VERSION = 17;
 export const ACE_FOIL_RULE_VERSION = 16;
 export const REVENGE_NO_RESERVE_RULE_VERSION = 15;
 export const SEA_SLIDE_RULE_VERSION = 14;
@@ -45,6 +48,11 @@ export function hasAdjudicationRules(version) {
 /** 盤面エリアを使う版か。部屋の両者がこの版のときだけオンラインで働く */
 export function hasAreaRules(version) {
   return hasAdjudicationRules(version) && version >= AREA_RULE_VERSION;
+}
+
+/** 詳細設定を通信に載せられる版か。部屋の両者がこの版のときだけ */
+export function hasCustomRules(version) {
+  return hasAdjudicationRules(version) && version >= CUSTOM_RULES_VERSION;
 }
 
 /** 布陣ボーナスを両者が確認してから始める版か */

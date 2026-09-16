@@ -100,16 +100,13 @@ function SkinAreaNote({ skin, owned, equipped }) {
     return (
       <div className="skins-area-note">
         <b>マジカルシャッフル · 9×9</b>
-        <p>Aが王でなくても、毎回の自分の手番に任意で1回発動。
-          自軍のAと王を除く駒からランダムな3体の位置を入れ替えます。
-          相手の王も対象です。発動後も通常の移動ができます。</p>
+        <p>Aが王でなくても、毎回の自分の手番に任意で1回発動。自軍のAと王を除く駒からランダムな3体の位置を入れ替えます。相手の王も対象です。発動後も通常の移動ができます。</p>
       </div>
     );
   const type = AREA_BY_RANK[skin.rank];
   if (!type) return null;
   const info = AREA_INFO[type];
-  if (!skin.foil)
-    return (
+  if (!skin.foil)return (
       <p className="skins-area-note skins-area-note-plain">
         フォイル版を手に入れると、効果盤面「{info.name}」が使えます。
       </p>
@@ -344,8 +341,7 @@ function RevealCard({
                 alt={visibleSkin.role}
                 animated={false}
               />
-            )
-          ) : (
+            )) : (
             <span className="reveal-veil" />
           )}
           <span className="reveal-rarity">{label || ""}</span>
@@ -813,8 +809,7 @@ function ForgePanel({
             </strong>
           </p>
           <p className="skins-note">
-            最後の1枚は残ります。交換は持っていないフォイルだけで、抽選はありません。
-            交換で得た分も通算獲得に数えます。
+            最後の1枚は残ります。交換は持っていないフォイルだけで、抽選はありません。交換で得た分も通算獲得に数えます。
           </p>
           {foilRows.length > 0 && (
             <ul className="forge-list">
@@ -958,8 +953,7 @@ function ForgePanel({
             </>
           ) : (
             <p className="skins-empty">
-              同じ札が2枚以上あると崩せます。最後の1枚は残るので、
-              装備中の札が消えることはありません。
+              同じ札が2枚以上あると崩せます。最後の1枚は残るので、装備中の札が消えることはありません。
             </p>
           )}
           <p className="skins-note forge-protection">
@@ -1057,8 +1051,7 @@ function ForgePanel({
             </tbody>
           </table>
           <p className="skins-note">
-            崩してもらえる量は「その1枚の出にくさ」に比例させてあります。
-            作るのに要るのは、その4倍。つまり
+            崩してもらえる量は「その1枚の出にくさ」に比例させてあります。作るのに要るのは、その4倍。つまり
             <b>同じ格ならダブり4枚で好きなキャラを1枚</b>
             。
             <br />
@@ -1814,7 +1807,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
       )}
       <div className="skins-preferences">
         <p>
-          音は右上の設定に従います。対局中の演出(動画)を出すかどうかは右上の設定で変えられます。所持・装備はこのブラウザーに保存されます。
+          音と対局中の演出(動画)は、右上の設定で変えられます。所持と装備はこの端末に保存されます。
         </p>
       </div>
       <p className="skins-message" role="status">

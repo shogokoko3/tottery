@@ -234,8 +234,7 @@ export function GemShop({
             )}
           </div>
           <p className="hint">
-            価格は App Store
-            の表示に従います。ジェムはこのゲームの中でだけ使え、払い戻しはできません。
+            価格は App Storeの表示に従います。ジェムはこのゲームの中でだけ使え、払い戻しはできません。
           </p>
         </div>
         <div className="setup-actions">

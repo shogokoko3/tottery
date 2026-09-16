@@ -529,6 +529,30 @@ h3 {
   font-family: "Shippori Mincho", serif;
   margin-bottom: 6px;
 }
+/* 日本語は文節に関係なく折り返るので、短い案内文は行の長さを均す(末尾に1〜2文字だけ落ちるのを避ける)。
+   対応しない古い Safari ではそのまま */
+.hint,
+.code-note,
+.settings-note,
+.choice-label small,
+.area-choice small,
+.board-choice small,
+.skins-note,
+.skins-foil-note,
+.custom-rules .hint {
+  text-wrap: balance;
+}
+/* 「13枚」のような数と助数詞のあいだで折り返さない */
+.hint b,
+.hint strong {
+  white-space: nowrap;
+}
+.btn-choice .choice-label,
+.gameover-grid .btn,
+.share-row .btn,
+.skins-shop-row .skin-btn {
+  line-break: strict;
+}
 .hint {
   color: var(--text-dim);
   font-size: 13px;
@@ -1139,6 +1163,66 @@ body:has(.skin-overlay) {
 }
 
 /* CPU戦の相手のエリア(定石)を選ぶ */
+/* 詳細設定(ルール設定の中) */
+.custom-rules {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+}
+.custom-row + .custom-row {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.rank-toggles {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+.rank-toggle {
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-dim);
+  font-family: "Shippori Mincho", serif;
+  font-weight: 700;
+  font-size: 15px;
+}
+.rank-toggle.active {
+  background: linear-gradient(170deg, #3a3116, #2a2410);
+  border-color: var(--gold);
+  color: var(--gold-soft);
+}
+.rank-toggle:disabled {
+  opacity: 0.55;
+}
+.custom-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.custom-field select {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--bg);
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 14px;
+}
+.custom-field input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--gold);
+}
 .area-choices {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2213,6 +2297,17 @@ body:has(.skin-overlay) {
 .setup-actions .btn {
   flex: 1;
   min-width: 0;
+}
+/* 公開する駒を選ぶ手順ではボタンが3つになる。狭い画面では2段にして文字を潰さない */
+.setup-actions-wrap {
+  flex-wrap: wrap;
+}
+.setup-actions-wrap .btn {
+  flex: 1 1 45%;
+  white-space: nowrap;
+}
+.setup-actions-wrap .btn-primary {
+  flex-basis: 100%;
 }
 .capture-confirm .btn {
   flex: 1;
@@ -4938,8 +5033,10 @@ body:has(.skin-overlay) {
   font-size: 12px;
   color: var(--text-dim);
 }
-/* 7日ぶんを横に並べる。狭い画面でも折り返さず、1マスずつ細くする */
-.bonus-row {
+/* 7日ぶんを横に並べる。狭い画面でも折り返さず、1マスずつ細くする。
+   (以前は .bonus-row で、布陣ボーナスの知らせ(overlays.jsx の .bonus-row)を 7 列の格子にしてしまい、
+    文が 1 文字ずつ縦に並んでいた。2026-09-17 に名前を分けた) */
+.bonus-week {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;

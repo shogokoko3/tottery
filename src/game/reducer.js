@@ -2,6 +2,7 @@ import { boardFieldTheme } from "./field-presentation.js";
 import { areaEvent } from "./area-presentation.js";
 import { aceFoilOrderOk, useAceFoil } from "./ace-foil.js";
 import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
+import { normalizeCustom, armySizeFor, handSizeFor } from "./custom-rules.js";
 import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
 import { adjudicatePosition, withInitialArmies } from "./adjudication.js";
 import {
@@ -35,6 +36,7 @@ import {
   shuffle,
   emptyBoard,
   totalSlots,
+  armySlots,
   territoryRows,
   squareName,
   pointInTriangle,
@@ -220,7 +222,7 @@ function rescueHand(state, idx) {
 function placementOk(state, idx, placement, kingId) {
   if (!placement || typeof placement !== "object") return false;
   const ids = Object.keys(placement);
-  if (ids.length !== totalSlots(state.boardSize)) return false;
+  if (ids.length !== armySlots(state)) return false;
   if (new Set(ids).size !== ids.length) return false;
   const hand = state.players[idx].hand;
   const king = hand.find((c) => c.id === kingId);
@@ -462,6 +464,12 @@ export function initialState() {
     mulliganIdx: 0,
     /** 使っているカードプール(チュートリアル用。null なら全部) */
     pool: null,
+    /** 詳細設定(src/game/custom-rules.js)。null ならクラシック */
+    custom: null,
+    /** 盤に置く駒の数。詳細設定で札を減らすと小さくなる。null なら盤の決まり(5/9) */
+    armySize: null,
+    /** 詳細設定「公開する駒を自分で選ぶ」で、各側が布陣の確定時に選んだ駒。null ならランダム */
+    setupReveals: [null, null],
     /** 同時配置か、1台の端末で順番に置くか */
     setupMode: "sequential",
     /** 順番に置くときの、いま置いている側 */
@@ -845,7 +853,7 @@ function withSetupPlacement(state, idx, placement) {
  */
 export function autoArrange(state, idx, cellOrder, handOrder, keep) {
   const me = state.players[idx];
-  const slots = totalSlots(state.boardSize);
+  const slots = armySlots(state);
   const [lo, hi] = territoryRows(state.boardSize, idx);
 
   const cells = [];
@@ -985,6 +993,41 @@ function startPlay(base, log) {
     nextLog.push(
       `${PLAYER_META[i].name}の布陣はフラッシュ! ${PLAYER_META[1 - i].name}の駒が${picked.length}枚公開された`,
     );
+  }
+
+  // 詳細設定の公開: 王を除いて count 枚(自分で選んだ駒があればそれ)、king なら王も。
+  // ランダムの選び方はフラッシュと同じで乱数を使わない(両者の端末で同じ結果)
+  const custom = base.custom;
+  if (custom && (custom.reveal.count > 0 || custom.reveal.king)) {
+    pieces = { ...pieces };
+    board = board.map((r) => [...r]);
+    for (const i of [0, 1]) {
+      const mine = army(i);
+      const nonKing = mine.filter((p) => !p.isKing).map((p) => p.id);
+      const want = Math.min(custom.reveal.count, nonKing.length);
+      const chosen =
+        base.setupReveals && Array.isArray(base.setupReveals[i]) && base.setupReveals[i].length === want
+          ? base.setupReveals[i]
+          : pickRevealed(nonKing, want, `${seed}|custom|${i}`);
+      const ids = [...chosen];
+      if (custom.reveal.king) {
+        const king = mine.find((p) => p.isKing);
+        if (king) ids.push(king.id);
+      }
+      let shownCount = 0;
+      for (const id of ids) {
+        const cur = pieces[id];
+        if (!cur || cur.revealed) continue;
+        const shown = { ...cur, revealed: true };
+        pieces[id] = shown;
+        board[shown.row][shown.col] = shown;
+        shownCount++;
+      }
+      if (shownCount)
+        nextLog.push(
+          `詳細設定: ${PLAYER_META[i].name}の駒が${shownCount}枚公開された${custom.reveal.king ? "(王を含む)" : ""}`,
+        );
+    }
   }
 
   const effects =
@@ -1318,16 +1361,19 @@ function coreReducer(state, action) {
       const size = action.size === 9 ? 9 : action.size === 5 ? 5 : null;
       if (size === null) return state;
       if (action.deck !== undefined && !deckOk(action.deck)) return state;
-      const deck = action.deck || shuffle(buildDeck(action.pool));
+      // 詳細設定(言い値を信じず normalizeCustom で整える)。使う札を絞ると駒と手札も減る
+      const custom = normalizeCustom(action.custom, size);
+      const deck =
+        action.deck || shuffle(buildDeck(action.pool || (custom ? custom.ranks : null)));
+      const army = custom ? armySizeFor(size, custom.ranks.length) : totalSlots(size);
       // 小さいカードプールでは手札も減らす。予備札が尽きると引き直せなくなる
       const wanted = Number(action.handSize);
       const handSize =
-        Number.isInteger(wanted) && wanted >= totalSlots(size) && wanted <= 26
+        Number.isInteger(wanted) && wanted >= army && wanted <= 26
           ? wanted
-          : Math.max(
-              totalSlots(size),
-              Math.min(13, Math.floor(deck.length / 3)),
-            );
+          : custom
+            ? handSizeFor(size, custom.ranks.length)
+            : Math.max(army, Math.min(13, Math.floor(deck.length / 3)));
       if (deck.length < handSize * 2) return state;
       const hand0 = deck.slice(0, handSize);
       const hand1 = deck.slice(handSize, handSize * 2);
@@ -1357,6 +1403,8 @@ function coreReducer(state, action) {
           ? action.ruleVersion
           : null,
         pool: action.pool || null,
+        custom,
+        armySize: army,
         // 台本どおりに進めるチュートリアルでは布陣ボーナスを出さない。
         // 先手が入れ替わったり駒が公開されたりすると、案内と噛み合わなくなる
         scripted: !!action.scripted,
@@ -1523,7 +1571,7 @@ function coreReducer(state, action) {
             ? null
             : { forPlayer: state.firstPlayer, kind: "setup" },
       };
-      const slots = totalSlots(entering.boardSize);
+      const slots = armySlots(entering);
       for (const who of [0, 1])
         if (!canFillBoard(entering.players[who].hand, slots))
           entering = rescueHand(entering, who);
@@ -1534,7 +1582,7 @@ function coreReducer(state, action) {
       const idx = setupActor(state, action);
       if (idx === null || state.setupDone[idx]) return state;
       const me = state.players[idx];
-      const slots = totalSlots(state.boardSize);
+      const slots = armySlots(state);
       const card = me.hand.find((c) => c.id === action.cardId);
       if (!card) return state;
       const [lo, hi] = territoryRows(state.boardSize, idx);
@@ -1596,10 +1644,7 @@ function coreReducer(state, action) {
     case "SETUP_GOTO_KING_STEP": {
       const idx = setupActor(state, action);
       if (idx === null) return state;
-      if (
-        Object.keys(state.setupPlacements[idx]).length !==
-        totalSlots(state.boardSize)
-      )
+      if (Object.keys(state.setupPlacements[idx]).length !== armySlots(state))
         return state;
       return {
         ...state,
@@ -1646,6 +1691,20 @@ function coreReducer(state, action) {
       // 1枚ずつ置くときと同じことを、確定の手にも課す
       if (!placementOk(state, idx, placement, kingId)) return state;
       const ids = Object.keys(placement);
+      // 詳細設定「公開する駒を自分で選ぶ」: 置いた駒(王以外)から決めた数だけ。
+      // 形が違えば断る。無ければ(CPU など)対局開始時にランダムで選ぶ
+      let reveal = null;
+      if (state.custom && state.custom.reveal.choose && action.revealIds !== undefined) {
+        const want = Math.min(state.custom.reveal.count, ids.length - 1);
+        const rid = Array.isArray(action.revealIds) ? action.revealIds : null;
+        const ok =
+          rid &&
+          rid.length === want &&
+          rid.every((id) => typeof id === "string" && placement[id] && id !== kingId) &&
+          new Set(rid).size === rid.length;
+        if (!ok) return state;
+        reveal = rid;
+      }
 
       const players = [...state.players];
       const me = { ...players[idx] };
@@ -1692,6 +1751,7 @@ function coreReducer(state, action) {
         setupPlacements: replaceAt(state.setupPlacements, idx, placement),
         setupPickKings: replaceAt(state.setupPickKings, idx, kingId),
         setupSteps: replaceAt(state.setupSteps, idx, "done"),
+        setupReveals: replaceAt(state.setupReveals || [null, null], idx, reveal),
         log,
       };
 

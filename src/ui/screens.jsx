@@ -35,6 +35,7 @@ import {
   DoorOut,
   Globe,
   Info,
+  Lock,
   Nearby,
   Play,
   Settings,
@@ -73,7 +74,21 @@ import {
   loadOnlineSize,
   saveOnlineSize,
   matchesOnlineSize,
+  loadCustomRules,
+  saveCustomRules,
 } from "../net/match-settings.js";
+import {
+  DEFAULT_CUSTOM,
+  AREA_SIDE_LABEL,
+  CUSTOM_AREA_SIDES,
+  armySizeFor,
+  handSizeFor,
+  customSummary,
+  isDefaultCustom,
+  normalizeCustom,
+  toggleRank,
+} from "../game/custom-rules.js";
+import { RANKS } from "../game/constants.js";
 import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
@@ -893,6 +908,126 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady =
     )
   );
 }
+/**
+ * 詳細設定の中身(src/game/custom-rules.js)。
+ * 使う札のオン/オフ(駒と手札の数が連動)・エリアを立てる側・対局開始時に公開する駒
+ */
+function CustomRulesPanel({ custom, size, onChange }) {
+  const army = armySizeFor(size, custom.ranks.length);
+  const hand = handSizeFor(size, custom.ranks.length);
+  const set = (patch) => onChange({ ...custom, ...patch });
+  const maxReveal = Math.max(0, army - 1);
+  return (
+    <div className="custom-rules" role="group" aria-label="詳細設定">
+      <div className="custom-row">
+        <div className="rule-section-label">使う札</div>
+        <div className="rank-toggles">
+          {RANKS.map((rank) => {
+            const on = custom.ranks.includes(rank);
+            const next = toggleRank(custom.ranks, rank);
+            return (
+              <button
+                key={rank}
+                className={`rank-toggle ${on ? "active" : ""}`}
+                aria-pressed={on}
+                disabled={on && !next}
+                title={on && !next ? "これ以上は減らせません(4種類以上・数字の札2種類以上)" : ""}
+                onClick={() => next && set({ ranks: next })}
+              >
+                {rank}
+              </button>
+            );
+          })}
+        </div>
+        <p className="hint">
+          <b>札 {custom.ranks.length * 4}枚</b> → 盤に置く駒 <b>{army}枚</b>・手札 <b>{hand}枚</b>
+          <br />
+          4種類以上、J・Q・K 以外を2種類以上。駒は3枚を下回りません。
+        </p>
+      </div>
+      {size === 9 && (
+        <div className="custom-row">
+          <div className="rule-section-label">盤面エリア</div>
+          <div className="area-choices">
+            {CUSTOM_AREA_SIDES.map((side) => (
+              <button
+                key={side}
+                className={`area-choice ${custom.areas === side ? "active" : ""}`}
+                aria-pressed={custom.areas === side}
+                onClick={() => set({ areas: side })}
+              >
+                <b>{AREA_SIDE_LABEL[side]}</b>
+                <small>
+                  {side === "both"
+                    ? "王のフォイルがあれば、どちらも立つ"
+                    : side === "host"
+                      ? "自分(ルームを作る側・先手の席)だけ"
+                      : side === "guest"
+                        ? "相手だけ。自分は立てない"
+                        : "どちらも立てない素の対局"}
+                </small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="custom-row">
+        <div className="rule-section-label">対局開始時に公開する駒</div>
+        <label className="custom-field">
+          公開する枚数(王を除く)
+          <select
+            aria-label="公開する枚数"
+            value={Math.min(custom.reveal.count, maxReveal)}
+            onChange={(e) => {
+              const count = Number(e.target.value) || 0;
+              set({ reveal: { ...custom.reveal, count, choose: count > 0 && custom.reveal.choose } });
+            }}
+          >
+            {Array.from({ length: maxReveal + 1 }, (_, n) => (
+              <option key={n} value={n}>
+                {n === 0 ? "公開しない" : `${n}枚`}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="custom-field">
+          <input
+            type="checkbox"
+            checked={custom.reveal.king}
+            onChange={(e) => set({ reveal: { ...custom.reveal, king: e.target.checked } })}
+          />
+          王も公開する
+        </label>
+        {custom.reveal.count > 0 && (
+          <div className="area-choices">
+            <button
+              className={`area-choice ${!custom.reveal.choose ? "active" : ""}`}
+              aria-pressed={!custom.reveal.choose}
+              onClick={() => set({ reveal: { ...custom.reveal, choose: false } })}
+            >
+              <b>ランダム</b>
+              <small>王を除いた駒から自動で選ばれる</small>
+            </button>
+            <button
+              className={`area-choice ${custom.reveal.choose ? "active" : ""}`}
+              aria-pressed={custom.reveal.choose}
+              onClick={() => set({ reveal: { ...custom.reveal, choose: true } })}
+            >
+              <b>自分で選ぶ</b>
+              <small>布陣を確定するときに、公開する駒を自分で選ぶ</small>
+            </button>
+          </div>
+        )}
+      </div>
+      <p className="hint">
+        始める側の設定が使われます(CPU戦は自分、ルームは作る側、近くの端末はタップされた側)。
+        <br />
+        持ち点は動きません。
+      </p>
+    </div>
+  );
+}
+
 export function RulesSelectScreen({
   onStart,
   onBack,
@@ -905,25 +1040,67 @@ export function RulesSelectScreen({
   onCpuArea = null,
   // 手元の対局のときの自分のレベル。札と 9×9 をレベルで絞る。null なら絞らない(オンライン)
   level = null,
+  // 詳細設定(src/game/custom-rules.js)。onCustom が無い画面(ランダムマッチ)では出さない
+  custom = null,
+  onCustom = null,
 }) {
   const locked9 = level !== null && !boardOpen(9, level);
   let [a, u] = (0, useState)(locked9 && initialSize === 9 ? 5 : initialSize);
+  // 詳細設定はフォイルを持ってエリアを解放した人だけ(本人の指示 2026-09-17)
+  const customUnlocked = !!onCustom && foilRevealed(getCollection());
+  const [customOpen, setCustomOpen] = useState(!!custom && !isDefaultCustom(custom));
   return (
     <div className="setup-wrap">
       <h2>ルール設定</h2>
       <div className="rule-section">
         <div className="rule-section-label">ルール</div>
         <div className="nav-stack">
-          <button className="btn btn-primary btn-choice" disabled={!0}>
+          <button
+            className={`btn btn-choice ${!custom || isDefaultCustom(custom) ? "btn-primary" : "btn-ghost"}`}
+            aria-pressed={!custom || isDefaultCustom(custom)}
+            onClick={() => {
+              if (onCustom) onCustom(null);
+              setCustomOpen(false);
+            }}
+          >
             <Check size={18} />
             <span className="choice-label">
               クラシック<small>基本ルールで対戦します</small>
             </span>
           </button>
-          <button className="btn btn-ghost" disabled={!0} title="開発中">
-            詳細設定(開発中)
-          </button>
+          {onCustom &&
+            (customUnlocked ? (
+              <button
+                className={`btn btn-choice ${custom && !isDefaultCustom(custom) ? "btn-primary" : "btn-ghost"}`}
+                aria-pressed={!!custom && !isDefaultCustom(custom)}
+                aria-expanded={customOpen}
+                onClick={() => {
+                  if (!custom) onCustom(DEFAULT_CUSTOM);
+                  setCustomOpen(true);
+                }}
+              >
+                <Settings size={18} />
+                <span className="choice-label">
+                  詳細設定
+                  <small>{custom ? customSummary(normalizeCustom(custom, a), a) : "使う札・エリア・公開する駒を決める"}</small>
+                </span>
+              </button>
+            ) : (
+              <button className="btn btn-ghost btn-choice" disabled>
+                <Lock size={18} />
+                <span className="choice-label">
+                  詳細設定<small>フォイルを手に入れてエリアを解放すると使えます</small>
+                </span>
+              </button>
+            ))}
         </div>
+        {onCustom && customUnlocked && customOpen && (
+          <CustomRulesPanel
+            custom={normalizeCustom(custom || DEFAULT_CUSTOM, a)}
+            size={a}
+            onChange={onCustom}
+          />
+        )}
       </div>
       <div className="rule-section">
         <div className="rule-section-label">盤面のサイズ</div>
@@ -1106,7 +1283,7 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
         <p className="hint" style={{ margin: 0 }}>
           相手の端末でもこの画面を開いてください。
           <br />
-          見つかった相手をタップすると対局が始まります(インターネット不要)。
+          見つかった相手をタップすると始まります。インターネットは要りません。
         </p>
       </div>
       <div className="conn-badge conn-checking">
@@ -1119,7 +1296,11 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
       </div>
       <div className="nearby-list" role="list" aria-label="近くの端末">
         {peers.length === 0 ? (
-          <p className="hint">まだ見つかりません。相手の端末で同じ画面を開き、Bluetooth と Wi‑Fi をオンにしてください。</p>
+          <p className="hint">
+            まだ見つかりません。相手の端末でも同じ画面を開いてください。
+            <br />
+            Bluetooth と Wi‑Fi をオンに(機内モード中でも、コントロールセンターから両方をオンにできます)。
+          </p>
         ) : (
           peers.map((p) => (
             <button
@@ -1447,9 +1628,9 @@ export function RoomScreen({
             margin: 0,
           }}
         >
-          ルームを作ってリンクか合言葉を送るか、
+          ルームを作って相手にリンクか合言葉を送るか、
           <br />
-          送られたリンクを開く・合言葉を貼り付けて参加できます。
+          届いたリンクや合言葉で参加します。
         </p>
       </div>
       <div className={`conn-badge conn-${w}`}>
@@ -1528,7 +1709,8 @@ export function RoomScreen({
         </button>
       </div>
       <p className="code-note">
-        <Info size={14} /> 合言葉は{ROOM_CODE_LENGTH}文字(ABC-DEF)。送られたリンクを開けば入力はいりません。
+        <Info size={14} />
+        <span>合言葉は{ROOM_CODE_LENGTH}文字(ABC-DEF)。リンクを開けば入力はいりません。</span>
       </p>
       {m && (
         <p
@@ -1605,6 +1787,8 @@ function TotteryScreens() {
     [banned, setBanned] = (0, useState)(!1),
     // 名前を決めた直後に一度だけ出す、第1話への案内
     [offerTutorial, setOfferTutorial] = (0, useState)(!1),
+    // 詳細設定(src/game/custom-rules.js)。端末に覚える。null ならクラシック
+    [customRules, setCustomRules] = (0, useState)(() => loadCustomRules()),
     // リンク(?room=ABCDEF)から開いたときの合言葉。名前を決めたらフレンド対戦の画面へ
     [pendingRoom, setPendingRoom] = (0, useState)(() => roomFromLocation());
   useEffect(() => {
@@ -1712,14 +1896,12 @@ function TotteryScreens() {
             他の方への迷惑行為が確認されたため、このアカウントではトッタリーをご利用いただけません。
           </p>
           <p className="hint">
-            心当たりがない場合や、内容についてのお問い合わせは、
-            ストアの製品ページに記載の連絡先までご連絡ください。
+            心当たりがない場合や、内容についてのお問い合わせは、ストアの製品ページに記載の連絡先までご連絡ください。
           </p>
         </div>
       </GameShell>
     );
-  if (!named)
-    return (
+  if (!named)return (
       <GameShell showRules={l} setShowRules={n}>
         <NameSetupScreen
           onDone={() => {
@@ -1795,6 +1977,8 @@ function TotteryScreens() {
             }
             // ランダムマッチの練習相手。人との対局と同じ扱い(持ち点が動く、札は絞らない)
             bot={d && !tut ? bot : null}
+            // 詳細設定は CPU戦・同じ端末・フレンド対戦(合言葉・近くの端末)だけ。ランダムマッチ・Bot・チュートリアルでは使わない
+            custom={!tut && !bot && !(a && a.random) ? customRules : null}
             // 手元の対局は、レベルで開いている札だけを配る。オンライン・チュートリアル・Bot は絞らない
             pool={!a && !tut && !bot ? localPool : null}
             handSize={!a && !tut && !bot ? handSizeForLevel(localLevel) : null}
@@ -1965,12 +2149,23 @@ function TotteryScreens() {
           ),
           rules: (
             <RulesSelectScreen
-              ranked={o === "online" || o === "room"}
+              // ランキングに載るのはランダムマッチの 9×9 だけ。フレンド対戦は載らない(2026-09-17)
+              ranked={o === "online"}
               // 近くの端末との対戦はフレンド対戦と同じく、レベルで札を絞らない
               initialSize={o === "online" ? loadOnlineSize() : 5}
               // 手元の対局は、レベルで札と 9×9 を絞る(src/game/card-unlock.js)
               level={o === "online" || o === "room" || o === "nearby" ? null : localLevel}
               onStart={z}
+              // 詳細設定はランダムマッチ以外
+              custom={o === "online" ? null : customRules}
+              onCustom={
+                o === "online"
+                  ? null
+                  : (c) => {
+                      setCustomRules(c);
+                      saveCustomRules(c);
+                    }
+              }
               onBack={() => t(rulesFrom)}
               backLabel={
                 rulesFrom === "room"

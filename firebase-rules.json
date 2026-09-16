@@ -367,6 +367,38 @@
                 }
               }
             },
+            "custom": {
+              "ranks": {
+                "$i": {
+                  ".validate": "$i.matches(/^([0-9]|1[0-2])$/) && newData.isString() && newData.val().length <= 2"
+                }
+              },
+              "areas": {
+                ".validate": "newData.isString() && newData.val().length <= 8"
+              },
+              "reveal": {
+                "count": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 8"
+                },
+                "king": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "choose": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "$o": {
+                  ".validate": false
+                }
+              },
+              "$o": {
+                ".validate": false
+              }
+            },
+            "revealIds": {
+              "$i": {
+                ".validate": "$i.matches(/^[0-7]$/) && newData.isString() && newData.val().length <= 16"
+              }
+            },
             "$other": {
               ".validate": false,
               "$sa": {

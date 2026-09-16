@@ -5,7 +5,7 @@ import {
   kingRankOf,
   squareName,
   territoryRows,
-  totalSlots,
+  armySlots,
 } from "../game/board.js";
 
 import {
@@ -424,7 +424,7 @@ export function PlaceStep({
   const [hover, setHover] = useState(null);
   const [drag, setDrag] = useState(null);
   const boardRef = useRef(null);
-  const slots = totalSlots(size);
+  const slots = armySlots(state);
   const [lo, hi] = territoryRows(size, pIdx);
   const placement = state.setupPlacements[pIdx];
   const placedIds = new Set(Object.keys(placement));
@@ -574,8 +574,7 @@ export function PlaceStep({
         <p className="setup-rescue">
           手札が絵札（J・Q・K）に偏っていて、盤に並べきれませんでした。
           <br />
-          手札と捨て札を予備札に戻し、数字の札だけで配り直しています。
-          引き直しはできません。
+          手札と捨て札を予備札に戻し、数字の札だけで配り直しています。引き直しはできません。
         </p>
       )}
       {terse ? (
@@ -588,8 +587,7 @@ export function PlaceStep({
         </p>
       ) : (
         <p className="hint">
-          手札を自陣へドラッグ。タップで選んでからマスをタップでも置けます。
-          盤の外へドラッグすると手札に戻せます。
+          手札を自陣へドラッグ。タップで選んでからマスをタップでも置けます。盤の外へドラッグすると手札に戻せます。
           <span className="legend-dot" />
           はその駒が動ける先です。
           <strong className="hint-count">
@@ -735,6 +733,24 @@ export function KingStep({
   const hasK = Object.keys(placement).some(
     (id) => findHandCard(player, id).rank === "K",
   );
+  // 詳細設定「公開する駒を自分で選ぶ」: 王を決めたあと、公開する駒を revealWant 枚タップで選ぶ
+  const custom = state.custom;
+  const revealWant =
+    custom && custom.reveal.choose
+      ? Math.min(custom.reveal.count, Object.keys(placement).length - 1)
+      : 0;
+  const [reveals, setReveals] = useState([]);
+  const [revealMode, setRevealMode] = useState(false);
+  const chosenReveals = reveals.filter((id) => placement[id] && id !== pickedKing);
+  const revealReady = revealWant === 0 || chosenReveals.length === revealWant;
+  const toggleReveal = (id) =>
+    setReveals((cur) =>
+      cur.includes(id)
+        ? cur.filter((x) => x !== id)
+        : cur.length >= revealWant
+          ? cur
+          : [...cur, id],
+    );
   // チュートリアルで王を指定されている場合。指定の札を置いていなければ普通に選べる
   const forced =
     forceRank &&
@@ -747,7 +763,7 @@ export function KingStep({
   return (
     <div className="setup-wrap">
       <h2 style={{ color: PLAYER_META[pIdx].color }}>
-        {nameOf(pIdx, names)}: どのカードを王にするか決めてね
+        {nameOf(pIdx, names)}: 王にするカードを決めてね
       </h2>
       <SetupTimer
         remainingMs={remainingMs}
@@ -757,11 +773,13 @@ export function KingStep({
       />
       {!terse && (
         <p className="hint">
-          {hasK
-            ? "Kを配置しているので、Kが王になります。"
-            : forced
-              ? `この話では「${forced}」を王にします。${forced}の駒をタップしてください。`
-              : "配置したカードの中から王にする1枚をタップしてください。"}
+          {revealMode
+            ? `相手に公開する駒を${revealWant}枚タップで選んでください(王は選べません)。残り${revealWant - chosenReveals.length}枚`
+            : hasK
+              ? "Kを配置しているので、Kが王になります。"
+              : forced
+                ? `この話では「${forced}」を王にします。${forced}の駒をタップしてください。`
+                : "配置したカードの中から王にする1枚をタップしてください。"}
         </p>
       )}
       <div className="arrange-layout">
@@ -792,6 +810,10 @@ export function KingStep({
                       : ""
                   }`}
                   onClick={() => {
+                    if (revealMode) {
+                      if (card && id !== pickedKing) toggleReveal(id);
+                      return;
+                    }
                     if (selectable)
                       dispatch({
                         type: "SETUP_PICK_KING",
@@ -804,8 +826,8 @@ export function KingStep({
                   {card && (
                     <div
                       className={`mini-piece ${
-                        pickedKing === id ? "piece-selected" : ""
-                      } ${selectable ? "" : "mini-piece-disabled"}`}
+                        pickedKing === id || (revealMode && chosenReveals.includes(id)) ? "piece-selected" : ""
+                      } ${(revealMode ? id !== pickedKing : selectable) ? "" : "mini-piece-disabled"}`}
                     >
                       <CardFace
                         owner={pIdx}
@@ -817,6 +839,9 @@ export function KingStep({
                       {pickedKing === id && (
                         <Crown size={12} className="king-badge" />
                       )}
+                      {chosenReveals.includes(id) && (
+                        <span className="revealed-badge">公開</span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -825,7 +850,7 @@ export function KingStep({
           )}
         </div>
       </div>
-      <div className="setup-actions">
+      <div className={`setup-actions ${revealWant > 0 ? "setup-actions-wrap" : ""}`}>
         <button
           className="btn btn-ghost"
           onClick={() =>
@@ -834,13 +859,35 @@ export function KingStep({
         >
           <ArrowLeft size={16} /> 配置に戻る
         </button>
-        <button
-          className="btn btn-primary"
-          disabled={!pickedKing}
-          onClick={() => dispatch({ type: "SETUP_CONFIRM", player: pIdx })}
-        >
-          <Crown size={16} /> 布陣を確定
-        </button>
+        {revealWant > 0 && !revealMode && (
+          <button
+            className="btn btn-primary"
+            disabled={!pickedKing}
+            onClick={() => setRevealMode(true)}
+          >
+            公開する駒を選ぶ({revealWant}枚)
+          </button>
+        )}
+        {revealWant > 0 && revealMode && (
+          <button className="btn btn-ghost" onClick={() => setRevealMode(false)}>
+            王を選び直す
+          </button>
+        )}
+        {(revealWant === 0 || revealMode) && (
+          <button
+            className="btn btn-primary"
+            disabled={!pickedKing || !revealReady}
+            onClick={() =>
+              dispatch({
+                type: "SETUP_CONFIRM",
+                player: pIdx,
+                ...(revealWant > 0 ? { revealIds: chosenReveals } : null),
+              })
+            }
+          >
+            <Crown size={16} /> 布陣を確定
+          </button>
+        )}
       </div>
     </div>
   );

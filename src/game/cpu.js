@@ -1,5 +1,5 @@
 import {
-  totalSlots,
+  armySlots,
   territoryRows,
   getLegalMoves,
   kingRankOf,
@@ -57,7 +57,7 @@ export function pickKing(state, player = state.setupIdx) {
 /** 引き直すカードを選ぶ。採用上限を超えた余りから最大4枚 */
 export function pickMulliganDiscards(state) {
   const me = state.players[state.mulliganIdx];
-  const slots = totalSlots(state.boardSize);
+  const slots = armySlots(state);
   const counts = {};
   const keep = [];
   const spare = [];
@@ -259,7 +259,7 @@ export function cpuAction(state, player) {
     if (state.setupDone[player]) return null;
     if (state.setupSteps[player] === "place") {
       return Object.keys(state.setupPlacements[player]).length <
-        totalSlots(state.boardSize)
+        armySlots(state)
         ? { type: "SETUP_AUTO_ARRANGE", player }
         : { type: "SETUP_GOTO_KING_STEP", player };
     }

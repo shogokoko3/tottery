@@ -58,7 +58,7 @@ export function LoginBonus() {
           {profile.streak > 1 && ` ・ 続けて${profile.streak}日`}
         </p>
 
-        <div className="bonus-row">
+        <div className="bonus-week">
           {rows.map((r) => (
             <div
               key={r.day}
