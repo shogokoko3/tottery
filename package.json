@@ -5,6 +5,7 @@
   "type": "module",
   "description": "トッタリー — カード×陣取りバトル",
   "scripts": {
+    "postinstall": "node tools/patch-plugins.mjs",
     "build": "node build.mjs",
     "ios:sync": "node build.mjs && npx cap copy ios && node tools/strip-ios-public.mjs",
     "ios:archive": "sh tools/ios-release.sh archive",

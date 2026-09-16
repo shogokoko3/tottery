@@ -1532,3 +1532,9 @@ CPU・オンライン9×9で布陣称号を獲得した本人に、土・海・�
   で作り、審査用スクリーンショットは `tools/asc-iap-screenshots.mjs`。旧 120 の商品は残すがアプリからは出さない
 - **無償ジェムをエーテルに**: 10 → 20(`ETHER_EXCHANGE`、`/api/wallet/ether`、錬成タブ)。**無償だけ**で払う(有償は溶かさない)。
   ガチャ1回を崩した分(約24)よりやや不利にして、ガチャの価値を守る。無償ジェムの役割は「錬成とバトルパス」に寄せる
+
+### プラグインの Swift パッケージの直し(postinstall、2026-09-16)
+
+`@capacitor-community/apple-sign-in` 7.1.0 の Package.swift は capacitor-swift-pm を 7.x に縛っていて、Capacitor 8 の
+このアプリでは xcodebuild が依存解決で止まる。`npm install` / `npm ci` のあとに `tools/patch-plugins.mjs`(postinstall)が
+下限を 8.0.0 に書き換える。node_modules を入れ直したら、自動で走る。
