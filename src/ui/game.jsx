@@ -1050,6 +1050,12 @@ export function GameView({
  * 出目が決まったら、減速して止まり「N が出ました」が読めるまで待つ。
  * それ以外は、対局中は考えているふうに長め、布陣などは短め。
  */
+/**
+ * CPU(と Bot)が対局中の1手に使う時間(ms)。
+ * 1秒だと、CPU が先手のとき盤を見る前に手が進んでいた(本人の指摘 2026-09-17)。
+ * 5秒に延ばし、相手の手番のあいだに盤を確かめられるようにする。布陣・サイコロは変えない
+ */
+const CPU_TURN_MS = 5000;
 function foeWait(state, act, playMs) {
   if (act.type === "ROLL_DICE_SINGLE") return 900;
   if (act.type === "NEXT_DICE_STEP") return DIE_SETTLE_MS + 900;
@@ -1452,7 +1458,7 @@ export function GameCore({
     if (bot) E = botAction(a, T, E, bot);
     if (!E) return;
     // Bot は人らしく、少し考える時間を足す(0.5〜2.5秒の揺れ)
-    let U = foeWait(a, E, 1000) + (bot ? 500 + Math.floor(Math.random() * 2000) : 0),
+    let U = foeWait(a, E, CPU_TURN_MS) + (bot ? 500 + Math.floor(Math.random() * 2000) : 0),
       be = setTimeout(() => {
         E.type === "__CPU_SHUFFLE"
           ? (y({

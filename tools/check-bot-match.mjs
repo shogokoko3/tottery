@@ -185,6 +185,7 @@ assert.equal(matchesBot("abc"), true);
   // 近くの端末との対戦(network.nearby)だけは数えない(2026-09-17)
   assert.ok(/const ranked = \(!!\(network && network\.random\) \|\| !!bot\) && a\.boardSize === 9;/.test(game), "Bot の 9×9 は持ち点に数える(フレンド対戦は数えない)");
   assert.ok(/if \(bot\) E = botAction\(a, T, E, bot\);/.test(game), "Bot の強さ(段階)を手に反映する");
+  assert.ok(/const CPU_TURN_MS = 5000;/.test(game) && /foeWait\(a, E, CPU_TURN_MS\)/.test(game), "CPU・Bot は対局中の1手に5秒使う(2026-09-17)");
   assert.ok(/\? bot\.rating/.test(game), "相手の点は Bot の人物の点");
   assert.ok(/online: !!network && !network\.nearby && !tutorial,/.test(game), "ミッションのオンライン回数には数えない(network のときだけ。近くの端末も数えない)");
   assert.ok(/useSeasonMatch\(a, network, round, !!tutorial \|\| !network\?\.random\)/.test(game), "シーズン台帳はランダムマッチのときだけ(Bot・フレンド・近くの端末は送らない)");
