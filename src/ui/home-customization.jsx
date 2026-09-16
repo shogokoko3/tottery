@@ -1,16 +1,42 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, Check, Close, Crown, Lock, Sparkle } from "../icons.jsx";
 import { SkinModal } from "./skin-modal.jsx";
 import { useCollection, updateCollection } from "../skins/store.js";
+import { byId } from "../skins/catalog.js";
 import {
   HOME_THEMES,
   DEFAULT_HOME_THEME,
   homeThemeOf,
   setHomeTheme,
   unlockedHomeThemes,
+  homePortraitOf,
+  homePortraitsOf,
+  unlockedHomePortraits,
+  setHomePortrait,
 } from "../skins/home-themes.js";
 
 const asset = (file) => `skins/home-v1/${file}`;
+const PALACE_PORTRAITS = {
+  heaven: ["angel-j", "angel-q", "angel-k"],
+  hell: ["demon-j", "demon-q", "demon-k"],
+};
+function portraitView(theme, id) {
+  const skin = byId(id);
+  const character = PALACE_PORTRAITS[theme.id]?.includes(id) ? skin : null;
+  return {
+    name: character?.name || theme.name,
+    image:
+      character && character.rank !== "K"
+        ? character.image
+        : asset(`${theme.id}-king.webp`),
+    position:
+      character && character.rank !== "K"
+        ? theme.id === "hell"
+          ? "50% 10%"
+          : "50% 20%"
+        : "50% 50%",
+  };
+}
 export const findHomeTheme = (id) =>
   HOME_THEMES.find((theme) => theme.id === id);
 export function homeThemeStyle(theme) {
@@ -74,7 +100,9 @@ export function HomeRealmDecoration({ theme }) {
 }
 
 export function HomeRealmPortrait({ theme }) {
+  const collection = useCollection();
   if (!theme) return null;
+  const portrait = portraitView(theme, homePortraitOf(collection, theme.id));
   return (
     <section
       className="home-realm-portrait"
@@ -82,12 +110,13 @@ export function HomeRealmPortrait({ theme }) {
     >
       <img
         className="home-realm-king"
-        src={asset(`${theme.id}-king.webp`)}
-        alt={theme.name}
+        src={portrait.image}
+        alt={portrait.name}
+        style={{ objectPosition: portrait.position }}
       />
       <div className="home-realm-caption">
         <span>{theme.title}</span>
-        <h2>{theme.name}</h2>
+        <h2>{portrait.name}</h2>
       </div>
       <HomeFrameCorners theme={theme} />
       <img
@@ -111,19 +140,39 @@ export function HomeCustomizationModal({ onClose }) {
   const collection = useCollection();
   const current = homeThemeOf(collection);
   const [selected, setSelected] = useState(current);
+  const [portraits, setPortraits] = useState(() => homePortraitsOf(collection));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const scroller = useRef(null);
   const choices = [ORIGINAL, ...HOME_THEMES];
   const unlocked = unlockedHomeThemes(collection);
   const choice = choices.find((item) => item.id === selected) || ORIGINAL;
-  const available = unlocked.includes(choice.id);
   const theme = findHomeTheme(choice.id);
+  const characters = PALACE_PORTRAITS[choice.id];
+  const portraitId =
+    portraits[choice.id] ||
+    homePortraitOf(collection, choice.id) ||
+    characters?.[2];
+  const portrait = theme && portraitView(theme, portraitId);
+  const ownedPortraits = unlockedHomePortraits(collection, choice.id);
+  const available =
+    unlocked.includes(choice.id) &&
+    (!characters || ownedPortraits.includes(portraitId));
+  const isCurrent =
+    choice.id === current &&
+    (!characters || portraitId === homePortraitOf(collection, choice.id));
+  const condition = characters
+    ? `${byId(portraitId).rank} ${byId(portraitId).name}のフォイルを獲得`
+    : choice.condition;
   const apply = async () => {
     if (saving || !available) return;
     setSaving(true);
     setError("");
     try {
-      await updateCollection((state) => setHomeTheme(state, choice.id));
+      await updateCollection((state) => {
+        const next = setHomeTheme(state, choice.id);
+        return characters ? setHomePortrait(next, choice.id, portraitId) : next;
+      });
       onClose();
     } catch (err) {
       setError(err.message || "着せ替えを保存できませんでした。");
@@ -151,7 +200,7 @@ export function HomeCustomizationModal({ onClose }) {
           <Close size={20} />
         </button>
       </header>
-      <div className="home-customize-scroll">
+      <div className="home-customize-scroll" ref={scroller}>
         <p className="home-customize-guide">
           各エリアに対応するフォイルを獲得すると解放されます。
         </p>
@@ -162,8 +211,9 @@ export function HomeCustomizationModal({ onClose }) {
         >
           {theme ? (
             <img
-              src={asset(`${theme.id}-king.webp`)}
-              alt={`${theme.label}のホーム装飾の見本`}
+              src={portrait.image}
+              alt={`${theme.label}のホーム装飾の見本・${portrait.name}`}
+              style={{ objectPosition: portrait.position }}
             />
           ) : (
             <div className="home-original-art">
@@ -173,7 +223,7 @@ export function HomeCustomizationModal({ onClose }) {
           )}
           <HomeFrameCorners theme={theme} />
           <span className="home-preview-label">
-            {choice.label} · {choice.title}
+            {choice.label} · {characters ? portrait.name : choice.title}
           </span>
         </div>
         <div
@@ -182,13 +232,50 @@ export function HomeCustomizationModal({ onClose }) {
         >
           {available ? <Check size={17} /> : <Lock size={17} />}
           <span>
-            {available
-              ? choice.id === current
-                ? "現在使用中"
-                : "解放済み"
-              : choice.condition}
+            {available ? (isCurrent ? "現在使用中" : "解放済み") : condition}
           </span>
         </div>
+        {characters && (
+          <section
+            className="home-characters"
+            aria-label="ホームに表示するキャラ"
+          >
+            <h3>ホームに迎えるキャラ</h3>
+            <p>対応するキャラのフォイルで解放</p>
+            <div className="home-character-grid">
+              {characters.map((id) => {
+                const skin = byId(id);
+                const open = ownedPortraits.includes(id);
+                const view = portraitView(theme, id);
+                return (
+                  <button
+                    key={id}
+                    className={`home-character-option${portraitId === id ? " is-selected" : ""}${open ? "" : " is-locked"}`}
+                    aria-label={`${skin.rank} ${skin.name} ${open ? "解放済み" : "未解放"}`}
+                    aria-pressed={portraitId === id}
+                    disabled={saving}
+                    onClick={() => {
+                      setPortraits((value) => ({ ...value, [choice.id]: id }));
+                      setError("");
+                    }}
+                  >
+                    <span className="home-character-image">
+                      <img
+                        src={view.image}
+                        alt=""
+                        style={{ objectPosition: view.position }}
+                      />
+                      {!open && <Lock size={18} />}
+                    </span>
+                    <b>{skin.rank}</b>
+                    <span>{skin.name}</span>
+                    <small>{open ? "解放済み" : "未解放"}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
         <div
           className="home-theme-grid"
           role="group"
@@ -206,6 +293,7 @@ export function HomeCustomizationModal({ onClose }) {
                 onClick={() => {
                   setSelected(item.id);
                   setError("");
+                  if (scroller.current) scroller.current.scrollTop = 0;
                 }}
                 disabled={saving}
               >
@@ -216,9 +304,22 @@ export function HomeCustomizationModal({ onClose }) {
                     </span>
                   ) : (
                     <img
-                      src={asset(`${item.id}-king.webp`)}
+                      src={
+                        portraitView(
+                          item,
+                          portraits[item.id] ||
+                            homePortraitOf(collection, item.id),
+                        ).image
+                      }
                       alt=""
                       loading="lazy"
+                      style={{
+                        objectPosition: portraitView(
+                          item,
+                          portraits[item.id] ||
+                            homePortraitOf(collection, item.id),
+                        ).position,
+                      }}
                     />
                   )}
                   {!open && (
@@ -260,7 +361,7 @@ export function HomeCustomizationModal({ onClose }) {
             ? "保存中…"
             : !available
               ? "未解放"
-              : choice.id === current
+              : isCurrent
                 ? "このまま使う"
                 : "この装飾に着せ替える"}
         </button>

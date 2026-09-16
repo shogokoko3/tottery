@@ -12,7 +12,7 @@ import {
 } from "./catalog.js";
 import { craftCheck, dismantleCheck } from "./ether.js";
 import { exchangeCheck, shatterCheck } from "./shards.js";
-import { homeThemeOf } from "./home-themes.js";
+import { homePortraitsOf, homeThemeOf } from "./home-themes.js";
 import { sanitizeTsumeProgress } from "../game/tsume-daily.js";
 import {
   missionPeriods,
@@ -22,6 +22,11 @@ import {
 const count = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : 0);
 const addCount = (a, b) => Math.min(Number.MAX_SAFE_INTEGER, a + b);
 export const FOIL_MILESTONE = 100;
+
+// 初めて得た天使・悪魔の表示も獲得と一緒に確定する。既存の選択は維持する。
+function withHomePortraits(state) {
+  return { ...state, homePortraits: homePortraitsOf(state) };
+}
 
 /** キャラごとの通算獲得数。旧保存は、確認できる現在所持分から始める。 */
 export function acquiredOf(state, id) {
@@ -82,13 +87,13 @@ export function claimFoilMilestone(state, baseId) {
   const check = foilMilestoneCheck(state, baseId);
   if (!check.ok) throw new Error(check.why);
   const id = foilId(baseId);
-  return {
+  return withHomePortraits({
     ...state,
     acquired: acquiredTotals(state),
     foilMilestones: { ...state.foilMilestones, [baseId]: true },
     owned: { ...state.owned, [id]: addCount(count(state.owned?.[id]), 1) },
     lastCraft: { id, isNew: !state.owned?.[id], source: "milestone" },
-  };
+  });
 }
 
 export function normalize(raw) {
@@ -154,6 +159,10 @@ export function normalize(raw) {
     foilMilestones,
     equipped,
     homeTheme: homeThemeOf({ owned, homeTheme: value.homeTheme }),
+    homePortraits: homePortraitsOf({
+      owned,
+      homePortraits: value.homePortraits,
+    }),
     draws: count(value.draws),
     earlyClaimed: value.earlyClaimed === true,
     motion: ["full", "short", "off"].includes(value.motion)
@@ -220,7 +229,7 @@ export function pull(
     recordAcquisition(acquired, id);
     return { id, isNew };
   });
-  return {
+  return withHomePortraits({
     ...state,
     owned,
     acquired,
@@ -228,7 +237,7 @@ export function pull(
     draws: state.draws + amount,
     missionDrawDay: missionPeriods().day,
     pending: { results },
-  };
+  });
 }
 
 /** 無償ジェムを足す(端末の写し。正はサーバーの財布で、呼び出し側が earnGems で送る) */
@@ -267,11 +276,11 @@ export function grantSkin(state, id) {
   if (!byId(id)) return state;
   const acquired = acquiredTotals(state);
   recordAcquisition(acquired, id);
-  return {
+  return withHomePortraits({
     ...state,
     acquired,
     owned: { ...state.owned, [id]: (state.owned[id] || 0) + 1 },
-  };
+  });
 }
 
 /** 買ったフォイルを所持に足す(通常版の id で受ける)。通算獲得にも数える */
@@ -335,13 +344,13 @@ export function exchangeFoil(state, baseId) {
   const id = foilId(baseSkinId(baseId));
   const acquired = acquiredTotals(state);
   recordAcquisition(acquired, id);
-  return {
+  return withHomePortraits({
     ...state,
     acquired,
     owned: { ...state.owned, [id]: (state.owned[id] || 0) + 1 },
     shards: count(state.shards) - check.cost,
     lastCraft: { id, isNew: true, source: "exchange" },
-  };
+  });
 }
 
 /** 通常版のダブりをまとめて崩す。フォイルは欠片にするので含めない。 */
@@ -368,13 +377,13 @@ export function craft(state, id, random = Math.random) {
     ...state.owned,
     [resultId]: (state.owned[resultId] || 0) + 1,
   };
-  return {
+  return withHomePortraits({
     ...state,
     owned,
     acquired,
     ether: count(state.ether) - check.cost,
     lastCraft: { id: resultId, isNew },
-  };
+  });
 }
 
 export function claimEarly(state) {

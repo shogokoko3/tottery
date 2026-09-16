@@ -1,4 +1,5 @@
 import { areaRewardsFor } from "./area-rewards.js";
+import { byId, foilId } from "./catalog.js";
 
 export const DEFAULT_HOME_THEME = "default";
 
@@ -71,12 +72,18 @@ export const HOME_THEMES = Object.freeze(
   ].map((theme) => Object.freeze({ ...theme, area: theme.id })),
 );
 
-/** 最後のフォイルは分解できないため、所持が獲得済みの証拠になる。 */
-export function unlockedHomeThemes(collection) {
+function ownedHomeRewards(collection) {
   const held = Object.entries(collection?.owned || {})
     .filter(([, count]) => Number.isSafeInteger(count) && count > 0)
     .map(([id]) => ({ id }));
-  const unlocked = new Set(areaRewardsFor(held).map((reward) => reward.theme));
+  return areaRewardsFor(held);
+}
+
+/** 最後のフォイルは分解できないため、所持が獲得済みの証拠になる。 */
+export function unlockedHomeThemes(collection) {
+  const unlocked = new Set(
+    ownedHomeRewards(collection).map((reward) => reward.theme),
+  );
   return [
     DEFAULT_HOME_THEME,
     ...HOME_THEMES.filter((theme) => unlocked.has(theme.id)).map(
@@ -103,4 +110,65 @@ export function setHomeTheme(collection, id) {
   if (!unlockedHomeThemes(collection).includes(id))
     throw new Error("対応するフォイルを獲得すると選べます。");
   return { ...collection, homeTheme: id };
+}
+
+const PORTRAIT_THEMES = ["heaven", "hell"];
+const PORTRAIT_RANKS = ["J", "Q", "K"];
+
+/** 天界・魔界の表示に選べる通常版ID。対応するフォイルの所持が必要。 */
+export function unlockedHomePortraits(collection, theme) {
+  if (!PORTRAIT_THEMES.includes(theme)) return [];
+  const reward = ownedHomeRewards(collection).find(
+    (item) => item.theme === theme,
+  );
+  return (reward?.skins || [])
+    .filter((skin) => PORTRAIT_RANKS.includes(skin.rank))
+    .sort(
+      (a, b) => PORTRAIT_RANKS.indexOf(a.rank) - PORTRAIT_RANKS.indexOf(b.rank),
+    )
+    .map((skin) => skin.baseId);
+}
+
+/** 旧保存は所持中のK・Q・Jの順で選ぶ。選択済みなら新たな獲得で変えない。 */
+export function homePortraitOf(collection, theme) {
+  const available = unlockedHomePortraits(collection, theme);
+  const saved = collection?.homePortraits;
+  const selected =
+    saved && typeof saved === "object" && !Array.isArray(saved)
+      ? saved[theme]
+      : null;
+  return available.includes(selected)
+    ? selected
+    : available[available.length - 1] || null;
+}
+
+/** 有効な選択だけ保存する。初めての表示で選んだキャラも次回から維持する。 */
+export function homePortraitsOf(collection) {
+  return Object.fromEntries(
+    PORTRAIT_THEMES.map((theme) => [
+      theme,
+      homePortraitOf(collection, theme),
+    ]).filter(([, baseId]) => baseId !== null),
+  );
+}
+
+/** 表示キャラだけを変更する。ホーム領域・カード装備・所持品は変えない。 */
+export function setHomePortrait(collection, theme, baseId) {
+  const skin = byId(baseId);
+  if (
+    !PORTRAIT_THEMES.includes(theme) ||
+    !skin ||
+    skin.foil ||
+    !PORTRAIT_RANKS.includes(skin.rank) ||
+    !areaRewardsFor([{ id: foilId(baseId) }]).some(
+      (reward) => reward.theme === theme,
+    )
+  )
+    throw new Error("この領域ではそのキャラクターを選べません。");
+  if (!unlockedHomePortraits(collection, theme).includes(baseId))
+    throw new Error("このキャラクターのフォイルを獲得すると選べます。");
+  return {
+    ...collection,
+    homePortraits: { ...homePortraitsOf(collection), [theme]: baseId },
+  };
 }
