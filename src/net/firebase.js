@@ -5,6 +5,7 @@
  */
 
 import { authedFetch, ensureAuth, myUid } from "./auth.js";
+import { isNearbyCode, nearby } from "./nearby.js";
 
 export const DB_URL =
   "https://tottery-66e0f-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -96,7 +97,12 @@ async function whoAmI() {
   return (a && a.uid) || myUid();
 }
 
-export const readRoom = (code) => getJson(roomUrl(code));
+/*
+ * 近くの端末との対戦(src/net/nearby.js)は、合言葉が NEAR- で始まる。
+ * 部屋と手番の口はここで振り分け、対局の画面は通信の種類を知らずに済む
+ */
+export const readRoom = (code) =>
+  isNearbyCode(code) ? nearby().readRoom() : getJson(roomUrl(code));
 
 /**
  * 部屋を新しく作る。
@@ -123,7 +129,7 @@ export async function createRoom(code, data) {
  * 消してしまううえ、ルール側でも中身の丸ごと上書きは断っている。
  */
 export const updateRoom = (code, patch) =>
-  sendJson(roomUrl(code), "PATCH", patch);
+  isNearbyCode(code) ? nearby().updateRoom(patch) : sendJson(roomUrl(code), "PATCH", patch);
 
 /**
  * 空いている席に座る。
@@ -133,6 +139,7 @@ export const updateRoom = (code, patch) =>
  * サーバーが断る。断られたことが「満室 or 見つからない」の合図になる。
  */
 export async function joinRoom(code) {
+  if (isNearbyCode(code)) return nearby().joinRoom();
   const uid = await whoAmI();
   if (!uid) return { ok: false, error: "サインインできていません" };
   return sendJson(guestSeatUrl(code), "PUT", uid);
@@ -140,17 +147,20 @@ export async function joinRoom(code) {
 
 /** 座った席を空ける(参加をやめたとき) */
 export async function leaveRoom(code) {
+  if (isNearbyCode(code)) return nearby().leaveRoom();
   const uid = await whoAmI();
   if (uid) await remove(guestSeatUrl(code));
 }
 
-export const deleteRoom = (code) => remove(roomUrl(code));
+export const deleteRoom = (code) =>
+  isNearbyCode(code) ? nearby().deleteRoom() : remove(roomUrl(code));
 
 /**
  * 画面を閉じるときの片付け。keepalive で投げっぱなしにする(届かなくても進める)。
  * 勝敗がついた後にアプリを閉じた人の部屋が残らないように。ホストは部屋ごと、ゲストは席だけ
  */
 export async function deleteRoomKeepalive(code) {
+  if (isNearbyCode(code)) return nearby().deleteRoom();
   try {
     await authedFetch(roomUrl(code), { method: "DELETE", keepalive: true });
   } catch {
@@ -158,6 +168,7 @@ export async function deleteRoomKeepalive(code) {
   }
 }
 export async function leaveRoomKeepalive(code) {
+  if (isNearbyCode(code)) return nearby().leaveRoom();
   try {
     const uid = await whoAmI();
     if (uid)
@@ -177,7 +188,8 @@ export async function leaveRoomKeepalive(code) {
  * 書けなくなる。再戦のたびに前の対局ぶんを消しておく。
  * 消せるのは席についている当事者だけ
  */
-export const clearActs = (code) => remove(actsUrl(code));
+export const clearActs = (code) =>
+  isNearbyCode(code) ? nearby().clearActs() : remove(actsUrl(code));
 
 /**
  * 再戦の意思を置く。局ごとに分けてあるので、消さなくても混ざらない。
@@ -185,6 +197,7 @@ export const clearActs = (code) => remove(actsUrl(code));
  * どちらの端末も round が変わったのを見て入り直す
  */
 export async function wantRematch(code, round) {
+  if (isNearbyCode(code)) return nearby().wantRematch(round);
   const uid = await whoAmI();
   if (!uid) return { ok: false, error: "サインインできていません" };
   return sendJson(
@@ -195,14 +208,18 @@ export async function wantRematch(code, round) {
 }
 
 export const readRematch = (code, round) =>
-  getJson(`${DB_URL}/rooms/${code}/rematch/r${round}.json`);
+  isNearbyCode(code)
+    ? nearby().readRematch(round)
+    : getJson(`${DB_URL}/rooms/${code}/rematch/r${round}.json`);
 
 /** 何局目か。ホストだけが進める */
 export const bumpRound = (code, round) =>
-  sendJson(`${DB_URL}/rooms/${code}/round.json`, "PUT", round);
+  isNearbyCode(code)
+    ? nearby().bumpRound(round)
+    : sendJson(`${DB_URL}/rooms/${code}/round.json`, "PUT", round);
 
 export const readRound = (code) =>
-  getJson(`${DB_URL}/rooms/${code}/round.json`);
+  isNearbyCode(code) ? nearby().readRound() : getJson(`${DB_URL}/rooms/${code}/round.json`);
 
 /**
  * 手番を1件追記する。キーの昇順がそのまま再生順になる。
@@ -210,12 +227,14 @@ export const readRound = (code) =>
  * 手を弾く。
  */
 export async function pushAct(code, act) {
+  if (isNearbyCode(code)) return nearby().pushAct(act);
   const uid = await whoAmI();
   return sendJson(actsUrl(code), "POST", uid ? { ...act, by: uid } : act);
 }
 
 /** 追記された手番を古い順に読み出す */
 export async function readActs(code) {
+  if (isNearbyCode(code)) return nearby().readActs();
   try {
     const res = await withTimeout(authedFetch(actsUrl(code)), TIMEOUT_MS);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

@@ -35,6 +35,7 @@ import {
   DoorOut,
   Globe,
   Info,
+  Nearby,
   Play,
   Settings,
   Users,
@@ -57,6 +58,17 @@ import {
   writeLobby,
   updateRoom,
 } from "../net/firebase.js";
+import {
+  generateFriendCode,
+  formatRoomCode,
+  cleanRoomCode,
+  parseRoomCode,
+  roomLink,
+  roomFromLocation,
+  ROOM_CODE_LENGTH,
+} from "../net/room-code.js";
+import { nearby, nearbyAvailable } from "../net/nearby.js";
+import { SEASON_API_ORIGIN } from "../net/season.js";
 import {
   loadOnlineSize,
   saveOnlineSize,
@@ -1026,14 +1038,141 @@ export function RulesSelectScreen({
     </div>
   );
 }
+/**
+ * 近くの端末と対戦(Bluetooth / 近距離 Wi‑Fi、インターネット不要。src/net/nearby.js)。
+ * 両端末がこの画面を開くと互いに見つかり、どちらかが相手をタップすると対局へ。
+ * タップした側がゲスト(後手の席)、された側がホスト(先手の席・盤の大きさはこちらの設定)。
+ * 持ち点・シーズン・オンラインの回数には数えない
+ */
+export function NearbyScreen({ boardSize, onReady, onBack }) {
+  const loadout = useRef(mySkins()).current;
+  const [peers, setPeers] = useState([]);
+  const [status, setStatus] = useState("searching");
+  const [error, setError] = useState("");
+  const readyRef = useRef(!1);
+  useEffect(() => {
+    const n = nearby();
+    let gone = !1;
+    const offPeers = n.onPeers((list) => !gone && setPeers(list));
+    const offState = n.onState((e) => {
+      if (gone) return;
+      if (e.state === "connected") setStatus("connecting");
+      else if (e.state === "ready") setStatus("ready");
+      else if (e.state === "disconnected" && !readyRef.current) {
+        setStatus("searching");
+        setError("つながりませんでした。もう一度相手をタップしてください");
+        // 探索をやり直す
+        n.start(profile(), ready).catch((err) => setError(err.message));
+      }
+    });
+    const profile = () => ({
+      name: myName() || "名無し",
+      icon: myIcon(),
+      title: myTitle(),
+      skins: loadout,
+      ruleVersion: GAME_RULE_VERSION,
+      boardSize,
+    });
+    const ready = (network) => {
+      readyRef.current = !0;
+      onReady({
+        ...network,
+        names: network.names.map(safeName),
+        icons: network.icons.map(safeTag),
+        titles: network.titles.map(safeTag),
+        skins: network.skins.map(sanitizeLoadout),
+        ruleVersion: roomRuleVersion({
+          hostRuleVersion: network.hostRuleVersion,
+          guestRuleVersion: network.guestRuleVersion,
+        }),
+      });
+    };
+    n.start(profile(), ready).catch((err) =>
+      setError(err && err.message ? err.message : "近くの端末との接続を始められませんでした"),
+    );
+    return () => {
+      gone = !0;
+      offPeers();
+      offState();
+      // 対局へ進んだときは切らない(部屋の写しを使い続ける)
+      if (!readyRef.current) n.stop();
+    };
+  }, []);
+  return (
+    <div className="setup-wrap friend-wrap">
+      <div className="friend-head">
+        <Nearby size={44} style={{ color: "var(--gold)" }} />
+        <h2 style={{ margin: "10px 0 8px" }}>近くの端末と対戦</h2>
+        <p className="hint" style={{ margin: 0 }}>
+          相手の端末でもこの画面を開いてください。
+          <br />
+          見つかった相手をタップすると対局が始まります(インターネット不要)。
+        </p>
+      </div>
+      <div className="conn-badge conn-checking">
+        <span className="conn-dot" />
+        {status === "searching"
+          ? `${myName() || "あなた"} として近くを探しています…`
+          : status === "connecting"
+            ? "つながりました。準備しています…"
+            : "対局へ進みます"}
+      </div>
+      <div className="nearby-list" role="list" aria-label="近くの端末">
+        {peers.length === 0 ? (
+          <p className="hint">まだ見つかりません。相手の端末で同じ画面を開き、Bluetooth と Wi‑Fi をオンにしてください。</p>
+        ) : (
+          peers.map((p) => (
+            <button
+              key={p.id}
+              className="btn btn-primary btn-wide nearby-peer"
+              role="listitem"
+              disabled={status !== "searching"}
+              onClick={() => {
+                setError("");
+                setStatus("connecting");
+                nearby()
+                  .invite(p.id)
+                  .catch((err) => {
+                    setStatus("searching");
+                    setError(err && err.message ? err.message : "招待できませんでした");
+                  });
+              }}
+            >
+              <Users size={18} /> {safeName(p.name)} と対戦する
+            </button>
+          ))
+        )}
+      </div>
+      {error && (
+        <p className="hint" style={{ color: "#e08b7a" }}>
+          {error}
+        </p>
+      )}
+      <p className="code-note">
+        <Info size={14} /> 盤の大きさは、タップされた側(先手)の設定になります。持ち点は動きません。
+      </p>
+      <button className="btn btn-ghost btn-wide" style={{ marginTop: 12 }} onClick={onBack}>
+        <ArrowLeft size={18} /> フレンド対戦に戻る
+      </button>
+    </div>
+  );
+}
+
 export function RoomScreen({
   onOfflineLocal,
   onRoomReady,
   onBackToMatching,
   onBeforeRoom,
   autoCreate,
+  // 近くの端末と対戦(Bluetooth / 近距離 Wi‑Fi)。iOS アプリだけ
+  onNearby = null,
+  // リンク(?room=ABCDEF)から開いたときの合言葉。通信が通ったら自動で参加する(使ったら onCodeUsed で捨てる)
+  initialCode = "",
+  onCodeUsed = null,
 }) {
   const loadout = useRef(mySkins()).current;
+  // 「コピーしました」などの短い知らせ
+  const [notice, setNotice] = useState("");
   let [u, i] = (0, useState)(null),
     [f, o] = (0, useState)(""),
     [r, d] = (0, useState)(""),
@@ -1067,7 +1206,16 @@ export function RoomScreen({
     );
   }, []);
   let b = (0, useRef)(!1);
+  // リンクから開いた合言葉は、通信が通ったら一度だけ自動で参加する
+  const joined = (0, useRef)(!1);
   ((0, useEffect)(() => {
+    if (!initialCode || joined.current || w !== "ok") return;
+    joined.current = !0;
+    d(initialCode);
+    if (onCodeUsed) onCodeUsed();
+    T(initialCode);
+  }, [initialCode, w]),
+  (0, useEffect)(() => {
     !autoCreate || b.current || w !== "ok" || ((b.current = !0), y());
   }, [autoCreate, w]),
     (0, useEffect)(() => {
@@ -1105,7 +1253,8 @@ export function RoomScreen({
     (p(!0), s(""));
     // 合言葉そのものが鍵になる。4文字(約100万通り)では総当たりで
     // 待機中の部屋に入り込まれ、伏せた王まで見えてしまう
-    let P = generateRoomCode() + generateRoomCode(),
+    // 6文字(約10億通り)。伝えやすさと総当たりされにくさの折り合い(src/net/room-code.js)
+    let P = generateFriendCode(),
       x = await createRoom(P, {
         guestPresent: !1,
         gameState: null,
@@ -1122,10 +1271,10 @@ export function RoomScreen({
     }
     (o(P), i("waitingHost"));
   }
-  async function T() {
-    let P = r.trim().toUpperCase();
-    if (P.length < 8) {
-      s("8文字の合言葉を入力してください");
+  async function T(given = null) {
+    let P = cleanRoomCode(given || r);
+    if (P.length < ROOM_CODE_LENGTH) {
+      s(`${ROOM_CODE_LENGTH}文字の合言葉を入力してください`);
       return;
     }
     (p(!0), s(""));
@@ -1186,14 +1335,66 @@ export function RoomScreen({
   function R() {
     (f && deleteRoom(f), o(""), s(""), i(null));
   }
+  const link = () => roomLink(f, SEASON_API_ORIGIN);
+  async function copyText(text, done) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setNotice(done);
+    } catch {
+      setNotice("コピーできませんでした。合言葉を読み上げて伝えてください");
+    }
+  }
+  /** リンクを共有(共有シートがあればそれ、無ければコピー) */
+  async function shareLink() {
+    const text = `トッタリーでフレンド対戦しよう。合言葉 ${formatRoomCode(f)}\n${link()}`;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: "トッタリー フレンド対戦", text, url: link() });
+        return;
+      } catch {
+        /* 閉じた・使えない → コピーへ */
+      }
+    }
+    copyText(text, "リンクをコピーしました。LINE などに貼って送ってください");
+  }
+  /** 貼り付けて参加: クリップボードのリンクや「ABC-DEF」から合言葉を読む */
+  async function pasteJoin() {
+    let text = "";
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {
+      s("貼り付けが許可されませんでした。合言葉を入力してください");
+      return;
+    }
+    const code = parseRoomCode(text);
+    if (!code) {
+      s("貼り付けた内容に合言葉が見つかりませんでした");
+      return;
+    }
+    d(code);
+    T(code);
+  }
   return u === "waitingHost" ? (
     <div className="center-stage">
       <Users size={28} className="dim-icon" />
       <h2>ルームを作成しました</h2>
-      <div className="room-code">{f}</div>
+      <div className="room-code" aria-label={`合言葉 ${f}`}>{formatRoomCode(f)}</div>
       <p className="hint">
-        この合言葉を相手に伝えてください。相手が参加すると自動的に始まります。
+        この合言葉を相手に伝えるか、リンクを送ってください。相手が参加すると自動的に始まります。
       </p>
+      <div className="share-row">
+        <button className="btn btn-primary" onClick={shareLink}>
+          <Mail size={16} /> リンクを共有
+        </button>
+        <button className="btn btn-ghost" onClick={() => copyText(formatRoomCode(f), "合言葉をコピーしました")}>
+          合言葉をコピー
+        </button>
+      </div>
+      {notice && (
+        <p className="hint" role="status">
+          {notice}
+        </p>
+      )}
       <Dice size={22} className="dim-icon spin-icon" />
       {m && (
         <p
@@ -1246,9 +1447,9 @@ export function RoomScreen({
             margin: 0,
           }}
         >
-          ルームを作成して合言葉を共有するか、
+          ルームを作ってリンクか合言葉を送るか、
           <br />
-          合言葉を入力して参加できます。
+          送られたリンクを開く・合言葉を貼り付けて参加できます。
         </p>
       </div>
       <div className={`conn-badge conn-${w}`}>
@@ -1285,9 +1486,9 @@ export function RoomScreen({
             P && P.focus();
           }}
         >
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((P) => (
+          {[0, 1, 2, 3, 4, 5].map((P) => (
             <div
-              className={`code-box ${r.length === P ? "code-box-active" : ""}`}
+              className={`code-box ${r.length === P ? "code-box-active" : ""} ${P === 3 ? "code-box-gap" : ""}`}
               key={P}
             >
               {r[P] || <span className="code-placeholder">—</span>}
@@ -1297,10 +1498,16 @@ export function RoomScreen({
             id="code-input"
             className="code-hidden"
             value={r}
-            maxLength={8}
-            onChange={(P) =>
-              d(P.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
-            }
+            maxLength={ROOM_CODE_LENGTH + 3}
+            onChange={(P) => d(cleanRoomCode(P.target.value))}
+            onPaste={(P) => {
+              // リンクや「ABC-DEF」を貼ったら合言葉だけ取り出す
+              const code = parseRoomCode(P.clipboardData?.getData("text"));
+              if (code) {
+                P.preventDefault();
+                d(code);
+              }
+            }}
             inputMode="text"
             autoComplete="off"
           />
@@ -1308,13 +1515,20 @@ export function RoomScreen({
         <button
           className="btn btn-ghost code-join"
           disabled={v || w !== "ok"}
-          onClick={T}
+          onClick={() => T()}
         >
           <DoorIn size={18} /> {v ? "参加中…" : "参加する"}
         </button>
+        <button
+          className="btn btn-ghost code-join"
+          disabled={v || w !== "ok"}
+          onClick={pasteJoin}
+        >
+          貼り付けて参加
+        </button>
       </div>
       <p className="code-note">
-        <Info size={14} /> 8文字の合言葉を入力してください。
+        <Info size={14} /> 合言葉は{ROOM_CODE_LENGTH}文字(ABC-DEF)。送られたリンクを開けば入力はいりません。
       </p>
       {m && (
         <p
@@ -1326,8 +1540,17 @@ export function RoomScreen({
           {m}
         </p>
       )}
-      <button className="btn btn-teal btn-wide" onClick={onOfflineLocal}>
-        <Users size={20} /> オフラインで対戦(2人)
+      {onNearby && nearbyAvailable() && (
+        <button className="btn btn-teal btn-wide" onClick={onNearby}>
+          <Nearby size={20} /> 近くの端末と対戦(通信不要)
+        </button>
+      )}
+      <button
+        className="btn btn-teal btn-wide"
+        style={{ marginTop: 12 }}
+        onClick={onOfflineLocal}
+      >
+        <Users size={20} /> オフラインで対戦(1台で2人)
       </button>
       <button
         className="btn btn-ghost btn-wide"
@@ -1381,7 +1604,12 @@ function TotteryScreens() {
     // 運営に使用停止にされたかどうか
     [banned, setBanned] = (0, useState)(!1),
     // 名前を決めた直後に一度だけ出す、第1話への案内
-    [offerTutorial, setOfferTutorial] = (0, useState)(!1);
+    [offerTutorial, setOfferTutorial] = (0, useState)(!1),
+    // リンク(?room=ABCDEF)から開いたときの合言葉。名前を決めたらフレンド対戦の画面へ
+    [pendingRoom, setPendingRoom] = (0, useState)(() => roomFromLocation());
+  useEffect(() => {
+    if (named && pendingRoom) t("room");
+  }, [named, pendingRoom]);
   // 場面に合った曲へ。対局中は GameCore のほうが決めるので、ここは触らない
   useScreenBgm(e);
   // 起動時に、登録した人の台帳へ自分を置き直す。使用停止なら名前を捨てる
@@ -1437,12 +1665,16 @@ function TotteryScreens() {
     (u(null), m(!1), setTut(null), t("home"));
   }
   // 対局後の「戻る」。オンラインとCPU戦は、初期画面まで戻さず「対戦相手を選ぶ」へ
+  // 近くの端末との対戦を抜けるときは、部屋の片付けの知らせが届いてから接続を切る
+  function dropNearby() {
+    if (a && a.nearby) setTimeout(() => nearby().stop(), 1500);
+  }
   function backToMatching() {
-    (u(null), m(!1), setTut(null), setBot(null), t("matching"));
+    (dropNearby(), u(null), m(!1), setTut(null), setBot(null), t("matching"));
   }
   // 連戦。同じ盤の大きさのまま、次の相手を探しに行く(RandomMatchScreen は開くと同時に探し始める)
   function nextRandomMatch() {
-    (u(null), m(!1), setTut(null), setBot(null), setRound(0), t("online"));
+    (dropNearby(), u(null), m(!1), setTut(null), setBot(null), setRound(0), t("online"));
   }
   function startTutorial(chosen) {
     (u(null), setTut(chosen), m(!0), r("game"), t("game"));
@@ -1453,7 +1685,7 @@ function TotteryScreens() {
   }
   // 上の「トッタリー」から。ルーム作成の予約(p)も引きずらないように
   function goHome() {
-    (w(!1), s());
+    (dropNearby(), w(!1), s());
   }
   function v(b) {
     (u(b), setRound(0), t("game"));
@@ -1700,6 +1932,11 @@ function TotteryScreens() {
           room: (
             <RoomScreen
               autoCreate={p}
+              initialCode={pendingRoom}
+              onCodeUsed={() => setPendingRoom("")}
+              onNearby={() => {
+                (setPendingRoom(""), r("nearby"), setRulesFrom("room"), t("rules"));
+              }}
               onOfflineLocal={() => {
                 (w(!1),
                   u(null),
@@ -1709,20 +1946,30 @@ function TotteryScreens() {
                   t("rules"));
               }}
               onBeforeRoom={() => {
-                (r("room"), setRulesFrom("room"), t("rules"));
+                (setPendingRoom(""), r("room"), setRulesFrom("room"), t("rules"));
               }}
               onRoomReady={v}
               onBackToMatching={() => {
-                (w(!1), t("matching"));
+                (setPendingRoom(""), w(!1), t("matching"));
+              }}
+            />
+          ),
+          nearby: (
+            <NearbyScreen
+              boardSize={i}
+              onReady={v}
+              onBack={() => {
+                (w(!1), t("room"));
               }}
             />
           ),
           rules: (
             <RulesSelectScreen
               ranked={o === "online" || o === "room"}
+              // 近くの端末との対戦はフレンド対戦と同じく、レベルで札を絞らない
               initialSize={o === "online" ? loadOnlineSize() : 5}
               // 手元の対局は、レベルで札と 9×9 を絞る(src/game/card-unlock.js)
-              level={o === "online" || o === "room" ? null : localLevel}
+              level={o === "online" || o === "room" || o === "nearby" ? null : localLevel}
               onStart={z}
               onBack={() => t(rulesFrom)}
               backLabel={
@@ -1730,7 +1977,13 @@ function TotteryScreens() {
                   ? "フレンド対戦に戻る"
                   : "対戦相手を選ぶに戻る"
               }
-              note={o === "room" ? "この設定でルームを作ります。" : null}
+              note={
+                o === "room"
+                  ? "この設定でルームを作ります。"
+                  : o === "nearby"
+                    ? "近くの端末と対戦します。盤の大きさは、相手にタップされた側(先手)の設定になります。"
+                    : null
+              }
               // 相手のエリアを選べるのは CPU戦で、フォイルを持っている(エリアを知っている)人だけ
               cpuArea={cpuArea ? cpuArea.type : null}
               onCpuArea={

@@ -1091,10 +1091,11 @@ export function GameCore({
 }) {
   const names = useNames();
   const { skins } = useSeats();
+  // 近くの端末との対戦(network.nearby)は通信の外なので、持ち点もシーズンも照合できない。数えない
   const matchRatings = useMatchRatings(
     network,
     round,
-    !!network && boardSize === 9 && !tutorial,
+    !!network && !network.nearby && boardSize === 9 && !tutorial,
   );
   const pausedAt = useRef(null);
   let [a, u] = (0, useState)(initialState),
@@ -1135,7 +1136,7 @@ export function GameCore({
   // 自分が取った駒をバトルパスへ。チュートリアルでは進めない
   useBattlePass(a, network ? p : cpu ? 0 : a.currentTurn, !!tutorial, !!network);
 
-  const seasonResult = useSeasonMatch(a, network, round, !!tutorial);
+  const seasonResult = useSeasonMatch(a, network, round, !!tutorial || !!network?.nearby);
   const boardRef = useRef(null);
   const aceMagic = useAceMagic(a, skins, {
     disabled: !!tutorial,
@@ -1939,7 +1940,7 @@ export function GameCore({
     // 5×5は短期戦で運の割合が大きく、同じ物差しに載せると持ち点が
     // 実力を表さなくなる。CPU戦とチュートリアルは相手の強さが決まらない
     // Bot(ランダムマッチの練習相手)も 9×9 なら持ち点に数える。相手の点は Bot の人物の点
-    const ranked = (!!network || !!bot) && a.boardSize === 9;
+    const ranked = (!!network || !!bot) && a.boardSize === 9 && !network?.nearby;
     const foeRating = !ranked
       ? null
       : bot
@@ -1949,7 +1950,7 @@ export function GameCore({
           : null;
     // チュートリアルは話ごとの経験値。対戦の数には数えない
     const after = recordGame(won, {
-      online: !!network && !tutorial,
+      online: !!network && !network.nearby && !tutorial,
       matchId: network
         ? `${network.code}:${network.createdAt || 0}:${round}`
         : null,

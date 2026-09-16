@@ -1,0 +1,20 @@
+{
+  "name": "tottery-nearby",
+  "version": "1.0.0",
+  "description": "トッタリー: 近くの端末とのフレンド対戦(MultipeerConnectivity)を Capacitor から使う",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "type": "module",
+  "files": [
+    "dist/",
+    "ios/Sources",
+    "Package.swift"
+  ],
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

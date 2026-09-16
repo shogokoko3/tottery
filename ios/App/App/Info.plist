@@ -68,6 +68,15 @@
 	<true/>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-8562097921065694~4474462397</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>近くの端末とフレンド対戦をするために、同じ Wi‑Fi や端末どうしの直接接続を使います。</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_tottery-near._tcp</string>
+		<string>_tottery-near._udp</string>
+	</array>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>近くの端末と Bluetooth でフレンド対戦をするために使います。</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>広告の効果測定のために、ほかのアプリやサイトをまたいだ活動の追跡を許可するか選べます。許可しなくてもアプリはそのまま遊べます。</string>
 	<key>SKAdNetworkItems</key>

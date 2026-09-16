@@ -1205,6 +1205,35 @@ K の王が J か Q を失うと `kPlacement` が立ち、`ReservePlacer` が開
 盤の駒は、**自分のものだけ表向き**に描く。自陣の空きと並びが見えないと
 どこに置けばよいか決められない。相手の駒はこれまでどおり伏せたまま。
 
+### フレンド対戦の合言葉とリンク(2026-09-17)
+
+合言葉は **6文字**(紛らわしい 0/O・1/I を除いた 32 種、約 10 億通り。`src/net/room-code.js`)。
+以前は 8 文字で、口で伝えるには長かった(本人の指示)。部屋は待っているあいだ(数分)しか無いので、
+10 億通りをその間に当てるのは現実的でない(ランダムマッチの掲示の部屋はこれまでどおり 8 文字)。
+表示は「ABC-DEF」と 3 文字ずつ。ホストの待ち画面に「リンクを共有」(共有シート、無ければコピー)と
+「合言葉をコピー」。参加側は「貼り付けて参加」でクリップボードのリンクや「abc-def」から読み取り、
+入力欄に貼っても同じ。リンク `https://tottery.tsmanager.workers.dev/?room=ABCDEF` を開くと、
+名前を決めたあとフレンド対戦の画面へ進み、通信が通り次第自動で参加する(`roomFromLocation`、開いたら URL から消す)。
+検査: `tools/check-nearby.mjs`
+
+### 近くの端末と対戦(Bluetooth / 近距離 Wi‑Fi、インターネット不要。2026-09-17)
+
+iOS アプリだけ。フレンド対戦の画面の「近くの端末と対戦(通信不要)」→ ルール設定(盤の大きさ)→ 近くの端末の画面。
+両端末がこの画面を開くと互いの名前が並び、どちらかが相手をタップすると対局が始まる。
+タップした側がゲスト(後手の席)、された側がホスト(先手の席)で、盤の大きさはホストの設定。
+
+- ネイティブ: `plugins/tottery-nearby`(repo 内の Capacitor プラグイン、`file:` 依存)。
+  MultipeerConnectivity で名乗り(advertise)と探索(browse)を同時に行い、1 対 1 で暗号化して接続する。
+  Bonjour の型 `tottery-near`。Info.plist に NSLocalNetworkUsageDescription / NSBonjourServices /
+  NSBluetoothAlwaysUsageDescription を入れてある。`npx cap sync ios` で CapApp-SPM と packageClassList に載る
+- JS: `src/net/nearby.js`。Firebase の部屋と同じ形の口(readRoom / pushAct / readActs / 再戦 / 片付け)を、
+  両端末が持つ写しの上に載せる。合言葉は `NEAR-` で始まり、`src/net/firebase.js` がそこで振り分けるので
+  対局の画面(GameCore)は通信の種類を知らない。手番の順は「送るたびに増えるカウンタ(相手の分も取り込む)＋席番号」で
+  両端末とも同じ並びになる。相手が切れたら部屋を無いものとして扱い、手番の読み書きは理由つきで失敗する
+- 持ち点・シーズン・オンラインの回数には数えない(通信の外なので照合できない)。途中でやめると降参(持ち点は動かない)
+- 検査: `tools/check-nearby.mjs`(偽のプラグイン 2 台をつないで部屋・手番・再戦・切断・配線を見る)。
+  実機 2 台での確認は本人にお願いする(Claude 側では動かせない)
+
 ### 部屋の後始末
 
 対局が終わってホストが画面を出るとき、`GameCore` の `leaveGame` が

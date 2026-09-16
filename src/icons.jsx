@@ -153,6 +153,16 @@ export const Play = (props) => (
   </IconBase>
 );
 
+export const Nearby = (props) => (
+  <IconBase {...props}>
+    <circle cx="12" cy="12" r="2" />
+    <path d="M8.5 15.5a5 5 0 0 1 0-7" />
+    <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+    <path d="M5.6 18.4a9 9 0 0 1 0-12.8" />
+    <path d="M18.4 5.6a9 9 0 0 1 0 12.8" />
+  </IconBase>
+);
+
 export const Home = (props) => (
   <IconBase {...props}>
     <path d="M3 11l9-7 9 7" />

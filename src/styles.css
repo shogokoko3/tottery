@@ -1412,6 +1412,29 @@ body:has(.skin-overlay) {
   color: #1a1a1a;
   font-family: "Shippori Mincho", serif;
 }
+/* 合言葉は 3 文字ずつ(ABC-DEF)。4 つ目の枠の前を空ける */
+.code-box-gap {
+  margin-left: 10px;
+}
+.share-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 4px 0 8px;
+}
+.share-row .btn {
+  min-width: 0;
+}
+.nearby-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+.nearby-peer {
+  justify-content: center;
+}
 .code-box-active {
   box-shadow: 0 0 0 2px var(--gold-soft);
 }

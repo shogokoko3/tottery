@@ -838,7 +838,7 @@ if (process.argv[1] && process.argv[1].endsWith("check-rules.mjs")) {
     ),
   );
   // 合言葉の部屋には掲示が無い。鍵は合言葉そのものなので、
-  // 総当たりされない長さ(8文字)であることが前提になる。長さは check-account が見る
+  // 総当たりされない長さ(フレンドは6文字=約10億通り、掲示の部屋は8文字)であることが前提になる。長さは check-nearby が見る
   allow(
     "合言葉の部屋は、合言葉を知っていれば座れる",
     canWrite(half, ["rooms", "EFGH", "seats", "guest"], X, "uidX"),

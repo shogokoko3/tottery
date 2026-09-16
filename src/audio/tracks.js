@@ -126,6 +126,8 @@ export const SCREEN_TRACK = {
   // 相手を待っているあいだは、数分続いても飽きない薄い曲にする
   online: "waiting",
   room: "waiting",
+  // 近くの端末を探しているあいだ(フレンド対戦の待ちと同じ曲)
+  nearby: "waiting",
   game: null,
 };
 

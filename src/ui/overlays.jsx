@@ -853,7 +853,12 @@ export function QuitConfirm({ onCancel, onQuit, network }) {
           対局をやめますか?
         </h3>
         <p className="hint">
-          {network ? (
+          {network && network.nearby ? (
+            <>
+              途中でやめると<b>降参</b>になり、相手の勝ちとして勝敗がつきます。
+              相手には「降参」と伝わります(近くの端末との対戦は持ち点に数えません)。
+            </>
+          ) : network ? (
             <>
               オンライン対戦では、途中でやめると<b>降参</b>になります。
               <br />

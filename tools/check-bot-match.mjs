@@ -182,11 +182,12 @@ assert.equal(matchesBot("abc"), true);
   assert.ok(/foilRevealed\(collection\) && \(!localPool \|\| bot\) \? cpuArea : null/.test(screens), "GameCore にも Bot のエリアを渡す");
   assert.ok(/\? bot\.name\s*: cpuArea && cpuArea\.king/.test(screens), "相手の名前は Bot の名前");
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
-  assert.ok(/const ranked = \(!!network \|\| !!bot\) && a\.boardSize === 9;/.test(game), "Bot の 9×9 は持ち点に数える");
+  // 近くの端末との対戦(network.nearby)だけは数えない(2026-09-17)
+  assert.ok(/const ranked = \(!!network \|\| !!bot\) && a\.boardSize === 9 && !network\?\.nearby;/.test(game), "Bot の 9×9 は持ち点に数える");
   assert.ok(/if \(bot\) E = botAction\(a, T, E, bot\);/.test(game), "Bot の強さ(段階)を手に反映する");
   assert.ok(/\? bot\.rating/.test(game), "相手の点は Bot の人物の点");
-  assert.ok(/online: !!network && !tutorial,/.test(game), "ミッションのオンライン回数には数えない(network のときだけ)");
-  assert.ok(/useSeasonMatch\(a, network, round, !!tutorial\)/.test(game), "シーズン台帳は network のときだけ(Bot は送らない)");
+  assert.ok(/online: !!network && !network\.nearby && !tutorial,/.test(game), "ミッションのオンライン回数には数えない(network のときだけ。近くの端末も数えない)");
+  assert.ok(/useSeasonMatch\(a, network, round, !!tutorial \|\| !!network\?\.nearby\)/.test(game), "シーズン台帳は network のときだけ(Bot・近くの端末は送らない)");
   assert.ok(/tutorial \|\| bot \? "相手の番です"/.test(game), "Bot 戦で「CPU」と出さない");
   assert.ok(/if \(\(network && network\.random\) \|\| bot\) noteRandomResult\(\{ won, vsBot: !!bot \}\);/.test(game), "ランダムマッチの結果を控える(人に負けたら次は Bot)");
 }
