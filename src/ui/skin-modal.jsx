@@ -32,7 +32,7 @@ export function SkinModal({ label, onClose, children, className = "" }) {
         ...element.querySelectorAll(
           'button:not(:disabled), a[href], select, input, [tabindex="0"]',
         ),
-      ];
+      ].filter((element) => !element.closest("[inert]"));
       const first = buttons[0],
         last = buttons[buttons.length - 1];
       if (!first) {

@@ -162,7 +162,7 @@ export function SummonIntro({ results, targetRef, onFinish }) {
       className={`summon-intro ${plan.gold ? "is-gold" : "is-bronze"}`}
       aria-label={loading ? "召喚の門を準備中" : "召喚の門が開いています"}
       aria-busy={loading}
-      role="status"
+      role="group"
     >
       <style>{STYLES + LOADING_STYLES}</style>
       <canvas ref={canvas} className="summon-scene" aria-hidden="true" />
@@ -188,6 +188,17 @@ export function SummonIntro({ results, targetRef, onFinish }) {
           />
         ))}
       </div>
+      <button
+        type="button"
+        className="summon-intro-skip"
+        aria-label="門の演出をスキップ"
+        onClick={(event) => {
+          event.stopPropagation();
+          root.current?.dispatchEvent(new Event("summon-finish"));
+        }}
+      >
+        スキップ <span aria-hidden="true">≫</span>
+      </button>
     </div>
   );
 }

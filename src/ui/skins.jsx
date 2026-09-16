@@ -373,6 +373,10 @@ function SummonReveal({ results, onFinish, reduce }) {
   const revealRef = useRef(null);
   const finishIntro = useCallback(() => setIntro(false), []);
   useEffect(() => { if (reduce) setIntro(false); }, [reduce]);
+  useEffect(() => {
+    if (!intro)
+      revealRef.current?.querySelector(".reveal-card")?.focus({ preventScroll: true });
+  }, [intro]);
   const [flipped, setFlipped] = useState(() => results.map(() => false));
   const [completed, setCompleted] = useState(() => results.map(() => false));
   const [raritiesReady, setRaritiesReady] = useState(() =>

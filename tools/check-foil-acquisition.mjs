@@ -280,11 +280,13 @@ try {
     });
     assert.equal((html.match(/class="reveal-card /g) || []).length, count);
     assert.match(html, /すべてめくる/, "1連/10連とも全めくり操作を残す");
-    assert.doesNotMatch(
-      html,
-      /演出をスキップ/,
-      "召喚中のスキップボタンを再表示しない",
-    );
+    assert.match(html, /aria-label="門の演出をスキップ"/, "門だけを飛ばすボタンを表示");
+    const cardsOnly = renderSummon({
+      results: Array.from({ length: count }, () => ({ id: "angel-k:foil", isNew: true })),
+      onFinish() {},
+      reduce: true,
+    });
+    assert.doesNotMatch(cardsOnly, /演出をスキップ/, "カード開示画面のスキップは再表示しない");
     assert.doesNotMatch(
       html,
       /結果へ/,
@@ -339,5 +341,5 @@ try {
   fs.rmSync(directory, { recursive: true, force: true });
 }
 console.log(
-  "フォイル変化: 実React初期描画の通常絵・foil名非開示・off/reduced即確定・召喚のスキップなし: OK",
+  "フォイル変化: 実React初期描画の通常絵・foil名非開示・off/reduced即確定・門のみスキップ可能: OK",
 );
