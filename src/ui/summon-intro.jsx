@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cardBackImg } from "../assets.js";
 import {
   summonPlan,
@@ -9,6 +9,24 @@ import {
 import STYLES from "../skins/summon-intro.css";
 import { startSummonSound } from "../skins/summon-sound.js";
 
+const LOADING_STYLES = `
+.summon-loading {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 24px; padding: 24px;
+  background: radial-gradient(ellipse at 50% 44%, #162636, #050b13 70%);
+  color: #e6d1a2; font: 500 14px/1.8 "Shippori Mincho", serif;
+  letter-spacing: .12em; text-align: center;
+}
+.summon-loading-mark {
+  width: 28px; height: 28px; transform: rotate(45deg);
+  border: 1px solid #c6a86c; outline: 1px solid #c6a86c40; outline-offset: 7px;
+  background: radial-gradient(#d7ba7840, transparent 72%);
+  box-shadow: 0 0 28px #c6a86c25;
+}
+.summon-loading p { margin: 0; }
+`;
+
 /** Presentation only. The draw and debit have already been committed. */
 export function SummonIntro({ results, targetRef, onFinish }) {
   const root = useRef(null),
@@ -16,7 +34,9 @@ export function SummonIntro({ results, targetRef, onFinish }) {
     finishRef = useRef(onFinish);
   finishRef.current = onFinish;
   const plan = useMemo(() => summonPlan(results), [results]);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
+    setLoading(true);
     let scene,
       raf,
       disposed = false,
@@ -44,7 +64,7 @@ export function SummonIntro({ results, targetRef, onFinish }) {
     };
     const cancel = () => finish();
     // Loading/GPU failure must never hide already-owned cards or ask for another draw.
-    deadline = setTimeout(finish, 4500);
+    deadline = setTimeout(finish, 15000);
     document.addEventListener("visibilitychange", visibility);
     canvas.current.addEventListener("webglcontextlost", lost);
     window.addEventListener("resize", resize);
@@ -63,6 +83,9 @@ export function SummonIntro({ results, targetRef, onFinish }) {
           [...element.querySelectorAll("img")].map((img) => img.decode?.()),
         );
         if (disposed || finished) return;
+        // Do not reveal an untextured first frame while the artwork is loading.
+        scene.render(0);
+        setLoading(false);
         releaseSound = startSummonSound();
         clearTimeout(deadline);
         deadline = setTimeout(finish, SUMMON_TIMING.total + 600);
@@ -137,11 +160,18 @@ export function SummonIntro({ results, targetRef, onFinish }) {
     <div
       ref={root}
       className={`summon-intro ${plan.gold ? "is-gold" : "is-bronze"}`}
-      aria-label="召喚の門が開いています"
+      aria-label={loading ? "召喚の門を準備中" : "召喚の門が開いています"}
+      aria-busy={loading}
       role="status"
     >
-      <style>{STYLES}</style>
+      <style>{STYLES + LOADING_STYLES}</style>
       <canvas ref={canvas} className="summon-scene" aria-hidden="true" />
+      {loading && (
+        <div className="summon-loading" aria-hidden="true">
+          <span className="summon-loading-mark" />
+          <p>召喚の門を準備中</p>
+        </div>
+      )}
       <div className="summon-cinema-shade" aria-hidden="true" />
       <div className="summon-world-name" aria-hidden="true">
         <span>運命の一枚を、この手に。</span>
