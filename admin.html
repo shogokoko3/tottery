@@ -5787,6 +5787,81 @@ p.hint > span.gem-shop-diag {
 .move-hint-row .md-pair .move-diagram {
   width: 44px;
 }
+
+/* \u30AC\u30C1\u30E3\u3067\u30D5\u30A9\u30A4\u30EB\u3092\u5F15\u3044\u305F\u76F4\u5F8C\u306E\u300C\u307B\u304B\u306E\u30D5\u30A9\u30A4\u30EB\u3082\u300D(foil-offer.jsx) */
+.foil-offer-list {
+  display: grid;
+  gap: 10px;
+}
+.foil-offer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+.foil-offer:disabled {
+  opacity: 0.6;
+}
+.foil-offer-arts {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.foil-offer-art {
+  width: 38px;
+  height: 51px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.foil-offer-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.foil-offer-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 13px;
+}
+.foil-offer-name small {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.foil-offer-price {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--gold-soft);
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.foil-offer-price small {
+  color: var(--text-dim);
+  font-weight: 400;
+  font-size: 10px;
+}
+.foil-offer-balance b {
+  color: var(--gold-soft);
+}
+.foil-offer-confirm {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-align: center;
+}
 `;var Lo=`/* \u7BA1\u7406\u753B\u9762\u3060\u3051\u306E\u898B\u305F\u76EE\u3002\u672C\u4F53\u306E styles.css \u306E\u4E0A\u306B\u91CD\u306D\u308B */
 .admin-root > .top-bar {
   display: flex;

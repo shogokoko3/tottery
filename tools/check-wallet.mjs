@@ -286,5 +286,27 @@ console.log("\n運営ツール(手動付与・購入履歴・ガチャ履歴)");
   console.log("店の診断: uid ごとに最新1件・切り詰め・消去 OK");
 }
 
+// フォイルの直接購入: 有償ジェムだけで払う。無償が多くても触らない。同じ札は二度買えない(applied:false)
+{
+  const D = new DatabaseSync(":memory:");
+  const fw = new Wallet((q, ...a) => D.prepare(q).all(...a));
+  fw.purchase("F", { transactionId: "t-foil", productId: "com.shogokoko.tottery.gems.3000", environment: "Sandbox", purchaseDate: 1 }, 10);
+  fw.earnGems("F", "e1", 10, 20);
+  const before = fw.summary("F");
+  let msg = "";
+  try { fw.buyFoil("F", "foil-jq-angel", ["angel-j", "angel-q"], 30); } catch (e) { msg = e.message; }
+  is("有償が足りなければ無償があっても失敗", /有償ジェムが足りません/.test(msg), true);
+  const one = fw.buyFoil("F", "foil-jq-angel", ["angel-q"], 40);
+  is("片方だけなら按分(2,500)", one.price, 2500);
+  const after = fw.summary("F");
+  is("有償から引く", before.gemsPaid - after.gemsPaid, 2500);
+  is("無償は触らない", after.gemsFree, before.gemsFree);
+  is("同じ札は二度買えない", fw.buyFoil("F", "foil-jq-angel", ["angel-q"], 50).applied, false);
+  try { fw.buyFoil("F", "foil-a", ["genie-magician"], 60); } catch (e) { msg = e.message; }
+  is("pending の商品は売らない", /その商品はありません/.test(msg), true);
+  try { fw.buyFoil("F", "foil-10", ["angel-k"], 70); } catch (e) { msg = e.message; }
+  is("商品外の札は断る", /正しくありません/.test(msg), true);
+}
+
 console.log(`\n${ok} 件 ok / ${fails.length} 件 NG`);
 process.exit(fails.length ? 1 : 0);

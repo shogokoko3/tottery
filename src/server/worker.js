@@ -152,6 +152,14 @@ async function handleApi(request, env, url) {
           return call("wallet-migrate", { tickets: body.tickets });
         if (wop === "exchange" && eventId(body.id) && Number.isSafeInteger(body.tickets) && body.tickets > 0 && body.tickets <= 100)
           return call("wallet-exchange", { id: body.id, tickets: body.tickets });
+        // フォイルの直接購入(有償ジェムだけ)。値段は財布がカタログから決める
+        if (
+          wop === "foil" &&
+          typeof body.product === "string" && /^[\w-]{1,32}$/.test(body.product) &&
+          Array.isArray(body.skins) && body.skins.length >= 1 && body.skins.length <= 4 &&
+          body.skins.every((x) => typeof x === "string" && /^[\w-]{1,40}$/.test(x))
+        )
+          return call("wallet-foil", { product: body.product, skins: body.skins });
         if (wop === "buy-pass" && eventId(body.id))
           return call("wallet-buypass", { id: body.id });
         // バトルパスのマスをクリアした報酬(チケット1枚)。所持者だけ・週の上限はサーバーが数える
@@ -276,6 +284,7 @@ export class SeasonLedger {
         if (op === "wallet-migrate") return w.migrate(uid, args.tickets, now);
         if (op === "wallet-earn-gems") return w.earnGems(uid, args.id, args.gems, now);
         if (op === "wallet-exchange") return w.exchange(uid, args.id, args.tickets, now);
+        if (op === "wallet-foil") return w.buyFoil(uid, args.product, args.skins, now);
         if (op === "wallet-buypass") return w.buyPass(uid, args.id, now);
         if (op === "wallet-pass-reward") return w.passReward(uid, args.id, now);
         if (op === "wallet-ad-reward") return w.adReward(uid, args.id, now);

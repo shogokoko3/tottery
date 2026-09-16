@@ -127,7 +127,9 @@ export function normalize(raw) {
     gemsFree: count(value.gemsFree),
     // 買い切りの権利(サーバーの財布の写し。正はサーバー)
     entitlements: Array.isArray(value.entitlements)
-      ? value.entitlements.filter((x) => typeof x === "string" && x.length <= 120)
+      ? value.entitlements.filter(
+          (x) => typeof x === "string" && x.length <= 120,
+        )
       : [],
     season: sanitizeSeasonCache(value.season),
     tsume: sanitizeTsumeProgress(value.tsume),
@@ -188,7 +190,12 @@ export const FREE_GACHA = false;
 /** 1回の召喚で使うチケットの枚数(有料のとき) */
 export const PULL_COST = 1;
 
-export function pull(state, amount, random = Math.random, { free = FREE_GACHA } = {}) {
+export function pull(
+  state,
+  amount,
+  random = Math.random,
+  { free = FREE_GACHA } = {},
+) {
   if (amount !== 1 && amount !== 10)
     throw new Error("1回または10回を選んでください");
   if (state.pending || state.lastCraft)
@@ -221,7 +228,11 @@ export function pull(state, amount, random = Math.random, { free = FREE_GACHA } 
 export function addFreeGems(state, n) {
   const add = Number.isSafeInteger(n) && n > 0 ? n : 0;
   return add
-    ? { ...state, gems: count(state.gems) + add, gemsFree: count(state.gemsFree) + add }
+    ? {
+        ...state,
+        gems: count(state.gems) + add,
+        gemsFree: count(state.gemsFree) + add,
+      }
     : state;
 }
 
@@ -254,6 +265,13 @@ export function grantSkin(state, id) {
     acquired,
     owned: { ...state.owned, [id]: (state.owned[id] || 0) + 1 },
   };
+}
+
+/** 買ったフォイルを所持に足す(通常版の id で受ける)。通算獲得にも数える */
+export function grantFoils(state, baseIds) {
+  let next = state;
+  for (const b of baseIds) next = grantSkin(next, foilId(baseSkinId(b)));
+  return next;
 }
 
 export function equip(state, id) {

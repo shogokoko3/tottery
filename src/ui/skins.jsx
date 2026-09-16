@@ -75,6 +75,10 @@ import { ArrowLeft, Ether, Shard } from "../icons.jsx";
 import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
+import { FoilOfferSheet } from "./foil-offer.jsx";
+import { foilOffers, bandOf } from "../skins/foil-shop.js";
+import { grantFoils } from "../skins/collection.js";
+import { buyFoil } from "../net/wallet.js";
 import { FoilAcquisition } from "./foil-acquisition.jsx";
 import { FOIL_INITIAL_HOLD_MS } from "../skins/foil-acquisition.js";
 
@@ -1086,6 +1090,8 @@ export function SkinsScreen({ onBack, onBattlePass }) {
   // 店(チケットの購入)。iOS で StoreKit が使えるときだけ出す
   const [shopOk, setShopOk] = useState(false);
   const [shop, setShop] = useState(null); // null=閉じている / { products }
+  // ガチャでフォイルを引いた直後の「ほかのフォイルも」(src/skins/foil-shop.js)。exclude は引いた帯
+  const [foilOffer, setFoilOffer] = useState(null);
   const [buying, setBuying] = useState(false);
   // 広告リワード。iOS で広告が出せるとき、残り回数を出す
   const [adsOk, setAdsOk] = useState(false);
@@ -1238,11 +1244,44 @@ export function SkinsScreen({ onBack, onBattlePass }) {
     if (await run((s) => equip(s, skin.id)))
       setMessage(`${skin.rank}のカードに「${skin.name}」を装備しました。`);
   };
-  const closeResults = () => {
+  const closeResults = async () => {
     setAcquisitionMode(null);
-    return run((s) =>
+    // ガチャ(召喚)でフォイルが出ていたら、閉じたあとに「ほかのフォイルも」を出す(引いた帯は除く)
+    const pulledFoils = craftResult
+      ? []
+      : (collection.pending?.results || []).filter((r) => byId(r.id)?.foil);
+    const next = await run((s) =>
       craftResult ? { ...s, lastCraft: null } : { ...s, pending: null },
     );
+    // 有償ジェムはサーバーの財布にあるので、Web でも(iOS で買った分を)使える。店の釦だけ iOS 限定
+    if (next && pulledFoils.length && WALLET_SERVER) {
+      const exclude = [
+        ...new Set(pulledFoils.map((r) => bandOf(r.id)?.id).filter(Boolean)),
+      ];
+      if (foilOffers(next, { exclude }).length) setFoilOffer({ exclude });
+    }
+    return next;
+  };
+  /** フォイルを有償ジェムで買う。通ればサーバーの残高を写し、所持に足す */
+  const buyFoilOffer = async (offer) => {
+    if (busy.current) return false;
+    busy.current = true;
+    setWorking(true);
+    setMessage("");
+    try {
+      await buyFoil(offer.product.id, offer.skins);
+      await updateCollection((s) => grantFoils(s, offer.skins));
+      setMessage(`「${offer.product.name}」のフォイルを受け取りました。`);
+      return true;
+    } catch (e) {
+      const m = (e && e.message) || "買えませんでした。";
+      setMessage(m);
+      if (/有償ジェムが足りません/.test(m) && shopOk) setShop(true);
+      return false;
+    } finally {
+      busy.current = false;
+      setWorking(false);
+    }
   };
   // フォイルを1枚も持たないうちは、フォイル関連を画面に出さない(確率の明記は除く)
   const foilKnown = foilRevealed(collection);
@@ -1902,6 +1941,20 @@ export function SkinsScreen({ onBack, onBattlePass }) {
           </SkinModal>
         ))}
 
+      {foilOffer && !shop && (
+        <FoilOfferSheet
+          offers={
+            foilOffer
+              ? foilOffers(collection, { exclude: foilOffer.exclude })
+              : []
+          }
+          gemsPaid={collection.gemsPaid || 0}
+          working={working}
+          onBuy={buyFoilOffer}
+          onClose={() => setFoilOffer(null)}
+          onShop={shopOk ? () => setShop(true) : null}
+        />
+      )}
       {shop && (
         <GemShop
           gems={collection.gems || 0}

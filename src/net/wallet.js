@@ -164,6 +164,11 @@ export async function earnGems(id, n) {
   await flushPending().catch(() => {});
 }
 
+/** フォイルを有償ジェムで買う(src/skins/foil-shop.js)。通れば新しい残高、足りなければ投げる */
+export async function buyFoil(product, skins) {
+  return mirror(await walletRequest("foil", { product, skins }));
+}
+
 /** ジェムでチケットを買う(両替)。通れば新しい残高、足りなければ投げる */
 export async function exchangeGems(id, tickets) {
   return mirror(await walletRequest("exchange", { id, tickets }));

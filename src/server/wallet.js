@@ -27,6 +27,7 @@ import {
   FREE_GEM_DAILY_MAX,
 } from "../iap/catalog.js";
 import { campaignOf, campaignOpen } from "../game/campaigns.js";
+import { productOf as foilProductOf, priceFor as foilPriceFor } from "../skins/foil-shop.js";
 
 export const MIGRATE_TICKETS_MAX = 500;
 /** 遊んで貯める分(kind=earn)は端末の申告なので、1回と1日(UTC)の上限で抑える */
@@ -200,17 +201,35 @@ export class Wallet {
   /** 無償ジェムを足す(端末の申告。上限つき) */
   earnGems(uid, id, n, now) { return this.apply(uid, id, { gemsFree: n }, "earn", null, now); }
   /** ジェムを使う。無償→有償の順に取り崩し、1つの出来事にする。extra は同時に足すもの(両替のチケットなど) */
-  spendGems(uid, id, amount, kind, ref, now, extra = {}) {
+  spendGems(uid, id, amount, kind, ref, now, extra = {}, { paidOnly = false } = {}) {
     if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("枚数が正しくありません。");
     const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) return this.apply(uid, id, { gemsPaid: -1 }, kind, ref, now); // 冪等の判定だけ通す
     const r = this.row(uid);
     const pools = { free: r.gems_free, paid: r.gems };
+    // 有償だけで払う品(フォイルの直接購入。本人の決め 2026-09-16)は無償に触れない
+    if (paidOnly) {
+      if (pools.paid < amount) throw new Error(`有償ジェムが足りません(あと${amount - pools.paid})`);
+      return this.apply(uid, id, { ...extra, gemsPaid: -amount }, kind, ref, now);
+    }
     if (pools.free + pools.paid < amount)
       throw new Error(`ジェムが足りません(あと${amount - pools.free - pools.paid})`);
     let left = amount; const take = { free: 0, paid: 0 };
     for (const p of GEM_CONSUME_ORDER) { take[p] = Math.min(pools[p], left); left -= take[p]; }
     return this.apply(uid, id, { ...extra, gemsFree: -take.free, gemsPaid: -take.paid }, kind, ref, now);
+  }
+  /**
+   * フォイルを有償ジェムで買う(src/skins/foil-shop.js)。値段はサーバーがここで決める。
+   * 出来事の id は uid・商品・札で決まるので、同じ札を二度は買えない(二度目は applied:false で返す)
+   */
+  buyFoil(uid, productId, skins, now) {
+    const product = foilProductOf(productId);
+    if (!product || product.pending) throw new Error("その商品はありません。");
+    const price = foilPriceFor(product, skins);
+    if (price === null) throw new Error("買う札の指定が正しくありません。");
+    const id = `foil:${uid}:${product.id}:${[...skins].sort().join("+")}`;
+    const r = this.spendGems(uid, id, price, "foil", `${product.id}:${skins.join(",")}`, now, {}, { paidOnly: true });
+    return { ...r, product: product.id, skins: [...skins], price };
   }
   /** 検証済みの Apple の取引(ジェムのパック)を財布に反映する。取引 ID で冪等。円の分は有償、おまけは無償 */
   purchase(uid, tx, now) {
