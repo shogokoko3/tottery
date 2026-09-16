@@ -2004,6 +2004,9 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                 <p>
                   効果の詳しい説明は、所持スキン一覧でフォイルを選ぶと確認できます。
                 </p>
+                <p>
+                  対応するホーム装飾も解放されます。ホームの「着せ替え」から選べます。
+                </p>
               </section>
             )}
             <p className="skins-message" role="status">

@@ -1,0 +1,13 @@
+<svg class="frame-crest-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 52" aria-hidden="true" focusable="false" fill="none">
+        <path d="m4 38 10-10 14 3 8-5 8-16L60 1l16 9 8 16 8 5 14-3 10 10-24 8H28Z" fill="#8a8d80" stroke="#e8d8b3" stroke-width="1.3"/>
+        <path d="M35 36V26l8-13L60 2l17 11 8 13v10h-6V27l-7-10-12-8-12 8-7 10v9Z" fill="#e3dfca"/>
+        <path d="M42 35V26l7-9 11-7 11 7 7 9v9M47 35V26l13-11 13 11v9" stroke="#b79653" stroke-width="1.3"/>
+        <path d="M60 4v13M46 13l7 8m21-8-7 8M38 26l11 3m33-3-11 3" stroke="#f6ecd0" stroke-width="1.1"/>
+        <path d="M15 34h15l12 5m63-5H90l-12 5" stroke="#d3c08e" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="m41 30 10 6 9-14 9 14 10-6-5 16H46Z" fill="#ab8c50" stroke="#f5dea8" stroke-width="1.5"/>
+        <path d="m46 34 5 5 9-10 9 10 5-5-2 8H48Z" fill="#e3ca8d"/>
+        <path d="M45 47h30l-3 4H48Z" fill="#e6dec0" stroke="#f4e8c6"/>
+        <path d="m60 31 4 8-4 6-4-6Z" fill="#ecede0" stroke="#9a915f"/>
+        <path d="m60 31 0 10-4-2Z" fill="#fff5d7"/>
+        <circle cx="41" cy="29" r="2" fill="#ede2be"/><circle cx="79" cy="29" r="2" fill="#ede2be"/><circle cx="60" cy="22" r="2" fill="#f6e8ba"/>
+      </svg>

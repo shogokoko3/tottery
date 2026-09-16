@@ -12,6 +12,7 @@ import {
 } from "./catalog.js";
 import { craftCheck, dismantleCheck } from "./ether.js";
 import { exchangeCheck, shatterCheck } from "./shards.js";
+import { homeThemeOf } from "./home-themes.js";
 import { sanitizeTsumeProgress } from "../game/tsume-daily.js";
 import {
   missionPeriods,
@@ -152,6 +153,7 @@ export function normalize(raw) {
     acquired: acquiredTotals({ ...value, owned, foilMilestones }),
     foilMilestones,
     equipped,
+    homeTheme: homeThemeOf({ owned, homeTheme: value.homeTheme }),
     draws: count(value.draws),
     earlyClaimed: value.earlyClaimed === true,
     motion: ["full", "short", "off"].includes(value.motion)

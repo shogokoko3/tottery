@@ -1,0 +1,14 @@
+<svg class="frame-crest-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 52" aria-hidden="true" focusable="false" fill="none">
+        <path d="m3 36 20-7 21 4 16-9 16 9 21-4 20 7-22 11-18-4-17 7-17-7-18 4Z" fill="#262230" stroke="#8e747b" stroke-width="1.3"/>
+        <path d="M44 35C19 29 19 7 36 2c-8 13-1 18 11 19l6 12m23 2C101 29 101 7 84 2c8 13 1 18-11 19l-6 12" fill="#54404d" stroke="#c4988d" stroke-width="1.5"/>
+        <path d="M34 6c-6 15 3 22 13 22M86 6c6 15-3 22-13 22" stroke="#9c8180" stroke-width="1.5"/>
+        <path d="M39 28c-7 14-23 14-28 6 9 4 17-4 14-9m56 3c7 14 23 14 28 6-9 4-17-4-14-9" fill="#38303e" stroke="#aa8280" stroke-width="1.2"/>
+        <path d="m60 7 14 13-3 23-11 9-11-9-3-23Z" fill="#251d2b" stroke="#b78b80" stroke-width="1.5"/>
+        <path d="m60 10-7 13 3 17 4 8 4-8 3-17Z" fill="#aa5354"/>
+        <path d="m60 10 0 17-7-4Z" fill="#efb097"/>
+        <path d="m60 10 7 13-7 4Z" fill="#cb7269"/>
+        <path d="m53 23 7 4-4 13Z" fill="#cf7970"/>
+        <path d="m60 27 7-4-3 17-4 8Z" fill="#71313f"/>
+        <path d="m60 30 2 8-2 6-2-6Z" fill="#e9a27d"/>
+        <path d="M43 41 34 44m43-3 9 3" stroke="#cb9280" stroke-width="1.1"/>
+      </svg>

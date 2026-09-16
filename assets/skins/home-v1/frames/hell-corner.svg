@@ -1,0 +1,14 @@
+<svg class="frame-corner-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" aria-hidden="true" focusable="false" fill="none">
+        <path d="M3 77V26L8 8l18-5h51L64 14l-16-1-20 15-15 20 1 16Z" fill="#251f2b" stroke="#92777b" stroke-width="1.4"/>
+        <path d="M7 59V28l7-14 14-7h32L39 13l-18 8-8 18Z" fill="#51434c"/>
+        <path d="m8 31 6-17 14-7-7 14Z" fill="#827278"/>
+        <path d="m21 21 18-8-11 15-15 20Z" fill="#181e29"/>
+        <path d="M14 31C-2 24 1 4 19 2 8 10 10 15 18 17c7 2 7 9 3 14M29 18C24 1 41-3 50 5c-13-2-16 5-10 10 7 5 3 10-2 14" fill="#322735" stroke="#af8881" stroke-width="1.5"/>
+        <path d="M18 3C8 10 9 18 16 21m24-17c-8 4-9 9-4 14" stroke="#b8a09a" stroke-width="1.1" stroke-linecap="round"/>
+        <path d="M14 45c11-4 17 4 14 12-1-6-5-8-10-5l-4 8m31-46c-4 11 4 17 12 14-6-1-8-5-5-10l8-4" fill="#6b5059" stroke="#a27b78" stroke-width="1.1"/>
+        <path d="m18 16 11 5 1 10-9 7-9-9Z" fill="#271b28" stroke="#c19682" stroke-width="1.2"/>
+        <path d="m19 20 7 3 1 7-6 4-6-6Z" fill="#8d3e46"/>
+        <path d="m19 20 7 3-6 4-5 1Z" fill="#e5a28b"/>
+        <path d="m20 27 6-4 1 7-6 4Z" fill="#b65b56"/>
+        <path d="m6 66 3-7m50-50 7-3" stroke="#c88472" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>

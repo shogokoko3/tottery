@@ -1,0 +1,10 @@
+<svg class="frame-rail-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 160" aria-hidden="true" focusable="false" fill="none">
+        <path d="m12 1 7 24-4 20 5 29-3 30 3 27-8 28-7-29 3-28-4-27 5-28-3-22Z" fill="#365669" stroke="#b1cbd1"/>
+        <path d="m12 1 0 50-6-26Zm0 158V109l-7 21Z" fill="#bfd7dc"/>
+        <path d="m12 1 7 24-4 20-3 6Zm0 158 8-28-3-21-5-1Z" fill="#719caf"/>
+        <path d="m12 40 10 38-10 42L2 79Z" fill="#7ca5b8" stroke="#d2e3e4"/>
+        <path d="m12 40 0 39-10 0Z" fill="#d5e6e4"/>
+        <path d="m12 40 10 38-10 1Z" fill="#8cb7c8"/>
+        <path d="m12 79 10-1-10 42Z" fill="#3f718b"/>
+        <path d="M12 79v41L2 79Z" fill="#a5ced5"/>
+      </svg>

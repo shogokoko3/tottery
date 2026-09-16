@@ -70,6 +70,10 @@ function AcquiredField({ reward, reduce }) {
           <b>盤面の使い方</b>
           このフォイルを対応する数字に装備し、その札を王にすると、9×9の対局で使えます。
         </p>
+        <p className="area-acquisition-condition">
+          <b>ホームの着せ替え</b>
+          このエリアのホーム装飾も使えます。ホームの「着せ替え」から選べます。
+        </p>
       </div>
     </div>
   );

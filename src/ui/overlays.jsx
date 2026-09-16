@@ -1,3 +1,4 @@
+import { HomeCustomizationButton } from "./home-customization.jsx";
 import { AppearanceSettings } from "./season.jsx";
 import { useEffect, useState } from "react";
 import {
@@ -659,6 +660,9 @@ export function SettingsModal({ onClose }) {
         />
 
         <AppearanceSettings />
+        <div className="settings-list">
+          <HomeCustomizationButton settings />
+        </div>
         <p className="settings-head">音</p>
         <SoundSettings />
 

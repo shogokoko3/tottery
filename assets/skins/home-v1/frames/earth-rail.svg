@@ -1,0 +1,8 @@
+<svg class="frame-rail-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 160" aria-hidden="true" focusable="false" fill="none">
+        <path d="m8 2 8 6 1 42 4 10-3 21 3 19-5 12v41l-8 5V113l-5-13 3-19-3-21 5-10Z" fill="#21373b" stroke="#78918b"/>
+        <path d="M10 10h3v140h-3Z" fill="#506661"/>
+        <path d="M8 24h8M8 43h8M8 120h8M8 140h8" stroke="#a4afa0"/>
+        <path d="M12 46c-12 14-8 25 0 33 8-8 12-19 0-33Zm0 35c-10 9-11 20 0 32 11-12 10-23 0-32Z" fill="#13272c" stroke="#839a8c" stroke-width="1.1"/>
+        <path d="m12 67 5 13-5 13-5-13Z" fill="#28746f" stroke="#a3b6a0"/>
+        <path d="m12 68 4 12-4-3-4 3Z" fill="#a3cfc0"/>
+      </svg>

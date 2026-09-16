@@ -1,0 +1,12 @@
+<svg class="frame-crest-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 52" aria-hidden="true" focusable="false" fill="none">
+        <path d="M3 38 16 29h20l8-16L60 3l16 10 8 16h20l13 9-22 6H25Z" fill="#17272c" stroke="#667e7b" stroke-width="1.5"/>
+        <path d="M30 38V28l8-2 6-14L60 1l16 11 6 14 8 2v10h-8V29l-9-2-3-10-10-7-10 7-3 10-9 2v9Z" fill="#596766"/>
+        <path d="m44 15 8 3m16 0 8-3M34 29h10m32 0h10M52 7l8 5 8-5" stroke="#a4aca1" stroke-width="1.2"/>
+        <path d="M46 39V27c0-11 28-11 28 0v12M53 40V25m14 15V25M60 42V18" stroke="#99a794" stroke-width="1.5"/>
+        <path d="M29 36c-10-12-23-3-16 4 5 4 10-3 6-5m72 1c10-12 23-3 16 4-5 4-10-3-6-5" stroke="#748984" stroke-width="2"/>
+        <path d="m60 19 7 8-2 12-5 6-5-6-2-12Z" fill="#152b2f" stroke="#b0b59c" stroke-width="1.4"/>
+        <path d="m60 23 4 5-1 9-3 4-3-4-1-9Z" fill="#408d86"/>
+        <path d="m60 23 4 5-4 5-4-5Z" fill="#abd5c0"/>
+        <path d="m60 33 4-5-1 9-3 4Z" fill="#73b5a0"/>
+        <path d="M22 45h76M37 49h46" stroke="#819286" stroke-linecap="round"/>
+      </svg>

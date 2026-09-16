@@ -1,3 +1,13 @@
+import {
+  HomeCustomizationButton,
+  HomeRealmDecoration,
+  HomeRealmPortrait,
+  HomeFrameCorners,
+  findHomeTheme,
+  homeThemeStyle,
+} from "./home-customization.jsx";
+import { homeThemeOf } from "../skins/home-themes.js";
+import HOME_STYLES from "./home-customization.css";
 import { useBattlePassUnlocked } from "./battlepass-access.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { GemAmount } from "./gem.jsx";
@@ -169,7 +179,7 @@ export function GameShell({
   let goHome = onHome || onBack;
   return (
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
-      <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES + AREA_STYLES + ROYAL_STYLES}</style>
+      <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES + AREA_STYLES + ROYAL_STYLES + HOME_STYLES}</style>
       <header className="top-bar">
         {/* 戻る釦が無いときは空のまま。飾りの王冠を置いていたが、
             押せそうに見えて何も起きないので外した。
@@ -304,9 +314,10 @@ function HomeSelf({ profile, tickets }) {
 }
 
 /** ホームの四角い入り口。絵柄を上、名前を下に置く */
-function HomeTile({ tone, icon, label, note, badge, onClick }) {
+function HomeTile({ tone, icon, label, note, badge, onClick, frameTheme }) {
   return (
     <button className={`home-tile home-tile-${tone}`} onClick={onClick}>
+      <HomeFrameCorners theme={frameTheme} small />
       <span className="home-tile-icon">{icon}</span>
       <b>{label}</b>
       <small>{note}</small>
@@ -341,6 +352,8 @@ export function MenuScreen({
   const unread = useUnreadLetters();
   const passUnlocked = useBattlePassUnlocked();
   const collection = useCollection();
+  const themeId = homeThemeOf(collection);
+  const theme = findHomeTheme(themeId);
   // ジェムショップ(iOS だけ)。残高バーから直接開けるようにする
   const [shopOk, setShopOk] = useState(false);
   const [shop, setShop] = useState(false);
@@ -363,7 +376,9 @@ export function MenuScreen({
       ? "joined"
       : "new";
   return (
-    <div className="home-wrap">
+    <div className={`home-wrap${theme ? " has-home-theme" : ""}`} data-home-area={themeId} style={homeThemeStyle(theme)}>
+      <HomeRealmDecoration theme={theme} />
+      <HomeCustomizationButton />
       {/* その日のぶんがまだなら、ここに着いたときに札が出る */}
       <LoginBonus />
 
@@ -379,7 +394,9 @@ export function MenuScreen({
       <button className="home-resource-bar" onClick={() => (shopOk ? setShop(true) : onSkins())} aria-label={shopOk ? "ジェムを買う・確認" : "ジェムとチケットを確認"}><GemAmount amount={collection.gems || 0} size={26} /><span><Ticket size={16} /> {collection.tickets}枚</span>{shopOk ? <span className="home-resource-buy">ジェムを買う</span> : <ArrowRight size={14}/>}</button>
       {shopMsg && <p className="mission-message" role="status" aria-live="polite">{shopMsg}</p>}
 
+      <HomeRealmPortrait theme={theme} />
       <button className="home-hero" onClick={onPlay}>
+        <HomeFrameCorners theme={theme} small />
         <span className="home-hero-icon">
           <Globe size={34} />
         </span>
@@ -391,6 +408,7 @@ export function MenuScreen({
       </button>
 
       <button className="home-wide" onClick={onTutorial}>
+        <HomeFrameCorners theme={theme} small />
         <span className="home-wide-icon">
           <Book size={22} />
         </span>
@@ -408,6 +426,7 @@ export function MenuScreen({
 
       <div className="home-grid">
         <HomeTile
+          frameTheme={theme}
           tone="tsume"
           icon={<Crown size={26} />}
           label="詰めトッタリー"
@@ -432,6 +451,7 @@ export function MenuScreen({
           onClick={onTsume}
         />
         <HomeTile
+          frameTheme={theme}
           tone="missions"
           icon={<Check size={26} />}
           label="ミッション"
@@ -440,6 +460,7 @@ export function MenuScreen({
           onClick={onMissions}
         />
         <HomeTile
+          frameTheme={theme}
           tone="pass"
           icon={passUnlocked ? <Grid size={26} /> : <BattlePassSkinLock className="home-pass-lock" />}
           label="バトルパス"
@@ -447,6 +468,7 @@ export function MenuScreen({
           onClick={onBattlePass}
         />
         <HomeTile
+          frameTheme={theme}
           tone="skins"
           icon={<Sparkle size={26} />}
           label="ガチャ・装備"

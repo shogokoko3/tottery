@@ -1,0 +1,8 @@
+<svg class="frame-rail-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 160" aria-hidden="true" focusable="false" fill="none">
+        <path d="M12 2C1 22 22 40 12 58S2 91 12 110s6 33-1 48" stroke="#1f382a" stroke-width="7" stroke-linecap="round"/>
+        <path d="M12 2C1 22 22 40 12 58S2 91 12 110s6 33-1 48" stroke="#81946a" stroke-width="3" stroke-linecap="round"/>
+        <path d="M12 31C2 29 1 18 3 13c8 3 12 9 9 18ZM13 57c11-4 11-15 8-20-8 5-11 11-8 20ZM9 94C0 87 1 78 4 71c7 5 9 16 5 23Zm7 32c9-6 8-16 5-21-9 6-10 12-5 21Z" fill="#4d6d43" stroke="#a2b581" stroke-width="1.1"/>
+        <path d="m4 17 8 15m8 10-7 15M4 75l5 19m11 16-4 15" stroke="#c0c99b"/>
+        <path d="m12 64 5 7-1 12-4 5-4-5-1-12Z" fill="#3d563b" stroke="#c3c598"/>
+        <path d="m12 67 2 6-2 8-2-8Z" fill="#b8c38b"/>
+      </svg>
