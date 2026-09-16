@@ -1771,7 +1771,7 @@ export function SkinsScreen({ onBack, onBattlePass }) {
                     ) : (
                       <FoilArtwork
                         skin={skin}
-                        src={skin.card}
+                        src={skin.boardCard || skin.card}
                         alt={skin.role}
                         loading="lazy"
                         animated={shine}
