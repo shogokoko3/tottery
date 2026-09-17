@@ -2276,7 +2276,14 @@ export function GameCore({
         />
       </GameShell>
     );
-  if (a.pendingKingChoice && !a.captureReveal && !fxBusy)return network && a.pendingKingChoice.owner !== p ? (
+  // 新しい王を選ぶ画面は **持ち主にだけ** 見せる。相手の画面に出すと、
+  // どの駒がその数字で、盤のどこにいるかが割れる(2026-09-17 本人の報告)。
+  //   通信: 自分の席のときだけ / CPU・Bot・チュートリアル: 自分(0)のときだけ
+  //   同じ端末で交互に指すときは、これまでどおり画面を渡して選ぶ
+  const kingChoiceMine =
+    !a.pendingKingChoice ||
+    (network ? a.pendingKingChoice.owner === p : cpu ? a.pendingKingChoice.owner === 0 : true);
+  if (a.pendingKingChoice && !a.captureReveal && !fxBusy)return !kingChoiceMine ? (
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}

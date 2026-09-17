@@ -2060,7 +2060,7 @@ function coreReducer(state, action) {
           col: action.col,
           history: [
             ...moved.history,
-            `${squareName(mover.row, mover.col, state.boardSize)} ${moveArrow(mover, { row: action.row, col: action.col })} ${squareName(action.row, action.col, state.boardSize)} へ移動${secondAction ? "(2回目)" : ""}`,
+            `${squareName(mover.row, mover.col, state.boardSize)}→${squareName(action.row, action.col, state.boardSize)} ${moveArrow(mover, { row: action.row, col: action.col })} へ移動${secondAction ? "(2回目)" : ""}`,
           ],
         };
         nextPieces[mover.id] = updated;

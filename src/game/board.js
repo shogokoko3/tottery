@@ -306,31 +306,31 @@ export function sanitizeHistory(piece, viewer, revealAll) {
 }
 
 /**
- * どちらへ動いたかの矢印。行動記録は「c2 → c3」だけだと向きが読み取りにくい
- * (2026-09-17 本人の指示)。縦横斜めの8方向を矢印で示す。
- * 跳んだ手(10 の桂馬)のようにまっすぐでない動きは、素の矢印(→)のまま。
- * row は上から数える(row が増える = 盤の下へ)
+ * どちらへ動いたかの印。行動記録は「c2→c3」だけだと向きが読み取りにくい
+ * (2026-09-17 本人の指示。記録は「c2→c3 ➡︎」の形で出す)。
+ * 縦横斜めの8方向は太い矢印、10 の跳ぶ手は「馬」。row は上から数える(row が増える = 盤の下へ)
  */
 export function moveArrow(from, to) {
-  if (!from || !to) return "→";
+  if (!from || !to) return "";
   const dr = to.row - from.row;
   const dc = to.col - from.col;
-  if (!dr && !dc) return "→";
-  // まっすぐか斜め45度のときだけ、向きの矢印にする
-  if (dr && dc && Math.abs(dr) !== Math.abs(dc)) return "→";
-  const up = dr < 0;
-  const down = dr > 0;
-  const left = dc < 0;
-  const right = dc > 0;
-  if (up && !dc) return "↑";
-  if (down && !dc) return "↓";
-  if (left && !dr) return "←";
-  if (right && !dr) return "→";
-  if (up && left) return "↖";
-  if (up && right) return "↗";
-  if (down && left) return "↙";
-  return "↘";
+  if (!dr && !dc) return "";
+  const ar = Math.abs(dr);
+  const ac = Math.abs(dc);
+  // 桂馬(10)の跳び方。まっすぐでも斜めでもないので、向きではなく「馬」と書く
+  if ((ar === 1 && ac === 2) || (ar === 2 && ac === 1)) return "馬";
+  // まっすぐか、斜め45度のときだけ向きの矢印にする
+  if (dr && dc && ar !== ac) return "";
+  if (dr < 0 && !dc) return "\u2b06\ufe0e";
+  if (dr > 0 && !dc) return "\u2b07\ufe0e";
+  if (!dr && dc < 0) return "\u2b05\ufe0e";
+  if (!dr && dc > 0) return "\u27a1\ufe0e";
+  if (dr < 0 && dc < 0) return "\u2196\ufe0e";
+  if (dr < 0 && dc > 0) return "\u2197\ufe0e";
+  if (dr > 0 && dc < 0) return "\u2199\ufe0e";
+  return "\u2198\ufe0e";
 }
+
 
 /** プレイヤーの初期状態 */
 export function makePlayer(idx) {

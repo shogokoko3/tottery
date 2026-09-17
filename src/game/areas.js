@@ -698,7 +698,7 @@ export function seaPull(state) {
       col,
       history: [
         ...p.history,
-        `${squareName(p.row, p.col, state.boardSize)} ${moveArrow(p, { row, col })} ${squareName(row, col, state.boardSize)} へ移動(海の引き寄せ)`,
+        `${squareName(p.row, p.col, state.boardSize)}→${squareName(row, col, state.boardSize)} ${moveArrow(p, { row, col })} へ移動(海の引き寄せ)`,
       ],
     };
     board[p.row][p.col] = null;
@@ -767,7 +767,7 @@ function seaPullLegacy(state) {
           col: at.col,
           history: [
             ...p.history,
-            `${squareName(p.row, p.col, size)} ${moveArrow(p, { row: at.r, col: at.col })} ${squareName(at.r, at.col, size)} へ移動(海の引き寄せ)`,
+            `${squareName(p.row, p.col, size)}→${squareName(at.r, at.col, size)} ${moveArrow(p, { row: at.r, col: at.col })} へ移動(海の引き寄せ)`,
           ],
         };
     if (!same) {
