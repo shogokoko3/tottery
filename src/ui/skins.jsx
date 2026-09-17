@@ -21,6 +21,7 @@ import {
   dismantle,
   dismantleAll,
   dismantleResults,
+  dismantledIndexes,
   DISMANTLE_RARITIES,
   equip,
   exchangeFoil,
@@ -1142,13 +1143,14 @@ function ResultDismantle({
   onRun,
   onToggleAuto,
   onToggleRarity,
+  done,
+  setDone,
 }) {
   const rarities = collection.dismantleRarities || [];
   const preview = useMemo(
     () => dismantleResults(collection, results, rarities),
     [collection, results, rarities],
   );
-  const [done, setDone] = useState(null);
   const auto = collection.autoDismantle === true;
   const fired = useRef(false);
   useEffect(() => {
@@ -1420,6 +1422,12 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
     if (await run((s) => equip(s, skin.id)))
       setMessage(`${skin.rank}のカードに「${skin.name}」を装備しました。`);
   };
+  // 崩した結果(どの札を何枚崩したか)。結果の並びに印を出すために画面が持つ
+  const [dismantled, setDismantled] = useState(null);
+  const dismantledAt = useMemo(
+    () => dismantledIndexes(results || [], dismantled),
+    [results, dismantled],
+  );
   /** ガチャ結果のダブりを崩す。下見(preview)と同じものを台帳へ書く */
   const dismantlePulled = async (preview) => {
     if (!preview || preview.gain <= 0) return null;
@@ -1448,6 +1456,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
   };
   const closeResults = async () => {
     setAcquisitionMode(null);
+    setDismantled(null);
     // ガチャ(召喚)でフォイルが出ていたら、閉じたあとに「ほかのフォイルも」を出す(引いた帯は除く)
     const pulledFoils = craftResult
       ? []
@@ -2057,10 +2066,12 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
             >
               {results.map((result, index) => {
                 const s = byId(result.id);
+                // 崩した札は、その1枚ずつに印を出す(10連で何が崩れたか目で追えるように)
+                const crushed = dismantledAt.has(index);
                 return (
                   <article
                     key={index}
-                    className={`skins-result rarity-${s.rarity}${s.foil ? " is-foil" : ""}`}
+                    className={`skins-result rarity-${s.rarity}${s.foil ? " is-foil" : ""}${crushed ? " is-dismantled" : ""}`}
                   >
                     <div className="skins-result-art">
                       <FoilArtwork
@@ -2073,9 +2084,19 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                       <span className="skins-tile-rarity">{s.rarity}</span>
                       {s.foil && <FoilBadge className="skins-art-foil" />}
                       <span
-                        className={result.isNew ? "skin-new" : "skin-duplicate"}
+                        className={
+                          crushed
+                            ? "skin-dismantled"
+                            : result.isNew
+                              ? "skin-new"
+                              : "skin-duplicate"
+                        }
                       >
-                        {result.isNew ? "NEW" : "重複"}
+                        {crushed
+                          ? `崩した +${dismantledAt.get(index)}`
+                          : result.isNew
+                            ? "NEW"
+                            : "重複"}
                       </span>
                     </div>
                     <strong>{s.name}</strong>
@@ -2132,6 +2153,8 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                 onRun={dismantlePulled}
                 onToggleAuto={toggleAutoDismantle}
                 onToggleRarity={toggleDismantleRarity}
+                done={dismantled}
+                setDone={setDismantled}
               />
             )}
             <p className="skins-message" role="status">

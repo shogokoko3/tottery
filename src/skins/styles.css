@@ -689,6 +689,27 @@
   background: #0c1d2ddd;
   color: #b4c0cd;
 }
+/* 崩した札。10連で何が崩れたか、カードごとに目で追えるように(2026-09-17 本人の指示) */
+.skin-dismantled {
+  position: absolute;
+  bottom: 7px;
+  left: 7px;
+  background: #1d3b2edd;
+  color: #9fe3c0;
+  border: 1px solid #4e8f74;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.skins-result.is-dismantled .skins-result-art {
+  opacity: 0.55;
+}
+.skins-result.is-dismantled strong {
+  color: #8c99a6;
+}
 .single-result {
   max-width: 210px;
   margin: 0 auto;

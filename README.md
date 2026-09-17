@@ -1408,6 +1408,8 @@ v48 では飛び越えない。**進路は塞がれる**。
   （既定は切。`collection.autoDismantle`。あとから同じ場所で切れる）。
   **どのレア度を崩すかを選べる**（R / SR / SSR の札。既定は R と SR で、**SSR は守る**。
   `collection.dismantleRarities`。手で押すときも自動のときもこの選択に従う。2026-09-17 本人の指示）。
+  **崩した札は結果の1枚ずつに「崩した +◯」の印**を出し、その札を薄くする（10連で何が崩れたか目で追えるように。
+  2026-09-17 本人の指示。`dismantledIndexes()`。同じ札が複数来ていたら後ろから印を付けるので、残る1枚には付かない）。
   崩すのは**その抽選で来たダブりだけ**で、前から持っていたダブりには触らない（一括分解との違い）。
   フォイル・ペガサス・A・**最後の1枚**は崩さない。実装は `dismantleResults()`（`src/skins/collection.js`）と
   `ResultDismantle`（`src/ui/skins.jsx`）。錬成・交換・加工の1枚には出さない。検査: `tools/check-auto-dismantle.mjs`

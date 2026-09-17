@@ -418,6 +418,24 @@ export function dismantleResults(state, results, rarities = null) {
   return { state: next, gain, rows };
 }
 
+/**
+ * 崩した札を、結果の並びのどの位置だったかに直す。
+ * 同じ札が複数来ていたら**後ろから** count 枚に印を付ける(先頭は NEW の1枚なので残る)。
+ */
+export function dismantledIndexes(results, done) {
+  const marked = new Map(); // index -> その1枚で得たエーテル
+  if (!done) return marked;
+  for (const row of done.rows) {
+    const at = [];
+    results.forEach((r, i) => {
+      if (r.id === row.id) at.push(i);
+    });
+    const each = row.count ? Math.round(row.gain / row.count) : 0;
+    for (const i of at.slice(-row.count)) marked.set(i, each);
+  }
+  return marked;
+}
+
 /** 通常版のダブりをまとめて崩す。フォイルは欠片にするので含めない。 */
 export function dismantleAll(state) {
   let next = state;
