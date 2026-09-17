@@ -16,6 +16,8 @@ import {
   nameOf,
 } from "../game/constants.js";
 import { hasAdjudicationRules } from "../game/rule-version.js";
+// 予備札の盤で、相手の「分かっている駒」を表で見せる(本編の盤と同じ決まり)
+import { isKnownTo } from "../game/areas.js";
 import { useWindowWidth } from "../hooks.js";
 import { ArrowLeft, Crown, Dice, Grid } from "../icons.jsx";
 import { CardBack, CardFace } from "./cards.jsx";
@@ -1144,9 +1146,11 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
                 >
                   {p && (
                     // 自分の駒は表で見せる。どこに空きがあるか、
-                    // 何を置き足すかを判断できないと配置場所を選べない
+                    // 何を置き足すかを判断できないと配置場所を選べない。
+                    // 相手の駒も、公開・見抜きで分かっているものは本編の盤と同じに表で見せる
+                    // (2026-09-17 本人の指示。伏せたままの駒は裏のまま)
                     <div className="mini-piece">
-                      {p.owner === n ? (
+                      {p.owner === n || isKnownTo(state, n, p) ? (
                         <>
                           <CardFace
                             owner={p.owner}
@@ -1156,6 +1160,13 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
                           />
                           {p.isKing && (
                             <Crown size={12} className="king-badge" />
+                          )}
+                          {p.owner !== n && (
+                            <span
+                              className="mini-foe-face"
+                              style={{ "--who": PLAYER_META[p.owner].color }}
+                              aria-label="相手の分かっている駒"
+                            />
                           )}
                         </>
                       ) : (

@@ -288,11 +288,48 @@ export function placedRankCounts(placement, hand) {
 }
 
 /** 相手の駒の履歴は、移動以外を伏せて見せる */
+/**
+ * 相手に **一行も見せてはいけない** 出来事。
+ *
+ * 「何らかの効果が発生した」と伏せるだけでは足りない。王が倒れた手番に、
+ * 相手の駒をひとつずつ開いて「新しい行が増えた駒」を探せば、それが新しい王だと分かる
+ * (2026-09-17 本人の報告「2の王が倒されて別の2に継ぐとき、どの駒が2でどこにいるか相手に分かる」)。
+ * だからこの手の行は、相手から見たときには **行ごと消す**。
+ */
+export const SECRET_HISTORY = ["王位を継承"];
+
 export function sanitizeHistory(piece, viewer, revealAll) {
   if (piece.owner === viewer || !piece.alive || revealAll) return piece.history;
-  return piece.history.map((h) =>
-    h.includes("へ移動") ? h : "何らかの効果が発生した",
-  );
+  return piece.history
+    .filter((h) => !SECRET_HISTORY.some((secret) => h.includes(secret)))
+    .map((h) => (h.includes("へ移動") ? h : "何らかの効果が発生した"));
+}
+
+/**
+ * どちらへ動いたかの矢印。行動記録は「c2 → c3」だけだと向きが読み取りにくい
+ * (2026-09-17 本人の指示)。縦横斜めの8方向を矢印で示す。
+ * 跳んだ手(10 の桂馬)のようにまっすぐでない動きは、素の矢印(→)のまま。
+ * row は上から数える(row が増える = 盤の下へ)
+ */
+export function moveArrow(from, to) {
+  if (!from || !to) return "→";
+  const dr = to.row - from.row;
+  const dc = to.col - from.col;
+  if (!dr && !dc) return "→";
+  // まっすぐか斜め45度のときだけ、向きの矢印にする
+  if (dr && dc && Math.abs(dr) !== Math.abs(dc)) return "→";
+  const up = dr < 0;
+  const down = dr > 0;
+  const left = dc < 0;
+  const right = dc > 0;
+  if (up && !dc) return "↑";
+  if (down && !dc) return "↓";
+  if (left && !dr) return "←";
+  if (right && !dr) return "→";
+  if (up && left) return "↖";
+  if (up && right) return "↗";
+  if (down && left) return "↙";
+  return "↘";
 }
 
 /** プレイヤーの初期状態 */

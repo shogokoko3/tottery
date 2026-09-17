@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { dockSheet } from "./tutorial-dock.js";
 import {
@@ -288,6 +288,32 @@ export function TutorialSheet({
   // 前面の札は盤を隠さない場所(右か下)に置く。盤の駒の動きを見ながら読めるように。
   // 置き場所は盤の位置から測るので、画面の大きさやスクロールが変わるたびに測り直す
   const [dock, setDock] = useState(null);
+  // 下の帯の高さを根に伝える。重ねた画面(modal-overlay)はその分だけ上へ寄せる。
+  // 同じ高さ(z-index 50)で帯が後に描かれるので、そうしないと帯が釦を覆って押せない
+  // (2026-09-17 本人の報告: 予備札の「ここに置く」が押せない)
+  const bandRef = useRef(null);
+  useEffect(() => {
+    const root = typeof document !== "undefined" ? document.documentElement : null;
+    const band = bandRef.current;
+    if (!root) return undefined;
+    if (!band || front) {
+      root.style.removeProperty("--tutorial-band");
+      return undefined;
+    }
+    const set = () => {
+      const h = Math.round(band.getBoundingClientRect().height);
+      root.style.setProperty("--tutorial-band", `${h}px`);
+    };
+    set();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(set) : null;
+    if (ro) ro.observe(band);
+    window.addEventListener("resize", set);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener("resize", set);
+      root.style.removeProperty("--tutorial-band");
+    };
+  }, [front, step, dock]);
   useEffect(() => {
     if (!front || overlay || typeof document === "undefined") {
       setDock(null);
@@ -340,6 +366,7 @@ export function TutorialSheet({
       )}
       <div
         className="tutorial-sheet-inner"
+        ref={bandRef}
         style={front && dock ? dock.style : undefined}
       >
         <div className="tutorial-progress">
