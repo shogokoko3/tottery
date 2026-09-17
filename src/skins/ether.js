@@ -97,7 +97,7 @@ export function dismantleCheck(state, id) {
       why:
         skin.rarity === "SPECIAL"
           ? "特別スキンは崩せません。"
-          : "早期特典の札は崩せません。二度と手に入らないためです。",
+          : "初回購入特典の札は崩せません。ガチャや錬成では手に入らないためです。",
     };
   if (skin.foil)
     return {
@@ -125,7 +125,7 @@ export function craftCheck(state, id) {
       why:
         skin.rarity === "SPECIAL"
           ? "特別スキンはエーテルで作れません。"
-          : "早期特典の札は作れません。",
+          : "初回購入特典の札は作れません。",
     };
   const cost = costOf(skin);
   if (cost === null) return { ok: false, why: "この札は作れません。" };

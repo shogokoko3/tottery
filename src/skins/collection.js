@@ -367,7 +367,7 @@ export function unequip(state, rank) {
 }
 /**
  * ダブりを1枚崩して、エーテルに変える。
- * 最後の1枚と早期特典の札は崩さない(ether.js の決まり)。
+ * 最後の1枚と初回購入特典の札は崩さない(ether.js の決まり)。
  */
 export function dismantle(state, id) {
   const check = dismantleCheck(state, id);

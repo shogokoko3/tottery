@@ -15,7 +15,6 @@ import {
   baseSkinId,
 } from "../skins/catalog.js";
 import {
-  claimEarly,
   claimFoilMilestone,
   craft,
   dismantle,
@@ -73,6 +72,7 @@ import {
   TICKET_BUNDLE,
   ETHER_EXCHANGE,
   etherFor,
+  FIRST_PURCHASE_SKIN,
 } from "../iap/catalog.js";
 import { GemShop } from "./gem-shop.jsx";
 import { CardFace } from "./cards.jsx";
@@ -150,7 +150,7 @@ const isBattlePassLocked = (skin, owned) =>
 
 const rarityLabel = (s) =>
   s.rarity === "LIMITED"
-    ? "早期特典"
+    ? "初回購入特典"
     : s.rarity === "SPECIAL"
       ? "特別スキン"
       : s.rarity;
@@ -1074,7 +1074,7 @@ function ForgePanel({
             を運で当てる{top.pulls}回とほぼ同じです。 引いたものを全部崩せば約
             {summary.pullsIfAll}回ぶんになります。
             <br />
-            早期特典・特別スキンは崩すことも作ることもできません。
+            初回購入特典・特別スキンは崩すことも作ることもできません。
             {foilKnown &&
               ` フォイルのダブりはエーテルにならず、「加工」タブで${SHARD_NAME}(R ${SHARD_VALUE.R}・SR ${SHARD_VALUE.SR}・SSR ${SHARD_VALUE.SSR})になります。`}
           </p>
@@ -1250,6 +1250,8 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
   const busy = useRef(false);
   // 店(チケットの購入)。iOS で StoreKit が使えるときだけ出す
   const [shopOk, setShopOk] = useState(false);
+  // 初回購入特典(天馬騎士)をもう持っているか。以前の早期特典で受け取った人も含む
+  const hasPegasus = !!collection.owned[FIRST_PURCHASE_SKIN];
   const [shop, setShop] = useState(null); // null=閉じている / { products }
   // ガチャでフォイルを引いた直後の「ほかのフォイルも」(src/skins/foil-shop.js)。exclude は引いた帯
   const [foilOffer, setFoilOffer] = useState(null);
@@ -1774,6 +1776,9 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
               </button>
             </div>
           </section>
+          {/* 天馬騎士は「はじめてのジェム購入」の特典。以前は無料で受け取れる早期特典だったが、
+              いまは初回購入で配る(src/iap/catalog.js の FIRST_PURCHASE_SKIN)。
+              受け取り済みの人にはその旨を出す(2026-09-18 本人の指摘) */}
           <section className="skins-early">
             <div className="skins-early-cards">
               <CardFace
@@ -1784,32 +1789,27 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
               />
             </div>
             <div>
-              <span className="skins-eyebrow">EARLY ACCESS GIFT</span>
+              <span className="skins-eyebrow">FIRST PURCHASE GIFT</span>
               <h3>白い翼を、あなたに。</h3>
               <p>
                 ペガサスナイト
                 <br />
-                早期特典の「10」用スキンをプレゼント。
+                はじめてのジェム購入でお渡しする「10」用スキン。
                 <br />
-                ここでしか手に入りません。
+                {hasPegasus
+                  ? "受け取り済みです。所持・装備から選べます。"
+                  : "ガチャからは出ません。初回購入だけ、ジェムも2倍になります。"}
               </p>
               <button
                 className="skin-btn"
-                disabled={working || collection.earlyClaimed}
-                onClick={async () => {
-                  if (await run(claimEarly)) {
-                    setTab("collection");
-                    setFilter("LIMITED");
-                    setFinish("all");
-                    setMessage(
-                      "早期特典を受け取りました。カードを選んで装備できます。",
-                    );
-                  }
-                }}
+                disabled={working || hasPegasus || !shopOk}
+                onClick={() => setShop(true)}
               >
-                {collection.earlyClaimed
+                {hasPegasus
                   ? "受け取り済み"
-                  : "早期特典を受け取る"}
+                  : shopOk
+                    ? "ジェムを買う"
+                    : "アプリでジェムを買うと受け取れます"}
               </button>
             </div>
           </section>
@@ -1868,7 +1868,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
               ["R", "R"],
               ["SR", "SR"],
               ["SSR", "SSR"],
-              ["LIMITED", "早期特典"],
+              ["LIMITED", "初回購入特典"],
               ["SPECIAL", "特別スキン"],
             ].map(([id, label]) => (
               <button
@@ -2001,7 +2001,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
             </tbody>
           </table>
           <p className="skins-note">
-            10回召喚も各回独立です。重複時は所持数が増えます。早期特典・特別スキンはガチャから出現しません。
+            10回召喚も各回独立です。重複時は所持数が増えます。初回購入特典・特別スキンはガチャから出現しません。
             通常版とフォイルは別々に所持・装備できます。錬成もキャラ1枚ごとに
             {foilPct}%でフォイルです。
           </p>
@@ -2406,7 +2406,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
               ) : (
                 <p className="skins-locked">
                   {selected.rarity === "LIMITED"
-                    ? "早期特典で獲得"
+                    ? "はじめてのジェム購入で獲得"
                     : selected.foil
                       ? `獲得時に${foilPct}%、または通算${FOIL_MILESTONE}枚でフォイル加工`
                       : "ガチャ・錬成から獲得できます"}
