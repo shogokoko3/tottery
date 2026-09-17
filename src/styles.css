@@ -6078,6 +6078,31 @@ p.hint > span.gem-shop-diag {
 }
 
 /* ガチャでフォイルを引いた直後の「ほかのフォイルも」(foil-offer.jsx) */
+/* フォイルの一覧で「ジェムを買う」へ(2026-09-17 本人の指示。引いた直後は有償ジェムが無いことが多い) */
+.foil-offer-buy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.foil-offer-buy .skins-note {
+  margin: 0;
+  text-align: center;
+}
+.foil-offer-buy .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding-inline: 18px;
+}
+
 .foil-offer-list {
   display: grid;
   gap: 10px;

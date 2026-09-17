@@ -35,7 +35,7 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
 export const packs=(products)=>renderToStaticMarkup(<GemPacks gems={0} gemsPaid={0} gemsFree={0} onMessage={noop} initialProducts={products} />);
 export const tickets=()=>renderToStaticMarkup(<TicketBuy gems={0} onBuy={noop} />);
 export const pass=()=>renderToStaticMarkup(<BattlePassBuy gemsPaid={0} onBuy={noop} />);
-export const foils=(owned)=>renderToStaticMarkup(<FoilOfferPicker offers={foilOffers(normalize({owned}))} gemsPaid={0} onBuy={noop} />);
+export const foils=(owned,paid=0)=>renderToStaticMarkup(<FoilOfferPicker offers={foilOffers(normalize({owned}))} gemsPaid={paid} onBuy={noop} onShop={noop} />);
 export const allFoilIds=()=>ALL_FOIL_SKINS.map((s)=>s.id);`,
     },
     bundle: true,
@@ -91,6 +91,19 @@ export const allFoilIds=()=>ALL_FOIL_SKINS.map((s)=>s.id);`,
   const foil = fs.readFileSync("src/ui/foil-offer.jsx", "utf8");
   const picker = foil.slice(foil.indexOf("export function FoilOfferPicker"), foil.indexOf("export function FoilOfferSheet"));
   assert.ok(!picker.includes("SkinModal"), "FoilOfferPicker は SkinModal を通さない");
+  // フォイルは有償ジェムだけ。引いた直後は残高が無いことが多いので、
+  // **商品を選ぶ前から**ジェムを買う道を出す(本人の指示 2026-09-17)
+  const fo = fs.readFileSync("src/ui/foil-offer.jsx", "utf8");
+  assert.match(fo, /const cheapest = Math\.min\(\.\.\.offers\.map\(\(o\) => o\.price\)\)/, "いちばん安い商品と比べる");
+  assert.match(fo, /const short = gemsPaid < cheapest;/);
+  assert.match(fo, /foil-offer-buy/, "一覧の段階で出す(確認に進む前)");
+  assert.match(fo, /有償ジェムは iPhone・iPad のアプリで買えます/, "買えない端末では理由を出す");
+  assert.ok(fo.indexOf("foil-offer-buy") < fo.indexOf('className="foil-offer-list"'), "一覧より前に置く");
+  const shortHtml = foils({}, 0);
+  assert.ok(shortHtml.includes("foil-offer-buy") && shortHtml.includes("足りません"), "足りないときは知らせる");
+  assert.ok(shortHtml.includes("ジェムを買う"), "買う釦を出す");
+  const richHtml = foils({}, 999999);
+  assert.ok(richHtml.includes("ジェムを買う") && !richHtml.includes("足りません"), "足りていれば控えめに出すだけ");
   const all9 = foils({});
   assert.equal((all9.match(/class="foil-offer"/g) || []).length, 9, "何も持っていなければ商品は9つ(A は出さない)");
   assert.ok(!all9.includes("genie"), "A のフォイルは全部そろえるまで出さない");

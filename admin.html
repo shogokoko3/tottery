@@ -6093,6 +6093,31 @@ p.hint > span.gem-shop-diag {
 }
 
 /* \u30AC\u30C1\u30E3\u3067\u30D5\u30A9\u30A4\u30EB\u3092\u5F15\u3044\u305F\u76F4\u5F8C\u306E\u300C\u307B\u304B\u306E\u30D5\u30A9\u30A4\u30EB\u3082\u300D(foil-offer.jsx) */
+/* \u30D5\u30A9\u30A4\u30EB\u306E\u4E00\u89A7\u3067\u300C\u30B8\u30A7\u30E0\u3092\u8CB7\u3046\u300D\u3078(2026-09-17 \u672C\u4EBA\u306E\u6307\u793A\u3002\u5F15\u3044\u305F\u76F4\u5F8C\u306F\u6709\u511F\u30B8\u30A7\u30E0\u304C\u7121\u3044\u3053\u3068\u304C\u591A\u3044) */
+.foil-offer-buy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.foil-offer-buy .skins-note {
+  margin: 0;
+  text-align: center;
+}
+.foil-offer-buy .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding-inline: 18px;
+}
+
 .foil-offer-list {
   display: grid;
   gap: 10px;

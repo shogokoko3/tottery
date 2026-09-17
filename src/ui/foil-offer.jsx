@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { byId, foilId } from "../skins/catalog.js";
 import { FoilArtwork } from "./foil-artwork.jsx";
+import { GemIcon } from "./gem.jsx";
 import { SkinModal } from "./skin-modal.jsx";
 
 const yen = (n) => n.toLocaleString("ja-JP");
@@ -25,6 +26,10 @@ export function FoilOfferPicker({
   const [picked, setPicked] = useState(null); // 確認中の商品
   if (!offers.length)
     return <p className="skins-note">いま買えるフォイルはありません。</p>;
+  // フォイルは有償ジェムだけ。引いた直後は残高が無いことが多いので、
+  // **商品を選ぶ前から**ジェムを買う道を出す(本人の指示 2026-09-17)
+  const cheapest = Math.min(...offers.map((o) => o.price));
+  const short = gemsPaid < cheapest;
   return (
     <>
       {picked ? (
@@ -79,7 +84,29 @@ export function FoilOfferPicker({
           )}
         </div>
       ) : (
-        <div className="foil-offer-list">
+        <>
+          {(short || onShop) && (
+            <div className="foil-offer-buy">
+              {short && (
+                <p className="skins-note">
+                  有償ジェムが <b>{yen(cheapest - gemsPaid)}</b> 足りません
+                  {onShop
+                    ? "。買うと、そのまま続けられます。"
+                    : "。有償ジェムは iPhone・iPad のアプリで買えます。"}
+                </p>
+              )}
+              {onShop && (
+                <button
+                  className={`btn ${short ? "btn-primary" : "btn-ghost btn-small"}`}
+                  disabled={working}
+                  onClick={onShop}
+                >
+                  <GemIcon size={18} /> ジェムを買う
+                </button>
+              )}
+            </div>
+          )}
+          <div className="foil-offer-list">
           {offers.map((o) => (
             <button
               key={o.product.id}
@@ -113,7 +140,8 @@ export function FoilOfferPicker({
               </span>
             </button>
           ))}
-        </div>
+          </div>
+        </>
       )}
       {message && <p className="skins-message" role="status">{message}</p>}
     </>
