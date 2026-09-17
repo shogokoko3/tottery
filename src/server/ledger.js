@@ -43,6 +43,12 @@ export class Ledger {
     sql(
       "CREATE TABLE IF NOT EXISTS claims (uid TEXT, id TEXT, season TEXT, claimed INTEGER, PRIMARY KEY(uid,id))",
     );
+    // その対局で実際に効いたフォイル(席ごと)。盤面エリアはフォイルの王で立つのに、
+    // 対局では所持が検証されていない(2026-09-18)。あとで照らすための材料を残す。
+    // この段階では何も拒まない。uid ごとに消せるよう uid も持つ(5.1.1(v))
+    sql(
+      "CREATE TABLE IF NOT EXISTS match_foils (id TEXT, seat INTEGER, uid TEXT, skinId TEXT, at INTEGER, PRIMARY KEY(id, seat, skinId))",
+    );
     sql(
       "CREATE TABLE IF NOT EXISTS appearance (uid TEXT PRIMARY KEY, back TEXT, frame TEXT)",
     );
@@ -147,6 +153,16 @@ export class Ledger {
       match.winner,
       now,
     );
+    for (const [seat, uid] of [match.host, match.guest].entries())
+      for (const skinId of (match.foils && match.foils[seat]) || [])
+        this.sql(
+          "INSERT OR IGNORE INTO match_foils VALUES (?,?,?,?,?)",
+          match.id,
+          seat,
+          uid,
+          skinId,
+          now,
+        );
     for (const p of this.list(season.id)) {
       if (p.place && (!p.best || p.place < p.best))
         this.sql(
@@ -189,6 +205,8 @@ export class Ledger {
       this.sql(`DELETE FROM ${table} WHERE uid=?`, uid);
     this.sql("UPDATE matches SET host=? WHERE host=?", FORGOTTEN, uid);
     this.sql("UPDATE matches SET guest=? WHERE guest=?", FORGOTTEN, uid);
+    // 対局ごとの装備も、記録は残して本人の目印だけ外す(matches と同じ扱い)
+    this.sql("UPDATE match_foils SET uid=? WHERE uid=?", FORGOTTEN, uid);
     return { ok: true };
   }
   adminSummary(now) {
