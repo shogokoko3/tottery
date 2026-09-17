@@ -687,10 +687,10 @@ export function SettingsModal({ onClose }) {
           onEditTitle={() => setEditing("title")}
         />
 
-        <AppearanceSettings />
         <div className="settings-list">
           <HomeCustomizationButton settings />
         </div>
+        <AppearanceSettings />
         <p className="settings-head">対局中の演出</p>
         <BattleMotionSettings />
         <p className="settings-head">音</p>

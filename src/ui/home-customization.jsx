@@ -399,7 +399,7 @@ export function HomeCustomizationButton({ settings = false }) {
       >
         <span>
           {settings
-            ? "ホームの装飾"
+            ? "ホームの着せ替え"
             : theme
               ? `${theme.label}の領域`
               : "あなたのホーム"}

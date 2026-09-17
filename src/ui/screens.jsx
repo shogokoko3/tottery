@@ -1,5 +1,4 @@
 import {
-  HomeCustomizationButton,
   HomeRealmDecoration,
   HomeRealmPortrait,
   HomeFrameCorners,
@@ -300,10 +299,10 @@ export function HomeScreen({ onStart }) {
 /**
  * ホームの一番上に出る、自分の札。
  *
- * 「いまの自分」(名前・称号・レベル・持っているチケット)をひと目で出す。
+ * 「いまの自分」(名前・称号・レベル)をひと目で出す。残高はその下のバーへ。
  * 押すと設定が開く。名前やアイコンを変えるのはそこ。
  */
-function HomeSelf({ profile, tickets }) {
+function HomeSelf({ profile }) {
   const { season } = useCollection();
   const openSettings = useOpenSettings();
   const progress = levelProgress(profile);
@@ -326,10 +325,6 @@ function HomeSelf({ profile, tickets }) {
       <span className="home-self-right">
         <span className="home-lv">
           Lv <b>{progress.level}</b>
-        </span>
-        <span className="home-tickets">
-          <Ticket size={13} />
-          {tickets}
         </span>
         <ArrowRight size={14} className="home-self-more" />
       </span>
@@ -359,9 +354,8 @@ function HomeTile({ tone, icon, label, note, badge, onClick, frameTheme }) {
  * ホーム。タイトルの「ゲームスタート」の次に出る。
  *
  * 片手で持った電話で見るところなので、並べ方に軽重をつけた。
- * 一番やってほしい「対戦する」を大きく、次に「チュートリアル」、
- * あとは四角い入り口を2つずつ。ランキングは下に控えめに置く。
- * 7つを同じ帯で並べると、どれも同じ重さに見えて選べなくなる。
+ * 「対戦する」を大きく、残りの6つの入り口は2列でまとめる。
+ * 風景込みのイラストを残し、背の低い電話でも操作を押し出さない。
  */
 export function MenuScreen({
   onPlay,
@@ -405,19 +399,17 @@ export function MenuScreen({
   return (
     <div className={`home-wrap${theme ? " has-home-theme" : ""}`} data-home-area={themeId} style={homeThemeStyle(theme)}>
       <HomeRealmDecoration theme={theme} />
-      <HomeCustomizationButton />
       {/* その日のぶんがまだなら、ここに着いたときに札が出る */}
       <LoginBonus />
 
-      {/* 運営からのお知らせ。読み物なので入り口は細く、一番上に置く */}
-      <button className="home-news" onClick={onLetters}>
+      <div className="home-account-row">
+      <HomeSelf profile={profile} />
+      <button className="home-news" onClick={onLetters} aria-label={`運営からのお知らせ${unread > 0 ? ` 未読${unread}件` : ""}`}>
         <Mail size={15} />
-        運営からのお知らせ
-        {unread > 0 && <span className="home-news-count">{unread}</span>}
-        <ArrowRight size={13} className="home-news-arrow" />
+        <span>お知らせ</span>
+        {unread > 0 && <span className="home-news-count">{unread > 99 ? "99+" : unread}</span>}
       </button>
-
-      <HomeSelf profile={profile} tickets={collection.tickets} />
+      </div>
       <button className="home-resource-bar" onClick={() => (shopOk ? setShop(true) : onSkins())} aria-label={shopOk ? "ジェムを買う・確認" : "ジェムとチケットを確認"}><GemAmount amount={collection.gems || 0} size={26} /><span><Ticket size={16} /> {collection.tickets}枚</span>{shopOk ? <span className="home-resource-buy">ジェムを買う</span> : <ArrowRight size={14}/>}</button>
       {shopMsg && <p className="mission-message" role="status" aria-live="polite">{shopMsg}</p>}
 
@@ -434,6 +426,7 @@ export function MenuScreen({
         <ArrowRight size={20} className="home-hero-arrow" />
       </button>
 
+      <div className="home-grid">
       <button className="home-wide" onClick={onTutorial}>
         <HomeFrameCorners theme={theme} small />
         <span className="home-wide-icon">
@@ -446,12 +439,11 @@ export function MenuScreen({
               <span className="home-wide-pill">おすすめ</span>
             )}
           </b>
-          <small>{nudge ? nudge.text : "ルールとカードの効果を学ぶ"}</small>
+          <small>{nudge ? nudge.text : "ルールと駒の効果"}</small>
         </span>
         <ArrowRight size={16} className="home-wide-arrow" />
       </button>
 
-      <div className="home-grid">
         <HomeTile
           frameTheme={theme}
           tone="tsume"
@@ -502,13 +494,13 @@ export function MenuScreen({
           note="英雄を召喚する"
           onClick={onSkins}
         />
-      </div>
-
-      <button className="home-quiet" onClick={onRanking}>
-        <Crown size={16} />
-        ランキングを見る
-        <ArrowRight size={14} />
+      <button className="home-quiet home-tile" onClick={onRanking} aria-label="ランキングを見る">
+        <HomeFrameCorners theme={theme} small />
+        <span className="home-tile-icon"><Crown size={26} /></span>
+        <b>ランキング</b>
+        <small>今シーズンの順位</small>
       </button>
+      </div>
       {shop && (
         <GemShop
           gems={collection.gems || 0}
