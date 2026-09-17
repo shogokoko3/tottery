@@ -72,6 +72,12 @@ export class Wallet {
     sql("CREATE TABLE IF NOT EXISTS migrations (uid TEXT PRIMARY KEY, tickets INTEGER, at INTEGER)");
     // 端末の所持一覧の写し。既存ゲームと同じ端末申告モデルであり、取得の独立した証明ではない。
     sql("CREATE TABLE IF NOT EXISTS collection_skins (uid TEXT NOT NULL, skinId TEXT NOT NULL, syncedAt INTEGER, PRIMARY KEY(uid, skinId))");
+    // 「その uid で、その札を初めて見た日」。**追記専用**で、減っても消さない。
+    // 盤面エリアはフォイルの王で立つのに、対局では所持が誰にも検証されていない(2026-09-18)。
+    // 検証を始めるには、まず「正しく遊んで手に入れた」記録が要る。これはその土台で、
+    // いまは**何も拒まない**(貯めるだけ)。collection_skins は「いまの所持」の写しで役割が違う
+    // (フォイルの購入条件が読む)ので、そちらは今までどおり同期のたびに入れ直す。
+    sql("CREATE TABLE IF NOT EXISTS skin_first_seen (uid TEXT NOT NULL, skinId TEXT NOT NULL, at INTEGER, PRIMARY KEY(uid, skinId))");
     // 有償購入した札は端末の所持同期とは別に保持し、端末消失後にも復元できる。
     sql("CREATE TABLE IF NOT EXISTS foil_purchases (uid TEXT NOT NULL, skinId TEXT NOT NULL, eventId TEXT NOT NULL, at INTEGER, PRIMARY KEY(uid, skinId))");
     // ガチャの履歴(運営が見る)。1回引くごとに1行。端末が結果を申告する
@@ -144,6 +150,8 @@ export class Wallet {
     for (const id of ownedIds) {
       if (skinById(id).secret) continue;
       this.sql("INSERT INTO collection_skins (uid, skinId, syncedAt) VALUES (?,?,?)", uid, id, now);
+      // 初めて見た日は上書きしない。崩して減っても残す(「いつ持っていたか」の記録)
+      this.sql("INSERT OR IGNORE INTO skin_first_seen (uid, skinId, at) VALUES (?,?,?)", uid, id, now);
     }
     return this.summary(uid, now);
   }
@@ -483,6 +491,9 @@ export class Wallet {
   forget(uid) {
     this.sql("DELETE FROM profile_backups WHERE uid=?", uid);
     this.sql("DELETE FROM collection_skins WHERE uid=?", uid);
+    // 本人と結びつく記録なので、削除の求め(5.1.1(v))では消す。
+    // 消したあとは「いつから持っているか分からない人」になる = 検証は通す側に倒す
+    this.sql("DELETE FROM skin_first_seen WHERE uid=?", uid);
     this.sql("DELETE FROM foil_purchases WHERE uid=?", uid);
     this.sql("DELETE FROM iap_diag WHERE uid=?", uid);
     this.sql("DELETE FROM pass_grants WHERE uid=?", uid);

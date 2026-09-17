@@ -69,6 +69,7 @@ import {
   ROOM_CODE_LENGTH,
 } from "../net/room-code.js";
 import { nearby, nearbyAvailable } from "../net/nearby.js";
+import { noteCollection } from "../net/wallet.js";
 import { SEASON_API_ORIGIN } from "../net/season.js";
 import {
   loadOnlineSize,
@@ -1845,6 +1846,10 @@ function TotteryScreens() {
       seasonRequest("summary").catch(() => {});
       // 引き継ぎの控えを預け直す(本人確認済みのときだけ。間が空いていなければ何もしない)
       backupIfDue().catch(() => {});
+      // いま持っている札をサーバーへ知らせる(2026-09-18)。
+      // 対局では装備の所持が誰にも検証されていないので、まず「正しく遊んで手に入れた」記録を貯める。
+      // いまは何も拒まず、遊びも止めない(noteCollection は投げない)
+      noteCollection();
       // 使用頻度のミッション用に、1日1回だけ数える
       touchDay();
       if (gone) return;

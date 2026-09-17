@@ -62,6 +62,7 @@ import {
   syncWallet,
   migrateOnce,
   logPull,
+  noteCollection,
 } from "../net/wallet.js";
 import { shopAvailable, flushPurchases } from "../net/iap.js";
 import { adsAvailable, watchAdForTicket } from "../net/ads.js";
@@ -1404,6 +1405,8 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
         setAcquisitionMode(reduce || collection.summonMotion === "skip" ? "area" : "summon");
         const next = await updateCollection((s) => pull(s, amount, undefined, { free: true }));
         if (next?.pending?.results) logPull(next.pending.results);
+        // 引いた札をサーバーの記録にも残す(所持の検証の土台。best-effort)
+        noteCollection();
       } catch (e) {
         setAcquisitionMode(null);
         setMessage(
@@ -1417,6 +1420,8 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
     }
     const next = await acquire((s) => pull(s, amount), "summon");
     if (next?.pending?.results) logPull(next.pending.results);
+    // 引いた札をサーバーの記録にも残す(所持の検証の土台。best-effort)
+    noteCollection();
   };
   const equipSkin = async (skin) => {
     if (await run((s) => equip(s, skin.id)))

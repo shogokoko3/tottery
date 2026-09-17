@@ -189,6 +189,27 @@ export async function buyFoil(product, skins) {
   return mirror(await walletRequest("foil", { product, skins }));
 }
 
+/**
+ * 所持一覧を、失敗しても黙って送る(2026-09-18)。
+ *
+ * 対局では装備の所持が誰にも検証されていない。検証を始めるには「正しく遊んで手に入れた」
+ * 記録がサーバーに要るので、まずは貯めるだけ。いまは**誰も拒まない**。
+ * 1枚も持っていないときは送らない — 送るとサーバーの写し(collection_skins)が空で入れ直され、
+ * フォイルの購入条件(ownsAllButSecret)が壊れる。
+ */
+export async function noteCollection() {
+  if (!WALLET_SERVER) return null;
+  try {
+    const owned = getCollection().owned || {};
+    if (!Object.values(owned).some((n) => Number.isSafeInteger(n) && n > 0))
+      return null;
+    return await syncCollection();
+  } catch {
+    // 記録は best-effort。遊びを止めない
+    return null;
+  }
+}
+
 /** 現行の端末所持一覧を同期。secretFoilEligibleは保存した一覧の再照合結果。 */
 export async function syncCollection() {
   const ownedIds = Object.entries(getCollection().owned)
