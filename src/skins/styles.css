@@ -786,9 +786,12 @@
 }
 .skins-detail-portrait {
   width: 100%;
-  height: 100%;
+  height: min(620px, 75svh);
   max-height: 620px;
-  object-fit: cover;
+  align-self: start;
+  object-fit: contain;
+  object-position: 50% 0%;
+  background: #08131f;
 }
 .skins-detail-info {
   padding: 50px 25px 25px;
@@ -1184,8 +1187,7 @@
     grid-template-columns: 1fr;
   }
   .skins-detail-portrait {
-    height: 280px;
-    object-position: center 28%;
+    height: min(480px, 65svh);
   }
   .skins-detail-info {
     padding: 20px;
@@ -2152,7 +2154,12 @@
 }
 .skins-detail-portrait.foil-artwork {
   display: block;
-  min-height: 360px;
+  min-height: 0;
+}
+/* Keep the full portrait visible for every character and align foil light to it. */
+.skins-detail-portrait.foil-artwork > img {
+  object-fit: contain;
+  object-position: 50% 0%;
 }
 .skins-variant-switch {
   display: flex;
@@ -2352,13 +2359,6 @@
     right: 5px;
     padding: 2px 4px;
     font-size: 8px;
-  }
-  .skins-detail-portrait.foil-artwork {
-    min-height: 0;
-    height: 280px;
-  }
-  .skins-detail-portrait.foil-artwork img {
-    object-position: center 28%;
   }
   .skins-banner-copy .skins-banner-foil {
     font-size: 10px;
