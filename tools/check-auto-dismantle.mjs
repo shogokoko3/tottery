@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { normalize, pull, dismantleResults, dismantleAll } from "../src/skins/collection.js";
+import {
+  normalize,
+  pull,
+  dismantleResults,
+  dismantleAll,
+  DISMANTLE_RARITIES,
+  DEFAULT_DISMANTLE_RARITIES,
+} from "../src/skins/collection.js";
 import { byId, foilId, POOL } from "../src/skins/catalog.js";
 import { dustOf, spareOf, isKeepsake } from "../src/skins/ether.js";
 
@@ -13,6 +20,23 @@ assert.equal(normalize(null).autoDismantle, false, "既定は自動で崩さな�
 assert.equal(normalize({ autoDismantle: true }).autoDismantle, true);
 assert.equal(normalize({ autoDismantle: "yes" }).autoDismantle, false, "真偽以外は切");
 assert.equal(normalize(JSON.parse(JSON.stringify(normalize({ autoDismantle: true })))).autoDismantle, true, "保存して読み直しても残る");
+
+// どのレア度を崩すかを選べる(2026-09-17 本人の指示)。既定は R と SR で、SSR は守る
+assert.deepEqual(DISMANTLE_RARITIES, ["R", "SR", "SSR"]);
+assert.deepEqual(DEFAULT_DISMANTLE_RARITIES, ["R", "SR"], "SSR は既定で崩さない");
+assert.deepEqual(normalize(null).dismantleRarities, ["R", "SR"]);
+assert.deepEqual(normalize({ dismantleRarities: ["SSR", "bogus", "R"] }).dismantleRarities, ["R", "SSR"], "知らない値は落とし、並びはそろえる");
+assert.deepEqual(normalize({ dismantleRarities: [] }).dismantleRarities, [], "全部外せる");
+assert.deepEqual(normalize({ dismantleRarities: "R" }).dismantleRarities, ["R", "SR"], "配列でなければ既定");
+{
+  const ssr = POOL.find((s) => s.rarity === "SSR");
+  const s = normalize({ owned: { [r.id]: 2, [ssr.id]: 2 } });
+  const res = [{ id: r.id }, { id: ssr.id }];
+  assert.deepEqual(dismantleResults(s, res, ["R", "SR"]).rows.map((x) => x.id), [r.id], "既定では SSR を崩さない");
+  assert.equal(dismantleResults(s, res, ["R", "SR", "SSR"]).rows.length, 2, "SSR を入れれば崩す");
+  assert.equal(dismantleResults(s, res, []).gain, 0, "空なら何も崩さない");
+  assert.equal(dismantleResults(s, res).rows.length, 2, "指定なしは今までどおり全部");
+}
 
 // 何も無ければ何も起きない
 {
@@ -83,8 +107,11 @@ assert.equal(normalize(JSON.parse(JSON.stringify(normalize({ autoDismantle: true
 const ui = fs.readFileSync("src/ui/skins.jsx", "utf8");
 assert.match(ui, /function ResultDismantle\(/, "結果画面の欄");
 assert.match(ui, /collection\.pending\?\.results && \(\s*<ResultDismantle/, "ガチャの結果にだけ出す(錬成・交換・加工には出さない)");
-assert.match(ui, /dismantleResults\(s, results\)\.state/, "崩すのは台帳の更新の中で行う");
+assert.match(ui, /dismantleResults\(s, results, s\.dismantleRarities\)\.state/, "崩すのは台帳の更新の中で行う");
 assert.match(ui, /autoDismantle: !s\.autoDismantle/, "自動の入り切りを覚える");
+assert.match(ui, /dismantleResults\(s, results, s\.dismantleRarities\)\.state/, "崩すのは選んだレア度だけ");
+assert.match(ui, /dismantleRarities: s\.dismantleRarities\.includes\(rarity\)/, "レア度の入り切りを覚える");
+assert.match(ui, /DISMANTLE_RARITIES\.map\(\(r\) => \(/, "レア度の選択を結果画面に出す");
 assert.match(ui, /if \(fired\.current \|\| !auto \|\| preview\.gain <= 0\) return;/, "自動は開いた時点で一度だけ");
 assert.doesNotMatch(ui, /dismantleAll\(c\)[\s\S]{0,80}autoDismantle/, "自動で一括分解はしない");
 const css = fs.readFileSync("src/skins/styles.css", "utf8");

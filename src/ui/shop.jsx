@@ -20,7 +20,7 @@ import { BattlePassBuy } from "./battlepass-buy.jsx";
 import { buyFoilFor, buyPassFor, buyTicketsFor } from "./buy.js";
 import { shopAvailable } from "../net/iap.js";
 import { syncWallet } from "../net/wallet.js";
-import { useCollection } from "../skins/store.js";
+import { updateCollection, useCollection } from "../skins/store.js";
 import { useBattlePassUnlocked } from "./battlepass-access.js";
 import { FREE_GACHA, foilRevealed } from "../skins/collection.js";
 import { foilOffers } from "../skins/foil-shop.js";
@@ -155,6 +155,13 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
               <TicketBuy
                 gems={gems}
                 working={working}
+                confirm={collection.ticketConfirm !== false}
+                onToggleConfirm={() =>
+                  updateCollection((c) => ({
+                    ...c,
+                    ticketConfirm: c.ticketConfirm === false,
+                  })).catch(() => {})
+                }
                 onBuy={(n) => run(() => buyTicketsFor(n))}
                 onShop={shopOk ? openGems : null}
                 message={message}

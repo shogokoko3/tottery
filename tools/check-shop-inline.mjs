@@ -104,6 +104,13 @@ export const allFoilIds=()=>ALL_FOIL_SKINS.map((s)=>s.id);`,
     assert.ok(six.includes(text), `ジェムの欄に「${text}」`);
 
   // 4. チケットとバトルパスの値段
+  // 確認は切れる。切ると押した瞬間に買う(本人の指示 2026-09-17)
+  const tb = fs.readFileSync("src/ui/ticket-buy.jsx", "utf8");
+  assert.match(tb, /confirm \? setPicked\(lot\) : onBuy\(lot\.tickets\)/, "確認を切ると押した瞬間に買う");
+  assert.match(tb, /買う前に確認する/, "切り替えはチケットの欄に出す");
+  assert.match(tb, /フォイルとバトルパスの確認は外せません/, "有償ジェム限定の確認は外せないと明記");
+  for (const f of ["src/ui/foil-offer.jsx", "src/ui/battlepass-buy.jsx"])
+    assert.ok(!/onToggleConfirm/.test(fs.readFileSync(f, "utf8")), `${f}: 確認は外せない`);
   const t = tickets();
   assert.ok(t.includes("チケット1枚") && t.includes(`チケット${TICKET_BUNDLE.tickets}枚`), "1枚と10枚");
   assert.ok(t.includes(GEM_PER_TICKET.toLocaleString("ja-JP")) && t.includes(TICKET_BUNDLE.gems.toLocaleString("ja-JP")), "値段はカタログから");
@@ -144,7 +151,8 @@ for (const f of ["src/ui/ticket-buy.jsx", "src/ui/battlepass-buy.jsx", "src/ui/f
 // 7. それぞれの画面の購入UIは残す(「飛んで買うのをやめる」であって「他では買えなくする」ではない)
 const skins = fs.readFileSync("src/ui/skins.jsx", "utf8");
 assert.ok(skins.includes("<FoilOfferSheet"), "ガチャ直後の勧めは残す");
-assert.ok(/buyTickets\(1\)/.test(skins) && /buyTickets\(10\)/.test(skins), "ガチャ画面のチケット釦は残す");
+assert.ok(/<TicketBuy\s+layout="grid"/.test(skins), "ガチャ画面のチケット釦もショップと同じ部品(買う前に確認する)");
+assert.ok(/ticketConfirm: s\.ticketConfirm === false/.test(skins), "確認の入り切りを覚える");
 assert.ok(fs.readFileSync("src/ui/battlepass.jsx", "utf8").includes("buyPassFor"), "バトルパス画面の購入は残す");
 
 console.log("ショップでその場に並ぶ: 4欄は閉じて始まる・portal無し・決済は buy.js 1本・二段確認・Apple の文言・元の画面も残す: OK");

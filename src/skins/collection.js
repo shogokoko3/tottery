@@ -174,6 +174,15 @@ export function normalize(raw) {
     motion: ["short", "off"].includes(value.motion) ? "off" : "full",
     // ガチャ結果のダブりを自動で崩すか(2026-09-17 本人の指示)。既定は切。結果画面で入れる
     autoDismantle: value.autoDismantle === true,
+    // チケットを買う前に確認するか(2026-09-17 本人の指示)。既定は確認する。
+    // 有償ジェムだけで買うもの(フォイル・バトルパス)の確認は外せない
+    ticketConfirm: value.ticketConfirm !== false,
+    // そのうち**どのレア度を崩すか**(2026-09-17 本人の指示で選べるようにした)。
+    // 既定は R と SR。SSR は自分で入れたときだけ崩す(黙って消えると困るため)。
+    // 空にもできる(そのときは何も崩さない)。手で押すときも自動のときも、この選択に従う
+    dismantleRarities: Array.isArray(value.dismantleRarities)
+      ? DISMANTLE_RARITIES.filter((r) => value.dismantleRarities.includes(r))
+      : [...DEFAULT_DISMANTLE_RARITIES],
     // 召喚(ガチャ)の演出。"full" か "skip"。召喚ボタンの横で変える(2026-09-17 本人の指示で対局の演出と分けた)。
     // 以前は「短縮」「なし」がガチャも飛ばしていたので、その保存には skip を引き継ぐ
     summonMotion:
@@ -367,6 +376,11 @@ export function exchangeFoil(state, baseId) {
   });
 }
 
+/** 崩す対象に選べるレア度。記念の札(LIMITED・SPECIAL)はそもそも崩せないので入れない */
+export const DISMANTLE_RARITIES = Object.freeze(["R", "SR", "SSR"]);
+/** 既定で崩すレア度。SSR は守る(本人の指示 2026-09-17) */
+export const DEFAULT_DISMANTLE_RARITIES = Object.freeze(["R", "SR"]);
+
 /**
  * ガチャ結果のうち、**その抽選で来たダブりだけ**を崩してエーテルにする(本人の指示 2026-09-17)。
  *
@@ -379,7 +393,8 @@ export function exchangeFoil(state, baseId) {
  *
  * 状態を変えずに下見にも使える。返り値の state を捨てれば、gain と rows だけが得られる。
  */
-export function dismantleResults(state, results) {
+export function dismantleResults(state, results, rarities = null) {
+  const only = Array.isArray(rarities) ? new Set(rarities) : null;
   const pulled = {};
   for (const r of Array.isArray(results) ? results : [])
     if (r && typeof r.id === "string") pulled[r.id] = (pulled[r.id] || 0) + 1;
@@ -387,6 +402,8 @@ export function dismantleResults(state, results) {
   let gain = 0;
   const rows = [];
   for (const id of Object.keys(pulled)) {
+    // 選んだレア度だけを崩す。選んでいないものは「重複」の印が付いていても残す
+    if (only && !only.has(byId(id)?.rarity)) continue;
     let n = 0;
     // この抽選で来た枚数を上限に、崩せるだけ崩す
     while (n < pulled[id]) {

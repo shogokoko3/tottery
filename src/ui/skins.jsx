@@ -21,6 +21,7 @@ import {
   dismantle,
   dismantleAll,
   dismantleResults,
+  DISMANTLE_RARITIES,
   equip,
   exchangeFoil,
   FOIL_MILESTONE,
@@ -83,6 +84,7 @@ import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { FoilOfferSheet } from "./foil-offer.jsx";
 import { buyFoilFor, buyTicketsFor } from "./buy.js";
+import { TicketBuy } from "./ticket-buy.jsx";
 import { foilOffers, bandOf, skinVisibleInCollection } from "../skins/foil-shop.js";
 import { addEther } from "../skins/collection.js";
 import { buyEther } from "../net/wallet.js";
@@ -1133,10 +1135,18 @@ function ForgePanel({
  * 「次から自動で崩す」を入れておくと、次の結果からは開いた時点で崩して、何を崩したかを出す。
  * 崩すのは取り消せないので、自動を入れるまでは必ず押してもらう(選ぶ→確認→確定の決めに合わせる)。
  */
-function ResultDismantle({ collection, results, working, onRun, onToggleAuto }) {
+function ResultDismantle({
+  collection,
+  results,
+  working,
+  onRun,
+  onToggleAuto,
+  onToggleRarity,
+}) {
+  const rarities = collection.dismantleRarities || [];
   const preview = useMemo(
-    () => dismantleResults(collection, results),
-    [collection, results],
+    () => dismantleResults(collection, results, rarities),
+    [collection, results, rarities],
   );
   const [done, setDone] = useState(null);
   const auto = collection.autoDismantle === true;
@@ -1149,14 +1159,22 @@ function ResultDismantle({ collection, results, working, onRun, onToggleAuto }) 
     // 開いた瞬間の下見だけを見る(崩したあとに走り直さない)
   }, []);
   const shown = done || (preview.gain > 0 ? preview : null);
-  if (!shown) return null;
-  const sheets = shown.rows.reduce((n, r) => n + r.count, 0);
-  const label = shown.rows
-    .map((r) => `${byId(r.id).rank} ${byId(r.id).name}×${r.count}`)
-    .join("・");
+  // 崩せるものが無くても、何を崩すかの選択は出す(SSR を入れれば崩せることが分かるように)
+  const anyDup = results.some(
+    (r) => (collection.owned[r.id] || 0) > 1 && DISMANTLE_RARITIES.includes(byId(r.id)?.rarity),
+  );
+  if (!shown && !anyDup) return null;
+  const sheets = shown ? shown.rows.reduce((n, r) => n + r.count, 0) : 0;
+  const label = shown
+    ? shown.rows.map((r) => `${byId(r.id).rank} ${byId(r.id).name}×${r.count}`).join("・")
+    : "";
   return (
     <section className="skins-result-dismantle" aria-label="重複した札を崩す">
-      {done ? (
+      {!shown ? (
+        <p className="skins-note">
+          いま選んでいるレア度に、崩せる重複はありません。
+        </p>
+      ) : done ? (
         <p className="skins-note">
           重複した{sheets}枚を崩して{" "}
           <b>
@@ -1183,6 +1201,20 @@ function ResultDismantle({ collection, results, working, onRun, onToggleAuto }) 
           </button>
         </>
       )}
+      <div className="skins-dismantle-rarities" role="group" aria-label="崩すレア度">
+        <span>崩すのは</span>
+        {DISMANTLE_RARITIES.map((r) => (
+          <button
+            key={r}
+            className={`rank-toggle ${rarities.includes(r) ? "active" : ""}`}
+            aria-pressed={rarities.includes(r)}
+            disabled={working}
+            onClick={() => onToggleRarity(r)}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
       <label className="skins-auto-dismantle">
         <input
           type="checkbox"
@@ -1391,13 +1423,28 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
   /** ガチャ結果のダブりを崩す。下見(preview)と同じものを台帳へ書く */
   const dismantlePulled = async (preview) => {
     if (!preview || preview.gain <= 0) return null;
-    const next = await run((s) => dismantleResults(s, results).state);
+    const next = await run(
+      (s) => dismantleResults(s, results, s.dismantleRarities).state,
+    );
     if (!next) return null;
     return { gain: preview.gain, rows: preview.rows };
   };
   /** 「次から自動で崩す」の入り切り */
   const toggleAutoDismantle = async () => {
     await run((s) => ({ ...s, autoDismantle: !s.autoDismantle }));
+  };
+  /** 崩すレア度の入り切り */
+  const toggleDismantleRarity = async (rarity) => {
+    await run((s) => ({
+      ...s,
+      dismantleRarities: s.dismantleRarities.includes(rarity)
+        ? s.dismantleRarities.filter((r) => r !== rarity)
+        : [...s.dismantleRarities, rarity],
+    }));
+  };
+  /** 「買う前に確認する」の入り切り(チケットだけ) */
+  const toggleTicketConfirm = async () => {
+    await run((s) => ({ ...s, ticketConfirm: s.ticketConfirm === false }));
   };
   const closeResults = async () => {
     setAcquisitionMode(null);
@@ -1592,24 +1639,16 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
               </button>
             </div>
             {WALLET_SERVER && !FREE_GACHA && (
-              <div className="skins-pull-buttons">
-                <button
-                  className="skin-btn"
-                  disabled={buying || working}
-                  onClick={() => buyTickets(1)}
-                >
-                  チケット1枚
-                  <GemAmount amount={GEM_PER_TICKET} size={20} />
-                </button>
-                <button
-                  className="skin-btn"
-                  disabled={buying || working}
-                  onClick={() => buyTickets(10)}
-                >
-                  チケット{TICKET_BUNDLE.tickets}枚
-                  <GemAmount amount={TICKET_BUNDLE.gems} size={20} />
-                </button>
-              </div>
+              /* ショップと同じ部品。買う前に確認し、確認は切れる(本人の指示 2026-09-17) */
+              <TicketBuy
+                layout="grid"
+                gems={collection.gems || 0}
+                working={buying || working}
+                confirm={collection.ticketConfirm !== false}
+                onToggleConfirm={toggleTicketConfirm}
+                onBuy={buyTickets}
+                onShop={shopOk ? () => setShop(true) : null}
+              />
             )}
             {WALLET_SERVER && (shopOk || (adsOk && adsLeft !== 0)) && (
               <div className="skins-shop-row">
@@ -2092,6 +2131,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                 working={working}
                 onRun={dismantlePulled}
                 onToggleAuto={toggleAutoDismantle}
+                onToggleRarity={toggleDismantleRarity}
               />
             )}
             <p className="skins-message" role="status">

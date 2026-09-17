@@ -8,12 +8,24 @@ import { GEM_PER_TICKET, TICKET_BUNDLE } from "../iap/catalog.js";
 
 const yen = (n) => Number(n || 0).toLocaleString("ja-JP");
 
-export function TicketBuy({ gems = 0, working = false, onBuy, onShop, message = "" }) {
+export function TicketBuy({
+  gems = 0,
+  working = false,
+  onBuy,
+  onShop,
+  message = "",
+  // 買う前に確認するか。切ると押した瞬間に買う(本人の指示 2026-09-17)
+  confirm = true,
+  onToggleConfirm = null,
+  // "list"(ショップ) か "grid"(ガチャ画面の2列)
+  layout = "list",
+}) {
   const [picked, setPicked] = useState(null); // 確認中の枚数
   const lots = [
     { tickets: 1, gems: GEM_PER_TICKET },
     { tickets: TICKET_BUNDLE.tickets, gems: TICKET_BUNDLE.gems },
   ];
+  const shortFor = (lot) => gems < lot.gems;
   if (picked) {
     const short = gems < picked.gems;
     return (
@@ -52,13 +64,13 @@ export function TicketBuy({ gems = 0, working = false, onBuy, onShop, message = 
   }
   return (
     <>
-      <div className="shop-list">
+      <div className={layout === "grid" ? "skins-pull-buttons" : "shop-list"}>
         {lots.map((lot) => (
           <button
             key={lot.tickets}
-            className="skin-btn shop-item"
+            className={layout === "grid" ? "skin-btn" : "skin-btn shop-item"}
             disabled={working}
-            onClick={() => setPicked(lot)}
+            onClick={() => (confirm ? setPicked(lot) : onBuy(lot.tickets))}
             aria-label={`チケット${lot.tickets}枚 ジェム ${yen(lot.gems)}`}
           >
             <span>チケット{lot.tickets}枚</span>
@@ -66,9 +78,25 @@ export function TicketBuy({ gems = 0, working = false, onBuy, onShop, message = 
           </button>
         ))}
       </div>
-      <p className="hint">
-        使うときは無償ジェムから先に減ります。チケットはガチャ・装備の画面で使えます。
-      </p>
+      {onToggleConfirm && (
+        <label className="ticket-confirm-toggle">
+          <input
+            type="checkbox"
+            checked={confirm}
+            disabled={working}
+            onChange={onToggleConfirm}
+          />
+          買う前に確認する
+          <small>
+            切ると、押した瞬間にジェムで買います。フォイルとバトルパスの確認は外せません
+          </small>
+        </label>
+      )}
+      {layout !== "grid" && (
+        <p className="hint">
+          使うときは無償ジェムから先に減ります。チケットはガチャ・装備の画面で使えます。
+        </p>
+      )}
       {message && (
         <p className="skins-message" role="status">
           {message}

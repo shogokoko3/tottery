@@ -2450,6 +2450,40 @@
   min-height: 44px;
   padding-inline: 20px;
 }
+.skins-dismantle-rarities {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #c4b79e;
+  font-size: 13px;
+}
+.skins-dismantle-rarities .rank-toggle {
+  min-width: 52px;
+  min-height: 40px;
+  padding-inline: 10px;
+}
+.ticket-confirm-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  color: #c4b79e;
+  font-size: 13px;
+  min-height: 44px;
+}
+.ticket-confirm-toggle input {
+  width: 20px;
+  height: 20px;
+  accent-color: #d5b576;
+}
+.ticket-confirm-toggle small {
+  flex-basis: 100%;
+  color: #929fac;
+  font-size: 11px;
+  line-height: 1.6;
+  padding-left: 28px;
+}
 .skins-auto-dismantle {
   display: flex;
   align-items: center;
