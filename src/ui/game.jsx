@@ -47,6 +47,7 @@ import {
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
 import { noteRandomResult, botAction } from "../game/bot-match.js";
+import { backupIfDue } from "../net/backup.js";
 import {
   isNotableLog,
   autoArrange,
@@ -1988,6 +1989,8 @@ export function GameCore({
     xpNoticeRef.current = after.xpNoticeId;
     setRatingResult(after.delta === null ? null : after);
     publishPlayer(after);
+    // 引き継ぎの控えも預け直す(本人確認済みのときだけ。失敗しても対局は止めない)
+    backupIfDue().catch(() => {});
     // ランダムマッチの結果を控える。人に負けたら、次のランダムマッチは Bot(src/game/bot-match.js)
     if ((network && network.random) || bot) noteRandomResult({ won, vsBot: !!bot });
   }, [a.phase, a.winner, matchRatings.ready]);

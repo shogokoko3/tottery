@@ -148,6 +148,8 @@ import { LettersScreen, useUnreadLetters } from "./letters.jsx";
 import { LoginBonus } from "./loginbonus.jsx";
 import { GemShop } from "./gem-shop.jsx";
 import { ShopScreen } from "./shop.jsx";
+import { TitleDataBar } from "./title-data.jsx";
+import { backupIfDue } from "../net/backup.js";
 import { shopAvailable } from "../net/iap.js";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
@@ -295,6 +297,8 @@ export function HomeScreen({ onStart }) {
           onClick={onStart}
         />
       </div>
+      {/* 遊ぶ前にしか要らない入り口。新しい端末では名前を決める前に使う(2026-09-17) */}
+      <TitleDataBar />
     </div>
   );
 }
@@ -1839,6 +1843,8 @@ function TotteryScreens() {
       if (!now.id || !now.name) return;
       retrySeasonMatches().catch(() => {});
       seasonRequest("summary").catch(() => {});
+      // 引き継ぎの控えを預け直す(本人確認済みのときだけ。間が空いていなければ何もしない)
+      backupIfDue().catch(() => {});
       // 使用頻度のミッション用に、1日1回だけ数える
       touchDay();
       if (gone) return;

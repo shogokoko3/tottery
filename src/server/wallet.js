@@ -52,6 +52,9 @@ const addColumn = (sql, table, col) => {
 const foilEventId = (uid, product, skins) =>
   `foil:${uid}:${product}:${[...skins].sort().join("+")}`;
 
+/** 引き継ぎの控えの上限(文字数)。所持スキンと戦績が入る大きさ */
+export const BACKUP_MAX = 40000;
+
 export class Wallet {
   constructor(sql) {
     this.sql = sql;
@@ -79,6 +82,9 @@ export class Wallet {
     sql("CREATE TABLE IF NOT EXISTS iap_diag (uid TEXT PRIMARY KEY, at INTEGER, build INTEGER, storefront TEXT, count INTEGER, error TEXT, ms INTEGER)");
     // 運営がバトルパスを「クリア状態」にした印。summary の passComplete で端末に伝え、端末が盤を埋める
     sql("CREATE TABLE IF NOT EXISTS pass_grants (uid TEXT PRIMARY KEY, at INTEGER)");
+    // 機種変更の引き継ぎに使う、端末の記録の控え(名前・戦績・レベル・所持スキンなど)。
+    // uid ごとに最新の1件だけ。Apple で本人確認した人の端末が預ける(src/net/backup.js)
+    sql("CREATE TABLE IF NOT EXISTS profile_backups (uid TEXT PRIMARY KEY, blob TEXT, at INTEGER)");
   }
   row(uid) {
     return (
@@ -457,8 +463,25 @@ export class Wallet {
   diagList() {
     return { diag: this.sql("SELECT uid, at, build, storefront, count, error, ms FROM iap_diag ORDER BY at DESC LIMIT 100") };
   }
+  /**
+   * 引き継ぎの控えを預かる(機種変更用)。uid ごとに最新の1件だけ。
+   * 中身は端末が作った JSON の文字列。サーバーは形を見ず、大きさだけ見る
+   * (残高と権利の正はこの控えではなく台帳。端末は復元のあと summary で上書きする)
+   */
+  saveBackup(uid, blob, now) {
+    if (typeof blob !== "string" || !blob || blob.length > BACKUP_MAX)
+      return { ok: false, error: "控えを預かれませんでした。" };
+    this.sql("INSERT OR REPLACE INTO profile_backups (uid, blob, at) VALUES (?,?,?)", uid, blob, now);
+    return { ok: true, at: now };
+  }
+  /** 預けた控えを返す。無ければ blob は null */
+  loadBackup(uid) {
+    const row = this.sql("SELECT blob, at FROM profile_backups WHERE uid=?", uid)[0];
+    return { blob: row ? row.blob : null, at: row ? row.at : null };
+  }
   /** 自分の記録を消す(5.1.1(v))。購入の記録は会計のため残す(uid は伏せる) */
   forget(uid) {
+    this.sql("DELETE FROM profile_backups WHERE uid=?", uid);
     this.sql("DELETE FROM collection_skins WHERE uid=?", uid);
     this.sql("DELETE FROM foil_purchases WHERE uid=?", uid);
     this.sql("DELETE FROM iap_diag WHERE uid=?", uid);

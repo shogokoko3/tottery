@@ -211,6 +211,18 @@ export function loadProfile() {
   };
 }
 
+/**
+ * 引き継ぎで受け取った記録を、この端末の記録として置く(src/net/backup.js)。
+ * 形は loadProfile() が読むときに整えるので、ここでは口座の id だけ今のものにそろえる。
+ * 持ち物(スキン・ジェム)は別の保存なので、呼ぶ側が一緒に戻す
+ */
+export function restoreProfile(saved, uid) {
+  if (!saved || typeof saved !== "object") return loadProfile();
+  const id = uid || saved.id || loadProfile().id;
+  saveProfile({ ...saved, id });
+  return loadProfile();
+}
+
 /** 名前を決めたかどうか。決まるまで対局に入れない */
 export function hasName(profile) {
   return !!(profile || loadProfile()).name;

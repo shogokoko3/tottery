@@ -2,10 +2,12 @@ import { API_KEY, OPERATOR_UID } from "../net/auth.js";
 
 /** 購入の検証の本文の上限。applejws.js が受ける JWS(16384)+包み */
 export const VERIFY_BODY_MAX = 20480;
+/** 引き継ぎの控えを預かるときの本文の上限。控え本体(BACKUP_MAX)に JSON の外枠を足した分 */
+export const BACKUP_BODY_MAX = BACKUP_MAX + 1024;
 import { DB_URL } from "../net/firebase.js";
 import { Ledger } from "./ledger.js";
 import { verifyMatch } from "./verify-match.js";
-import { Wallet } from "./wallet.js";
+import { Wallet, BACKUP_MAX } from "./wallet.js";
 import { verifyAppleTransaction } from "./applejws.js";
 import { minAppBuild, updateUrl } from "./app-version.js";
 import { seasonAt, seasonRewards } from "../game/season.js";
@@ -77,7 +79,13 @@ async function handleApi(request, env, url) {
     try {
       // 本文の上限。購入の検証だけは Apple の取引(JWS。証明書3枚つきで 6KB ほど)が入るので広い
       // (2026-09-15、実機の購入が 413 で弾かれ「反映待ち」のまま残った)
-      const maxBody = url.pathname === "/api/iap/verify" ? VERIFY_BODY_MAX : 4096;
+      const maxBody =
+        url.pathname === "/api/iap/verify"
+          ? VERIFY_BODY_MAX
+          : // 引き継ぎの控え(端末の記録ぜんぶ)は大きい
+            url.pathname === "/api/wallet/backup-save"
+            ? BACKUP_BODY_MAX
+            : 4096;
       if (Number(request.headers.get("content-length") || 0) > maxBody)
         return json({ error: "リクエストが大きすぎます。" }, 413);
       const raw = await request.text();
@@ -141,6 +149,10 @@ async function handleApi(request, env, url) {
       if (url.pathname.startsWith("/api/wallet/")) {
         const wop = url.pathname.slice("/api/wallet/".length);
         if (wop === "summary") return call("wallet-summary");
+        // 機種変更の引き継ぎ。端末の記録の控えを預かる・返す(中身は見ない)
+        if (wop === "backup-save" && typeof body.blob === "string" && body.blob.length <= BACKUP_MAX)
+          return call("wallet-backup-save", { blob: body.blob });
+        if (wop === "backup-load") return call("wallet-backup-load");
         // 所持一覧を本人の保存分として同期する。購入条件は財布側で全種類を照合する。
         // 端末保存が現行の取得元であり、この同期を取得証明とは扱わない。
         if (wop === "collection" && Array.isArray(body.ownedIds))
@@ -287,6 +299,8 @@ export class SeasonLedger {
         }
         const w = this.wallet;
         if (op === "wallet-summary") return w.summary(uid, now);
+        if (op === "wallet-backup-save") return w.saveBackup(uid, args.blob, now);
+        if (op === "wallet-backup-load") return w.loadBackup(uid);
         if (op === "wallet-debit") return w.debit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-campaign") return w.campaign(uid, args.campaign, now);

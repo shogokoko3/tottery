@@ -110,7 +110,12 @@ is("送れたら控えから消える", pending(), []);
   const worker = fs.readFileSync(new URL("../src/server/worker.js", import.meta.url), "utf8");
   const m = worker.match(/VERIFY_BODY_MAX = (\d+)/);
   is("購入の検証の本文の上限が JWS の上限(16384)より大きい", !!m && Number(m[1]) >= 16384 + 256, true);
-  is("上限は /api/iap/verify だけに使う", /url\.pathname === "\/api\/iap\/verify" \? VERIFY_BODY_MAX : 4096/.test(worker), true);
+  // 広い上限は、その口にだけ当てる(ほかは 4096 のまま)。
+  // 引き継ぎの控え(/api/wallet/backup-save)にも別の広い上限を足した(2026-09-17)
+  const flat = worker.replace(/\s+/g, " ");
+  is("購入の検証の上限は /api/iap/verify だけ", /url\.pathname === "\/api\/iap\/verify" \? VERIFY_BODY_MAX/.test(flat), true);
+  is("控えの上限は /api\/wallet\/backup-save だけ", /url\.pathname === "\/api\/wallet\/backup-save" \? BACKUP_BODY_MAX/.test(flat), true);
+  is("ほかの口は 4096 のまま", /: 4096;/.test(flat), true);
 }
 
 console.log(`\n${ok} 件 ok / ${fails.length} 件 NG`);

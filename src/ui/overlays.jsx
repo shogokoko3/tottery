@@ -499,7 +499,7 @@ function BlockedListModal({ onClose }) {
  * 端末の中(profile.js の forgetMe)と、サーバー(Firebase の ranks/<uid>・players/<uid>、
  * Cloudflare のシーズン台帳)の両方を消す。
  */
-function DeleteMeModal({ onClose, onDeleted }) {
+export function DeleteMeModal({ onClose, onDeleted }) {
   const me = loadProfile();
   const [step, setStep] = useState("ask");
   const [error, setError] = useState("");
