@@ -208,10 +208,29 @@ export function GameShell({
   // 上の「トッタリー」を押すとタイトルへ。対局中は onBack と同じ扱いにして、
   // 「対局をやめますか?」の確認を通す(黙って抜けると対局が飛ぶ)
   let goHome = onHome || onBack;
+  // 上の帯は画面に貼り付けて、どの画面でも(重ねた画面や案内の幕の上でも)見えるようにする。
+  // その高さを根に伝え、本文・重ねた画面・案内の幕がその下から始まるようにする
+  // (2026-09-18 本人の指示「戻る・トッタリー・ⓘ・設定 はどの画面でも見えるように」)
+  const barRef = useRef(null);
+  useEffect(() => {
+    const root = typeof document !== "undefined" ? document.documentElement : null;
+    const bar = barRef.current;
+    if (!root || !bar) return undefined;
+    const set = () =>
+      root.style.setProperty("--top-bar-h", `${Math.round(bar.getBoundingClientRect().height)}px`);
+    set();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(set) : null;
+    if (ro) ro.observe(bar);
+    window.addEventListener("resize", set);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener("resize", set);
+    };
+  }, []);
   return (
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
       <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES + AREA_STYLES + ROYAL_STYLES + HOME_STYLES}</style>
-      <header className="top-bar">
+      <header className="top-bar" ref={barRef}>
         {/* 戻る釦が無いときは空のまま。飾りの王冠を置いていたが、
             押せそうに見えて何も起きないので外した。
             桁は残す(消すと真ん中の題がずれる) */}

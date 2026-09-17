@@ -38,6 +38,8 @@
   overflow: hidden;
   position: relative;
   min-height: 100vh;
+  /* 貼り付けた帯のぶんを空ける。高さは GameShell が測って入れる */
+  padding-top: var(--top-bar-h, 56px);
 }
 .tottery-root * {
   box-sizing: border-box;
@@ -47,17 +49,23 @@
   font-weight: 800;
 }
 
+/* 上の帯(戻る・トッタリー・ⓘ・設定)。どの画面でも見えるように画面の上へ貼り付け、
+   下線で本文と分ける。重ねた画面(50)・案内の帯(50)・つかんだ札(60)・テストの印(70)より上
+   (2026-09-18 本人の指示) */
 .top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 80;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(
-    180deg,
-    rgba(8, 17, 32, 0.9),
-    rgba(8, 17, 32, 0.4)
-  );
+  /* 下を透かさない。透かすと重なった文字が読めない */
+  background: #0a1526;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 .brand {
   font-family: "Shippori Mincho", serif;
@@ -993,9 +1001,10 @@ h3 {
   align-items: center;
   justify-content: center;
   z-index: 50;
-  /* チュートリアルの帯(下に固定、同じ高さで後に描かれる)のぶん、下を空ける。
+  /* 上は貼り付けた帯のぶん、下はチュートリアルの帯のぶんを空ける。
      空けないと帯が重ねた画面の釦を覆って押せない(2026-09-17 本人の報告) */
-  padding: 20px 20px calc(20px + var(--tutorial-band, 0px));
+  padding: calc(20px + var(--top-bar-h, 0px)) 20px
+    calc(20px + var(--tutorial-band, 0px));
   /* 指の動きは重ねた画面の中だけで受ける。暗い背景をなぞっても下の画面を動かさない
      (予備札の配置で下の盤が動いていた。2026-09-11 本人の指摘) */
   overflow-y: auto;
@@ -1032,7 +1041,10 @@ body:has(.skin-overlay) {
   max-width: 480px;
   width: 100%;
   /* 帯があるぶん低くする。中身は札の中でスクロールさせ、釦まで届くようにする */
-  max-height: min(80vh, calc(100vh - 40px - var(--tutorial-band, 0px)));
+  max-height: min(
+    80vh,
+    calc(100vh - 40px - var(--top-bar-h, 0px) - var(--tutorial-band, 0px))
+  );
   overflow: auto;
   text-align: center;
 }
@@ -2545,7 +2557,8 @@ body:has(.skin-overlay) {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  top: calc(4px + env(safe-area-inset-top));
+  /* 貼り付けた帯の下に出す(帯の方が上に来るので、重ねると隠れる) */
+  top: calc(var(--top-bar-h, 0px) + 4px);
   z-index: 70;
   padding: 3px 12px;
   border-radius: 999px;
@@ -3724,7 +3737,8 @@ body:has(.skin-overlay) {
    幕は薄くする。説明が指しているもの(捨て札など)が後ろで見えなくなると、
    かえって分からなくなるため */
 .tutorial-sheet-front {
-  top: 0;
+  /* 上の帯は隠さない(どの画面でも見えるようにする決まり) */
+  top: var(--top-bar-h, 0px);
   /* 撃破の札などのモーダル(z-index: 50)より下。覆うと閉じられなくなる */
   z-index: 40;
   display: flex;

@@ -53,6 +53,8 @@ Error generating stack: `+n.message+`
   overflow: hidden;
   position: relative;
   min-height: 100vh;
+  /* \u8CBC\u308A\u4ED8\u3051\u305F\u5E2F\u306E\u3076\u3093\u3092\u7A7A\u3051\u308B\u3002\u9AD8\u3055\u306F GameShell \u304C\u6E2C\u3063\u3066\u5165\u308C\u308B */
+  padding-top: var(--top-bar-h, 56px);
 }
 .tottery-root * {
   box-sizing: border-box;
@@ -62,17 +64,23 @@ Error generating stack: `+n.message+`
   font-weight: 800;
 }
 
+/* \u4E0A\u306E\u5E2F(\u623B\u308B\u30FB\u30C8\u30C3\u30BF\u30EA\u30FC\u30FB\u24D8\u30FB\u8A2D\u5B9A)\u3002\u3069\u306E\u753B\u9762\u3067\u3082\u898B\u3048\u308B\u3088\u3046\u306B\u753B\u9762\u306E\u4E0A\u3078\u8CBC\u308A\u4ED8\u3051\u3001
+   \u4E0B\u7DDA\u3067\u672C\u6587\u3068\u5206\u3051\u308B\u3002\u91CD\u306D\u305F\u753B\u9762(50)\u30FB\u6848\u5185\u306E\u5E2F(50)\u30FB\u3064\u304B\u3093\u3060\u672D(60)\u30FB\u30C6\u30B9\u30C8\u306E\u5370(70)\u3088\u308A\u4E0A
+   (2026-09-18 \u672C\u4EBA\u306E\u6307\u793A) */
 .top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 80;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(
-    180deg,
-    rgba(8, 17, 32, 0.9),
-    rgba(8, 17, 32, 0.4)
-  );
+  /* \u4E0B\u3092\u900F\u304B\u3055\u306A\u3044\u3002\u900F\u304B\u3059\u3068\u91CD\u306A\u3063\u305F\u6587\u5B57\u304C\u8AAD\u3081\u306A\u3044 */
+  background: #0a1526;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 .brand {
   font-family: "Shippori Mincho", serif;
@@ -1008,9 +1016,10 @@ h3 {
   align-items: center;
   justify-content: center;
   z-index: 50;
-  /* \u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB\u306E\u5E2F(\u4E0B\u306B\u56FA\u5B9A\u3001\u540C\u3058\u9AD8\u3055\u3067\u5F8C\u306B\u63CF\u304B\u308C\u308B)\u306E\u3076\u3093\u3001\u4E0B\u3092\u7A7A\u3051\u308B\u3002
+  /* \u4E0A\u306F\u8CBC\u308A\u4ED8\u3051\u305F\u5E2F\u306E\u3076\u3093\u3001\u4E0B\u306F\u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB\u306E\u5E2F\u306E\u3076\u3093\u3092\u7A7A\u3051\u308B\u3002
      \u7A7A\u3051\u306A\u3044\u3068\u5E2F\u304C\u91CD\u306D\u305F\u753B\u9762\u306E\u91E6\u3092\u8986\u3063\u3066\u62BC\u305B\u306A\u3044(2026-09-17 \u672C\u4EBA\u306E\u5831\u544A) */
-  padding: 20px 20px calc(20px + var(--tutorial-band, 0px));
+  padding: calc(20px + var(--top-bar-h, 0px)) 20px
+    calc(20px + var(--tutorial-band, 0px));
   /* \u6307\u306E\u52D5\u304D\u306F\u91CD\u306D\u305F\u753B\u9762\u306E\u4E2D\u3060\u3051\u3067\u53D7\u3051\u308B\u3002\u6697\u3044\u80CC\u666F\u3092\u306A\u305E\u3063\u3066\u3082\u4E0B\u306E\u753B\u9762\u3092\u52D5\u304B\u3055\u306A\u3044
      (\u4E88\u5099\u672D\u306E\u914D\u7F6E\u3067\u4E0B\u306E\u76E4\u304C\u52D5\u3044\u3066\u3044\u305F\u30022026-09-11 \u672C\u4EBA\u306E\u6307\u6458) */
   overflow-y: auto;
@@ -1047,7 +1056,10 @@ body:has(.skin-overlay) {
   max-width: 480px;
   width: 100%;
   /* \u5E2F\u304C\u3042\u308B\u3076\u3093\u4F4E\u304F\u3059\u308B\u3002\u4E2D\u8EAB\u306F\u672D\u306E\u4E2D\u3067\u30B9\u30AF\u30ED\u30FC\u30EB\u3055\u305B\u3001\u91E6\u307E\u3067\u5C4A\u304F\u3088\u3046\u306B\u3059\u308B */
-  max-height: min(80vh, calc(100vh - 40px - var(--tutorial-band, 0px)));
+  max-height: min(
+    80vh,
+    calc(100vh - 40px - var(--top-bar-h, 0px) - var(--tutorial-band, 0px))
+  );
   overflow: auto;
   text-align: center;
 }
@@ -2560,7 +2572,8 @@ body:has(.skin-overlay) {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  top: calc(4px + env(safe-area-inset-top));
+  /* \u8CBC\u308A\u4ED8\u3051\u305F\u5E2F\u306E\u4E0B\u306B\u51FA\u3059(\u5E2F\u306E\u65B9\u304C\u4E0A\u306B\u6765\u308B\u306E\u3067\u3001\u91CD\u306D\u308B\u3068\u96A0\u308C\u308B) */
+  top: calc(var(--top-bar-h, 0px) + 4px);
   z-index: 70;
   padding: 3px 12px;
   border-radius: 999px;
@@ -3739,7 +3752,8 @@ body:has(.skin-overlay) {
    \u5E55\u306F\u8584\u304F\u3059\u308B\u3002\u8AAC\u660E\u304C\u6307\u3057\u3066\u3044\u308B\u3082\u306E(\u6368\u3066\u672D\u306A\u3069)\u304C\u5F8C\u308D\u3067\u898B\u3048\u306A\u304F\u306A\u308B\u3068\u3001
    \u304B\u3048\u3063\u3066\u5206\u304B\u3089\u306A\u304F\u306A\u308B\u305F\u3081 */
 .tutorial-sheet-front {
-  top: 0;
+  /* \u4E0A\u306E\u5E2F\u306F\u96A0\u3055\u306A\u3044(\u3069\u306E\u753B\u9762\u3067\u3082\u898B\u3048\u308B\u3088\u3046\u306B\u3059\u308B\u6C7A\u307E\u308A) */
+  top: var(--top-bar-h, 0px);
   /* \u6483\u7834\u306E\u672D\u306A\u3069\u306E\u30E2\u30FC\u30C0\u30EB(z-index: 50)\u3088\u308A\u4E0B\u3002\u8986\u3046\u3068\u9589\u3058\u3089\u308C\u306A\u304F\u306A\u308B */
   z-index: 40;
   display: flex;

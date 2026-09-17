@@ -85,4 +85,15 @@ import { reducer } from "../src/game/reducer.js";
   const setup = fs.readFileSync(new URL("../src/ui/setup.jsx", import.meta.url), "utf8");
   assert.ok(/p\.owner === n \|\| isKnownTo\(state, n, p\)/.test(setup), "予備札の盤も同じ決まり");
 }
-console.log("行動記録: 継承は相手から消える・向きの矢印・王を選ぶ画面は持ち主だけ OK");
+// 5. 上の帯は、どの画面でも見える(画面に貼り付け、重ねた画面や案内の幕より上)
+{
+  const fs = await import("node:fs");
+  const css = fs.readFileSync(new URL("../src/styles.css", import.meta.url), "utf8").replace(/\s+/g, " ");
+  assert.ok(/\.top-bar \{[^}]*position: fixed;[^}]*z-index: 80;/.test(css), "上の帯は画面に貼り付け、一番上に置く");
+  assert.ok(/\.tottery-root \{[^}]*padding-top: var\(--top-bar-h, 56px\);/.test(css), "本文は帯のぶん空ける");
+  assert.ok(/\.tutorial-sheet-front \{ [^}]*top: var\(--top-bar-h, 0px\);/.test(css), "案内の幕は帯の下から");
+  assert.ok(/padding: calc\(20px \+ var\(--top-bar-h, 0px\)\) 20px/.test(css), "重ねた画面も帯の下から");
+  const screens = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
+  assert.ok(/root\.style\.setProperty\("--top-bar-h"/.test(screens), "帯の高さを測って根に入れる");
+}
+console.log("行動記録・王を選ぶ画面・上の帯 OK");
