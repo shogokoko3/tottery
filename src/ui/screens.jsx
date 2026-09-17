@@ -1895,6 +1895,37 @@ function TotteryScreens() {
   function dropNearby() {
     if (a && a.nearby) setTimeout(() => nearby().stop(), 1500);
   }
+  /**
+   * 左上の戻る釦の行き先。タイトル(home)だけは戻り先が無いので出さない。
+   * 対局中(game)は GameCore が自分の GameShell で持っている(やめる確認を通す)
+   */
+  function backFor(screen) {
+    if (screen === "home" || screen === "game") return undefined;
+    const up = {
+      menu: "home",
+      skins: skinsFrom,
+      shop: "menu",
+      matching: "menu",
+      tutorial: "menu",
+      tsume: "menu",
+      missions: "menu",
+      battlepass: "menu",
+      letters: "menu",
+      // ランキングは「対戦する」の中にあるので、そこへ戻す
+      ranking: "matching",
+      online: "matching",
+      room: "matching",
+      nearby: "matching",
+      rules: rulesFrom,
+    };
+    const to = up[screen];
+    if (!to) return undefined;
+    // 対戦の待ち合わせから戻るときは、掲示や部屋の後片付けが要る
+    if (screen === "online" || screen === "room" || screen === "nearby")
+      return backToMatching;
+    if (screen === "menu") return goHome;
+    return () => t(to);
+  }
   function backToMatching() {
     (dropNearby(), u(null), m(!1), setTut(null), setBot(null), t("matching"));
   }
@@ -2044,13 +2075,9 @@ function TotteryScreens() {
       showRules={l}
       setShowRules={n}
       onHome={e === "home" ? null : goHome}
-      onBack={
-        e === "skins"
-          ? () => t(skinsFrom)
-          : e === "tsume" || e === "shop"
-            ? () => t("menu")
-            : undefined
-      }
+      // 左上の戻る釦は、タイトル以外のすべての画面に出す(2026-09-18 本人の指示)。
+      // 行き先は「1つ上」。画面の中の「ホームに戻る」と同じ場所へ着く
+      onBack={backFor(e)}
     >
       {
         {
@@ -2146,7 +2173,7 @@ function TotteryScreens() {
               }}
             />
           ),
-          ranking: <RankingScreen onBack={() => t("menu")} />,
+          ranking: <RankingScreen onBack={() => t("matching")} />,
           tsume: <TsumeScreen onBack={() => t("menu")} />,
           missions: <MissionsScreen onBack={() => t("menu")} />,
           battlepass: (

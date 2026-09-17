@@ -90,4 +90,20 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });
 }
-console.log("ホームの並び・ランキングは対戦する・ショップの中身 OK");
+// 4. 左上の戻る釦は、タイトル以外のすべての画面に出す(2026-09-18 本人の指示)
+{
+  const src = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
+  const flat = src.replace(/\s+/g, " ");
+  assert.ok(/onBack=\{backFor\(e\)\}/.test(flat), "画面の枠は backFor で戻り先を決める");
+  const table = flat.slice(flat.indexOf("function backFor(screen)"), flat.indexOf("function backToMatching"));
+  assert.ok(/if \(screen === "home" \|\| screen === "game"\) return undefined;/.test(table), "タイトルと対局中だけは出さない");
+  for (const [screen, to] of [
+    ["menu", "home"], ["shop", "menu"], ["matching", "menu"], ["tutorial", "menu"],
+    ["tsume", "menu"], ["missions", "menu"], ["battlepass", "menu"], ["letters", "menu"],
+    ["ranking", "matching"], ["online", "matching"], ["room", "matching"], ["nearby", "matching"],
+  ])
+    assert.ok(new RegExp(`${screen}: "${to}"`).test(table), `${screen} の戻り先は ${to}`);
+  assert.ok(/skins: skinsFrom/.test(table) && /rules: rulesFrom/.test(table), "ガチャとルール設定は来た道へ戻る");
+  assert.ok(/if \(screen === "online" \|\| screen === "room" \|\| screen === "nearby"\) return backToMatching;/.test(table), "待ち合わせからの戻りは後片付けを通す");
+}
+console.log("ホームの並び・ランキングは対戦する・ショップの中身・戻る釦 OK");
