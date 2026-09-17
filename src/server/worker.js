@@ -159,6 +159,9 @@ async function handleApi(request, env, url) {
           return call("wallet-collection", { ownedIds: body.ownedIds });
         if (wop === "debit" && eventId(body.id) && Number.isSafeInteger(body.n) && body.n > 0 && body.n <= 100)
           return call("wallet-debit", { id: body.id, n: body.n, kind: "pull" });
+        // サーバーが引く(2026-09-18)。debit は配布済みのビルドが使うので残す
+        if (wop === "pull" && eventId(body.id) && (body.n === 1 || body.n === 10))
+          return call("wallet-pull", { id: body.id, n: body.n });
         if (wop === "earn" && eventId(body.id) && Number.isSafeInteger(body.n) && body.n > 0)
           return call("wallet-credit", { id: body.id, n: body.n, kind: "earn" });
         // 記念配布(src/game/campaigns.js)。枚数はサーバーが台帳から読む。uid ごとに一度きり
@@ -302,6 +305,7 @@ export class SeasonLedger {
         if (op === "wallet-backup-save") return w.saveBackup(uid, args.blob, now);
         if (op === "wallet-backup-load") return w.loadBackup(uid);
         if (op === "wallet-debit") return w.debit(uid, args.id, args.n, args.kind, now);
+        if (op === "wallet-pull") return w.pull(uid, args.id, args.n, now);
         if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-campaign") return w.campaign(uid, args.campaign, now);
         if (op === "wallet-purchase") return w.purchase(uid, args.tx, now);

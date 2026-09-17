@@ -56,6 +56,28 @@ for (const bad of [null, "x", ["zombie-male", "zombie-male"], ["not-a-skin"]])
   assert.throws(() => w.syncCollection("C", bad, T), /正しくありません/);
 assert.deepEqual(seen("C"), [], "断った同期では記録しない");
 
+// **出どころ**を分ける。端末の申告(declared)とサーバーの証拠(server)。
+// 混ぜると、申告した嘘まで証拠になってしまう
+{
+  const src = () =>
+    Object.fromEntries(
+      D.prepare("SELECT skinId, source, at FROM skin_first_seen WHERE uid='S'")
+        .all()
+        .map((r) => [r.skinId, `${r.source}@${r.at}`]),
+    );
+  w.syncCollection("S", ["zombie-male", "pirate-female"], T);
+  assert.deepEqual(src(), {
+    "zombie-male": `declared@${T}`,
+    "pirate-female": `declared@${T}`,
+  }, "端末の同期は申告として入る");
+  w.noteSkin("S", "zombie-male", T + 1000, "server");
+  assert.equal(src()["zombie-male"], `server@${T}`, "証拠が来たら昇格する。日は動かない");
+  w.noteSkin("S", "zombie-male", T + 2000, "declared");
+  assert.equal(src()["zombie-male"], `server@${T}`, "あとから申告しても降格しない");
+  w.noteSkin("S", "elf-male", T, "server");
+  assert.equal(src()["elf-male"], `server@${T}`, "初めから証拠のものもある");
+}
+
 // 配線: 端末側
 const wallet = fs.readFileSync("src/net/wallet.js", "utf8");
 assert.match(wallet, /export async function noteCollection\(\)/, "静かに送る口");
@@ -70,5 +92,8 @@ const areas = fs.readFileSync("src/game/areas.js", "utf8");
 assert.ok(!/first_seen|ownership|所持を確かめ/.test(areas), "ルール層は台帳を見ない(設計どおり)");
 const server = fs.readFileSync("src/server/wallet.js", "utf8");
 assert.match(server, /INSERT OR IGNORE INTO skin_first_seen/, "上書きしない");
+assert.match(server, /noteSkin\(uid, skinId, now, "server"\)/, "サーバーが引いた札は証拠として入れる");
+assert.match(server, /noteSkin\(uid, foilId\(baseId\), now, "server"\)/, "買ったフォイルも証拠");
+assert.match(server, /UPDATE skin_first_seen SET source='server'/, "証拠は申告より強い");
 assert.match(server, /DELETE FROM skin_first_seen WHERE uid=\?/, "削除の求めでは消す");
 console.log("所持の記録(第1段階): 初めて見た日・追記専用・減っても残る・削除で消える・壊れた一覧は断る・配線: OK");

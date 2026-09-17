@@ -229,6 +229,47 @@ export const FREE_GACHA = false;
 /** 1回の召喚で使うチケットの枚数(有料のとき) */
 export const PULL_COST = 1;
 
+/** 1回の抽選(キャラを決めてから、独立した1%で仕上げを決める)。サーバーも同じ順で引く */
+export function drawOne(random = Math.random) {
+  return finishedId(draw(random).id, random);
+}
+
+/**
+ * **引いた結果を所持に入れる**(抽選はしない)。
+ *
+ * サーバーが引いた結果を受け取る道(2026-09-18)と、端末で引く道(pull)の両方がここを通る。
+ * チケットは呼ぶ側の決め: free なら減らさない(サーバーで先に減らしているときも free で呼ぶ)。
+ */
+export function applyPull(state, skinIds, { free = FREE_GACHA } = {}) {
+  const ids = Array.isArray(skinIds) ? skinIds : [];
+  if (ids.length !== 1 && ids.length !== 10)
+    throw new Error("1回または10回を選んでください");
+  if (ids.some((id) => !byId(id))) throw new Error("知らない札が混ざっています");
+  if (state.pending || state.lastCraft)
+    throw new Error("先にガチャ・錬成の結果を確認してください");
+  const cost = free ? 0 : ids.length * PULL_COST;
+  const tickets = count(state.tickets);
+  if (cost > tickets)
+    throw new Error(`ガチャチケットが足りません(あと${cost - tickets}枚)`);
+  const owned = { ...state.owned };
+  const acquired = acquiredTotals(state);
+  const results = ids.map((id) => {
+    const isNew = !owned[id];
+    owned[id] = (owned[id] || 0) + 1;
+    recordAcquisition(acquired, id);
+    return { id, isNew };
+  });
+  return withHomePortraits({
+    ...state,
+    owned,
+    acquired,
+    tickets: tickets - cost,
+    draws: state.draws + ids.length,
+    missionDrawDay: missionPeriods().day,
+    pending: { results },
+  });
+}
+
 export function pull(
   state,
   amount,
@@ -246,7 +287,7 @@ export function pull(
   const owned = { ...state.owned };
   const acquired = acquiredTotals(state);
   const results = Array.from({ length: amount }, () => {
-    const id = finishedId(draw(random).id, random);
+    const id = drawOne(random);
     const isNew = !owned[id];
     owned[id] = (owned[id] || 0) + 1;
     recordAcquisition(acquired, id);

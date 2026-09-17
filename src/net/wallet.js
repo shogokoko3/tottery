@@ -160,6 +160,23 @@ export async function claimCampaign(campaignId) {
   return mirror(await walletRequest("campaign", { campaign: campaignId }));
 }
 
+/**
+ * **サーバーに引いてもらう**(2026-09-18)。チケットの消費と抽選を1つの要求で行う。
+ *
+ * 盤面エリアはフォイルの王で立つのに、対局では所持が検証されていない。
+ * 端末が引いて事後に申告する形では、サーバーは「何を引いたか」を知らないので検証の正にならない。
+ *
+ * 同じ id で送り直しても同じ札が返る。返るのは札の id だけで、NEW かどうかは端末が決める
+ * (所持の正は端末にある)。サーバーが古くて口が無ければ null を返し、呼ぶ側が今までの道へ落ちる。
+ */
+export async function pullFromServer(id, n) {
+  const data = await walletRequest("pull", { id, n });
+  mirror(data);
+  return Array.isArray(data && data.skins) && data.skins.length === n
+    ? data.skins
+    : null;
+}
+
 /** ガチャの前に減らす。通れば新しい残高、足りなければ投げる */
 export async function debitTickets(id, n) {
   return mirror(await walletRequest("debit", { id, n }));

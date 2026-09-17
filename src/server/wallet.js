@@ -33,6 +33,17 @@ import {
 import { campaignOf, campaignOpen } from "../game/campaigns.js";
 import { productOf as foilProductOf, priceFor as foilPriceFor, ownsAllButSecret } from "../skins/foil-shop.js";
 import { ALL_SKINS, byId as skinById, foilId } from "../skins/catalog.js";
+import { drawOne } from "../skins/collection.js";
+
+/**
+ * サーバーの抽選に使う乱数。端末の Math.random と違い、こちらは差し替えられない。
+ * 0 以上 1 未満。Worker にも Node にも crypto がある
+ */
+function serverRandom() {
+  const b = new Uint32Array(1);
+  crypto.getRandomValues(b);
+  return b[0] / 4294967296;
+}
 
 export const MIGRATE_TICKETS_MAX = 500;
 /** 遊んで貯める分(kind=earn)は端末の申告なので、1回と1日(UTC)の上限で抑える */
@@ -46,8 +57,8 @@ const weekOf = (now) => {
   return d.toISOString().slice(0, 10);
 };
 const cap = (n, max) => (Number.isSafeInteger(n) && n > 0 ? Math.min(n, max) : 0);
-const addColumn = (sql, table, col) => {
-  try { sql(`ALTER TABLE ${table} ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`); } catch { /* 既にある */ }
+const addColumn = (sql, table, col, type = "INTEGER NOT NULL DEFAULT 0") => {
+  try { sql(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`); } catch { /* 既にある */ }
 };
 const foilEventId = (uid, product, skins) =>
   `foil:${uid}:${product}:${[...skins].sort().join("+")}`;
@@ -78,11 +89,17 @@ export class Wallet {
     // いまは**何も拒まない**(貯めるだけ)。collection_skins は「いまの所持」の写しで役割が違う
     // (フォイルの購入条件が読む)ので、そちらは今までどおり同期のたびに入れ直す。
     sql("CREATE TABLE IF NOT EXISTS skin_first_seen (uid TEXT NOT NULL, skinId TEXT NOT NULL, at INTEGER, PRIMARY KEY(uid, skinId))");
+    // **出どころ**(2026-09-18)。'declared' は端末の申告(嘘をつける)、'server' はサーバーが
+    // 引いた/配った証拠。混ぜると申告した嘘まで証拠になるので分ける。強いほうが勝つ
+    addColumn(sql, "skin_first_seen", "source", "TEXT NOT NULL DEFAULT 'declared'");
     // 有償購入した札は端末の所持同期とは別に保持し、端末消失後にも復元できる。
     sql("CREATE TABLE IF NOT EXISTS foil_purchases (uid TEXT NOT NULL, skinId TEXT NOT NULL, eventId TEXT NOT NULL, at INTEGER, PRIMARY KEY(uid, skinId))");
     // ガチャの履歴(運営が見る)。1回引くごとに1行。端末が結果を申告する
     sql("CREATE TABLE IF NOT EXISTS gacha_log (id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, skinId TEXT, isNew INTEGER NOT NULL DEFAULT 0, at INTEGER)");
     sql("CREATE INDEX IF NOT EXISTS gacha_log_uid ON gacha_log(uid, at)");
+    // サーバーが引いた結果(2026-09-18)。同じ出来事 id には**同じ札**を返す。
+    // これがあって初めて gacha_log が権威になる(それまでは端末の申告だった)
+    sql("CREATE TABLE IF NOT EXISTS gacha_draws (id TEXT PRIMARY KEY, uid TEXT, skins TEXT, at INTEGER)");
     // 店の診断(端末が App Store に商品を問い合わせた結果の控え。uid ごとに最新の1件)。
     // 本人の端末で「商品を読み込んでいます…」から進まない件の切り分け用(2026-09-15)。運営だけが読む
     sql("CREATE TABLE IF NOT EXISTS iap_diag (uid TEXT PRIMARY KEY, at INTEGER, build INTEGER, storefront TEXT, count INTEGER, error TEXT, ms INTEGER)");
@@ -121,11 +138,14 @@ export class Wallet {
     }
   }
   rememberFoils(uid, skins, eventId, now) {
-    for (const baseId of skins)
+    for (const baseId of skins) {
       this.sql(
         "INSERT OR IGNORE INTO foil_purchases (uid, skinId, eventId, at) VALUES (?,?,?,?)",
         uid, foilId(baseId), eventId, now,
       );
+      // 買ったフォイルも証拠(申告より強い)
+      this.noteSkin(uid, foilId(baseId), now, "server");
+    }
   }
   purchasedFoilsOf(uid) {
     this.restoreFoilPurchases(uid);
@@ -141,6 +161,22 @@ export class Wallet {
    * Aフォイルの申告は購入記録の代わりにしない。正規購入済みのAも支払台帳から復元する。
    * 呼出元のtransactionSyncで一覧更新と応答を一括確定する。
    */
+  /**
+   * 「その uid で、その札を初めて見た日」を残す(2026-09-18)。
+   * source は 'declared'(端末の申告)か 'server'(サーバーが引いた/配った証拠)。
+   * 日は上書きしないが、**証拠は申告より強い**ので source は昇格させる。
+   */
+  noteSkin(uid, skinId, now, source = "declared") {
+    this.sql(
+      "INSERT OR IGNORE INTO skin_first_seen (uid, skinId, at, source) VALUES (?,?,?,?)",
+      uid, skinId, now, source,
+    );
+    if (source === "server")
+      this.sql(
+        "UPDATE skin_first_seen SET source='server' WHERE uid=? AND skinId=? AND source<>'server'",
+        uid, skinId,
+      );
+  }
   syncCollection(uid, ownedIds, now) {
     if (!Array.isArray(ownedIds) || ownedIds.length > ALL_SKINS.length ||
         new Set(ownedIds).size !== ownedIds.length ||
@@ -150,8 +186,9 @@ export class Wallet {
     for (const id of ownedIds) {
       if (skinById(id).secret) continue;
       this.sql("INSERT INTO collection_skins (uid, skinId, syncedAt) VALUES (?,?,?)", uid, id, now);
-      // 初めて見た日は上書きしない。崩して減っても残す(「いつ持っていたか」の記録)
-      this.sql("INSERT OR IGNORE INTO skin_first_seen (uid, skinId, at) VALUES (?,?,?)", uid, id, now);
+      // 初めて見た日は上書きしない。崩して減っても残す(「いつ持っていたか」の記録)。
+      // 端末の申告なので 'declared'
+      this.noteSkin(uid, id, now, "declared");
     }
     return this.summary(uid, now);
   }
@@ -428,6 +465,37 @@ export class Wallet {
     return { purchases: rows };
   }
   /** ガチャの結果を記録する(端末の申告)。1回引くごとに呼ばれ、引いた札を残す */
+  /**
+   * **サーバーが引く**(2026-09-18)。チケットを減らし、その場で抽選して結果を返す。
+   *
+   * 盤面エリアはフォイルの王で立つのに、対局では所持が検証されていない。
+   * 検証の正を作るには、まず「何を引いたか」をサーバーが知っている必要がある。
+   * 端末が引いて事後に申告する形(logGacha)は権威にならない。
+   *
+   * 同じ出来事 id には必ず同じ札を返す(通信が切れて送り直しても増えない)。
+   * チケットの減算は台帳(apply)が冪等なので、二重に引かれない。
+   * 先に減らしてから引く。減らせなければ投げる(足りないときは札を配らない)。
+   */
+  pull(uid, id, n, now) {
+    if (!Number.isSafeInteger(n) || (n !== 1 && n !== 10))
+      throw new Error("1回または10回を選んでください。");
+    const done = this.sql("SELECT skins FROM gacha_draws WHERE id=?", id)[0];
+    if (done) {
+      // 送り直し。前と同じ札を返す(uid が違えば他人の結果なので断る)
+      const owner = this.sql("SELECT uid FROM gacha_draws WHERE id=?", id)[0];
+      if (owner && owner.uid !== uid) throw new Error("他の人の抽選です。");
+      return { ...this.summary(uid, now), skins: JSON.parse(done.skins), applied: false };
+    }
+    const r = this.debit(uid, id, n, "pull", now);
+    const skins = Array.from({ length: n }, () => drawOne(serverRandom));
+    this.sql("INSERT OR IGNORE INTO gacha_draws VALUES (?,?,?,?)", id, uid, JSON.stringify(skins), now);
+    for (const skinId of skins) {
+      this.sql("INSERT INTO gacha_log (uid, skinId, isNew, at) VALUES (?,?,?,?)", uid, skinId, 0, now);
+      // サーバーが引いた証拠。申告より強い
+      this.noteSkin(uid, skinId, now, "server");
+    }
+    return { ...r, skins };
+  }
   logGacha(uid, items, now) {
     if (!Array.isArray(items) || !items.length) return { logged: 0 };
     let n = 0;
@@ -494,6 +562,7 @@ export class Wallet {
     // 本人と結びつく記録なので、削除の求め(5.1.1(v))では消す。
     // 消したあとは「いつから持っているか分からない人」になる = 検証は通す側に倒す
     this.sql("DELETE FROM skin_first_seen WHERE uid=?", uid);
+    this.sql("DELETE FROM gacha_draws WHERE uid=?", uid);
     this.sql("DELETE FROM foil_purchases WHERE uid=?", uid);
     this.sql("DELETE FROM iap_diag WHERE uid=?", uid);
     this.sql("DELETE FROM pass_grants WHERE uid=?", uid);

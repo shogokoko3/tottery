@@ -27,6 +27,7 @@ import {
   exchangeFoil,
   FOIL_MILESTONE,
   foilMilestoneCheck,
+  applyPull,
   pull,
   shatter,
   unequip,
@@ -63,6 +64,7 @@ import {
   migrateOnce,
   logPull,
   noteCollection,
+  pullFromServer,
 } from "../net/wallet.js";
 import { shopAvailable, flushPurchases } from "../net/iap.js";
 import { adsAvailable, watchAdForTicket } from "../net/ads.js";
@@ -1401,9 +1403,22 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
       setWorking(true);
       setMessage("");
       try {
-        await debitTickets(newEventId("pull"), amount * PULL_COST);
+        // まずサーバーに引いてもらう(2026-09-18)。チケットの消費と抽選が1つの要求になり、
+        // 「何を引いたか」をサーバーが知る = 所持の検証の正になる。
+        // 口が無い・結果が返らない古いサーバーなら、今までどおり減らしてから端末で引く
+        const eventId = newEventId("pull");
+        let drawn = null;
+        try {
+          drawn = await pullFromServer(eventId, amount);
+        } catch (e) {
+          // 残高不足など、サーバーがはっきり断ったものはそのまま伝える
+          if (!/見つかりません|not found|404/i.test((e && e.message) || "")) throw e;
+        }
+        if (!drawn) await debitTickets(eventId, amount * PULL_COST);
         setAcquisitionMode(reduce || collection.summonMotion === "skip" ? "area" : "summon");
-        const next = await updateCollection((s) => pull(s, amount, undefined, { free: true }));
+        const next = await updateCollection((s) =>
+          drawn ? applyPull(s, drawn, { free: true }) : pull(s, amount, undefined, { free: true }),
+        );
         if (next?.pending?.results) logPull(next.pending.results);
         // 引いた札をサーバーの記録にも残す(所持の検証の土台。best-effort)
         noteCollection();
