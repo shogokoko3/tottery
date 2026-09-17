@@ -3,7 +3,8 @@
  * 相手に送らなくてよい「自分の画面の中だけの操作」と、
  * 送る前にローカル状態を畳み込む必要があるアクションを定義する。
  */
-import { hasAdjudicationRules } from "../game/rule-version.js";
+import { hasAdjudicationRules, hasAreaRules } from "../game/rule-version.js";
+import { loadoutsForCustom, normalizeCustom } from "../game/custom-rules.js";
 
 /** 古い画面が混ざる対局は、両者が理解できる従来ルールで開始する。 */
 export function roomRuleVersion(room) {
@@ -11,6 +12,54 @@ export function roomRuleVersion(room) {
     room?.guestRuleVersion === room.hostRuleVersion
     ? room.hostRuleVersion
     : null;
+}
+
+
+/**
+ * 届いた START_SETUP の**装備と盤面エリアを、部屋の申告から決め直す**(2026-09-18)。
+ *
+ * 開始の合図はホストだけが出すので、その中の `loadouts`(両者の装備)と `areas` を
+ * そのまま信じると、ホストは **相手のエリアだけ消す・自分だけ別のエリアを立てる・
+ * 両者のエリアを消す** ことができてしまう。ゲスト側でも同じ材料から組み直す。
+ *
+ * 材料は**部屋の申告**(hostSkins / guestSkins)。各自が自分のぶんを書くので、
+ * 正直なホストとは必ず同じ値になる(ホストも同じ材料から作っている)。
+ * ここで**拒む**のではなく**決め直す**のが要点 — 片側だけ盤が変わると、
+ * その後の USE_AREA が黙って無視されて対局が固まる。
+ *
+ * 持ち点に数える対局(ランダムマッチ)では詳細設定を受け取らない(そもそも使えない決め)。
+ * フレンド対戦では、始める側の詳細設定が両者に効くのが仕様なのでそのまま通す。
+ *
+ * 所持そのものはここでは確かめない(サーバーに記録が貯まってからの段階)。
+ *
+ * @param act       届いた手
+ * @param roomSkins 部屋から来た両者の装備 [先手, 後手]。sanitizeLoadout 済みのもの
+ * @param opts      ranked(持ち点に数えるか) / ruleVersion(部屋の版) / boardSize
+ */
+export function setupFromRoom(act, roomSkins, opts = {}) {
+  if (!act || act.type !== "START_SETUP") return act;
+  const { ranked = false, ruleVersion = null, boardSize = 5 } = opts;
+  const pair =
+    Array.isArray(roomSkins) && roomSkins.length === 2
+      ? roomSkins.map((l) => (l && typeof l === "object" ? l : {}))
+      : [{}, {}];
+  const size = act.size === 9 ? 9 : act.size === 5 ? 5 : boardSize;
+  // 詳細設定は、始める側のものが効く(ランダムマッチでは使わない)
+  const custom = ranked ? null : normalizeCustom(act.custom, size);
+  const next = { ...act };
+  if (ranked) delete next.custom;
+  else if (custom) next.custom = custom;
+  else delete next.custom;
+  const areas =
+    size === 9 && hasAreaRules(ruleVersion) && !(custom && custom.areas === "none");
+  if (areas) {
+    next.areas = true;
+    next.loadouts = loadoutsForCustom(custom, pair);
+  } else {
+    delete next.areas;
+    delete next.loadouts;
+  }
+  return next;
 }
 
 /** 手元の表示が変わるだけで、盤面には影響しないアクション */

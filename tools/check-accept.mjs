@@ -11,7 +11,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-const { acceptAct, NET_ACTIONS, LOCAL_ONLY_ACTIONS } =
+const { acceptAct, setupFromRoom, NET_ACTIONS, LOCAL_ONLY_ACTIONS } =
   await import("../src/net/sync.js");
 const { reducer, autoArrange, autoPickKing } =
   await import("../src/game/reducer.js");
@@ -919,6 +919,83 @@ console.log("\n王も空きマスへ動ける");
     true,
   );
   is("指せる手がある", hasAnyMove(st, 0), true);
+}
+
+/*
+ * 開始の合図(START_SETUP)の装備と盤面エリアは、ホストの言い値でなく
+ * **部屋の申告**から決め直す(2026-09-18)。開始の合図はホストだけが出すので、
+ * そのまま信じるとホストが相手のエリアを消せる。
+ */
+{
+  const pair = [{ K: "angel-k:foil" }, { 4: "pirate-male:foil" }];
+  const at9 = { ranked: true, ruleVersion: 17, boardSize: 9 };
+  const base = { type: "START_SETUP", size: 9, __id: "s-1" };
+
+  is(
+    "ホストが相手の装備を消しても、部屋の申告から戻る",
+    setupFromRoom({ ...base, areas: true, loadouts: [{ K: "angel-k:foil" }, {}] }, pair, at9).loadouts,
+    pair,
+  );
+  is(
+    "ホストが相手に別の装備を名乗らせても戻る",
+    setupFromRoom({ ...base, areas: true, loadouts: [{}, { 10: "dragon-knight:foil" }] }, pair, at9).loadouts,
+    pair,
+  );
+  is("ホストが areas を落としても立つ", setupFromRoom(base, pair, at9).areas, true);
+  is(
+    "5×5 ではエリアを立てない",
+    setupFromRoom({ ...base, size: 5, areas: true }, pair, { ...at9, boardSize: 5 }).areas,
+    undefined,
+  );
+  is(
+    "版が古ければ立てない",
+    setupFromRoom({ ...base, areas: true }, pair, { ...at9, ruleVersion: 2 }).areas,
+    undefined,
+  );
+  is(
+    "持ち点に数える対局では詳細設定を受け取らない",
+    setupFromRoom({ ...base, custom: { ranks: ["2", "3", "4", "5"] } }, pair, at9).custom,
+    undefined,
+  );
+  is(
+    "フレンド対戦では始める側の詳細設定が効く(エリアなし)",
+    setupFromRoom(
+      { ...base, areas: true, custom: { ranks: ["2", "3", "4", "5"], areas: "none" } },
+      pair,
+      { ranked: false, ruleVersion: 17, boardSize: 9 },
+    ).areas,
+    undefined,
+  );
+  is(
+    "「相手だけ」なら自分の装備からフォイルが外れる",
+    setupFromRoom(
+      { ...base, areas: true, custom: { areas: "guest" } },
+      pair,
+      { ranked: false, ruleVersion: 17, boardSize: 9 },
+    ).loadouts[0],
+    { K: "angel-k" },
+  );
+  is("開始の合図でない手は素通し", setupFromRoom({ type: "MOVE_PIECE", __id: "m" }, pair, at9).type, "MOVE_PIECE");
+  is("壊れた申告でも落ちない", setupFromRoom(base, null, at9).loadouts, [{}, {}]);
+  // 正直なホストとは必ず同じ値になる(ホストも部屋の申告から作っている)ので、盤がずれない
+  is(
+    "正直な手はそのまま通る",
+    setupFromRoom({ ...base, areas: true, loadouts: pair }, pair, at9).loadouts,
+    pair,
+  );
+  // 所持はまだ確かめない(サーバーに記録が貯まってからの段階)
+  const game = readFileSync(join(here, "../src/ui/game.jsx"), "utf8");
+  is(
+    "受け取った手に必ず通す",
+    /\.map\(\(ne\) =>\s*setupFromRoom\(ne, skins, \{/.test(game),
+    true,
+  );
+  is("部屋の申告(useSeats の skins)を材料にする", /const \{ skins \} = useSeats\(\);/.test(game), true);
+  is(
+    "持っていない札でも、この段階では止めない",
+    setupFromRoom(base, [{ K: "angel-k:foil" }, { 4: "pirate-male:foil" }], at9).areas,
+    true,
+  );
 }
 
 console.log(`\n${ok} ok / ${fails.length} fail`);

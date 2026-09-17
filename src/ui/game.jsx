@@ -97,6 +97,7 @@ import { chanceLabel } from "../game/secrets.js";
 import {
   LOCAL_ONLY_ACTIONS,
   acceptAct,
+  setupFromRoom,
   withLocalContext,
 } from "../net/sync.js";
 import { takePresentationBatch } from "../net/presentation.js";
@@ -1519,6 +1520,14 @@ export function GameCore({
           };
           const unseen = be.list
             .map((ne) => acceptAct(ne, me, p, network.foeUid || null))
+            // 開始の合図の装備とエリアは、ホストの言い値でなく部屋の申告から決め直す
+            .map((ne) =>
+              setupFromRoom(ne, skins, {
+                ranked: !!network.random,
+                ruleVersion: network.ruleVersion,
+                boardSize: boardSize || 5,
+              }),
+            )
             .filter((ne) => ne && timeoutOk(ne) && !g.current.has(ne.__id));
           const { actions: at, consumedIds } = takePresentationBatch(unseen, {
             split: a.phase === "play",
