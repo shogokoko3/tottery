@@ -71,7 +71,18 @@ import { reducer } from "../src/game/reducer.js";
   );
   assert.ok(/if \(a\.pendingKingChoice && !a\.captureReveal && !fxBusy\)return !kingChoiceMine \?/.test(flat), "持ち主でなければ待ち画面");
   assert.ok(/相手が新しい王を選んでいます/.test(game), "待ち画面の文");
-  // 予備札の配置も持ち主だけ(前からの決まり。崩れていないか一緒に見る)
-  assert.ok(/a\.kPlacement && a\.kPlacement\.owner === P/.test(flat), "予備札の配置も持ち主だけ");
+  // 持ち主だけに見せる画面の一覧。どれかの出し分けが崩れたら、ここで落ちる。
+  // 「通信かどうか」ではなく「持ち主かどうか」で書くこと(2026-09-17 の2件はどちらもこれを外していた)
+  assert.ok(/a\.kPlacement && a\.kPlacement\.owner === P/.test(flat), "予備札の配置は持ち主だけ");
+  assert.ok(/if \(cpu && a\.mulliganIdx !== 0\)/.test(flat), "引き直しは CPU戦でも自分のときだけ(相手の手札を見せない)");
+  assert.ok(/if \(network && a\.mulliganIdx !== p\)/.test(flat), "引き直しは通信でも自分の席だけ");
+  assert.ok(/setupSide = network \? p : cpu \? 0 : a\.setupIdx/.test(flat), "布陣は自分の側だけ");
+  assert.ok(/P = network \? p : cpu \? 0 :/.test(flat), "盤を見る人は、通信なら自分の席・CPU戦なら自分");
+  assert.ok(/handoff = !!a\.interstitial && !network && !cpu/.test(flat), "画面を渡す案内は1台で交互に指すときだけ");
+  // 相手の駒を表で見せる条件は、どの盤でも同じ(自分の駒・公開・見抜き)
+  const cards = fs.readFileSync(new URL("../src/ui/cards.jsx", import.meta.url), "utf8");
+  assert.ok(/piece\.owner === viewer \|\| !!piece\.revealed \|\| !!known/.test(cards.replace(/\s+/g, " ")), "本編の盤: 自分・公開・見抜きだけ表");
+  const setup = fs.readFileSync(new URL("../src/ui/setup.jsx", import.meta.url), "utf8");
+  assert.ok(/p\.owner === n \|\| isKnownTo\(state, n, p\)/.test(setup), "予備札の盤も同じ決まり");
 }
 console.log("行動記録: 継承は相手から消える・向きの矢印・王を選ぶ画面は持ち主だけ OK");

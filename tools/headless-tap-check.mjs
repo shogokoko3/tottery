@@ -12,7 +12,8 @@
 //   node tools/headless-tap-check.mjs [話の番号...]     (既定: 1 4 8 12)
 // 見ないもの(不具合ではない): 読ませるための幕(.tutorial-sheet-front)・重ねた画面の幕(.modal-overlay)・
 //   画面を送れば避けられる帯(重ねた画面の外の釦にかかっているだけのとき)
-// 出力: 覆われていた釦の一覧。1つでもあれば exit 1
+// あわせて、**相手の駒が表向きに出ていないか**(伏せた情報の漏れ)も毎回見る。
+// 出力: 見つかった件数。1つでもあれば exit 1
 import fs from "node:fs";
 
 const PORT = process.env.CDP_PORT || 9333;
@@ -98,9 +99,32 @@ const coveredButtons = () =>
     }
     return JSON.stringify(out);})()`);
 
+/**
+ * 相手の駒が表向きに出ていないか。
+ * 表向きの相手の駒には必ず「公開」か「見抜」か、空/宮の印が付いているはず(cards.jsx)。
+ * 何も付いていない表向きの相手の駒は、伏せた情報が漏れている
+ */
+const leakedPieces = () =>
+  ev(`(()=>{
+    const out=[];
+    for (const el of document.querySelectorAll(".piece-foe-face")) {
+      if (el.querySelector(".revealed-badge, .known-badge, .mark-badge")) continue;
+      const r=el.getBoundingClientRect();
+      if (r.width<4) continue;
+      out.push((el.innerText||"").replace(/\s+/g," ").trim().slice(0,12));
+    }
+    return JSON.stringify(out);})()`);
+
 const problems = [];
 const seen = new Set();
 async function sweep(where) {
+  for (const label of JSON.parse(await leakedPieces())) {
+    const key = `leak|${where}|${label}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    problems.push({ where, label, by: "伏せた情報" });
+    console.log(`  × ${where}: 相手の駒「${label}」が表向きに出ています(公開・見抜の印なし)`);
+  }
   const found = JSON.parse(await coveredButtons());
   for (const f of found) {
     const key = `${where}|${f.label}|${f.by}`;
