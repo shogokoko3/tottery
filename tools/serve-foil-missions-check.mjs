@@ -180,7 +180,7 @@ function App(){
    <details><summary>実保存の確認（所持・受取・称号）</summary><pre data-testid="fixture-state">{JSON.stringify({collection,profile,localPublications:window.__foilMissionsFixture.publications},null,2)}</pre></details>
   </header>
   <main className={'foil-missions-stage '+(narrow?'is-narrow':'')} data-content-width={narrow?'390':'auto'}>
-  {page==='home'?<MenuScreen key={'home-'+revision} onMissions={()=>{setPage('missions');setRevision(n=>n+1);}} onPlay={()=>setMessage('このページはミッションと称号の確認専用です。')} onTutorial={()=>setMessage('このページはミッションと称号の確認専用です。')} onSkins={()=>setMessage('獲得経路は上部のシナリオボタンで確認できます。')} onBattlePass={()=>setMessage('このページはミッションと称号の確認専用です。')} onRanking={()=>setMessage('通信せずに確認しています。')} onLetters={()=>setMessage('お知らせはローカル空応答です。')}/>:
+  {page==='home'?<MenuScreen key={'home-'+revision} onMissions={()=>{setPage('missions');setRevision(n=>n+1);}} onPlay={()=>setMessage('このページはミッションと称号の確認専用です。')} onTutorial={()=>setMessage('このページはミッションと称号の確認専用です。')} onSkins={()=>setMessage('獲得経路は上部のシナリオボタンで確認できます。')} onBattlePass={()=>setMessage('このページはミッションと称号の確認専用です。')} onShop={()=>setMessage('このページはミッションと称号の確認専用です。')} onLetters={()=>setMessage('お知らせはローカル空応答です。')}/>:
    page==='missions'?<MissionsScreen key={'missions-'+revision} onBack={()=>{setProfile(loadProfile());setPage('home');}}/>:
    <section className="foil-missions-account" key={'account-'+revision}><h2>プロフィールと称号</h2>
     <AccountCard profile={profile} onEditTitle={()=>setPicker(true)} onEditName={()=>setMessage('この確認ページでは称号の選択を確認します。')} onEditIcon={()=>setMessage('この確認ページでは称号の選択を確認します。')}/>

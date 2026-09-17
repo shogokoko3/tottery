@@ -217,6 +217,15 @@ export const Shard = (props) => (
 );
 
 /** チケット。切り取り線の入った札 */
+/** ショップ(店先の日よけ)。ジェム・チケット・フォイルの入り口に使う */
+export const Shop = (props) => (
+  <IconBase {...props}>
+    <path d="M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
+    <path d="M3 9l1.6-4.4A1 1 0 0 1 5.5 4h13a1 1 0 0 1 .9.6L21 9" />
+    <path d="M9 20v-5h6v5" />
+  </IconBase>
+);
+
 export const Ticket = (props) => (
   <IconBase {...props}>
     <path d="M3 8.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2.5 2.5 0 0 0 0 5v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2.5 2.5 0 0 0 0-5z" />

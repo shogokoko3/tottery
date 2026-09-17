@@ -4912,6 +4912,35 @@ body:has(.skin-overlay) {
   flex: none;
 }
 
+/* \u30B7\u30E7\u30C3\u30D7\u3002\u5165\u308A\u53E3\u3092\u307E\u3068\u3081\u305F\u753B\u9762 */
+.shop-screen .nav-stack {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.shop-balance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 0 0 14px;
+  color: var(--text);
+  font-size: 13px;
+}
+.shop-balance-tickets {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gold-soft);
+}
+.shop-choice-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  flex: none;
+}
+
 /* \u56DB\u89D2\u3044\u5165\u308A\u53E3\u30022\u3064\u305A\u3064\u4E26\u3079\u308B */
 .home-grid {
   display: grid;
@@ -4969,6 +4998,15 @@ body:has(.skin-overlay) {
   color: #f5c26b;
   background: rgba(245, 194, 107, 0.22);
 }
+.home-tile-tutorial .home-tile-icon {
+  color: #cbb6ff;
+  background: rgba(143, 111, 214, 0.2);
+}
+/* \u30B7\u30E7\u30C3\u30D7\u3002\u8CB7\u3044\u7269\u306E\u5165\u308A\u53E3\u3060\u3051\u7DD1\u306B\u3057\u3066\u3001\u307B\u304B\u3068\u62BC\u3057\u9593\u9055\u3048\u306A\u3044\u3088\u3046\u306B\u3059\u308B */
+.home-tile-shop .home-tile-icon {
+  color: #8fd8a4;
+  background: rgba(143, 216, 164, 0.16);
+}
 .home-tile-letters .home-tile-icon {
   color: #8fbce8;
   background: rgba(143, 188, 232, 0.14);
@@ -4978,7 +5016,7 @@ body:has(.skin-overlay) {
   right: 8px;
 }
 
-/* \u30E9\u30F3\u30AD\u30F3\u30B0\u3002\u6BCE\u65E5\u62BC\u3059\u3082\u306E\u3067\u306F\u306A\u3044\u306E\u3067\u63A7\u3048\u3081\u306B */
+/* \u30E9\u30F3\u30AD\u30F3\u30B0(\u300C\u5BFE\u6226\u3059\u308B\u300D\u306E\u4E2D)\u3002\u6BCE\u65E5\u62BC\u3059\u3082\u306E\u3067\u306F\u306A\u3044\u306E\u3067\u63A7\u3048\u3081\u306B */
 .home-quiet {
   display: flex;
   align-items: center;
@@ -4997,6 +5035,10 @@ body:has(.skin-overlay) {
 }
 .home-quiet:active {
   color: var(--gold-soft);
+}
+/* \u300C\u5BFE\u6226\u3059\u308B\u300D\u306E\u4E2D\u306B\u7F6E\u3044\u305F\u3076\u3093\u3002\u91E6\u306E\u5217\u306E\u4E0B\u3067\u4E2D\u592E\u306B\u5BC4\u305B\u308B */
+.center-stage .home-quiet {
+  margin: 2px auto 6px;
 }
 
 /* \u80CC\u306E\u4F4E\u3044\u96FB\u8A71\u3002\u8A70\u3081\u30661\u753B\u9762\u306B\u53CE\u3081\u308B\u3002

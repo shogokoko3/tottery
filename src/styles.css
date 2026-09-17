@@ -4897,6 +4897,35 @@ body:has(.skin-overlay) {
   flex: none;
 }
 
+/* ショップ。入り口をまとめた画面 */
+.shop-screen .nav-stack {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.shop-balance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 0 0 14px;
+  color: var(--text);
+  font-size: 13px;
+}
+.shop-balance-tickets {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gold-soft);
+}
+.shop-choice-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  flex: none;
+}
+
 /* 四角い入り口。2つずつ並べる */
 .home-grid {
   display: grid;
@@ -4954,6 +4983,15 @@ body:has(.skin-overlay) {
   color: #f5c26b;
   background: rgba(245, 194, 107, 0.22);
 }
+.home-tile-tutorial .home-tile-icon {
+  color: #cbb6ff;
+  background: rgba(143, 111, 214, 0.2);
+}
+/* ショップ。買い物の入り口だけ緑にして、ほかと押し間違えないようにする */
+.home-tile-shop .home-tile-icon {
+  color: #8fd8a4;
+  background: rgba(143, 216, 164, 0.16);
+}
 .home-tile-letters .home-tile-icon {
   color: #8fbce8;
   background: rgba(143, 188, 232, 0.14);
@@ -4963,7 +5001,7 @@ body:has(.skin-overlay) {
   right: 8px;
 }
 
-/* ランキング。毎日押すものではないので控えめに */
+/* ランキング(「対戦する」の中)。毎日押すものではないので控えめに */
 .home-quiet {
   display: flex;
   align-items: center;
@@ -4982,6 +5020,10 @@ body:has(.skin-overlay) {
 }
 .home-quiet:active {
   color: var(--gold-soft);
+}
+/* 「対戦する」の中に置いたぶん。釦の列の下で中央に寄せる */
+.center-stage .home-quiet {
+  margin: 2px auto 6px;
 }
 
 /* 背の低い電話。詰めて1画面に収める。

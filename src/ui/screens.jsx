@@ -42,6 +42,7 @@ import {
   Sparkle,
   Grid,
   Mail,
+  Shop,
   Ticket,
 } from "../icons.jsx";
 import {
@@ -146,6 +147,7 @@ import { BattlePassScreen } from "./battlepass.jsx";
 import { LettersScreen, useUnreadLetters } from "./letters.jsx";
 import { LoginBonus } from "./loginbonus.jsx";
 import { GemShop } from "./gem-shop.jsx";
+import { ShopScreen } from "./shop.jsx";
 import { shopAvailable } from "../net/iap.js";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
@@ -364,7 +366,7 @@ export function MenuScreen({
   onSkins,
   onBattlePass,
   onMissions,
-  onRanking,
+  onShop,
   onLetters,
   now = Date.now,
 }) {
@@ -426,24 +428,33 @@ export function MenuScreen({
         <ArrowRight size={20} className="home-hero-arrow" />
       </button>
 
+      {/* 2列3段。左上から チュートリアル・ミッション / 詰めトッタリー・ショップ /
+          バトルパス・ガチャ(本人の指示 2026-09-17)。ランキングは「対戦する」の中へ移した */}
       <div className="home-grid">
-      <button className="home-wide" onClick={onTutorial}>
-        <HomeFrameCorners theme={theme} small />
-        <span className="home-wide-icon">
-          <Book size={22} />
-        </span>
-        <span className="home-wide-label">
-          <b>
-            チュートリアル
-            {nudge && nudge.kind === "start" && (
-              <span className="home-wide-pill">おすすめ</span>
-            )}
-          </b>
-          <small>{nudge ? nudge.text : "ルールと駒の効果"}</small>
-        </span>
-        <ArrowRight size={16} className="home-wide-arrow" />
-      </button>
-
+        <HomeTile
+          frameTheme={theme}
+          tone="tutorial"
+          icon={<Book size={26} />}
+          label={
+            <>
+              チュートリアル
+              {nudge && nudge.kind === "start" && (
+                <span className="home-wide-pill">おすすめ</span>
+              )}
+            </>
+          }
+          note={nudge ? nudge.text : "ルールと駒の効果"}
+          onClick={onTutorial}
+        />
+        <HomeTile
+          frameTheme={theme}
+          tone="missions"
+          icon={<Check size={26} />}
+          label="ミッション"
+          note="褒美を受け取る"
+          badge={ready}
+          onClick={onMissions}
+        />
         <HomeTile
           frameTheme={theme}
           tone="tsume"
@@ -471,12 +482,11 @@ export function MenuScreen({
         />
         <HomeTile
           frameTheme={theme}
-          tone="missions"
-          icon={<Check size={26} />}
-          label="ミッション"
-          note="褒美を受け取る"
-          badge={ready}
-          onClick={onMissions}
+          tone="shop"
+          icon={<Shop size={26} />}
+          label="ショップ"
+          note="ジェム・チケット・フォイル"
+          onClick={onShop}
         />
         <HomeTile
           frameTheme={theme}
@@ -494,12 +504,6 @@ export function MenuScreen({
           note="英雄を召喚する"
           onClick={onSkins}
         />
-      <button className="home-quiet home-tile" onClick={onRanking} aria-label="ランキングを見る">
-        <HomeFrameCorners theme={theme} small />
-        <span className="home-tile-icon"><Crown size={26} /></span>
-        <b>ランキング</b>
-        <small>今シーズンの順位</small>
-      </button>
       </div>
       {shop && (
         <GemShop
@@ -519,7 +523,15 @@ export function MenuScreen({
  * ランダムマッチだけは、チュートリアルを第8話まで終えるまで開かない(src/game/online-gate.js)。
  * 閉じている間は薄くして理由と残りの話数を添え、押すとチュートリアル一覧へ
  */
-export function MatchingScreen({ onOnline, onFriend, onCpu, onBack, onTutorial }) {
+export function MatchingScreen({
+  onOnline,
+  onFriend,
+  onCpu,
+  onBack,
+  onTutorial,
+  // 今シーズンの順位。ホームから移した(2026-09-17、本人の指示)
+  onRanking = null,
+}) {
   const gate = onlineGate(loadProfile());
   return (
     <div className="center-stage">
@@ -551,6 +563,11 @@ export function MatchingScreen({ onOnline, onFriend, onCpu, onBack, onTutorial }
           </span>
         </button>
       </div>
+      {onRanking && (
+        <button className="home-quiet" onClick={onRanking} aria-label="ランキングを見る">
+          <Crown size={18} /> ランキングを見る
+        </button>
+      )}
       <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={18} /> ホームに戻る
       </button>
@@ -1753,6 +1770,9 @@ export function TotteryApp() {
 function TotteryScreens() {
   const collection = useCollection();
   const [cpuSkins, setCpuSkins] = useState({});
+  // ガチャ・装備を開いたときの戻り先と、最初に出すタブ(ショップから来たら「加工」など)
+  const [skinsFrom, setSkinsFrom] = useState("menu");
+  const [skinsTab, setSkinsTab] = useState("gacha");
   // CPU戦で選んだ相手のエリア({ type, king })。null なら相手が手札から王を選ぶ
   const [cpuArea, setCpuArea] = useState(null);
   // CPU の装備からフォイルを外す(「エリアなし」用。フォイルの王でしかエリアは立たない)
@@ -1994,7 +2014,13 @@ function TotteryScreens() {
       showRules={l}
       setShowRules={n}
       onHome={e === "home" ? null : goHome}
-      onBack={e === "skins" || e === "tsume" ? () => t("menu") : undefined}
+      onBack={
+        e === "skins"
+          ? () => t(skinsFrom)
+          : e === "tsume" || e === "shop"
+            ? () => t("menu")
+            : undefined
+      }
     >
       {
         {
@@ -2033,7 +2059,20 @@ function TotteryScreens() {
           ),
           skins: (
             <SkinsScreen
+              onBack={() => t(skinsFrom)}
+              onBattlePass={() => t("battlepass")}
+              initialTab={skinsTab}
+            />
+          ),
+          shop: (
+            <ShopScreen
               onBack={() => t("menu")}
+              onGacha={() => {
+                (setSkinsTab("gacha"), setSkinsFrom("shop"), t("skins"));
+              }}
+              onFoil={() => {
+                (setSkinsTab("foil"), setSkinsFrom("shop"), t("skins"));
+              }}
               onBattlePass={() => t("battlepass")}
             />
           ),
@@ -2046,13 +2085,14 @@ function TotteryScreens() {
               onBattlePass={() => t("battlepass")}
               onMissions={() => t("missions")}
               onLetters={() => t("letters")}
-              onRanking={() => t("ranking")}
+              onShop={() => t("shop")}
             />
           ),
           matching: (
             <MatchingScreen
               onBack={() => t("menu")}
               onTutorial={showTutorials}
+              onRanking={() => t("ranking")}
               onOnline={() => {
                 (u(null),
                   m(!1),

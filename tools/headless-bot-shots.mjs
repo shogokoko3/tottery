@@ -23,12 +23,12 @@ const ev = async (expr) => { const r = await send("Runtime.evaluate", { expressi
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = async (name) => { const r = await send("Page.captureScreenshot", { format: "png" }); fs.writeFileSync(`${S}/${name}.png`, Buffer.from(r.data, "base64")); console.log("shot", name); };
 const buttons = () => ev(`[...document.querySelectorAll("button")].filter(b=>b.getClientRects().length>0).map(b=>b.textContent.trim().slice(0,20))`);
-const clickText = async (t) => ev(`(()=>{const b=[...document.querySelectorAll("button")].filter(b=>b.getClientRects().length>0).find(b=>b.textContent.includes(${JSON.stringify(t)})); if(!b) return false; b.click(); return true;})()`);
+const clickText = async (t) => ev(`(()=>{const b=[...document.querySelectorAll("button")].filter(b=>b.getClientRects().length>0).find(b=>(b.textContent+" "+(b.getAttribute("aria-label")||"")).includes(${JSON.stringify(t)})); if(!b) return false; b.click(); return true;})()`);
 const tap = async (sel, i) => { const r = await ev(`(()=>{const c=document.querySelectorAll(${JSON.stringify(sel)})[${i}]; if(!c) return null; const b=c.getBoundingClientRect(); return {x:b.left+b.width/2,y:b.top+b.height/2};})()`); if (!r) return false; for (const type of ["mousePressed","mouseReleased"]) await send("Input.dispatchMouseEvent",{type,x:r.x,y:r.y,button:"left",clickCount:1}); return true; };
 const clickCell = (i) => tap(".board-grid .cell", i);
 // 文字でボタンを探して、マウスイベントで押す(.click() が効かない釦がある)
 const tapText = async (t) => {
-  const r = await ev(`(()=>{const b=[...document.querySelectorAll("button")].filter(b=>b.getClientRects().length>0 && !b.disabled).find(b=>b.textContent.includes(${JSON.stringify(t)})); if(!b) return null; const q=b.getBoundingClientRect(); return {x:q.left+q.width/2,y:q.top+q.height/2};})()`);
+  const r = await ev(`(()=>{const b=[...document.querySelectorAll("button")].filter(b=>b.getClientRects().length>0 && !b.disabled).find(b=>(b.textContent+" "+(b.getAttribute("aria-label")||"")).includes(${JSON.stringify(t)})); if(!b) return null; const q=b.getBoundingClientRect(); return {x:q.left+q.width/2,y:q.top+q.height/2};})()`);
   if (!r) return false;
   for (const type of ["mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x: r.x, y: r.y, button: "left", clickCount: 1 });
   return true;

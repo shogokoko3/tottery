@@ -1124,10 +1124,11 @@ function ForgePanel({
   );
 }
 
-export function SkinsScreen({ onBack, onBattlePass }) {
+export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
   const collection = useCollection(),
     reduce = useReducedMotion();
-  const [tab, setTab] = useState("gacha"),
+  // 最初に出すタブ。ショップの「フォイルを買う」から来たときは「加工」を開く
+  const [tab, setTab] = useState(initialTab),
     [filter, setFilter] = useState("all");
   const [finish, setFinish] = useState("all");
   const [selected, setSelected] = useState(null),

@@ -121,6 +121,7 @@ export const SCREEN_TRACK = {
   missions: "title",
   battlepass: "title",
   letters: "title",
+  shop: "title",
   // 詰めトッタリーは考える場面なので、布陣と同じ落ち着いた曲
   tsume: "setup",
   // 相手を待っているあいだは、数分続いても飽きない薄い曲にする
