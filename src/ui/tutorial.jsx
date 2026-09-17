@@ -52,7 +52,7 @@ export function MoveGuidePanel({ guide }) {
   const kings = !!guide.kings;
   return (
     <div
-      className="move-hint move-guide"
+      className={`move-hint move-guide ${kings ? "move-guide-kings" : ""}`}
       role="group"
       aria-label={kings ? "王の力" : "駒の動き"}
     >

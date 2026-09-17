@@ -2628,6 +2628,33 @@ body:has(.skin-overlay) {
 .move-guide .move-hint-row.is-king {
   grid-template-columns: 56px 1fr;
 }
+/* 日本語の折り返しを語のまとまりで切る(対応しない端末では既定のまま)。
+   「自分」が行をまたいで割れるのを減らす(2026-09-17 本人の報告) */
+.tutorial-line,
+.move-hint-title,
+.move-hint-verdict,
+.move-hint-label small,
+.move-hint-label b {
+  word-break: auto-phrase;
+  text-wrap: pretty;
+}
+
+/* 王の力の一覧。4・5 は図が2つ(王と仲間)になって横に広いので、1行に1つずつ並べ、
+   図の幅は中身に任せる。2列のままだと文の桁が潰れて1文字ずつ折り返す
+   (2026-09-17 本人の報告「第1話の4ページ目の改行がおかしい」) */
+.move-guide-kings .move-hint-rows {
+  grid-template-columns: 1fr;
+}
+.move-guide-kings .move-hint-row.is-king {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+.move-guide-kings .move-hint-label {
+  min-width: 0;
+}
+.move-guide-kings .move-hint-label small {
+  line-height: 1.5;
+}
 .move-hint-row.is-king .move-diagram {
   width: 56px;
 }
