@@ -801,15 +801,47 @@
   }
 }
 
-/* Keep the complete home artwork while bringing every destination closer. */
+/* The home owns one viewport. Dialogs keep their own scrolling. */
+html:has(.stage > .home-wrap),
+body:has(.stage > .home-wrap) {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+#root:has(.stage > .home-wrap) {
+  min-height: 0;
+}
+.tottery-root:has(.stage > .home-wrap) {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  padding-bottom: 0;
+}
+.tottery-root:has(.stage > .home-wrap) > .top-bar {
+  flex: none;
+}
+.tottery-root:has(.stage > .home-wrap) > .build-tag {
+  display: none;
+}
 .stage:has(> .home-wrap) {
+  flex: 1;
+  min-height: 0;
   padding: 0;
+  overflow: hidden;
 }
 .home-wrap[data-home-area] {
+  height: 100%;
+  min-height: 0;
   max-width: 520px;
   gap: 8px;
   margin-block: 0;
   padding: 22px 24px max(20px, env(safe-area-inset-bottom));
+}
+.home-wrap > :is(.home-account-row, .home-resource-bar, .home-hero, .mission-message) {
+  flex-shrink: 0;
 }
 .home-wrap .home-account-row {
   display: grid;
@@ -867,8 +899,11 @@
   bottom: 9px;
 }
 .home-wrap .home-realm-portrait {
+  flex: 0 1 auto;
+  min-height: 0;
   width: 100%;
   height: auto;
+  max-height: min(262px, calc((100vw - 48px) * 941 / 1672));
   aspect-ratio: 1672 / 941;
   margin: 5px 0 2px;
   background: var(--home-surface);
@@ -899,7 +934,9 @@
   font-size: 21px;
 }
 .home-wrap[data-home-area] .home-grid {
+  flex: 1 0 auto;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, auto);
   gap: 8px;
 }
 .home-wrap[data-home-area] .home-grid > :is(.home-tile, .home-wide) {
@@ -952,6 +989,37 @@
 .home-wrap .home-wide-pill {
   margin-left: 0;
 }
+/* The original home has no portrait: use the space for comfortable menu tiles. */
+.home-wrap[data-home-area="default"] {
+  gap: 12px;
+}
+.home-wrap[data-home-area="default"] .home-hero {
+  min-height: 88px;
+}
+.home-wrap[data-home-area="default"] .home-grid {
+  gap: 12px;
+}
+.home-wrap[data-home-area="default"] .home-grid > .home-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  min-height: 88px;
+  padding: 10px 8px;
+}
+.home-wrap[data-home-area="default"] .home-grid .home-tile-icon {
+  width: 38px;
+  height: 38px;
+}
+.home-wrap[data-home-area="default"] .home-grid .home-tile-icon > svg {
+  width: 28px;
+  height: 28px;
+}
+.home-wrap[data-home-area="default"] .home-grid .home-tile > b {
+  font-size: 14px;
+}
 @media (max-height: 740px) {
   .home-wrap[data-home-area] {
     gap: 6px;
@@ -966,8 +1034,24 @@
     min-height: 56px;
     padding-block: 7px;
   }
+  .home-wrap[data-home-area="default"] .home-grid {
+    gap: 8px;
+  }
+  .home-wrap[data-home-area="default"] .home-grid > .home-tile {
+    min-height: 74px;
+    gap: 3px;
+    padding-block: 6px;
+  }
+  .home-wrap[data-home-area="default"] .home-hero {
+    min-height: 64px;
+  }
 }
 @media (max-width: 360px) {
+  .tottery-root:has(.stage > .home-wrap) > .top-bar .brand {
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
   .home-wrap[data-home-area] {
     padding-inline: 20px;
   }
@@ -982,5 +1066,81 @@
   }
   .home-wrap[data-home-area] .home-grid :is(.home-tile > b, .home-wide-label b) {
     font-size: 12px;
+  }
+}
+@media (max-height: 640px) {
+  .home-wrap[data-home-area] {
+    padding-top: 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .home-wrap[data-home-area] .home-self,
+  .home-wrap[data-home-area] .home-news {
+    min-height: 50px;
+    padding-block: 5px;
+  }
+  .home-wrap[data-home-area] .home-hero {
+    min-height: 54px;
+    padding-block: 5px;
+  }
+  .home-wrap[data-home-area] .home-hero-label small {
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+  .home-wrap[data-home-area="default"] .home-grid > .home-tile {
+    display: grid;
+    justify-items: start;
+    text-align: left;
+    min-height: 58px;
+  }
+  .home-wrap[data-home-area="default"] .home-grid .home-tile-icon {
+    width: 24px;
+    height: 26px;
+  }
+  .home-wrap[data-home-area="default"] .home-grid .home-tile-icon > svg {
+    width: 22px;
+    height: 22px;
+  }
+  .home-wrap[data-home-area="default"] .home-grid .home-tile > b {
+    font-size: 12px;
+  }
+}
+/* Short landscape browser windows keep the destinations beside the account. */
+@media (min-width: 600px) and (max-height: 540px) {
+  .home-wrap[data-home-area] {
+    display: grid;
+    max-width: 980px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 6px 18px;
+    padding: 12px max(24px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  }
+  .home-wrap > .home-account-row {
+    grid-area: 1 / 1;
+  }
+  .home-wrap > .home-resource-bar {
+    grid-area: 2 / 1;
+  }
+  .home-wrap .home-realm-portrait {
+    grid-area: 3 / 1;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+    margin: 0;
+  }
+  .home-wrap .home-realm-caption {
+    bottom: 6px;
+  }
+  .home-wrap .home-realm-caption h2 {
+    font-size: 14px;
+  }
+  .home-wrap > .home-hero {
+    grid-area: 4 / 1;
+  }
+  .home-wrap[data-home-area="default"] > .home-hero {
+    grid-row: 3 / 5;
+  }
+  .home-wrap > .home-grid {
+    grid-area: 1 / 2 / 5 / 3;
   }
 }
