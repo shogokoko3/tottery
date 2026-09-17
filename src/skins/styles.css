@@ -2419,3 +2419,55 @@
 .forge-milestone-area:hover {
   background: rgba(212, 175, 55, 0.2);
 }
+
+/* ガチャ結果のダブりを崩す欄(2026-09-17 本人の指示) */
+.skins-result-dismantle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 14px auto 0;
+  padding: 12px;
+  max-width: 560px;
+  border: 1px solid #8b9ba555;
+  border-radius: 8px;
+  background: #0f1d2b80;
+}
+.skins-result-dismantle .skins-note {
+  margin: 0;
+  text-align: center;
+}
+.skins-result-dismantle .skins-note small {
+  display: block;
+  margin-top: 4px;
+  color: #929fac;
+}
+.skins-result-dismantle > .skin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding-inline: 20px;
+}
+.skins-auto-dismantle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #c4b79e;
+  font-size: 13px;
+  min-height: 44px;
+}
+.skins-auto-dismantle input {
+  width: 20px;
+  height: 20px;
+  accent-color: #d5b576;
+}
+.skins-auto-dismantle small {
+  flex-basis: 100%;
+  color: #929fac;
+  font-size: 11px;
+  line-height: 1.6;
+  padding-left: 28px;
+}

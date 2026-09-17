@@ -10,7 +10,11 @@ import {
   foilId,
   sanitizeLoadout,
 } from "./catalog.js";
-import { craftCheck, dismantleCheck } from "./ether.js";
+import {
+  craftCheck,
+  dismantleCheck,
+  dustOf,
+} from "./ether.js";
 import { exchangeCheck, shatterCheck } from "./shards.js";
 import { homePortraitsOf, homeThemeOf } from "./home-themes.js";
 import { sanitizeTsumeProgress } from "../game/tsume-daily.js";
@@ -168,6 +172,8 @@ export function normalize(raw) {
     // 対局中の演出(装備した駒の動画・A の魔法)。"full" か "off" だけ(2026-09-17 本人の指示で「短縮」を廃止)。
     // 以前の「短縮」は短くしたい人の選択なので off に寄せる。設定画面で変える
     motion: ["short", "off"].includes(value.motion) ? "off" : "full",
+    // ガチャ結果のダブりを自動で崩すか(2026-09-17 本人の指示)。既定は切。結果画面で入れる
+    autoDismantle: value.autoDismantle === true,
     // 召喚(ガチャ)の演出。"full" か "skip"。召喚ボタンの横で変える(2026-09-17 本人の指示で対局の演出と分けた)。
     // 以前は「短縮」「なし」がガチャも飛ばしていたので、その保存には skip を引き継ぐ
     summonMotion:
@@ -359,6 +365,40 @@ export function exchangeFoil(state, baseId) {
     shards: count(state.shards) - check.cost,
     lastCraft: { id, isNew: true, source: "exchange" },
   });
+}
+
+/**
+ * ガチャ結果のうち、**その抽選で来たダブりだけ**を崩してエーテルにする(本人の指示 2026-09-17)。
+ *
+ * 崩さないもの:
+ *  - フォイル(欠片にする別の道があり、エーテルにはしない)
+ *  - ペガサス・A などの記念の札(isKeepsake)
+ *  - 最後の1枚(dismantleCheck が守る)
+ *  - **抽選より前から持っていたダブり**。崩すのはこの抽選で増えた分までに限る
+ *    (一括分解と違い、勝手に手持ちを減らさない)
+ *
+ * 状態を変えずに下見にも使える。返り値の state を捨てれば、gain と rows だけが得られる。
+ */
+export function dismantleResults(state, results) {
+  const pulled = {};
+  for (const r of Array.isArray(results) ? results : [])
+    if (r && typeof r.id === "string") pulled[r.id] = (pulled[r.id] || 0) + 1;
+  let next = state;
+  let gain = 0;
+  const rows = [];
+  for (const id of Object.keys(pulled)) {
+    let n = 0;
+    // この抽選で来た枚数を上限に、崩せるだけ崩す
+    while (n < pulled[id]) {
+      const check = dismantleCheck(next, id);
+      if (!check.ok) break;
+      next = dismantle(next, id);
+      gain += check.gain;
+      n += 1;
+    }
+    if (n) rows.push({ id, count: n, gain: dustOf(byId(id)) * n });
+  }
+  return { state: next, gain, rows };
 }
 
 /** 通常版のダブりをまとめて崩す。フォイルは欠片にするので含めない。 */

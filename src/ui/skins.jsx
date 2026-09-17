@@ -20,6 +20,7 @@ import {
   craft,
   dismantle,
   dismantleAll,
+  dismantleResults,
   equip,
   exchangeFoil,
   FOIL_MILESTONE,
@@ -1124,6 +1125,78 @@ function ForgePanel({
   );
 }
 
+/**
+ * ガチャ結果のダブりを崩す欄(本人の指示 2026-09-17)。
+ *
+ * 崩すのは**この抽選で来たダブりだけ**で、フォイル・記念の札・最後の1枚には触らない
+ * (src/skins/collection.js の dismantleResults)。
+ * 「次から自動で崩す」を入れておくと、次の結果からは開いた時点で崩して、何を崩したかを出す。
+ * 崩すのは取り消せないので、自動を入れるまでは必ず押してもらう(選ぶ→確認→確定の決めに合わせる)。
+ */
+function ResultDismantle({ collection, results, working, onRun, onToggleAuto }) {
+  const preview = useMemo(
+    () => dismantleResults(collection, results),
+    [collection, results],
+  );
+  const [done, setDone] = useState(null);
+  const auto = collection.autoDismantle === true;
+  const fired = useRef(false);
+  useEffect(() => {
+    // 開いた時点で一度だけ。結果ごとに作り直されるので、ここでの一度きりで足りる
+    if (fired.current || !auto || preview.gain <= 0) return;
+    fired.current = true;
+    onRun(preview).then((r) => r && setDone(r));
+    // 開いた瞬間の下見だけを見る(崩したあとに走り直さない)
+  }, []);
+  const shown = done || (preview.gain > 0 ? preview : null);
+  if (!shown) return null;
+  const sheets = shown.rows.reduce((n, r) => n + r.count, 0);
+  const label = shown.rows
+    .map((r) => `${byId(r.id).rank} ${byId(r.id).name}×${r.count}`)
+    .join("・");
+  return (
+    <section className="skins-result-dismantle" aria-label="重複した札を崩す">
+      {done ? (
+        <p className="skins-note">
+          重複した{sheets}枚を崩して{" "}
+          <b>
+            {ETHER_NAME} +{done.gain}
+          </b>{" "}
+          にしました。
+          <small>{label}</small>
+        </p>
+      ) : (
+        <>
+          <p className="skins-note">
+            重複した{sheets}枚を崩すと{" "}
+            <b>
+              {ETHER_NAME} +{preview.gain}
+            </b>
+            。<small>{label}</small>
+          </p>
+          <button
+            className="skin-btn"
+            disabled={working}
+            onClick={() => onRun(preview).then((r) => r && setDone(r))}
+          >
+            <Ether size={16} /> 重複を崩す
+          </button>
+        </>
+      )}
+      <label className="skins-auto-dismantle">
+        <input
+          type="checkbox"
+          checked={auto}
+          disabled={working}
+          onChange={onToggleAuto}
+        />
+        次から自動で崩す
+        <small>フォイルと記念の札、最後の1枚は崩しません。あとから切れます</small>
+      </label>
+    </section>
+  );
+}
+
 export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
   const collection = useCollection(),
     reduce = useReducedMotion();
@@ -1318,6 +1391,17 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
   const equipSkin = async (skin) => {
     if (await run((s) => equip(s, skin.id)))
       setMessage(`${skin.rank}のカードに「${skin.name}」を装備しました。`);
+  };
+  /** ガチャ結果のダブりを崩す。下見(preview)と同じものを台帳へ書く */
+  const dismantlePulled = async (preview) => {
+    if (!preview || preview.gain <= 0) return null;
+    const next = await run((s) => dismantleResults(s, results).state);
+    if (!next) return null;
+    return { gain: preview.gain, rows: preview.rows };
+  };
+  /** 「次から自動で崩す」の入り切り */
+  const toggleAutoDismantle = async () => {
+    await run((s) => ({ ...s, autoDismantle: !s.autoDismantle }));
   };
   const closeResults = async () => {
     setAcquisitionMode(null);
@@ -2007,6 +2091,16 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                   対応するホーム装飾も解放されます。ホームの「着せ替え」から選べます。
                 </p>
               </section>
+            )}
+            {/* 崩せるのはガチャの結果だけ。錬成・交換・加工の1枚は対象にしない */}
+            {collection.pending?.results && (
+              <ResultDismantle
+                collection={collection}
+                results={results}
+                working={working}
+                onRun={dismantlePulled}
+                onToggleAuto={toggleAutoDismantle}
+              />
             )}
             <p className="skins-message" role="status">
               {message}
