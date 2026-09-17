@@ -46,6 +46,16 @@ function serverRandom() {
 }
 
 export const MIGRATE_TICKETS_MAX = 500;
+/**
+ * 端末からの引き継ぎを受け付けるか(2026-09-18 に既定を false に)。
+ *
+ * 引き継ぐ枚数は**端末の言い値**で、サーバーには確かめる手だてが無い。
+ * しかも受け付け済みの印は uid に付くので、記録を消して名乗り直せば
+ * **何度でも最大500枚を受け取れた**(匿名の口座は作り放題)。
+ * サーバーの財布はもう十分に行き渡っているので、既定で閉じる。
+ * 引き継げていない人が出たら、true に戻すか `adminGrant` で手で配る。
+ */
+export const MIGRATE_ENABLED = false;
 /** 遊んで貯める分(kind=earn)は端末の申告なので、1回と1日(UTC)の上限で抑える */
 export const EARN_EVENT_MAX = 10;
 export const EARN_DAILY_MAX = 30;
@@ -426,10 +436,15 @@ export class Wallet {
       this.sql("INSERT OR IGNORE INTO entitlements VALUES (?,?,?,?)", uid, BATTLEPASS_ENTITLEMENT, id, now);
     return { ...r, ...this.summary(uid) };
   }
-  /** 端末にあったチケットを一度だけ引き継ぐ(上限つき) */
+  /** 端末にあったチケットを一度だけ引き継ぐ(上限つき。既定では受け付けない) */
   migrate(uid, tickets, now) {
     const done = this.sql("SELECT tickets FROM migrations WHERE uid=?", uid)[0];
     if (done) return { applied: false, migrated: done.tickets, ...this.summary(uid) };
+    // 閉じているときは、印だけ残して何も配らない(端末が毎回送り直さないように)
+    if (!MIGRATE_ENABLED) {
+      this.sql("INSERT INTO migrations VALUES (?,?,?)", uid, 0, now);
+      return { applied: false, migrated: 0, ...this.summary(uid) };
+    }
     const n = cap(tickets, MIGRATE_TICKETS_MAX);
     this.sql("INSERT INTO migrations VALUES (?,?,?)", uid, n, now);
     if (n) this.credit(uid, `migrate:${uid}`, n, "migrate", now);
@@ -570,7 +585,9 @@ export class Wallet {
     this.sql("DELETE FROM wallet_ledger WHERE uid=?", uid);
     this.sql("DELETE FROM wallet_events WHERE uid=?", uid);
     this.sql("DELETE FROM entitlements WHERE uid=?", uid);
-    this.sql("DELETE FROM migrations WHERE uid=?", uid);
+    // migrations は**消さない**。消すと記録を消すたびに引き継ぎをやり直せてしまう。
+    // 残すのは「その uid が引き継ぎ済みか」だけで、何を持っていたかは 0 に伏せる
+    this.sql("UPDATE migrations SET tickets=0 WHERE uid=?", uid);
     this.sql("UPDATE purchases SET uid='' WHERE uid=?", uid);
     return { ok: true };
   }

@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { X509CertificateGenerator, X509Certificate } from "@peculiar/x509";
 import { CompactSign } from "jose";
-import { Wallet, MIGRATE_TICKETS_MAX, EARN_DAILY_MAX } from "../src/server/wallet.js";
+import { Wallet, MIGRATE_TICKETS_MAX, MIGRATE_ENABLED, EARN_DAILY_MAX } from "../src/server/wallet.js";
 import { ticketsPrice, etherFor } from "../src/iap/catalog.js";
 import { verifyAppleTransaction } from "../src/server/applejws.js";
 import { APPLE_ROOT_G3_PEM } from "../src/server/apple-root-g3.js";
@@ -182,9 +182,22 @@ console.log("\n広告リワード(1日 ADS_PER_DAY 回・チケット1枚)");
 }
 
 console.log("\n端末からの引き継ぎと旧表の移行");
-is("一度だけ引き継ぐ", pick(w.migrate("C", 40, T)).tickets, 40);
-is("二度目は何もしない", w.migrate("C", 40, T).applied, false);
-is("上限を超える申告は上限で止める", w.migrate("D", 99999, T).migrated, MIGRATE_TICKETS_MAX);
+// 引き継ぐ枚数は端末の言い値で、サーバーには確かめる手だてが無い。
+// 受け付け済みの印は uid に付くので、記録を消して名乗り直せば何度でも受け取れた。
+// 2026-09-18 に既定で閉じた。開いているときの振る舞いも見る
+is("既定では引き継ぎを受け付けない", MIGRATE_ENABLED, false);
+is("閉じているときは何も配らない", pick(w.migrate("C", 40, T)).tickets, 0);
+is("閉じていても印は残す(端末が送り直さない)", w.migrate("C", 40, T).applied, false);
+{
+  // 記録を消しても、引き継ぎはやり直せない(印を消さず 0 に伏せる)
+  const D3 = new DatabaseSync(":memory:");
+  const w3 = new Wallet((q, ...a) => D3.prepare(q).all(...a));
+  w3.migrate("Z", 500, T);
+  w3.forget("Z");
+  is("記録を消してもやり直せない", w3.migrate("Z", 500, T).applied, false);
+  is("それでもチケットは増えない", w3.summary("Z").tickets, 0);
+  is("印は残っている", D3.prepare("SELECT tickets FROM migrations WHERE uid='Z'").all()[0].tickets, 0);
+}
 const db2 = new DatabaseSync(":memory:");
 const sql2 = (q, ...a) => db2.prepare(q).all(...a);
 sql2("CREATE TABLE wallets (uid TEXT PRIMARY KEY, tickets INTEGER NOT NULL, updated INTEGER)");

@@ -10,6 +10,24 @@ import { sanitizeLoadout } from "../skins/catalog.js";
 
 // クライアントの勝率・得点は受け取らない。参加者限定の部屋から手順を読み、
 // 公開ゲームと同じルールで再生する。手の送り主は Firebase の認証済み by。
+/**
+ * 手順の指紋(2026-09-18)。実際に適用した手の __id をそろえて畳む。
+ *
+ * 部屋の round を書き換えるだけで id(code:createdAt:round)が変わるので、
+ * **同じ手順の対局を何度でも記録して持ち点を作れた**。指紋が同じものは二度記録しない。
+ * 正当な再戦は手順を消してから始まる(clearActs)ので、指紋は必ず変わる。
+ */
+function fingerprint(ids) {
+  const text = [...ids].sort().join(",");
+  let a = 2166136261, b = 5381;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    a = Math.imul(a ^ c, 16777619) >>> 0;
+    b = ((b << 5) + b + c) >>> 0;
+  }
+  return `${a.toString(36)}${b.toString(36)}${text.length.toString(36)}`;
+}
+
 export function verifyMatch(room, request, uid) {
   const { host, guest } = room?.seats || {};
   if (!host || !guest || host === guest || ![host, guest].includes(uid))
@@ -87,6 +105,8 @@ export function verifyMatch(room, request, uid) {
     throw new Error("対局結果の確認が必要です。");
   return {
     id: `${request.code}:${request.createdAt}:${request.round}`,
+    // 同じ手順は二度記録しない(round を書き換えても効かない)
+    fingerprint: fingerprint(seen),
     host,
     guest,
     winner: state.winner,

@@ -43,6 +43,14 @@ export class Ledger {
     sql(
       "CREATE TABLE IF NOT EXISTS claims (uid TEXT, id TEXT, season TEXT, claimed INTEGER, PRIMARY KEY(uid,id))",
     );
+    // 手順の指紋(2026-09-18)。部屋の round を書き換えるだけで id が変わるので、
+    // 同じ対局を何度でも記録して持ち点を作れた。指紋が同じものは二度記録しない
+    try {
+      sql("ALTER TABLE matches ADD COLUMN fp TEXT");
+    } catch {
+      /* 既にある */
+    }
+    sql("CREATE INDEX IF NOT EXISTS matches_fp ON matches(fp)");
     // その対局で実際に効いたフォイル(席ごと)。盤面エリアはフォイルの王で立つのに、
     // 対局では所持が検証されていない(2026-09-18)。あとで照らすための材料を残す。
     // この段階では何も拒まない。uid ごとに消せるよう uid も持つ(5.1.1(v))
@@ -101,6 +109,15 @@ export class Ledger {
   }
   record(match, now) {
     if (this.result(match.host, match.id)) return;
+    // 同じ手順を二度記録しない。round を書き換えて id だけ変えても通らない
+    if (
+      match.fingerprint &&
+      this.sql(
+        "SELECT id FROM matches WHERE fp=? AND host=? AND guest=?",
+        match.fingerprint, match.host, match.guest,
+      )[0]
+    )
+      return;
     const season = this.current(now);
     const before = [match.host, match.guest].map((uid) => {
       const p = this.sql(
@@ -145,13 +162,14 @@ export class Ledger {
       );
     }
     this.sql(
-      "INSERT INTO matches VALUES (?,?,?,?,?,?)",
+      "INSERT INTO matches (id, season, host, guest, winner, finished, fp) VALUES (?,?,?,?,?,?,?)",
       match.id,
       season.id,
       match.host,
       match.guest,
       match.winner,
       now,
+      match.fingerprint || null,
     );
     for (const [seat, uid] of [match.host, match.guest].entries())
       for (const skinId of (match.foils && match.foils[seat]) || [])
