@@ -4973,6 +4973,32 @@ body:has(.skin-overlay) {
   gap: 5px;
   color: var(--gold-soft);
 }
+/* \u30B7\u30E7\u30C3\u30D7\u306E\u6B04\u3092\u958B\u3044\u305F\u3068\u304D\u306E\u7BB1(2026-09-17 \u672C\u4EBA\u306E\u6307\u793A\u3002\u305D\u306E\u5834\u3067\u5546\u54C1\u304C\u4E26\u3076) */
+.shop-panel {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.shop-panel .gem-shop-scroll {
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
+.shop-panel .foil-offer-list {
+  max-height: none;
+}
+.shop-panel .pass-purchase {
+  margin: 0;
+}
+.shop-panel > .btn-small {
+  align-self: center;
+}
 .shop-choice-icon {
   display: grid;
   place-items: center;

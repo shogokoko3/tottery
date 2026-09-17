@@ -22,12 +22,17 @@ import { syncWallet } from "../net/wallet.js";
 import { isVerified } from "../net/auth.js";
 import { signInWithApple } from "../net/apple-signin.js";
 
-export function GemShop({
+/**
+ * ジェムのパック一覧(中身だけ)。モーダルにも、ショップの欄の中にもそのまま置ける。
+ * onDone は買えたときに呼ぶ(モーダルなら閉じる)。onBusy は外の「閉じる」を止めるため
+ */
+export function GemPacks({
   gems,
   gemsPaid = 0,
   gemsFree = 0,
-  onClose,
+  onDone,
   onMessage,
+  onBusy,
   // 確認画面・検査用。渡すと StoreKit を呼ばずにこの一覧を出す
   initialProducts = null,
 }) {
@@ -72,6 +77,12 @@ export function GemShop({
     // この時計でも見張り、WATCHDOG_MS を過ぎたら段階つきで打ち切る
     const tick = setInterval(() => {
       if (!alive) return;
+      // 商品が並んだ(または失敗が確定した)ら、もう刻まない。
+      // ショップの欄に置くと、開いている間ずっと毎秒描き直してしまう(2026-09-17)
+      if (settled) {
+        clearInterval(tick);
+        return;
+      }
       const ms = Date.now() - started;
       setWaited(Math.floor(ms / 1000));
       if (!settled && ms >= WATCHDOG_MS) {
@@ -122,7 +133,7 @@ export function GemShop({
             ? `購入を受け付けました。通信が戻ると反映されます。${r.reason ? `(${r.reason})` : ""}`
             : "ジェムを受け取りました。",
         );
-      onClose();
+      if (onDone) onDone();
     } catch (e) {
       say((e && e.message) || "購入できませんでした。");
     } finally {
@@ -147,20 +158,12 @@ export function GemShop({
       setBusy(false);
     }
   };
+  useEffect(() => {
+    if (onBusy) onBusy(busy);
+  }, [busy, onBusy]);
   return (
-    <div className="modal-overlay" role="dialog" aria-label="ジェムを買う">
-      <div className="modal-panel gem-shop-panel">
-        <div className="modal-head">
-          <h3>ジェムを買う</h3>
-          <button
-            className="btn btn-ghost btn-small"
-            disabled={busy}
-            onClick={onClose}
-          >
-            閉じる
-          </button>
-        </div>
-        <div className="gem-shop-scroll">
+    <>
+      <div className="gem-shop-scroll">
           <div className="gem-shop-balance">
             <GemIcon size={104} />
             <div>
@@ -237,18 +240,56 @@ export function GemShop({
             価格は App Storeの表示に従います。ジェムはこのゲームの中でだけ使え、払い戻しはできません。
           </p>
         </div>
-        <div className="setup-actions">
+      <div className="setup-actions">
+        <button
+          className="btn btn-ghost btn-small"
+          disabled={busy}
+          onClick={restoreAll}
+        >
+          購入を確かめ直す
+        </button>
+        {onDone && (
+          <button className="btn btn-ghost" disabled={busy} onClick={onDone}>
+            閉じる
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** ジェムの店(モーダル)。中身は GemPacks。ホーム・ガチャ画面・バトルパスから開く */
+export function GemShop({
+  gems,
+  gemsPaid = 0,
+  gemsFree = 0,
+  onClose,
+  onMessage,
+  initialProducts = null,
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="modal-overlay" role="dialog" aria-label="ジェムを買う">
+      <div className="modal-panel gem-shop-panel">
+        <div className="modal-head">
+          <h3>ジェムを買う</h3>
           <button
             className="btn btn-ghost btn-small"
             disabled={busy}
-            onClick={restoreAll}
+            onClick={onClose}
           >
-            購入を確かめ直す
-          </button>
-          <button className="btn btn-ghost" disabled={busy} onClick={onClose}>
             閉じる
           </button>
         </div>
+        <GemPacks
+          gems={gems}
+          gemsPaid={gemsPaid}
+          gemsFree={gemsFree}
+          onDone={onClose}
+          onMessage={onMessage}
+          onBusy={setBusy}
+          initialProducts={initialProducts}
+        />
       </div>
     </div>
   );

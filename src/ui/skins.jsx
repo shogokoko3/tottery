@@ -56,7 +56,6 @@ import { updateCollection, useCollection } from "../skins/store.js";
 import {
   WALLET_SERVER,
   debitTickets,
-  exchangeGems,
   newEventId,
   syncWallet,
   migrateOnce,
@@ -83,9 +82,10 @@ import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { FoilOfferSheet } from "./foil-offer.jsx";
+import { buyFoilFor, buyTicketsFor } from "./buy.js";
 import { foilOffers, bandOf, skinVisibleInCollection } from "../skins/foil-shop.js";
 import { addEther } from "../skins/collection.js";
-import { buyFoil, buyEther } from "../net/wallet.js";
+import { buyEther } from "../net/wallet.js";
 import { FoilAcquisition } from "./foil-acquisition.jsx";
 import { FOIL_INITIAL_HOLD_MS } from "../skins/foil-acquisition.js";
 import { SummonIntro } from "./summon-intro.jsx";
@@ -1276,16 +1276,12 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
     if (buying) return;
     setBuying(true);
     setMessage("");
-    try {
-      await exchangeGems(newEventId("xchg"), n);
-      setMessage(`ガチャチケットを${n}枚受け取りました。`);
-    } catch (e) {
-      const m = (e && e.message) || "";
-      if (/ジェムが足りません/.test(m) && shopOk) setShop(true);
-      setMessage(m || "両替できませんでした。");
-    } finally {
-      setBuying(false);
-    }
+    // 決済の呼び出しは src/ui/buy.js の1本に寄せてある(ショップと同じ道)
+    const r = await buyTicketsFor(n);
+    if (r.needGems && shopOk) setShop(true);
+    setMessage(r.message);
+    setBuying(false);
+    return r.ok;
   };
   // 無償ジェムをエーテルに(無償だけ。サーバーで減らし、通ったら端末のエーテルを足す)
   const buyEtherWith = async (gems) => {
@@ -1428,14 +1424,10 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
     setWorking(true);
     setMessage("");
     try {
-      await buyFoil(offer.product.id, offer.skins);
-      setMessage(`「${offer.product.name}」のフォイルを受け取りました。`);
-      return true;
-    } catch (e) {
-      const m = (e && e.message) || "買えませんでした。";
-      setMessage(m);
-      if (/有償ジェムが足りません/.test(m) && shopOk) setShop(true);
-      return false;
+      const r = await buyFoilFor(offer);
+      setMessage(r.message);
+      if (r.needGems && shopOk) setShop(true);
+      return r.ok;
     } finally {
       busy.current = false;
       setWorking(false);

@@ -10,44 +10,23 @@ import { SkinModal } from "./skin-modal.jsx";
 
 const yen = (n) => n.toLocaleString("ja-JP");
 
-export function FoilOfferSheet({
+/**
+ * フォイルの商品一覧(中身だけ)。ガチャ直後のシートにも、ショップの欄の中にもそのまま置ける。
+ * SkinModal(portal)を通さないので、サーバー側の描画(検査)でも使える
+ */
+export function FoilOfferPicker({
   offers,
   gemsPaid,
   working,
   onBuy,
-  onClose,
   onShop,
   message = "",
 }) {
   const [picked, setPicked] = useState(null); // 確認中の商品
-  if (!offers.length) return null;
+  if (!offers.length)
+    return <p className="skins-note">いま買えるフォイルはありません。</p>;
   return (
-    <SkinModal
-      label="ほかのフォイルも"
-      onClose={onClose}
-      className="foil-offer-overlay"
-    >
-      <div className="skin-modal-head">
-        <div>
-          <span className="skins-eyebrow">FOIL SHOP</span>
-          <h2>ほかのフォイルも</h2>
-          <p className="skins-note">
-            持っていないフォイルを<b>有償ジェム</b>
-            で買えます(無償ジェムは使えません)。セットの片方を持っていれば、残りの1枚ぶんの値段です。
-          </p>
-          <p className="skins-note foil-offer-balance">
-            有償ジェム <b>{yen(gemsPaid)}</b>
-          </p>
-        </div>
-        <button
-          className="skin-close"
-          aria-label="ほかのフォイルもを閉じる"
-          disabled={working}
-          onClick={onClose}
-        >
-          ×
-        </button>
-      </div>
+    <>
       {picked ? (
         <div className="foil-offer-confirm">
           <p>
@@ -137,6 +116,56 @@ export function FoilOfferSheet({
         </div>
       )}
       {message && <p className="skins-message" role="status">{message}</p>}
+    </>
+  );
+}
+
+/** ガチャでフォイルを引いた直後に出すシート。中身は FoilOfferPicker */
+export function FoilOfferSheet({
+  offers,
+  gemsPaid,
+  working,
+  onBuy,
+  onClose,
+  onShop,
+  message = "",
+}) {
+  if (!offers.length) return null;
+  return (
+    <SkinModal
+      label="ほかのフォイルも"
+      onClose={onClose}
+      className="foil-offer-overlay"
+    >
+      <div className="skin-modal-head">
+        <div>
+          <span className="skins-eyebrow">FOIL SHOP</span>
+          <h2>ほかのフォイルも</h2>
+          <p className="skins-note">
+            持っていないフォイルを<b>有償ジェム</b>
+            で買えます(無償ジェムは使えません)。セットの片方を持っていれば、残りの1枚ぶんの値段です。
+          </p>
+          <p className="skins-note foil-offer-balance">
+            有償ジェム <b>{yen(gemsPaid)}</b>
+          </p>
+        </div>
+        <button
+          className="skin-close"
+          aria-label="ほかのフォイルもを閉じる"
+          disabled={working}
+          onClick={onClose}
+        >
+          ×
+        </button>
+      </div>
+      <FoilOfferPicker
+        offers={offers}
+        gemsPaid={gemsPaid}
+        working={working}
+        onBuy={onBuy}
+        onShop={onShop}
+        message={message}
+      />
     </SkinModal>
   );
 }

@@ -67,8 +67,12 @@ const skins = readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf
 assert.ok(/if \(next && pulledFoils\.length && WALLET_SERVER\)/.test(skins), "ガチャでフォイルが出て結果を閉じたら出す(Web でも有償ジェムがあれば買える)");
 assert.ok(/onShop=\{shopOk \? \(\) => setShop\(true\) : null\}/.test(skins), "ジェムを買う釦は iOS だけ");
 assert.ok(/setFoilOffer\(\{ exclude \}\)/.test(skins), "引いた帯を除いて出す");
-assert.ok(/await buyFoil\(offer\.product\.id, offer\.skins\);/.test(skins), "購入APIを使う");
-assert.ok(!/grantFoils\(s, offer\.skins\)/.test(skins), "画面で再送のたびに重複付与しない");
+// 決済の呼び出しは src/ui/buy.js の1本に寄せてある(ショップ・ガチャ画面が同じ道を使う。2026-09-17)
+const buyui = readFileSync(new URL("../src/ui/buy.js", import.meta.url), "utf8");
+assert.ok(/await buyFoil\(offer\.product\.id, offer\.skins\);/.test(buyui), "購入APIを使う(呼び出しは src/ui/buy.js 1本)");
+assert.ok(!/buyFoil\(/.test(skins), "画面から直接は呼ばない");
+assert.ok(/有償ジェムが足りません/.test(buyui), "フォイルは有償ジェムの足りない言い方で店を開く");
+assert.ok(!/grantFoils\(s, offer\.skins\)/.test(skins + buyui), "画面で再送のたびに重複付与しない");
 const clientWallet = readFileSync(new URL("../src/net/wallet.js", import.meta.url), "utf8");
 assert.ok(/data\.purchasedFoils/.test(clientWallet) && /!next\.owned\[id\]/.test(clientWallet), "支払済みカードの未所持分を応答から復元");
 assert.ok(/\{foilOffer && !shop && \(\s*<FoilOfferSheet/.test(skins), "ジェムの店の下には出さない");

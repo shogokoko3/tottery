@@ -33,7 +33,8 @@ import {
   BATTLEPASS_CYCLES_PER_WEEK,
 } from "../iap/catalog.js";
 import { shopAvailable } from "../net/iap.js";
-import { buyPassWithGems, newEventId, syncWallet } from "../net/wallet.js";
+import { newEventId, syncWallet } from "../net/wallet.js";
+import { buyPassFor } from "./buy.js";
 import { GemShop } from "./gem-shop.jsx";
 import { updateCollection } from "../skins/store.js";
 import { unlockAudio } from "../audio/index.js";
@@ -111,18 +112,14 @@ export function BattlePassScreen({ onBack, onSkins }) {
     if (buying) return;
     setBuying(true);
     setMessage("");
-    try {
-      await buyPassWithGems(newEventId("pass"));
-      if (mounted.current) setMessage("バトルパスを手に入れました。");
-    } catch (e) {
-      const m = (e && e.message) || "購入できませんでした。";
-      if (mounted.current) {
-        setMessage(m);
-        if (/ジェムが足りません/.test(m) && shopOk) setShop(true);
-      }
-    } finally {
-      if (mounted.current) setBuying(false);
+    // 決済の呼び出しは src/ui/buy.js の1本に寄せてある(ショップと同じ道)
+    const r = await buyPassFor();
+    if (mounted.current) {
+      setMessage(r.message);
+      if (r.needGems && shopOk) setShop(true);
+      setBuying(false);
     }
+    return r.ok;
   }, [buying, shopOk]);
 
   // 次の周へ。今週の残枠(サーバーが正)を確かめてから盤をリセットする

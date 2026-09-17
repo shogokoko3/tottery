@@ -4958,6 +4958,32 @@ body:has(.skin-overlay) {
   gap: 5px;
   color: var(--gold-soft);
 }
+/* ショップの欄を開いたときの箱(2026-09-17 本人の指示。その場で商品が並ぶ) */
+.shop-panel {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.shop-panel .gem-shop-scroll {
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
+.shop-panel .foil-offer-list {
+  max-height: none;
+}
+.shop-panel .pass-purchase {
+  margin: 0;
+}
+.shop-panel > .btn-small {
+  align-self: center;
+}
 .shop-choice-icon {
   display: grid;
   place-items: center;
