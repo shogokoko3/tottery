@@ -74,6 +74,9 @@
   color: var(--gold-soft);
   font-size: 17px;
   text-shadow: 0 0 12px rgba(212, 175, 55, 0.35);
+  /* 帯は1行に収める。折り返すと飾りの◆だけが次の行に落ちて、題がずれて見える
+     (2026-09-18。狭い画面で「飛ばす」が並ぶと起きていた) */
+  white-space: nowrap;
 }
 .brand::before,
 .brand::after {
@@ -1367,6 +1370,25 @@ body:has(.skin-overlay) {
   align-items: center;
   gap: 8px;
   min-width: 72px;
+  /* 中の題を押し出さない。狭い画面では釦の側が縮む */
+  flex: 0 1 auto;
+}
+/* 狭い画面では飾りの◆を外して、題と釦を1行に収める */
+@media (max-width: 400px) {
+  .brand {
+    font-size: 15px;
+    letter-spacing: 0.12em;
+  }
+  .brand::before,
+  .brand::after {
+    margin: 0 5px;
+  }
+}
+@media (max-width: 360px) {
+  .brand::before,
+  .brand::after {
+    display: none;
+  }
 }
 .top-right {
   justify-content: flex-end;
@@ -2553,20 +2575,21 @@ body:has(.skin-overlay) {
 }
 
 /* テストプレイ中であることを、どの画面でも見失わないようにする */
+/* テスト中の印。上の帯を貼り付けてからは、画面の上に置くと各画面の見出しに重なる
+   (詰めトッタリーの「一日一問…」やガチャの見出しを隠していた。2026-09-18)。
+   版の印(build-tag)と対になる位置、画面の左下へ小さく置く */
 .test-badge {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  /* 貼り付けた帯の下に出す(帯の方が上に来るので、重ねると隠れる) */
-  top: calc(var(--top-bar-h, 0px) + 4px);
+  left: 8px;
+  bottom: calc(4px + env(safe-area-inset-bottom));
   z-index: 70;
-  padding: 3px 12px;
+  padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(240, 217, 138, 0.5);
-  background: rgba(10, 19, 34, 0.9);
-  color: var(--gold-soft);
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  border: 1px solid rgba(240, 217, 138, 0.35);
+  background: rgba(10, 19, 34, 0.8);
+  color: rgba(240, 217, 138, 0.75);
+  font-size: 9px;
+  letter-spacing: 0.06em;
   pointer-events: none;
 }
 
