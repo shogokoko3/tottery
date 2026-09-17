@@ -23,7 +23,7 @@ import { syncWallet } from "../net/wallet.js";
 import { updateCollection, useCollection } from "../skins/store.js";
 import { useBattlePassUnlocked } from "./battlepass-access.js";
 import { FREE_GACHA, foilRevealed } from "../skins/collection.js";
-import { foilOffers } from "../skins/foil-shop.js";
+import { foilOffers, foilWindow, foilWindowLabel } from "../skins/foil-shop.js";
 import {
   BATTLEPASS_GEMS,
   GEM_PER_TICKET,
@@ -50,7 +50,9 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
       alive = false;
     };
   }, []);
-  const foilKnown = foilRevealed(collection);
+  // フォイルの欄は、ガチャでフォイルを引いてから72時間だけ並ぶ(2026-09-18 本人の指示)
+  const window = foilWindow(collection);
+  const foilKnown = foilRevealed(collection) && window.open;
   const offers = foilKnown ? foilOffers(collection) : [];
   const gems = collection.gems || 0;
   const gemsPaid = collection.gemsPaid || 0;
@@ -183,14 +185,18 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
             フォイルを買う
             <small>
               {foilKnown
-                ? "持っていないフォイルを有償ジェムで"
-                : "ガチャでフォイルを引くと開きます"}
+                ? `持っていないフォイルを有償ジェムで・${foilWindowLabel(window.leftMs)}`
+                : "ガチャでフォイルを引くと、そこから72時間だけ並びます"}
             </small>
           </span>
           {foilKnown && arrow("foil")}
         </button>
         {open === "foil" && foilKnown && (
           <div className="shop-panel">
+            <p className="skins-note">
+              <b className="shop-foil-left">{foilWindowLabel(window.leftMs)}</b>
+              。ガチャでフォイルを引くと、そこから72時間だけ並びます。
+            </p>
             <p className="skins-note">
               有償ジェム <b>{yen(gemsPaid)}</b>
               。無償ジェムは使えません。セットの片方を持っていれば、残りの1枚ぶんの値段です。

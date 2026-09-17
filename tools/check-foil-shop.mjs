@@ -9,7 +9,7 @@
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { FOIL_PRODUCTS, productOf, priceFor, bandOf, ownsAllButSecret, skinVisibleInCollection, foilOffers, coversPool } from "../src/skins/foil-shop.js";
+import { FOIL_PRODUCTS, productOf, priceFor, bandOf, ownsAllButSecret, skinVisibleInCollection, foilOffers, coversPool, FOIL_WINDOW_MS, foilWindow, foilWindowLabel, startFoilWindow } from "../src/skins/foil-shop.js";
 import { ALL_SKINS, byId, foilId } from "../src/skins/catalog.js";
 
 assert.equal(coversPool(), true, "15キャラのフォイルが商品1〜9にちょうど1回ずつ");
@@ -81,3 +81,38 @@ assert.ok(/wop === "foil"/.test(worker) && /call\("wallet-foil", \{ product: bod
 const wallet = readFileSync(new URL("../src/server/wallet.js", import.meta.url), "utf8");
 assert.ok(/this\.spendGems\(uid, id, price, "foil",[^\n]+\{ paidOnly: true \}\)/.test(wallet), "有償ジェムだけで払う");
 console.log("フォイルの直接購入: 値段・15キャラを網羅・按分・帯を除く・A全収集条件・購入復元の配線 OK");
+
+/* ---- ショップに並ぶのは72時間だけ(2026-09-18 本人の指示) ---- */
+{
+  const fs = await import("node:fs");
+  assert.equal(FOIL_WINDOW_MS, 72 * 60 * 60 * 1000, "72時間");
+  const now = 1_700_000_000_000;
+  assert.deepEqual(foilWindow({}, now), { open: false, until: null, leftMs: 0 }, "まだ引いていなければ並ばない");
+  assert.deepEqual(foilWindow({ foilOfferAt: 0 }, now).open, false);
+  const started = startFoilWindow({ owned: {} }, now);
+  assert.equal(started.foilOfferAt, now, "引いた時刻を控える");
+  assert.equal(foilWindow(started, now).open, true, "引いた直後は並ぶ");
+  assert.equal(foilWindow(started, now + FOIL_WINDOW_MS - 1000).open, true, "72時間ちょうどの直前まで並ぶ");
+  assert.equal(foilWindow(started, now + FOIL_WINDOW_MS).open, false, "72時間で閉じる");
+  // 引き直すと、その時点から72時間
+  const again = startFoilWindow(started, now + 100 * 3600e3);
+  assert.equal(foilWindow(again, now + 101 * 3600e3).open, true, "引くたびに72時間に戻る");
+  assert.equal(foilWindowLabel(50 * 60e3), "あと50分");
+  assert.equal(foilWindowLabel(5 * 3600e3), "あと5時間");
+  assert.equal(foilWindowLabel(51 * 3600e3), "あと2日と3時間");
+  assert.equal(foilWindowLabel(48 * 3600e3), "あと2日");
+  assert.equal(foilWindowLabel(0), "");
+  // 台帳が時刻を覚える
+  const { normalize } = await import("../src/skins/collection.js");
+  assert.equal(normalize({ foilOfferAt: now }).foilOfferAt, now, "保存から読み戻す");
+  assert.equal(normalize({ foilOfferAt: "x" }).foilOfferAt, null, "壊れた値は無し");
+  assert.equal(normalize({}).foilOfferAt, null);
+  // 画面の配線
+  const shop = fs.readFileSync(new URL("../src/ui/shop.jsx", import.meta.url), "utf8");
+  assert.ok(/const foilKnown = foilRevealed\(collection\) && window\.open;/.test(shop), "ショップの欄は72時間の中だけ");
+  assert.ok(/72時間だけ並びます/.test(shop), "閉じているときは理由を出す");
+  const skins = fs.readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
+  assert.ok(/pulledFoils\.length \? startFoilWindow\(base\) : base/.test(skins.replace(/\s+/g, " ")), "ガチャでフォイルを引くたびに72時間を引き直す");
+  assert.ok(/if \(foilOffers\(next, \{ exclude \}\)\.length\) setFoilOffer\(\{ exclude \}\);/.test(skins), "引くたびにポップアップを出す");
+}
+console.log("フォイルの欄は72時間だけ・引くたびに引き直す OK");

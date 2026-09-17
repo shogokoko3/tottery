@@ -169,6 +169,12 @@ export function normalize(raw) {
     }),
     draws: count(value.draws),
     earlyClaimed: value.earlyClaimed === true,
+    // ガチャでフォイルを引いた時刻。ここから72時間だけ、ショップにフォイルの欄が並ぶ
+    // (2026-09-18 本人の指示。src/skins/foil-shop.js の foilWindow)
+    foilOfferAt:
+      Number.isFinite(value.foilOfferAt) && value.foilOfferAt > 0
+        ? Math.floor(value.foilOfferAt)
+        : null,
     // 対局中の演出(装備した駒の動画・A の魔法)。"full" か "off" だけ(2026-09-17 本人の指示で「短縮」を廃止)。
     // 以前の「短縮」は短くしたい人の選択なので off に寄せる。設定画面で変える
     motion: ["short", "off"].includes(value.motion) ? "off" : "full",

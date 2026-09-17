@@ -80,6 +80,44 @@ export const FOIL_PRODUCTS = Object.freeze(
 
 export const productOf = (id) => FOIL_PRODUCTS.find((p) => p.id === id) || null;
 
+/**
+ * フォイルの欄がショップに並ぶ時間(2026-09-18 本人の指示)。
+ * ガチャでフォイルを引いたときから72時間だけ。引くたびに引き直す(その時点から72時間)。
+ * 「持っているかどうか」ではなく「いつ引いたか」で開け閉めする
+ */
+export const FOIL_WINDOW_MS = 72 * 60 * 60 * 1000;
+
+/**
+ * いま並んでいるか。{ open, until, leftMs }
+ *   open   … 並んでいる
+ *   until  … いつまで(時刻。まだ引いていなければ null)
+ *   leftMs … 残り(閉じていれば 0)
+ */
+export function foilWindow(collection, now = Date.now()) {
+  const at = collection?.foilOfferAt;
+  if (!Number.isFinite(at) || at <= 0) return { open: false, until: null, leftMs: 0 };
+  const until = at + FOIL_WINDOW_MS;
+  const leftMs = until - now;
+  return { open: leftMs > 0, until, leftMs: Math.max(0, leftMs) };
+}
+
+/** 残りの言い方。「あと2日と3時間」「あと5時間」「あと20分」 */
+export function foilWindowLabel(leftMs) {
+  if (!(leftMs > 0)) return "";
+  const mins = Math.ceil(leftMs / 60000);
+  if (mins < 60) return `あと${mins}分`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `あと${hours}時間`;
+  const days = Math.floor(hours / 24);
+  const rest = hours % 24;
+  return rest ? `あと${days}日と${rest}時間` : `あと${days}日`;
+}
+
+/** フォイルを引いた印を押す(ここから72時間) */
+export function startFoilWindow(state, now = Date.now()) {
+  return { ...state, foilOfferAt: now };
+}
+
 /** その商品の一部(skins)だけ買うときの値段。按分して四捨五入。空や商品外の札があれば null */
 export function priceFor(product, skins) {
   if (!product || !Array.isArray(skins) || !skins.length) return null;

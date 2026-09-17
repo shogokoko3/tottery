@@ -5012,6 +5012,10 @@ body:has(.skin-overlay) {
   max-width: 420px;
   margin: 0 auto;
 }
+/* フォイルの欄の残り時間(72時間の限り) */
+.shop-foil-left {
+  color: var(--gold-soft);
+}
 .shop-balance {
   display: flex;
   align-items: center;
