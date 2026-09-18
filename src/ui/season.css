@@ -463,6 +463,10 @@
 }
 .appearance-settings {
   text-align: left;
+  /* 設定の中では、上の一覧と同じ枠に見えるようにそろえる(2026-09-18 本人の指摘) */
+  border-top: 1px solid var(--line);
+  margin-top: 6px;
+  padding-top: 4px;
 }
 .appearance-preview {
   display: flex;
@@ -482,7 +486,13 @@
   justify-content: space-between;
   gap: 10px;
   font-size: 12px;
-  margin: 10px 0;
+  /* 上の「設定の行」と同じ間と区切り線にする(枠が途中で崩れて見えていた) */
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.appearance-settings label:last-of-type {
+  border-bottom: 0;
 }
 .appearance-settings select {
   max-width: 65%;

@@ -2383,7 +2383,8 @@
 /* スキン詳細の「効果盤面」(src/ui/skins.jsx SkinAreaNote) */
 .skins-area-note {
   margin: 10px 0 12px;
-  padding: 10px 12px;
+  /* 文が枠に触れて読みにくかったので、内側を広げる(2026-09-18 本人の報告) */
+  padding: 12px 14px 14px;
   border: 1px solid rgba(212, 175, 55, 0.35);
   border-left-width: 4px;
   border-radius: 10px;
@@ -2401,7 +2402,7 @@
   line-height: 1.6;
 }
 .skins-area-how {
-  margin-top: 6px !important;
+  margin-top: 8px !important;
   color: var(--text-dim, #b9b3a3);
   font-size: 12px !important;
 }

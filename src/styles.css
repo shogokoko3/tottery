@@ -1058,8 +1058,15 @@ body:has(.skin-overlay) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   margin-bottom: 14px;
   text-align: left;
+}
+/* 見出しの既定の余白(上下 18px 超)が、重ねた画面の上に空きの帯を作っていた
+   (2026-09-18 本人の指摘「上の部分に違和感」)。行の高さは釦にそろえる */
+.modal-head h3 {
+  margin: 0;
+  min-width: 0;
 }
 .gameover-panel {
   text-align: center;
@@ -3406,6 +3413,7 @@ body:has(.skin-overlay) {
 
 .settings-panel {
   text-align: left;
+  padding-top: 14px;
   /* 中身が縦に長いので、画面をもう少し使う */
   max-height: 88vh;
   /* 見出し・タブ・閉じるは動かさず、中身だけを送る(2026-09-18) */
@@ -3413,18 +3421,35 @@ body:has(.skin-overlay) {
   flex-direction: column;
   overflow: hidden;
 }
-/* 設定の種類(あなた・音と演出・安心・アプリ)。1画面ずつ出して迷わせない */
+/* 見出しは貼り付けない(中身だけが動くので要らない)。貼り付けた背景の色が
+   上に空きの帯があるように見えていた(2026-09-18 本人の指摘) */
+.settings-panel > .modal-head {
+  position: static;
+  background: none;
+  /* 題と閉じるだけの行なので、上下は詰める。区切りはタブが担う */
+  padding: 0 0 8px;
+  border-bottom: 0;
+  margin-bottom: 10px;
+}
+.settings-panel > .modal-head .icon-btn {
+  padding: 4px;
+}
+/* 設定の種類(プレイヤー・音と演出・安心・アプリ)。1画面ずつ出して迷わせない */
+/* 4つを同じ幅で並べる。flex だと文字数で幅がばらつき、並びが乱れて見えた
+   (2026-09-18 本人の指摘「上の部分に違和感」) */
 .settings-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   margin: 0 0 12px;
   flex: none;
 }
 .settings-tabs .btn {
-  flex: 1;
+  min-width: 0;
   min-height: 40px;
   padding: 8px 2px;
-  font-size: 12px;
+  font-size: 11.5px;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 .settings-tabs [aria-selected="true"] {
@@ -3438,6 +3463,8 @@ body:has(.skin-overlay) {
   overflow-y: auto;
   overscroll-behavior: contain;
   margin-bottom: 12px;
+  /* 最後の行が「閉じる」の手前でぶつ切りに見えないよう、下に余白を置く */
+  padding-bottom: 6px;
 }
 .settings-body > :first-child {
   margin-top: 0;
@@ -5054,6 +5081,14 @@ body:has(.skin-overlay) {
   max-width: 420px;
   margin: 0 auto;
 }
+/* 重ねた画面を開いているあいだは、上の帯は見えるだけにする。
+   下の画面の「戻る」を押してタイトルへ飛んでしまうのを防ぐ
+   (2026-09-18 本人の報告)。閉じれば元どおり触れる */
+.tottery-root:has(.modal-overlay) .top-bar {
+  pointer-events: none;
+  opacity: 0.72;
+}
+
 /* シーズン報酬の見本(受け取る前に実物を見せる。2026-09-18) */
 .season-reward-mark,
 .season-reward-name {
@@ -5369,11 +5404,40 @@ body:has(.skin-overlay) {
 /* 「ホームに戻る」。どの画面でも同じ置き方にする。
  * すぐ上の釦にくっついていると押し間違えるので、間を空けて単体で立たせる。
  * 主役ではないので幅は控えめに。ただし指で押せる高さは確保する。 */
+/* 「ホームに戻る」は、どの画面でも下に貼り付けて常に見えるようにする
+   (2026-09-18 本人の指示。チュートリアル一覧・バトルパス・ガチャ・ショップ・お知らせ)。
+   画面を送っても下に残り、後ろの内容は透かさない */
 .btn-home {
   display: block;
   margin: 26px auto 0;
   min-width: 200px;
   min-height: 48px;
+  /* 画面に貼り付ける。sticky だと入れ物の一番下にいるので動く余地が無く、
+     送らないと出てこなかった(2026-09-18) */
+  position: fixed;
+  left: 50%;
+  translate: -50% 0;
+  margin: 0;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 40;
+  background: linear-gradient(180deg, #1a2f52, #0b1729);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+/* 貼り付けた釦のぶん、本文の下を空ける(釦が最後の行に重ならないように) */
+.stage:has(.btn-home) {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+/* 釦の後ろに薄い暗がりを敷いて、送っている本文と重なっても読み分けられるように */
+.tottery-root:has(.btn-home)::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(104px + env(safe-area-inset-bottom));
+  background: linear-gradient(rgba(8, 17, 32, 0), #081120 62%);
+  pointer-events: none;
+  z-index: 39;
 }
 
 /* 王を討った駒が名乗りを上げる。盤の上でくるりと表になる。
@@ -5834,13 +5898,16 @@ body:has(.skin-overlay) {
 .area-promotion-options small { display: block; font-size: 11px; }
 .area-pick-instruction { flex: 1; min-width: 150px; }
 .area-bar-picking > .btn { min-height: 44px; }
+/* エリアの名札。丸い枠のまま行が折り返すと、文字が枠の曲がりに触れて読みにくかった
+   (2026-09-18 本人の報告「土の文字がフレームに触れている」)。角を緩め、内側を広げる */
 .area-chip {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  padding: 6px 14px;
+  border-radius: 14px;
+  line-height: 1.6;
   border: 1px solid var(--btn-edge);
   background: rgba(255, 255, 255, 0.04);
   color: var(--ink);

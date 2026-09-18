@@ -684,7 +684,7 @@ export function SettingsModal({ onClose }) {
             (2026-09-18 本人の指示「使いやすいUIで見やすいレイアウトに」) */}
         <div className="settings-tabs" role="tablist" aria-label="設定の種類">
           {[
-            ["account", "あなた"],
+            ["account", "プレイヤー"],
             ["look", "音と演出"],
             ["safety", "安心"],
             ["about", "アプリ"],

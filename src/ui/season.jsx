@@ -387,7 +387,7 @@ export function SeasonRewardPreview({ reward, onClose }) {
                 {seasonTitleName(reward)}
               </span>
               <p className="hint">
-                名前の下に出る名札です。設定の「あなた」から着け替えできます。
+                名前の下に出る名札です。設定の「プレイヤー」から着け替えできます。
               </p>
             </>
           )}

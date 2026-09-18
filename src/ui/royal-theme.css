@@ -339,6 +339,10 @@
   :is(.tottery-root, .skin-overlay) .modal-panel {
     padding: 18px 16px;
   }
+  /* 設定は見出しを貼り付けないので、上の余白はもっと詰めてよい(2026-09-18) */
+  :is(.tottery-root, .skin-overlay) .settings-panel {
+    padding-top: 12px;
+  }
   :is(.tottery-root, .skin-overlay) :is(.hint, .settings-note, .rule-desc) {
     line-height: 1.75;
   }
