@@ -2,6 +2,7 @@ import * as T from "three";
 import { SUMMON_WORLDS, summonFrame, smooth } from "./summon-plan.js";
 import { SUMMON_ARCHITECTURE } from "./summon-architecture.js";
 import { makeSummonPortal } from "./summon-atmosphere.js";
+import { makeSummonGoldLight } from "./summon-gold.js";
 
 const W = 12,
   H = 18;
@@ -25,9 +26,12 @@ function paintedMaterial(texture, gold) {
         vec3 c=texture2D(uMap,vUv).rgb;
         float value=dot(c,vec3(.2126,.7152,.0722));
         // Preserve all carved relief and its painted shadows while gilding the metal.
-        vec3 gilded=vec3(1.86,1.18,.25)*pow(value,.78);
-        float sweep=exp(-pow((vUv.x-(.5+sin(uTime*.65)*.32))/.07,2.0));
-        gilded+=vec3(.48,.35,.13)*sqrt(value)*sweep;
+        vec3 gilded=vec3(2.25,1.36,.27)*pow(value,.77);
+        float phase=fract((uTime+.25)/3.1);
+        float sweep=exp(-pow((vUv.x+vUv.y*.38-(phase*1.85-.25))/.075,2.0));
+        float charge=smoothstep(1.,3.8,uTime);
+        gilded+=vec3(1.25,.91,.34)*sqrt(value)*sweep*(.55+charge*.6);
+        gilded+=vec3(.2,.12,.02)*pow(value,.55)*charge;
         c=mix(c,gilded,uGold*.91);
         gl_FragColor=vec4(c,1.0);
         #include <colorspace_fragment>
@@ -59,7 +63,8 @@ export function createSummonScene(canvas, plan) {
     height = 1,
     portal,
     mist,
-    paintedFront;
+    paintedFront,
+    goldLight;
   const contour = architecture.edge.map(point);
   const bounds = new T.Box2().setFromPoints(contour);
   const centre = (architecture.seam - 0.5) * W;
@@ -170,6 +175,16 @@ export function createSummonScene(canvas, plan) {
 
     const front = paintedMaterial(texture, plan.gold);
     paintedFront = front;
+    if (plan.gold) {
+      goldLight = makeSummonGoldLight({
+        centre,
+        floor,
+        width: pw,
+        height: doorHeight,
+        contour,
+      });
+      scene.add(goldLight.group);
+    }
     const edgeMaterial = new T.MeshStandardMaterial({
       color: plan.gold ? "#9d7430" : "#472e1e",
       roughness: 0.63,
@@ -202,6 +217,7 @@ export function createSummonScene(canvas, plan) {
       for (let i = 0; i < fp.count; i++)
         uv.setXY(i, (fp.getX(i) + hingeX) / W + 0.5, (fp.getY(i) + floor) / H);
       group.add(new T.Mesh(face, front));
+      goldLight?.lightLeaf(group, local);
       scene.add(group);
       doors.push({ group, side });
     }
@@ -232,6 +248,7 @@ export function createSummonScene(canvas, plan) {
     for (const { group, side } of doors)
       group.rotation.y = -side * frame.opening * 1.4;
     if (paintedFront) paintedFront.uniforms.uTime.value = t;
+    goldLight?.group.userData.update(t, renderer.getPixelRatio());
     portal?.userData.update(t, smooth((ms - 4100) / 2100));
     if (mist) mist.intensity = frame.opening * 1.2;
     renderer.render(scene, camera);

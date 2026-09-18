@@ -5,11 +5,25 @@ import STYLES from "../src/skins/styles.css";
 const q = new URLSearchParams(location.search),
   foil = q.get("foil") === "1",
   count = q.get("count") === "1" ? 1 : 10;
+const mixed = [
+  "angel-k",
+  "demon-q",
+  "zombie-male:foil",
+  "elf-male",
+  "pirate-female",
+  "angel-j:foil",
+  "viking-female",
+  "zombie-female",
+  "dragon-knight",
+  "demon-k",
+];
 const results = Array.from({ length: count }, (_, i) => ({
   id:
-    i === 0
-      ? `angel-k${foil ? ":foil" : ""}`
-      : ["zombie-male", "pirate-female", "elf-male", "viking-female"][i % 4],
+    q.get("sample") === "mixed"
+      ? mixed[i]
+      : i === 0
+        ? `angel-k${foil ? ":foil" : ""}`
+        : ["zombie-male", "pirate-female", "elf-male", "viking-female"][i % 4],
   isNew: true,
 }));
 function Preview() {

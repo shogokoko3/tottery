@@ -294,6 +294,14 @@ function RevealCard({
     completeRef.current?.();
   }, [finished]);
   const visibleSkin = skin.foil && !foilComplete ? base : skin;
+  // Hint only the actual promotion/foil cards; keep the ordinary backs quiet.
+  const backGlow = !flipped
+    ? skin.foil
+      ? skin.rarity === "SSR" ? "ssr-foil" : "foil"
+      : skin.rarity === "SSR" && ladder.length > 1
+        ? "ssr"
+        : null
+    : null;
   const label =
     shown === "SSR" && ["LIMITED", "SPECIAL"].includes(skin.rarity)
       ? rarityLabel(skin)
@@ -305,7 +313,7 @@ function RevealCard({
         dragging ? "is-dragging" : ""
       } ${shown ? `rarity-${shown}` : ""} ${final ? "is-final" : ""} ${
         spinning ? `is-spinning spin-to-${next}` : ""
-      } ${landing ? "is-landing" : ""}`}
+      } ${landing ? "is-landing" : ""} ${backGlow ? `back-glow-${backGlow}` : ""} ${reduce ? "is-reduced" : ""}`}
       style={{ "--i": index, "--angle": `${flipped ? 180 : angle}deg` }}
       data-index={index}
       onPointerDown={down}
@@ -335,6 +343,31 @@ function RevealCard({
           alt=""
           draggable="false"
         />
+        {backGlow && (
+          <span className="reveal-back-light" aria-hidden="true">
+            <span className="reveal-back-sheen" />
+            {backGlow === "ssr-foil" && (
+              <>
+                <span className="reveal-back-aurora" />
+                <svg className="reveal-back-regalia" viewBox="0 0 90 120" fill="none">
+                  <path className="back-gold-tracery" d="M4 27V7h19M67 7h19v20M4 93v20h19M67 113h19V93M7 20l5-8h8M70 12h8l5 8M7 100l5 8h8M70 108h8l5-8M37 9l8-5 8 5-8 5zM37 111l8-5 8 5-8 5z" />
+                  <g className="back-star-orbit">
+                    <circle cx="45" cy="48" r="29" strokeDasharray="33 8 3 8" />
+                    <path d="M45 15l3 5-3 5-3-5zM45 71l3 5-3 5-3-5zM12 48l5-3 5 3-5 3zM68 48l5-3 5 3-5 3z" />
+                  </g>
+                  <g className="back-star-orbit back-star-orbit-inner">
+                    <circle cx="45" cy="48" r="23" strokeDasharray="24 12" />
+                    <path d="M45 21l2 4-2 4-2-4zM45 67l2 4-2 4-2-4z" />
+                  </g>
+                  <path className="back-star-heart" d="M45 29l3.5 14 11.5 5-11.5 4L45 67l-3.5-15L30 48l11.5-5z" />
+                </svg>
+              </>
+            )}
+            <i />
+            <i />
+            <i />
+          </span>
+        )}
         <span className="reveal-front">
           {final ? (
             skin.foil && settled && foilStart ? (
