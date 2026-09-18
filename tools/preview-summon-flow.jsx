@@ -52,6 +52,7 @@ function Preview() {
         <SummonReveal
           key={key}
           results={results}
+          drawNumber={Number(q.get("draw") || 0)}
           reduce={q.get("reduce") === "1"}
           onFinish={() => setRun(false)}
         />

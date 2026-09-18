@@ -4,13 +4,16 @@
  * - 前兆(omen): 束の中でいちばん強いレアリティで背景の光り方を決める。
  *   ただし SSR がいても低確率で SR の前兆に抑える(当てにならない前兆)。
  *   個別の伏せ札では、実際にSSRへ昇格する札が金色、フォイルの札が虹色に光る。
- *   SSRフォイルには金の装飾と二重の星環を重ね、さらに特別な輝きを出す。
+ *   SSRフォイルは50%が専用背面、50%が共通背面から開示中に専用演出へ昇格する。
  *   この光は抽選結果・昇格の段階を変更せず、めくると消える。
+ *   フォイルはめくっても共通の封印だけを見せ、全札の昇格が終わって0.5秒待ってから
+ *   一枚ずつ中央で開示する。名前・絵柄・レアリティ文字は封印がほどける瞬間まで表示しない。
  * - 昇格(ladder): めくった札が最終のレアリティに至るまでに通る段階。
  *   SR は R→SR、SSR は R→SR→SSR と上がって見せるが、素でそのまま出ることもある
  *
  * 乱数は使わない。束の中身(id の並び)から決めるので、同じ束なら再読み込みしても
  * 同じ前兆・同じ昇格になり、演出の途中で閉じても話が変わらない。
+ * SSRフォイルの2経路には保存済みの通算召喚枚数も使い、同じキャラを再び引いても固定しない。
  */
 import { byId } from "./catalog.js";
 
@@ -44,6 +47,13 @@ export function roll(text, seed = 0) {
   h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
   const n = 4294967296 * (2097151 & h2) + (h1 >>> 0);
   return (n % 100000) / 100000;
+}
+
+/** Only presentation is sampled; the saved card and its rarity never change. */
+export function foilRevealRoute(skin, seed) {
+  if (!skin?.foil) return "none";
+  if (skin.rarity !== "SSR") return "common";
+  return roll(`${seed}#foil-reveal-route`) < 0.5 ? "legend" : "surprise";
 }
 
 /** 束の目印。前兆と昇格の種になる */

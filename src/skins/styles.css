@@ -1734,6 +1734,7 @@
   );
   animation: reveal-veil 0.9s ease-in-out infinite alternate;
 }
+.reveal-foil-seal { animation:none; }
 /* 格と NEW は小さく、絵を隠さない大きさに */
 .reveal-rarity {
   position: absolute;

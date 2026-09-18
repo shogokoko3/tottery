@@ -1,0 +1,402 @@
+.foil-seal {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: block;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse at 50% 38%,
+    #233b54,
+    #0c1328 58%,
+    #060c19
+  );
+  box-shadow: inset 0 0 20px #91bbff55;
+}
+.foil-seal-mist {
+  position: absolute;
+  inset: -35%;
+  background: conic-gradient(
+    from 35deg,
+    transparent,
+    #6ff2ef44,
+    transparent 35%,
+    #ba84ef77,
+    transparent 70%,
+    #ffdc8044,
+    transparent
+  );
+  filter: blur(10px);
+  animation: foil-seal-drift 8s linear infinite;
+}
+.foil-seal svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  stroke: #efe0ab;
+  stroke-width: 0.65;
+  filter: drop-shadow(0 0 3px #a0d5ff);
+}
+.foil-seal-frame {
+  stroke-width: 1;
+}
+.foil-seal-orbit {
+  transform-origin: 45px 54px;
+  animation: foil-seal-orbit 10s linear infinite;
+}
+.foil-seal-orbit.inner {
+  animation-direction: reverse;
+  animation-duration: 7s;
+  stroke: #bef4ff;
+}
+.foil-seal-gem {
+  fill: #d2efffb3;
+  stroke: #f9edc6;
+  filter: drop-shadow(0 0 5px #d5e5ff);
+}
+.foil-seal-word {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 15%;
+  font: 600 clamp(10px, 2vw, 13px)/1.5 serif;
+  letter-spacing: 0.3em;
+  text-align: center;
+  color: #e3ddc6;
+}
+.foil-seal.is-legend {
+  background: radial-gradient(
+    ellipse at 50% 38%,
+    #4b3c55,
+    #15102b 60%,
+    #100a1b
+  );
+  box-shadow: inset 0 0 24px #e7c77466;
+}
+.foil-seal.is-legend svg {
+  stroke: #ffdf94;
+  filter: drop-shadow(0 0 4px #ffd57c);
+}
+.foil-unveiling-stage {
+  outline: none;
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: max(22px, env(safe-area-inset-top)) 18px
+    max(20px, env(safe-area-inset-bottom));
+  overflow: hidden;
+  background: radial-gradient(
+    ellipse at 50% 46%,
+    #192b45,
+    #080e1c 62%,
+    #040811
+  );
+  color: #f1e4c9;
+}
+.foil-unveiling-stage.is-legend {
+  background: radial-gradient(
+    ellipse at 50% 46%,
+    #443451,
+    #151022 57%,
+    #080b15
+  );
+}
+.foil-unveiling-aura {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 48%;
+  width: min(110vw, 650px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #b3eeff45, transparent 65%);
+  opacity: 0.55;
+  scale: 0.65;
+  transition:
+    scale 1.5s ease,
+    opacity 1.3s;
+}
+.is-legend .foil-unveiling-aura {
+  background: radial-gradient(
+    ellipse,
+    #efd17b77,
+    #a279db33 38%,
+    transparent 66%
+  );
+}
+.foil-unveiling-stage[data-phase="seal"] .foil-unveiling-aura {
+  opacity: 1;
+  scale: 1.3;
+}
+.foil-unveiling-stage[data-phase="reveal"] .foil-unveiling-aura {
+  opacity: 1;
+  scale: 1.65;
+}
+.foil-unveiling-stage[data-phase="settle"] .foil-unveiling-aura {
+  opacity: 0.6;
+  scale: 1.15;
+}
+.foil-unveiling-eyebrow {
+  margin: 0 0 9px;
+  color: #d8d9f2;
+  font: 500 12px/1.5 serif;
+  letter-spacing: 0.4em;
+  z-index: 2;
+}
+.is-legend .foil-unveiling-eyebrow {
+  color: #ffe0a1;
+}
+.foil-unveiling-eyebrow small {
+  margin-left: 15px;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  opacity: 0.65;
+}
+.foil-unveiling-status {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  min-height: 26px;
+  margin: 0 0 24px;
+  font: 500 14px/1.8 serif;
+  letter-spacing: 0.12em;
+  color: #e4d9c2;
+}
+.foil-unveiling-card {
+  position: relative;
+  flex: none;
+  width: min(62vw, 285px, 43svh);
+  aspect-ratio: 3/4;
+  isolation: isolate;
+  animation: foil-stage-enter 0.4s ease-out both;
+  border: 1px solid #e3c57c;
+  border-radius: 12px;
+  box-shadow:
+    0 20px 50px #0009,
+    0 0 30px #aeceef44;
+  transform: translateY(8px) scale(0.96);
+  transition:
+    transform 1s cubic-bezier(0.18, 0.8, 0.2, 1),
+    box-shadow 0.7s;
+}
+.foil-unveiling-card .foil-seal {
+  transition: filter 0.55s;
+}
+.foil-unveiling-card .foil-seal svg {
+  transition:
+    transform 0.55s,
+    filter 0.55s;
+}
+.foil-unveiling-stage[data-phase="seal"] .foil-unveiling-card {
+  transform: translateY(-8px) scale(0.94);
+  box-shadow:
+    0 0 40px #bdeaff88,
+    0 0 80px #dfb87b44;
+}
+.foil-unveiling-stage[data-phase="seal"] .foil-seal {
+  filter: brightness(1.85);
+}
+.foil-unveiling-stage[data-phase="seal"] .foil-seal svg {
+  transform: scale(1.06);
+  filter: drop-shadow(0 0 8px #ffebbb);
+}
+.foil-unveiling-stage[data-phase="seal"] .foil-seal-orbit {
+  animation-duration: 2.4s;
+}
+.foil-unveiling-stage[data-phase="reveal"] .foil-unveiling-card,
+.foil-unveiling-stage[data-phase="settle"] .foil-unveiling-card {
+  transform: translateY(0) scale(1);
+  box-shadow:
+    0 22px 60px #0009,
+    0 0 42px #ddc18266;
+}
+.foil-unveiling-rim {
+  position: absolute;
+  inset: -5px;
+  border: 1px solid #dcc49477;
+  border-radius: 15px;
+  box-shadow: 0 0 12px #d3deff44;
+  pointer-events: none;
+}
+.foil-unveiling-upgrade {
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse,
+    #fff6d6bb,
+    #ffd87866 28%,
+    transparent 64%
+  );
+  animation: foil-rank-awakening 0.75s ease-out both;
+}
+.is-upgrading .foil-unveiling-rim {
+  border-color: #fff2bc;
+  box-shadow:
+    0 0 22px #ffca69aa,
+    0 0 64px #cb9b6655;
+}
+@keyframes foil-rank-awakening {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  32% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+.foil-unveiling-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 11px;
+  animation: foil-identity-arrive 0.85s ease-out both;
+}
+.foil-unveiling-art > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.foil-unveiling-bloom {
+  position: absolute;
+  inset: -16%;
+  border-radius: 45%;
+  background: radial-gradient(
+    ellipse,
+    #fff8dbdd,
+    #e7e9ff88 23%,
+    transparent 66%
+  );
+  pointer-events: none;
+  animation: foil-identity-bloom 0.8s ease-out both;
+}
+.foil-unveiling-name {
+  position: relative;
+  z-index: 2;
+  min-height: 68px;
+  max-width: 100%;
+  margin-top: 23px;
+  text-align: center;
+}
+.foil-unveiling-name small {
+  display: block;
+  color: #e5c682;
+  font: 500 10px/1.7 serif;
+  letter-spacing: 0.25em;
+  animation: foil-name-arrive 0.6s 0.2s both;
+}
+.foil-unveiling-name strong {
+  display: block;
+  margin-top: 7px;
+  color: #fff0d3;
+  font: 600 clamp(19px, 5.5vw, 27px)/1.6 serif;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 18px #d4b26277;
+  animation: foil-name-arrive 0.6s 0.2s both;
+}
+.foil-unveiling-motes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.foil-unveiling-motes i {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffdf9d;
+  box-shadow: 0 0 10px #c9dbff;
+  animation: foil-mote-rise 3s ease-in-out infinite;
+  animation-delay: calc(var(--n) * -0.25s);
+}
+@keyframes foil-seal-drift {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes foil-seal-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes foil-stage-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes foil-identity-arrive {
+  from {
+    opacity: 0;
+    filter: brightness(2.4);
+    clip-path: inset(0 45%);
+  }
+  to {
+    opacity: 1;
+    filter: brightness(1);
+    clip-path: inset(0 0);
+  }
+}
+@keyframes foil-identity-bloom {
+  0% {
+    opacity: 0;
+    scale: 0.65;
+  }
+  25% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.4;
+  }
+}
+@keyframes foil-name-arrive {
+  from {
+    opacity: 0;
+    translate: 0 7px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes foil-mote-rise {
+  0%,
+  100% {
+    opacity: 0;
+    translate: 0 15px;
+  }
+  40%,
+  65% {
+    opacity: 0.75;
+    translate: 0 -12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .foil-seal *,
+  .foil-unveiling-stage,
+  .foil-unveiling-stage * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

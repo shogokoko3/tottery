@@ -83,7 +83,7 @@ import { AreaAcquisition } from "./area-acquisition.jsx";
 import { areaRewardName, areaRewardsFor } from "../skins/area-rewards.js";
 import { SkinFilm } from "./skin-film.jsx";
 import { ArrowLeft, Ether, Shard } from "../icons.jsx";
-import { OMEN_TEXT, ladderFor, omenOf, seedOf } from "../skins/reveal.js";
+import { OMEN_TEXT, ladderFor, omenOf, seedOf, foilRevealRoute } from "../skins/reveal.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { FoilOfferSheet } from "./foil-offer.jsx";
@@ -98,7 +98,7 @@ import {
 import { addEther } from "../skins/collection.js";
 import { buyEther } from "../net/wallet.js";
 import { FoilAcquisition } from "./foil-acquisition.jsx";
-import { FOIL_INITIAL_HOLD_MS } from "../skins/foil-acquisition.js";
+import { FoilSeal, FoilUnveiling } from "./foil-unveiling.jsx";
 import { SummonIntro } from "./summon-intro.jsx";
 
 const foilPct = FOIL_CHANCE * 100;
@@ -180,7 +180,8 @@ function RevealCard({
   onFlip,
   onComplete,
   onRarityComplete,
-  foilStart,
+  foilRevealed = false,
+  foilRoute = "common",
   reduce,
   seed,
   // そのキャラの所持数 { base, foil }。引いた札が通常・フォイルのどちらを埋めたかが分かる
@@ -188,11 +189,10 @@ function RevealCard({
   owned = null,
 }) {
   const skin = byId(result.id);
-  const base = byId(baseSkinId(skin.id));
   // 素で出るか、昇格を経るかは束と位置で決まる(再読み込みしても同じ)
   const ladder = useMemo(
-    () => ladderFor(skin.rarity, `${seed}#${index}`),
-    [skin.rarity, seed, index],
+    () => skin.foil ? [skin.rarity] : ladderFor(skin.rarity, `${seed}#${index}`),
+    [skin.rarity, skin.foil, seed, index],
   );
   // -1 は伏せたまま。0 以降は ladder の段階(昇格の途中)
   const [stage, setStage] = useState(-1);
@@ -201,7 +201,6 @@ function RevealCard({
   // 着地した瞬間だけ光る
   const [landing, setLanding] = useState(false);
   const [settled, setSettled] = useState(false);
-  const [foilComplete, setFoilComplete] = useState(false);
   const rarityRef = useRef(onRarityComplete);
   rarityRef.current = onRarityComplete;
   const completeRef = useRef(onComplete);
@@ -289,23 +288,23 @@ function RevealCard({
   useEffect(() => {
     if (settled) rarityRef.current?.();
   }, [settled]);
-  const completeFoil = useCallback(() => setFoilComplete(true), []);
-  const finished = final && settled && (!skin.foil || foilComplete);
+  const identityHidden = skin.foil && !foilRevealed && !reduce;
+  const finished = final && settled && !identityHidden;
   useEffect(() => {
     if (!finished || notified.current) return;
     notified.current = true;
     completeRef.current?.();
   }, [finished]);
-  const visibleSkin = skin.foil && !foilComplete ? base : skin;
+  const visibleSkin = skin;
   // Hint only the actual promotion/foil cards; keep the ordinary backs quiet.
   const backGlow = !flipped
     ? skin.foil
-      ? skin.rarity === "SSR" ? "ssr-foil" : "foil"
+      ? foilRoute === "legend" ? "ssr-foil" : "foil"
       : skin.rarity === "SSR" && ladder.length > 1
         ? "ssr"
         : null
     : null;
-  const label =
+  const label = identityHidden ? "" :
     shown === "SSR" && ["LIMITED", "SPECIAL"].includes(skin.rarity)
       ? rarityLabel(skin)
       : shown;
@@ -314,9 +313,9 @@ function RevealCard({
       type="button"
       className={`reveal-card ${flipped ? "is-flipped" : ""} ${
         dragging ? "is-dragging" : ""
-      } ${shown ? `rarity-${shown}` : ""} ${final ? "is-final" : ""} ${
+      } ${shown && !identityHidden ? `rarity-${shown}` : ""} ${final ? "is-final" : ""} ${
         spinning ? `is-spinning spin-to-${next}` : ""
-      } ${landing ? "is-landing" : ""} ${backGlow ? `back-glow-${backGlow}` : ""} ${reduce ? "is-reduced" : ""}`}
+      } ${landing && !identityHidden ? "is-landing" : ""} ${backGlow ? `back-glow-${backGlow}` : ""} ${reduce ? "is-reduced" : ""}`}
       style={{ "--i": index, "--angle": `${flipped ? 180 : angle}deg` }}
       data-index={index}
       onPointerDown={down}
@@ -332,7 +331,7 @@ function RevealCard({
       aria-label={
         flipped
           ? final
-            ? visibleSkin.name
+            ? identityHidden ? "フォイルカード。正体はまだ光に包まれています" : visibleSkin.name
             : shown
               ? `${label}。${next}へ昇格中`
               : `${index + 1}枚目をめくっています`
@@ -372,37 +371,29 @@ function RevealCard({
           </span>
         )}
         <span className="reveal-front">
-          {final ? (
-            skin.foil && settled && foilStart ? (
-              <FoilAcquisition
-                skin={skin}
-                play
-                reduce={reduce}
-                onComplete={completeFoil}
-                className="reveal-acquisition"
-                alt={visibleSkin.name}
-              />
-            ) : (
+          {identityHidden ? (
+            <span className="reveal-veil reveal-foil-seal"><FoilSeal legend={foilRoute === "legend"} /></span>
+          ) : final ? (
               <FoilArtwork
                 skin={visibleSkin}
                 src={visibleSkin.card}
                 alt={visibleSkin.role}
                 animated={false}
               />
-            )) : (
+            ) : (
             <span className="reveal-veil" />
           )}
           <span className="reveal-rarity">{label || ""}</span>
-          {final && skin.foil && foilComplete && (
+          {final && skin.foil && !identityHidden && (
             <FoilBadge className="reveal-foil" />
           )}
           {!final && spinning && <span className="reveal-promoting">昇格</span>}
-          {final && <strong className="reveal-name">{visibleSkin.name}</strong>}
-          {final && (!skin.foil || foilComplete) && result.isNew && (
+          {final && !identityHidden && <strong className="reveal-name">{visibleSkin.name}</strong>}
+          {final && !identityHidden && result.isNew && (
             <span className="reveal-new">NEW</span>
           )}
           {/* 通常とフォイルを持っているか。引いた側は光らせる */}
-          {final && (!skin.foil || foilComplete) && owned && (
+          {final && !identityHidden && owned && (
             <span className="reveal-owned" aria-label="このキャラの所持">
               <b className={owned.base > 0 ? "is-owned" : ""}>
                 通常{owned.base > 0 ? `×${owned.base}` : "—"}
@@ -423,7 +414,7 @@ function RevealCard({
  * 束に SSR がいれば伏せた時点で前兆を出す。めくると R→SR→SSR と昇格して見せる。
  * 結果は先に保存してあるので、途中で閉じても失わない。
  */
-function SummonReveal({ results, onFinish, reduce }) {
+function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
   // 引いた札ごとに、そのキャラの通常とフォイルを何枚持っているか(結果に出す)
   const ownedNow = useCollection().owned;
   const ownedOf = (id) => {
@@ -437,16 +428,23 @@ function SummonReveal({ results, onFinish, reduce }) {
   const revealRef = useRef(null);
   const finishIntro = useCallback(() => setIntro(false), []);
   useEffect(() => { if (reduce) setIntro(false); }, [reduce]);
-  useEffect(() => {
-    if (!intro)
-      revealRef.current?.querySelector(".reveal-card")?.focus({ preventScroll: true });
-  }, [intro]);
   const [flipped, setFlipped] = useState(() => results.map(() => false));
   const [completed, setCompleted] = useState(() => results.map(() => false));
   const [raritiesReady, setRaritiesReady] = useState(() =>
     results.map(() => false),
   );
   const [foilStart, setFoilStart] = useState(false);
+  const [revealedFoils, setRevealedFoils] = useState(() => results.map(() => false));
+  const foilIndexes = useMemo(() => results.flatMap((result, index) => byId(result.id)?.foil ? [index] : []), [results]);
+  const foilRoutes = useMemo(() => results.map((result, index) => foilRevealRoute(byId(result.id), `${drawNumber}#${seedOf(results)}#${index}`)), [results, drawNumber]);
+  const activeFoil = foilStart && !reduce ? foilIndexes.find(index => !revealedFoils[index]) : undefined;
+  useEffect(() => {
+    if (!intro && activeFoil === undefined)
+      revealRef.current?.querySelector(".reveal-card")?.focus({ preventScroll: true });
+  }, [intro, activeFoil]);
+  const unveilAt = useCallback((index) => {
+    setRevealedFoils(done => done.map((value, i) => value || i === index));
+  }, []);
   const allRaritiesReady = raritiesReady.every(Boolean);
   const rarityAt = useCallback((i) => {
     setRaritiesReady((ready) =>
@@ -455,15 +453,14 @@ function SummonReveal({ results, onFinish, reduce }) {
   }, []);
   useEffect(() => {
     if (!allRaritiesReady) return;
-    // Share one gate across the entire draw. The acquisition's initial normal
-    // phase supplies the remaining 320ms of the half-second quiet beat.
+    // Finish the entire draw's rarity promotions, pause, then unveil each foil.
     const timer = setTimeout(
       () => setFoilStart(true),
-      reduce ? 0 : 500 - FOIL_INITIAL_HOLD_MS,
+      reduce ? 0 : 500,
     );
     return () => clearTimeout(timer);
   }, [allRaritiesReady, reduce]);
-  const omen = omenOf(results);
+  const omen = omenOf(results.filter((result, index) => !byId(result.id)?.foil || foilRoutes[index] === "legend"));
   const seed = seedOf(results);
   const all = flipped.every(Boolean);
   const allComplete = completed.every(Boolean);
@@ -509,13 +506,13 @@ function SummonReveal({ results, onFinish, reduce }) {
       onClose={intro ? finishIntro : onFinish}
       className="skin-summon-overlay"
     >
-      <div ref={revealRef} inert={intro || undefined} aria-hidden={intro || undefined} className={`skin-reveal omen-${omen} ${intro ? "summon-intro-active" : "summon-arrived"}`}>
+      <div ref={revealRef} inert={intro || activeFoil !== undefined || undefined} aria-hidden={intro || activeFoil !== undefined || undefined} className={`skin-reveal omen-${omen} ${intro ? "summon-intro-active" : "summon-arrived"}`}>
         <div className="reveal-omen" aria-hidden="true" />
         <p className="reveal-caption" role="status">
           {allComplete
             ? "すべての札が現れました。"
             : all
-              ? "札に宿る輝きをお待ちください。"
+              ? foilIndexes.length ? "光に秘められた正体が、まもなく。" : "札に宿る輝きをお待ちください。"
               : OMEN_TEXT[omen]}
         </p>
         <div
@@ -535,7 +532,8 @@ function SummonReveal({ results, onFinish, reduce }) {
               onFlip={() => flipAt(i)}
               onComplete={() => completeAt(i)}
               onRarityComplete={() => rarityAt(i)}
-              foilStart={foilStart}
+              foilRevealed={revealedFoils[i] || reduce}
+              foilRoute={foilRoutes[i]}
               reduce={reduce}
               seed={seed}
               owned={ownedOf(r.id)}
@@ -566,6 +564,14 @@ function SummonReveal({ results, onFinish, reduce }) {
         </div>
       </div>
       {intro && <SummonIntro results={results} targetRef={revealRef} onFinish={finishIntro} />}
+      {activeFoil !== undefined && <FoilUnveiling
+        key={activeFoil}
+        skin={byId(results[activeFoil].id)}
+        route={foilRoutes[activeFoil]}
+        position={foilIndexes.indexOf(activeFoil) + 1}
+        total={foilIndexes.length}
+        onComplete={() => unveilAt(activeFoil)}
+      />}
     </SkinModal>
   );
 }
@@ -2104,6 +2110,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
         (acquisitionMode === "summon" && collection.pending ? (
           <SummonReveal
             results={collection.pending.results}
+            drawNumber={collection.draws}
             onFinish={finishAcquisition}
             reduce={reduce || collection.summonMotion === "skip"}
           />
