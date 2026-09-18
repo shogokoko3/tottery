@@ -1321,6 +1321,90 @@
   gap: 10px;
   width: min(100%, 520px);
 }
+/* フォイル商品に、立つエリアと効果を添える(2026-09-18 本人の指示) */
+.foil-offer-area {
+  display: block;
+  margin-top: 3px;
+  padding: 3px 7px;
+  border-left: 3px solid var(--gold);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #cfd7e6;
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: normal;
+}
+.foil-offer-area b {
+  display: block;
+  color: var(--gold-soft);
+  font-size: 11px;
+}
+.foil-offer-area.area-earth { border-left-color: #b98a4e; }
+.foil-offer-area.area-sea { border-left-color: #4e9ed6; }
+.foil-offer-area.area-forest { border-left-color: #56b06f; }
+.foil-offer-area.area-ice { border-left-color: #9fdcff; }
+.foil-offer-area.area-sky { border-left-color: #a48bea; }
+.foil-offer-area.area-palace { border-left-color: #e0c169; }
+
+/* 加工の画面: どちらの作業をするかを先に選ぶ(2026-09-18 本人の指示) */
+.forge-work-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.forge-work-picker .btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 8px 6px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.forge-work-picker .btn small {
+  font-size: 10px;
+  opacity: 0.8;
+}
+.forge-work-picker [aria-selected="true"] {
+  background: linear-gradient(#f1dfaa, #cbb274);
+  color: #262016;
+  border-color: #f1d184;
+}
+
+/* 引いた札の下に、そのキャラの所持(通常・フォイル)を出す(2026-09-18 本人の指示) */
+.reveal-owned {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 3%;
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  pointer-events: none;
+}
+.reveal-owned b {
+  flex: 1;
+  padding: 1px 0;
+  border-radius: 3px;
+  border: 1px solid #ffffff2e;
+  background: #050b14cc;
+  color: #8b93a8;
+  font-size: 9px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+.reveal-owned b.is-owned {
+  border-color: #d9bd7a80;
+  color: #f0d98a;
+}
+.reveal-owned b.is-foil {
+  border-color: #a9e4ff80;
+  color: #cdefff;
+}
+
 .reveal-card {
   position: relative;
   flex: 0 0 calc((100% - 30px) / 4);

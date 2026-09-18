@@ -2651,6 +2651,17 @@ export function GameCore({
           >
             {playerLabel(E, P, names)}: 交換するカードを選んでね
           </h2>
+          {/* サイコロで決まった先手・後手を、引き直しの画面でも見えるようにする
+              (2026-09-18 本人の指示。ここで手札を決めるので、順番は判断の材料になる) */}
+          {a.firstPlayer !== null && a.firstPlayer !== undefined && (
+            <p className="mulligan-order">
+              <b>{E === a.firstPlayer ? "先手" : "後手"}</b>
+              <span>
+                {playerLabel(a.firstPlayer, P, names)}が先手・
+                {playerLabel(1 - a.firstPlayer, P, names)}が後手
+              </span>
+            </p>
+          )}
           {!tutorial && (
             <p className="hint">
               捨てたい札をタップ(もう一度タップで取り消し)。同じ枚数を予備札から引き直します。捨て札は公開情報になります。

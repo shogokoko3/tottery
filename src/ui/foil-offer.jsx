@@ -5,11 +5,27 @@
  */
 import { useState } from "react";
 import { byId, foilId } from "../skins/catalog.js";
+import { AREA_BY_RANK, AREA_INFO } from "../game/areas.js";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { GemIcon } from "./gem.jsx";
 import { SkinModal } from "./skin-modal.jsx";
 
 const yen = (n) => n.toLocaleString("ja-JP");
+
+/**
+ * その商品で立つ効果盤面(エリア)。同じエリアは1つにまとめる。
+ * 「どのエリアが手に入るのか、何ができるのか」を買う前に見せる(2026-09-18 本人の指示)
+ */
+function areaOf(skins) {
+  const out = [];
+  for (const id of skins) {
+    const rank = byId(id)?.rank;
+    const type = rank ? AREA_BY_RANK[rank] : null;
+    if (!type || out.some((a) => a.type === type)) continue;
+    out.push({ type, name: AREA_INFO[type].name, text: AREA_INFO[type].text });
+  }
+  return out;
+}
 
 /**
  * フォイルの商品一覧(中身だけ)。ガチャ直後のシートにも、ショップの欄の中にもそのまま置ける。
@@ -133,6 +149,13 @@ export function FoilOfferPicker({
               <span className="foil-offer-name">
                 <b>{o.product.name}</b>
                 {o.partial && <small>残り{o.skins.length}枚ぶん</small>}
+                {/* 買うとどのエリアが立つのか、効果まで見せる(2026-09-18 本人の指示) */}
+                {areaOf(o.skins).map((area) => (
+                  <small className={`foil-offer-area area-${area.type}`} key={area.type}>
+                    <b>{area.name}</b>
+                    {area.text}
+                  </small>
+                ))}
               </span>
               <span className="foil-offer-price">
                 {yen(o.price)}

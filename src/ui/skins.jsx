@@ -183,6 +183,9 @@ function RevealCard({
   foilStart,
   reduce,
   seed,
+  // そのキャラの所持数 { base, foil }。引いた札が通常・フォイルのどちらを埋めたかが分かる
+  // (2026-09-18 本人の指示)
+  owned = null,
 }) {
   const skin = byId(result.id);
   const base = byId(baseSkinId(skin.id));
@@ -398,6 +401,17 @@ function RevealCard({
           {final && (!skin.foil || foilComplete) && result.isNew && (
             <span className="reveal-new">NEW</span>
           )}
+          {/* 通常とフォイルを持っているか。引いた側は光らせる */}
+          {final && (!skin.foil || foilComplete) && owned && (
+            <span className="reveal-owned" aria-label="このキャラの所持">
+              <b className={owned.base > 0 ? "is-owned" : ""}>
+                通常{owned.base > 0 ? `×${owned.base}` : "—"}
+              </b>
+              <b className={owned.foil > 0 ? "is-owned is-foil" : ""}>
+                箔{owned.foil > 0 ? `×${owned.foil}` : "—"}
+              </b>
+            </span>
+          )}
         </span>
       </span>
     </button>
@@ -410,6 +424,15 @@ function RevealCard({
  * 結果は先に保存してあるので、途中で閉じても失わない。
  */
 function SummonReveal({ results, onFinish, reduce }) {
+  // 引いた札ごとに、そのキャラの通常とフォイルを何枚持っているか(結果に出す)
+  const ownedNow = useCollection().owned;
+  const ownedOf = (id) => {
+    const base = baseSkinId(id);
+    return {
+      base: ownedNow[base] || 0,
+      foil: ownedNow[foilId(base)] || 0,
+    };
+  };
   const [intro, setIntro] = useState(!reduce);
   const revealRef = useRef(null);
   const finishIntro = useCallback(() => setIntro(false), []);
@@ -515,6 +538,7 @@ function SummonReveal({ results, onFinish, reduce }) {
               foilStart={foilStart}
               reduce={reduce}
               seed={seed}
+              owned={ownedOf(r.id)}
             />
           ))}
         </div>
@@ -607,6 +631,9 @@ function ForgePanel({
 }) {
   const [pick, setPick] = useState("SSR");
   const foilView = view === "foil";
+  // 加工の画面は、まず「フォイル加工」か「フォイルの交換」を選ぶ。
+  // 両方の一覧を一度に出すと長すぎて探せない(2026-09-18 本人の指示)
+  const [foilWork, setFoilWork] = useState("milestone");
   const [confirmBreak, setConfirmBreak] = useState(null);
   // 目安の数字は抽選の中身から引き直す。手で書くと片方だけ古くなる
   const summary = forgeSummary();
@@ -726,9 +753,33 @@ function ForgePanel({
         </section>
       )}
 
+      {/* どちらの作業をするかを先に選ぶ。選んだほうの一覧だけを出す */}
+      {foilView && (
+        <div className="forge-work-picker" role="tablist" aria-label="加工の種類">
+          <button
+            className="btn btn-ghost"
+            role="tab"
+            aria-selected={foilWork === "milestone"}
+            onClick={() => setFoilWork("milestone")}
+          >
+            フォイル加工
+            <small>通算獲得で1枚</small>
+          </button>
+          <button
+            className="btn btn-ghost"
+            role="tab"
+            aria-selected={foilWork === "exchange"}
+            onClick={() => setFoilWork("exchange")}
+            disabled={!foilKnown}
+          >
+            フォイルの交換
+            <small>{foilKnown ? `${SHARD_NAME}と引き換え` : "フォイルを持つと開きます"}</small>
+          </button>
+        </div>
+      )}
       {/* フォイル加工(通算獲得の記念)は、フォイルを持たないうちも出す。
           進み具合と手に入れる道筋を見せるため。交換・所持の一覧は下で伏せる */}
-      {foilView && (
+      {foilView && foilWork === "milestone" && (
         <section
           id="forge-foil-milestones"
           className="forge-section forge-milestones"
@@ -826,7 +877,7 @@ function ForgePanel({
         </section>
       )}
 
-      {foilView && foilKnown && (
+      {foilView && foilKnown && foilWork === "exchange" && (
         <section
           id="forge-foil-exchange"
           className="forge-section forge-milestones forge-exchange"

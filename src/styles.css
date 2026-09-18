@@ -2548,6 +2548,26 @@ body:has(.skin-overlay) {
   width: 100%;
   margin-top: 4px;
 }
+/* 引き直しの画面に出す先手・後手 */
+.mulligan-order {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto 10px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+}
+.mulligan-order b {
+  color: var(--gold-soft);
+  font-size: 13px;
+}
+.mulligan-order span {
+  color: var(--text-dim);
+}
+
 /* 台本の動きの見本。薄い駒が、動かしてほしい道を繰り返しなぞる */
 .tutorial-move-ghost {
   position: relative;
