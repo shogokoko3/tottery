@@ -1,4 +1,4 @@
-import { Capacitor } from "@capacitor/core";
+import { hasStore } from "../net/platform.js";
 import { BATTLEPASS_ENTITLEMENT } from "../iap/catalog.js";
 import { WALLET_SERVER } from "../net/wallet.js";
 import { useCollection } from "../skins/store.js";
@@ -10,7 +10,7 @@ export function useBattlePassUnlocked() {
   const pass = usePass();
   return (
     !WALLET_SERVER ||
-    !Capacitor.isNativePlatform() ||
+    !hasStore() ||
     pass.claimed ||
     (collection.entitlements || []).includes(BATTLEPASS_ENTITLEMENT)
   );

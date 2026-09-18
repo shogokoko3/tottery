@@ -7,7 +7,7 @@
  * その周・そのマスで冪等なチケット1枚を財布へ送る(周72枚まではサーバーが数える)。
  */
 import { useEffect, useRef } from "react";
-import { Capacitor } from "@capacitor/core";
+import { hasStore } from "../net/platform.js";
 import { applyCaptures, capturedIn, untickedCells, markTicketed } from "../game/battlepass.js";
 import { getPass, updatePass } from "../game/battlepass-store.js";
 import { getCollection } from "../skins/store.js";
@@ -21,7 +21,7 @@ import { BATTLEPASS_ENTITLEMENT } from "../iap/catalog.js";
 function passOwned() {
   return (
     !WALLET_SERVER ||
-    !Capacitor.isNativePlatform() ||
+    !hasStore() ||
     getPass().claimed === true ||
     (getCollection().entitlements || []).includes(BATTLEPASS_ENTITLEMENT)
   );

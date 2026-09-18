@@ -8,6 +8,8 @@
  * Web では何もしない(課金は iOS だけ)。
  */
 import { Capacitor } from "@capacitor/core";
+// 店があるかの判定は src/net/platform.js に1か所にまとめてある
+import { hasStore } from "./platform.js";
 import { ensureAuth } from "./auth.js";
 import { seasonApiBase } from "./season.js";
 import { APP_BUILD } from "./app-version.js";
@@ -49,7 +51,7 @@ function wrap(proxy) {
 
 async function store() {
   if (plugin) return plugin;
-  if (!Capacitor.isNativePlatform()) return null;
+  if (!hasStore()) return null;
   const m = await import("@capgo/native-purchases");
   plugin = wrap(m.NativePurchases);
   return plugin;
@@ -63,7 +65,7 @@ async function store() {
  * 「商品を取れませんでした」やエラーで知らせる(loadProducts / buy が扱う)。
  */
 export async function shopAvailable() {
-  return SHOP_ENABLED && Capacitor.isNativePlatform();
+  return SHOP_ENABLED && hasStore();
 }
 
 /** StoreKit の応答をいつまで待つか。商品が未整備・圏外だと返ってこないことがあり、画面が「読み込み中」で止まる */
@@ -110,7 +112,7 @@ export async function storeDiagnostics(elapsedMs = null) {
  * 失敗しても何もしない。Web では送らない
  */
 export async function reportDiag(d) {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!hasStore()) return;
   try {
     const auth = await ensureAuth();
     if (!auth) return;

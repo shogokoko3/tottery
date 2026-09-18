@@ -19,7 +19,12 @@ const FALLBACK_STORE_URL = "https://apps.apple.com/app/id6811241552";
  * ブロックするのは iOS で、両方が正の整数で、アプリのビルドが最低未満のときだけ。
  */
 export async function checkAppVersion() {
-  if (!Capacitor.isNativePlatform()) return { blocked: false };
+  // iOS だけ。Android は versionCode が別系統(2020-01-01 からの経過分数)で、
+  // 同じ MIN_APP_BUILD と比べると必ずブロックになってしまう。
+  // Android の強制アップデートは、Play の In-App Update か別の環境変数で後から足す
+  // (2026-09-19 Android 版の土台を足したとき)
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios")
+    return { blocked: false };
   try {
     const res = await fetch(`${seasonApiBase()}/api/app-version`, {
       signal: AbortSignal.timeout(8000),

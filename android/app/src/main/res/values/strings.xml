@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">トッタリー</string>
+    <string name="title_activity_main">トッタリー</string>
+    <string name="package_name">com.shogokoko.tottery</string>
+    <string name="custom_url_scheme">com.shogokoko.tottery</string>
+</resources>
