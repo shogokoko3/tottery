@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   emptyBoard,
   getLegalMoves,
@@ -929,6 +929,19 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
   const [drag, setDrag] = (0, useState)(null);
   const [hover, setHover] = (0, useState)(null);
   const boardRef = useRef(null);
+  // 説明が長いぶん、開いた直後は盤が画面の下に隠れていることがある。
+  // 置く相手は盤なので、開いたら盤が見える位置まで送っておく(2026-09-18)
+  useEffect(() => {
+    // 絵が出そろってから送る(出す前だと高さが決まっておらず動かない)
+    const id = requestAnimationFrame(() => {
+      const board = boardRef.current;
+      if (!board || !board.scrollIntoView) return;
+      // チュートリアルで置き先が決まっているときは、その升を真ん中に
+      const el = board.querySelector(".guide-target") || board;
+      el.scrollIntoView({ block: "center" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
   const chosen = cards[Math.min(pick, cards.length - 1)];
   const open = (row, col) => row >= a && row <= u && !state.board[row][col];
   const cellUnder = (x, y) => {
@@ -1075,7 +1088,10 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
   }
   return (
     <div className="modal-overlay">
-      <div className="modal-panel">
+      <div className="modal-panel modal-panel-reserve">
+        {/* 釦の帯は下に固定し、盤と説明だけを送る。貼り付け(sticky)だと帯が盤の下の段を
+            覆って、置きたいマスに触れないことがあった(2026-09-18) */}
+        <div className="reserve-scroll">
         <h3>予備札を配置</h3>
         <p className="hint">
           {cards.length > 1
@@ -1200,6 +1216,7 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
             ? `${chosen.rank}${SUIT_SYMBOL[chosen.suit]} を ${squareName(target.row, target.col, size)} に置きます。別のマスをタップするか、駒をドラッグすると置き直せます。`
             : "まだ置き場所が決まっていません。"}
         </p>
+        </div>
         <div className="reserve-actions">
           <button
             className={`btn btn-primary ${focus && targetOk ? "guide-target" : ""}`}

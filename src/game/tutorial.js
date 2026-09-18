@@ -207,7 +207,7 @@ const EP1 = {
     },
     {
       at: myTurn,
-      text: "今回は盤を並べてあります。まずは c2 の 5♠ をタップして、光った a4 へ。相手の駒を取れます。",
+      text: "今回は盤を並べてあります。まずは c2 の 5♠ をタップして、▼ の a4 へ。相手の駒を取れます。",
       need: { type: "MOVE_PIECE", pieceId: "t3", row: 1, col: 0 },
       focus: {
         cells: [
@@ -1436,7 +1436,7 @@ const EP8 = {
         s.currentTurn === 0 &&
         !!s.kPlacement &&
         !s.captureReveal,
-      text: "取られました。予備札が1枚来ています。光った b2 をタップし、「ここに置く」で出します。",
+      text: "取られました。予備札が1枚来ています。▼ の b2 をタップし、「ここに置く」で出します。",
       need: { type: "PLACE_RESERVE_CARD", row: 3, col: 1 },
       focus: { cells: [{ row: 3, col: 1 }] },
     },
@@ -1913,7 +1913,7 @@ const EP11 = {
       text: "相手が先に引き直しました。捨て札に 7 はありません。山に残っている見込みがあります。",
     },
     {
-      text: "手札は 5・6・8・9。7 を引ければ並びます。光った K♦ をタップ。",
+      text: "手札は 5・6・8・9。7 を引ければ並びます。▼ の K♦ をタップ。",
       need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t4" },
       focus: { cards: ["t4"] },
     },
@@ -2110,7 +2110,7 @@ const EP12 = {
       text: "手札はスペードが4枚。あと1枚でフラッシュ。狙う価値があります。",
     },
     {
-      text: "光った 4♥ をタップして捨てます。",
+      text: "▼ の 4♥ をタップして捨てます。",
       need: { type: "TOGGLE_MULLIGAN_CARD", cardId: "t4" },
       focus: { cards: ["t4"] },
     },

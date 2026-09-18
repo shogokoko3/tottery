@@ -2740,6 +2740,27 @@ body:has(.skin-overlay) {
     transform: translateY(3px);
   }
 }
+/* 釦のときは、上に▼を出すと隣の盤と重なる。中の左端に置く */
+.btn.guide-target::before,
+.skin-btn.guide-target::before {
+  top: 50%;
+  left: 12px;
+  translate: 0 -50%;
+  animation-name: guide-arrow-x;
+}
+@keyframes guide-arrow-x {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  55% {
+    transform: translateX(3px);
+  }
+}
+.btn.guide-target,
+.skin-btn.guide-target {
+  padding-left: 30px;
+}
 /* 盤のマスは自分の重なりを持つので、指示のときだけ上へ出す(幕より前に) */
 .cell.guide-target,
 .cell:has(.guide-target) {
@@ -5716,19 +5737,33 @@ body:has(.skin-overlay) {
   pointer-events: none;
 }
 
-/* 予備札の確定。札(modal-panel)は中でスクロールするので、釦を下に貼り付けて
-   スクロールしなくても届くようにする(2026-09-17 本人の報告「確定ボタンが押せない」) */
+/* 予備札の配置。釦の帯は札の下に置いたまま動かさず、盤と説明だけを送る。
+   以前は釦を貼り付け(sticky)ていたが、帯が盤の下の段を覆って、置きたいマスに
+   触れないことがあった(2026-09-17「確定ボタンが押せない」→ 2026-09-18 作り直し) */
+.modal-panel-reserve {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+.reserve-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* 盤をつかんで動かすので、縦の指の動きはここで受ける */
+  touch-action: pan-y;
+}
 .reserve-actions {
-  position: sticky;
-  bottom: -24px;
-  z-index: 1;
+  flex: none;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  margin: 10px -24px -24px;
-  padding: 10px 24px calc(12px + env(safe-area-inset-bottom));
-  background: linear-gradient(rgba(11, 23, 41, 0), #0b1729 30%);
+  margin: 0 -24px;
+  padding: 12px 24px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(212, 175, 55, 0.35);
+  background: #0b1729;
 }
 
 /* 絵札に偏って配り直したときの知らせ */
