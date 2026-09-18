@@ -247,7 +247,7 @@ const EP1 = {
     },
     {
       at: myTurn,
-      text: "光っている駒が相手の王。c1 の 4♠ で取って、討ち取りましょう。",
+      text: "▼ の駒が相手の王。c1 の 4♠ で取って、討ち取りましょう。",
       need: { type: "MOVE_PIECE", pieceId: "t2", row: 3, col: 2 },
       focus: {
         pieces: ["t6"],

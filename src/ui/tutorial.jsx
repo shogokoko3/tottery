@@ -275,6 +275,8 @@ export function TutorialSheet({
   index,
   total,
   onNext,
+  // 前の札をもう一度読む(読むだけの札のときだけ渡る。2026-09-18 本人の指示)
+  onBack = null,
   front,
   low,
   nudge,
@@ -379,12 +381,23 @@ export function TutorialSheet({
         {step.moveHint && <MoveHintPanel hint={step.moveHint} />}
         {step.hold ? null : step.need ? (
           <p className={`tutorial-wait ${nudge ? "tutorial-nudge" : ""}`}>
-            <Hand size={15} /> {nudge || "光っているところを操作してください"}
+            <Hand size={15} /> {nudge || "▼ の付いたところを操作してください"}
           </p>
         ) : (
-          <button className="btn btn-primary tutorial-next" onClick={onNext}>
-            {step.end ? "とじる" : "次へ"} <ArrowRight size={16} />
-          </button>
+          <div className="tutorial-steps">
+            {onBack && (
+              <button
+                className="btn btn-ghost tutorial-back"
+                onClick={onBack}
+                aria-label="前の話に戻る"
+              >
+                <ArrowLeft size={16} /> 戻る
+              </button>
+            )}
+            <button className="btn btn-primary tutorial-next" onClick={onNext}>
+              {step.end ? "とじる" : "次へ"} <ArrowRight size={16} />
+            </button>
+          </div>
         )}
         {onSkip && !step.end && (
           <button

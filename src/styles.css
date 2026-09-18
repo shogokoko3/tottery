@@ -2548,6 +2548,67 @@ body:has(.skin-overlay) {
   width: 100%;
   margin-top: 4px;
 }
+/* 台本の動きの見本。薄い駒が、動かしてほしい道を繰り返しなぞる */
+.tutorial-move-ghost {
+  position: relative;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 8%;
+  pointer-events: none;
+  opacity: 0;
+  animation: tutorial-move 2.6s ease-in-out infinite;
+}
+.tutorial-move-ghost .card-face {
+  width: 100%;
+  height: 100%;
+  box-shadow: 0 0 12px rgba(185, 163, 255, 0.7);
+  outline: 2px solid #b9a3ff;
+  border-radius: 4px;
+}
+@keyframes tutorial-move {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  12% {
+    opacity: 0.85;
+    transform: translate(0, 0);
+  }
+  62% {
+    opacity: 0.85;
+    transform: translate(calc(var(--dc, 0) * 100%), calc(var(--dr, 0) * 100%));
+  }
+  85% {
+    opacity: 0.85;
+    transform: translate(calc(var(--dc, 0) * 100%), calc(var(--dr, 0) * 100%));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--dc, 0) * 100%), calc(var(--dr, 0) * 100%));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-move-ghost {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* 「戻る」と「次へ」。戻るは細く、次へを主にする */
+.tutorial-steps {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.tutorial-steps .tutorial-back {
+  flex: 0 0 auto;
+  min-width: 86px;
+  margin-top: 4px;
+}
+.tutorial-steps .tutorial-next {
+  flex: 1;
+}
 .tutorial-progress {
   display: flex;
   gap: 4px;
@@ -2613,29 +2674,63 @@ body:has(.skin-overlay) {
    チュートリアル: 次に操作する場所を光らせる
    ========================================================================= */
 
+/* チュートリアルで「ここを触って」を示す印。
+   選んだ駒の枠(.piece-selected)と同じ金色だったので、どれが指示か分からなかった
+   (2026-09-18 本人の指摘)。色を分け(青緑ではなく明るい菫)、▼の目印を上に付ける。
+   案内の幕が出ているあいだも、ここだけは暗くならないように上へ出す */
 .guide-target {
   position: relative;
-  outline: 2px solid var(--gold-soft);
-  outline-offset: 1px;
-  border-radius: 4px;
-  animation: guide-pulse 1.4s ease-in-out infinite;
-  z-index: 2;
-}
-/* チュートリアル中は、押してほしいボタンを必ず光らせる */
-.focus-button .btn-primary:not(.tutorial-next):not(:disabled),
-.focus-button .btn-danger:not(:disabled) {
-  animation: guide-pulse 1.4s ease-in-out infinite;
-  outline: 2px solid var(--gold-soft);
+  outline: 3px solid #b9a3ff;
   outline-offset: 2px;
+  border-radius: 4px;
+  animation: guide-mark 1.2s ease-in-out infinite;
+  z-index: 41;
 }
-@keyframes guide-pulse {
+.guide-target::before {
+  content: "▼";
+  position: absolute;
+  left: 50%;
+  top: -18px;
+  translate: -50% 0;
+  z-index: 2;
+  color: #d8ccff;
+  font-size: 15px;
+  line-height: 1;
+  text-shadow: 0 0 6px #6b4fd8;
+  animation: guide-arrow 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes guide-mark {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(240, 217, 138, 0.55);
+    box-shadow: 0 0 0 0 rgba(150, 120, 255, 0.55);
+    filter: brightness(1.12);
   }
   55% {
-    box-shadow: 0 0 12px 5px rgba(240, 217, 138, 0);
+    box-shadow: 0 0 16px 5px rgba(150, 120, 255, 0.35);
+    filter: brightness(1.3);
   }
+}
+@keyframes guide-arrow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  55% {
+    transform: translateY(3px);
+  }
+}
+/* 盤のマスは自分の重なりを持つので、指示のときだけ上へ出す(幕より前に) */
+.cell.guide-target,
+.cell:has(.guide-target) {
+  z-index: 41;
+}
+/* チュートリアル中は、押してほしいボタンを必ず光らせる(指示と同じ菫の印) */
+.focus-button .btn-primary:not(.tutorial-next):not(:disabled),
+.focus-button .btn-danger:not(:disabled) {
+  animation: guide-mark 1.2s ease-in-out infinite;
+  outline: 3px solid #b9a3ff;
+  outline-offset: 2px;
 }
 
 /* 説明は1〜2行に収める。読ませるより、動かしてもらう */
@@ -2899,6 +2994,7 @@ body:has(.skin-overlay) {
 
 @media (prefers-reduced-motion: reduce) {
   .guide-target,
+  .guide-target::before,
   .focus-button .btn-primary:not(.tutorial-next):not(:disabled),
   .focus-button .btn-danger:not(:disabled) {
     animation: none;

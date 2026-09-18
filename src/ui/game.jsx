@@ -1247,7 +1247,7 @@ export function GameCore({
         // 出しっぱなしにすると「取るを押したのに何も起きない」になる
         setPendingCapture(null);
         setTutNudge(
-          "その手はいまは指せません。光っているところを操作してください。",
+          "その手はいまは指せません。▼ の付いたところを操作してください。",
         );
         return;
       }
@@ -2057,6 +2057,29 @@ export function GameCore({
     tutActive =
       tutStepObj && (!tutStepObj.at || tutStepObj.at(a)) ? tutStepObj : null,
     tutFocus = tutActive ? tutActive.focus : null,
+    // 次にやってほしい操作が「駒を動かす」なら、その道筋(どこからどこへ)
+    tutMoveHint = (() => {
+      // x(自分が指せるか)はこの下で作るので使わない。台本の対局で、盤が動く場面だけ
+      if (!tutorial || a.phase !== "play" || fxBusy || a.captureReveal) return null;
+      const step = tutActive || (tutIdx >= 0 ? tutorial.steps[tutIdx] : null);
+      const need =
+        step && step.need
+          ? step.need
+          : tutorial && tutIdx >= 0
+            ? (upcomingNeedStep(tutorial, tutIdx, a) || {}).need
+            : null;
+      if (!need || need.type !== "MOVE_PIECE") return null;
+      const piece = a.pieces[need.pieceId];
+      if (!piece || !piece.alive) return null;
+      if (piece.row === need.row && piece.col === need.col) return null;
+      return {
+        from: { row: piece.row, col: piece.col },
+        to: { row: need.row, col: need.col },
+        owner: piece.owner,
+        rank: piece.rank,
+        suit: piece.suit,
+      };
+    })(),
     // 盤や手札の上に「ここを触る」印が出ていないときは、
     // 画面を進めるボタンが押してほしいもの。読まなくても分かるように光らせる
     tutHasTarget = !!(
@@ -2087,7 +2110,7 @@ export function GameCore({
               !pendingCapture &&
               !a.captureReveal
                 ? "相手の番です。少し待ってください。"
-                : "光っているボタンを押して進めてください。",
+                : "▼ の付いたボタンを押して進めてください。",
           }
         : null,
     // 最後の説明と次の話への案内は、撃破札の確認後に完了画面へまとめる。
@@ -2105,6 +2128,12 @@ export function GameCore({
           low={tutHasTarget}
           overlay={!!tutActive.overlay}
           onNext={() => setTutStep(tutIdx + 1)}
+          // 読むだけの札なら、前の札に戻って読み直せる(操作の札には戻れない)
+          onBack={
+            tutIdx > 0 && !tutorial.steps[tutIdx - 1]?.need
+              ? () => setTutStep(tutIdx - 1)
+              : null
+          }
           // この話を飛ばす: 終えたのと同じ扱い(経験値も同じ)で、次の話へ
           onSkip={() => {
             const after = skipTutorials([tutorial]);
@@ -2946,6 +2975,31 @@ export function GameCore({
             >
               <FieldBackdrop theme={fieldTheme} areas={displayed.areas} />
               <AreaEffects effect={areaFx} flipped={Jl} />
+              {/* 台本が「この駒をここへ」と言っているあいだ、その動きを薄い駒で繰り返して見せる
+                  (2026-09-18 本人の指示。読むより見るほうが早い) */}
+              {tutMoveHint && (
+                <span
+                  className="tutorial-move-ghost"
+                  aria-hidden="true"
+                  style={{
+                    gridRow: (Jl ? R - 1 - tutMoveHint.from.row : tutMoveHint.from.row) + 1,
+                    gridColumn: (Jl ? R - 1 - tutMoveHint.from.col : tutMoveHint.from.col) + 1,
+                    "--dr": Jl
+                      ? tutMoveHint.from.row - tutMoveHint.to.row
+                      : tutMoveHint.to.row - tutMoveHint.from.row,
+                    "--dc": Jl
+                      ? tutMoveHint.from.col - tutMoveHint.to.col
+                      : tutMoveHint.to.col - tutMoveHint.from.col,
+                  }}
+                >
+                  <CardFace
+                    owner={tutMoveHint.owner}
+                    rank={tutMoveHint.rank}
+                    suit={tutMoveHint.suit}
+                    size={R >= 9 ? "xs" : "sm"}
+                  />
+                </span>
+              )}
               {Array.from({
                 length: R,
               }).map((E, U) =>
