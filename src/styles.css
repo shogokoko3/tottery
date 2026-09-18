@@ -5054,6 +5054,49 @@ body:has(.skin-overlay) {
   max-width: 420px;
   margin: 0 auto;
 }
+/* シーズン報酬の見本(受け取る前に実物を見せる。2026-09-18) */
+.season-reward-mark,
+.season-reward-name {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.season-reward-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.season-reward-see {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-decoration: underline;
+}
+.season-preview-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0 6px;
+  text-align: center;
+}
+.season-preview-title {
+  font-size: 14px;
+  padding: 4px 14px;
+}
+.season-preview-tickets {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold-soft);
+  font-size: 22px;
+  font-weight: 700;
+}
+
 /* フォイルの欄の残り時間(72時間の限り) */
 .shop-foil-left {
   color: var(--gold-soft);

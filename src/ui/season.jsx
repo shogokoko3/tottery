@@ -23,6 +23,7 @@ import { PlayerIcon } from "./playericon.jsx";
 import { PlayerActionModal } from "./report.jsx";
 import { withoutBlocked } from "../game/blocked.js";
 import { CardBack } from "./cards.jsx";
+import { Close, Ticket } from "../icons.jsx";
 import { SeatsProvider, useSeats } from "./names.jsx";
 
 const dateLabel = (n) =>
@@ -99,6 +100,8 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
       setBusy("");
     }
   }
+  // 押した報酬の見本(2026-09-18 本人の指示「各報酬のプレビューを見えるように」)
+  const [preview, setPreview] = useState(null);
   // 到達報酬は上の段(王)から並べる。最終順位の称号は 1位から
   const rewardsOf = (id, closed) => {
     const list = seasonRewards(id).filter((r) => !!r.place === closed);
@@ -115,11 +118,22 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
               className={`season-reward ${ready ? "season-reward-ready" : ""}`}
               key={reward.id}
             >
-              <span className="season-reward-mark">{reward.mark}</span>
-              <span>
+              {/* 印を押すと見本が開く。何がもらえるのかを、受け取る前に確かめられる */}
+              <button
+                className="season-reward-mark"
+                onClick={() => setPreview(reward)}
+                aria-label={`${reward.name}の見本を見る`}
+              >
+                {reward.mark}
+              </button>
+              <button
+                className="season-reward-name"
+                onClick={() => setPreview(reward)}
+              >
                 <small>{reward.label}</small>
                 <b>{reward.name}</b>
-              </span>
+                <span className="season-reward-see">見本を見る</span>
+              </button>
               <button
                 className={`btn ${ready && !claimed ? "btn-primary" : "btn-ghost"}`}
                 disabled={!!busy || claimed || !ready}
@@ -149,6 +163,12 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
     next = SEASON_TIERS[tierOf(p) + 1];
   return (
     <section className="season-content">
+      {preview && (
+        <SeasonRewardPreview
+          reward={preview}
+          onClose={() => setPreview(null)}
+        />
+      )}
       {acting && (
         <PlayerActionModal
           target={acting}
@@ -317,6 +337,81 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
       )}
     </section>
   );
+}
+
+/**
+ * シーズン報酬の見本(2026-09-18 本人の指示)。
+ * 受け取る前に「何がもらえるのか」を実物で見せる。
+ *   裏面 … 伏せた駒の絵 / 枠 … 自分のアイコンに付けた姿 / 称号 … 名札 / チケット … 枚数
+ */
+export function SeasonRewardPreview({ reward, onClose }) {
+  const me = loadProfile();
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-panel season-preview"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-head">
+          <h3>{reward.name}</h3>
+          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+            <Close size={18} />
+          </button>
+        </div>
+        <p className="hint">{reward.label}で受け取れます。</p>
+        <div className="season-preview-stage">
+          {reward.back && (
+            <>
+              <CardBack size="lg" colorHex="#c6a466" backId={reward.back} />
+              <p className="hint">
+                自分の伏せた駒すべてがこの裏面になります。相手にも見えます。
+              </p>
+            </>
+          )}
+          {reward.frame && (
+            <>
+              <PlayerIcon
+                name={me.name}
+                icon={me.icon}
+                frame={reward.frame}
+                size="lg"
+              />
+              <p className="hint">
+                名前の横のアイコンに付きます。ランキングや対局中にも出ます。
+              </p>
+            </>
+          )}
+          {reward.title && (
+            <>
+              <span className="title-tag season-preview-title">
+                {seasonTitleName(reward)}
+              </span>
+              <p className="hint">
+                名前の下に出る名札です。設定の「あなた」から着け替えできます。
+              </p>
+            </>
+          )}
+          {reward.tickets && (
+            <>
+              <span className="season-preview-tickets">
+                <Ticket size={28} /> ×{reward.tickets}
+              </span>
+              <p className="hint">ガチャを{reward.tickets}回引けます。</p>
+            </>
+          )}
+        </div>
+        <button className="btn btn-primary btn-wide" onClick={onClose}>
+          とじる
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** 称号の名札に出す名前。報酬の名前から「…」の中を取る */
+function seasonTitleName(reward) {
+  const m = /「(.+?)」/.exec(reward.name);
+  return m ? m[1] : reward.name;
 }
 
 export function AppearanceSettings() {
