@@ -191,13 +191,15 @@ export function SummonIntro({ results, targetRef, onFinish }) {
       <button
         type="button"
         className="summon-intro-skip"
-        aria-label="門の演出をスキップ"
+        /* 「スキップ」だけだと引き終わりまで飛ぶと読まれる。飛ばす対象(門)を名指しする
+           (2026-09-18 本人の決め)。全部を省くのはガチャ画面の「召喚の演出を飛ばす」 */
+        aria-label="門の演出をスキップして、カードをめくる画面へ"
         onClick={(event) => {
           event.stopPropagation();
           root.current?.dispatchEvent(new Event("summon-finish"));
         }}
       >
-        スキップ <span aria-hidden="true">≫</span>
+        門をスキップ <span aria-hidden="true">≫</span>
       </button>
     </div>
   );

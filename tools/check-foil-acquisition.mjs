@@ -280,7 +280,10 @@ try {
     });
     assert.equal((html.match(/class="reveal-card /g) || []).length, count);
     assert.match(html, /すべてめくる/, "1連/10連とも全めくり操作を残す");
-    assert.match(html, /aria-label="門の演出をスキップ"/, "門だけを飛ばすボタンを表示");
+    // 2026-09-18 本人の決め: 「スキップ」だけだと引き終わりまで飛ぶと読まれるので、
+    // 飛ばす対象(門)を釦の文字に出す。全部を省くのはガチャ画面の設定
+    assert.match(html, /aria-label="門の演出をスキップして、カードをめくる画面へ"/, "門だけを飛ばすボタンを表示");
+    assert.match(html, /門をスキップ/, "釦の文字にも飛ばす対象を出す");
     const cardsOnly = renderSummon({
       results: Array.from({ length: count }, () => ({ id: "angel-k:foil", isNew: true })),
       onFinish() {},
