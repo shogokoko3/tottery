@@ -17,7 +17,14 @@ const skins = fs.readFileSync("src/ui/skins.jsx", "utf8");
 const overlays = fs.readFileSync("src/ui/overlays.jsx", "utf8");
 assert.doesNotMatch(skins, /collection\.motion/, "スキン画面は対局中の演出を触らない");
 assert.equal((skins.match(/reduce \|\| collection\.summonMotion === "skip"/g) || []).length, 5, "召喚・錬成・盤面獲得の演出は summonMotion で飛ばす");
-assert.ok(skins.indexOf("skins-summon-motion") < skins.indexOf("onClick={() => roll(1)}"), "切り替えは召喚ボタンのすぐ上");
+// 2026-09-18 本人の指示で、召喚の釦を先に出し、演出の切り替えはその下へ移した
+// (開いてすぐ引けるように)。離れた場所へ動かさないよう、釦のすぐ後ろにあることを見る
+{
+  const btn = skins.indexOf("onClick={() => roll(10)}");
+  const toggle = skins.indexOf("skins-summon-motion");
+  assert.ok(toggle > btn, "切り替えは召喚ボタンの下");
+  assert.ok(toggle - btn < 700, `切り替えは召喚ボタンのすぐ下(${toggle - btn}字)`);
+}
 assert.match(skins, /summonMotion = e\.target\.checked \? "skip" : "full"/);
 assert.doesNotMatch(skins, /演出の長さ|ガチャ省略/, "スキン画面から「演出の長さ」を外す");
 assert.match(overlays, /<p className="settings-head">対局中の演出<\/p>\s*<BattleMotionSettings \/>/, "設定画面に対局中の演出");

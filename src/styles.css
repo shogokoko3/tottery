@@ -38,7 +38,10 @@
   overflow: hidden;
   position: relative;
   min-height: 100vh;
-  /* 貼り付けた帯のぶんを空ける。高さは GameShell が測って入れる */
+  /* 貼り付けた帯のぶんを空ける。高さは GameShell が測って入れる。
+     border-box にしないと、100dvh の画面(ミッションなど)で帯のぶんだけ下にはみ出し、
+     下の釦(一括受取・ホームに戻る)が画面の外へ落ちる(2026-09-18 本人の報告) */
+  box-sizing: border-box;
   padding-top: var(--top-bar-h, 56px);
 }
 .tottery-root * {
@@ -1619,7 +1622,13 @@ body:has(.skin-overlay) {
 .title-hero-visual {
   position: relative;
   width: 100%;
-  max-width: 430px;
+  /* 背の低い画面でも1画面に収める(スクロールさせない。2026-09-18 本人の指示)。
+     絵は 660×1173 なので、使える高さから幅を決めれば、絵の中の「ゲームスタート」の
+     当たり判定(割合で置いてある)もそのまま合う。92px は下のデータの帯と余白のぶん */
+  max-width: min(
+    430px,
+    calc((100dvh - var(--top-bar-h, 56px) - 122px) * 0.5627)
+  );
 }
 .title-bg {
   width: 100%;

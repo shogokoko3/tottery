@@ -162,7 +162,10 @@
   }
 }
 .skins-banner {
-  height: 410px;
+  /* 開いてすぐ「1回召喚」「10回召喚」に手が届くように、絵は画面の高さに合わせて縮める
+     (2026-09-18 本人の指示「スクロールしなくてもすぐガチャができるレイアウトに」) */
+  height: min(410px, 34dvh);
+  min-height: 190px;
   position: relative;
   overflow: hidden;
   border: 1px solid #bca57455;
@@ -230,7 +233,7 @@
   margin-top: 27px;
 }
 .skins-summon-controls {
-  padding: 22px 30px 20px;
+  padding: 14px 20px 16px;
   background: #0b1828;
   border: 1px solid #bca57455;
   border-top: 0;
@@ -1075,7 +1078,8 @@
     margin-bottom: 18px;
   }
   .skins-banner {
-    height: 360px;
+    /* 狭い画面でも「1回召喚」まで指が届くように(2026-09-18 本人の指示) */
+    height: min(360px, 32dvh);
   }
   .skins-banner-art {
     left: 5%;
@@ -1235,7 +1239,10 @@
   gap: 16px;
   padding: max(58px, calc(env(safe-area-inset-top) + 12px)) 14px
     max(20px, env(safe-area-inset-bottom));
-  overflow: auto;
+  /* 横には送らせない。兆しの光(reveal-omen)は 150vw あるので、auto のままだと
+     画面が横に滑る(2026-09-18 本人の報告「謎にスライドできる」) */
+  overflow-x: hidden;
+  overflow-y: auto;
   background:
     radial-gradient(ellipse at 50% 42%, #17304399, #030913 72%), #030913;
 }

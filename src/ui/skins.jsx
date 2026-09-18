@@ -1635,20 +1635,6 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                 </div>
               </div>
             )}
-            {/* 召喚の演出を飛ばすかどうかは、召喚ボタンのすぐそばで(対局中の演出とは別の設定) */}
-            <label className="skins-summon-motion">
-              <input
-                type="checkbox"
-                checked={collection.summonMotion === "skip"}
-                disabled={working}
-                onChange={(e) => {
-                  const summonMotion = e.target.checked ? "skip" : "full";
-                  run((s) => ({ ...s, summonMotion }));
-                }}
-              />
-              召喚の演出を飛ばす
-              <small>門とカードの演出を省き、結果をすぐ出します</small>
-            </label>
             <div className="skins-pull-buttons">
               <button
                 disabled={
@@ -1677,6 +1663,20 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                 </span>
               </button>
             </div>
+            {/* 召喚の釦を先に、演出の設定はその下へ(開いてすぐ引けるように。2026-09-18 本人の指示) */}
+            <label className="skins-summon-motion">
+              <input
+                type="checkbox"
+                checked={collection.summonMotion === "skip"}
+                disabled={working}
+                onChange={(e) => {
+                  const summonMotion = e.target.checked ? "skip" : "full";
+                  run((s) => ({ ...s, summonMotion }));
+                }}
+              />
+              召喚の演出を飛ばす
+              <small>門とカードの演出を省き、結果をすぐ出します</small>
+            </label>
             {WALLET_SERVER && !FREE_GACHA && (
               /* ショップと同じ部品。買う前に確認し、確認は切れる(本人の指示 2026-09-17) */
               <TicketBuy
