@@ -3399,6 +3399,39 @@ body:has(.skin-overlay) {
   text-align: left;
   /* 中身が縦に長いので、画面をもう少し使う */
   max-height: 88vh;
+  /* 見出し・タブ・閉じるは動かさず、中身だけを送る(2026-09-18) */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* 設定の種類(あなた・音と演出・安心・アプリ)。1画面ずつ出して迷わせない */
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 12px;
+  flex: none;
+}
+.settings-tabs .btn {
+  flex: 1;
+  min-height: 40px;
+  padding: 8px 2px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.settings-tabs [aria-selected="true"] {
+  background: linear-gradient(#f1dfaa, #cbb274);
+  color: #262016;
+  border-color: #f1d184;
+}
+.settings-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-bottom: 12px;
+}
+.settings-body > :first-child {
+  margin-top: 0;
 }
 .settings-note {
   margin: 0 0 6px;

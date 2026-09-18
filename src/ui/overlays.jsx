@@ -639,6 +639,8 @@ export function SettingsModal({ onClose }) {
   const [profile, setProfile] = useState(() => loadProfile());
   // "name" は名前を変える画面、"icon" はアイコンを選ぶ画面
   const [editing, setEditing] = useState(null);
+  // 設定の種類(あなた・音と演出・安心・アプリ)
+  const [tab, setTab] = useState("account");
   if (editing === "name")return (
       <NameEditModal
         onClose={() => setEditing(null)}
@@ -674,106 +676,138 @@ export function SettingsModal({ onClose }) {
       >
         <div className="modal-head">
           <h3>設定</h3>
-          <button className="icon-btn" onClick={onClose}>
+          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
             <Close size={18} />
           </button>
         </div>
-
-        <p className="settings-head">あなたのアカウント</p>
-        <AccountCard
-          profile={profile}
-          onEditName={() => setEditing("name")}
-          onEditIcon={() => setEditing("icon")}
-          onEditTitle={() => setEditing("title")}
-        />
-
-        <div className="settings-list">
-          <HomeCustomizationButton settings />
-        </div>
-        <AppearanceSettings />
-        <p className="settings-head">対局中の演出</p>
-        <BattleMotionSettings />
-        <p className="settings-head">音</p>
-        <SoundSettings />
-
-        <p className="settings-head">このアプリについて</p>
-        <div className="settings-list">
-          <div className="settings-row">
-            <span>ゲームの版</span>
-            <b>{VERSION}</b>
-          </div>
-          <div className="settings-row">
-            <span>この版の内容</span>
-            <b>{VERSION_NOTE}</b>
-          </div>
-          <div className="settings-row">
-            <span>ルールの確認</span>
-            <b>右上の「i」から</b>
-          </div>
-          <div className="settings-row">
-            <span>通信</span>
-            <b>オンライン対戦に対応</b>
-          </div>
-          <div className="settings-row">
-            <span>お問い合わせ</span>
-            {hasSupportContact() ? (
-              <a
-                className="settings-link"
-                href={supportMailto(VERSION)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {SUPPORT_EMAIL}
-              </a>
-            ) : (
-              <b className="settings-todo">未設定</b>
-            )}
-          </div>
-          <div className="settings-row">
-            <span>プライバシーポリシー</span>
-            {hasPrivacyUrl() ? (
-              <a
-                className="settings-link"
-                href={PRIVACY_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                開く
-              </a>
-            ) : (
-              <b className="settings-todo">未設定</b>
-            )}
-          </div>
-        </div>
-
-        <p className="settings-head">安心して遊ぶために</p>
-        <div className="settings-list">
-          <div className="settings-row">
-            <span>見えなくした人</span>
+        {/* 中身が増えて縦に長くなったので、4つに分けて1画面ずつ出す
+            (2026-09-18 本人の指示「使いやすいUIで見やすいレイアウトに」) */}
+        <div className="settings-tabs" role="tablist" aria-label="設定の種類">
+          {[
+            ["account", "あなた"],
+            ["look", "音と演出"],
+            ["safety", "安心"],
+            ["about", "アプリ"],
+          ].map(([id, label]) => (
             <button
-              className="btn btn-ghost btn-small"
-              onClick={() => setEditing("blocked")}
+              key={id}
+              className="btn btn-ghost"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
             >
-              {loadBlocked().length}人
+              {label}
             </button>
-          </div>
-          <div className="settings-row">
-            <span>自分の記録を消す</span>
-            <button
-              className="btn btn-ghost btn-small btn-danger"
-              onClick={() => setEditing("delete")}
-            >
-              消す
-            </button>
-          </div>
+          ))}
         </div>
-        <p className="settings-note">
-          ランキングの右端の「⋯」から、その人を通報したり、見えなくしたりできます。
-        </p>
-
-        <p className="settings-note">
-          レーティングとランキング、表示の調整は今後追加する予定です。
-        </p>
+        <div className="settings-body">
+          {tab === "account" && (
+            <>
+              <AccountCard
+                profile={profile}
+                onEditName={() => setEditing("name")}
+                onEditIcon={() => setEditing("icon")}
+                onEditTitle={() => setEditing("title")}
+              />
+              <div className="settings-list">
+                {/* 着せ替えを決めたら設定ごと閉じて、ホームを見せる(2026-09-18 本人の指示) */}
+                <HomeCustomizationButton settings onApplied={onClose} />
+              </div>
+              <AppearanceSettings />
+            </>
+          )}
+          {tab === "look" && (
+            <>
+              <p className="settings-head">音</p>
+              <SoundSettings />
+              <p className="settings-head">対局中の演出</p>
+              <BattleMotionSettings />
+            </>
+          )}
+          {tab === "safety" && (
+            <>
+              <div className="settings-list">
+                <div className="settings-row">
+                  <span>見えなくした人</span>
+                  <button
+                    className="btn btn-ghost btn-small"
+                    onClick={() => setEditing("blocked")}
+                  >
+                    {loadBlocked().length}人
+                  </button>
+                </div>
+              </div>
+              <p className="settings-note">
+                ランキングの右端の「⋯」から、その人を通報したり、見えなくしたりできます。
+              </p>
+              <p className="settings-head">記録を消す</p>
+              <div className="settings-list">
+                <div className="settings-row">
+                  <span>自分の記録を消す</span>
+                  <button
+                    className="btn btn-ghost btn-small btn-danger"
+                    onClick={() => setEditing("delete")}
+                  >
+                    消す
+                  </button>
+                </div>
+              </div>
+              <p className="settings-note">
+                名前・戦績・持ち点と、公開ランキングのあなたの行を消します。元には戻せません。
+              </p>
+            </>
+          )}
+          {tab === "about" && (
+            <div className="settings-list">
+              <div className="settings-row">
+                <span>ゲームの版</span>
+                <b>{VERSION}</b>
+              </div>
+              <div className="settings-row">
+                <span>この版の内容</span>
+                <b>{VERSION_NOTE}</b>
+              </div>
+              <div className="settings-row">
+                <span>ルールの確認</span>
+                <b>右上の「i」から</b>
+              </div>
+              <div className="settings-row">
+                <span>通信</span>
+                <b>オンライン対戦に対応</b>
+              </div>
+              <div className="settings-row">
+                <span>お問い合わせ</span>
+                {hasSupportContact() ? (
+                  <a
+                    className="settings-link"
+                    href={supportMailto(VERSION)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {SUPPORT_EMAIL}
+                  </a>
+                ) : (
+                  <b className="settings-todo">未設定</b>
+                )}
+              </div>
+              <div className="settings-row">
+                <span>プライバシーポリシー</span>
+                {hasPrivacyUrl() ? (
+                  <a
+                    className="settings-link"
+                    href={PRIVACY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    開く
+                  </a>
+                ) : (
+                  <b className="settings-todo">未設定</b>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
         <button className="btn btn-primary btn-wide" onClick={onClose}>
           閉じる
         </button>

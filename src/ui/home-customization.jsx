@@ -149,7 +149,12 @@ const ORIGINAL = {
   condition: "はじめから使用できます",
 };
 
-export function HomeCustomizationModal({ onClose }) {
+/**
+ * ホームの着せ替え。
+ * onApplied を渡すと、決めたあとはそこへ渡す(設定ごと閉じてホームへ戻す。
+ * 2026-09-18 本人の指示「着せ替え先を決めたらホーム画面に戻る」)
+ */
+export function HomeCustomizationModal({ onClose, onApplied = null }) {
   const collection = useCollection();
   const current = homeThemeOf(collection);
   const [selected, setSelected] = useState(current);
@@ -186,7 +191,7 @@ export function HomeCustomizationModal({ onClose }) {
         const next = setHomeTheme(state, choice.id);
         return characters ? setHomePortrait(next, choice.id, portraitId) : next;
       });
-      onClose();
+      (onApplied || onClose)();
     } catch (err) {
       setError(err.message || "着せ替えを保存できませんでした。");
       setSaving(false);
@@ -386,7 +391,7 @@ export function HomeCustomizationModal({ onClose }) {
   );
 }
 
-export function HomeCustomizationButton({ settings = false }) {
+export function HomeCustomizationButton({ settings = false, onApplied = null }) {
   const collection = useCollection();
   const [open, setOpen] = useState(false);
   const theme = findHomeTheme(homeThemeOf(collection));
@@ -415,7 +420,15 @@ export function HomeCustomizationButton({ settings = false }) {
           着せ替え
         </button>
       </div>
-      {open && <HomeCustomizationModal onClose={() => setOpen(false)} />}
+      {open && (
+        <HomeCustomizationModal
+          onClose={() => setOpen(false)}
+          onApplied={() => {
+            setOpen(false);
+            onApplied && onApplied();
+          }}
+        />
+      )}
     </>
   );
 }
