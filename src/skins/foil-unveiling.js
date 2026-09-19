@@ -2,16 +2,16 @@
 // separate normal-to-foil acquisition animation.
 export function foilUnveilingPlan(legend = false, fromGrid = false) {
   const unveiling = legend
-    ? { seal: 1800, hush: 2550, reveal: 3550, settle: 4350, complete: 5800 }
+    ? { seal: 1800, hush: 3200, reveal: 4200, settle: 5000, complete: 6450 }
     : { seal: 1300, hush: 1850, reveal: 2850, settle: 3600, complete: 5000 };
   return fromGrid
     ? {
         lift: 700,
-        gather: 1700,
+        gather: 1800,
         ...Object.fromEntries(
           Object.entries(unveiling).map(([phase, time]) => [
             phase,
-            time + 1700,
+            time + 1800,
           ]),
         ),
       }

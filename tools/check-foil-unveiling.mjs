@@ -184,6 +184,11 @@ try {
           !/>[^<]*\b(?:SSR|SR|R)\b[^<]*</.test(html),
           `${phase}: rarity text stays hidden`,
         );
+        assert.equal(
+          html.includes("foil-unveiling-promotion-label"),
+          skin.rarity === "SSR" && route === "surprise" && phase === "seal",
+          "only the hidden SSR promotion announces its upgrade",
+        );
         if (skin.rarity === "SSR") {
           assert.equal(
             /foil-unveiling-stage[^"]*\bis-legend\b/.test(html),

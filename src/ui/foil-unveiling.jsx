@@ -44,6 +44,17 @@ export function FoilSeal({ legend = false }) {
           <path d="M45 32l19 33H26z" />
         </g>
         <path className="foil-seal-gem" d="M45 40l9 14-9 14-9-14z" />
+        {legend && (
+          <g className="foil-seal-regalia">
+            <path d="M13 31V14h15M62 14h15v17M13 89v17h15M62 106h15V89" />
+            <path
+              className="foil-seal-crown"
+              d="M31 15l7 7 7-11 7 11 7-7-4 16H35zM35 34h20"
+            />
+            <circle cx="45" cy="54" r="33" strokeDasharray="1 5" />
+            <path d="M18 76l5 9 8 4-3-8zM72 76l-5 9-8 4 3-8zM22 87l8 8 9 2-7-7zM68 87l-8 8-9 2 7-7z" />
+          </g>
+        )}
       </svg>
       <span className="foil-seal-word">FOIL</span>
     </span>
@@ -121,7 +132,6 @@ export function FoilUnveilingView({
               "--source-x": `${origin.x}px`,
               "--source-y": `${origin.y}px`,
               "--source-scale": origin.scale,
-              "--flight-tilt": `${origin.tilt}deg`,
             }
           : undefined
       }
@@ -159,10 +169,20 @@ export function FoilUnveilingView({
               : "この輝きは、誰のものか。"}
       </p>
       <div className="foil-unveiling-card">
-        {visible && <UnveilingBurst />}
+        {(visible || upgrading) && (
+          <UnveilingBurst key={upgrading ? "promotion" : "identity"} />
+        )}
         {!visible && <FoilSeal legend={legend} />}
+        {!visible && fromGrid && (
+          <span className="foil-unveiling-reverse" aria-hidden="true">
+            <FoilSeal legend={legend} />
+          </span>
+        )}
         {upgrading && (
-          <span className="foil-unveiling-upgrade" aria-hidden="true" />
+          <>
+            <span className="foil-unveiling-upgrade" aria-hidden="true" />
+            <strong className="foil-unveiling-promotion-label">昇格</strong>
+          </>
         )}
         {visible && !missing && (
           <FoilArtwork
@@ -228,7 +248,6 @@ export function FoilUnveiling({
       x,
       y: a.top + a.height / 2 - b.top - b.height / 2,
       scale: Math.min(a.width / b.width, a.height / b.height),
-      tilt: x > 0 ? 9 : -9,
     });
   }, [fromGrid, reduce, sourceRef, sourceIndex]);
   useEffect(() => {

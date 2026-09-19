@@ -67,15 +67,25 @@
 .foil-seal.is-legend {
   background: radial-gradient(
     ellipse at 50% 38%,
-    #4b3c55,
-    #15102b 60%,
-    #100a1b
+    #79582e,
+    #2b2036 60%,
+    #160e20
   );
   box-shadow: inset 0 0 24px #e7c77466;
 }
 .foil-seal.is-legend svg {
   stroke: #ffdf94;
   filter: drop-shadow(0 0 4px #ffd57c);
+}
+.foil-seal-regalia {
+  stroke: #ffe9aa;
+  stroke-width: 1.1;
+  fill: #dca95533;
+}
+.foil-seal-crown {
+  fill: #b5833f;
+  stroke-width: 1.3;
+  filter: drop-shadow(0 0 3px #ffc568);
 }
 .foil-unveiling-stage {
   outline: none;
@@ -213,7 +223,7 @@
   opacity: 0;
 }
 .foil-unveiling-stage.from-grid[data-phase="lift"]::before {
-  animation: foil-stage-darken 1s ease-in both;
+  animation: foil-stage-darken 1.1s ease-in both;
 }
 .foil-unveiling-stage.from-grid:is(
     [data-phase="waiting"],
@@ -238,7 +248,20 @@
   animation: foil-card-chosen 0.7s ease-out both;
 }
 .foil-unveiling-stage.from-grid[data-phase="lift"] .foil-unveiling-card {
-  animation: foil-card-lift 1s cubic-bezier(0.22, 0.6, 0.24, 1) both;
+  isolation: auto;
+  transform-style: preserve-3d;
+  animation: foil-card-lift 1.1s cubic-bezier(0.35, 0.05, 0.25, 1) both;
+}
+.foil-unveiling-card > .foil-seal,
+.foil-unveiling-reverse {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.foil-unveiling-reverse {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  transform: rotateY(180deg);
 }
 .foil-unveiling-stage.from-grid:is(
     [data-phase="gather"],
@@ -281,25 +304,15 @@
 }
 @keyframes foil-card-lift {
   0% {
-    transform: translate(
-        var(--source-x, 0px),
-        calc(var(--source-y, 0px) - 12px)
-      )
-      scale(calc(var(--source-scale, 1) * 1.06));
+    transform: perspective(900px)
+      translate(var(--source-x, 0px), calc(var(--source-y, 0px) - 12px))
+      scale(calc(var(--source-scale, 1) * 1.06)) rotateY(0deg);
     box-shadow:
       0 0 42px #ffe7aecc,
       0 0 95px #b5caff77;
   }
-  42% {
-    transform: translate(
-        calc(var(--source-x, 0px) * 0.6),
-        calc(var(--source-y, 0px) * 0.6 - 45px)
-      )
-      scale(calc(var(--source-scale, 1) * 0.5 + 0.48))
-      rotate(var(--flight-tilt, -9deg));
-  }
   100% {
-    transform: translate(0, 8px) scale(0.96);
+    transform: perspective(900px) translate(0, 8px) scale(0.96) rotateY(720deg);
   }
 }
 @keyframes foil-stage-darken {
@@ -420,6 +433,61 @@
   box-shadow:
     0 0 22px #ffca69aa,
     0 0 64px #cb9b6655;
+}
+.foil-unveiling-stage.is-upgrading::before {
+  background: radial-gradient(
+    ellipse at 50% 48%,
+    #79572f,
+    #302036 52%,
+    #090e19
+  );
+}
+.foil-unveiling-stage.is-upgrading .foil-unveiling-aura {
+  opacity: 1;
+  scale: 1.7;
+  transition-duration: 0.3s;
+}
+.foil-unveiling-promotion-label {
+  position: absolute;
+  z-index: 3;
+  left: -12%;
+  width: 124%;
+  top: 39%;
+  padding: 10px 0 10px 0.24em;
+  border-block: 1px solid #ffe8a855;
+  text-align: center;
+  color: #fff2bc;
+  font:
+    800 clamp(30px, 9vw, 46px)/1.6 "Shippori Mincho",
+    serif;
+  letter-spacing: 0.24em;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #251523e8 18%,
+    #251523f5 50%,
+    #251523e8 82%,
+    transparent
+  );
+  text-shadow:
+    0 0 8px #ffd36b,
+    0 0 24px #de9c4599;
+  animation: foil-promotion-banner 1.4s ease-out both;
+}
+@keyframes foil-promotion-banner {
+  0% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+  18%,
+  78% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
 }
 @keyframes foil-rank-awakening {
   0% {
