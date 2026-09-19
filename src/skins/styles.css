@@ -2919,3 +2919,34 @@
   line-height: 1.6;
   padding-left: 28px;
 }
+
+/* 確認の中で枚数を決める並び(まとめ錬成・フォイルの一括分解 2026-09-19)。
+   指で押すところは 44px を下回らない */
+.amount-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+.amount-picker > b {
+  min-width: 62px;
+  text-align: center;
+  font-size: 18px;
+  color: #f2dab0;
+}
+.amount-picker .amount-step {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 18px;
+  line-height: 1;
+}
+.amount-picker .amount-max {
+  min-height: 44px;
+}
+/* 錬成タブの返事。崩した・作った結果をその場に出す */
+.forge-message:not(:empty) {
+  margin: 10px 0 0;
+  text-align: center;
+}

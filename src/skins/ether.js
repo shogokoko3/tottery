@@ -111,7 +111,22 @@ export function dismantleCheck(state, id) {
 }
 
 /** 作れるか。理由も返す */
-export function craftCheck(state, id) {
+/**
+ * 一度にまとめて作れる上限。保存の正規化(collection.js の normalize)が
+ * 結果を10件で切るので、それに合わせる。増やすなら両方を直すこと。
+ */
+export const CRAFT_MAX = 10;
+
+/** その札を、いまのエーテルで何枚まで作れるか(上限つき) */
+export function craftableCount(state, id) {
+  const skin = byId(id);
+  const each = skin ? costOf(skin) : null;
+  if (!each) return 0;
+  if (!craftCheck(state, id, 1).ok) return 0;
+  return Math.max(0, Math.min(CRAFT_MAX, Math.floor(etherOf(state) / each)));
+}
+
+export function craftCheck(state, id, n = 1) {
   const skin = byId(id);
   if (!skin) return { ok: false, why: "その札はありません。" };
   if (skin.foil)
@@ -127,17 +142,25 @@ export function craftCheck(state, id) {
           ? "特別スキンはエーテルで作れません。"
           : "初回購入特典の札は作れません。",
     };
-  const cost = costOf(skin);
-  if (cost === null) return { ok: false, why: "この札は作れません。" };
+  const each = costOf(skin);
+  if (each === null) return { ok: false, why: "この札は作れません。" };
+  // まとめて作るときは枚数ぶんの値段で見る。cost は「払う合計」
+  // 整数だけ受ける。小数を黙って切り捨てると、頼んだ枚数と違う数を作ってしまう
+  const want = n;
+  if (!Number.isInteger(want) || want < 1 || want > CRAFT_MAX)
+    return { ok: false, why: `一度に作れるのは 1〜${CRAFT_MAX} 枚です。`, each };
+  const cost = each * want;
   const have = etherOf(state);
   if (have < cost)
     return {
       ok: false,
       why: `あと ${cost - have} 足りません。`,
       cost,
+      each,
+      count: want,
       short: cost - have,
     };
-  return { ok: true, cost };
+  return { ok: true, cost, each, count: want };
 }
 
 /** 崩せる札の一覧。多くもらえる順に並べる */

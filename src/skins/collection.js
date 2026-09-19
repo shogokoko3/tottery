@@ -12,6 +12,7 @@ import {
   sanitizeLoadout,
 } from "./catalog.js";
 import {
+  CRAFT_MAX,
   craftCheck,
   dismantleCheck,
   dustOf,
@@ -122,6 +123,13 @@ export function normalize(raw) {
         .filter((r) => byId(r?.id) && owned[r.id])
         .map((r) => ({ id: r.id, isNew: r.isNew === true }))
     : [];
+  // まとめ錬成の結果も、召喚の結果と同じ手順で作り直す(知らない札・持っていない札は落とす)
+  const craftRows = Array.isArray(value.lastCraft?.results)
+    ? value.lastCraft.results
+        .slice(0, CRAFT_MAX)
+        .filter((r) => byId(r?.id) && owned[r.id])
+        .map((r) => ({ id: r.id, isNew: r.isNew === true }))
+    : [];
   const foilMilestones = Object.fromEntries(
     POOL.filter((skin) => value.foilMilestones?.[skin.id] === true).map(
       (skin) => [skin.id, true],
@@ -207,6 +215,8 @@ export function normalize(raw) {
         ? {
             id: value.lastCraft.id,
             isNew: value.lastCraft.isNew === true,
+            // まとめ錬成の結果。2枚以上のときだけ残す(1枚以下なら今までの単数に落ちる)
+            ...(craftRows.length > 1 ? { results: craftRows } : {}),
             ...(value.lastCraft.source === "milestone" &&
             byId(value.lastCraft.id).foil &&
             foilMilestones[baseSkinId(value.lastCraft.id)]
@@ -386,11 +396,19 @@ export function dismantle(state, id) {
  * 最後の1枚は残す。エーテルは増えない。
  */
 export function shatter(state, id) {
-  const check = shatterCheck(state, id);
+  return shatterMany(state, id, 1);
+}
+
+/**
+ * 同じフォイルのダブりを、まとめて欠片にする(本人の指示 2026-09-19)。
+ * 最後の1枚は必ず残る(枚数の上限は shatterCheck が見る)。
+ */
+export function shatterMany(state, id, n) {
+  const check = shatterCheck(state, id, n);
   if (!check.ok) throw new Error(check.why);
   return {
     ...state,
-    owned: { ...state.owned, [id]: state.owned[id] - 1 },
+    owned: { ...state.owned, [id]: state.owned[id] - check.count },
     acquired: acquiredTotals(state),
     shards: count(state.shards) + check.gain,
   };
@@ -507,6 +525,46 @@ export function craft(state, id, random = Math.random) {
     acquired,
     ether: count(state.ether) - check.cost,
     lastCraft: { id: resultId, isNew },
+  });
+}
+
+/**
+ * エーテルを払って、同じ札をまとめて作る(本人の指示 2026-09-19)。
+ * 1枚ごとに 1% のフォイル抽選を**別々に**引く(まとめても確率は薄まらない)。
+ *
+ * 結果は lastCraft に入れる。2枚以上のときだけ results を添え、結果画面は
+ * それを並べる。題名は今までどおり craftResult が真なら「錬成結果」になる。
+ */
+export function craftMany(state, id, n, random = Math.random) {
+  if (state.pending || state.lastCraft)
+    throw new Error("先にガチャ・錬成の結果を確認してください");
+  const check = craftCheck(state, id, n);
+  if (!check.ok) throw new Error(check.why);
+  const acquired = acquiredTotals(state);
+  const owned = { ...state.owned };
+  const results = [];
+  for (let i = 0; i < check.count; i += 1) {
+    const resultId = finishedId(id, random);
+    recordAcquisition(acquired, resultId);
+    // 同じ回の中で2枚目以降は NEW にしない。走らせながら数える
+    const isNew = !owned[resultId];
+    owned[resultId] = (owned[resultId] || 0) + 1;
+    results.push({ id: resultId, isNew });
+  }
+  return withHomePortraits({
+    ...state,
+    owned,
+    acquired,
+    ether: count(state.ether) - check.cost,
+    // **pending には入れない**。pending は召喚の席で、自動分解(ResultDismantle)・
+    // freeze・logPull・閉じたあとのフォイル窓が全部そこにぶら下がっている。
+    // 錬成は払った 1/4 しか戻らない(CRAFT_RATIO=4)ので、自動分解を入れている人が
+    // まとめて作った瞬間に大半を無言で失う。lastCraft 側を複数枚に広げる。
+    // id / isNew は1枚目のぶんを残す(craftResult.id を見ている既存の箇所のため)
+    lastCraft:
+      results.length > 1
+        ? { id: results[0].id, isNew: results[0].isNew, results }
+        : { id: results[0].id, isNew: results[0].isNew },
   });
 }
 

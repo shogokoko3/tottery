@@ -51,14 +51,22 @@ export function exchangeCostOf(skin) {
 }
 
 /** 崩して欠片にできるか。理由も返す(画面にそのまま出す) */
-export function shatterCheck(state, id) {
+export function shatterCheck(state, id, n = 1) {
   const skin = byId(id);
   if (!skin) return { ok: false, why: "その札はありません。" };
   if (!skin.foil) return { ok: false, why: "欠片になるのはフォイルだけです。" };
   const held = heldOf(state, id);
   if (held === 0) return { ok: false, why: "持っていません。" };
   if (held < 2) return { ok: false, why: "最後の1枚は崩せません。" };
-  return { ok: true, gain: shardValueOf(skin) };
+  // まとめて崩すときは枚数ぶんで見る。最後の1枚は必ず残す
+  const spare = held - 1;
+  // 整数だけ受ける(小数を切り捨てると頼んだ枚数と違う数を崩してしまう)
+  const want = n;
+  if (!Number.isInteger(want) || want < 1)
+    return { ok: false, why: "崩す枚数が正しくありません。", spare };
+  if (want > spare)
+    return { ok: false, why: `崩せるのは ${spare} 枚までです。`, spare };
+  return { ok: true, gain: shardValueOf(skin) * want, each: shardValueOf(skin), count: want, spare };
 }
 
 /** 欠片で作れるか。理由も返す */

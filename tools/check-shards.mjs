@@ -64,8 +64,21 @@ let s = normalize({
   },
 });
 assert.equal(shardsOf(s), 0);
-assert.deepEqual(shatterCheck(s, "zombie-male:foil"), { ok: true, gain: 1 });
-assert.deepEqual(shatterCheck(s, "elf-male:foil"), { ok: true, gain: 2 });
+// 枚数を渡せる(既定1)。gain は「合計」、each は1枚ぶん(2026-09-19 まとめ分解)
+assert.deepEqual(shatterCheck(s, "zombie-male:foil"), {
+  ok: true, gain: 1, each: 1, count: 1, spare: 2,
+});
+assert.deepEqual(shatterCheck(s, "elf-male:foil"), {
+  ok: true, gain: 2, each: 2, count: 1, spare: 1,
+});
+// まとめて崩す: 余りのぶんだけ。超えたら断る。最後の1枚は必ず残る
+assert.deepEqual(shatterCheck(s, "zombie-male:foil", 2), {
+  ok: true, gain: 2, each: 1, count: 2, spare: 2,
+});
+assert.equal(shatterCheck(s, "zombie-male:foil", 3).ok, false, "余りを超えて崩せない");
+assert.match(shatterCheck(s, "zombie-male:foil", 3).why, /崩せるのは 2 枚まで/);
+assert.equal(shatterCheck(s, "zombie-male:foil", 0).ok, false, "0枚は断る");
+assert.equal(shatterCheck(s, "elf-male:foil", 2).ok, false, "余り1枚なら2枚は断る");
 assert.equal(shatterCheck(s, "dragon-knight:foil").ok, false, "最後の1枚");
 assert.match(shatterCheck(s, "dragon-knight:foil").why, /最後の1枚/);
 assert.equal(shatterCheck(s, "zombie-male").ok, false, "通常版");

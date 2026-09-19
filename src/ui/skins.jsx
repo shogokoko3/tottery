@@ -18,7 +18,6 @@ import {
 } from "../skins/catalog.js";
 import {
   claimFoilMilestone,
-  craft,
   dismantle,
   dismantleAll,
   dismantleResults,
@@ -30,7 +29,8 @@ import {
   foilMilestoneCheck,
   applyPull,
   pull,
-  shatter,
+  shatterMany,
+  craftMany,
   unequip,
   foilRevealed,
   FREE_GACHA,
@@ -47,8 +47,10 @@ import {
 } from "../skins/shards.js";
 import {
   CRAFT,
+  CRAFT_MAX,
   ETHER_NAME,
   costOf,
+  craftableCount,
   dustOf,
   etherOf,
   forgeSummary,
@@ -56,6 +58,7 @@ import {
   spares,
   totalOfSpares,
 } from "../skins/ether.js";
+import { AmountPicker } from "./amount-picker.jsx";
 import { updateCollection, useCollection } from "../skins/store.js";
 import {
   WALLET_SERVER,
@@ -673,6 +676,10 @@ function ForgePanel({
   // 両方の一覧を一度に出すと長すぎて探せない(2026-09-18 本人の指示)
   const [foilWork, setFoilWork] = useState("milestone");
   const [confirmBreak, setConfirmBreak] = useState(null);
+  // 確認の中で決める枚数(まとめ錬成・一括分解。本人の指示 2026-09-19)
+  const [breakN, setBreakN] = useState(1);
+  const [confirmCraft, setConfirmCraft] = useState(null);
+  const [craftN, setCraftN] = useState(1);
   // 目安の数字は抽選の中身から引き直す。手で書くと片方だけ古くなる
   const summary = forgeSummary();
   const top = summary.byId("SSR");
@@ -698,11 +705,11 @@ function ForgePanel({
       );
     }
   };
-  const shatterOne = async (skin) => {
-    if (await run((c) => shatter(c, skin.id))) {
+  const shatterSome = async (skin, n) => {
+    if (await run((c) => shatterMany(c, skin.id, n))) {
       setConfirmBreak(null);
       setMessage(
-        `「${skin.name}」を崩して ${SHARD_NAME}を ${SHARD_VALUE[skin.rarity]} 得ました。`,
+        `「${skin.name}」を ${n}枚崩して ${SHARD_NAME}を ${SHARD_VALUE[skin.rarity] * n} 得ました。`,
       );
     }
   };
@@ -720,11 +727,12 @@ function ForgePanel({
         `通常版のダブりを崩して ${ETHER_NAME}を ${bulk} 得ました。フォイルは残しています。`,
       );
   };
-  const make = async (skin) => {
-    const next = await acquire((c) => craft(c, skin.id));
+  const make = async (skin, n = 1) => {
+    const next = await acquire((c) => craftMany(c, skin.id, n));
     if (next) {
+      setConfirmCraft(null);
       setMessage(
-        `${ETHER_NAME}を ${costOf(skin).toLocaleString()} 使って、1枚を錬成しました。`,
+        `${ETHER_NAME}を ${(costOf(skin) * n).toLocaleString()} 使って、${n}枚を錬成しました。`,
       );
     }
   };
@@ -760,6 +768,13 @@ function ForgePanel({
           </div>
         )}
       </div>
+      {/* 崩した・作った結果の返事。確認の窓を閉じたあとも読めるように、ここに出す
+          (2026-09-19。それまでは窓の中にしか無く、閉じた瞬間に消えていた) */}
+      {message && !confirmBreak && !confirmCraft && (
+        <p className="skins-message forge-message" role="status">
+          {message}
+        </p>
+      )}
       {!foilView && onEther && (
         <section
           className="forge-section forge-ether-exchange"
@@ -973,7 +988,9 @@ function ForgePanel({
                   <button
                     className="btn btn-ghost btn-small"
                     disabled={working}
-                    onClick={() => (setMessage(""), setConfirmBreak(skin))}
+                    onClick={() => (
+                      setMessage(""), setBreakN(1), setConfirmBreak(skin)
+                    )}
                   >
                     欠片にする
                   </button>
@@ -1148,7 +1165,9 @@ function ForgePanel({
                   <button
                     className={`btn ${can ? "btn-primary" : "btn-ghost"} btn-small`}
                     disabled={working || !can}
-                    onClick={() => make(skin)}
+                    onClick={() => (
+                      setMessage(""), setCraftN(1), setConfirmCraft(skin)
+                    )}
                   >
                     <Ether size={13} /> {cost.toLocaleString()}
                   </button>
@@ -1214,7 +1233,7 @@ function ForgePanel({
           onClose={() => setConfirmBreak(null)}
         >
           <div className="skin-modal-head">
-            <h2>フォイルを1枚崩しますか？</h2>
+            <h2>フォイルを{breakN}枚崩しますか？</h2>
             <button
               className="skin-close"
               aria-label="確認を閉じる"
@@ -1225,13 +1244,19 @@ function ForgePanel({
             </button>
           </div>
           <p>
-            「{confirmBreak.name}」のダブり1枚を、{SHARD_NAME}{" "}
-            {SHARD_VALUE[confirmBreak.rarity]}{" "}
+            「{confirmBreak.name}」のダブり{breakN}枚を、{SHARD_NAME}{" "}
+            {SHARD_VALUE[confirmBreak.rarity] * breakN}{" "}
             に変えます。エーテルにはなりません。
           </p>
+          <AmountPicker
+            value={breakN}
+            max={Math.max(1, (collection.owned[confirmBreak.id] || 0) - 1)}
+            working={working}
+            onChange={setBreakN}
+          />
           <p className="skins-note">
             所持 {collection.owned[confirmBreak.id] || 0}枚 →{" "}
-            {Math.max(0, (collection.owned[confirmBreak.id] || 0) - 1)}
+            {Math.max(0, (collection.owned[confirmBreak.id] || 0) - breakN)}
             枚。最後の1枚は残ります。
           </p>
           <div className="skins-confirm-actions">
@@ -1244,10 +1269,72 @@ function ForgePanel({
             </button>
             <button
               className="skin-btn skin-btn-gold"
-              disabled={working || (collection.owned[confirmBreak.id] || 0) < 2}
-              onClick={() => shatterOne(confirmBreak)}
+              disabled={
+                working ||
+                (collection.owned[confirmBreak.id] || 0) - breakN < 1
+              }
+              onClick={() => shatterSome(confirmBreak, breakN)}
             >
-              1枚崩す（{SHARD_NAME} +{SHARD_VALUE[confirmBreak.rarity]}）
+              {breakN}枚崩す（{SHARD_NAME} +
+              {SHARD_VALUE[confirmBreak.rarity] * breakN}）
+            </button>
+          </div>
+          <p className="skins-message" role="status">
+            {message}
+          </p>
+        </SkinModal>
+      )}
+      {confirmCraft && (
+        <SkinModal label="錬成の確認" onClose={() => setConfirmCraft(null)}>
+          <div className="skin-modal-head">
+            <h2>
+              「{confirmCraft.name}」を{craftN}枚つくりますか？
+            </h2>
+            <button
+              className="skin-close"
+              aria-label="確認を閉じる"
+              disabled={working}
+              onClick={() => setConfirmCraft(null)}
+            >
+              ×
+            </button>
+          </div>
+          <p>
+            {ETHER_NAME}{" "}
+            <b>{(costOf(confirmCraft) * craftN).toLocaleString()}</b>{" "}
+            を使います（残り{" "}
+            {Math.max(
+              0,
+              ether - costOf(confirmCraft) * craftN,
+            ).toLocaleString()}
+            ）。
+          </p>
+          <AmountPicker
+            value={craftN}
+            max={Math.max(1, craftableCount(collection, confirmCraft.id))}
+            working={working}
+            onChange={setCraftN}
+          />
+          <p className="skins-note">
+            1枚ごとに{foilPct}
+            %でフォイルになります。まとめて作っても1枚あたりの確率は変わりません。一度に作れるのは
+            {CRAFT_MAX}枚までです。
+          </p>
+          <div className="skins-confirm-actions">
+            <button
+              className="skin-btn"
+              disabled={working}
+              onClick={() => setConfirmCraft(null)}
+            >
+              やめる
+            </button>
+            <button
+              className="skin-btn skin-btn-gold"
+              disabled={working || ether < costOf(confirmCraft) * craftN}
+              onClick={() => make(confirmCraft, craftN)}
+            >
+              {craftN}枚つくる（{(costOf(confirmCraft) * craftN).toLocaleString()}
+              ）
             </button>
           </div>
           <p className="skins-message" role="status">
@@ -1485,8 +1572,15 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
       : craftResult
         ? "錬成結果"
         : "召喚結果";
+  // まとめ錬成は lastCraft.results に複数枚が入る(pending は召喚専用なので使わない)
   const results =
-    collection.pending?.results || (craftResult ? [craftResult] : null);
+    collection.pending?.results ||
+    craftResult?.results ||
+    (craftResult ? [craftResult] : null);
+  // まとめて作ってフォイルが混ざったとき、その1枚を演出に渡す
+  const craftedFoil =
+    craftResult &&
+    (craftResult.results || [craftResult]).find((r) => byId(r.id)?.foil);
   const areaRewards = areaRewardsFor(results || []);
   const finishAcquisition = useCallback(() => setAcquisitionMode("area"), []);
   const magicianLocked = isBattlePassLocked(
@@ -2162,11 +2256,9 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
             onFinish={finishAcquisition}
             reduce={reduce || collection.summonMotion === "skip"}
           />
-        ) : acquisitionMode === "foil" &&
-          craftResult &&
-          byId(craftResult.id).foil ? (
+        ) : acquisitionMode === "foil" && craftedFoil ? (
           <CraftedFoilReveal
-            result={craftResult}
+            result={craftedFoil}
             onFinish={finishAcquisition}
             reduce={reduce || collection.summonMotion === "skip"}
           />
