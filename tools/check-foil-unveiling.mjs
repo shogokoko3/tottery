@@ -41,7 +41,20 @@ assert.equal(
 
 for (const legend of [false, true]) {
   const plan = foilUnveilingPlan(legend);
-  for (const elapsed of [0, plan.seal - 1, plan.seal, plan.reveal - 1])
+  assert.equal(
+    plan.reveal - plan.hush,
+    1000,
+    "one full second of anticipation immediately before identity reveal",
+  );
+  assert.equal(foilUnveilingFrame(plan.hush, { legend }).phase, "hush");
+  assert.equal(foilUnveilingFrame(plan.reveal - 1, { legend }).phase, "hush");
+  for (const elapsed of [
+    0,
+    plan.seal - 1,
+    plan.seal,
+    plan.hush,
+    plan.reveal - 1,
+  ])
     assert.equal(
       foilUnveilingFrame(elapsed, { legend }).identityVisible,
       false,
@@ -123,7 +136,7 @@ try {
     const skin = byId(id + ":foil"),
       base = byId(id);
     for (const route of ["common", "legend", "surprise"])
-      for (const phase of ["waiting", "gather", "seal"]) {
+      for (const phase of ["waiting", "gather", "seal", "hush"]) {
         const html = render({ skin, phase, route });
         assert.ok(!html.includes(base.name), `${phase}: no character name`);
         assert.ok(
@@ -142,7 +155,7 @@ try {
         if (skin.rarity === "SSR") {
           assert.equal(
             html.includes("stage is-legend"),
-            route === "legend" || phase === "seal",
+            route === "legend" || ["seal", "hush"].includes(phase),
           );
           assert.equal(
             html.includes("is-upgrading"),

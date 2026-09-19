@@ -2,8 +2,8 @@
 // separate normal-to-foil acquisition animation.
 export function foilUnveilingPlan(legend = false) {
   return legend
-    ? { seal: 1800, reveal: 2550, settle: 3350, complete: 4400 }
-    : { seal: 1300, reveal: 1850, settle: 2600, complete: 3600 };
+    ? { seal: 1800, hush: 2550, reveal: 3550, settle: 4350, complete: 5800 }
+    : { seal: 1300, hush: 1850, reveal: 2850, settle: 3600, complete: 5000 };
 }
 
 export function foilUnveilingFrame(
@@ -18,9 +18,11 @@ export function foilUnveilingFrame(
         ? "settle"
         : elapsed >= plan.reveal
           ? "reveal"
-          : elapsed >= plan.seal
-            ? "seal"
-            : "gather";
+          : elapsed >= plan.hush
+            ? "hush"
+            : elapsed >= plan.seal
+              ? "seal"
+              : "gather";
   return {
     phase,
     identityVisible: ["reveal", "settle", "complete"].includes(phase),

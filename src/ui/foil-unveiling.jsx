@@ -44,6 +44,44 @@ export function FoilSeal({ legend = false }) {
   );
 }
 
+function UnveilingBurst() {
+  return (
+    <span className="foil-unveiling-burst" aria-hidden="true">
+      <span className="foil-unveiling-corona" />
+      <span className="foil-unveiling-wave" />
+      <span className="foil-unveiling-wave echo" />
+      <span className="foil-unveiling-rays">
+        {Array.from({ length: 20 }, (_, i) => (
+          <i
+            key={i}
+            style={{
+              "--angle": `${i * 18 + 9}deg`,
+              "--length": `${100 + (i % 4) * 23}px`,
+              "--delay": `${(i % 3) * 25}ms`,
+            }}
+          />
+        ))}
+      </span>
+      <span className="foil-unveiling-fragments">
+        {Array.from({ length: 18 }, (_, i) => {
+          const angle = (i * Math.PI) / 9;
+          return (
+            <i
+              key={i}
+              style={{
+                "--dx": `${Math.cos(angle) * (145 + (i % 4) * 20)}px`,
+                "--dy": `${Math.sin(angle) * (210 + (i % 3) * 25)}px`,
+                "--delay": `${(i % 5) * 30}ms`,
+                "--twist": `${90 + i * 37}deg`,
+              }}
+            />
+          );
+        })}
+      </span>
+    </span>
+  );
+}
+
 export function FoilUnveilingView({
   skin,
   route = "common",
@@ -60,7 +98,7 @@ export function FoilUnveilingView({
     skin.rarity === "SSR" && route === "surprise" && phase === "seal";
   const legend =
     skin.rarity === "SSR" &&
-    (route === "legend" || phase === "seal" || visible);
+    (route === "legend" || ["seal", "hush"].includes(phase) || visible);
   const base = byId(baseSkinId(skin.id));
   const shown = fallback ? base : skin;
   return (
@@ -103,6 +141,7 @@ export function FoilUnveilingView({
               : "この輝きは、誰のものか。"}
       </p>
       <div className="foil-unveiling-card">
+        {visible && <UnveilingBurst />}
         {!visible && <FoilSeal legend={legend} />}
         {upgrading && (
           <span className="foil-unveiling-upgrade" aria-hidden="true" />
