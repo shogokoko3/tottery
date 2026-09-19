@@ -148,6 +148,18 @@ function SkinAreaNote({ skin, owned, equipped }) {
   );
 }
 
+/**
+ * その札のキャラのフォイル版を返す。画面に出してはいけないときは null。
+ * - 10(白翼の天馬騎士)のようにフォイル版が存在しないキャラがある
+ * - A のフォイルは全収集まで伏せる(skinVisibleInCollection)
+ * - フォイルを1枚も持たないうちは、フォイルの存在ごと画面に出さない(foilKnown)
+ * skin がフォイル版そのものでも foilId は自分自身を指すので、分岐は要らない。
+ */
+function visibleFoilOf(collection, foilKnown, skin) {
+  const candidate = foilKnown && skin ? byId(foilId(skin.id)) : null;
+  return skinVisibleInCollection(collection, candidate) ? candidate : null;
+}
+
 function FoilBadge({ className = "" }) {
   return <span className={`skins-foil-badge ${className}`}>FOIL</span>;
 }
@@ -1637,8 +1649,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
   // フォイルを1枚も持たないうちは、フォイル関連を画面に出さない(確率の明記は除く)
   const foilKnown = foilRevealed(collection);
   const shown = SKINS.flatMap((s) => {
-    const candidate = foilKnown ? byId(foilId(s.id)) : null;
-    const foil = skinVisibleInCollection(collection, candidate) ? candidate : null;
+    const foil = visibleFoilOf(collection, foilKnown, s);
     return foil ? [s, foil] : [s];
   }).filter(
     (s) =>
@@ -1743,7 +1754,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
             ) : (
               <div className="skins-balances">
                 <div className="skins-free">
-                  <span>TICKETS</span>ガチャチケット {collection.tickets} 枚
+                  <span>TICKETS</span>チケット {collection.tickets}枚
                 </div>
                 <div className="skins-free">
                   <GemAmount amount={collection.gems || 0} size={28} />
@@ -2224,6 +2235,10 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                 const s = byId(result.id);
                 // 崩した札は、その1枚ずつに印を出す(10連で何が崩れたか目で追えるように)
                 const crushed = dismantledAt.has(index);
+                // このキャラのフォイルを持っているか。どちらを装備するかの判断に効くので
+                // 札ごとに出す。フォイル版が無い/伏せる札では foil が null になる
+                const foil = visibleFoilOf(collection, foilKnown, s);
+                const foilHeld = foil ? collection.owned[foil.id] || 0 : 0;
                 return (
                   <article
                     key={index}
@@ -2256,6 +2271,13 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                       </span>
                     </div>
                     <strong>{s.name}</strong>
+                    {foilKnown && (
+                      <small
+                        className={`skins-result-foil${foilHeld ? " is-owned" : ""}`}
+                      >
+                        {foil ? (foilHeld ? "フォイル所持" : "フォイル未所持") : ""}
+                      </small>
+                    )}
                     <button
                       className="skin-btn"
                       disabled={working || collection.equipped[s.rank] === s.id}
@@ -2313,16 +2335,18 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                 setDone={setDismantled}
               />
             )}
-            <p className="skins-message" role="status">
-              {message}
-            </p>
-            <button
-              className="skin-btn skin-btn-gold skins-result-done"
-              disabled={working}
-              onClick={closeResults}
-            >
-              結果を確認
-            </button>
+            <div className="skins-result-actions">
+              <p className="skins-message" role="status">
+                {message}
+              </p>
+              <button
+                className="skin-btn skin-btn-gold skins-result-done"
+                disabled={working}
+                onClick={closeResults}
+              >
+                結果を確認
+              </button>
+            </div>
           </SkinModal>
         ))}
 

@@ -6395,10 +6395,25 @@ body:has(.skin-overlay) {
 }
 .skins-balances {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   justify-content: center;
   flex-wrap: wrap;
   align-items: center;
+}
+/* チケットとジェムは1行に並べる。ジェムの桁が増えても、
+   欄の中で文が途中から折り返さないようにする(2026-09-19 本人の指示) */
+.skins-balances .skins-free {
+  white-space: nowrap;
+}
+.skins-balances .skins-free span {
+  margin-right: 6px;
+}
+/* とても狭い端末(320px)では、英字の飾り札を落として1行に収める。
+   ジェム側の span(.gem-amount)は消さない */
+@media (max-width: 360px) {
+  .skins-balances .skins-free > span:first-child:not(.gem-amount) {
+    display: none;
+  }
 }
 
 /* 深紅のジェム。承認済みの絵柄を大小共通で使う。 */

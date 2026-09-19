@@ -6410,10 +6410,25 @@ body:has(.skin-overlay) {
 }
 .skins-balances {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   justify-content: center;
   flex-wrap: wrap;
   align-items: center;
+}
+/* \u30C1\u30B1\u30C3\u30C8\u3068\u30B8\u30A7\u30E0\u306F1\u884C\u306B\u4E26\u3079\u308B\u3002\u30B8\u30A7\u30E0\u306E\u6841\u304C\u5897\u3048\u3066\u3082\u3001
+   \u6B04\u306E\u4E2D\u3067\u6587\u304C\u9014\u4E2D\u304B\u3089\u6298\u308A\u8FD4\u3055\u306A\u3044\u3088\u3046\u306B\u3059\u308B(2026-09-19 \u672C\u4EBA\u306E\u6307\u793A) */
+.skins-balances .skins-free {
+  white-space: nowrap;
+}
+.skins-balances .skins-free span {
+  margin-right: 6px;
+}
+/* \u3068\u3066\u3082\u72ED\u3044\u7AEF\u672B(320px)\u3067\u306F\u3001\u82F1\u5B57\u306E\u98FE\u308A\u672D\u3092\u843D\u3068\u3057\u30661\u884C\u306B\u53CE\u3081\u308B\u3002
+   \u30B8\u30A7\u30E0\u5074\u306E span(.gem-amount)\u306F\u6D88\u3055\u306A\u3044 */
+@media (max-width: 360px) {
+  .skins-balances .skins-free > span:first-child:not(.gem-amount) {
+    display: none;
+  }
 }
 
 /* \u6DF1\u7D05\u306E\u30B8\u30A7\u30E0\u3002\u627F\u8A8D\u6E08\u307F\u306E\u7D75\u67C4\u3092\u5927\u5C0F\u5171\u901A\u3067\u4F7F\u3046\u3002 */

@@ -657,6 +657,16 @@
 .skins-result {
   min-width: 0;
   flex: 0 0 calc((100% - 36px) / 4);
+  /* 名前の行数は札によって変わる(狭い端末では3行になる札もある)。
+     縦に積んで釦を下端へ寄せ、同じ行の「装備」釦の高さをそろえる */
+  display: flex;
+  flex-direction: column;
+}
+.skins-result .skins-result-art {
+  flex: none;
+}
+.skins-result .skin-btn {
+  margin-top: auto;
 }
 .single-result .skins-result {
   flex-basis: 100%;
@@ -713,6 +723,24 @@
 .skins-result.is-dismantled strong {
   color: #8c99a6;
 }
+/* 引いた札ごとの「このキャラのフォイルを持っているか」。
+   所持・未所持・出さない のどれでも同じ高さを取り、4列の釦の位置をそろえる */
+.skins-result-foil {
+  display: block;
+  min-height: 15px;
+  margin: 2px 0 5px;
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: #8a93a6;
+}
+.skins-result-foil.is-owned {
+  color: #cfe3de;
+  font-weight: 700;
+}
+.skins-result.is-dismantled .skins-result-foil {
+  color: #6f7986;
+}
 .single-result {
   max-width: 210px;
   margin: 0 auto;
@@ -727,6 +755,20 @@
   display: block;
   min-width: 180px;
   margin: 26px auto 0;
+}
+/* 10連や効果盤面の獲得があると、結果は1画面に収まらない。
+   伝言と「結果を確認」をまとめて下端に貼り、スクロールしなくても押せるようにする
+   (2026-09-19 本人の指示)。左右は枠の余白いっぱいまで広げ、後ろを透かさない */
+.skins-results-overlay .skins-result-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 0 -26px;
+  padding: 0 26px 26px;
+  background: linear-gradient(180deg, #0d1c2c00 0, #0d1c2c 22px);
+}
+.skins-results-overlay .skins-result-actions .skins-result-done {
+  margin-top: 14px;
 }
 .skins-detail-overlay {
   padding: max(12px, env(safe-area-inset-top))
@@ -1183,6 +1225,16 @@
     padding: 8px 2px;
     font-size: 10px;
     letter-spacing: -0.02em;
+  }
+  .skins-result-foil {
+    min-height: 13px;
+    margin: 1px 0 4px;
+    font-size: 9px;
+    letter-spacing: -0.04em;
+  }
+  .skins-results-overlay .skins-result-actions {
+    margin: 0 -18px;
+    padding: 0 18px 18px;
   }
   .single-result {
     grid-template-columns: 1fr;
