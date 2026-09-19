@@ -1,0 +1,318 @@
+/* Keep the ten cards readable, then collapse their entire scene into a single point. */
+.freeze-phase-stop .skin-reveal {
+  filter: saturate(0.05) brightness(0.75);
+}
+.freeze-phase-stop .skin-reveal *,
+.freeze-phase-stop .skin-reveal *::before,
+.freeze-phase-stop .skin-reveal *::after {
+  animation-play-state: paused !important;
+}
+.freeze-phase-collapse .skin-reveal {
+  animation: freeze-scene-cut 0.57s cubic-bezier(0.72, 0, 0.83, 0.36) both;
+  pointer-events: none;
+}
+.freeze-phase-darkness .skin-reveal,
+.freeze-phase-invitation .skin-reveal {
+  visibility: hidden;
+}
+.skin-summon-overlay[class*="freeze-"] .skin-dialog {
+  background: #020305;
+}
+.summon-freeze {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+.summon-freeze[data-phase="darkness"],
+.summon-freeze[data-phase="invitation"] {
+  background: #020305;
+  pointer-events: auto;
+}
+.freeze-cut {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.freeze-cut i {
+  height: 2px;
+  width: 86%;
+  background: #f8f1dc;
+  box-shadow: 0 0 16px 4px #bdeaffaa;
+  opacity: 0;
+}
+[data-phase="collapse"] .freeze-cut i {
+  animation: freeze-line-cut 0.57s ease-in both;
+}
+.freeze-invitation {
+  position: relative;
+  text-align: center;
+  max-width: 440px;
+  width: 100%;
+  padding: 24px 22px 36px;
+  animation: freeze-invitation-in 0.95s ease-out both;
+}
+.freeze-invitation::before {
+  content: "";
+  position: absolute;
+  inset: -45%;
+  background: radial-gradient(ellipse, #c39a411a, transparent 57%);
+  pointer-events: none;
+}
+.freeze-sigil {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  margin: 0 auto 22px;
+  color: #edd398;
+}
+.freeze-sigil svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  stroke-width: 0.7;
+  filter: drop-shadow(0 0 8px #e8c57b80);
+  animation: freeze-sigil-breathe 3s ease-in-out infinite;
+}
+.freeze-sigil b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  font-weight: 400;
+  text-shadow: 0 0 18px #ffe5a4;
+}
+.freeze-kicker {
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  color: #c6b088;
+  margin: 0 0 15px;
+}
+.summon-freeze .freeze-invitation h2 {
+  margin: 0;
+  text-align: center;
+  color: #fff0ce;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-size: clamp(26px, 6vw, 38px);
+  line-height: 1.7;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-shadow: 0 2px 30px #bfa06650;
+}
+.freeze-instruction {
+  margin: 26px 0 20px;
+  color: #c8c0b1;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.freeze-open {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  margin: auto;
+  width: min(100%, 295px);
+  min-height: 80px;
+  padding: 18px 20px;
+  border: 1px solid #d9b974;
+  outline: 1px solid #78623b;
+  outline-offset: 5px;
+  background: linear-gradient(135deg, #403221, #17130f 45%, #32291b);
+  color: #fff0cb;
+  cursor: pointer;
+  box-shadow:
+    inset 0 0 20px #e2bd5210,
+    0 0 35px #d6b56a20;
+  font: inherit;
+}
+.freeze-open span {
+  font-size: 19px;
+  letter-spacing: 0.16em;
+}
+.freeze-open small {
+  color: #c4ac80;
+  letter-spacing: 0.15em;
+  font-size: 10px;
+}
+.freeze-open::before,
+.freeze-open::after {
+  content: "◆";
+  position: absolute;
+  top: calc(50% - 6px);
+  font-size: 9px;
+  color: #eac77d;
+}
+.freeze-open::before {
+  left: 11px;
+}
+.freeze-open::after {
+  right: 11px;
+}
+.freeze-open:focus-visible {
+  outline: 2px solid #fff4d5;
+  outline-offset: 8px;
+}
+.freeze-open:active {
+  filter: brightness(1.3);
+}
+.freeze-release {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  animation: freeze-release-fade 1.1s ease-out both;
+}
+.freeze-release i {
+  position: absolute;
+  width: 140vmax;
+  height: 140vmax;
+  border: 1px solid #f5dc8b;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    transparent 28%,
+    #e8d29844 45%,
+    #fff1bf 49%,
+    transparent 53%
+  );
+  animation: freeze-release-ring 1s ease-out both;
+}
+.freeze-release b {
+  color: #ffe8a2;
+  font-size: clamp(22px, 6vw, 34px);
+  letter-spacing: 0.3em;
+  font-family: serif;
+  font-weight: 400;
+  text-shadow: 0 0 26px #ffcd45;
+}
+.freeze-phase-released .skin-reveal {
+  animation: freeze-world-return 0.65s ease-out both;
+}
+.freeze-phase-released .reveal-card.is-spinning {
+  filter: drop-shadow(0 0 9px #f3d48a66);
+}
+@keyframes freeze-scene-cut {
+  0% {
+    transform: scale(1);
+    filter: saturate(0) brightness(1);
+  }
+  47% {
+    transform: scale(1.025, 0.012);
+    filter: brightness(3);
+  }
+  79% {
+    transform: scale(0.12, 0.003);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+@keyframes freeze-line-cut {
+  0%,
+  24% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+  52% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  90% {
+    opacity: 1;
+    transform: scaleX(0.008);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+}
+@keyframes freeze-invitation-in {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes freeze-sigil-breathe {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes freeze-release-fade {
+  0%,
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes freeze-release-ring {
+  from {
+    transform: scale(0.01);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+@keyframes freeze-world-return {
+  from {
+    opacity: 0;
+    filter: brightness(2);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+  }
+}
+.summon-freeze.is-reduced *,
+.summon-freeze.is-reduced *::before {
+  animation: none !important;
+}
+.summon-freeze.is-reduced .freeze-release {
+  display: none;
+}
+@media (max-height: 600px) {
+  .freeze-sigil {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 12px;
+  }
+  .freeze-invitation {
+    padding: 18px;
+  }
+  .summon-freeze .freeze-invitation h2 {
+    font-size: 24px;
+    line-height: 1.4;
+  }
+  .freeze-instruction {
+    margin: 15px 0;
+  }
+  .freeze-open {
+    min-height: 66px;
+    padding: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skin-summon-overlay[class*="freeze-"] * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -794,3 +794,5 @@
     transition: none !important;
   }
 }
+
+.foil-unveiling-promotion-label.is-foil-conversion { font-size:clamp(24px,7vw,35px);letter-spacing:.12em;white-space:nowrap; }

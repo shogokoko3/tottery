@@ -100,5 +100,5 @@ assert.match(net, /data\.skins\.length === n/, "枚数が合わない返事は�
 const ui = fs.readFileSync("src/ui/skins.jsx", "utf8");
 assert.match(ui, /drawn = await pullFromServer\(eventId, amount\)/, "まずサーバーに引いてもらう");
 assert.match(ui, /if \(!drawn\) await debitTickets\(eventId, amount \* PULL_COST\)/, "古いサーバーなら今までの道");
-assert.match(ui, /drawn \? applyPull\(s, drawn, \{ free: true \}\) : pull\(s, amount, undefined, \{ free: true \}\)/);
+assert.match(ui, /drawn \? applyPull\(s, drawn, \{ free: true \}\) : \{ \.\.\.pull\(s, amount, undefined, \{ free: true \}\)/);
 console.log("サーバーが引く(第4段階): 冪等・不足で無副作用・半端を断る・削除で消える・端末は入れるだけ・古い道も残す: OK");

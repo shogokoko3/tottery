@@ -1,3 +1,4 @@
+import { resolveSummonFreeze } from "../skins/summon-freeze.js";
 /**
  * サーバー側の財布。uid ごとのチケット(遊んで貯まる)、ジェム(有償と無償を分けて持つ)、買い切りの権利。
  *
@@ -499,17 +500,22 @@ export class Wallet {
       // 送り直し。前と同じ札を返す(uid が違えば他人の結果なので断る)
       const owner = this.sql("SELECT uid FROM gacha_draws WHERE id=?", id)[0];
       if (owner && owner.uid !== uid) throw new Error("他の人の抽選です。");
-      return { ...this.summary(uid, now), skins: JSON.parse(done.skins), applied: false };
+      const saved = JSON.parse(done.skins);
+      const packet = Array.isArray(saved) ? { skins: saved, freeze: null } : saved;
+      if (packet.skins.length !== n) throw new Error("前の抽選と枚数が違います。");
+      return { ...this.summary(uid, now), ...packet, applied: false };
     }
     const r = this.debit(uid, id, n, "pull", now);
-    const skins = Array.from({ length: n }, () => drawOne(serverRandom));
-    this.sql("INSERT OR IGNORE INTO gacha_draws VALUES (?,?,?,?)", id, uid, JSON.stringify(skins), now);
+    const initial = Array.from({ length: n }, () => drawOne(serverRandom));
+    const packet = resolveSummonFreeze(initial, serverRandom);
+    const { skins } = packet;
+    this.sql("INSERT OR IGNORE INTO gacha_draws VALUES (?,?,?,?)", id, uid, JSON.stringify(packet), now);
     for (const skinId of skins) {
       this.sql("INSERT INTO gacha_log (uid, skinId, isNew, at) VALUES (?,?,?,?)", uid, skinId, 0, now);
       // サーバーが引いた証拠。申告より強い
       this.noteSkin(uid, skinId, now, "server");
     }
-    return { ...r, skins };
+    return { ...r, ...packet };
   }
   logGacha(uid, items, now) {
     if (!Array.isArray(items) || !items.length) return { logged: 0 };

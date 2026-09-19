@@ -152,11 +152,24 @@ try {
     platform: "node",
     format: "cjs",
     jsx: "automatic",
-    loader: { ".css": "text" },
+    loader: { ".css": "text", ".webp": "dataurl" },
     outfile,
     logLevel: "silent",
   });
   const { render } = createRequire(import.meta.url)(outfile);
+  // A freeze's extra 30% conversion first shows the already-revealed normal SSR,
+  // then explicitly promotes it. Existing drawn foils remain sealed as before.
+  const promoted = byId("angel-k:foil"), normal = byId("angel-k");
+  for (const phase of ["select", "lift", "gather"]) {
+    const html = render({skin:promoted,route:"surprise",phase,upgradedFromNormal:true,fromGrid:true});
+    assert.ok(html.includes(normal.card));
+    assert.ok(!html.includes(promoted.card));
+    assert.ok(!html.includes("foil-seal-word"), "裏側から箔の当選を先に漏らさない");
+  }
+  const conversion = render({skin:promoted,route:"surprise",phase:"seal",upgradedFromNormal:true});
+  assert.match(conversion, /フォイル昇格/);
+  assert.ok(!conversion.includes(promoted.card));
+  assert.ok(render({skin:promoted,route:"surprise",phase:"reveal",upgradedFromNormal:true}).includes(promoted.card));
   for (const id of ["zombie-male", "elf-female", "angel-k"]) {
     const skin = byId(id + ":foil"),
       base = byId(id);

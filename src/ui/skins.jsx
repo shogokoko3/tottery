@@ -1,3 +1,5 @@
+import { normalizeSummonFreeze, freezeLadder, freezeFoilUpgrade } from "../skins/summon-freeze.js";
+import { SummonFreeze, useSummonFreeze } from "./summon-freeze.jsx";
 import { GemIcon, GemAmount } from "./gem.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cardBackImg } from "../assets.js";
@@ -183,6 +185,8 @@ function RevealCard({
   foilRevealed = false,
   foilRoute = "common",
   foilSelected = false,
+  freezeInitial = null,
+  foilUpgrade = false,
   reduce,
   seed,
   // そのキャラの所持数 { base, foil }。引いた札が通常・フォイルのどちらを埋めたかが分かる
@@ -192,8 +196,8 @@ function RevealCard({
   const skin = byId(result.id);
   // 素で出るか、昇格を経るかは束と位置で決まる(再読み込みしても同じ)
   const ladder = useMemo(
-    () => skin.foil ? [skin.rarity] : ladderFor(skin.rarity, `${seed}#${index}`),
-    [skin.rarity, skin.foil, seed, index],
+    () => freezeInitial ? freezeLadder(freezeInitial, skin.id) : skin.foil ? [skin.rarity] : ladderFor(skin.rarity, `${seed}#${index}`),
+    [skin.id, skin.rarity, skin.foil, seed, index, freezeInitial],
   );
   // -1 は伏せたまま。0 以降は ladder の段階(昇格の途中)
   const [stage, setStage] = useState(-1);
@@ -289,16 +293,16 @@ function RevealCard({
   useEffect(() => {
     if (settled) rarityRef.current?.();
   }, [settled]);
-  const identityHidden = skin.foil && !foilRevealed && !reduce;
-  const finished = final && settled && !identityHidden;
+  const identityHidden = skin.foil && !foilUpgrade && !foilRevealed && !reduce;
+  const finished = final && settled && (!skin.foil || foilRevealed || reduce);
   useEffect(() => {
     if (!finished || notified.current) return;
     notified.current = true;
     completeRef.current?.();
   }, [finished]);
-  const visibleSkin = skin;
+  const visibleSkin = foilUpgrade && !foilRevealed && !reduce ? byId(baseSkinId(skin.id)) : skin;
   // Hint only the actual promotion/foil cards; keep the ordinary backs quiet.
-  const backGlow = !flipped
+  const backGlow = !flipped && !freezeInitial
     ? skin.foil
       ? foilRoute === "legend" ? "ssr-foil" : "foil"
       : skin.rarity === "SSR" && ladder.length > 1
@@ -315,7 +319,7 @@ function RevealCard({
       className={`reveal-card ${foilSelected ? "is-foil-selected" : ""} ${flipped ? "is-flipped" : ""} ${
         dragging ? "is-dragging" : ""
       } ${shown && !identityHidden ? `rarity-${shown}` : ""} ${final ? "is-final" : ""} ${
-        spinning ? `is-spinning spin-to-${next}` : ""
+        spinning ? `is-spinning spin-to-${identityHidden ? "foil" : next}` : ""
       } ${landing && !identityHidden ? "is-landing" : ""} ${backGlow ? `back-glow-${backGlow}` : ""} ${reduce ? "is-reduced" : ""}`}
       style={{ "--i": index, "--angle": `${flipped ? 180 : angle}deg` }}
       data-index={index}
@@ -331,8 +335,8 @@ function RevealCard({
       }}
       aria-label={
         flipped
-          ? final
-            ? identityHidden ? "フォイルカード。正体はまだ光に包まれています" : visibleSkin.name
+          ? identityHidden ? "フォイルカード。正体はまだ光に包まれています" : final
+            ? visibleSkin.name
             : shown
               ? `${label}。${next}へ昇格中`
               : `${index + 1}枚目をめくっています`
@@ -385,16 +389,16 @@ function RevealCard({
             <span className="reveal-veil" />
           )}
           <span className="reveal-rarity">{label || ""}</span>
-          {final && skin.foil && !identityHidden && (
+          {final && visibleSkin.foil && !identityHidden && (
             <FoilBadge className="reveal-foil" />
           )}
-          {!final && spinning && <span className="reveal-promoting">昇格</span>}
+          {spinning && <span className="reveal-promoting">{skin.foil && !foilUpgrade ? "覚醒" : "昇格"}</span>}
           {final && !identityHidden && <strong className="reveal-name">{visibleSkin.name}</strong>}
-          {final && !identityHidden && result.isNew && (
+          {final && !identityHidden && !(foilUpgrade && !foilRevealed && !reduce) && result.isNew && (
             <span className="reveal-new">NEW</span>
           )}
           {/* 通常とフォイルを持っているか。引いた側は光らせる */}
-          {final && !identityHidden && owned && (
+          {final && !identityHidden && !(foilUpgrade && !foilRevealed && !reduce) && owned && (
             <span className="reveal-owned" aria-label="このキャラの所持">
               <b className={owned.base > 0 ? "is-owned" : ""}>
                 通常{owned.base > 0 ? `×${owned.base}` : "—"}
@@ -415,7 +419,8 @@ function RevealCard({
  * 束に SSR がいれば伏せた時点で前兆を出す。めくると R→SR→SSR と昇格して見せる。
  * 結果は先に保存してあるので、途中で閉じても失わない。
  */
-function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
+function SummonReveal({ results, onFinish, reduce, drawNumber = 0, freeze: freezeInput = null }) {
+  const freeze = useMemo(() => normalizeSummonFreeze(freezeInput, results.map(r => r.id)), [freezeInput, results]);
   // 引いた札ごとに、そのキャラの通常とフォイルを何枚持っているか(結果に出す)
   const ownedNow = useCollection().owned;
   const ownedOf = (id) => {
@@ -426,6 +431,8 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
     };
   };
   const [intro, setIntro] = useState(!reduce);
+  const [freezePhase, releaseFreeze] = useSummonFreeze(!!freeze, intro, reduce);
+  const freezeLocked = !!freeze && freezePhase !== "released";
   const revealRef = useRef(null);
   const finishIntro = useCallback(() => setIntro(false), []);
   useEffect(() => { if (reduce) setIntro(false); }, [reduce]);
@@ -437,12 +444,12 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
   const [foilStart, setFoilStart] = useState(false);
   const [revealedFoils, setRevealedFoils] = useState(() => results.map(() => false));
   const foilIndexes = useMemo(() => results.flatMap((result, index) => byId(result.id)?.foil ? [index] : []), [results]);
-  const foilRoutes = useMemo(() => results.map((result, index) => foilRevealRoute(byId(result.id), `${drawNumber}#${seedOf(results)}#${index}`)), [results, drawNumber]);
+  const foilRoutes = useMemo(() => results.map((result, index) => freezeFoilUpgrade(freeze, index, result.id) ? "surprise" : foilRevealRoute(byId(result.id), `${drawNumber}#${seedOf(results)}#${index}`)), [results, drawNumber, freeze]);
   const activeFoil = foilStart && !reduce ? foilIndexes.find(index => !revealedFoils[index]) : undefined;
   useEffect(() => {
-    if (!intro && activeFoil === undefined)
+    if (!intro && !freezeLocked && activeFoil === undefined)
       revealRef.current?.querySelector(".reveal-card")?.focus({ preventScroll: true });
-  }, [intro, activeFoil]);
+  }, [intro, activeFoil, freezeLocked]);
   const unveilAt = useCallback((index) => {
     setRevealedFoils(done => done.map((value, i) => value || i === index));
   }, []);
@@ -461,7 +468,7 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
     );
     return () => clearTimeout(timer);
   }, [allRaritiesReady, reduce]);
-  const omen = omenOf(results.filter((result, index) => !byId(result.id)?.foil || foilRoutes[index] === "legend"));
+  const omen = freeze ? "R" : omenOf(results.filter((result, index) => !byId(result.id)?.foil || foilRoutes[index] === "legend"));
   const seed = seedOf(results);
   const all = flipped.every(Boolean);
   const allComplete = completed.every(Boolean);
@@ -476,7 +483,7 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
     setCompleted((c) => (c[i] ? c : c.map((v, k) => (k === i ? true : v))));
   }, []);
   const flipAt = (i) =>
-    setFlipped((f) => (f[i] ? f : f.map((v, k) => (k === i ? true : v))));
+    !freezeLocked && setFlipped((f) => (f[i] ? f : f.map((v, k) => (k === i ? true : v))));
   const cols = results.length === 1 ? 1 : results.length <= 4 ? 2 : 5;
   // 指でなぞる: 押したまま動かして通った札を順にめくる。
   // 1枚目は自分の引き寄せ(RevealCard)に任せ、指がその札の外へ出てから他の札をめくる
@@ -504,17 +511,17 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
   return (
     <SkinModal
       label="スキン召喚"
-      onClose={intro ? finishIntro : onFinish}
-      className="skin-summon-overlay"
+      onClose={intro ? finishIntro : freeze && !allComplete ? () => {} : onFinish}
+      className={`skin-summon-overlay ${freeze && !intro ? `freeze-phase-${freezePhase}` : ""}`}
     >
-      <div ref={revealRef} inert={intro || activeFoil !== undefined || undefined} aria-hidden={intro || activeFoil !== undefined || undefined} className={`skin-reveal omen-${omen} ${activeFoil !== undefined ? "has-foil-unveiling" : ""} ${intro ? "summon-intro-active" : "summon-arrived"}`}>
+      <div ref={revealRef} inert={intro || freezeLocked || activeFoil !== undefined || undefined} aria-hidden={intro || freezeLocked || activeFoil !== undefined || undefined} className={`skin-reveal omen-${omen} ${activeFoil !== undefined ? "has-foil-unveiling" : ""} ${intro ? "summon-intro-active" : "summon-arrived"}`}>
         <div className="reveal-omen" aria-hidden="true" />
         <p className="reveal-caption" role="status">
           {allComplete
             ? "すべての札が現れました。"
             : all
-              ? foilIndexes.length ? "光に秘められた正体が、まもなく。" : "札に宿る輝きをお待ちください。"
-              : OMEN_TEXT[omen]}
+              ? foilIndexes.length ? "まだ、輝きは終わらない。" : "札に宿る輝きをお待ちください。"
+              : freeze ? "" : OMEN_TEXT[omen]}
         </p>
         <div
           className={`reveal-grid ${results.length === 1 ? "single" : ""}`}
@@ -536,6 +543,8 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
               foilRevealed={revealedFoils[i] || reduce}
               foilRoute={foilRoutes[i]}
               foilSelected={activeFoil === i && results.length > 1}
+              freezeInitial={freeze?.initial[i]}
+              foilUpgrade={freezeFoilUpgrade(freeze, i, r.id)}
               reduce={reduce}
               seed={seed}
               owned={ownedOf(r.id)}
@@ -543,14 +552,14 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
           ))}
         </div>
         <p className="reveal-hint">
-          {all
+          {all || freezeLocked
             ? ""
             : results.length === 1
               ? "札を引き寄せて、めくってください。"
               : "札を引き寄せてめくるか、指でなぞって次々にめくれます。"}
         </p>
         <div className="reveal-actions">
-          {!all && (
+          {!all && !freezeLocked && (
             <button
               className="skin-btn"
               onClick={() => setFlipped(results.map(() => true))}
@@ -565,11 +574,17 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
           )}
         </div>
       </div>
+      {!intro && freeze && <SummonFreeze phase={freezePhase} reduce={reduce} onOpen={() => {
+        if (freezePhase !== "invitation") return;
+        releaseFreeze();
+        setFlipped(results.map(() => true));
+      }} />}
       {intro && <SummonIntro results={results} targetRef={revealRef} onFinish={finishIntro} />}
       {activeFoil !== undefined && <FoilUnveiling
         key={activeFoil}
         skin={byId(results[activeFoil].id)}
         route={foilRoutes[activeFoil]}
+        upgradedFromNormal={freezeFoilUpgrade(freeze, activeFoil, results[activeFoil].id)}
         position={foilIndexes.indexOf(activeFoil) + 1}
         total={foilIndexes.length}
         fromGrid={results.length > 1}
@@ -1137,6 +1152,7 @@ function ForgePanel({
           <div className="forge-head">
             <h3>交換の目安</h3>
           </div>
+          <p className="skins-note">召喚回数の目安は通常抽選の割合で計算しています。10回召喚のフリーズ昇格は含みません。</p>
           <table className="skins-rate-table">
             <thead>
               <tr>
@@ -1499,7 +1515,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
   };
   const roll = async (amount) => {
     if (WALLET_SERVER && !FREE_GACHA) {
-      // 残高の正はサーバー。先にサーバーで減らし、通ったら端末で引く(端末の枚数は減らさない)
+      // サーバーで消費・抽選・昇格を確定し、端末は同じ結果を一度だけ所持に加える。
       if (busy.current || collection.pending || collection.lastCraft) return;
       busy.current = true;
       setWorking(true);
@@ -1507,21 +1523,25 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
       try {
         // まずサーバーに引いてもらう(2026-09-18)。チケットの消費と抽選が1つの要求になり、
         // 「何を引いたか」をサーバーが知る = 所持の検証の正になる。
-        // 口が無い・結果が返らない古いサーバーなら、今までどおり減らしてから端末で引く
-        const eventId = newEventId("pull");
+        // 旧サーバーの404だけは従来経路へ。通信失敗・不正な成功応答では抽選し直さない。
+        const requested = await updateCollection(s => s.pendingPull ? s : { ...s, pendingPull: { id: newEventId("pull"), amount } });
+        const eventId = requested.pendingPull.id;
+        amount = requested.pendingPull.amount;
         let drawn = null;
         try {
           drawn = await pullFromServer(eventId, amount);
         } catch (e) {
           // 残高不足など、サーバーがはっきり断ったものはそのまま伝える
+          if (/足りません|他の人の抽選|前の抽選と枚数/.test(e?.message || ""))
+            await updateCollection(s => ({ ...s, pendingPull: null }));
           if (!/見つかりません|not found|404/i.test((e && e.message) || "")) throw e;
         }
         if (!drawn) await debitTickets(eventId, amount * PULL_COST);
         setAcquisitionMode(reduce || collection.summonMotion === "skip" ? "area" : "summon");
         const next = await updateCollection((s) =>
-          drawn ? applyPull(s, drawn, { free: true }) : pull(s, amount, undefined, { free: true }),
+          drawn ? applyPull(s, drawn, { free: true }) : { ...pull(s, amount, undefined, { free: true }), pendingPull: null, lastPullId: eventId },
         );
-        if (next?.pending?.results) logPull(next.pending.results);
+        if (next?.pending?.results && !drawn) logPull(next.pending.results);
         // 引いた札をサーバーの記録にも残す(所持の検証の土台。best-effort)
         noteCollection();
       } catch (e) {
@@ -1730,10 +1750,14 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                 </div>
               </div>
             )}
+            {collection.pendingPull && <button className="skin-btn skin-btn-gold" disabled={working || !!results} onClick={() => roll(collection.pendingPull.amount)}>
+              未受取の{collection.pendingPull.amount}回召喚を確認
+            </button>}
             <div className="skins-pull-buttons">
               <button
                 disabled={
                   working ||
+                  !!collection.pendingPull ||
                   !!results ||
                   (!FREE_GACHA && collection.tickets < PULL_COST)
                 }
@@ -1746,6 +1770,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
               <button
                 disabled={
                   working ||
+                  !!collection.pendingPull ||
                   !!results ||
                   (!FREE_GACHA && collection.tickets < PULL_COST * 10)
                 }
@@ -1825,11 +1850,11 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
               <button onClick={() => setOdds(true)}>提供割合</button>
             </div>
             <p className="skins-note">
-              1回ごとに同じ確率で抽選します。10回召喚の確定枠はありません。
+              上記は通常抽選の割合です。10回召喚では、条件達成でフリーズ昇格が発生します。
             </p>
             <p className="skins-foil-note">
               各キャラ獲得時に{foilPct}
-              %でフォイル。10連も1枚ごとに独立して判定します。
+              %でフォイル。フリーズ時は、最初に出た通常SSRがそれぞれ30%でフォイルへ昇格します。
             </p>
           </div>
           <section className="skins-special">
@@ -2075,11 +2100,17 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
             </button>
           </div>
           <p>
-            キャラの提供割合：R {ODDS.R}％ / SR {ODDS.SR}％ / SSR {ODDS.SSR}％
+            通常抽選の提供割合：R {ODDS.R}％ / SR {ODDS.SR}％ / SSR {ODDS.SSR}％
           </p>
           <p className="skins-foil-note">
             キャラが決まったあと、{foilPct}
-            %でフォイルになります。下表は通常版とフォイルを合計したキャラごとの確率です。
+            %でフォイルになります。下表はフリーズ昇格前の、通常版とフォイルを合計したキャラごとの確率です。
+          </p>
+          <p className="skins-note">
+            10回召喚で、最初の10枚に「SSRが2枚以上」または「SSRとフォイルが各1枚以上」含まれるとフリーズが発生します。SSRフォイル1枚だけでも後者を満たします。
+            元のSSR・フォイル以外は、通常R→通常SR、通常SR→通常SSRに1段階昇格し、昇格先のキャラはそのレアリティ内で均等に抽選します。
+            元の通常SSRは、キャラを変えずに1枚ごとに30%でフォイルへ。元からあるフォイルは変わりません。昇格で新たに生まれたSSRは追加フォイル抽選の対象外です。
+            獲得するのは昇格後の10枚です。追加のチケットは不要で、演出を省略しても結果は同じです。
           </p>
           <table className="skins-rate-table">
             <thead>
@@ -2104,7 +2135,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
             </tbody>
           </table>
           <p className="skins-note">
-            10回召喚も各回独立です。重複時は所持数が増えます。初回購入特典・特別スキンはガチャから出現しません。
+            通常抽選は1枚ごとに独立し、その後に上記のフリーズ判定を行います。重複時は所持数が増えます。初回購入特典・特別スキンはガチャから出現しません。
             通常版とフォイルは別々に所持・装備できます。錬成もキャラ1枚ごとに
             {foilPct}%でフォイルです。
           </p>
@@ -2116,6 +2147,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
           <SummonReveal
             results={collection.pending.results}
             drawNumber={collection.draws}
+            freeze={collection.pending.freeze}
             onFinish={finishAcquisition}
             reduce={reduce || collection.summonMotion === "skip"}
           />

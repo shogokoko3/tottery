@@ -3,7 +3,7 @@
  *
  * 残高の正はサーバー(Worker の台帳)。端末の collection.tickets は「最後に
  * 見た残高」の写しで、画面はそれを出す。
- *  - ガチャ: 先にサーバーで減らし、通ったら端末で引く(引くときは端末の枚数を減らさない)
+ *  - ガチャ: サーバーで消費・通常抽選・フリーズ昇格を保存し、端末は最終結果を受け取る
  *  - 遊んで貯める分: 出来事 id(決まった形)で加算を頼む。圏外なら溜めて、次に通じたとき送る。
  *    同じ id は二度効かないので、やり直しで二重にならない
  *  - 引き継ぎ: 端末にあった枚数を一度だけ送る(サーバー側でも uid ごとに一度きり・上限つき)
@@ -166,15 +166,16 @@ export async function claimCampaign(campaignId) {
  * 盤面エリアはフォイルの王で立つのに、対局では所持が検証されていない。
  * 端末が引いて事後に申告する形では、サーバーは「何を引いたか」を知らないので検証の正にならない。
  *
- * 同じ id で送り直しても同じ札が返る。返るのは札の id だけで、NEW かどうかは端末が決める
- * (所持の正は端末にある)。サーバーが古くて口が無ければ null を返し、呼ぶ側が今までの道へ落ちる。
+ * 同じ id で送り直しても同じ札が返る。札とフリーズ前の札を一緒に返す。NEW かどうかは端末が決める
+ * (所持の正は端末にある)。未対応の404だけは呼び出し側で旧経路へ戻す。
+ * 成功応答が不正・通信失敗の場合は同じ要求を再確認し、抽選し直さない。
  */
 export async function pullFromServer(id, n) {
   const data = await walletRequest("pull", { id, n });
-  mirror(data);
-  return Array.isArray(data && data.skins) && data.skins.length === n
-    ? data.skins
-    : null;
+  if (!(Array.isArray(data?.skins) && data.skins.length === n && data.skins.every(id => byId(id))))
+    throw new Error("抽選結果を読み込めませんでした。同じ召喚をもう一度確認してください。");
+  await mirror(data);
+  return { skins: data.skins, freeze: data.freeze || null, receipt: id };
 }
 
 /** ガチャの前に減らす。通れば新しい残高、足りなければ投げる */

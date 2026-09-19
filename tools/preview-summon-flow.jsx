@@ -1,3 +1,4 @@
+import { resolveSummonFreeze } from "../src/skins/summon-freeze.js";
 import { useState, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { SummonReveal } from "../src/ui/skins.jsx";
@@ -17,7 +18,7 @@ const mixed = [
   "dragon-knight",
   "demon-k",
 ];
-const results = Array.from({ length: count }, (_, i) => ({
+const original = Array.from({ length: count }, (_, i) => ({
   id:
     q.get("sample") === "mixed"
       ? mixed[i]
@@ -32,6 +33,16 @@ const results = Array.from({ length: count }, (_, i) => ({
             ],
   isNew: true,
 }));
+const freezeSamples = {
+  freeze: ["angel-k", "demon-q", "elf-male", "viking-female", ...Array(6).fill("zombie-male")],
+  "freeze-foil": ["angel-k:foil", "elf-female", ...Array(8).fill("pirate-male")],
+  "freeze-mixed": ["angel-k", "zombie-female:foil", "elf-male", ...Array(7).fill("pirate-male")],
+  "freeze-nofoil": ["angel-k", "demon-q", ...Array(8).fill("zombie-male")],
+};
+let sampleRoll = 0;
+const initial = freezeSamples[q.get("sample")];
+const packet = initial ? resolveSummonFreeze(initial, () => q.get("sample") === "freeze-nofoil" ? .9 : sampleRoll++ === 0 ? .1 : .7) : null;
+const results = packet ? packet.skins.map(id => ({ id, isNew: true })) : original;
 function Preview() {
   const [run, setRun] = useState(true),
     [key, setKey] = useState(0);
@@ -58,6 +69,7 @@ function Preview() {
         <SummonReveal
           key={key}
           results={results}
+          freeze={packet?.freeze}
           drawNumber={Number(q.get("draw") || 0)}
           reduce={q.get("reduce") === "1"}
           onFinish={() => setRun(false)}

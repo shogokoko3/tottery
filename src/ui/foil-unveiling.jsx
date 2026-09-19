@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { cardBackImg } from "../assets.js";
 import { baseSkinId, byId } from "../skins/catalog.js";
 import { scheduleFoilUnveiling } from "../skins/foil-unveiling.js";
 import { FOIL_IMAGE_TIMEOUT_MS } from "../skins/foil-acquisition.js";
@@ -102,6 +103,7 @@ function UnveilingBurst() {
 export function FoilUnveilingView({
   skin,
   route = "common",
+  upgradedFromNormal = false,
   phase = "waiting",
   position = 1,
   total = 1,
@@ -120,6 +122,7 @@ export function FoilUnveilingView({
     (route === "legend" || ["seal", "hush"].includes(phase) || visible);
   const base = byId(baseSkinId(skin.id));
   const shown = fallback ? base : skin;
+  const beforeUpgrade = upgradedFromNormal && !visible && !["seal", "hush"].includes(phase);
   return (
     <div
       ref={focusRef}
@@ -152,7 +155,7 @@ export function FoilUnveilingView({
         ))}
       </div>
       <p className="foil-unveiling-eyebrow">
-        {visible ? `${skin.rarity} FOIL` : "FOIL"}
+        {visible ? `${skin.rarity} FOIL` : beforeUpgrade ? "SSR" : "FOIL"}
         {total > 1 && (
           <small>
             {position} / {total}
@@ -163,8 +166,8 @@ export function FoilUnveilingView({
         {visible
           ? "輝きの、その正体は。"
           : upgrading
-            ? "輝きが、変わる。"
-            : phase === "waiting"
+            ? upgradedFromNormal ? "さらなる奇跡。フォイルへ昇格。" : "輝きが、変わる。"
+            : beforeUpgrade ? "この一枚に、さらなる奇跡を。" : phase === "waiting"
               ? "光が集まりはじめた。"
               : "この輝きは、誰のものか。"}
       </p>
@@ -172,16 +175,18 @@ export function FoilUnveilingView({
         {(visible || upgrading) && (
           <UnveilingBurst key={upgrading ? "promotion" : "identity"} />
         )}
-        {!visible && <FoilSeal legend={legend} />}
+        {!visible && (beforeUpgrade
+          ? <FoilArtwork skin={base} src={base.card} alt={base.name} animated={false} className="foil-unveiling-art" />
+          : <FoilSeal legend={legend} />)}
         {!visible && fromGrid && (
           <span className="foil-unveiling-reverse" aria-hidden="true">
-            <FoilSeal legend={legend} />
+            {beforeUpgrade ? <img src={cardBackImg} alt="" draggable="false" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"inherit"}} /> : <FoilSeal legend={legend} />}
           </span>
         )}
         {upgrading && (
           <>
             <span className="foil-unveiling-upgrade" aria-hidden="true" />
-            <strong className="foil-unveiling-promotion-label">昇格</strong>
+            <strong className={`foil-unveiling-promotion-label ${upgradedFromNormal ? "is-foil-conversion" : ""}`}>{upgradedFromNormal ? "フォイル昇格" : "昇格"}</strong>
           </>
         )}
         {visible && !missing && (
@@ -214,6 +219,7 @@ export function FoilUnveilingView({
 export function FoilUnveiling({
   skin,
   route = "common",
+  upgradedFromNormal = false,
   position,
   total,
   reduce = false,
@@ -317,6 +323,7 @@ export function FoilUnveiling({
     <FoilUnveilingView
       skin={skin}
       route={route}
+      upgradedFromNormal={upgradedFromNormal}
       position={position}
       total={total}
       focusRef={focusRef}

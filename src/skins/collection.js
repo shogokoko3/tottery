@@ -1,3 +1,4 @@
+import { normalizeSummonFreeze, resolveSummonFreeze } from "./summon-freeze.js";
 import { sanitizeSeasonCache } from "../game/season.js";
 import {
   SKINS,
@@ -197,7 +198,10 @@ export function normalize(raw) {
         : ["short", "off"].includes(value.motion)
           ? "skip"
           : "full",
-    pending: results.length ? { results } : null,
+    pendingPull: value.pendingPull && typeof value.pendingPull.id === "string" && /^pull:[\w:-]{1,150}$/.test(value.pendingPull.id) && [1, 10].includes(value.pendingPull.amount)
+      ? { id: value.pendingPull.id, amount: value.pendingPull.amount } : null,
+    lastPullId: typeof value.lastPullId === "string" ? value.lastPullId.slice(0, 160) : null,
+    pending: results.length ? { results, freeze: normalizeSummonFreeze(value.pending?.freeze, results.map(r => r.id)) } : null,
     lastCraft:
       byId(value.lastCraft?.id) && owned[value.lastCraft.id]
         ? {
@@ -247,7 +251,12 @@ export function drawOne(random = Math.random) {
  * チケットは呼ぶ側の決め: free なら減らさない(サーバーで先に減らしているときも free で呼ぶ)。
  */
 export function applyPull(state, skinIds, { free = FREE_GACHA } = {}) {
-  const ids = Array.isArray(skinIds) ? skinIds : [];
+  const receipt = !Array.isArray(skinIds) && skinIds?.receipt;
+  if (receipt && receipt === state.lastPullId) return state;
+  if (receipt && state.pendingPull?.id !== receipt)
+    throw new Error("未受取の召喚と結果が一致しません。もう一度確認してください。");
+  const ids = Array.isArray(skinIds) ? skinIds : skinIds?.skins || [];
+  const freeze = normalizeSummonFreeze(skinIds?.freeze, ids);
   if (ids.length !== 1 && ids.length !== 10)
     throw new Error("1回または10回を選んでください");
   if (ids.some((id) => !byId(id))) throw new Error("知らない札が混ざっています");
@@ -272,7 +281,8 @@ export function applyPull(state, skinIds, { free = FREE_GACHA } = {}) {
     tickets: tickets - cost,
     draws: state.draws + ids.length,
     missionDrawDay: missionPeriods().day,
-    pending: { results },
+    pending: { results, freeze },
+    ...(receipt ? { pendingPull: null, lastPullId: receipt } : {}),
   });
 }
 
@@ -290,24 +300,8 @@ export function pull(
   const tickets = count(state.tickets);
   if (cost > tickets)
     throw new Error(`ガチャチケットが足りません(あと${cost - tickets}枚)`);
-  const owned = { ...state.owned };
-  const acquired = acquiredTotals(state);
-  const results = Array.from({ length: amount }, () => {
-    const id = drawOne(random);
-    const isNew = !owned[id];
-    owned[id] = (owned[id] || 0) + 1;
-    recordAcquisition(acquired, id);
-    return { id, isNew };
-  });
-  return withHomePortraits({
-    ...state,
-    owned,
-    acquired,
-    tickets: tickets - cost,
-    draws: state.draws + amount,
-    missionDrawDay: missionPeriods().day,
-    pending: { results },
-  });
+  const initial = Array.from({ length: amount }, () => drawOne(random));
+  return applyPull(state, resolveSummonFreeze(initial, random), { free });
 }
 
 /** 無償ジェムを足す(端末の写し。正はサーバーの財布で、呼び出し側が earnGems で送る) */
