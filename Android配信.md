@@ -11,28 +11,25 @@ iOS の手順は「iOS配信.md」。ここは Android だけの話。
 
 つまりいまの Android 版は「Web 版と同じ遊べる範囲＋アプリとして配れる形」。
 
-## 組み立てに必要なもの(この Mac にはまだ入っていない)
+## 組み立てに必要なもの(2026-09-19 にこの Mac へ入れた)
 
-- **JDK 17 以上**(いま入っているのは 11。Capacitor 8 の Gradle は 17 以上が要る)
-- **Android SDK**(`ANDROID_HOME` か `ANDROID_SDK_ROOT` を通す)
+- **JDK 21**(Capacitor 8 の Android は Java 21 を要求する。17 では止まる)
+  `~/Library/Java/JavaVirtualMachines/jdk-21.0.12.1+1`
+  (Adoptium の tar.gz を展開しただけ。管理者パスワードは要らない。
+   Homebrew は Intel Mac 向けのビルド済みを配らなくなったので使えない)
+- **Android SDK**(`brew install --cask android-commandlinetools`)
+  `/usr/local/share/android-commandlinetools`
+  入れた中身: platform-tools / platforms;android-36 / build-tools;36.0.0
 
-Homebrew なら:
-
-```
-brew install --cask temurin@17
-brew install --cask android-commandlinetools
-```
-
-入れたあと、`~/.zshrc` に
+組む前に、この2つを環境変数で指しておく:
 
 ```
-export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export JAVA_HOME=~/Library/Java/JavaVirtualMachines/jdk-21.0.12.1+1/Contents/Home
 export ANDROID_HOME=/usr/local/share/android-commandlinetools
-export PATH="$ANDROID_HOME/platform-tools:$PATH"
+export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
-を足し、`sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"` を一度走らせる。
-(Android Studio を入れる場合は SDK も一緒に入るので、`ANDROID_HOME=~/Library/Android/sdk`)
+毎回打たずに済ませるなら `~/.zshrc` に入れる。
 
 ## 組み立て方
 
@@ -53,12 +50,58 @@ Play の `versionCode` は **21億未満の整数**でなければならない�
 **2020-01-01 からの経過分数**を使う(単調に増え、当分あふれない)。
 `tools/android-release.sh` が自動で計算する。上書きしたいときは `ANDROID_VERSION_CODE`。
 
-## 署名
+## 署名(Play に上げる前に一度だけ)
 
-Play App Signing に任せる(Google が配布用の鍵を持つ)。こちらが持つのは
+アップロード鍵を自分で作る(パスワードは自分で決めて、パスワード管理に控える):
+
+```
+keytool -genkeypair -v -keystore android/upload.jks -alias upload \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
+
+作ったら `android/keystore.properties` を書く:
+
+```
+storeFile=upload.jks
+storePassword=(決めたパスワード)
+keyAlias=upload
+keyPassword=(決めたパスワード)
+```
+
+このファイルと `.jks` は `android/.gitignore` に入れてあるので git には入らない。
+**鍵を失うと更新が出せなくなる**ので、控えを別の場所にも取っておくこと。
+`keystore.properties` が無いときは署名なしで組む(手元で形を見るだけ。Play には上げられない)。
+
+### Play App Signing
+
+ に任せる(Google が配布用の鍵を持つ)。こちらが持つのは
 **アップロード鍵**だけ。最初の AAB を上げるときに Play Console の案内に従って作り、
 `android/keystore.properties` などに置く場合は **必ず .gitignore に入れる**。
 鍵を失うと更新が出せなくなるので、控えを別の場所にも取っておくこと。
+
+## 大きさの問題(Play に出す前に必ず決める)
+
+2026-09-19 に初めて組んだ AAB は **192MB**。中身の内訳(非圧縮):
+
+| 何 | 大きさ |
+|---|---|
+| skins(動画 20本 69MB＋webp 101枚 55MB) | 129MB |
+| honors(png 21枚) | 27MB |
+| fields(png 7枚) | 20MB |
+| アプリ本体(dex・res・index.html) | 25MB |
+
+**Play は「基本＋設定 APK のダウンロード合計 200MB」が上限**。すでに際どく、
+スキンを足すたびに超える。絵も動画も端末の density では分かれないので、
+そのままでは分割されない。どれかを選ぶ必要がある:
+
+1. **絵を Cloudflare から取りに行く**(いちばん効く)。アプリは 30MB 弱になり、
+   iOS のダウンロードも軽くなる。初回に読み込む作りが要る
+2. **Play Asset Delivery**(アセットパック)。1GB まで置けるが、WebView から
+   読む配線を書く必要がある
+3. **絵を圧縮し直す**。honors と fields は **png のまま(合わせて 46MB)**なので、
+   webp にすれば 30〜40MB は減る。すぐできるが、根本的には足りない
+
+いまは 1 か 2 を選ぶまで、Play には出せない。
 
 ## まだできていないこと(Play に出す前にどれかは決める)
 

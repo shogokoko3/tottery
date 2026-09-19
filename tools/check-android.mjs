@@ -46,6 +46,34 @@ console.log("\nアプリに入れないもの");
 const strip = read("tools/strip-public.mjs");
 is("写し先に android がある", strip.includes("android/app/src/main/assets/public"), true);
 is("admin.html を落とす", strip.includes("admin.html"), true);
+is(
+  "同期でできた控え(「skins 3」など)も落とす",
+  /控えを落とす/.test(strip),
+  true,
+);
+// 実際に落ちるかを、作り話のフォルダで確かめる
+{
+  const tmp = fs.mkdtempSync("/tmp/tottery-strip-");
+  fs.mkdirSync(tmp + "/skins 3/board", { recursive: true });
+  fs.mkdirSync(tmp + "/skins/board", { recursive: true });
+  fs.writeFileSync(tmp + "/skins/board/a.webp", "x");
+  fs.writeFileSync(tmp + "/skins/board/a 2.webp", "x");
+  fs.writeFileSync(tmp + "/index.html", "x");
+  const 落とす = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (/ \d+(\.[^.]+)?$/.test(e.name)) {
+        fs.rmSync(dir + "/" + e.name, { recursive: true, force: true });
+        continue;
+      }
+      if (e.isDirectory()) 落とす(dir + "/" + e.name);
+    }
+  };
+  落とす(tmp);
+  is("控えのフォルダが消える", fs.existsSync(tmp + "/skins 3"), false);
+  is("入れ子の控えも消える", fs.existsSync(tmp + "/skins/board/a 2.webp"), false);
+  is("本体は残る", fs.existsSync(tmp + "/skins/board/a.webp"), true);
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
 const pkg = JSON.parse(read("package.json"));
 is(
   "android:sync が写したあとに落としている",
@@ -146,6 +174,17 @@ if (HAS_ANDROID) {
   // アプリの絵は iOS のものから作る。既定の Capacitor の絵のままだと気づきにくい
   const icon = fs.statSync("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png").size;
   is("ランチャーの絵を差し替えてある(既定より大きい)", icon > 20000, true);
+  is(
+    "Play に上げる鍵は keystore.properties から読む",
+    /keystore\.properties/.test(gradle),
+    true,
+  );
+  const ign = read("android/.gitignore");
+  is(
+    "鍵は git に入れない",
+    /keystore\.properties/.test(ign) && /\*\.jks/.test(ign),
+    true,
+  );
   const sh = read("tools/android-release.sh");
   is("組む道具がある(debug と bundle)", /assembleDebug/.test(sh) && /bundleRelease/.test(sh), true);
   is("組む道具も同じ式で版の番号を作る", sh.includes("Date.UTC(2020,0,1)"), true);

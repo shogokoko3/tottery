@@ -20,8 +20,32 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Play に上げる鍵(アップロード鍵)。android/keystore.properties があればそれで署名する。
+    // 中身の例:
+    //   storeFile=upload.jks
+    //   storePassword=…
+    //   keyAlias=upload
+    //   keyPassword=…
+    // このファイルと .jks は git に入れないこと(android/.gitignore に入れてある)。
+    // 無いときは署名なしで組む(手元で形を確かめるだけ。Play には上げられない)
+    signingConfigs {
+        release {
+            def props = new Properties()
+            def f = rootProject.file("keystore.properties")
+            if (f.exists()) {
+                f.withInputStream { props.load(it) }
+                storeFile file(props['storeFile'])
+                storePassword props['storePassword']
+                keyAlias props['keyAlias']
+                keyPassword props['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (rootProject.file("keystore.properties").exists()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
