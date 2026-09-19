@@ -21,9 +21,15 @@ const results = Array.from({ length: count }, (_, i) => ({
   id:
     q.get("sample") === "mixed"
       ? mixed[i]
-      : i === 0
-        ? `angel-k${foil ? ":foil" : ""}`
-        : ["zombie-male", "pirate-female", "elf-male", "viking-female"][i % 4],
+      : q.get("sample") === "foil-grid"
+        ? i === 8
+          ? "angel-k:foil"
+          : "zombie-male"
+        : i === 0
+          ? `angel-k${foil ? ":foil" : ""}`
+          : ["zombie-male", "pirate-female", "elf-male", "viking-female"][
+              i % 4
+            ],
   isNew: true,
 }));
 function Preview() {

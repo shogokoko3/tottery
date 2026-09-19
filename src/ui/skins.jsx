@@ -182,6 +182,7 @@ function RevealCard({
   onRarityComplete,
   foilRevealed = false,
   foilRoute = "common",
+  foilSelected = false,
   reduce,
   seed,
   // そのキャラの所持数 { base, foil }。引いた札が通常・フォイルのどちらを埋めたかが分かる
@@ -311,7 +312,7 @@ function RevealCard({
   return (
     <button
       type="button"
-      className={`reveal-card ${flipped ? "is-flipped" : ""} ${
+      className={`reveal-card ${foilSelected ? "is-foil-selected" : ""} ${flipped ? "is-flipped" : ""} ${
         dragging ? "is-dragging" : ""
       } ${shown && !identityHidden ? `rarity-${shown}` : ""} ${final ? "is-final" : ""} ${
         spinning ? `is-spinning spin-to-${next}` : ""
@@ -506,7 +507,7 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
       onClose={intro ? finishIntro : onFinish}
       className="skin-summon-overlay"
     >
-      <div ref={revealRef} inert={intro || activeFoil !== undefined || undefined} aria-hidden={intro || activeFoil !== undefined || undefined} className={`skin-reveal omen-${omen} ${intro ? "summon-intro-active" : "summon-arrived"}`}>
+      <div ref={revealRef} inert={intro || activeFoil !== undefined || undefined} aria-hidden={intro || activeFoil !== undefined || undefined} className={`skin-reveal omen-${omen} ${activeFoil !== undefined ? "has-foil-unveiling" : ""} ${intro ? "summon-intro-active" : "summon-arrived"}`}>
         <div className="reveal-omen" aria-hidden="true" />
         <p className="reveal-caption" role="status">
           {allComplete
@@ -534,6 +535,7 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
               onRarityComplete={() => rarityAt(i)}
               foilRevealed={revealedFoils[i] || reduce}
               foilRoute={foilRoutes[i]}
+              foilSelected={activeFoil === i && results.length > 1}
               reduce={reduce}
               seed={seed}
               owned={ownedOf(r.id)}
@@ -570,6 +572,9 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0 }) {
         route={foilRoutes[activeFoil]}
         position={foilIndexes.indexOf(activeFoil) + 1}
         total={foilIndexes.length}
+        fromGrid={results.length > 1}
+        sourceRef={revealRef}
+        sourceIndex={activeFoil}
         onComplete={() => unveilAt(activeFoil)}
       />}
     </SkinModal>

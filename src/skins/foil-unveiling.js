@@ -1,16 +1,28 @@
 // Gacha reveals the identity of an already-foiled card. Crafting keeps its
 // separate normal-to-foil acquisition animation.
-export function foilUnveilingPlan(legend = false) {
-  return legend
+export function foilUnveilingPlan(legend = false, fromGrid = false) {
+  const unveiling = legend
     ? { seal: 1800, hush: 2550, reveal: 3550, settle: 4350, complete: 5800 }
     : { seal: 1300, hush: 1850, reveal: 2850, settle: 3600, complete: 5000 };
+  return fromGrid
+    ? {
+        lift: 700,
+        gather: 1700,
+        ...Object.fromEntries(
+          Object.entries(unveiling).map(([phase, time]) => [
+            phase,
+            time + 1700,
+          ]),
+        ),
+      }
+    : unveiling;
 }
 
 export function foilUnveilingFrame(
   elapsed,
-  { legend = false, reduce = false } = {},
+  { legend = false, reduce = false, fromGrid = false } = {},
 ) {
-  const plan = foilUnveilingPlan(legend);
+  const plan = foilUnveilingPlan(legend, fromGrid);
   const phase =
     reduce || elapsed >= plan.complete
       ? "complete"
@@ -22,7 +34,11 @@ export function foilUnveilingFrame(
             ? "hush"
             : elapsed >= plan.seal
               ? "seal"
-              : "gather";
+              : fromGrid && elapsed < plan.lift
+                ? "select"
+                : fromGrid && elapsed < plan.gather
+                  ? "lift"
+                  : "gather";
   return {
     phase,
     identityVisible: ["reveal", "settle", "complete"].includes(phase),
@@ -33,6 +49,7 @@ export function foilUnveilingFrame(
 export function scheduleFoilUnveiling({
   legend = false,
   reduce = false,
+  fromGrid = false,
   onFrame,
   onComplete,
   now = () => performance.now(),
@@ -52,6 +69,7 @@ export function scheduleFoilUnveiling({
     const frame = foilUnveilingFrame(Math.max(boundary, now() - start), {
       legend,
       reduce,
+      fromGrid,
     });
     onFrame?.(frame);
     if (frame.complete && !stopped) {
@@ -61,7 +79,7 @@ export function scheduleFoilUnveiling({
   };
   notify();
   if (!stopped)
-    for (const boundary of Object.values(foilUnveilingPlan(legend))) {
+    for (const boundary of Object.values(foilUnveilingPlan(legend, fromGrid))) {
       const timer = setTimer(() => {
         timers.delete(timer);
         notify(boundary);

@@ -90,15 +90,21 @@
   padding: max(22px, env(safe-area-inset-top)) 18px
     max(20px, env(safe-area-inset-bottom));
   overflow: hidden;
+  color: #f1e4c9;
+}
+.foil-unveiling-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
   background: radial-gradient(
     ellipse at 50% 46%,
     #192b45,
     #080e1c 62%,
     #040811
   );
-  color: #f1e4c9;
 }
-.foil-unveiling-stage.is-legend {
+.foil-unveiling-stage.is-legend::before {
   background: radial-gradient(
     ellipse at 50% 46%,
     #443451,
@@ -192,6 +198,138 @@
   transition:
     transform 0.55s,
     filter 0.55s;
+}
+.has-foil-unveiling .reveal-card:not(.is-foil-selected) {
+  filter: brightness(0.3) saturate(0.65);
+  transition: filter 0.55s ease;
+}
+.has-foil-unveiling .reveal-card.is-foil-selected {
+  visibility: hidden;
+}
+.foil-unveiling-stage.from-grid:is(
+    [data-phase="waiting"],
+    [data-phase="select"]
+  )::before {
+  opacity: 0;
+}
+.foil-unveiling-stage.from-grid[data-phase="lift"]::before {
+  animation: foil-stage-darken 1s ease-in both;
+}
+.foil-unveiling-stage.from-grid:is(
+    [data-phase="waiting"],
+    [data-phase="select"],
+    [data-phase="lift"]
+  )
+  :is(
+    .foil-unveiling-eyebrow,
+    .foil-unveiling-status,
+    .foil-unveiling-name,
+    .foil-unveiling-aura,
+    .foil-unveiling-motes
+  ) {
+  opacity: 0;
+}
+.foil-unveiling-stage.from-grid[data-phase="waiting"] .foil-unveiling-card {
+  animation: none;
+  transform: translate(var(--source-x, 0px), var(--source-y, 0px))
+    scale(var(--source-scale, 1));
+}
+.foil-unveiling-stage.from-grid[data-phase="select"] .foil-unveiling-card {
+  animation: foil-card-chosen 0.7s ease-out both;
+}
+.foil-unveiling-stage.from-grid[data-phase="lift"] .foil-unveiling-card {
+  animation: foil-card-lift 1s cubic-bezier(0.22, 0.6, 0.24, 1) both;
+}
+.foil-unveiling-stage.from-grid:is(
+    [data-phase="gather"],
+    [data-phase="seal"],
+    [data-phase="hush"]
+  )
+  .foil-unveiling-card {
+  animation: none;
+}
+.foil-unveiling-stage.from-grid:is([data-phase="select"], [data-phase="lift"])
+  .foil-unveiling-card::before {
+  content: "";
+  position: absolute;
+  inset: -15px;
+  border: 2px solid #f9e3ae;
+  border-radius: 20px;
+  box-shadow:
+    0 0 24px #ffe5afaa,
+    inset 0 0 28px #adcdff55;
+  animation: foil-chosen-ring 0.7s ease-out both;
+}
+.foil-unveiling-stage.from-grid[data-phase="select"] .foil-seal {
+  animation: foil-chosen-light 0.7s ease-in-out both;
+}
+@keyframes foil-card-chosen {
+  from {
+    transform: translate(var(--source-x, 0px), var(--source-y, 0px))
+      scale(var(--source-scale, 1));
+  }
+  to {
+    transform: translate(
+        var(--source-x, 0px),
+        calc(var(--source-y, 0px) - 12px)
+      )
+      scale(calc(var(--source-scale, 1) * 1.06));
+    box-shadow:
+      0 0 42px #ffe7aecc,
+      0 0 95px #b5caff77;
+  }
+}
+@keyframes foil-card-lift {
+  0% {
+    transform: translate(
+        var(--source-x, 0px),
+        calc(var(--source-y, 0px) - 12px)
+      )
+      scale(calc(var(--source-scale, 1) * 1.06));
+    box-shadow:
+      0 0 42px #ffe7aecc,
+      0 0 95px #b5caff77;
+  }
+  42% {
+    transform: translate(
+        calc(var(--source-x, 0px) * 0.6),
+        calc(var(--source-y, 0px) * 0.6 - 45px)
+      )
+      scale(calc(var(--source-scale, 1) * 0.5 + 0.48))
+      rotate(var(--flight-tilt, -9deg));
+  }
+  100% {
+    transform: translate(0, 8px) scale(0.96);
+  }
+}
+@keyframes foil-stage-darken {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes foil-chosen-ring {
+  from {
+    opacity: 0;
+    scale: 1.5;
+  }
+  55% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.8;
+    scale: 1;
+  }
+}
+@keyframes foil-chosen-light {
+  from {
+    filter: brightness(1);
+  }
+  to {
+    filter: brightness(1.8);
+  }
 }
 .foil-unveiling-stage[data-phase="seal"] .foil-unveiling-card {
   transform: translateY(-8px) scale(0.94);

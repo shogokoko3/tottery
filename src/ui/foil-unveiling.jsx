@@ -1,4 +1,10 @@
-import { useEffect, useInsertionEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useInsertionEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { baseSkinId, byId } from "../skins/catalog.js";
 import { scheduleFoilUnveiling } from "../skins/foil-unveiling.js";
 import { FOIL_IMAGE_TIMEOUT_MS } from "../skins/foil-acquisition.js";
@@ -91,6 +97,8 @@ export function FoilUnveilingView({
   fallback = false,
   missing = false,
   focusRef,
+  fromGrid = false,
+  origin = null,
 }) {
   useStyles();
   const visible = ["reveal", "settle", "complete"].includes(phase);
@@ -105,8 +113,18 @@ export function FoilUnveilingView({
     <div
       ref={focusRef}
       tabIndex={-1}
-      className={`foil-unveiling-stage ${legend ? "is-legend" : ""} ${upgrading ? "is-upgrading" : ""}`}
+      className={`foil-unveiling-stage ${fromGrid ? "from-grid" : ""} ${legend ? "is-legend" : ""} ${upgrading ? "is-upgrading" : ""}`}
       data-phase={phase}
+      style={
+        origin
+          ? {
+              "--source-x": `${origin.x}px`,
+              "--source-y": `${origin.y}px`,
+              "--source-scale": origin.scale,
+              "--flight-tilt": `${origin.tilt}deg`,
+            }
+          : undefined
+      }
       role="group"
       aria-label="フォイルカードの正体"
     >
@@ -179,6 +197,9 @@ export function FoilUnveiling({
   position,
   total,
   reduce = false,
+  sourceRef,
+  sourceIndex,
+  fromGrid = false,
   onComplete,
 }) {
   const [view, setView] = useState({
@@ -189,6 +210,27 @@ export function FoilUnveiling({
   const callback = useRef(onComplete),
     notified = useRef(false);
   const focusRef = useRef(null);
+  const [origin, setOrigin] = useState(null);
+  const originMeasured = useRef(false);
+  useLayoutEffect(() => {
+    if (!fromGrid || reduce || originMeasured.current) return;
+    const source = sourceRef?.current?.querySelector(
+      `[data-index="${sourceIndex}"]`,
+    );
+    const target = focusRef.current?.querySelector(".foil-unveiling-card");
+    if (!source || !target) return;
+    const a = source.getBoundingClientRect(),
+      b = target.getBoundingClientRect();
+    if (!a.width || !b.width) return;
+    originMeasured.current = true;
+    const x = a.left + a.width / 2 - b.left - b.width / 2;
+    setOrigin({
+      x,
+      y: a.top + a.height / 2 - b.top - b.height / 2,
+      scale: Math.min(a.width / b.width, a.height / b.height),
+      tilt: x > 0 ? 9 : -9,
+    });
+  }, [fromGrid, reduce, sourceRef, sourceIndex]);
   useEffect(() => {
     focusRef.current?.focus({ preventScroll: true });
   }, []);
@@ -207,6 +249,7 @@ export function FoilUnveiling({
       cancelTimeline = scheduleFoilUnveiling({
         legend: skin.rarity === "SSR",
         reduce,
+        fromGrid,
         onFrame: ({ phase }) =>
           active &&
           setView({
@@ -245,7 +288,7 @@ export function FoilUnveiling({
         image.onerror = null;
       });
     };
-  }, [skin, reduce]);
+  }, [skin, reduce, fromGrid]);
   useEffect(() => {
     if (view.phase !== "complete" || notified.current) return;
     notified.current = true;
@@ -258,6 +301,8 @@ export function FoilUnveiling({
       position={position}
       total={total}
       focusRef={focusRef}
+      fromGrid={fromGrid}
+      origin={origin}
       {...view}
     />
   );
