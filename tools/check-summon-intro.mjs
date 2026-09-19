@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
+import { transform } from "esbuild";
 import { SUMMON_ARCHITECTURE } from "../src/skins/summon-architecture.js";
 import {
   summonPlan,
@@ -8,6 +9,7 @@ import {
   summonFrame,
   SUMMON_TIMING,
   SUMMON_WORLDS,
+  smooth,
 } from "../src/skins/summon-plan.js";
 import { byId } from "../src/skins/catalog.js";
 const draw = (...ids) => ids.map((id) => ({ id, isNew: true }));
@@ -215,6 +217,99 @@ scenes[4].resolve();
 await flush();
 assert.equal(play.disabled, true, "時間切れ後の遅延完了で再開しない");
 assert.equal(timers.size, 0);
+
+// Run the actual component effect with a delayed GPU/first animation frame.
+// Loading time must never skip ahead into the stairway movement.
+const effectCode = (await transform(
+  ui.replace(/^import[\s\S]*?;\n/gm, "")
+    .replace('await import("../skins/summon-scene.js")', "await loadScene()") +
+    "\nglobalThis.mountIntro = SummonIntro;",
+  { loader: "jsx", format: "cjs", jsxFactory: "jsx" },
+)).code;
+function openingHarness() {
+  const makeNode = () => ({
+    dataset: {}, listeners: new Map(), values: new Map(),
+    style: { setProperty(k, v) { this[k] = v; }, removeProperty(k) { delete this[k]; } },
+    addEventListener(k, v) { this.listeners.set(k, v); },
+    removeEventListener(k) { this.listeners.delete(k); },
+    querySelectorAll() { return []; },
+  });
+  const root = makeNode(), canvas = makeNode(), doc = makeNode(), win = makeNode();
+  let height = 844, effect, refIndex = 0, id = 0, resolveReady;
+  let finished = 0, played = 0, prepared = 0, stopped = 0, disposed = 0;
+  const frames = new Map(), deadlines = new Map(), renders = [], sizes = [], loading = [];
+  root.getBoundingClientRect = () => ({ width: 390, height });
+  const scene = {
+    ready: new Promise(resolve => { resolveReady = resolve; }),
+    resize(w, h) { sizes.push([w, h]); },
+    render(ms) { renders.push(ms); return { ...summonFrame(ms), origin: { x: 195, y: 400 } }; },
+    dispose() { disposed++; },
+  };
+  const sandbox = {
+    module: { exports: {} }, jsx: () => ({}), STYLES: "", cardBackImg: "back.png",
+    SUMMON_TIMING, SUMMON_WORLDS, summonPlan, smooth,
+    useRef(value) { return { current: refIndex++ === 0 ? root : refIndex === 2 ? canvas : value }; },
+    useState() { return [true, value => loading.push(value)]; },
+    useMemo(fn) { return fn(); }, useEffect(fn) { effect = fn; },
+    document: doc, window: win,
+    loadScene: async () => ({ createSummonScene: () => scene }),
+    prepareSummonSound() { prepared++; },
+    startSummonSound() { played++; return () => { stopped++; }; },
+    requestAnimationFrame(fn) { frames.set(++id, fn); return id; },
+    cancelAnimationFrame(id) { frames.delete(id); },
+    setTimeout(fn, delay) { deadlines.set(++id, { fn, delay }); return id; },
+    clearTimeout(id) { deadlines.delete(id); },
+  };
+  vm.runInNewContext(effectCode, sandbox);
+  sandbox.mountIntro({ results: draw("angel-k:foil"), targetRef: { current: root }, onFinish: () => { finished++; } });
+  const cleanup = effect();
+  return {
+    root, sizes, renders, loading, frames, deadlines, cleanup,
+    state: () => ({ finished, played, prepared, stopped, disposed }),
+    ready: () => { height = 800; resolveReady(); },
+    tick(time) {
+      const next = frames.entries().next().value;
+      assert.ok(next, "animation callback is scheduled");
+      frames.delete(next[0]); next[1](time);
+    },
+  };
+}
+const opening = openingHarness();
+await flush();
+assert.deepEqual(opening.renders, []);
+opening.ready();
+await flush();
+assert.deepEqual(opening.sizes, [[390, 844], [390, 800]], "読み込み後の実サイズで描画");
+assert.deepEqual(opening.renders, [0], "初回描画はカバーの下で準備");
+assert.equal(opening.state().prepared, 1);
+assert.equal(opening.state().played, 0);
+opening.tick(1000);
+assert.deepEqual(opening.loading, [true], "描画準備中はカバーを外さない");
+opening.tick(2500);
+assert.deepEqual(opening.renders, [0, 0], "遅れても最初の表示は0秒から");
+assert.equal(opening.root.style["--loading-opacity"], "1");
+assert.equal(opening.state().played, 1);
+opening.tick(2660);
+assert.equal(opening.renders.at(-1), 160);
+assert.equal(opening.root.style["--loading-opacity"], "0.5", "急な切り替えではなくフェード");
+opening.tick(2820);
+assert.equal(opening.root.style["--loading-visibility"], "hidden");
+opening.tick(11500);
+assert.equal(opening.state().finished, 1);
+assert.equal(opening.state().stopped, 1);
+opening.cleanup();
+assert.equal(opening.deadlines.size, 0);
+assert.equal(opening.state().disposed, 1);
+const skipped = openingHarness();
+await flush();
+skipped.root.listeners.get("summon-finish")();
+skipped.ready();
+await flush();
+assert.equal(skipped.state().finished, 1);
+assert.equal(skipped.state().played, 0, "準備中スキップで後から音を鳴らさない");
+assert.deepEqual(skipped.renders, []);
+assert.equal(skipped.frames.size, 0);
+skipped.cleanup();
 console.log(
-  "召喚導入: 7世界・銅/金・1/10枚・2+2+3+2秒・新建築素材・読込待機/切替/失敗/15秒制限: OK",
+  "召喚導入: 7世界・銅/金・1/10枚・2+2+3+2秒・読込待機/切替/失敗・初回描画/フェード/開始前スキップ: OK",
 );

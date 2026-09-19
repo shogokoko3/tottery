@@ -67,6 +67,11 @@ function soundUrl() {
   return sourceUrl;
 }
 
+export function prepareSummonSound() {
+  const settings = audioSettings();
+  if (!settings.muted && settings.se) soundUrl();
+}
+
 export function startSummonSound() {
   const settings = audioSettings();
   if (settings.muted || !settings.se) return () => {};

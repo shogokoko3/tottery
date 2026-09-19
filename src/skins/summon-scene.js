@@ -88,7 +88,7 @@ export function createSummonScene(canvas, plan) {
       `skins/summon/art-v3/${architecture.asset || `${plan.world}.webp`}`,
     ),
     loadTexture(`skins/summon/interior-v4/${plan.world}.webp`),
-  ]).then(([texture, interiorTexture]) => {
+  ]).then(async ([texture, interiorTexture]) => {
     if (disposed) {
       return;
     }
@@ -225,6 +225,13 @@ export function createSummonScene(canvas, plan) {
     mist = new T.PointLight(plan.gold ? "#ffd894" : world.accent, 0, 8);
     mist.position.set(centre, floor + doorHeight * 0.44, 1);
     scene.add(mist);
+
+    // Image decoding alone does not prepare the GPU. Upload textures and compile
+    // the gold/portal shaders behind the loading cover, before the camera moves.
+    camera.position.set(0, 9, INITIAL_DISTANCE);
+    camera.lookAt(0, 9, 0);
+    resources.forEach((texture) => renderer.initTexture(texture));
+    await renderer.compileAsync(scene, camera);
   });
 
   function resize(w, h) {

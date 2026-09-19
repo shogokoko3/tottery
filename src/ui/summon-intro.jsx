@@ -7,7 +7,7 @@ import {
   smooth,
 } from "../skins/summon-plan.js";
 import STYLES from "../skins/summon-intro.css";
-import { startSummonSound } from "../skins/summon-sound.js";
+import { prepareSummonSound, startSummonSound } from "../skins/summon-sound.js";
 
 const LOADING_STYLES = `
 .summon-loading {
@@ -17,6 +17,8 @@ const LOADING_STYLES = `
   background: radial-gradient(ellipse at 50% 44%, #162636, #050b13 70%);
   color: #e6d1a2; font: 500 14px/1.8 "Shippori Mincho", serif;
   letter-spacing: .12em; text-align: center;
+  opacity: var(--loading-opacity, 1); pointer-events: none;
+  visibility: var(--loading-visibility, visible);
 }
 .summon-loading-mark {
   width: 28px; height: 28px; transform: rotate(45deg);
@@ -37,6 +39,8 @@ export function SummonIntro({ results, targetRef, onFinish }) {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     setLoading(true);
+    root.current.style.removeProperty("--loading-opacity");
+    root.current.style.removeProperty("--loading-visibility");
     let scene,
       raf,
       disposed = false,
@@ -83,23 +87,38 @@ export function SummonIntro({ results, targetRef, onFinish }) {
           [...element.querySelectorAll("img")].map((img) => img.decode?.()),
         );
         if (disposed || finished) return;
-        // Do not reveal an untextured first frame while the artwork is loading.
+        // Synthesising the first sound must not block the opening camera frames.
+        prepareSummonSound();
+        // Re-measure after loading (mobile viewport/font layout may have settled).
+        // Keep the cover over the first GPU draw, then start at the first actual
+        // playback frame rather than charging preparation time to the ascent.
+        resize();
         scene.render(0);
-        setLoading(false);
-        releaseSound = startSummonSound();
-        clearTimeout(deadline);
-        deadline = setTimeout(finish, SUMMON_TIMING.total + 600);
-        start = performance.now();
         function frame(now) {
           if (disposed || finished) return;
           try {
-            const ms = Math.min(now - start, SUMMON_TIMING.total),
+            if (start === undefined) {
+              start = now;
+              setLoading(false);
+              releaseSound = startSummonSound();
+              clearTimeout(deadline);
+              deadline = setTimeout(finish, SUMMON_TIMING.total + 600);
+            }
+            const ms = Math.max(0, Math.min(now - start, SUMMON_TIMING.total)),
               f = scene.render(ms),
               bounds = element.getBoundingClientRect();
             const targets =
               targetRef.current?.querySelectorAll(".reveal-card") || [];
             const cards = element.querySelectorAll(".summon-flight-card");
             element.dataset.stage = f.stage;
+            element.style.setProperty(
+              "--loading-opacity",
+              String(1 - smooth(ms / 320)),
+            );
+            element.style.setProperty(
+              "--loading-visibility",
+              ms >= 320 ? "hidden" : "visible",
+            );
             element.style.setProperty(
               "--scene-opacity",
               String(1 - smooth((ms - 7750) / 1250)),
@@ -139,7 +158,10 @@ export function SummonIntro({ results, targetRef, onFinish }) {
             finish();
           }
         }
-        raf = requestAnimationFrame(frame);
+        // Let the warm-up draw reach the compositor while still fully covered.
+        raf = requestAnimationFrame(() => {
+          if (!disposed && !finished) raf = requestAnimationFrame(frame);
+        });
       } catch {
         finish();
       }
@@ -166,12 +188,10 @@ export function SummonIntro({ results, targetRef, onFinish }) {
     >
       <style>{STYLES + LOADING_STYLES}</style>
       <canvas ref={canvas} className="summon-scene" aria-hidden="true" />
-      {loading && (
-        <div className="summon-loading" aria-hidden="true">
-          <span className="summon-loading-mark" />
-          <p>召喚の門を準備中</p>
-        </div>
-      )}
+      <div className="summon-loading" aria-hidden="true">
+        <span className="summon-loading-mark" />
+        <p>召喚の門を準備中</p>
+      </div>
       <div className="summon-cinema-shade" aria-hidden="true" />
       <div className="summon-world-name" aria-hidden="true">
         <span>運命の一枚を、この手に。</span>
