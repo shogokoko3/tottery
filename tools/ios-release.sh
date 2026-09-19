@@ -17,9 +17,10 @@ BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
 export BUILD_NUMBER
 step="${1:-all}"
 if [ "$step" = "archive" ] || [ "$step" = "all" ]; then
-  # 同期でできた控え(「config 10.xml」)をアプリに入れない
-  node tools/drop-dupes.mjs ios/App/App
   npm run ios:sync
+  # 同期でできた控え(「config 10.xml」)をアプリに入れない。
+  # cap copy が置いた直後に複製されるので、写したあとに落とす
+  node tools/drop-dupes.mjs ios/App/App
   rm -rf "$ARCHIVE"
   xcodebuild -project "$PROJ" -scheme App -configuration Release -sdk iphoneos \
     -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \

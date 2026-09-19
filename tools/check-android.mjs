@@ -153,7 +153,25 @@ if (HAS_ANDROID) {
     read("android/.gitignore").includes("app/src/main/assets/public"),
     true,
   );
+  const cfg = JSON.parse(read("capacitor.config.json"));
+  is(
+    "Android にはネイティブのプラグインを入れない",
+    Array.isArray(cfg.android?.includePlugins) &&
+      cfg.android.includePlugins.length === 0,
+    true,
+  );
+  is(
+    "その結果、プラグインの配線が空になっている",
+    !/implementation project\(':capacitor-/.test(read("android/app/capacitor.build.gradle")),
+    true,
+  );
+  is("理由を書き残してある", fs.existsSync("capacitor-config.md"), true);
   const manifest = read("android/app/src/main/AndroidManifest.xml");
+  is(
+    "広告 ID の権限が入っていない(広告は出さないので)",
+    /AD_ID/.test(manifest),
+    false,
+  );
   is("画面は縦だけ(iOS と同じ)", /android:screenOrientation="portrait"/.test(manifest), true);
   is(
     "Android 12 以降の起動画面の地の色を決めてある(既定の白が出ない)",
@@ -184,6 +202,44 @@ if (HAS_ANDROID) {
   is("組む道具も同じ式で版の番号を作る", sh.includes("Date.UTC(2020,0,1)"), true);
 } else {
   console.log("\n(android/ が無いので、プロジェクトの検査は飛ばした)");
+}
+
+// Play の掲載物。上限と決まった大きさを外していないか
+const 掲載 = "reports/play/Google Play提出.md";
+if (fs.existsSync(掲載)) {
+  console.log("\nPlay の掲載物");
+  const md = read(掲載);
+  const blocks = [...md.matchAll(/```\n([\s\S]*?)```/g)].map((m) => m[1].trim());
+  const len = (t) => [...(t || "")].length;
+  is("アプリ名は30字まで", len(blocks[0]) > 0 && len(blocks[0]) <= 30, true);
+  is("簡単な説明は80字まで", len(blocks[1]) > 0 && len(blocks[1]) <= 80, true);
+  is("詳しい説明は4000字まで", len(blocks[2]) > 100 && len(blocks[2]) <= 4000, true);
+  // 画像の大きさは PNG の IHDR から読む
+  const 大きさ = (f) => {
+    const b = fs.readFileSync(f);
+    return [b.readUInt32BE(16), b.readUInt32BE(20)];
+  };
+  if (fs.existsSync("reports/play/assets/icon-512.png")) {
+    const [w, h] = 大きさ("reports/play/assets/icon-512.png");
+    is("アイコンは 512×512", w === 512 && h === 512, true);
+  }
+  if (fs.existsSync("reports/play/assets/feature-1024x500.png")) {
+    const [w, h] = 大きさ("reports/play/assets/feature-1024x500.png");
+    is("フィーチャーグラフィックは 1024×500", w === 1024 && h === 500, true);
+  }
+  const dir = "reports/play/screenshots";
+  if (fs.existsSync(dir)) {
+    const shots = fs.readdirSync(dir).filter((f) => f.endsWith(".png"));
+    is("スクリーンショットは2枚以上", shots.length >= 2, true);
+    // Play の「スマートフォン」は 16:9〜9:16、各辺 320〜3840px
+    const 外れ = shots.filter((f) => {
+      const [w, h] = 大きさ(`${dir}/${f}`);
+      const r = h / w;
+      return r > 16 / 9 + 0.001 || r < 9 / 16 - 0.001 || Math.min(w, h) < 320 || Math.max(w, h) > 3840;
+    });
+    is("どれも Play の縦横比(16:9〜9:16)と大きさに収まる", 外れ.join(", "), "");
+  }
+  is("撮り直す道具がある", fs.existsSync("tools/play-screenshots.mjs"), true);
 }
 
 console.log(`\n${ok} ok / ${fail.length} NG`);

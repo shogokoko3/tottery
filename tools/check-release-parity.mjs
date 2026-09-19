@@ -108,14 +108,22 @@ for (const [name, o] of Object.entries(置き場)) {
 
 if (!足りない) {
   const [a, b] = [info.iOS, info.Android];
-  is(
-    "中身(codeHash)が同じ",
-    a.codeHash === b.codeHash,
-    a.codeHash === b.codeHash
-      ? ""
-      : `iOS ${a.codeHash}(${a.builtAt}) ≠ Android ${b.codeHash}(${b.builtAt})` +
-        ` → 古いほうを組み直すこと`,
-  );
+  const 同じ中身 = a.codeHash === b.codeHash;
+  if (同じ中身) is("中身(codeHash)が同じ", true);
+  else if (strict)
+    is(
+      "中身(codeHash)が同じ",
+      false,
+      `iOS ${a.codeHash}(${a.builtAt}) ≠ Android ${b.codeHash}(${b.builtAt}) → 古いほうを組み直すこと`,
+    );
+  // 手元では、src をいじったあと片方しか組み直していないのがふつう。
+  // 出す直前(--strict)だけ NG にし、ふだんは知らせるだけにする
+  else
+    console.log(
+      `  --   片方が古い。出す前に組み直すこと\n` +
+        `         iOS     ${a.codeHash}(${a.builtAt})\n` +
+        `         Android ${b.codeHash}(${b.builtAt})`,
+    );
   is("版(version)が同じ", a.version === b.version, `${a.version} / ${b.version}`);
   for (const [name, o] of Object.entries(置き場))
     is(

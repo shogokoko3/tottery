@@ -18,10 +18,11 @@ VERSION_NAME="${ANDROID_VERSION_NAME:-$(node -p "require('./package.json').versi
 BUILD_NUMBER="$VERSION_CODE"
 export BUILD_NUMBER
 
-# 同期でできた控え(「config 2.xml」)が res/ にあると、名前の決まりでビルドが止まる
-node tools/drop-dupes.mjs android/app/src/main
-
 npm run android:sync
+
+# 同期でできた控え(「config 2.xml」)が res/ にあると、名前の決まりで gradle が止まる。
+# cap copy が置いた直後に複製されるので、**写したあと・組む直前**に落とす
+node tools/drop-dupes.mjs android/app/src/main android/app/build/outputs
 
 step="${1:-bundle}"
 cd android

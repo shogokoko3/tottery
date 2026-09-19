@@ -1,5 +1,8 @@
 {
   "appId": "com.shogokoko.tottery",
   "appName": "Tottery",
-  "webDir": "dist"
+  "webDir": "dist",
+  "android": {
+    "includePlugins": []
+  }
 }
