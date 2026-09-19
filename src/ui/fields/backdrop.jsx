@@ -3,6 +3,8 @@ import { BackgroundObjects } from "./background-objects.jsx";
 import { areaTheme } from "../../game/field-presentation.js";
 
 const files = typeof __FIELD_FILES__ === "undefined" ? {} : __FIELD_FILES__;
+// 表(__FIELD_FILES__)にはハッシュ付きの名前が入る。ASSETS=compact では webp。
+// 表に無いのは組み立て前の手元だけなので、そのときだけ png を当てる
 export const fieldUrl = (theme) => `fields/${files[theme] || `${theme}.png`}`;
 
 /**

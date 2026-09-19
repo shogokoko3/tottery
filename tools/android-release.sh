@@ -18,6 +18,9 @@ VERSION_NAME="${ANDROID_VERSION_NAME:-$(node -p "require('./package.json').versi
 BUILD_NUMBER="$VERSION_CODE"
 export BUILD_NUMBER
 
+# 同期でできた控え(「config 2.xml」)が res/ にあると、名前の決まりでビルドが止まる
+node tools/drop-dupes.mjs android/app/src/main
+
 npm run android:sync
 
 step="${1:-bundle}"

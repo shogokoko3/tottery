@@ -13,6 +13,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { dropDupes } from "./drop-dupes.mjs";
 
 const 写し先 = {
   ios: "ios/App/App/public",
@@ -49,30 +50,16 @@ for (const name of 落とすもの) {
 }
 
 
-/**
- * 「skins 3」「config 2.xml」のような、末尾に半角空白＋数字が付いた控え。
- * この Mac では同期の取り合いでこれが勝手にできる。dist/ ごと写されるので、
- * 気づかないままアプリの中に入る(2026-09-19 に判明。iOS のアプリに
- * `skins 3` が丸ごと 128MB 入っていた)。Android では res の名前の決まりに
- * 触れてビルドが止まる。写したあとにここで必ず落とす。
- */
-function 控えを落とす(dir, 印) {
-  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    const 名 = e.name;
-    if (/ \d+(\.[^.]+)?$/.test(名)) {
-      fs.rmSync(path.join(dir, 名), { recursive: true, force: true });
-      印.push(path.relative(PUBLIC_DIR, path.join(dir, 名)));
-      continue;
-    }
-    if (e.isDirectory()) 控えを落とす(path.join(dir, 名), 印);
-  }
-}
-const 控え = [];
-控えを落とす(PUBLIC_DIR, 控え);
+// 同期でできた控え(「skins 3」など)。dist/ ごと写るので、ここで必ず落とす
+const 控え = dropDupes(PUBLIC_DIR);
 if (控え.length)
   console.log(
-    `同期でできた控えを落とした(${控え.length}件): ${控え.slice(0, 6).join(", ")}${控え.length > 6 ? " ほか" : ""}`,
+    `同期でできた控えを落とした(${控え.length}件): ${控え
+      .map((f) => path.relative(PUBLIC_DIR, f))
+      .slice(0, 6)
+      .join(", ")}${控え.length > 6 ? " ほか" : ""}`,
   );
+
 console.log(
   落とした.length
     ? `アプリに入れないものを落とした(${platform}): ${落とした.join(", ")}`

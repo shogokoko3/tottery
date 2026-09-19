@@ -17,8 +17,64 @@ import { build } from "esbuild";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { SUPPORT_EMAIL } from "./src/game/support.js";
+import { execFileSync } from "node:child_process";
 
 const dev = process.argv.includes("--dev");
+
+/**
+ * 絵の重さ。ASSETS で切り替える。
+ *
+ *   full    … いまのまま(png)。iOS と Web はこちら。画質は元のまま
+ *   compact … 盤面エリアと称号の絵を webp(q95)にする。46MB → 12MB。
+ *             Google Play は「ダウンロード合計 200MB」の上限があり、
+ *             png のままだと入らない(2026-09-19 に実測して 192MB)
+ *
+ * 元の png は assets/ にそのまま残る。配る側だけを差し替えるので、
+ * 設定を戻して組み直せばいつでも元に戻る。
+ */
+const COMPACT = process.env.ASSETS === "compact";
+/** webp の品質。等倍で見比べても元の png と見分けが付かない値(実測 PSNR 39〜41dB) */
+const WEBP_Q = Number(process.env.WEBP_QUALITY) || 95;
+/** 変換した結果の置き場。中身のハッシュで引くので、2度目からは一瞬で済む */
+const WEBP_CACHE = ".webp-cache";
+
+/** png を webp にする。返すのは webp の中身(Buffer) */
+function toWebp(png, why) {
+  fs.mkdirSync(WEBP_CACHE, { recursive: true });
+  const key = createHash("sha256")
+    .update(png)
+    .update(`q${WEBP_Q}`)
+    .digest("hex")
+    .slice(0, 16);
+  const cached = `${WEBP_CACHE}/${key}.webp`;
+  if (fs.existsSync(cached)) return fs.readFileSync(cached);
+  const tmp = `${WEBP_CACHE}/.in-${key}.png`;
+  fs.writeFileSync(tmp, png);
+  try {
+    execFileSync(
+      "cwebp",
+      // -sharp_yuv: 濃い色の細い縁(金の装飾)が甘くならないように
+      // -alpha_q 100: 透明度は落とさない(縁がギザつくのを防ぐ)
+      ["-quiet", "-q", String(WEBP_Q), "-m", "6", "-sharp_yuv", "-alpha_q", "100", tmp, "-o", cached],
+      { stdio: ["ignore", "ignore", "pipe"] },
+    );
+  } catch (e) {
+    throw new Error(
+      `cwebp で ${why} を変換できませんでした。ASSETS=compact には cwebp が要ります\n` +
+        "  入れ方: brew install webp\n" +
+        `  元の出来事: ${e.message}`,
+    );
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
+  return fs.readFileSync(cached);
+}
+/** compact のときだけ webp にする。{ data, ext } を返す */
+function image(png, why) {
+  return COMPACT
+    ? { data: toWebp(png, why), ext: ".webp" }
+    : { data: png, ext: ".png" };
+}
 
 // 音。index.html からは audio/ という相対の場所として見えている。
 // 束ねる前に写して、元の名前 → ハッシュ付きの名前 の表を作っておく
@@ -48,9 +104,12 @@ for (const dir of ["fields", "dist/fields"]) {
 }
 for (const name of fs.readdirSync("assets/fields")) {
   if (!name.endsWith(".png")) continue;
-  const data = fs.readFileSync(`assets/fields/${name}`);
+  const { data, ext } = image(
+    fs.readFileSync(`assets/fields/${name}`),
+    `assets/fields/${name}`,
+  );
   const hash = createHash("sha256").update(data).digest("hex").slice(0, 8);
-  const hashed = name.replace(".png", `.${hash}.png`);
+  const hashed = name.replace(".png", `.${hash}${ext}`);
   fieldFiles[name.slice(0, -4)] = hashed;
   for (const dir of ["fields", "dist/fields"])
     fs.writeFileSync(`${dir}/${hashed}`, data);
@@ -69,10 +128,52 @@ function hashHonor(dir) {
   }
 }
 hashHonor("assets/honors");
+// compact では中身が変わるので、版も分ける(古いキャッシュを引かないように)
+honorHash.update(COMPACT ? `webp-q${WEBP_Q}` : "png");
 const honorVersion = honorHash.digest("hex").slice(0, 12);
 for (const out of ["honors", "dist/honors"]) {
   fs.rmSync(out, { recursive: true, force: true });
   fs.cpSync("assets/honors", `${out}/${honorVersion}`, { recursive: true });
+  if (COMPACT) honorsToWebp(`${out}/${honorVersion}`);
+}
+
+/**
+ * 称号の演出(assets/honors)を webp にする。
+ *
+ * 中の app.js / style.css は `assets/${theme.crest}.png` のように名前を組み立てて
+ * いるので、名前ごとの置き換えでは当たらない。**png を1枚残らず webp にしてから**、
+ * 文中の ".png" を ".webp" に一斉に替える。残った png が1枚でもあれば作りが
+ * 変わったということなので、そこで止める(黙って壊れた参照を配らない)。
+ */
+function honorsToWebp(root) {
+  const 変えた = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const at = `${dir}/${e.name}`;
+      if (e.isDirectory()) walk(at);
+      else if (e.name.endsWith(".png")) {
+        const { data } = image(fs.readFileSync(at), at);
+        fs.writeFileSync(at.replace(/\.png$/, ".webp"), data);
+        fs.rmSync(at);
+        変えた.push(at);
+      }
+    }
+  };
+  walk(root);
+  const 残り = [];
+  const scan = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const at = `${dir}/${e.name}`;
+      if (e.isDirectory()) scan(at);
+      else if (e.name.endsWith(".png")) 残り.push(at);
+      else if (/\.(js|css|html)$/.test(e.name))
+        fs.writeFileSync(at, fs.readFileSync(at, "utf8").split(".png").join(".webp"));
+    }
+  };
+  scan(root);
+  if (残り.length)
+    throw new Error(`称号の png が残っている: ${残り.join(", ")}`);
+  if (!変えた.length) throw new Error("称号の png が1枚も見つからなかった");
 }
 
 /** 束ね方。本体と管理画面で同じ */
@@ -102,6 +203,8 @@ const bundleOptions = {
     __AUDIO_FILES__: JSON.stringify(audioFiles),
     __HONOR_VERSION__: JSON.stringify(honorVersion),
     __FIELD_FILES__: JSON.stringify(fieldFiles),
+    // 称号のアイコンの拡張子。compact では webp になる(src/game/formation-honors.js が使う)
+    __HONOR_IMG_EXT__: JSON.stringify(COMPACT ? ".webp" : ".png"),
     // このビルドの番号(強制アップデートの判定に使う)。iOS ビルドでは ios-release.sh が
     // BUILD_NUMBER(=CURRENT_PROJECT_VERSION)を渡す。Web ビルドや手元では 0(＝ゲート無効)
     __APP_BUILD__: JSON.stringify(Number(process.env.BUILD_NUMBER) || 0),
@@ -145,6 +248,39 @@ const privacy = renderPrivacy(
 fs.writeFileSync("privacy.html", privacy);
 fs.writeFileSync("dist/privacy.html", privacy);
 
+/**
+ * この組み立ての身元。iOS 版と Google Play 版が同じ中身から作られたかを、
+ * あとから確かめるために書き出す(tools/check-release-parity.mjs が読む)。
+ *
+ * codeHash は src/ と組み立ての道具から作る。絵の重さ(assets)や版の番号が
+ * 違っても、codeHash が同じなら「同じ中身」。片方だけ組み直し忘れると
+ * ここがずれるので、出す前に気づける。
+ */
+const codeHash = createHash("sha256");
+function hashTree(dir) {
+  for (const name of fs.readdirSync(dir).sort()) {
+    const at = `${dir}/${name}`;
+    // 同期でできた控え(「nearby 2.js」)は中身に数えない
+    if (/ \d+(\.[^.]+)?$/.test(name)) continue;
+    if (fs.statSync(at).isDirectory()) hashTree(at);
+    else {
+      codeHash.update(at);
+      codeHash.update(fs.readFileSync(at));
+    }
+  }
+}
+hashTree("src");
+for (const f of ["build.mjs", "index.template.html", "package.json"])
+  if (fs.existsSync(f)) codeHash.update(fs.readFileSync(f));
+const buildInfo = {
+  version: JSON.parse(fs.readFileSync("package.json", "utf8")).version,
+  codeHash: codeHash.digest("hex").slice(0, 16),
+  assets: COMPACT ? "compact" : "full",
+  build: Number(process.env.BUILD_NUMBER) || 0,
+  builtAt: new Date().toISOString(),
+};
+fs.writeFileSync("dist/build-info.json", JSON.stringify(buildInfo, null, 2));
+
 // 配信側の設定。Cloudflare Pages と Netlify のどちらも、この2ファイルを
 // 公開フォルダに置くだけで読む(キャッシュの期限・セキュリティ用のヘッダー)
 for (const name of ["_headers", "_redirects"])
@@ -155,6 +291,10 @@ console.log(
   `\nindex.html と dist/index.html を書き出しました: ${kb(Buffer.byteLength(html))} (スクリプト ${kb(Buffer.byteLength(js))})`,
 );
 console.log(`audio/ と dist/audio/ に曲を写しました: ${kb(audioKb)}`);
+console.log(
+  `絵の重さ: ${buildInfo.assets}` +
+    (COMPACT ? ` (盤面エリアと称号を webp q${WEBP_Q} に)` : " (png のまま)"),
+);
 console.log(
   `admin.html と dist/admin.html を書き出しました: ${kb(Buffer.byteLength(admin.html))}`,
 );

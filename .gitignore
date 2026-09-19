@@ -21,3 +21,4 @@ ios/build/
 
 # Versioned formation award export
 /honors/
+.webp-cache/

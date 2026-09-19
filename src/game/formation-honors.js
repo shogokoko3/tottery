@@ -2,6 +2,12 @@
 export const HONOR_VERSION =
   typeof __HONOR_VERSION__ === "undefined" ? "dev" : __HONOR_VERSION__;
 export const honorRoot = `honors/${HONOR_VERSION}`;
+/**
+ * 称号のアイコンの拡張子。build.mjs が埋める。
+ * ASSETS=compact(Google Play 版)では webp になる。
+ * 絵は同じで、入れ物だけが違う([[Android配信.md]] の「大きさの問題」)
+ */
+const IMG = typeof __HONOR_IMG_EXT__ === "undefined" ? ".png" : __HONOR_IMG_EXT__;
 export const FORMATION_EMBLEMS = [
   ["earth", "heir-hunt", "軌跡の追跡者", "土"],
   ["sea", "kamikaze", "荒波の航海士", "海"],
@@ -14,7 +20,7 @@ export const FORMATION_EMBLEMS = [
   id: `formation-${theme}`,
   titleId,
   label,
-  image: `${honorRoot}/icons/${theme}.png`,
+  image: `${honorRoot}/icons/${theme}${IMG}`,
   how: `${area}の布陣称号を獲得`,
 }));
 

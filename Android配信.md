@@ -10,6 +10,7 @@ iOS の手順は「iOS配信.md」。ここは Android だけの話。
   (理由は下の「まだできていないこと」)
 
 つまりいまの Android 版は「Web 版と同じ遊べる範囲＋アプリとして配れる形」。
+絵は webp にして 158MB まで下げた(Play の上限は 200MB)。iOS の画質は下げていない。
 
 ## 組み立てに必要なもの(2026-09-19 にこの Mac へ入れた)
 
@@ -79,29 +80,47 @@ keyPassword=(決めたパスワード)
 `android/keystore.properties` などに置く場合は **必ず .gitignore に入れる**。
 鍵を失うと更新が出せなくなるので、控えを別の場所にも取っておくこと。
 
-## 大きさの問題(Play に出す前に必ず決める)
+## 2つの版を同時に作る
 
-2026-09-19 に初めて組んだ AAB は **192MB**。中身の内訳(非圧縮):
+iOS 版と Google Play 版は、**中身は同じで、絵の重さだけが違う**。
 
-| 何 | 大きさ |
-|---|---|
-| skins(動画 20本 69MB＋webp 101枚 55MB) | 129MB |
-| honors(png 21枚) | 27MB |
-| fields(png 7枚) | 20MB |
-| アプリ本体(dex・res・index.html) | 25MB |
+| | iOS / Web | Google Play |
+|---|---|---|
+| 絵(盤面エリア・称号) | png のまま(46MB) | webp q95(12MB) |
+| 組み立て | `ASSETS=full` | `ASSETS=compact` |
+| 出来上がり | 221MB | 158MB |
 
-**Play は「基本＋設定 APK のダウンロード合計 200MB」が上限**。すでに際どく、
-スキンを足すたびに超える。絵も動画も端末の density では分かれないので、
-そのままでは分割されない。どれかを選ぶ必要がある:
+Play には「ダウンロード合計 200MB」の上限があり、png のままだと 192MB で
+ほとんど余裕が無かった。iOS にはその上限が無いので、**iOS の画質は下げない**。
+元の png は `assets/` にそのまま残るので、いつでも戻せる。
 
-1. **絵を Cloudflare から取りに行く**(いちばん効く)。アプリは 30MB 弱になり、
-   iOS のダウンロードも軽くなる。初回に読み込む作りが要る
-2. **Play Asset Delivery**(アセットパック)。1GB まで置けるが、WebView から
-   読む配線を書く必要がある
-3. **絵を圧縮し直す**。honors と fields は **png のまま(合わせて 46MB)**なので、
-   webp にすれば 30〜40MB は減る。すぐできるが、根本的には足りない
+```
+npm run release:both    # 両方作る。iOS は TestFlight まで送る
+npm run release:build   # 両方作るだけ(送らない)
+npm run check:both      # 両方が同じ中身か確かめる
+```
 
-いまは 1 か 2 を選ぶまで、Play には出せない。
+`release:both` は ① iOS を組んで送る → ② Android の AAB を作る →
+③ 両方が同じ中身か確かめる → ④ dist を画質そのままに戻す、の順に進む。
+
+### 片方だけ古くなっていないか
+
+`node build.mjs` は、組むたびに `build-info.json` をアプリの中へ入れる。
+
+```json
+{ "version": "49.0.0", "codeHash": "241f6c13…", "assets": "full", "build": 0 }
+```
+
+`codeHash` は `src/` と組み立ての道具から作る印で、**絵の重さや版の番号が違っても、
+同じ中身なら同じ値**になる。`npm run check:both`(`npm run check` にも入っている)が
+両方の `build-info.json` を読み比べ、ずれていればどちらが古いかを出して止める。
+
+### webp の変換について
+
+`cwebp`(`brew install webp`)を使う。品質は q95 + `-sharp_yuv` + `-alpha_q 100`。
+等倍で見比べても元の png と見分けが付かない値(実測 PSNR 39〜41dB)。
+変換した結果は `.webp-cache/` に貯めるので、2度目からは一瞬で終わる
+(初回 3分35秒 → 2度目 2.5秒)。
 
 ## まだできていないこと(Play に出す前にどれかは決める)
 

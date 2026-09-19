@@ -48,32 +48,26 @@ is("写し先に android がある", strip.includes("android/app/src/main/assets
 is("admin.html を落とす", strip.includes("admin.html"), true);
 is(
   "同期でできた控え(「skins 3」など)も落とす",
-  /控えを落とす/.test(strip),
+  /dropDupes/.test(strip) && fs.existsSync("tools/drop-dupes.mjs"),
   true,
 );
-// 実際に落ちるかを、作り話のフォルダで確かめる
+// 実際に落ちるかを、作り話のフォルダで、本物の道具を呼んで確かめる
 {
+  const { dropDupes } = await import("./drop-dupes.mjs");
   const tmp = fs.mkdtempSync("/tmp/tottery-strip-");
   fs.mkdirSync(tmp + "/skins 3/board", { recursive: true });
   fs.mkdirSync(tmp + "/skins/board", { recursive: true });
   fs.writeFileSync(tmp + "/skins/board/a.webp", "x");
   fs.writeFileSync(tmp + "/skins/board/a 2.webp", "x");
   fs.writeFileSync(tmp + "/index.html", "x");
-  const 落とす = (dir) => {
-    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (/ \d+(\.[^.]+)?$/.test(e.name)) {
-        fs.rmSync(dir + "/" + e.name, { recursive: true, force: true });
-        continue;
-      }
-      if (e.isDirectory()) 落とす(dir + "/" + e.name);
-    }
-  };
-  落とす(tmp);
+  const 落ちた = dropDupes(tmp);
   is("控えのフォルダが消える", fs.existsSync(tmp + "/skins 3"), false);
   is("入れ子の控えも消える", fs.existsSync(tmp + "/skins/board/a 2.webp"), false);
   is("本体は残る", fs.existsSync(tmp + "/skins/board/a.webp"), true);
+  is("消したものを数え上げて返す", 落ちた.length, 2);
   fs.rmSync(tmp, { recursive: true, force: true });
 }
+
 const pkg = JSON.parse(read("package.json"));
 is(
   "android:sync が写したあとに落としている",

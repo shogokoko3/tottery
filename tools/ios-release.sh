@@ -17,6 +17,8 @@ BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
 export BUILD_NUMBER
 step="${1:-all}"
 if [ "$step" = "archive" ] || [ "$step" = "all" ]; then
+  # 同期でできた控え(「config 10.xml」)をアプリに入れない
+  node tools/drop-dupes.mjs ios/App/App
   npm run ios:sync
   rm -rf "$ARCHIVE"
   xcodebuild -project "$PROJ" -scheme App -configuration Release -sdk iphoneos \

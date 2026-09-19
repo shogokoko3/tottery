@@ -1,5 +1,8 @@
 # iOS 配信(TestFlight / App Store)
 
+> **Google Play 版も一緒に出すときは `npm run release:both`。**
+> 片方だけ出して忘れるのを防げる。くわしくは「Android配信.md」。
+
 2026-09-11 作成、2026-09-12 に初回の TestFlight 送信に成功(ビルド 202609120952)。Team ID はプロジェクトに入っているので `npm run ios:testflight` だけでよい。Web(https://tottery.tsmanager.workers.dev/)は `main` へ push すれば配られるが、
 iOS アプリは別に組み立てて Apple へ送る必要がある。手順と、本人にしかできない準備をまとめる。
 
