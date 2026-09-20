@@ -252,10 +252,22 @@
   transform-style: preserve-3d;
   animation: foil-card-lift 1.1s cubic-bezier(0.35, 0.05, 0.25, 1) both;
 }
-.foil-unveiling-card > .foil-seal,
+.foil-unveiling-cover,
 .foil-unveiling-reverse {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+.foil-unveiling-cover {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.foil-unveiling-cover.is-opening {
+  animation: foil-cover-release 0.8s ease-in both;
+}
+@keyframes foil-cover-release {
+  0%, 25% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
 }
 .foil-unveiling-reverse {
   position: absolute;
@@ -752,7 +764,7 @@
 }
 @keyframes foil-identity-bloom {
   0% {
-    opacity: 0;
+    opacity: 0.85;
     scale: 0.65;
   }
   25% {
@@ -787,6 +799,10 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .foil-unveiling-cover.is-opening {
+    opacity: 0;
+    visibility: hidden;
+  }
   .foil-seal *,
   .foil-unveiling-stage,
   .foil-unveiling-stage * {

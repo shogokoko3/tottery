@@ -175,9 +175,16 @@ export function FoilUnveilingView({
         {(visible || upgrading) && (
           <UnveilingBurst key={upgrading ? "promotion" : "identity"} />
         )}
-        {!visible && (beforeUpgrade
-          ? <FoilArtwork skin={base} src={base.card} alt={base.name} animated={false} className="foil-unveiling-art" />
-          : <FoilSeal legend={legend} />)}
+        {/* Keep the seal painted until the arriving artwork has taken over.
+            Removing it at reveal left a blank card while art/bloom were at 0. */}
+        <span
+          className={`foil-unveiling-cover ${visible && !missing ? "is-opening" : ""}`}
+          aria-hidden="true"
+        >
+          {beforeUpgrade
+            ? <FoilArtwork skin={base} src={base.card} alt="" animated={false} className="foil-unveiling-art" />
+            : <FoilSeal legend={legend} />}
+        </span>
         {!visible && fromGrid && (
           <span className="foil-unveiling-reverse" aria-hidden="true">
             {beforeUpgrade ? <img src={cardBackImg} alt="" draggable="false" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"inherit"}} /> : <FoilSeal legend={legend} />}
@@ -198,7 +205,6 @@ export function FoilUnveilingView({
             className="foil-unveiling-art"
           />
         )}
-        {visible && missing && <FoilSeal legend={skin.rarity === "SSR"} />}
         <span className="foil-unveiling-rim" aria-hidden="true" />
         {visible && (
           <span className="foil-unveiling-bloom" aria-hidden="true" />
