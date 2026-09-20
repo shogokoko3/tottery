@@ -1,5 +1,5 @@
 import { resolveSummonFreeze } from "../src/skins/summon-freeze.js";
-import { useState, StrictMode } from "react";
+import { useEffect, useState, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { SummonReveal } from "../src/ui/skins.jsx";
 import STYLES from "../src/skins/styles.css";
@@ -46,6 +46,13 @@ const results = packet ? packet.skins.map(id => ({ id, isNew: true })) : origina
 function Preview() {
   const [run, setRun] = useState(true),
     [key, setKey] = useState(0);
+  const [refreshes, setRefreshes] = useState(0);
+  const refresh = q.get("refresh") === "1";
+  useEffect(() => {
+    if (!refresh || !run) return;
+    const timer = setInterval(() => setRefreshes(n => n + 1), 900);
+    return () => clearInterval(timer);
+  }, [refresh, run]);
   return (
     <>
       <style>
@@ -65,10 +72,11 @@ function Preview() {
         </button>
         <p>{run ? "演出中" : "開示完了"}</p>
       </main>
+      {refresh && <output style={{ position: "fixed", top: 8, left: 8, zIndex: 7000, fontSize: 11, background: "#07121ddd", padding: 6, pointerEvents: "none" }}>同じ抽選結果でデータ更新：{refreshes}回</output>}
       {run && (
         <SummonReveal
           key={key}
-          results={results}
+          results={refresh ? results.map(result => ({ ...result })) : results}
           freeze={packet?.freeze}
           drawNumber={Number(q.get("draw") || 0)}
           reduce={q.get("reduce") === "1"}

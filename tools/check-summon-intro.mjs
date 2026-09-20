@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 import { transform } from "esbuild";
+import * as Three from "three";
 import { SUMMON_ARCHITECTURE } from "../src/skins/summon-architecture.js";
 import {
   summonPlan,
@@ -236,6 +237,9 @@ function openingHarness() {
   });
   const root = makeNode(), canvas = makeNode(), doc = makeNode(), win = makeNode();
   let height = 844, effect, refIndex = 0, id = 0, resolveReady;
+  let memo, memoDeps, effectDeps, cleanup;
+  const refs = [];
+  const changed = (before, after) => !before || after.some((value, i) => value !== before[i]);
   let finished = 0, played = 0, prepared = 0, stopped = 0, disposed = 0;
   const frames = new Map(), deadlines = new Map(), renders = [], sizes = [], loading = [];
   root.getBoundingClientRect = () => ({ width: 390, height });
@@ -248,9 +252,18 @@ function openingHarness() {
   const sandbox = {
     module: { exports: {} }, jsx: () => ({}), STYLES: "", cardBackImg: "back.png",
     SUMMON_TIMING, SUMMON_WORLDS, summonPlan, smooth,
-    useRef(value) { return { current: refIndex++ === 0 ? root : refIndex === 2 ? canvas : value }; },
+    useRef(value) {
+      const i = refIndex++;
+      return refs[i] ||= { current: i === 0 ? root : i === 1 ? canvas : value };
+    },
     useState() { return [true, value => loading.push(value)]; },
-    useMemo(fn) { return fn(); }, useEffect(fn) { effect = fn; },
+    useMemo(fn, deps) {
+      if (changed(memoDeps, deps)) { memo = fn(); memoDeps = deps; }
+      return memo;
+    },
+    useEffect(fn, deps) {
+      if (changed(effectDeps, deps)) { effect = fn; effectDeps = deps; }
+    },
     document: doc, window: win,
     loadScene: async () => ({ createSummonScene: () => scene }),
     prepareSummonSound() { prepared++; },
@@ -261,10 +274,16 @@ function openingHarness() {
     clearTimeout(id) { deadlines.delete(id); },
   };
   vm.runInNewContext(effectCode, sandbox);
-  sandbox.mountIntro({ results: draw("angel-k:foil"), targetRef: { current: root }, onFinish: () => { finished++; } });
-  const cleanup = effect();
+  const targetRef = { current: root };
+  const refresh = () => {
+    refIndex = 0;
+    effect = undefined;
+    sandbox.mountIntro({ results: draw("angel-k:foil"), targetRef, onFinish: () => { finished++; } });
+    if (effect) { cleanup?.(); cleanup = effect(); }
+  };
+  refresh();
   return {
-    root, sizes, renders, loading, frames, deadlines, cleanup,
+    root, sizes, renders, loading, frames, deadlines, refresh, cleanup: () => cleanup(),
     state: () => ({ finished, played, prepared, stopped, disposed }),
     ready: () => { height = 800; resolveReady(); },
     tick(time) {
@@ -292,6 +311,11 @@ assert.equal(opening.state().played, 1);
 opening.tick(2660);
 assert.equal(opening.renders.at(-1), 160);
 assert.equal(opening.root.style["--loading-opacity"], "0.5", "急な切り替えではなくフェード");
+opening.refresh();
+await flush();
+assert.equal(opening.state().disposed, 0, "同じ抽選結果の所持情報更新で門を作り直さない");
+assert.equal(opening.state().played, 1, "更新で効果音を再スタートしない");
+assert.equal(opening.renders.at(-1), 160, "同じ結果の更新でカメラを0秒へ巻き戻さない");
 opening.tick(2820);
 assert.equal(opening.root.style["--loading-visibility"], "hidden");
 opening.tick(11500);
@@ -310,6 +334,64 @@ assert.equal(skipped.state().played, 0, "準備中スキップで後から音を
 assert.deepEqual(skipped.renders, []);
 assert.equal(skipped.frames.size, 0);
 skipped.cleanup();
+
+// Use the production geometry and camera with a headless renderer. At every
+// closed-gate camera position, both halves must register with the facade art.
+const sceneCode = (await transform(
+  fs.readFileSync("src/skins/summon-scene.js", "utf8").replace(/^import.*;\n/gm, "") +
+    "\nglobalThis.createScene = createSummonScene;",
+  { loader: "js", format: "cjs" },
+)).code;
+let rendered;
+class GeometryRenderer {
+  capabilities = { getMaxAnisotropy: () => 8 };
+  setPixelRatio() {} getPixelRatio() { return 1; }
+  setSize() {} initTexture() {} dispose() {}
+  async compileAsync() {}
+  render(scene, camera) {
+    scene.updateMatrixWorld(true);
+    camera.updateMatrixWorld(true);
+    rendered = { scene, camera };
+  }
+}
+const geometryContext = {
+  module: { exports: {} },
+  window: { devicePixelRatio: 1 },
+  T: { ...Three, WebGLRenderer: GeometryRenderer, TextureLoader: class {
+    async loadAsync() { return new Three.Texture(); }
+  } },
+  SUMMON_WORLDS, SUMMON_ARCHITECTURE, summonFrame, smooth,
+  makeSummonPortal: () => {
+    const group = new Three.Group();
+    group.userData.update = () => {};
+    return group;
+  },
+};
+vm.runInNewContext(sceneCode, geometryContext);
+let maxOutlineError = 0;
+for (const world of Object.keys(SUMMON_WORLDS)) {
+  const scene = geometryContext.createScene({}, { world, gold: false, count: 10 });
+  await scene.ready;
+  scene.resize(390, 844);
+  for (const time of [0, 160, 400, 1000, 2000, 3999]) {
+    scene.render(time);
+    const facade = rendered.scene.children.find(o => o.material?.type === "MeshBasicMaterial");
+    const facadeZ = facade.geometry.attributes.position.getZ(0);
+    rendered.scene.traverse(o => {
+      if (o.geometry?.type !== "ShapeGeometry") return;
+      const { position, uv } = o.geometry.attributes;
+      for (let i = 0; i < position.count; i++) {
+        const leaf = new Three.Vector3().fromBufferAttribute(position, i)
+          .applyMatrix4(o.matrixWorld).project(rendered.camera);
+        const frame = new Three.Vector3((uv.getX(i) - .5) * 12, uv.getY(i) * 18, facadeZ)
+          .project(rendered.camera);
+        maxOutlineError = Math.max(maxOutlineError, Math.hypot((leaf.x - frame.x) * 195, (leaf.y - frame.y) * 422));
+      }
+    });
+  }
+  scene.dispose();
+}
+assert.ok(maxOutlineError < .002, `7エリアの扉/枠の投影位置が一致する: ${maxOutlineError}px`);
 console.log(
-  "召喚導入: 7世界・銅/金・1/10枚・2+2+3+2秒・読込待機/切替/失敗・初回描画/フェード/開始前スキップ: OK",
+  "召喚導入: 7世界・銅/金・1/10枚・2+2+3+2秒・読込待機/切替/失敗・初回描画/フェード/開始前スキップ・同一結果更新で巻戻しなし・扉/枠の位置一致: OK",
 );

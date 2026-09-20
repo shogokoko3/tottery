@@ -35,7 +35,10 @@ export function SummonIntro({ results, targetRef, onFinish }) {
     canvas = useRef(null),
     finishRef = useRef(onFinish);
   finishRef.current = onFinish;
-  const plan = useMemo(() => summonPlan(results), [results]);
+  // Wallet/storage synchronisation normalises results into a new array even
+  // when the draw is unchanged. Keep the scene alive across those updates.
+  const { world, gold, count } = summonPlan(results);
+  const plan = useMemo(() => ({ world, gold, count }), [world, gold, count]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     setLoading(true);

@@ -103,7 +103,9 @@ export function createSummonScene(canvas, plan) {
       const near = smooth((floor - 0.15 - y) / Math.max(1, floor));
       const depth = near * 2.4;
       const ratio = (INITIAL_DISTANCE - depth) / INITIAL_DISTANCE;
-      pos.setXYZ(i, x * ratio, 9 + (y - 9) * ratio, depth - 0.04);
+      // The closed leaves and their cutout must share the exact same plane.
+      // Offsetting the facade behind them makes the outline slide as we advance.
+      pos.setXYZ(i, x * ratio, 9 + (y - 9) * ratio, depth);
     }
     stageGeometry.computeBoundingSphere();
     const stageMaterial = new T.MeshBasicMaterial({
@@ -203,7 +205,7 @@ export function createSummonScene(canvas, plan) {
       const local = half.map((p) => new T.Vector2(p.x - hingeX, p.y - floor));
       const leafShape = new T.Shape(local);
       const group = new T.Group();
-      group.position.set(hingeX, floor, 0.004);
+      group.position.set(hingeX, floor, 0);
       const solidGeometry = new T.ExtrudeGeometry(leafShape, {
         depth: 0.09,
         bevelEnabled: false,
