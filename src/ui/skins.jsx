@@ -33,9 +33,11 @@ import {
   craftMany,
   unequip,
   foilRevealed,
+  gachaStatsOf,
   FREE_GACHA,
   PULL_COST,
 } from "../skins/collection.js";
+import { recordGachaStats } from "../game/profile.js";
 import {
   SHARD_NAME,
   SHARD_VALUE,
@@ -1517,6 +1519,11 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
   const [working, setWorking] = useState(false),
     [message, setMessage] = useState("");
   const busy = useRef(false);
+  // 開いた時点の所持・実績で、ガチャ称号を同期する(他の入手経路の分も拾う)。
+  // profile を書くだけなので collection は再描画しない(2026-09-21)
+  useEffect(() => {
+    recordGachaStats(gachaStatsOf(collection));
+  }, [collection]);
   // 店(チケットの購入)。iOS で StoreKit が使えるときだけ出す
   const [shopOk, setShopOk] = useState(false);
   // 初回購入特典(天馬騎士)をもう持っているか。以前の早期特典で受け取った人も含む
@@ -1648,7 +1655,10 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
     setWorking(true);
     setMessage("");
     try {
-      return await updateCollection(change);
+      const next = await updateCollection(change);
+      // ガチャ・錬成の実績を写し、達成した称号を焼き付ける(2026-09-21)
+      if (next) recordGachaStats(gachaStatsOf(next));
+      return next;
     } catch (e) {
       setMessage(e.message);
       return false;
@@ -1701,6 +1711,8 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
         const next = await updateCollection((s) =>
           drawn ? applyPull(s, drawn, { free: true }) : { ...pull(s, amount, undefined, { free: true }), pendingPull: null, lastPullId: eventId },
         );
+        // ガチャの実績を写し、達成した称号を焼き付ける(2026-09-21)
+        if (next) recordGachaStats(gachaStatsOf(next));
         if (next?.pending?.results && !drawn) logPull(next.pending.results);
         // 引いた札をサーバーの記録にも残す(所持の検証の土台。best-effort)
         noteCollection();

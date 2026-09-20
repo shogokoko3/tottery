@@ -4,6 +4,7 @@ import {
   SKINS,
   ALL_SKINS,
   POOL,
+  FOIL_SKINS,
   FOIL_CHANCE,
   baseSkinId,
   byId,
@@ -177,6 +178,14 @@ export function normalize(raw) {
       homePortraits: value.homePortraits,
     }),
     draws: count(value.draws),
+    // ガチャ称号の実績カウンタ。抽選のたびに applyPull で増える(2026-09-21)
+    gacha: {
+      freeze: count(value.gacha?.freeze),
+      foil: count(value.gacha?.foil),
+      ssr: count(value.gacha?.ssr),
+      allR: count(value.gacha?.allR),
+      bestTenSsr: count(value.gacha?.bestTenSsr),
+    },
     earlyClaimed: value.earlyClaimed === true,
     // ガチャでフォイルを引いた時刻。ここから72時間だけ、ショップにフォイルの欄が並ぶ
     // (2026-09-18 本人の指示。src/skins/foil-shop.js の foilWindow)
@@ -284,10 +293,25 @@ export function applyPull(state, skinIds, { free = FREE_GACHA } = {}) {
     recordAcquisition(acquired, id);
     return { id, isNew };
   });
+  // ガチャ称号の実績。最終結果(昇格後)で数える。フリーズは freeze が非nullなら1回
+  const finals = ids.map(byId);
+  const ssrThis = finals.filter((s) => s.rarity === "SSR").length;
+  const foilThis = finals.filter((s) => s.foil).length;
+  const allRThis =
+    ids.length === 10 && finals.every((s) => s.rarity === "R") ? 1 : 0;
+  const g = state.gacha || {};
+  const gacha = {
+    freeze: count(g.freeze) + (freeze ? 1 : 0),
+    foil: count(g.foil) + foilThis,
+    ssr: count(g.ssr) + ssrThis,
+    allR: count(g.allR) + allRThis,
+    bestTenSsr: Math.max(count(g.bestTenSsr), ids.length === 10 ? ssrThis : 0),
+  };
   return withHomePortraits({
     ...state,
     owned,
     acquired,
+    gacha,
     tickets: tickets - cost,
     draws: state.draws + ids.length,
     missionDrawDay: missionPeriods().day,
@@ -312,6 +336,25 @@ export function pull(
     throw new Error(`ガチャチケットが足りません(あと${cost - tickets}枚)`);
   const initial = Array.from({ length: amount }, () => drawOne(random));
   return applyPull(state, resolveSummonFreeze(initial, random), { free });
+}
+
+/**
+ * ガチャ称号(src/game/titles.js)が使う実績のまとめ。
+ * 抽選ごとの回数(collection.gacha)と、そろえた枚数(owned)から毎回作り直す。
+ */
+export function gachaStatsOf(state) {
+  const g = state?.gacha || {};
+  const owned = state?.owned || {};
+  return {
+    pulls: count(state?.draws),
+    freeze: count(g.freeze),
+    foil: count(g.foil),
+    ssr: count(g.ssr),
+    allR: count(g.allR),
+    bestTenSsr: count(g.bestTenSsr),
+    foilsOwned: FOIL_SKINS.filter((s) => count(owned[s.id]) > 0).length,
+    normalsOwned: POOL.filter((s) => count(owned[s.id]) > 0).length,
+  };
 }
 
 /** 無償ジェムを足す(端末の写し。正はサーバーの財布で、呼び出し側が earnGems で送る) */

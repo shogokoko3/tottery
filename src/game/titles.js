@@ -13,6 +13,149 @@ import { seasonTitle } from "./season.js";
  */
 import { FOIL_MISSION_DEFS } from "./foil-missions.js";
 
+// ガチャの結果で自動解放される称号(2026-09-21 本人の指示)。
+// 各家系(family)は段階(tier)を持つ。一覧には3段目までを目標として掲載し、
+// 4段目以降はシステムに組み込んでおいて、達成した時だけ姿を見せる(account.jsx が絞る)。
+// 判定は profile.gacha(collection.gachaStatsOf の写し)。獲得した称号は
+// recordGachaStats が profile.titles に焼き付けるので、表示・共有はそれだけで効く。
+const GACHA_FAMILIES = [
+  {
+    family: "all-r",
+    stat: "allR",
+    what: "10連がすべてRになる",
+    unit: "回目",
+    tiers: [
+      [1, "無風の召喚"],
+      [5, "石ころ集め"],
+      [10, "常人の極み"],
+      [30, "徹底した平凡"],
+      [50, "奇跡の凡才"],
+      [100, "R百連の主"],
+    ],
+  },
+  {
+    family: "freeze",
+    stat: "freeze",
+    what: "フリーズを引く",
+    unit: "回目",
+    tiers: [
+      [1, "氷結の一瞬"],
+      [5, "凍える幸運"],
+      [10, "氷華の使い手"],
+      [30, "極寒の寵児"],
+      [50, "絶氷の支配者"],
+      [100, "永久凍土の王"],
+    ],
+  },
+  {
+    family: "foil-draw",
+    stat: "foil",
+    foil: true,
+    what: "フォイルを引く",
+    unit: "回目",
+    tiers: [
+      [1, "初めての輝き"],
+      [5, "箔集めの手"],
+      [10, "煌めきの収集家"],
+      [30, "輝きの探求者"],
+      [50, "箔光の匠"],
+      [100, "黄金の眼"],
+    ],
+  },
+  {
+    family: "ssr-draw",
+    stat: "ssr",
+    what: "SSRを引く",
+    unit: "回目",
+    tiers: [
+      [1, "最高位との邂逅"],
+      [5, "SSRの寵児"],
+      [10, "高みの常連"],
+      [30, "SSR狩人"],
+      [50, "至高の収集家"],
+      [100, "SSR百の覇者"],
+    ],
+  },
+  {
+    family: "pulls",
+    stat: "pulls",
+    what: "ガチャを引く",
+    unit: "回",
+    tiers: [
+      [10, "召喚の入口"],
+      [100, "門を開く者"],
+      [300, "召喚の常連"],
+      [500, "門番"],
+      [1000, "千召喚の証"],
+      [2000, "二千の召喚者"],
+      [3000, "召喚の達人"],
+      [5000, "召喚の権化"],
+      [10000, "万召喚の主"],
+    ],
+  },
+];
+
+const gachaTiered = ({ family, stat, what, unit, tiers, foil }) =>
+  tiers.map(([n, name], i) => ({
+    id: `gacha-${family}-${n}`,
+    name,
+    how: `${what}（累計${n}${unit}）`,
+    family,
+    tier: i + 1,
+    ...(foil ? { foil: true } : {}),
+    unlocked: (p) => (p?.gacha?.[stat] ?? 0) >= n,
+  }));
+
+// 1回の10連でSSR複数枚(bestTenSsr=これまでの最高枚数で判定)
+const GACHA_MULTI_SSR = [
+  [2, "二輝の奇跡"],
+  [3, "三輝の奇跡"],
+  [4, "四輝の伝説"],
+].map(([n, name], i) => ({
+  id: `gacha-multi-ssr-${n}`,
+  name,
+  how: `1回の10連でSSRを${n}枚引く`,
+  family: "multi-ssr",
+  tier: i + 1,
+  unlocked: (p) => (p?.gacha?.bestTenSsr ?? 0) >= n,
+}));
+
+// フォイルのコンプ度(そろえたフォイルの種類数)
+const GACHA_FOIL_COMPLETE = [
+  [5, "箔集めの初"],
+  [10, "箔の蒐集家"],
+  [15, "箔の大全"],
+].map(([n, name], i) => ({
+  id: `gacha-foil-complete-${n}`,
+  name,
+  how: `フォイルを${n}種そろえる`,
+  family: "foil-complete",
+  tier: i + 1,
+  foil: true,
+  unlocked: (p) => (p?.gacha?.foilsOwned ?? 0) >= n,
+}));
+
+// 通常版カードのコンプ(そろえた通常版の種類数)
+const GACHA_NORMAL_COMPLETE = [
+  [5, "図鑑の芽生え"],
+  [10, "蒐集家の道"],
+  [15, "英雄大全"],
+].map(([n, name], i) => ({
+  id: `gacha-normal-complete-${n}`,
+  name,
+  how: `通常版カードを${n}種そろえる`,
+  family: "normal-complete",
+  tier: i + 1,
+  unlocked: (p) => (p?.gacha?.normalsOwned ?? 0) >= n,
+}));
+
+export const GACHA_TITLES = [
+  ...GACHA_FAMILIES.flatMap(gachaTiered),
+  ...GACHA_MULTI_SSR,
+  ...GACHA_FOIL_COMPLETE,
+  ...GACHA_NORMAL_COMPLETE,
+];
+
 export const TITLES = [
   { id: "novice", name: "見習い", how: "最初から", free: true },
   { id: "first", name: "初陣", how: "1局遊ぶ", unlocked: (p) => p.plays >= 1 },
@@ -121,6 +264,8 @@ export const TITLES = [
     foil: true,
     how: `${entry.missionName}\n（ミッション報酬を受け取る）`,
   })),
+  // ガチャの結果で自動解放される称号(段階つき)。一覧の絞り込みは account.jsx。
+  ...GACHA_TITLES,
 ];
 
 /**

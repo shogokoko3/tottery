@@ -91,6 +91,9 @@ const EMPTY = {
   titles: [],
   // 達成したシークレットミッションの id
   secrets: [],
+  // ガチャ称号の実績(collection.gachaStatsOf の写し)。称号判定に使う。獲得した称号は
+  // titles に焼き付くので、表示・共有はこれが無くても効く(2026-09-21)
+  gacha: null,
   plays: 0,
   // 対戦だけの数(チュートリアルを含めない)。ミッションの条件に使う
   battles: 0,
@@ -173,6 +176,19 @@ export function loadProfile() {
     secrets: Array.isArray(saved.secrets)
       ? saved.secrets.filter((x) => typeof x === "string")
       : [],
+    gacha:
+      saved.gacha && typeof saved.gacha === "object" && !Array.isArray(saved.gacha)
+        ? {
+            pulls: Number(saved.gacha.pulls) || 0,
+            freeze: Number(saved.gacha.freeze) || 0,
+            foil: Number(saved.gacha.foil) || 0,
+            ssr: Number(saved.gacha.ssr) || 0,
+            allR: Number(saved.gacha.allR) || 0,
+            bestTenSsr: Number(saved.gacha.bestTenSsr) || 0,
+            foilsOwned: Number(saved.gacha.foilsOwned) || 0,
+            normalsOwned: Number(saved.gacha.normalsOwned) || 0,
+          }
+        : null,
     plays: Number(saved.plays) || 0,
     battles,
     battleWins,
@@ -328,6 +344,29 @@ export function saveTitle(id) {
   const profile = loadProfile();
   if (!hasTitle(profile, id)) return profile;
   const next = { ...profile, title: id };
+  saveProfile(next);
+  return next;
+}
+
+/**
+ * ガチャの実績(collection.gachaStatsOf の結果)をプロフィールに写し、
+ * 新しく使えるようになった称号を焼き付ける(2026-09-21)。
+ * 焼き付ければ、以後は持ち点の称号と同じく titles だけで表示・共有できる。
+ * ガチャ・錬成のあとに呼ぶ。変化がなければ保存しない。
+ */
+export function recordGachaStats(stats) {
+  const profile = loadProfile();
+  if (!stats || typeof stats !== "object") return profile;
+  const next = { ...profile, gacha: stats };
+  const earned = newlyEarned(profile, next).map((t) => t.id);
+  next.titles = [
+    ...next.titles,
+    ...earned.filter((id) => !next.titles.includes(id)),
+  ];
+  const same =
+    JSON.stringify(profile.gacha) === JSON.stringify(next.gacha) &&
+    next.titles.length === profile.titles.length;
+  if (same) return profile;
   saveProfile(next);
   return next;
 }

@@ -346,6 +346,9 @@ export function TitlePickModal({ onClose, onSaved }) {
             if (t.secret && !owned) return null;
             // フォイル・エリアの称号は、フォイルを1枚も持たないうちは見せない
             if (t.foil && !owned && !foilRevealed(getCollection())) return null;
+            // ガチャの段階称号は、各家系3段目までを目標として出す。
+            // 4段目以降は達成した時だけ姿を見せる(2026-09-21 本人の指示)
+            if (t.family && t.tier > 3 && !owned) return null;
             return (
               <button
                 className={`title-choice ${picked === t.id ? "title-choice-on" : ""} ${
