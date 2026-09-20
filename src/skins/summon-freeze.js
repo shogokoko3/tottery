@@ -67,6 +67,16 @@ export function freezeFoilUpgrade(freeze, index, finalId) {
     finalId === foilId(initial.id)
   );
 }
+/** Existing foil identities resolve first; the freeze's bonus SSR→foil is the finale.
+ * Preserve grid order within each group and never change the granted results. */
+export function summonFoilOrder(results, freeze) {
+  const original = [], bonus = [];
+  results.forEach((result, index) => {
+    if (!byId(result.id)?.foil) return;
+    (freezeFoilUpgrade(freeze, index, result.id) ? bonus : original).push(index);
+  });
+  return [...original, ...bonus];
+}
 export function freezeLadder(initialId, finalId) {
   const before = byId(initialId),
     after = byId(finalId);

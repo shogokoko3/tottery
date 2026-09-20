@@ -44,12 +44,22 @@ const flow = await build({
             fs.readFileSync(args.path, "utf8") + "\nexport { SummonReveal };",
           loader: "jsx",
         }));
+        b.onLoad({ filter: /src\/ui\/summon-intro\.jsx$/ }, (args) => ({
+          contents: fs.readFileSync(args.path, "utf8")
+            .replace('const { createPreparedSummonScene } = await import', 'const prepStart = performance.now(); const trace = (phase) => { if (new URLSearchParams(location.search).get("timings") === "1") console.info("召喚準備 " + phase + ": " + Math.round(performance.now() - prepStart) + "ms"); }; const { createPreparedSummonScene } = await import')
+            .replace('scene = await createPreparedSummonScene(cv, plan, () => disposed || finished);', 'trace("コード"); scene = await createPreparedSummonScene(cv, plan, () => disposed || finished); trace("描画初期化");')
+            .replace('await scene.ready;', 'await scene.ready; trace("画像とGPU");')
+            .replace('prepareSummonSound();', 'prepareSummonSound(); trace("カードと音");')
+            .replace('scene.render(0);', 'scene.render(0); trace("初回描画");')
+            .replace('start = now;', 'trace("再生"); start = now;'),
+          loader: "jsx",
+        }));
         b.onLoad({ filter: /src\/skins\/summon-scene\.js$/ }, (args) => ({
           contents: fs
             .readFileSync(args.path, "utf8")
             .replace(
-              "export function createSummonScene(canvas, plan) {",
-              'export function createSummonScene(canvas, plan) { if (new URLSearchParams(location.search).get("no-gl") === "1") throw new Error("preview: WebGL unavailable");',
+              "export function createSummonScene(canvas, plan, sharedRenderer = null) {",
+              'export function createSummonScene(canvas, plan, sharedRenderer = null) { if (new URLSearchParams(location.search).get("no-gl") === "1") throw new Error("preview: WebGL unavailable");',
             ),
           loader: "js",
         }));

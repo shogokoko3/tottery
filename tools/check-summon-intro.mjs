@@ -3,6 +3,7 @@ import fs from "node:fs";
 import vm from "node:vm";
 import { transform } from "esbuild";
 import * as Three from "three";
+import { summonAssetUrls } from "../src/skins/summon-preload.js";
 import { SUMMON_ARCHITECTURE } from "../src/skins/summon-architecture.js";
 import {
   summonPlan,
@@ -86,6 +87,7 @@ assert.match(ui, /visibilitychange/);
 assert.match(ui, /getBoundingClientRect/);
 assert.match(ui, /SUMMON_TIMING\.total \+ 600/);
 assert.doesNotMatch(ui, /debitTickets|updateCollection|Math\.random/);
+assert.doesNotMatch(ui, /召喚の門を準備中|summon-loading/);
 assert.ok(fs.statSync("assets/skins/summon/gate-relief.webp").size > 10000);
 for (const world of ["earth", "sea", "forest", "ice", "sky", "heaven", "hell"])
   assert.ok(fs.statSync(`assets/skins/summon/${world}-hall.webp`).size > 10000);
@@ -240,7 +242,7 @@ function openingHarness() {
   let memo, memoDeps, effectDeps, cleanup;
   const refs = [];
   const changed = (before, after) => !before || after.some((value, i) => value !== before[i]);
-  let finished = 0, played = 0, prepared = 0, stopped = 0, disposed = 0;
+  let finished = 0, played = 0, prepared = 0, stopped = 0, disposed = 0, shown = 0;
   const frames = new Map(), deadlines = new Map(), renders = [], sizes = [], loading = [];
   root.getBoundingClientRect = () => ({ width: 390, height });
   const scene = {
@@ -265,7 +267,7 @@ function openingHarness() {
       if (changed(effectDeps, deps)) { effect = fn; effectDeps = deps; }
     },
     document: doc, window: win,
-    loadScene: async () => ({ createSummonScene: () => scene }),
+    loadScene: async () => ({ createPreparedSummonScene: async (host, plan, cancelled) => cancelled() ? null : scene }),
     prepareSummonSound() { prepared++; },
     startSummonSound() { played++; return () => { stopped++; }; },
     requestAnimationFrame(fn) { frames.set(++id, fn); return id; },
@@ -278,13 +280,13 @@ function openingHarness() {
   const refresh = () => {
     refIndex = 0;
     effect = undefined;
-    sandbox.mountIntro({ results: draw("angel-k:foil"), targetRef, onFinish: () => { finished++; } });
+    sandbox.mountIntro({ results: draw("angel-k:foil"), targetRef, onFinish: () => { finished++; }, onReady: () => { shown++; } });
     if (effect) { cleanup?.(); cleanup = effect(); }
   };
   refresh();
   return {
     root, sizes, renders, loading, frames, deadlines, refresh, cleanup: () => cleanup(),
-    state: () => ({ finished, played, prepared, stopped, disposed }),
+    state: () => ({ finished, played, prepared, stopped, disposed, shown }),
     ready: () => { height = 800; resolveReady(); },
     tick(time) {
       const next = frames.entries().next().value;
@@ -302,22 +304,23 @@ assert.deepEqual(opening.sizes, [[390, 844], [390, 800]], "読み込み後の実
 assert.deepEqual(opening.renders, [0], "初回描画はカバーの下で準備");
 assert.equal(opening.state().prepared, 1);
 assert.equal(opening.state().played, 0);
-opening.tick(1000);
-assert.deepEqual(opening.loading, [true], "描画準備中はカバーを外さない");
+assert.equal(opening.state().shown, 0, "GPUの準備中は元の画面を保つ");
+assert.deepEqual(opening.loading, [true], "描画準備中は元の画面を保つ");
 opening.tick(2500);
 assert.deepEqual(opening.renders, [0, 0], "遅れても最初の表示は0秒から");
-assert.equal(opening.root.style["--loading-opacity"], "1");
+assert.equal(opening.root.style["--entrance-opacity"], "0");
 assert.equal(opening.state().played, 1);
+assert.equal(opening.state().shown, 1, "描画が整った最初のフレームで画面を切り替える");
 opening.tick(2660);
 assert.equal(opening.renders.at(-1), 160);
-assert.equal(opening.root.style["--loading-opacity"], "0.5", "急な切り替えではなくフェード");
+assert.equal(opening.root.style["--entrance-opacity"], "0.5", "急な切り替えではなくフェード");
 opening.refresh();
 await flush();
 assert.equal(opening.state().disposed, 0, "同じ抽選結果の所持情報更新で門を作り直さない");
 assert.equal(opening.state().played, 1, "更新で効果音を再スタートしない");
 assert.equal(opening.renders.at(-1), 160, "同じ結果の更新でカメラを0秒へ巻き戻さない");
 opening.tick(2820);
-assert.equal(opening.root.style["--loading-visibility"], "hidden");
+assert.equal(opening.root.style["--entrance-opacity"], "1");
 opening.tick(11500);
 assert.equal(opening.state().finished, 1);
 assert.equal(opening.state().stopped, 1);
@@ -343,10 +346,13 @@ const sceneCode = (await transform(
   { loader: "js", format: "cjs" },
 )).code;
 let rendered;
+const renderers = [];
 class GeometryRenderer {
+  constructor() { this.disposals = 0; this.lost = false; renderers.push(this); }
+  getContext() { return { isContextLost: () => this.lost }; }
   capabilities = { getMaxAnisotropy: () => 8 };
   setPixelRatio() {} getPixelRatio() { return 1; }
-  setSize() {} initTexture() {} dispose() {}
+  setSize() {} initTexture() {} dispose() { this.disposals++; }
   async compileAsync() {}
   render(scene, camera) {
     scene.updateMatrixWorld(true);
@@ -356,11 +362,17 @@ class GeometryRenderer {
 }
 const geometryContext = {
   module: { exports: {} },
-  window: { devicePixelRatio: 1 },
+  window: { devicePixelRatio: 1, innerWidth: 390, innerHeight: 844 },
+  document: {createElement: () => ({setAttribute() {}, remove() { this.removed = true; }})},
   T: { ...Three, WebGLRenderer: GeometryRenderer, TextureLoader: class {
     async loadAsync() { return new Three.Texture(); }
   } },
   SUMMON_WORLDS, SUMMON_ARCHITECTURE, summonFrame, smooth,
+  summonAssetUrls, loadSummonImage: async () => ({}),
+  makeSummonGoldLight: () => {
+    const group = new Three.Group(); group.userData.update = () => {};
+    return { group, lightLeaf() {} };
+  },
   makeSummonPortal: () => {
     const group = new Three.Group();
     group.userData.update = () => {};
@@ -392,6 +404,30 @@ for (const world of Object.keys(SUMMON_WORLDS)) {
   scene.dispose();
 }
 assert.ok(maxOutlineError < .002, `7エリアの扉/枠の投影位置が一致する: ${maxOutlineError}px`);
+// Warm context survives sequential draws, and is released only after leaving
+// gacha and ending any active scene. Cancellations never attach a stale canvas.
+const {warmSummonRenderer, createPreparedSummonScene} = geometryContext.module.exports;
+const beforeWarm = renderers.length;
+const releaseWarm = warmSummonRenderer();
+await flush();
+const host = { children: [], appendChild(canvas) { this.children.push(canvas); } };
+const scene1 = await createPreparedSummonScene(host, {world: "ice", gold: true, count: 10});
+await scene1.ready;
+assert.equal(renderers.length, beforeWarm + 1, "ガチャ画面で用意したGPUを使う");
+scene1.dispose();
+assert.equal(scene1.renderer.disposals, 0, "次の召喚へGPUを残す");
+const scene2 = await createPreparedSummonScene(host, {world: "hell", gold: false, count: 1});
+await scene2.ready;
+assert.equal(scene1.renderer, scene2.renderer, "別エリアでもGPUを再初期化しない");
+scene1.dispose();
+releaseWarm();
+assert.equal(scene2.renderer.disposals, 0, "再生中のGPUを途中で破棄しない");
+scene2.dispose();
+await flush();
+assert.equal(scene2.renderer.disposals, 1, "画面を離れたらGPUを1回だけ解放する");
+const cancelled = await createPreparedSummonScene(host, {world: "earth", gold: false}, () => true);
+assert.equal(cancelled, null);
+assert.equal(host.children.length, 2, "キャンセルした演出は後から表示しない");
 console.log(
   "召喚導入: 7世界・銅/金・1/10枚・2+2+3+2秒・読込待機/切替/失敗・初回描画/フェード/開始前スキップ・同一結果更新で巻戻しなし・扉/枠の位置一致: OK",
 );

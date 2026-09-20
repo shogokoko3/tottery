@@ -1,4 +1,4 @@
-import { normalizeSummonFreeze, freezeLadder, freezeFoilUpgrade } from "../skins/summon-freeze.js";
+import { normalizeSummonFreeze, freezeLadder, freezeFoilUpgrade, summonFoilOrder } from "../skins/summon-freeze.js";
 import { SummonFreeze, useSummonFreeze } from "./summon-freeze.jsx";
 import { GemIcon, GemAmount } from "./gem.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -107,6 +107,7 @@ import { buyEther } from "../net/wallet.js";
 import { FoilAcquisition } from "./foil-acquisition.jsx";
 import { FoilSeal, FoilUnveiling } from "./foil-unveiling.jsx";
 import { SummonIntro } from "./summon-intro.jsx";
+import { warmSummonIntro } from "../skins/summon-preload.js";
 
 const foilPct = FOIL_CHANCE * 100;
 /**
@@ -448,6 +449,8 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0, freeze: freez
     };
   };
   const [intro, setIntro] = useState(!reduce);
+  const [introReady, setIntroReady] = useState(false);
+  const readyIntro = useCallback(() => setIntroReady(true), []);
   const [freezePhase, releaseFreeze] = useSummonFreeze(!!freeze, intro, reduce);
   const freezeLocked = !!freeze && freezePhase !== "released";
   const revealRef = useRef(null);
@@ -460,7 +463,7 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0, freeze: freez
   );
   const [foilStart, setFoilStart] = useState(false);
   const [revealedFoils, setRevealedFoils] = useState(() => results.map(() => false));
-  const foilIndexes = useMemo(() => results.flatMap((result, index) => byId(result.id)?.foil ? [index] : []), [results]);
+  const foilIndexes = useMemo(() => summonFoilOrder(results, freeze), [results, freeze]);
   const foilRoutes = useMemo(() => results.map((result, index) => freezeFoilUpgrade(freeze, index, result.id) ? "surprise" : foilRevealRoute(byId(result.id), `${drawNumber}#${seedOf(results)}#${index}`)), [results, drawNumber, freeze]);
   const activeFoil = foilStart && !reduce ? foilIndexes.find(index => !revealedFoils[index]) : undefined;
   useEffect(() => {
@@ -530,7 +533,7 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0, freeze: freez
     <SkinModal
       label="スキン召喚"
       onClose={intro ? finishIntro : freeze && !allComplete ? () => {} : onFinish}
-      className={`skin-summon-overlay ${freeze && !intro ? `freeze-phase-${freezePhase}` : ""}`}
+      className={`skin-summon-overlay ${intro ? introReady ? "summon-playing" : "summon-awaiting-frame" : ""} ${freeze && !intro ? `freeze-phase-${freezePhase}` : ""}`}
     >
       <div ref={revealRef} inert={intro || freezeLocked || activeFoil !== undefined || undefined} aria-hidden={intro || freezeLocked || activeFoil !== undefined || undefined} className={`skin-reveal omen-${omen} ${activeFoil !== undefined ? "has-foil-unveiling" : ""} ${intro ? "summon-intro-active" : "summon-arrived"}`}>
         <div className="reveal-omen" aria-hidden="true" />
@@ -597,7 +600,7 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0, freeze: freez
         releaseFreeze();
         setFlipped(results.map(() => true));
       }} />}
-      {intro && <SummonIntro results={results} targetRef={revealRef} onFinish={finishIntro} />}
+      {intro && <SummonIntro results={results} targetRef={revealRef} onFinish={finishIntro} onReady={readyIntro} />}
       {activeFoil !== undefined && <FoilUnveiling
         key={activeFoil}
         skin={byId(results[activeFoil].id)}
@@ -1519,6 +1522,10 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
   const [working, setWorking] = useState(false),
     [message, setMessage] = useState("");
   const busy = useRef(false);
+  useEffect(() => {
+    if (tab === "gacha" && !reduce && collection.summonMotion !== "skip")
+      return warmSummonIntro();
+  }, [tab, reduce, collection.summonMotion]);
   // 開いた時点の所持・実績で、ガチャ称号を同期する(他の入手経路の分も拾う)。
   // profile を書くだけなので collection は再描画しない(2026-09-21)
   useEffect(() => {
