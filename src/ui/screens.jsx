@@ -231,20 +231,10 @@ export function GameShell({
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
       <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES + AREA_STYLES + ROYAL_STYLES + HOME_STYLES}</style>
       <header className="top-bar" ref={barRef}>
-        {/* 戻る釦が無いときは空のまま。飾りの王冠を置いていたが、
-            押せそうに見えて何も起きないので外した。
-            桁は残す(消すと真ん中の題がずれる) */}
-        <div className="top-left">
-          {onBack && (
-            <button
-              className="icon-btn plain"
-              onClick={onBack}
-              aria-label="戻る"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-        </div>
+        {/* 左上の戻る釦は外した。各画面に「ホームに戻る」があり、真ん中の「トッタリー」も
+            ホームへ戻るので重複していた(2026-09-21 本人の指示)。
+            桁(top-left)は空のまま残す。消すと真ん中の題がずれる */}
+        <div className="top-left" />
         {goHome ? (
           <button
             className="brand brand-link"

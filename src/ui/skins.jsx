@@ -489,9 +489,10 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0, freeze: freez
   const allComplete = completed.every(Boolean);
   const hasAreaReward = areaRewardsFor(results).length > 0;
   useEffect(() => {
-    if (!allComplete || !hasAreaReward) return;
-    // 全札の昇格・フォイル完成を見届けてから、盤面の獲得へつなぐ。
-    const timer = setTimeout(onFinish, reduce ? 0 : 400);
+    // 演出を省く設定のときだけ、全札の完成を見届けたら自動で盤面の獲得へつなぐ。
+    // 通常は「結果へ」を自分で押して、10連のめくり結果に余韻を持たせる(2026-09-21 本人の指示)。
+    if (!allComplete || !hasAreaReward || !reduce) return;
+    const timer = setTimeout(onFinish, 0);
     return () => clearTimeout(timer);
   }, [allComplete, hasAreaReward, onFinish, reduce]);
   const completeAt = useCallback((i) => {
@@ -582,7 +583,7 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0, freeze: freez
               すべてめくる
             </button>
           )}
-          {allComplete && !hasAreaReward && (
+          {allComplete && (!hasAreaReward || !reduce) && (
             <button className="skin-btn skin-btn-gold" onClick={onFinish}>
               結果へ →
             </button>

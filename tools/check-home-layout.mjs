@@ -90,7 +90,8 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });
 }
-// 4. 左上の戻る釦は、タイトル以外のすべての画面に出す(2026-09-18 本人の指示)
+// 4. 左上の戻る釦は外した(2026-09-21 本人の指示。各画面に「ホームに戻る」があり重複)。
+//    backFor の戻り先表は、ホームへの戻り先(goHome の予備)を決めるために残す。
 {
   const src = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
   const flat = src.replace(/\s+/g, " ");
