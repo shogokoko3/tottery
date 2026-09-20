@@ -392,6 +392,21 @@ export function dismantle(state, id) {
 }
 
 /**
+ * 同じ通常版のダブりを、まとめてエーテルにする(本人の指示 2026-09-21)。
+ * 錬成で10枚作ったあと、余りをまとめて崩せるように。最後の1枚は必ず残る。
+ */
+export function dismantleMany(state, id, n) {
+  const check = dismantleCheck(state, id, n);
+  if (!check.ok) throw new Error(check.why);
+  return {
+    ...state,
+    owned: { ...state.owned, [id]: state.owned[id] - check.count },
+    acquired: acquiredTotals(state),
+    ether: count(state.ether) + check.gain,
+  };
+}
+
+/**
  * フォイルのダブりを1枚崩して、フォイルの欠片にする(shards.js の決まり)。
  * 最後の1枚は残す。エーテルは増えない。
  */

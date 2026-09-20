@@ -124,9 +124,11 @@ assert.match(
 );
 assert.match(ui, /craftResult\?\.results/, "結果の並びは lastCraft.results も見る");
 assert.match(ui, /<AmountPicker/, "枚数を選ぶ部品を確認の中に置く");
-assert.equal((ui.match(/<AmountPicker/g) || []).length, 2, "錬成と分解の両方に置く");
+// 錬成・フォイルの欠片化・エーテルの一括分解(2026-09-21 追加)の3か所に置く
+assert.equal((ui.match(/<AmountPicker/g) || []).length, 3, "錬成・欠片化・エーテル分解の3つに置く");
 assert.match(ui, /craftMany\(c, skin\.id, n\)/, "まとめ錬成は1回の更新で確定する");
 assert.match(ui, /shatterMany\(c, skin\.id, n\)/, "一括分解も1回の更新で確定する");
+assert.match(ui, /dismantleMany\(c, skin\.id, n\)/, "エーテルの一括分解も1回の更新で確定する");
 assert.match(ui, /setConfirmCraft\(skin\)/, "作るときも確認を挟む(選ぶ→確認→確定)");
 assert.match(picker, /aria-label="1つ増やす"/, "読み上げの名前を付ける");
 assert.match(picker, /最大（\{max\}/, "上限までまとめて選べる");

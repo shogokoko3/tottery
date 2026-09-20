@@ -18,8 +18,8 @@ import {
 } from "../skins/catalog.js";
 import {
   claimFoilMilestone,
-  dismantle,
   dismantleAll,
+  dismantleMany,
   dismantleResults,
   dismantledIndexes,
   DISMANTLE_RARITIES,
@@ -681,6 +681,9 @@ function ForgePanel({
   const [breakN, setBreakN] = useState(1);
   const [confirmCraft, setConfirmCraft] = useState(null);
   const [craftN, setCraftN] = useState(1);
+  // エーテルの一括分解(崩す)。錬成で作った分をまとめて崩せる(本人の指示 2026-09-21)
+  const [confirmDust, setConfirmDust] = useState(null);
+  const [dustN, setDustN] = useState(1);
   // 目安の数字は抽選の中身から引き直す。手で書くと片方だけ古くなる
   const summary = forgeSummary();
   const top = summary.byId("SSR");
@@ -698,11 +701,11 @@ function ForgePanel({
   const readyCount = milestones.filter(({ check }) => check.ok).length;
   const claimedCount = milestones.filter(({ check }) => check.claimed).length;
 
-  const breakOne = async (skin) => {
-    if (await run((c) => dismantle(c, skin.id))) {
-      setConfirmBreak(null);
+  const dustSome = async (skin, n) => {
+    if (await run((c) => dismantleMany(c, skin.id, n))) {
+      setConfirmDust(null);
       setMessage(
-        `「${skin.name}」を崩して ${ETHER_NAME}を ${dustOf(skin)} 得ました。`,
+        `「${skin.name}」を ${n}枚崩して ${ETHER_NAME}を ${dustOf(skin) * n} 得ました。`,
       );
     }
   };
@@ -1088,7 +1091,9 @@ function ForgePanel({
                     <button
                       className="btn btn-ghost btn-small"
                       disabled={working}
-                      onClick={() => breakOne(skin)}
+                      onClick={() => (
+                        setMessage(""), setDustN(1), setConfirmDust(skin)
+                      )}
                     >
                       崩す
                     </button>
@@ -1343,6 +1348,53 @@ function ForgePanel({
           </p>
         </SkinModal>
       )}
+      {confirmDust && (
+        <SkinModal label="崩す確認" onClose={() => setConfirmDust(null)}>
+          <div className="skin-modal-head">
+            <h2>
+              「{confirmDust.name}」を{dustN}枚崩しますか？
+            </h2>
+            <button
+              className="skin-close"
+              aria-label="確認を閉じる"
+              disabled={working}
+              onClick={() => setConfirmDust(null)}
+            >
+              ×
+            </button>
+          </div>
+          <p>
+            「{confirmDust.name}」のダブり{dustN}枚を、{ETHER_NAME}{" "}
+            {(dustOf(confirmDust) * dustN).toLocaleString()}{" "}
+            に変えます。最後の1枚は残ります。
+          </p>
+          <AmountPicker
+            value={dustN}
+            max={Math.max(1, (collection.owned[confirmDust.id] || 0) - 1)}
+            working={working}
+            onChange={setDustN}
+          />
+          <div className="skins-confirm-actions">
+            <button
+              className="skin-btn"
+              disabled={working}
+              onClick={() => setConfirmDust(null)}
+            >
+              やめる
+            </button>
+            <button
+              className="skin-btn skin-btn-gold"
+              disabled={working}
+              onClick={() => dustSome(confirmDust, dustN)}
+            >
+              {dustN}枚崩す（+{(dustOf(confirmDust) * dustN).toLocaleString()}）
+            </button>
+          </div>
+          <p className="skins-message" role="status">
+            {message}
+          </p>
+        </SkinModal>
+      )}
     </div>
   );
 }
@@ -1455,7 +1507,8 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
     reduce = useReducedMotion();
   // 最初に出すタブ。ショップの「フォイルを買う」から来たときは「加工」を開く
   const [tab, setTab] = useState(initialTab),
-    [filter, setFilter] = useState("all");
+    // 所持・装備は最初から「所持」だけを出す。未所持が混ざると装備しづらい(本人の指示 2026-09-21)
+    [filter, setFilter] = useState("owned");
   const [finish, setFinish] = useState("all");
   const [selected, setSelected] = useState(null),
     [odds, setOdds] = useState(false);

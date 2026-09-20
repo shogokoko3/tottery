@@ -88,7 +88,7 @@ export function etherOf(state) {
 }
 
 /** 崩せるか。理由も返す(画面にそのまま出す) */
-export function dismantleCheck(state, id) {
+export function dismantleCheck(state, id, n = 1) {
   const skin = byId(id);
   if (!skin) return { ok: false, why: "その札はありません。" };
   if (isKeepsake(skin))
@@ -105,9 +105,14 @@ export function dismantleCheck(state, id) {
       why: "フォイルはエーテルにせず、欠片にします。「フォイルの交換」から崩してください。",
     };
   if (heldOf(state, id) === 0) return { ok: false, why: "持っていません。" };
-  if (spareOf(state, id) === 0)
-    return { ok: false, why: "最後の1枚は崩せません。" };
-  return { ok: true, gain: dustOf(skin) };
+  // 最後の1枚は必ず残す。まとめて崩すときは枚数ぶんで見る(欠片化と同じ作法)
+  const spare = spareOf(state, id);
+  if (spare === 0) return { ok: false, why: "最後の1枚は崩せません。", spare };
+  if (!Number.isInteger(n) || n < 1)
+    return { ok: false, why: "崩す枚数が正しくありません。", spare };
+  if (n > spare)
+    return { ok: false, why: `崩せるのは ${spare} 枚までです。`, spare };
+  return { ok: true, gain: dustOf(skin) * n, each: dustOf(skin), count: n, spare };
 }
 
 /** 作れるか。理由も返す */
