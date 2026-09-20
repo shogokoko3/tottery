@@ -1,4 +1,5 @@
 import * as T from "three";
+import { loadSummonImage, summonAssetUrls } from "./summon-preload.js";
 import { SUMMON_WORLDS, summonFrame, smooth } from "./summon-plan.js";
 import { SUMMON_ARCHITECTURE } from "./summon-architecture.js";
 import { makeSummonPortal } from "./summon-atmosphere.js";
@@ -40,11 +41,11 @@ function paintedMaterial(texture, gold) {
 }
 
 /** Painted architecture with depth in the stairway and genuinely hinged leaves. */
-export function createSummonScene(canvas, plan) {
+export function createSummonScene(canvas, plan, sharedRenderer = null) {
   const world = SUMMON_WORLDS[plan.world];
   const architecture =
     SUMMON_ARCHITECTURE[plan.world] || SUMMON_ARCHITECTURE.heaven;
-  const renderer = new T.WebGLRenderer({
+  const renderer = sharedRenderer || new T.WebGLRenderer({
     canvas,
     antialias: true,
     alpha: false,
@@ -71,9 +72,10 @@ export function createSummonScene(canvas, plan) {
   const floor = bounds.min.y;
   const doorHeight = bounds.max.y - floor;
 
-  const loader = new T.TextureLoader();
   const loadTexture = async (url) => {
-    const texture = await loader.loadAsync(url);
+    const image = await loadSummonImage(url);
+    const texture = new T.Texture(image);
+    texture.needsUpdate = true;
     if (disposed) {
       texture.dispose();
       return texture;
@@ -83,12 +85,7 @@ export function createSummonScene(canvas, plan) {
     resources.push(texture);
     return texture;
   };
-  const ready = Promise.all([
-    loadTexture(
-      `skins/summon/art-v3/${architecture.asset || `${plan.world}.webp`}`,
-    ),
-    loadTexture(`skins/summon/interior-v4/${plan.world}.webp`),
-  ]).then(async ([texture, interiorTexture]) => {
+  const ready = Promise.all(summonAssetUrls(plan.world).map(loadTexture)).then(async ([texture, interiorTexture]) => {
     if (disposed) {
       return;
     }
@@ -136,6 +133,7 @@ export function createSummonScene(canvas, plan) {
       `,
       );
     };
+    stageMaterial.customProgramCacheKey = () => `summon-edge-${architecture.edge.length}`;
     const stage = new T.Mesh(stageGeometry, stageMaterial);
     scene.add(stage);
 
@@ -286,7 +284,77 @@ export function createSummonScene(canvas, plan) {
     geometries.forEach((g) => g.dispose());
     materials.forEach((m) => m.dispose());
     resources.forEach((r) => r.dispose());
-    renderer.dispose();
+    if (!sharedRenderer) renderer.dispose();
   }
-  return { ready, resize, render, dispose };
+  return { ready, resize, render, dispose, renderer, canvas };
+}
+
+// One warm context per gacha screen. Its offscreen reference scene keeps shared
+// shaders alive; no animation/audio runs here and no draw result is consulted.
+let prepared = null;
+function retirePrepared(entry) {
+  if (entry.retired || entry.users || entry.active) return;
+  entry.retired = true;
+  if (prepared === entry) prepared = null;
+  entry.ready.finally(() => entry.reference.dispose()).catch(() => {});
+}
+export function warmSummonRenderer() {
+  if (!prepared) {
+    const canvas = document.createElement("canvas");
+    let reference;
+    try {
+      reference = createSummonScene(canvas, {world: "heaven", gold: true, count: 10});
+    } catch { return () => {}; }
+    const entry = { canvas, reference, users: 0, active: false, retired: false };
+    prepared = entry;
+    entry.ready = reference.ready.then(() => {
+      if (!entry.retired) {
+        reference.resize(window.innerWidth, window.innerHeight);
+        reference.render(0);
+      }
+    });
+    entry.ready.catch(() => { if (prepared === entry) prepared = null; reference.dispose(); });
+  }
+  const entry = prepared;
+  entry.users++;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    entry.users--;
+    retirePrepared(entry);
+  };
+}
+
+/** Attach the already-initialized canvas only after its warm-up has completed. */
+export async function createPreparedSummonScene(host, plan, cancelled = () => false) {
+  const entry = prepared;
+  if (entry) await entry.ready.catch(() => {});
+  if (cancelled()) return null;
+  const reuse = entry && prepared === entry && !entry.retired && !entry.active && !entry.reference.renderer.getContext().isContextLost();
+  const canvas = reuse ? entry.canvas : document.createElement("canvas");
+  if (reuse) entry.active = true;
+  let scene;
+  try {
+    scene = createSummonScene(canvas, plan, reuse ? entry.reference.renderer : null);
+  } catch (error) {
+    if (reuse) { entry.active = false; retirePrepared(entry); }
+    throw error;
+  }
+  canvas.className = "summon-scene";
+  canvas.setAttribute("aria-hidden", "true");
+  host.appendChild(canvas);
+  const dispose = scene.dispose;
+  let disposed = false;
+  scene.dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    dispose();
+    canvas.remove();
+    if (reuse) {
+      entry.active = false;
+      retirePrepared(entry);
+    }
+  };
+  return scene;
 }

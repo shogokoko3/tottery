@@ -9,32 +9,14 @@ import {
 import STYLES from "../skins/summon-intro.css";
 import { prepareSummonSound, startSummonSound } from "../skins/summon-sound.js";
 
-const LOADING_STYLES = `
-.summon-loading {
-  position: absolute; inset: 0; z-index: 3;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 24px; padding: 24px;
-  background: radial-gradient(ellipse at 50% 44%, #162636, #050b13 70%);
-  color: #e6d1a2; font: 500 14px/1.8 "Shippori Mincho", serif;
-  letter-spacing: .12em; text-align: center;
-  opacity: var(--loading-opacity, 1); pointer-events: none;
-  visibility: var(--loading-visibility, visible);
-}
-.summon-loading-mark {
-  width: 28px; height: 28px; transform: rotate(45deg);
-  border: 1px solid #c6a86c; outline: 1px solid #c6a86c40; outline-offset: 7px;
-  background: radial-gradient(#d7ba7840, transparent 72%);
-  box-shadow: 0 0 28px #c6a86c25;
-}
-.summon-loading p { margin: 0; }
-`;
-
 /** Presentation only. The draw and debit have already been committed. */
-export function SummonIntro({ results, targetRef, onFinish }) {
+export function SummonIntro({ results, targetRef, onFinish, onReady }) {
   const root = useRef(null),
     canvas = useRef(null),
     finishRef = useRef(onFinish);
+  const readyRef = useRef(onReady);
   finishRef.current = onFinish;
+  readyRef.current = onReady;
   // Wallet/storage synchronisation normalises results into a new array even
   // when the draw is unchanged. Keep the scene alive across those updates.
   const { world, gold, count } = summonPlan(results);
@@ -42,8 +24,7 @@ export function SummonIntro({ results, targetRef, onFinish }) {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     setLoading(true);
-    root.current.style.removeProperty("--loading-opacity");
-    root.current.style.removeProperty("--loading-visibility");
+    root.current.style.setProperty("--entrance-opacity", "0");
     let scene,
       raf,
       disposed = false,
@@ -73,16 +54,17 @@ export function SummonIntro({ results, targetRef, onFinish }) {
     // Loading/GPU failure must never hide already-owned cards or ask for another draw.
     deadline = setTimeout(finish, 15000);
     document.addEventListener("visibilitychange", visibility);
-    canvas.current.addEventListener("webglcontextlost", lost);
+    canvas.current.addEventListener("webglcontextlost", lost, true);
     window.addEventListener("resize", resize);
     root.current.addEventListener("summon-finish", cancel);
     const element = root.current,
       cv = canvas.current;
     (async () => {
       try {
-        const { createSummonScene } = await import("../skins/summon-scene.js");
+        const { createPreparedSummonScene } = await import("../skins/summon-scene.js");
         if (disposed || finished || document.hidden) return finish();
-        scene = createSummonScene(cv, plan);
+        scene = await createPreparedSummonScene(cv, plan, () => disposed || finished);
+        if (!scene) return;
         resize();
         await scene.ready;
         // A card cannot land seamlessly until its actual back artwork is decoded.
@@ -93,8 +75,8 @@ export function SummonIntro({ results, targetRef, onFinish }) {
         // Synthesising the first sound must not block the opening camera frames.
         prepareSummonSound();
         // Re-measure after loading (mobile viewport/font layout may have settled).
-        // Keep the cover over the first GPU draw, then start at the first actual
-        // playback frame rather than charging preparation time to the ascent.
+        // Keep the existing gacha screen visible until the first GPU draw is ready.
+        // Preparation time never counts toward the ascent.
         resize();
         scene.render(0);
         function frame(now) {
@@ -103,6 +85,7 @@ export function SummonIntro({ results, targetRef, onFinish }) {
             if (start === undefined) {
               start = now;
               setLoading(false);
+              readyRef.current?.();
               releaseSound = startSummonSound();
               clearTimeout(deadline);
               deadline = setTimeout(finish, SUMMON_TIMING.total + 600);
@@ -115,12 +98,8 @@ export function SummonIntro({ results, targetRef, onFinish }) {
             const cards = element.querySelectorAll(".summon-flight-card");
             element.dataset.stage = f.stage;
             element.style.setProperty(
-              "--loading-opacity",
-              String(1 - smooth(ms / 320)),
-            );
-            element.style.setProperty(
-              "--loading-visibility",
-              ms >= 320 ? "hidden" : "visible",
+              "--entrance-opacity",
+              String(smooth(ms / 320)),
             );
             element.style.setProperty(
               "--scene-opacity",
@@ -161,10 +140,8 @@ export function SummonIntro({ results, targetRef, onFinish }) {
             finish();
           }
         }
-        // Let the warm-up draw reach the compositor while still fully covered.
-        raf = requestAnimationFrame(() => {
-          if (!disposed && !finished) raf = requestAnimationFrame(frame);
-        });
+        // The warm-up draw is submitted above; reveal on the next painted frame.
+        raf = requestAnimationFrame(frame);
       } catch {
         finish();
       }
@@ -175,7 +152,7 @@ export function SummonIntro({ results, targetRef, onFinish }) {
       cancelAnimationFrame(raf);
       releaseSound();
       document.removeEventListener("visibilitychange", visibility);
-      cv.removeEventListener("webglcontextlost", lost);
+      cv.removeEventListener("webglcontextlost", lost, true);
       window.removeEventListener("resize", resize);
       element.removeEventListener("summon-finish", cancel);
       scene?.dispose();
@@ -185,31 +162,29 @@ export function SummonIntro({ results, targetRef, onFinish }) {
     <div
       ref={root}
       className={`summon-intro ${plan.gold ? "is-gold" : "is-bronze"}`}
-      aria-label={loading ? "召喚の門を準備中" : "召喚の門が開いています"}
+      aria-label="召喚の門"
       aria-busy={loading}
       role="group"
     >
-      <style>{STYLES + LOADING_STYLES}</style>
-      <canvas ref={canvas} className="summon-scene" aria-hidden="true" />
-      <div className="summon-loading" aria-hidden="true">
-        <span className="summon-loading-mark" />
-        <p>召喚の門を準備中</p>
-      </div>
-      <div className="summon-cinema-shade" aria-hidden="true" />
-      <div className="summon-world-name" aria-hidden="true">
-        <span>運命の一枚を、この手に。</span>
-        <strong>{SUMMON_WORLDS[plan.world].name}</strong>
-        <i />
-      </div>
-      <div className="summon-flight" aria-hidden="true">
-        {results.map((_, i) => (
-          <img
-            className="summon-flight-card"
-            src={cardBackImg}
-            key={i}
-            alt=""
-          />
-        ))}
+      <style>{STYLES}</style>
+      <div className="summon-intro-visual">
+        <div ref={canvas} className="summon-scene-host" aria-hidden="true" />
+        <div className="summon-cinema-shade" aria-hidden="true" />
+        <div className="summon-world-name" aria-hidden="true">
+          <span>運命の一枚を、この手に。</span>
+          <strong>{SUMMON_WORLDS[plan.world].name}</strong>
+          <i />
+        </div>
+        <div className="summon-flight" aria-hidden="true">
+          {results.map((_, i) => (
+            <img
+              className="summon-flight-card"
+              src={cardBackImg}
+              key={i}
+              alt=""
+            />
+          ))}
+        </div>
       </div>
       <button
         type="button"

@@ -5,7 +5,17 @@
   overflow: hidden;
   background: transparent;
   --scene-opacity: 1;
+  --entrance-opacity: 0;
   --label-opacity: 0;
+}
+.summon-intro-visual {
+  position: absolute;
+  inset: 0;
+  opacity: var(--entrance-opacity);
+}
+.summon-scene-host {
+  position: absolute;
+  inset: 0;
 }
 .summon-scene {
   display: block;

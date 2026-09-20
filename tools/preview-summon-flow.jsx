@@ -1,3 +1,4 @@
+import { warmSummonIntro } from "../src/skins/summon-preload.js";
 import { resolveSummonFreeze } from "../src/skins/summon-freeze.js";
 import { useEffect, useState, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -44,8 +45,37 @@ const initial = freezeSamples[q.get("sample")];
 const packet = initial ? resolveSummonFreeze(initial, () => q.get("sample") === "freeze-nofoil" ? .9 : sampleRoll++ === 0 ? .1 : .7) : null;
 const results = packet ? packet.skins.map(id => ({ id, isNew: true })) : original;
 function Preview() {
-  const [run, setRun] = useState(true),
+  const [run, setRun] = useState(q.get("manual") !== "1"),
     [key, setKey] = useState(0);
+  useEffect(() => warmSummonIntro(), []);
+  useEffect(() => {
+    const delay = Number(q.get("autostart"));
+    if (!delay) return;
+    const timer = setTimeout(() => setRun(true), delay);
+    return () => clearTimeout(timer);
+  }, []);
+  // Visible verification trace: read the same DOM as the player, without
+  // reading hidden card data or affecting the animation clock.
+  const [trace, setTrace] = useState([]);
+  useEffect(() => {
+    if (!run) return;
+    const began = performance.now(), seen = new Set();
+    setTrace([]);
+    const observer = new MutationObserver(() => {
+      const stage = document.querySelector(".summon-intro");
+      if (stage?.getAttribute("aria-busy") === "false" && !seen.has("gate")) {
+        seen.add("gate");
+        setTrace(t => [...t, `門の開始: ${Math.round(performance.now() - began)}ms`]);
+      }
+      const title = document.querySelector(".foil-unveiling-name strong")?.textContent;
+      if (title && !seen.has(title)) {
+        seen.add(title);
+        setTrace(t => [...t, `公開: ${title}`]);
+      }
+    });
+    observer.observe(document.body, {subtree: true, childList: true, attributes: true, attributeFilter: ["aria-busy"]});
+    return () => observer.disconnect();
+  }, [run, key]);
   const [refreshes, setRefreshes] = useState(0);
   const refresh = q.get("refresh") === "1";
   useEffect(() => {
@@ -71,6 +101,7 @@ function Preview() {
           もう一度再生
         </button>
         <p>{run ? "演出中" : "開示完了"}</p>
+        <output aria-label="演出確認記録">{trace.join(" → ")}</output>
       </main>
       {refresh && <output style={{ position: "fixed", top: 8, left: 8, zIndex: 7000, fontSize: 11, background: "#07121ddd", padding: 6, pointerEvents: "none" }}>同じ抽選結果でデータ更新：{refreshes}回</output>}
       {run && (

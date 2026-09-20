@@ -2981,3 +2981,24 @@
   margin: 10px 0 0;
   text-align: center;
 }
+
+/* Retain the gacha page while images/shaders are prepared. The first complete
+   gate frame fades over it; result cards stay hidden until the flight ends. */
+.skin-summon-overlay.summon-awaiting-frame,
+.skin-summon-overlay.summon-awaiting-frame .skin-dialog,
+.skin-summon-overlay.summon-playing,
+.skin-summon-overlay.summon-playing .skin-dialog {
+  background: transparent;
+  box-shadow: none;
+}
+.skin-summon-overlay.summon-awaiting-frame .skin-reveal,
+.skin-summon-overlay.summon-playing .skin-reveal {
+  background: transparent;
+}
+.skin-summon-overlay.summon-playing {
+  animation: summon-stage-background 320ms linear both;
+}
+@keyframes summon-stage-background {
+  0%, 99% { background: transparent; }
+  100% { background: #02070d; }
+}
