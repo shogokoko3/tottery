@@ -215,6 +215,8 @@ try {
       }
     for (const phase of ["reveal", "settle", "complete"]) {
       const html = render({ skin, phase });
+      assert.match(html, /foil-unveiling-cover is-opening/, "封印を消さずに正体の画像へ重ねて引き継ぐ");
+      assert.match(html, /foil-seal-word/, "画像が透明な公開直後も封印が残る");
       assert.ok(html.includes(skin.card));
       assert.ok(html.includes(base.name));
       assert.ok(
@@ -223,6 +225,7 @@ try {
       );
     }
     const failed = render({ skin, phase: "complete", missing: true });
+    assert.ok(!failed.includes("foil-unveiling-cover is-opening"), "画像がない場合は封印を消さない");
     assert.ok(
       failed.includes(base.name),
       "failed artwork still resolves with the correct name",
@@ -231,6 +234,9 @@ try {
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
 }
+const css = fs.readFileSync("src/ui/foil-unveiling.css", "utf8");
+assert.match(css, /@keyframes foil-cover-release\s*\{\s*0%, 25%\s*\{\s*opacity:\s*1;/, "キャラ画像が現れ始めるまで封印を完全に保つ");
+assert.match(css, /@keyframes foil-identity-bloom\s*\{\s*0%\s*\{\s*opacity:\s*0\.85;/, "公開の最初のフレームから発光をつなぐ");
 console.log(
   `フォイルの正体: 開示前の絵・名前・レアリティ・読み上げを伏せる／開示時に完成箔／SSR2経路50% (${special}/10000)／時間境界と中断: OK`,
 );
