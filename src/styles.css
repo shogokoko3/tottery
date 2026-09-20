@@ -3556,8 +3556,9 @@ body:has(.skin-overlay) {
 .settings-panel {
   text-align: left;
   padding-top: 14px;
-  /* 中身が縦に長いので、画面をもう少し使う */
-  max-height: 88vh;
+  /* タブを切り替えても高さが変わらないよう、一定の高さにする。中身は settings-body が
+     受けて送る(2026-09-21 本人の指示「高さがバラバラ」)。端末ごとに 88vh を上限に固定 */
+  height: min(88vh, 640px);
   /* 見出し・タブ・閉じるは動かさず、中身だけを送る(2026-09-18) */
   display: flex;
   flex-direction: column;
@@ -3594,10 +3595,19 @@ body:has(.skin-overlay) {
   letter-spacing: 0;
   white-space: nowrap;
 }
+/* いま開いている種類を一目で分かるように。未選択は沈め、選択は金色で強調(2026-09-21 本人の指示) */
+.settings-tabs [aria-selected="false"] {
+  opacity: 0.45;
+  filter: saturate(0.6);
+}
 .settings-tabs [aria-selected="true"] {
   background: linear-gradient(#f1dfaa, #cbb274);
   color: #262016;
   border-color: #f1d184;
+  font-weight: 700;
+  box-shadow:
+    0 0 0 2px rgba(241, 209, 132, 0.4),
+    0 3px 10px rgba(0, 0, 0, 0.3);
 }
 .settings-body {
   flex: 1;
