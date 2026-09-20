@@ -1007,7 +1007,15 @@ export function GameView({
               </button>
             )
           )}
-          {tutorial ? null : rematch ? (
+          {tutorial ? (
+            // チュートリアルは「ホームへ」を主にし、使う回数が少ないタイトルへの戻りは
+            // ここ(4マス目)に置く(2026-09-21 本人の指示)
+            onExit && (
+              <button className="btn btn-ghost go-again" onClick={onExit}>
+                {exitLabel}
+              </button>
+            )
+          ) : rematch ? (
             // オンラインは両者の合意で始める。片方だけで盤を作り直すと、
             // 相手は準備ができていないまま次の対局に入ってしまう
             rematch.foeLeft ? (
@@ -2062,12 +2070,10 @@ export function GameCore({
       // x(自分が指せるか)はこの下で作るので使わない。台本の対局で、盤が動く場面だけ
       if (!tutorial || a.phase !== "play" || fxBusy || a.captureReveal) return null;
       const step = tutActive || (tutIdx >= 0 ? tutorial.steps[tutIdx] : null);
-      const need =
-        step && step.need
-          ? step.need
-          : tutorial && tutIdx >= 0
-            ? (upcomingNeedStep(tutorial, tutIdx, a) || {}).need
-            : null;
+      // 先読み(upcomingNeedStep)はしない。説明のページでモーションが早く出て、
+      // 文言と噛み合わなかった(2026-09-21 本人の指示)。いま開いているページの
+      // need が「駒を動かす」のときだけ、その道筋を見せる。
+      const need = step && step.need ? step.need : null;
       if (!need || need.type !== "MOVE_PIECE") return null;
       const piece = a.pieces[need.pieceId];
       if (!piece || !piece.alive) return null;

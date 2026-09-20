@@ -15,7 +15,9 @@ assert.ok(grid.indexOf("go-review") < grid.indexOf("go-match") && grid.indexOf("
 assert.doesNotMatch(game, /次の相手と対戦する|対局を振り返る<\/button>/, "古い文言を残さない");
 assert.match(game, /function goHome\(\) \{\s*tidyRoom\(\);\s*onHome\(\);/, "ホームへ戻る前に部屋を片付ける");
 assert.match(game, /onNextMatch=\{\(network \|\| bot\) && onNextMatch \? nextMatch : null\}/, "Bot 戦のあとも連戦できる");
-assert.match(screens, /onHome=\{tut \? null : goHome\}/, "画面側がホームへを渡す(チュートリアル以外)");
+// チュートリアルの終了画面にも「ホームへ」を出す。タイトルに戻るは右下(go-again)に置く(2026-09-21)
+assert.match(screens, /onHome=\{goHome\}/, "画面側がホームへを渡す(チュートリアルでも)");
+assert.match(game, /\{tutorial \? \(\s*\/\/[\s\S]*?onExit && \(\s*<button className="btn btn-ghost go-again" onClick=\{onExit\}>\s*\{exitLabel\}/, "チュートリアルは右下にタイトルへ戻るを置く");
 for (const [cls, area] of [["go-review", "1 / 1"], ["go-match", "1 / 2"], ["go-home", "2 / 1"], ["go-again", "2 / 2"]])
   assert.match(css, new RegExp(`\\.gameover-grid \\.${cls} \\{ grid-area: ${area.replace(/\//g, "\\/")}; \\}`), `${cls} は ${area}`);
 assert.match(css, /\.gameover-grid \.hint \{\s*grid-column: 1 \/ -1;/, "案内文は全幅");

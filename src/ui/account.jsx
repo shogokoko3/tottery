@@ -359,8 +359,17 @@ export function TitlePickModal({ onClose, onSaved }) {
                 key={t.id}
               >
                 <b>{t.name}</b>
+                {/* 獲得済みでも、どんな条件で取れたかを出す(2026-09-21 本人の指示) */}
                 <small>
-                  {owned ? (t.free ? "最初から" : "手に入れた") : t.how}
+                  {t.free
+                    ? "最初から"
+                    : t.how
+                      ? owned
+                        ? `取得済み · ${t.how}`
+                        : t.how
+                      : owned
+                        ? "手に入れた"
+                        : ""}
                 </small>
               </button>
             );

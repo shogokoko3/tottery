@@ -2053,7 +2053,9 @@ function TotteryScreens() {
             onTutorialList={showTutorials}
             onExit={tut ? s : backToMatching}
             exitLabel={tut ? "タイトルに戻る" : "対戦相手を選ぶに戻る"}
-            onHome={tut ? null : goHome}
+            // チュートリアルの終了画面にも「ホームへ」を出す。タイトルに戻るは使う回数が
+            // 少ないので、ホームを主にする(2026-09-21 本人の指示)
+            onHome={goHome}
             onNextMatch={(a && a.random) || bot ? nextRandomMatch : null}
           />
         </AppearanceSeats>
