@@ -741,6 +741,16 @@
 .skins-result.is-dismantled .skins-result-foil {
   color: #6f7986;
 }
+/* フォイルを装備中のとき、通常版の装備釦の代わりに出す控えめな注記(2026-09-21) */
+.skins-result-equipped-foil {
+  display: block;
+  margin-top: 4px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: #e6c877;
+}
 .single-result {
   max-width: 210px;
   margin: 0 auto;
@@ -1419,10 +1429,31 @@
   font-size: 10px;
   opacity: 0.8;
 }
+/* 未選択は明確に沈め、いま開いている作業を一目で分かるようにする(2026-09-21 本人の指示) */
+.forge-work-picker [aria-selected="false"] {
+  opacity: 0.45;
+  filter: saturate(0.6);
+}
 .forge-work-picker [aria-selected="true"] {
   background: linear-gradient(#f1dfaa, #cbb274);
   color: #262016;
   border-color: #f1d184;
+  font-weight: 700;
+  box-shadow:
+    0 0 0 2px rgba(241, 209, 132, 0.4),
+    0 4px 14px rgba(0, 0, 0, 0.35);
+}
+/* 選択中のタブに「表示中」の小さな印を付ける */
+.forge-work-picker [aria-selected="true"]::after {
+  content: "表示中";
+  margin-top: 2px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #262016;
+  color: #f1dfaa;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 /* 引いた札の下に、そのキャラの所持(通常・フォイル)を出す(2026-09-18 本人の指示) */

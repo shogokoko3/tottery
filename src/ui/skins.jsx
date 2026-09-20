@@ -2371,15 +2371,26 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                         {foil ? (foilHeld ? "フォイル所持" : "フォイル未所持") : ""}
                       </small>
                     )}
-                    <button
-                      className="skin-btn"
-                      disabled={working || collection.equipped[s.rank] === s.id}
-                      onClick={() => equipSkin(s)}
-                    >
-                      {collection.equipped[s.rank] === s.id
-                        ? "装備中"
-                        : `${s.rank}に装備`}
-                    </button>
+                    {/* このキャラのフォイルを所持・装備しているときは、通常版の装備釦を出さない。
+                        上位のフォイルが付いているのに通常版へ戻す操作は紛らわしい(2026-09-21 本人の指示) */}
+                    {!s.foil &&
+                    foil &&
+                    foilHeld &&
+                    collection.equipped[s.rank] === foil.id ? (
+                      <small className="skins-result-equipped-foil">
+                        フォイルを装備中
+                      </small>
+                    ) : (
+                      <button
+                        className="skin-btn"
+                        disabled={working || collection.equipped[s.rank] === s.id}
+                        onClick={() => equipSkin(s)}
+                      >
+                        {collection.equipped[s.rank] === s.id
+                          ? "装備中"
+                          : `${s.rank}に装備`}
+                      </button>
+                    )}
                   </article>
                 );
               })}
