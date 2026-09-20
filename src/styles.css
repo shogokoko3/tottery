@@ -2570,7 +2570,12 @@ body:has(.skin-overlay) {
 
 /* 台本の動きの見本。薄い駒が、動かしてほしい道を繰り返しなぞる */
 .tutorial-move-ghost {
-  position: relative;
+  /* 盤のグリッドの子だが、absolute にして「セルの枠」を消費させない。
+     in-flow だと 25 マスが押し出されて 6 段にあふれ、盤全体がズレる(2026-09-20 修正)。
+     grid-row/column に終端を明示(span 1)して1マスに収め、inset:0 でそのマスを満たす。
+     translate のアニメは自分のサイズ(=1マス)基準なので、道を正しくなぞる。 */
+  position: absolute;
+  inset: 0;
   z-index: 40;
   display: grid;
   place-items: center;

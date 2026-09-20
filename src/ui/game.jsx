@@ -2993,8 +2993,9 @@ export function GameCore({
                   className="tutorial-move-ghost"
                   aria-hidden="true"
                   style={{
-                    gridRow: (Jl ? R - 1 - tutMoveHint.from.row : tutMoveHint.from.row) + 1,
-                    gridColumn: (Jl ? R - 1 - tutMoveHint.from.col : tutMoveHint.from.col) + 1,
+                    // absolute なので終端を明示しないと盤の端まで伸びる。span 1 で1マスに収める
+                    gridRow: `${(Jl ? R - 1 - tutMoveHint.from.row : tutMoveHint.from.row) + 1} / span 1`,
+                    gridColumn: `${(Jl ? R - 1 - tutMoveHint.from.col : tutMoveHint.from.col) + 1} / span 1`,
                     "--dr": Jl
                       ? tutMoveHint.from.row - tutMoveHint.to.row
                       : tutMoveHint.to.row - tutMoveHint.from.row,
