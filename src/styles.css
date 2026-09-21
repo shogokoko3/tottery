@@ -217,7 +217,14 @@ h3 {
 .gameover-grid .btn {
   min-width: 0;
   padding-inline: 8px;
-  white-space: nowrap;
+  /* 「チュートリアル一覧へ」など長い文字が枠からはみ出していたので、折り返しを許可する。
+     1行/2行が混ざっても高さをそろえる(2026-09-21 本人の報告) */
+  white-space: normal;
+  line-height: 1.25;
+  font-size: 13px;
+  text-align: center;
+  justify-content: center;
+  min-height: 46px;
 }
 .gameover-grid .go-review { grid-area: 1 / 1; }
 .gameover-grid .go-match { grid-area: 1 / 2; }
