@@ -11,6 +11,7 @@
     "ios:archive": "sh tools/ios-release.sh archive",
     "ios:upload": "sh tools/ios-release.sh upload",
     "ios:testflight": "sh tools/ios-release.sh all",
+    "ios:deploy": "sh tools/deploy-testflight.sh",
     "android:sync": "ASSETS=compact node build.mjs && npx cap copy android && node tools/strip-public.mjs android",
     "android:debug": "sh tools/android-release.sh debug",
     "android:bundle": "sh tools/android-release.sh bundle",
