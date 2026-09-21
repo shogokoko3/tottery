@@ -296,6 +296,8 @@ export function TutorialSheet({
   // この話を飛ばす(確認のあと)。無ければ出さない
   onSkip = null,
   skipXp = 0,
+  // 中断してやめる(クリアにせずホームへ)。常に見える位置に出す(2026-09-21 本人の指示)
+  onInterrupt = null,
   // 盤の上に重ねて出す(一覧のような読ませたい札)。盤の下は読まれにくい
   overlay = false,
 }) {
@@ -424,14 +426,27 @@ export function TutorialSheet({
             </button>
           </div>
         )}
-        {onSkip && !step.end && (
-          <button
-            type="button"
-            className="tutorial-skip"
-            onClick={() => setConfirm(true)}
-          >
-            この話を飛ばす
-          </button>
+        {(onSkip || onInterrupt) && !step.end && (
+          <div className="tutorial-sheet-foot">
+            {onInterrupt && (
+              <button
+                type="button"
+                className="tutorial-skip"
+                onClick={onInterrupt}
+              >
+                中断してやめる
+              </button>
+            )}
+            {onSkip && (
+              <button
+                type="button"
+                className="tutorial-skip"
+                onClick={() => setConfirm(true)}
+              >
+                この話を飛ばす
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

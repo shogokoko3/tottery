@@ -80,7 +80,11 @@ const reset = () => {
   assert.ok(/onClick=\{\(\) => setConfirmSkip\(true\)\}/.test(ui), "一覧の「飛ばす」は確認を挟む");
   assert.ok(/const after = skipTutorials\(left\);\s*setProfile\(after\);\s*publishPlayer\(after\);/.test(ui), "確認のあとに飛ばし、画面と台帳を更新");
   assert.ok(/onClick=\{\(\) => setConfirm\(true\)\}/.test(ui), "案内の札の「この話を飛ばす」も確認を挟む");
-  assert.ok(/onSkip && !step\.end && \(/.test(ui), "終わりの札には出さない");
+  assert.ok(/\(onSkip \|\| onInterrupt\) && !step\.end && \(/.test(ui), "終わりの札には出さない");
+  // 中断してやめる(クリアにせずホームへ)を、常に見える説明パネル下部に出す(2026-09-21)
+  assert.ok(/onClick=\{onInterrupt\}[\s\S]*?中断してやめる/.test(ui), "説明パネルに「中断してやめる」を出す");
+  const game0 = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
+  assert.ok(/onInterrupt=\{onHome \? goHome : onExit\}/.test(game0), "中断はホーム(なければタイトル)へ");
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
   assert.ok(/const after = skipTutorials\(\[tutorial\]\);\s*publishPlayer\(after\);\s*if \(nextTutorial && onNextTutorial\) onNextTutorial\(\);/.test(game), "対局中に飛ばすと、その話を終えた扱いで次の話へ");
   assert.ok(/skipXp=\{tutorial\.xp \|\| 0\}/.test(game));

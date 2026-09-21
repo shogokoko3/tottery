@@ -5223,6 +5223,17 @@ body:has(.skin-overlay) {
   text-align: center;
 }
 /* チュートリアルを飛ばす。案内の札では一番下に小さく、一覧では一番下に */
+/* 説明パネル下部の「中断してやめる」「この話を飛ばす」を横に並べる(2026-09-21) */
+.tutorial-sheet-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  margin-top: 2px;
+}
+.tutorial-sheet-foot .tutorial-skip {
+  margin: 0;
+}
 .tutorial-skip {
   display: block;
   margin: 4px auto 0;

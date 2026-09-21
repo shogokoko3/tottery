@@ -2090,6 +2090,8 @@ export function GameCore({
         owner: piece.owner,
         rank: piece.rank,
         suit: piece.suit,
+        // 王なら見本も王(金・冠)で見せる。王に選ぶ前の姿が出ていた(2026-09-21 本人の指示)
+        isKing: piece.isKing,
       };
     })(),
     // 盤や手札の上に「ここを触る」印が出ていないときは、
@@ -2155,6 +2157,8 @@ export function GameCore({
             else onExit();
           }}
           skipXp={tutorial.xp || 0}
+          // 中断: クリアにせずホームへ(あとで最初から)。常に見える位置に出す
+          onInterrupt={onHome ? goHome : onExit}
         />
       ) : tutHold ? (
         <TutorialSheet
@@ -3022,6 +3026,7 @@ export function GameCore({
                     owner={tutMoveHint.owner}
                     rank={tutMoveHint.rank}
                     suit={tutMoveHint.suit}
+                    isKing={tutMoveHint.isKing}
                     size={R >= 9 ? "xs" : "sm"}
                   />
                 </span>
