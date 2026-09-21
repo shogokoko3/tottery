@@ -23,7 +23,7 @@ import { foilRevealed } from "../skins/collection.js";
 import { getCollection } from "../skins/store.js";
 import { publishPlayer, registerPlayer } from "../net/players.js";
 import { ICONS, hasIcon } from "../game/icons.js";
-import { Check, Close, Sparkle } from "../icons.jsx";
+import { Check, Close, Lock, Sparkle } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
 import { TitleFrame } from "./title-frame.jsx";
 
@@ -316,6 +316,55 @@ export function IconPickModal({ onClose, onSaved }) {
 }
 
 /**
+ * 一覧に並べる称号ひとつ。
+ *
+ * 取得済みと未取得がひと目で分かることを最優先にする(2026-09-22 本人の指示)。
+ * 額縁を入れたときに「薄くする」指定が打ち消され、どちらも同じ濃さで並んでいた。
+ * いまは 色(未取得は灰色)・錠前・枠線・並ぶ場所 の4つで分けている。
+ */
+function TitleChoice({ title: t, owned, picked, onPick }) {
+  return (
+    <button
+      className={`title-choice ${picked ? "title-choice-on" : ""} ${
+        owned ? "" : "title-choice-locked"
+      }`}
+      disabled={!owned}
+      aria-pressed={owned ? !!picked : undefined}
+      onClick={() => owned && onPick(t.id)}
+    >
+      <span className="title-choice-state">
+        {picked ? (
+          <>
+            <Check size={12} /> 選択中
+          </>
+        ) : owned ? (
+          <>
+            <Check size={12} /> 取得済み
+          </>
+        ) : (
+          <>
+            <Lock size={12} /> 未取得
+          </>
+        )}
+      </span>
+      <TitleFrame id={t.id} />
+      {/* 獲得済みでも、どんな条件で取れたかを出す(2026-09-21 本人の指示) */}
+      <small>
+        {t.free
+          ? "最初から"
+          : t.how
+            ? owned
+              ? `取得済み · ${t.how}`
+              : t.how
+            : owned
+              ? "手に入れた"
+              : ""}
+      </small>
+    </button>
+  );
+}
+
+/**
  * 称号を選ぶ画面。
  *
  * シークレット以外は、まだ手に入れていないものも並べて、手に入れ方を見せる。
@@ -325,6 +374,20 @@ export function TitlePickModal({ onClose, onSaved }) {
   const profile = loadProfile();
   const collection = useCollection();
   const [picked, setPicked] = useState(titleOf(profile).id);
+  // 取得済みを先、未取得をあとにまとめる。混ぜて並べると、色を分けても
+  // 「どこまでが自分のものか」が読み取れない(2026-09-22 本人の指示)
+  const visible = availableTitles(profile).filter((t) => {
+    const owned = hasTitle(profile, t.id);
+    if (t.secret && !owned) return false;
+    // フォイル・エリアの称号は、フォイルを1枚も持たないうちは見せない
+    if (t.foil && !owned && !foilRevealed(getCollection())) return false;
+    // ガチャの段階称号は、各家系3段目までを目標として出す。
+    // 4段目以降は達成した時だけ姿を見せる(2026-09-21 本人の指示)
+    if (t.family && t.tier > 3 && !owned) return false;
+    return true;
+  });
+  const mine = visible.filter((t) => hasTitle(profile, t.id));
+  const locked = visible.filter((t) => !hasTitle(profile, t.id));
 
   function submit() {
     const next = saveTitle(picked);
@@ -359,48 +422,28 @@ export function TitlePickModal({ onClose, onSaved }) {
             />
           </div>
           <div className="title-list">
-            {availableTitles(profile).map((t) => {
-              const owned = hasTitle(profile, t.id);
-              if (t.secret && !owned) return null;
-              // フォイル・エリアの称号は、フォイルを1枚も持たないうちは見せない
-              if (t.foil && !owned && !foilRevealed(getCollection()))
-                return null;
-              // ガチャの段階称号は、各家系3段目までを目標として出す。
-              // 4段目以降は達成した時だけ姿を見せる(2026-09-21 本人の指示)
-              if (t.family && t.tier > 3 && !owned) return null;
-              return (
-                <button
-                  className={`title-choice ${picked === t.id ? "title-choice-on" : ""} ${
-                    owned ? "" : "title-choice-locked"
-                  }`}
-                  disabled={!owned}
-                  aria-pressed={picked === t.id}
-                  onClick={() => owned && setPicked(t.id)}
-                  key={t.id}
-                >
-                  <span className="title-choice-state">
-                    {picked === t.id
-                      ? "✓ 選択中"
-                      : owned
-                        ? "取得済み"
-                        : "未取得"}
-                  </span>
-                  <TitleFrame id={t.id} />
-                  {/* 獲得済みでも、どんな条件で取れたかを出す(2026-09-21 本人の指示) */}
-                  <small>
-                    {t.free
-                      ? "最初から"
-                      : t.how
-                        ? owned
-                          ? `取得済み · ${t.how}`
-                          : t.how
-                        : owned
-                          ? "手に入れた"
-                          : ""}
-                  </small>
-                </button>
-              );
-            })}
+            <p className="title-group-head title-group-head-mine">
+              <Check size={13} />
+              使える称号 <b>{mine.length}</b>
+            </p>
+            {mine.map((t) => (
+              <TitleChoice
+                key={t.id}
+                title={t}
+                owned
+                picked={picked === t.id}
+                onPick={setPicked}
+              />
+            ))}
+            {locked.length > 0 && (
+              <p className="title-group-head">
+                <Lock size={13} />
+                まだ取れていない称号 <b>{locked.length}</b>
+              </p>
+            )}
+            {locked.map((t) => (
+              <TitleChoice key={t.id} title={t} owned={false} />
+            ))}
           </div>
           <p className="hint">
             未取得の称号は、条件を満たすと使えるようになります。

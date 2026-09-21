@@ -2982,14 +2982,41 @@ body:has(.skin-overlay) {
   color: var(--gold-soft);
   box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.5);
 }
+/* 未取得。全体を薄くすると「未取得」の文字まで読めなくなるので、
+   薄くするのは額縁だけ(title-frame.css)。こちらは枠と地の色で分ける。
+   破線＝まだ開いていない、という読み方(2026-09-22 本人の指示) */
 .title-choice-locked {
-  opacity: 0.45;
   cursor: default;
+  border-style: dashed;
+  border-color: #3a455e;
+  background: rgba(9, 20, 38, 0.25);
 }
 /* ミッション報酬の称号は取得方法に改行が入る。その改行を活かす */
 .title-choice-locked small {
   white-space: pre-line;
 }
+/* 一覧の見出し。取得済みと未取得を、色だけでなく「並ぶ場所」でも分ける */
+.title-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 8px 2px 4px;
+  border-bottom: 1px solid var(--line);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #8e9bb3;
+}
+.title-group-head b {
+  margin-left: auto;
+  font-size: 12px;
+}
+.title-group-head-mine {
+  color: var(--gold-soft);
+  border-bottom-color: rgba(212, 175, 55, 0.35);
+}
+
 /* 時計の欄: 名前の下に称号 */
 .clock-name {
   display: flex;
