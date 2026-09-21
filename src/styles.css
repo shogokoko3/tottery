@@ -2935,11 +2935,14 @@ body:has(.skin-overlay) {
   max-height: 46vh;
   overflow-y: auto;
 }
+/* 称号は縦並び。称号名が上、取得方法が下。2行になってよい(2026-09-21 本人の指示)。
+   以前は名前と取得方法を横並びにしていて、取得方法が長いと名前が細い列に
+   押し込まれ、1文字ずつ縦に積まれて横にもあふれていた */
 .title-choice {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--line);
@@ -2948,33 +2951,32 @@ body:has(.skin-overlay) {
   text-align: left;
   cursor: pointer;
 }
+.title-choice b,
+.title-choice small {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .title-choice b {
   font-family: "Shippori Mincho", serif;
+  line-height: 1.4;
 }
 .title-choice small {
   font-size: 11px;
   color: var(--text-dim);
-  flex: none;
+  line-height: 1.5;
 }
 .title-choice-on {
   border-color: var(--gold);
-  background: rgba(212, 175, 55, 0.16);
+  background: rgba(212, 175, 55, 0.18);
   color: var(--gold-soft);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.5);
 }
 .title-choice-locked {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
   opacity: 0.45;
   cursor: default;
 }
-.title-choice-locked b,
-.title-choice-locked small {
-  min-width: 0;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  line-height: 1.6;
-}
+/* ミッション報酬の称号は取得方法に改行が入る。その改行を活かす */
 .title-choice-locked small {
   white-space: pre-line;
 }
@@ -3816,6 +3818,7 @@ body:has(.skin-overlay) {
   margin: 14px 0;
 }
 .icon-choice {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3827,10 +3830,31 @@ body:has(.skin-overlay) {
   color: var(--text-dim);
   cursor: pointer;
 }
+/* 選択中を一目で分かるように、金のリングと✓バッジを付ける(2026-09-21 本人の指示) */
 .icon-choice-on {
   border-color: var(--gold);
-  background: rgba(212, 175, 55, 0.16);
+  background: rgba(212, 175, 55, 0.24);
   color: var(--gold-soft);
+  box-shadow:
+    0 0 0 2px var(--gold),
+    0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.icon-choice-on::after {
+  content: "✓";
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #201a10;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
 }
 .icon-choice-locked {
   opacity: 0.38;
