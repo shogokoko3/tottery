@@ -17,8 +17,9 @@ assert.match(game, /function goHome\(\) \{\s*tidyRoom\(\);\s*onHome\(\);/, "ホ�
 assert.match(game, /onNextMatch=\{\(network \|\| bot\) && onNextMatch \? nextMatch : null\}/, "Bot 戦のあとも連戦できる");
 // チュートリアルの終了画面: 左下(go-home)にタイトルへ戻る、右下(go-again)にホームへ(2026-09-21 本人の指示で左右入れ替え)
 // チュートリアルのホームへはハブ(menu)、それ以外は従来の goHome
-assert.match(screens, /onHome=\{tut \? goMenu : goHome\}/, "チュートリアルのホームへはハブ(menu)へ");
-assert.match(screens, /function goMenu\(\) \{\s*\(u\(null\), m\(!1\), setTut\(null\), t\("menu"\)\);/, "goMenu はハブへ戻す");
+// 対局後の「ホームへ」は(通常もチュートリアルも)ハブ(menu)へ。タイトル(home)ではない
+assert.match(screens, /onHome=\{goMenu\}/, "ホームへはハブ(menu)へ");
+assert.match(screens, /function goMenu\(\) \{\s*\(dropNearby\(\), w\(!1\), u\(null\), m\(!1\), setTut\(null\), t\("menu"\)\);/, "goMenu は後片付けしてハブへ");
 assert.match(game, /\{tutorial \? \(\s*\/\/[\s\S]*?onExit && \(\s*<button className="btn btn-ghost go-home" onClick=\{onExit\}>\s*\{exitLabel\}/, "チュートリアルは左下にタイトルへ戻る");
 assert.match(game, /\{tutorial \? \(\s*\/\/[\s\S]*?onHome && \(\s*<button className="btn btn-ghost go-again" onClick=\{onHome\}>[\s\S]*?ホームへ/, "チュートリアルは右下にホームへ");
 for (const [cls, area] of [["go-review", "1 / 1"], ["go-match", "1 / 2"], ["go-home", "2 / 1"], ["go-again", "2 / 2"]])
