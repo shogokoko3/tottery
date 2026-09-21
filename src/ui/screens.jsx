@@ -349,7 +349,7 @@ function HomeSelf({ profile }) {
           手に入れた甲斐が伝わらない(2026-09-22 本人の指示) */}
       <TitleFrame
         id={titleOf(profile).id}
-        size="standard"
+        size="compact"
         className="home-self-title"
       />
       <span className="home-self-bar">
