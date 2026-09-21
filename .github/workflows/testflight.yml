@@ -107,3 +107,5 @@ jobs:
           export ASC_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           export BUILD_NUMBER="$(date +%Y%m%d%H%M)"
           npm run ios:testflight
+
+# 稼働確認済み(2026-09-21, TestFlight #10 成功)。main への push で自動起動する。
