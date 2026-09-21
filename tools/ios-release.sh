@@ -51,9 +51,11 @@ fi
 if [ "$step" = "upload" ] || [ "$step" = "all" ]; then
   rm -rf "$EXPORT"
   if [ -n "${SIGNING_PROFILE:-}" ]; then
-    # 手動署名: CI 用の ExportOptions(手動・プロファイル指定)を使う。クラウド署名はしない
+    # 手動署名で書き出し。クラウド署名(-allowProvisioningUpdates)はしないが、
+    # ExportOptions の destination:upload によるアップロードの認証に API キーは要る。
+    # shellcheck disable=SC2086
     xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$EXPORT" \
-      -exportOptionsPlist ios/ExportOptions-ci.plist
+      -exportOptionsPlist ios/ExportOptions-ci.plist $AUTH_ARGS
   else
     # shellcheck disable=SC2086
     xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$EXPORT" \
