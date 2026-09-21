@@ -1,4 +1,5 @@
 import { findTitle } from "../game/titles.js";
+import { byId } from "../skins/catalog.js";
 
 // Appearance is derived from the existing title ID, so both online seats use the
 // same frame without changing saves, rewards, or the network protocol.
@@ -19,42 +20,43 @@ const PALETTES = {
   blood: ["#ffbcbd", "#d66d8e", "#3c1932", "#ffeaf2"],
 };
 
-// motif, palette, ornament level (1–6). Each character has its own pairing.
+// Motif and palette describe the story; acquisition difficulty sets the frame.
+// Do not use the character's rank (J/Q/K) as its acquisition rarity.
 const DESIGNS = {
-  novice: ["laurel", "steel", 1],
-  first: ["sword", "bronze", 1],
-  ten: ["shield", "steel", 2],
-  fifty: ["shield", "royal", 3],
-  win10: ["sword", "flame", 2],
-  win30: ["dragon", "flame", 4],
-  rated: ["star", "tide", 2],
-  fortress: ["ice", "ice", 4],
-  "twin-wings": ["wing", "sky", 4],
-  "heir-hunt": ["trail", "earth", 4],
-  elimination: ["leaf", "forest", 4],
-  kamikaze: ["wave", "tide", 4],
-  "royal-road": ["crown", "royal", 5],
-  "court-heavy": ["cards", "blood", 6],
-  regular: ["laurel", "forest", 2],
-  devoted: ["sun", "gold", 3],
-  "rank-shi": ["shield", "bronze", 3],
-  "rank-sho": ["sword", "royal", 4],
-  "rank-o": ["crown", "gold", 5],
-  "foil-zombie-male": ["bone", "forest", 3],
-  "foil-zombie-female": ["bone", "shadow", 3],
-  "foil-pirate-male": ["anchor", "tide", 3],
-  "foil-pirate-female": ["anchor", "rose", 3],
-  "foil-elf-male": ["bow", "forest", 3],
-  "foil-elf-female": ["bow", "astral", 3],
-  "foil-viking-male": ["axe", "sky", 4],
-  "foil-viking-female": ["axe", "ice", 4],
-  "foil-dragon-knight": ["dragon", "flame", 5],
-  "foil-angel-j": ["wing", "sky", 4],
-  "foil-angel-q": ["wing", "forest", 4],
-  "foil-angel-k": ["wing", "gold", 6],
-  "foil-demon-j": ["horn", "astral", 4],
-  "foil-demon-q": ["horn", "rose", 4],
-  "foil-demon-k": ["horn", "blood", 6],
+  novice: ["laurel", "steel"],
+  first: ["sword", "bronze"],
+  ten: ["shield", "steel"],
+  fifty: ["shield", "royal"],
+  win10: ["sword", "flame"],
+  win30: ["dragon", "flame"],
+  rated: ["star", "tide"],
+  fortress: ["ice", "ice"],
+  "twin-wings": ["wing", "sky"],
+  "heir-hunt": ["grave", "earth"],
+  elimination: ["leaf", "forest"],
+  kamikaze: ["wave", "tide"],
+  "royal-road": ["crown", "royal"],
+  "court-heavy": ["cards", "blood"],
+  regular: ["laurel", "forest"],
+  devoted: ["sun", "gold"],
+  "rank-shi": ["shield", "bronze"],
+  "rank-sho": ["sword", "royal"],
+  "rank-o": ["crown", "gold"],
+  "foil-zombie-male": ["bone", "forest"],
+  "foil-zombie-female": ["bone", "shadow"],
+  "foil-pirate-male": ["anchor", "tide"],
+  "foil-pirate-female": ["anchor", "rose"],
+  "foil-elf-male": ["bow", "forest"],
+  "foil-elf-female": ["bow", "astral"],
+  "foil-viking-male": ["axe", "sky"],
+  "foil-viking-female": ["axe", "ice"],
+  "foil-dragon-knight": ["dragon", "flame"],
+  "foil-angel-j": ["wing", "sky"],
+  "foil-angel-q": ["wing", "forest"],
+  "foil-angel-k": ["wing", "gold"],
+  "foil-demon-j": ["horn", "astral"],
+  "foil-demon-q": ["horn", "rose"],
+  "foil-demon-k": ["horn", "blood"],
 };
 const FAMILIES = {
   "all-r": ["moon", "shadow"],
@@ -67,35 +69,104 @@ const FAMILIES = {
   "normal-complete": ["book", "earth"],
 };
 
+// Art direction based on achievement effort, collection rarity and final rank.
+// These are display grades, not drop probabilities or new unlock conditions.
+export const FRAME_GRADES = [
+  { level: 1, name: "素朴", metal: "#9eafbd", detail: "細い金属枠" },
+  { level: 2, name: "彫金", metal: "#d5dce7", detail: "銀の彫刻・小さな宝石" },
+  {
+    level: 3,
+    name: "宝飾",
+    metal: "#ddbe7e",
+    detail: "二重の金縁・紋章・宝石",
+  },
+  { level: 4, name: "荘厳", metal: "#f3d08a", detail: "翼状の彫刻・宝石の帯" },
+  {
+    level: 5,
+    name: "絢爛",
+    metal: "#ffe4a1",
+    detail: "多重の装飾・大粒の宝石・後光",
+  },
+  {
+    level: 6,
+    name: "極煌",
+    metal: "#fff2c5",
+    detail: "冠飾り・放射状の翼・極光の縁",
+  },
+];
+const ACHIEVEMENT_LEVELS = {
+  novice: 1,
+  first: 1,
+  rated: 1,
+  ten: 2,
+  regular: 2,
+  fifty: 3,
+  win10: 3,
+  win30: 3,
+  devoted: 3,
+  "rank-shi": 3,
+  "rank-sho": 4,
+  "rank-o": 5,
+  fortress: 4,
+  "twin-wings": 4,
+  "heir-hunt": 4,
+  elimination: 4,
+  kamikaze: 4,
+  "royal-road": 5,
+  "court-heavy": 6,
+};
+// Counts differ by family: e.g. pulling 10 times is not equivalent to 10 freezes.
+// Repeated grades still advance through the family's engraved progress jewels.
+const FAMILY_LEVELS = {
+  "all-r": [3, 4, 4, 5, 5, 6],
+  freeze: [3, 4, 4, 5, 5, 6],
+  "foil-draw": [3, 4, 4, 5, 5, 6],
+  "ssr-draw": [2, 3, 3, 4, 4, 5],
+  pulls: [1, 2, 3, 3, 4, 4, 5, 5, 6],
+  "multi-ssr": [3, 4, 5],
+  "foil-complete": [4, 5, 6],
+  "normal-complete": [2, 3, 4],
+};
+const SEASON_LEVELS = { king: 5, ten: 4, three: 5, first: 6 };
+
 export function titleDesign(id) {
   const title = findTitle(id);
   if (!title) return null;
   let spec = DESIGNS[title.id];
+  let level = ACHIEVEMENT_LEVELS[title.id] || 1;
   if (title.family) {
-    const family = FAMILIES[title.family] || ["laurel", "steel"];
-    // All nine summon tiers remain visually distinct, including the final three.
-    spec = [...family, Math.min(6, title.tier + (title.foil ? 1 : 0))];
+    spec = FAMILIES[title.family] || ["laurel", "steel"];
+    level = FAMILY_LEVELS[title.family]?.[title.tier - 1] || 1;
+  } else if (title.id.startsWith("foil-")) {
+    // Same acquisition rarity = same ornament grade, including all seven SSRs.
+    const skin = byId(title.id.slice(5));
+    level = { R: 3, SR: 4, SSR: 5 }[skin?.rarity] || 3;
   } else if (title.id.startsWith("season:")) {
     const place = title.id.split(":")[2];
+    level = SEASON_LEVELS[place];
     spec = {
-      king: ["crown", "royal", 4],
-      first: ["crown", "gold", 6],
-      three: ["laurel", "astral", 5],
-      ten: ["laurel", "steel", 4],
+      king: ["crown", "royal"],
+      first: ["crown", "gold"],
+      three: ["laurel", "astral"],
+      ten: ["laurel", "steel"],
     }[place];
   }
-  const [motif, palette, level] = spec || ["laurel", "steel", 1];
+  const [motif, palette] = spec || ["laurel", "steel"];
   const [light, edge, base, ink] = PALETTES[palette];
+  const grade = FRAME_GRADES[level - 1];
   return {
     motif,
     palette,
     level,
+    gradeName: grade.name,
     tier: title.tier || level,
+    gems: level === 1 ? 0 : Math.max(level - 1, title.tier || 0),
     style: {
       "--title-light": light,
       "--title-edge": edge,
       "--title-base": base,
       "--title-ink": ink,
+      "--title-metal": grade.metal,
       "--title-angle": `${105 + (title.tier || level) * 9}deg`,
     },
   };

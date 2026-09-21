@@ -7,6 +7,7 @@ import path from "node:path";
 import { TITLES } from "../src/game/titles.js";
 import { seasonTitle } from "../src/game/season.js";
 import { titleDesign } from "../src/ui/title-design.js";
+import { POOL } from "../src/skins/catalog.js";
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "tottery-title-frames-"));
 try {
@@ -58,7 +59,7 @@ try {
       );
       assert.equal(
         (html.match(/<svg[^>]*aria-hidden="true"/g) || []).length,
-        3,
+        (html.match(/<svg\b/g) || []).length,
       );
       assert.ok(
         html.includes('data-animated="false"'),
@@ -91,12 +92,48 @@ try {
   )) {
     const titles = TITLES.filter((t) => t.family === family);
     const designs = titles.map((t) => JSON.stringify(titleDesign(t.id)));
+    for (let i = 1; i < titles.length; i++) {
+      const earlier = titleDesign(titles[i - 1].id);
+      const later = titleDesign(titles[i].id);
+      assert.ok(
+        later.level >= earlier.level,
+        `${family}: harder tier never loses ornaments`,
+      );
+      assert.ok(
+        later.gems >= earlier.gems,
+        `${family}: harder tier never loses jewels`,
+      );
+    }
     assert.equal(
       new Set(designs).size,
       titles.length,
       `${family}: each earned tier is visually distinct`,
     );
   }
+  const grade = (id) => titleDesign(id).level;
+  assert.equal(grade("novice"), 1);
+  assert.equal(grade("first"), grade("rated"));
+  assert.ok(grade("gacha-freeze-1") > grade("gacha-pulls-10"));
+  assert.ok(
+    grade("gacha-foil-complete-15") > grade("gacha-normal-complete-15"),
+  );
+  assert.equal(grade("gacha-foil-complete-15"), 6);
+  assert.equal(grade("gacha-pulls-10000"), 6);
+  for (const rarity of ["R", "SR", "SSR"]) {
+    const levels = POOL.filter((s) => s.rarity === rarity).map((s) =>
+      grade(`foil-${s.id}`),
+    );
+    assert.equal(
+      new Set(levels).size,
+      1,
+      `${rarity}: equal acquisition rarity has equal decoration`,
+    );
+  }
+  assert.ok(grade("foil-zombie-male") < grade("foil-elf-male"));
+  assert.ok(grade("foil-elf-male") < grade("foil-angel-j"));
+  assert.equal(grade("rank-o"), grade("season:2026-09:king"));
+  assert.ok(grade("season:2026-09:first") > grade("season:2026-09:three"));
+  assert.ok(grade("season:2026-09:three") > grade("season:2026-09:ten"));
   console.log(
     `${TITLES.length} titles + 4 seasonal frames: all sizes, complete names, unknown IDs, static battle display and tier variation OK`,
   );

@@ -258,6 +258,182 @@
   height: 2px;
 }
 
+/* Acquisition difficulty adds a new silhouette at each grade, not just color. */
+.title-frame-simple {
+  stroke: var(--title-metal);
+  stroke-width: 1;
+}
+.title-frame-metal {
+  stroke: var(--title-metal);
+  stroke-width: 1.2;
+}
+.title-frame-fan {
+  fill: var(--title-base);
+  stroke: var(--title-metal);
+  stroke-width: 1;
+}
+.title-frame-gem-facet {
+  fill: #fff9e8;
+  stroke: none;
+  opacity: 0.85;
+}
+.title-frame-radiance {
+  stroke: var(--title-metal);
+  stroke-width: 1.2;
+}
+.title-frame-crown {
+  fill: var(--title-metal);
+  fill-opacity: 0.5;
+  stroke: var(--title-metal);
+  stroke-width: 1;
+}
+.title-frame-regalia {
+  position: absolute;
+  width: min(100%, 130px);
+  height: 26px;
+  top: -12px;
+  pointer-events: none;
+}
+.title-frame-regalia svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.title-frame[data-level="1"] .title-frame-surface {
+  background: var(--title-edge);
+  opacity: 0.65;
+}
+.title-frame[data-level="1"] .title-frame-surface::before {
+  inset: 1px;
+  background: #101b29;
+  box-shadow: none;
+}
+.title-frame[data-level="1"] .title-frame-surface::after {
+  display: none;
+}
+.title-frame[data-level="1"] .title-frame-crest {
+  opacity: 0.65;
+}
+.title-frame[data-level="1"] .title-frame-name {
+  font-weight: 600;
+  text-shadow: none;
+}
+.title-frame[data-level="2"] .title-frame-surface {
+  background: linear-gradient(
+    120deg,
+    var(--title-edge),
+    var(--title-metal),
+    var(--title-edge)
+  );
+}
+.title-frame[data-level="2"] .title-frame-surface::before {
+  inset: 1px;
+}
+.title-frame[data-level="2"] .title-frame-surface::after {
+  opacity: 0.2;
+}
+.title-frame:is([data-level="4"], [data-level="5"], [data-level="6"])
+  .title-frame-body {
+  padding-top: 17px;
+  padding-bottom: 12px;
+}
+.title-frame:is([data-level="4"], [data-level="5"], [data-level="6"])
+  .title-frame-ornament {
+  height: 62px;
+}
+.title-frame:is([data-level="4"], [data-level="5"], [data-level="6"])
+  .title-frame-surface::before {
+  inset: 3px;
+}
+.title-frame:is([data-level="4"], [data-level="5"], [data-level="6"])
+  .title-frame-surface::after {
+  border-color: var(--title-metal);
+  opacity: 0.6;
+  inset: 7px 10px;
+}
+.title-frame[data-level="5"] {
+  filter: drop-shadow(
+    0 0 7px color-mix(in srgb, var(--title-edge) 40%, transparent)
+  );
+}
+.title-frame[data-level="6"] {
+  filter: drop-shadow(
+    0 0 10px color-mix(in srgb, var(--title-edge) 55%, transparent)
+  );
+}
+.title-frame:is([data-level="5"], [data-level="6"]) .title-frame-surface {
+  background: linear-gradient(
+    var(--title-angle),
+    var(--title-edge),
+    var(--title-metal) 20%,
+    var(--title-light) 40%,
+    var(--title-edge) 55%,
+    var(--title-metal) 75%,
+    var(--title-edge)
+  );
+}
+.title-frame[data-level="6"] .title-frame-surface::before {
+  inset: 4px;
+  background:
+    radial-gradient(ellipse at 50% 110%, var(--title-base), transparent 70%),
+    repeating-linear-gradient(115deg, #ffffff06 0 1px, transparent 1px 7px),
+    linear-gradient(100deg, #080f1b, var(--title-base), #080f1b);
+}
+.title-frame:is([data-level="5"], [data-level="6"]) .title-frame-gems i {
+  width: 4px;
+  height: 4px;
+  box-shadow: 0 0 4px var(--title-light);
+}
+.title-frame[data-level="6"] .title-frame-gems i:nth-child(odd) {
+  background: var(--title-metal);
+}
+.title-frame--showcase .title-frame-regalia {
+  width: min(100%, 180px);
+  height: 32px;
+  top: -9px;
+}
+.title-frame--showcase:is([data-level="4"], [data-level="5"], [data-level="6"])
+  .title-frame-ornament {
+  height: 86px;
+}
+.title-frame--showcase:is([data-level="4"], [data-level="5"], [data-level="6"])
+  .title-frame-body {
+  padding-top: 27px;
+  padding-bottom: 20px;
+}
+.title-frame--showcase:is([data-level="4"], [data-level="5"], [data-level="6"])
+  .title-frame-crest {
+  top: 4px;
+}
+.title-frame--compact .title-frame-regalia {
+  width: min(100%, 80px);
+  height: 17px;
+  top: -5px;
+}
+.title-frame--compact:is([data-level="4"], [data-level="5"], [data-level="6"])
+  .title-frame-ornament {
+  height: 42px;
+}
+.title-frame--compact:is([data-level="4"], [data-level="5"], [data-level="6"])
+  .title-frame-body {
+  padding-top: 13px;
+  padding-bottom: 7px;
+}
+.title-frame--compact:is([data-level="4"], [data-level="5"], [data-level="6"])
+  .title-frame-surface::before {
+  inset: 2px;
+}
+.title-frame--compact:is([data-level="4"], [data-level="5"], [data-level="6"])
+  .title-frame-surface::after {
+  inset: 4px 7px;
+}
+.title-frame--compact:is([data-level="5"], [data-level="6"])
+  .title-frame-gems
+  i {
+  width: 2px;
+  height: 2px;
+}
+
 /* Give names and clocks their own row; the title can then use the full seat. */
 .clock-cell.clock-cell-titled {
   display: grid;
