@@ -189,15 +189,6 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
         </button>
         <div className="account-id">
           <b className="account-name">{profile.name || "(未設定)"}</b>
-          {/* 称号。押すと選ぶ画面へ。対戦相手にも見える */}
-          <button
-            className="title-tag"
-            onClick={onEditTitle}
-            title="称号を選ぶ"
-          >
-            <TitleFrame id={titleOf(profile).id} size="compact" />
-            <span className="title-tag-edit">変える</span>
-          </button>
           <span className="account-sub">
             レベル {level}
             {level >= MAX_LEVEL ? "(最高)" : ""}
@@ -207,6 +198,14 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
           名前を変える
         </button>
       </div>
+
+      {/* 称号。額縁ごと一段を使って大きく見せる(2026-09-22 本人の指示)。
+          名前の脇に小さく添えていたが、額縁の作りが見えず見栄えを損ねていた。
+          押すと選ぶ画面へ。対戦相手にも見える */}
+      <button className="title-tag" onClick={onEditTitle} title="称号を選ぶ">
+        <TitleFrame id={titleOf(profile).id} size="showcase" />
+        <span className="title-tag-edit">称号を変える</span>
+      </button>
 
       <div className="level-bar">
         <span

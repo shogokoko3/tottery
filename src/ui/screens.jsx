@@ -338,7 +338,6 @@ function HomeSelf({ profile }) {
       />
       <span className="home-self-id">
         <b>{profile.name || "名無し"}</b>
-        <TitleFrame id={titleOf(profile).id} size="compact" />
       </span>
       <span className="home-self-right">
         <span className="home-lv">
@@ -346,6 +345,13 @@ function HomeSelf({ profile }) {
         </span>
         <ArrowRight size={14} className="home-self-more" />
       </span>
+      {/* 称号は名前の脇ではなく一段を使う。額縁の作りが見えないと
+          手に入れた甲斐が伝わらない(2026-09-22 本人の指示) */}
+      <TitleFrame
+        id={titleOf(profile).id}
+        size="standard"
+        className="home-self-title"
+      />
       <span className="home-self-bar">
         <span style={{ width: `${Math.round(progress.ratio * 100)}%` }} />
       </span>

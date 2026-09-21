@@ -613,13 +613,5 @@
     font-size: 17px;
   }
 }
-@media (max-width: 420px) {
-  .account-head {
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr);
-  }
-  .account-head > .btn-small {
-    grid-column: 2;
-    justify-self: start;
-  }
-}
+/* The narrow-screen stacking that used to give the inline nameplate room is gone:
+   the title now owns a full-width row below the head (2026-09-22). */

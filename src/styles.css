@@ -2905,27 +2905,37 @@ body:has(.skin-overlay) {
   opacity: 0.75;
 }
 
-/* --- 称号 --- */
+/* --- 称号 ---
+   額縁を入れてからは、これ自体が見せ場。名前の脇の小さな丸札ではなく、
+   一段を使って中央に据える(2026-09-22 本人の指示)。
+   金の縁取りは額縁と二重になるので外す */
 .title-tag {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 6px;
-  margin: 3px 0 2px;
-  padding: 2px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--gold);
-  background: rgba(212, 175, 55, 0.12);
+  width: 100%;
+  margin: 12px 0 2px;
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--gold-soft);
   font-size: 11px;
   font-family: "Shippori Mincho", serif;
   font-weight: 700;
   cursor: pointer;
 }
+.title-tag:active {
+  transform: scale(0.99);
+}
+/* 押せることが伝わるように、額縁の下に小さく添える */
 .title-tag-edit {
   font-family: inherit;
   font-weight: 400;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-dim);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .title-list {
   display: flex;
@@ -5095,6 +5105,13 @@ body:has(.skin-overlay) {
   color: var(--gold-soft);
   font-size: 12px;
   font-weight: 700;
+}
+/* 称号は名前の脇ではなく、幅いっぱいの一段を使う(2026-09-22 本人の指示)。
+   額縁を入れたので、小さく添えると彫りも宝石も潰れて見えない */
+.home-self-title {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin: 2px 0 1px;
 }
 /* レベルの帯は札の下辺に沿わせる。数字だけより進み具合が伝わる */
 .home-self-bar {
