@@ -997,7 +997,14 @@ export function GameView({
               </button>
             )
           )}
-          {onHome ? (
+          {tutorial ? (
+            // チュートリアルは左下にタイトルへ戻る、右下にホームへ(2026-09-21 本人の指示で左右入れ替え)
+            onExit && (
+              <button className="btn btn-ghost go-home" onClick={onExit}>
+                {exitLabel}
+              </button>
+            )
+          ) : onHome ? (
             <button className="btn btn-ghost go-home" onClick={onHome}>
               <Home size={16} /> ホームへ
             </button>
@@ -1008,11 +1015,10 @@ export function GameView({
             )
           )}
           {tutorial ? (
-            // チュートリアルは「ホームへ」を主にし、使う回数が少ないタイトルへの戻りは
-            // ここ(4マス目)に置く(2026-09-21 本人の指示)
-            onExit && (
-              <button className="btn btn-ghost go-again" onClick={onExit}>
-                {exitLabel}
+            // チュートリアルの右下はホームへ
+            onHome && (
+              <button className="btn btn-ghost go-again" onClick={onHome}>
+                <Home size={16} /> ホームへ
               </button>
             )
           ) : rematch ? (
@@ -2175,6 +2181,8 @@ export function GameCore({
         if (onTutorialList) onTutorialList();
         else onExit();
       }}
+      // 中断: クリア扱いにせず、その場でホームへ戻る(あとで最初から遊べる)
+      onInterrupt={onHome ? goHome : onExit}
     />
   ) : null;
 

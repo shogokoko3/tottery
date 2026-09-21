@@ -3044,6 +3044,17 @@ body:has(.skin-overlay) {
 .tutorial-wait.tutorial-nudge {
   color: var(--card-red);
 }
+/* 操作の札に添える「前の説明へ」。案内文の下に小さく置く(2026-09-21) */
+.tutorial-wait-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.tutorial-back-wait {
+  padding: 6px 14px;
+  font-size: 12px;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .guide-target,
@@ -5223,6 +5234,16 @@ body:has(.skin-overlay) {
   display: grid;
   gap: 10px;
   margin-top: 12px;
+}
+/* 「中断してやめる」の補足を釦の中で2段に(2026-09-21) */
+.tutorial-skip-options .btn {
+  flex-direction: column;
+  gap: 2px;
+}
+.tutorial-skip-options .btn small {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.85;
 }
 .tutorial-skip-all {
   margin-top: 6px;

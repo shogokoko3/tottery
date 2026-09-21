@@ -1880,6 +1880,11 @@ function TotteryScreens() {
   function s() {
     (u(null), m(!1), setTut(null), t("home"));
   }
+  // ハブ(対戦する等の menu)へ戻す。「ホームへ」はタイトル(home)ではなくここが正しい
+  // (2026-09-21 本人の指示。他画面の「ホームに戻る」と同じ行き先にそろえる)
+  function goMenu() {
+    (u(null), m(!1), setTut(null), t("menu"));
+  }
   // 対局後の「戻る」。オンラインとCPU戦は、初期画面まで戻さず「対戦相手を選ぶ」へ
   // 近くの端末との対戦を抜けるときは、部屋の片付けの知らせが届いてから接続を切る
   function dropNearby() {
@@ -2053,9 +2058,9 @@ function TotteryScreens() {
             onTutorialList={showTutorials}
             onExit={tut ? s : backToMatching}
             exitLabel={tut ? "タイトルに戻る" : "対戦相手を選ぶに戻る"}
-            // チュートリアルの終了画面にも「ホームへ」を出す。タイトルに戻るは使う回数が
-            // 少ないので、ホームを主にする(2026-09-21 本人の指示)
-            onHome={goHome}
+            // チュートリアルの「ホームへ」はハブ(menu)へ。タイトルに戻る(onExit=s)とは
+            // 別の行き先にする(2026-09-21 本人の指示)。それ以外の対局は従来どおり
+            onHome={tut ? goMenu : goHome}
             onNextMatch={(a && a.random) || bot ? nextRandomMatch : null}
           />
         </AppearanceSeats>

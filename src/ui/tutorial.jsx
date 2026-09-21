@@ -172,7 +172,7 @@ function SkipConfirm({ what, gain, level, onCancel, onConfirm }) {
  * 押す → 「この話」か「残りの全話」を選ぶ → 確認 → 確定、の三段。
  * onSkipThis() はこの話を飛ばす、onSkipAll(left) は残りの本編を全部飛ばす(left は未了の話)
  */
-export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll }) {
+export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll, onInterrupt }) {
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState(null); // "this" | "all"
   if (!tutorial) return null;
@@ -211,11 +211,24 @@ export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll }) {
               {leftXp.toLocaleString()}）
             </button>
           )}
+          {/* 中断: クリア扱いにせず、この話を途中でやめてホームへ。あとで最初から遊べる(2026-09-21 本人の指示) */}
+          {onInterrupt && (
+            <button
+              className="btn btn-ghost btn-wide"
+              onClick={() => {
+                setOpen(false);
+                onInterrupt();
+              }}
+            >
+              中断してやめる
+              <small>クリアにしません。あとで最初から遊べます</small>
+            </button>
+          )}
           <button
             className="btn btn-ghost btn-wide"
             onClick={() => setOpen(false)}
           >
-            やめる
+            とじる
           </button>
         </div>
       </div>
@@ -380,16 +393,28 @@ export function TutorialSheet({
         {step.moveGuide && <MoveGuidePanel guide={step.moveGuide} />}
         {step.moveHint && <MoveHintPanel hint={step.moveHint} />}
         {step.hold ? null : step.need ? (
-          <p className={`tutorial-wait ${nudge ? "tutorial-nudge" : ""}`}>
-            <Hand size={15} /> {nudge || "▼ の付いたところを操作してください"}
-          </p>
+          <div className="tutorial-wait-row">
+            <p className={`tutorial-wait ${nudge ? "tutorial-nudge" : ""}`}>
+              <Hand size={15} /> {nudge || "▼ の付いたところを操作してください"}
+            </p>
+            {/* 操作の札でも、一つ前の説明に戻って読み直せるように(2026-09-21 本人の指示) */}
+            {onBack && (
+              <button
+                className="btn btn-ghost tutorial-back tutorial-back-wait"
+                onClick={onBack}
+                aria-label="前の説明に戻る"
+              >
+                <ArrowLeft size={16} /> 前の説明へ
+              </button>
+            )}
+          </div>
         ) : (
           <div className="tutorial-steps">
             {onBack && (
               <button
                 className="btn btn-ghost tutorial-back"
                 onClick={onBack}
-                aria-label="前の話に戻る"
+                aria-label="前の説明に戻る"
               >
                 <ArrowLeft size={16} /> 戻る
               </button>
