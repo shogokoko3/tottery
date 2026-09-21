@@ -90,3 +90,5 @@ jobs:
           export ASC_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           export BUILD_NUMBER="$(date +%Y%m%d%H%M)"
           npm run ios:testflight
+
+# 初回起動: このコメント追加を push して Actions を走らせる(秘密の登録が前提)
