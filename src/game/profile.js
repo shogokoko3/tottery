@@ -304,12 +304,33 @@ export function saveName(raw) {
   return next;
 }
 
+/**
+ * 自分の記録が変わったことを、開いている画面に知らせる合図。
+ *
+ * localStorage の "storage" イベントは**他のタブにしか届かない**。
+ * 同じ画面の中で称号や名前を変えても誰も気づかず、ホームの札は
+ * 次の見直し(最長60秒)まで古いままだった(2026-09-22 本人の指摘)。
+ */
+export const PROFILE_CHANGED = "tottery:profile";
+
+function announce() {
+  // 書き込んだ処理の途中で描き直しが始まらないよう、一拍おいて配る
+  setTimeout(() => {
+    try {
+      window.dispatchEvent(new CustomEvent(PROFILE_CHANGED));
+    } catch {
+      // 画面の無いところ(検査・サーバー)では何もしない
+    }
+  }, 0);
+}
+
 function saveProfile(profile) {
   try {
     localStorage.setItem(KEY, JSON.stringify(profile));
   } catch {
     // 保存できなくても遊べる方を優先する
   }
+  announce();
 }
 
 /**
@@ -326,6 +347,7 @@ export function forgetMe() {
   } catch {
     // 消せなくても続ける。呼び出し側が改めて空の状態を描く
   }
+  announce();
   clearBlocked();
   return { ...EMPTY };
 }
