@@ -22,25 +22,43 @@ AUTH_ARGS=""
 if [ -n "${ASC_KEY_ID:-}" ]; then
   AUTH_ARGS="-authenticationKeyPath ${ASC_KEY_PATH:?ASC_KEY_PATH(.p8 の場所)} -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID ${ASC_ISSUER_ID:?ASC_ISSUER_ID}"
 fi
+# SIGNING_PROFILE が指定されていれば手動署名(CI)。プロファイルは呼ぶ側が
+# ~/Library/MobileDevice/Provisioning Profiles/ に入れておく。未指定ならローカルの自動署名。
 if [ "$step" = "archive" ] || [ "$step" = "all" ]; then
   npm run ios:sync
   # 同期でできた控え(「config 10.xml」)をアプリに入れない。
   # cap copy が置いた直後に複製されるので、写したあとに落とす
   node tools/drop-dupes.mjs ios/App/App
   rm -rf "$ARCHIVE"
-  # shellcheck disable=SC2086
-  xcodebuild -project "$PROJ" -scheme App -configuration Release -sdk iphoneos \
-    -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
-    -allowProvisioningUpdates -allowProvisioningDeviceRegistration $AUTH_ARGS \
-    DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-    archive
+  if [ -n "${SIGNING_PROFILE:-}" ]; then
+    xcodebuild -project "$PROJ" -scheme App -configuration Release -sdk iphoneos \
+      -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
+      DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+      CODE_SIGN_STYLE=Manual \
+      PROVISIONING_PROFILE_SPECIFIER="$SIGNING_PROFILE" \
+      CODE_SIGN_IDENTITY="${SIGNING_IDENTITY:-Apple Distribution}" \
+      archive
+  else
+    # shellcheck disable=SC2086
+    xcodebuild -project "$PROJ" -scheme App -configuration Release -sdk iphoneos \
+      -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
+      -allowProvisioningUpdates -allowProvisioningDeviceRegistration $AUTH_ARGS \
+      DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+      archive
+  fi
   echo "アーカイブ完了: $ARCHIVE (ビルド番号 $BUILD_NUMBER)"
 fi
 if [ "$step" = "upload" ] || [ "$step" = "all" ]; then
   rm -rf "$EXPORT"
-  # shellcheck disable=SC2086
-  xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$EXPORT" \
-    -exportOptionsPlist ios/ExportOptions.plist -allowProvisioningUpdates $AUTH_ARGS
+  if [ -n "${SIGNING_PROFILE:-}" ]; then
+    # 手動署名: CI 用の ExportOptions(手動・プロファイル指定)を使う。クラウド署名はしない
+    xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$EXPORT" \
+      -exportOptionsPlist ios/ExportOptions-ci.plist
+  else
+    # shellcheck disable=SC2086
+    xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$EXPORT" \
+      -exportOptionsPlist ios/ExportOptions.plist -allowProvisioningUpdates $AUTH_ARGS
+  fi
   echo "TestFlight へ送りました。App Store Connect の TestFlight で処理が終わるのを待ってください(10〜30分)"
   echo "このビルドの番号: $BUILD_NUMBER  ← 旧版を強制アップデートさせるには、Worker の環境変数 MIN_APP_BUILD をこの番号にする"
 fi

@@ -78,7 +78,7 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed 's/["[:space:]]//g')
           rm -f "$RUNNER_TEMP/cert.p12"
 
-      # App Store Connect の API キー(.p8)を置く。archive のクラウド署名と upload に使う
+      # App Store Connect の API キー(.p8)を置く。upload の認証に使う
       - name: Write App Store Connect API key
         env:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
@@ -87,11 +87,23 @@ jobs:
           mkdir -p "$HOME/.appstoreconnect/private_keys"
           echo "$ASC_KEY_P8" | base64 --decode > "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
 
+      # 手動署名用の App Store プロビジョニングプロファイルを入れる
+      - name: Install provisioning profile
+        env:
+          DIST_PROFILE: ${{ secrets.DIST_PROFILE }}
+        run: |
+          set -eu
+          DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$DIR"
+          echo "$DIST_PROFILE" | base64 --decode > "$DIR/tottery-ci-appstore.mobileprovision"
+          echo "入れたプロファイル:"; ls -l "$DIR"
+
       - name: Build & upload to TestFlight
+        env:
+          # 手動署名に切り替える。ios-release.sh がこの名前のプロファイルで署名・書き出しする
+          SIGNING_PROFILE: tottery-ci-appstore
         run: |
           set -eu
           export ASC_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           export BUILD_NUMBER="$(date +%Y%m%d%H%M)"
           npm run ios:testflight
-
-# 初回起動: このコメント追加を push して Actions を走らせる(秘密の登録が前提)
