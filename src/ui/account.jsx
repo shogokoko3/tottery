@@ -25,6 +25,7 @@ import { publishPlayer, registerPlayer } from "../net/players.js";
 import { ICONS, hasIcon } from "../game/icons.js";
 import { Check, Close, Sparkle } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
+import { TitleFrame } from "./title-frame.jsx";
 
 /** 名前を入れてもらう欄。登録画面と変更画面で共通に使う */
 function NameField({ value, onChange, error }) {
@@ -194,7 +195,7 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
             onClick={onEditTitle}
             title="称号を選ぶ"
           >
-            {titleOf(profile).name}
+            <TitleFrame id={titleOf(profile).id} size="compact" />
             <span className="title-tag-edit">変える</span>
           </button>
           <span className="account-sub">
@@ -276,7 +277,8 @@ export function IconPickModal({ onClose, onSaved }) {
             const owned = hasIcon(profile, icon.id);
             // エリア(フォイル)で手に入るアイコンは、フォイルを1枚も持たないうちは
             // 見せない(称号と同じ決まり。手に入れたものは出す)
-            if (icon.foil && !owned && !foilRevealed(getCollection())) return null;
+            if (icon.foil && !owned && !foilRevealed(getCollection()))
+              return null;
             return (
               <button
                 className={`icon-choice ${picked === icon.id ? "icon-choice-on" : ""} ${
@@ -294,7 +296,8 @@ export function IconPickModal({ onClose, onSaved }) {
           })}
         </div>
         {ICONS.some(
-          (i) => i.foil && (hasIcon(profile, i.id) || foilRevealed(getCollection())),
+          (i) =>
+            i.foil && (hasIcon(profile, i.id) || foilRevealed(getCollection())),
         ) && (
           <p className="hint">
             紋章アイコンは、対応する布陣の称号を獲得すると使えます。
@@ -321,6 +324,7 @@ export function IconPickModal({ onClose, onSaved }) {
  */
 export function TitlePickModal({ onClose, onSaved }) {
   const profile = loadProfile();
+  const collection = useCollection();
   const [picked, setPicked] = useState(titleOf(profile).id);
 
   function submit() {
@@ -332,50 +336,77 @@ export function TitlePickModal({ onClose, onSaved }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-panel title-picker-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="title-picker-heading"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-head">
-          <h3>称号を選ぶ</h3>
-          <button className="icon-btn" onClick={onClose}>
+          <h3 id="title-picker-heading">称号を選ぶ</h3>
+          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
             <Close size={18} />
           </button>
         </div>
-        <p className="hint">名前の横に付きます。対戦相手にも見えます。</p>
-        <div className="title-list">
-          {availableTitles(profile).map((t) => {
-            const owned = hasTitle(profile, t.id);
-            if (t.secret && !owned) return null;
-            // フォイル・エリアの称号は、フォイルを1枚も持たないうちは見せない
-            if (t.foil && !owned && !foilRevealed(getCollection())) return null;
-            // ガチャの段階称号は、各家系3段目までを目標として出す。
-            // 4段目以降は達成した時だけ姿を見せる(2026-09-21 本人の指示)
-            if (t.family && t.tier > 3 && !owned) return null;
-            return (
-              <button
-                className={`title-choice ${picked === t.id ? "title-choice-on" : ""} ${
-                  owned ? "" : "title-choice-locked"
-                }`}
-                disabled={!owned}
-                onClick={() => owned && setPicked(t.id)}
-                key={t.id}
-              >
-                <b>{t.name}</b>
-                {/* 獲得済みでも、どんな条件で取れたかを出す(2026-09-21 本人の指示) */}
-                <small>
-                  {t.free
-                    ? "最初から"
-                    : t.how
-                      ? owned
-                        ? `取得済み · ${t.how}`
-                        : t.how
+        <div className="title-picker-scroll">
+          <div className="title-pick-preview" aria-live="polite">
+            <small>オンライン対戦でのあなたの称号</small>
+            <b>{profile.name || "あなた"}</b>
+            <TitleFrame
+              id={picked}
+              size="showcase"
+              animated={collection.motion !== "off"}
+            />
+          </div>
+          <div className="title-list">
+            {availableTitles(profile).map((t) => {
+              const owned = hasTitle(profile, t.id);
+              if (t.secret && !owned) return null;
+              // フォイル・エリアの称号は、フォイルを1枚も持たないうちは見せない
+              if (t.foil && !owned && !foilRevealed(getCollection()))
+                return null;
+              // ガチャの段階称号は、各家系3段目までを目標として出す。
+              // 4段目以降は達成した時だけ姿を見せる(2026-09-21 本人の指示)
+              if (t.family && t.tier > 3 && !owned) return null;
+              return (
+                <button
+                  className={`title-choice ${picked === t.id ? "title-choice-on" : ""} ${
+                    owned ? "" : "title-choice-locked"
+                  }`}
+                  disabled={!owned}
+                  aria-pressed={picked === t.id}
+                  onClick={() => owned && setPicked(t.id)}
+                  key={t.id}
+                >
+                  <span className="title-choice-state">
+                    {picked === t.id
+                      ? "✓ 選択中"
                       : owned
-                        ? "手に入れた"
-                        : ""}
-                </small>
-              </button>
-            );
-          })}
+                        ? "取得済み"
+                        : "未取得"}
+                  </span>
+                  <TitleFrame id={t.id} />
+                  {/* 獲得済みでも、どんな条件で取れたかを出す(2026-09-21 本人の指示) */}
+                  <small>
+                    {t.free
+                      ? "最初から"
+                      : t.how
+                        ? owned
+                          ? `取得済み · ${t.how}`
+                          : t.how
+                        : owned
+                          ? "手に入れた"
+                          : ""}
+                  </small>
+                </button>
+              );
+            })}
+          </div>
+          <p className="hint">
+            未取得の称号は、条件を満たすと使えるようになります。
+          </p>
         </div>
-        <p className="hint">薄いものは、条件を満たすと使えるようになります。</p>
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onClose}>
             やめる

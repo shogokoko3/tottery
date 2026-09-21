@@ -20,6 +20,7 @@ import {
 import { loadProfile } from "../game/profile.js";
 import { readRanks } from "../net/ranking.js";
 import { PlayerIcon } from "./playericon.jsx";
+import { TitleFrame } from "./title-frame.jsx";
 import { PlayerActionModal } from "./report.jsx";
 import { withoutBlocked } from "../game/blocked.js";
 import { CardBack } from "./cards.jsx";
@@ -383,9 +384,7 @@ export function SeasonRewardPreview({ reward, onClose }) {
           )}
           {reward.title && (
             <>
-              <span className="title-tag season-preview-title">
-                {seasonTitleName(reward)}
-              </span>
+              <TitleFrame id={reward.title} size="showcase" />
               <p className="hint">
                 名前の下に出る名札です。設定の「プレイヤー」から着け替えできます。
               </p>
@@ -408,11 +407,6 @@ export function SeasonRewardPreview({ reward, onClose }) {
   );
 }
 
-/** 称号の名札に出す名前。報酬の名前から「…」の中を取る */
-function seasonTitleName(reward) {
-  const m = /「(.+?)」/.exec(reward.name);
-  return m ? m[1] : reward.name;
-}
 
 export function AppearanceSettings() {
   const collection = useCollection(),

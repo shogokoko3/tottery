@@ -5,7 +5,7 @@ import { ArrowRight } from "../icons.jsx";
 import { useNames, useSeats } from "./names.jsx";
 import { PlayerIcon } from "./playericon.jsx";
 import { shortPlayerLabel } from "../game/constants.js";
-import { titleNameOf } from "../game/titles.js";
+import { TitleFrame } from "./title-frame.jsx";
 
 export const DIE_PIPS = {
   1: [[1, 1]],
@@ -206,10 +206,8 @@ export function MatchupBar({ viewer }) {
         <b style={{ color: PLAYER_META[idx].color }}>
           {shortPlayerLabel(idx, viewer, names)}
         </b>
-        {titleNameOf(titles[idx]) && (
-          <em className="seat-title">{titleNameOf(titles[idx])}</em>
-        )}
       </div>
+      <TitleFrame id={titles[idx]} size="compact" />
     </div>
   );
   let [me, foe] = viewer === 1 ? [1, 0] : [0, 1];

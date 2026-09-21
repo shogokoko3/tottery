@@ -121,6 +121,8 @@ import {
 } from "../game/card-unlock.js";
 import { NameEditModal, NameSetupScreen } from "./account.jsx";
 import { titleOf } from "../game/titles.js";
+import { TitleFrame } from "./title-frame.jsx";
+import TITLE_STYLES from "./title-frame.css";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
 import { onlineGate, onlineGateLabel } from "../game/online-gate.js";
@@ -229,7 +231,7 @@ export function GameShell({
   }, []);
   return (
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
-      <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES + AREA_STYLES + ROYAL_STYLES + HOME_STYLES}</style>
+      <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES + AREA_STYLES + ROYAL_STYLES + HOME_STYLES + TITLE_STYLES}</style>
       <header className="top-bar" ref={barRef}>
         {/* 左上の戻る釦は外した。各画面に「ホームに戻る」があり、真ん中の「トッタリー」も
             ホームへ戻るので重複していた(2026-09-21 本人の指示)。
@@ -336,7 +338,7 @@ function HomeSelf({ profile }) {
       />
       <span className="home-self-id">
         <b>{profile.name || "名無し"}</b>
-        <small>{titleOf(profile).name}</small>
+        <TitleFrame id={titleOf(profile).id} size="compact" />
       </span>
       <span className="home-self-right">
         <span className="home-lv">

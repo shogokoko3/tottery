@@ -1,0 +1,449 @@
+/* Shared, lightweight heraldic nameplates. No images or extra network traffic. */
+.title-frame {
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  padding: 3px 0;
+  vertical-align: middle;
+  color: var(--title-ink);
+  font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-style: normal;
+  text-align: center;
+  line-height: 1.45;
+  white-space: normal;
+  box-sizing: border-box;
+}
+.title-frame-surface {
+  position: absolute;
+  z-index: -1;
+  inset: 8px 12px;
+  overflow: hidden;
+  clip-path: polygon(
+    10px 0,
+    calc(100% - 10px) 0,
+    100% 50%,
+    calc(100% - 10px) 100%,
+    10px 100%,
+    0 50%
+  );
+  background: linear-gradient(
+    var(--title-angle),
+    var(--title-edge),
+    var(--title-light) 22%,
+    var(--title-edge) 42%,
+    var(--title-light) 73%,
+    var(--title-edge)
+  );
+}
+.title-frame-surface::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  clip-path: inherit;
+  background:
+    radial-gradient(ellipse at 50% 0, var(--title-base), transparent 80%),
+    linear-gradient(100deg, #080f1b, var(--title-base), #080f1b);
+  box-shadow: inset 0 0 12px #0009;
+}
+.title-frame-surface::after {
+  content: "";
+  position: absolute;
+  inset: 5px 10px;
+  border-block: 1px solid var(--title-light);
+  opacity: 0.35;
+}
+.title-frame-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 11px 3px 9px;
+}
+.title-frame-name {
+  display: block;
+  position: relative;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  line-height: 1.5;
+  text-shadow:
+    0 2px 2px #000,
+    0 0 10px var(--title-base);
+}
+.title-frame-date {
+  display: block;
+  font-size: 0.72em;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.title-frame-crest {
+  position: absolute;
+  top: -5px;
+  width: 20px;
+  height: 20px;
+  padding: 1px;
+  color: var(--title-light);
+  background: radial-gradient(ellipse, #0b1422 45%, transparent 70%);
+  overflow: visible;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.title-frame-ornament {
+  position: relative;
+  width: 100%;
+  height: 53px;
+  overflow: visible;
+  color: var(--title-light);
+  stroke: currentColor;
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 1px #000);
+  pointer-events: none;
+}
+.title-frame-ornament.is-flipped {
+  transform: scaleX(-1);
+}
+.title-frame-relief {
+  fill: var(--title-base);
+}
+.title-frame-filigree {
+  stroke: var(--title-edge);
+}
+.title-frame-jewel {
+  fill: var(--title-light);
+  stroke: var(--title-edge);
+}
+.title-frame-gems {
+  position: absolute;
+  bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 4px;
+}
+.title-frame-gems i {
+  width: 3px;
+  height: 3px;
+  background: var(--title-light);
+  transform: rotate(45deg);
+  opacity: 0.8;
+}
+.title-frame[data-level="1"] .title-frame-ornament {
+  opacity: 0.7;
+}
+.title-frame[data-level="1"] .title-frame-surface {
+  opacity: 0.85;
+}
+.title-frame[data-level="5"],
+.title-frame[data-level="6"] {
+  filter: drop-shadow(
+    0 0 5px color-mix(in srgb, var(--title-edge) 25%, transparent)
+  );
+}
+.title-frame[data-level="6"] .title-frame-surface {
+  background: linear-gradient(
+    var(--title-angle),
+    var(--title-edge),
+    #fff8df 20%,
+    var(--title-light) 40%,
+    var(--title-edge) 55%,
+    #fff8df 75%,
+    var(--title-edge)
+  );
+}
+.title-frame[data-motif="ice"] .title-frame-surface {
+  clip-path: polygon(
+    0 0,
+    12px 5px,
+    20px 0,
+    calc(100% - 20px) 0,
+    calc(100% - 12px) 5px,
+    100% 0,
+    calc(100% - 5px) 50%,
+    100% 100%,
+    calc(100% - 12px) calc(100% - 5px),
+    calc(100% - 20px) 100%,
+    20px 100%,
+    12px calc(100% - 5px),
+    0 100%,
+    5px 50%
+  );
+}
+.title-frame[data-motif="horn"] .title-frame-surface,
+.title-frame[data-motif="dragon"] .title-frame-surface {
+  clip-path: polygon(
+    0 0,
+    16px 4px,
+    25px 0,
+    calc(100% - 25px) 0,
+    calc(100% - 16px) 4px,
+    100% 0,
+    calc(100% - 8px) 50%,
+    100% 100%,
+    calc(100% - 25px) calc(100% - 4px),
+    50% 100%,
+    25px calc(100% - 4px),
+    0 100%,
+    8px 50%
+  );
+}
+.title-frame--showcase {
+  grid-template-columns: 46px minmax(0, 1fr) 46px;
+  min-height: 82px;
+  width: min(100%, 350px);
+}
+.title-frame--showcase .title-frame-ornament {
+  height: 76px;
+}
+.title-frame--showcase .title-frame-body {
+  padding: 19px 4px 16px;
+}
+.title-frame--showcase .title-frame-name {
+  font-size: 20px;
+  letter-spacing: 0.12em;
+}
+.title-frame--showcase .title-frame-crest {
+  width: 26px;
+  height: 26px;
+  top: -8px;
+}
+.title-frame--showcase .title-frame-gems {
+  bottom: 7px;
+  gap: 6px;
+}
+.title-frame--showcase .title-frame-gems i {
+  width: 4px;
+  height: 4px;
+}
+.title-frame--compact {
+  grid-template-columns: 17px minmax(0, 1fr) 17px;
+  padding: 2px 0;
+}
+.title-frame--compact .title-frame-surface {
+  inset: 6px 6px;
+}
+.title-frame--compact .title-frame-body {
+  padding: 9px 1px 7px;
+}
+.title-frame--compact .title-frame-name {
+  font-size: 11px;
+  letter-spacing: 0.015em;
+}
+.title-frame--compact .title-frame-ornament {
+  height: 36px;
+}
+.title-frame--compact .title-frame-crest {
+  width: 14px;
+  height: 14px;
+  top: -3px;
+}
+.title-frame--compact .title-frame-gems {
+  gap: 3px;
+  bottom: 2px;
+}
+.title-frame--compact .title-frame-gems i {
+  width: 2px;
+  height: 2px;
+}
+
+/* Give names and clocks their own row; the title can then use the full seat. */
+.clock-cell.clock-cell-titled {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  align-content: start;
+  align-items: center;
+  gap: 2px 5px;
+}
+.clock-cell-titled .clock-who {
+  flex: 1;
+}
+.clock-cell-titled .clock-name {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.clock-cell-titled > .title-frame {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+.clock-cell-titled .clock-time {
+  flex: 0 0 auto;
+}
+.matchup {
+  width: 100%;
+}
+.matchup-side {
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px;
+}
+.matchup-who {
+  align-items: center;
+}
+.matchup-side > .title-frame {
+  width: 100%;
+  grid-column: 1 / -1;
+}
+.title-tag {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.home-self-id > .title-frame {
+  align-self: flex-start;
+}
+.title-tag-edit {
+  flex-shrink: 0;
+}
+
+/* Collection preview: locked titles retain their artwork so they feel worth earning. */
+.title-pick-preview {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 16px 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 50% 100%, #34405c66, transparent 72%), #091323;
+}
+.title-pick-preview > small {
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+.title-pick-preview > b {
+  color: var(--text);
+  font-size: 12px;
+}
+.title-picker-panel .title-list {
+  max-height: none;
+  overflow: visible;
+  margin: 12px 0;
+  padding: 2px;
+}
+.title-picker-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.title-picker-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.title-picker-panel > .modal-head,
+.title-picker-panel > .setup-actions {
+  flex-shrink: 0;
+}
+.title-picker-panel > .setup-actions {
+  padding-top: 12px;
+}
+.title-choice {
+  position: relative;
+  align-items: center;
+  padding: 10px 12px;
+  flex-shrink: 0;
+  gap: 7px;
+}
+.title-choice > .title-frame {
+  width: min(100%, 310px);
+}
+.title-choice > small {
+  align-self: stretch;
+  text-align: center;
+  white-space: pre-line;
+}
+.title-choice-locked {
+  opacity: 1;
+}
+.title-choice-locked > .title-frame {
+  opacity: 0.8;
+}
+.title-choice-state {
+  font-family: system-ui, sans-serif;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+.title-choice-on .title-choice-state {
+  color: var(--gold-soft);
+}
+.title-choice:focus-visible,
+.title-tag:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 3px;
+}
+.title-picker-panel .title-choice-on {
+  background: linear-gradient(120deg, #51412455, #172039);
+}
+.title-frame-glint {
+  display: none;
+}
+.title-frame[data-animated="true"] .title-frame-glint {
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    #fff5 50%,
+    transparent 65%
+  );
+  animation: title-frame-glint 6s ease-in-out infinite;
+}
+@keyframes title-frame-glint {
+  0%,
+  65% {
+    transform: translateX(-110%);
+  }
+  92%,
+  100% {
+    transform: translateX(110%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-frame[data-animated="true"] .title-frame-glint {
+    display: none;
+    animation: none;
+  }
+}
+@media (max-width: 380px) {
+  .matchup {
+    gap: 5px;
+    padding: 8px 6px;
+  }
+  .clock-cell.clock-cell-titled {
+    padding-inline: 5px;
+  }
+  .title-frame--showcase .title-frame-name {
+    font-size: 17px;
+  }
+}
+@media (max-width: 420px) {
+  .account-head {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+  .account-head > .btn-small {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

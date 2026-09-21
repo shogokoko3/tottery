@@ -147,6 +147,7 @@ import {
   hasLimitedClock,
 } from "../game/clock.js";
 import { titleNameOf } from "../game/titles.js";
+import { TitleFrame } from "./title-frame.jsx";
 import { publishPlayer } from "../net/players.js";
 
 /** 持ち時間の表示。自分の時計は下、相手の時計は上に置く */
@@ -176,7 +177,7 @@ export function ClockBar({
             <div
               className={`clock-cell ${active ? "clock-active" : ""} ${
                 ms <= CLOCK_EXTENSION_THRESHOLD_MS ? "clock-low" : ""
-              } ${limited ? "clock-limited" : ""}`}
+              } ${limited ? "clock-limited" : ""} ${titles && titleNameOf(titles[idx]) ? "clock-cell-titled" : ""}`}
               style={{ "--pc": PLAYER_META[idx].color }}
               key={idx}
             >
@@ -191,12 +192,10 @@ export function ClockBar({
                 <span className="clock-name">
                   {shortPlayerLabel(idx, viewer, names)}({PLAYER_META[idx].name}
                   )
-                  {titles && titleNameOf(titles[idx]) && (
-                    <em className="seat-title">{titleNameOf(titles[idx])}</em>
-                  )}
                 </span>
               </span>
               <strong className="clock-time">{fmt(ms)}</strong>
+              {titles && <TitleFrame id={titles[idx]} size="compact" />}
               {limited && (
                 <div
                   className={`clock-extension ${warning ? "clock-extension-warning" : ""} ${remaining === 0 ? "clock-extension-empty" : ""}`}
