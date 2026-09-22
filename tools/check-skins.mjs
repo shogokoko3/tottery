@@ -304,6 +304,27 @@ try {
     assert.equal(html.includes("red-suit"), red);
     assert.match(html, /skin-king-mark/);
   }
+  // Normal J/Q/K have no captain image: their own/revealed faces still need
+  // an unmistakable king marker. Hidden enemies must not expose the role.
+  for (const rank of ["J", "Q", "K"]) {
+    for (const suit of ["spade", "heart", "diamond", "club"]) {
+      const king = { ...ace, rank, suit };
+      for (const [viewer, revealed] of [[0, false], [1, true]]) {
+        const html = render({ ...king, revealed }, viewer, [{}, {}]);
+        assert.match(html, /card-captain-fallback/);
+        assert.match(html, /class="card-king-mark" aria-label="王">王/);
+      }
+      const hidden = render(king, 1, [{}, {}]);
+      assert.match(hidden, /card-back/);
+      assert.doesNotMatch(hidden, /card-captain|card-king-mark|king-badge| · 王/);
+      assert.doesNotMatch(render({...king, isKing: false}, 0, [{}, {}]), /card-captain-fallback|card-king-mark/);
+    }
+    const skinned = render({...ace, rank}, 0, [{[rank]: `angel-${rank.toLowerCase()}`}, {}]);
+    assert.match(skinned, /skin-king-mark/);
+    assert.doesNotMatch(skinned, /card-captain-fallback|class="card-king-mark"/);
+  }
+  for (const rank of ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10"])
+    assert.doesNotMatch(render({...ace, rank}, 0, [{}, {}]), /card-captain-fallback|class="card-king-mark"/);
   assert.match(
     render(ace, 0, [{ A: "genie-magician" }, {}]),
     /data-skin="genie-magician"/,

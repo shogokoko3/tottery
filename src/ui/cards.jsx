@@ -27,6 +27,9 @@ export function CardFace({
   const seats = useSeats();
   const selected = byId(skinId || seats.skins?.[owner]?.[rank]);
   const skin = selected?.rank === String(rank) ? selected : null;
+  // J/Q/K have no separate captain artwork. Give their normal illustration an
+  // explicit king treatment too, including in views that render CardFace alone.
+  const kingFrame = isKing && !skin && !CAPTAIN_CARD_ART[rank + SUIT_CODE[suit]];
   let a =
     size === "xs"
       ? {
@@ -49,7 +52,7 @@ export function CardFace({
             };
   return (
     <div
-      className={`card-face ${isKing ? "card-captain" : ""} ${skin ? "card-skinned" : ""}`}
+      className={`card-face ${isKing ? "card-captain" : ""} ${kingFrame ? "card-captain-fallback" : ""} ${skin ? "card-skinned" : ""}`}
       data-size={size}
       data-skin={skin?.id}
       style={{
@@ -60,7 +63,7 @@ export function CardFace({
       <FoilArtwork
         skin={skin}
         src={skin?.boardCard || skin?.card || cardArtSrc(rank, suit, isKing)}
-        alt={`${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}`}
+        alt={`${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}${isKing ? " · 王" : ""}`}
         animated={animated}
       />
       {skin && (
@@ -77,6 +80,7 @@ export function CardFace({
           ♛
         </span>
       )}
+      {kingFrame && <span className="card-king-mark" aria-label="王">王</span>}
     </div>
   );
 }
