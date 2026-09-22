@@ -5135,12 +5135,28 @@ body:has(.skin-overlay) {
 }
 /* 称号は名前の脇ではなく、幅いっぱいの一段を使う(2026-09-22 本人の指示)。
    小さく添えると彫りも宝石も潰れて見えない。
-   ただしホームは入り口を並べる場所なので、札は小(compact)のまま。
-   一段を与えるだけで十分に読めて、入り口を押し下げない */
-.home-self-title {
+   ただしホームは入り口を並べる場所なので、札の丈は小(compact)のまま。
+
+   横幅だけは広げる(2026-09-22 本人の指摘「横幅が潰されて見える」)。
+   compact は幅を文字なりにするので、3文字の称号では札が 69px しかなく、
+   さらに飾りの元絵(44×64)を 17px の枠に入れるため縦長に切り詰められていた。
+   札に決まった幅を与え、飾りの枠を元絵の比率に近づける。
+
+   .title-frame--compact と同じ強さでは打ち消せない(title-frame.css が後に
+   読まれる)ので、.title-frame を重ねて1段強くしている */
+.title-frame.home-self-title {
   grid-column: 1 / -1;
   justify-self: center;
   margin: 1px 0 0;
+  width: min(100%, 196px);
+  grid-template-columns: 25px minmax(0, 1fr) 25px;
+}
+.title-frame.home-self-title .title-frame-name {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.title-frame.home-self-title .title-frame-body {
+  padding-inline: 7px;
 }
 /* レベルの帯は札の下辺に沿わせる。数字だけより進み具合が伝わる */
 .home-self-bar {
