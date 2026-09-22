@@ -19,6 +19,22 @@ export const RANKS = [
 ];
 export const SUITS = ["spade", "heart", "diamond", "club"];
 
+/**
+ * 札ごとの熟練度の段。**その札を盤に出して指した回数**の境目(本人の決め 2026-09-22)。
+ *
+ * 500回で頭打ちにするのは意図的。青天井にすると1000局遊んだ人と100局遊んだ人の
+ * 差が永久に開き続け、あとから始めた人が追いつけない。
+ * 1局で同じ札を数えるのは MASTERY_PER_GAME 回まで(長引かせる遊びを得にしない)。
+ *
+ * ここに置くのは、称号(titles.js)と記録(profile.js)の両方が見るため。
+ * titles.js から profile.js を読むと輪になる。
+ */
+export const MASTERY_STEPS = [10, 30, 80, 200, 500];
+export const MASTERY_PER_GAME = 3;
+/** 称号が出る段と、アイコンが出る段 */
+export const MASTERY_TITLE_STEP = 3;
+export const MASTERY_ICON_STEP = 5;
+
 /** チュートリアルで段階的に開けていくカードプール */
 export const CARD_POOLS = {
   basic: ["2", "3", "4", "5"],

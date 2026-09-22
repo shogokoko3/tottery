@@ -57,6 +57,23 @@ const DESIGNS = {
   "foil-demon-j": ["horn", "astral"],
   "foil-demon-q": ["horn", "rose"],
   "foil-demon-k": ["horn", "blood"],
+  // 熟練度の称号。紋章はその札の動きの持ち味から選ぶ。
+  // 縦横の札は硬い金属系、斜めの札は星や翼、跳ぶ札は翼、無限に伸びる札は剣と宝石。
+  "mastery-A": ["portal", "astral"],
+  "mastery-2": ["shield", "steel"],
+  "mastery-3": ["leaf", "forest"],
+  "mastery-4": ["shield", "bronze"],
+  "mastery-5": ["bow", "forest"],
+  "mastery-6": ["anchor", "tide"],
+  "mastery-7": ["wave", "tide"],
+  "mastery-8": ["axe", "earth"],
+  "mastery-9": ["star", "sky"],
+  "mastery-10": ["wing", "sky"],
+  "mastery-J": ["sword", "royal"],
+  "mastery-Q": ["gem", "rose"],
+  "mastery-K": ["crown", "gold"],
+  "mastery-all": ["book", "royal"],
+  "mastery-master": ["dragon", "gold"],
 };
 const FAMILIES = {
   "all-r": ["moon", "shadow"],
@@ -114,6 +131,10 @@ const ACHIEVEMENT_LEVELS = {
   kamikaze: 4,
   "royal-road": 5,
   "court-heavy": 6,
+  // 熟練度。1枚を80回使い込む = 宝飾(3)。13種すべて = 絢爛(5)。
+  // すべて500回まで使い込む = 極煌(6)。札の位(J/Q/K)は段に使わない
+  "mastery-all": 5,
+  "mastery-master": 6,
 };
 // Counts differ by family: e.g. pulling 10 times is not equivalent to 10 freezes.
 // Repeated grades still advance through the family's engraved progress jewels.
@@ -141,6 +162,9 @@ export function titleDesign(id) {
     // Same acquisition rarity = same ornament grade, including all seven SSRs.
     const skin = byId(title.id.slice(5));
     level = { R: 3, SR: 4, SSR: 5 }[skin?.rarity] || 3;
+  } else if (title.mastery && !ACHIEVEMENT_LEVELS[title.id]) {
+    // 札1枚を使い込んだ証は「宝飾」でそろえる。13種すべての通しだけが上の段に行く
+    level = 3;
   } else if (title.id.startsWith("season:")) {
     const place = title.id.split(":")[2];
     level = SEASON_LEVELS[place];

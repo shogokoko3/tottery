@@ -1,0 +1,149 @@
+/**
+ * 札ごとの熟練度(2026-09-22 本人の決め)を確かめる。
+ *
+ * 決めごと:
+ *   - **その札を盤に出して指した回数**で上がる。勝敗では動かない(負けても伸びる)
+ *   - 1局で同じ札を数えるのは3回まで。無いと「わざと長引かせて同じ札を指す」のが
+ *     一番効率のいい遊び方になり、盤がつまらなくなる
+ *   - 段は5つで500回で頭打ち。青天井にすると、あとから始めた人が追いつけない
+ *   - **恩恵は称号・アイコンだけ。盤の有利不利には一切効かせない**(「印」の案は取り下げ)
+ * 通信はしない。
+ */
+const store = {};
+globalThis.localStorage = {
+  getItem: (k) => (k in store ? store[k] : null),
+  setItem: (k, v) => {
+    store[k] = String(v);
+  },
+  removeItem: (k) => {
+    delete store[k];
+  },
+};
+import fs from "node:fs";
+const {
+  loadProfile,
+  recordMastery,
+  masteryStep,
+  masteryAll,
+  MASTERY_STEPS,
+  MASTERY_PER_GAME,
+} = await import("../src/game/profile.js");
+const { MASTERY_TITLES } = await import("../src/game/titles.js");
+const { hasTitle, findTitle } = await import("../src/game/titles.js");
+const { titleDesign } = await import("../src/ui/title-design.js");
+const { RANKS } = await import("../src/game/constants.js");
+
+let ok = 0;
+const fails = [];
+const is = (label, got, want) => {
+  if (JSON.stringify(got) === JSON.stringify(want)) {
+    ok++;
+    console.log(`  ok   ${label}`);
+  } else {
+    fails.push(label);
+    console.log(`  NG   ${label}  ${JSON.stringify(got)} ≠ ${JSON.stringify(want)}`);
+  }
+};
+const yes = (label, got) => is(label, !!got, true);
+const no = (label, got) => is(label, !!got, false);
+const reset = () => {
+  for (const k of Object.keys(store)) delete store[k];
+};
+
+console.log("数え方");
+reset();
+is("何も指していなければ持たない", loadProfile().mastery, null);
+recordMastery({ J: 2 });
+is("指した札だけが増える", loadProfile().mastery, { J: 2 });
+recordMastery({ J: 1, Q: 1 });
+is("次の局のぶんを足す", loadProfile().mastery, { J: 3, Q: 1 });
+
+reset();
+recordMastery({ J: 99 });
+is(
+  `1局で数えるのは${MASTERY_PER_GAME}回まで(長引かせる遊びを得にしない)`,
+  loadProfile().mastery,
+  { J: MASTERY_PER_GAME },
+);
+reset();
+recordMastery({ 王: 5, "": 3, X: 9 });
+is("知らない札は数えない", loadProfile().mastery, null);
+recordMastery({ J: -5, Q: 0.5 });
+is("負の数・端数は数えない(切り捨てて0)", loadProfile().mastery, null);
+recordMastery({ J: 2.9 });
+is("端数は切り捨てて数える", loadProfile().mastery, { J: 2 });
+
+console.log("\n段");
+reset();
+const bump = (rank, n) => {
+  // 1局3回までなので、回数ぶん「対局」を重ねる
+  for (let i = 0; i < Math.ceil(n / MASTERY_PER_GAME); i++)
+    recordMastery({ [rank]: MASTERY_PER_GAME });
+};
+is("0回は段0", masteryStep(loadProfile(), "J"), 0);
+bump("J", MASTERY_STEPS[0]);
+is(`${MASTERY_STEPS[0]}回で段1`, masteryStep(loadProfile(), "J"), 1);
+bump("J", MASTERY_STEPS[2] - MASTERY_STEPS[0]);
+is(`${MASTERY_STEPS[2]}回で段3(称号が出る段)`, masteryStep(loadProfile(), "J") >= 3, true);
+is("段は5つ", MASTERY_STEPS.length, 5);
+is("頭打ちは500回", MASTERY_STEPS[MASTERY_STEPS.length - 1], 500);
+
+console.log("\n称号");
+reset();
+is("札13種ぶん＋通し2つ", MASTERY_TITLES.length, RANKS.length + 2);
+for (const rank of RANKS)
+  yes(`${rank} の称号がある`, MASTERY_TITLES.some((t) => t.mastery === rank));
+no("まだ何も指していない人は名乗れない", hasTitle(loadProfile(), "mastery-J"));
+bump("J", MASTERY_STEPS[2]);
+yes("Jを80回指すと名乗れる", hasTitle(loadProfile(), "mastery-J"));
+no("他の札の称号は出ない", hasTitle(loadProfile(), "mastery-Q"));
+yes(
+  "届いた称号は焼き付く(熟練度の数字が無くても名乗れる)",
+  loadProfile().titles.includes("mastery-J"),
+);
+no("通しの称号はまだ出ない", hasTitle(loadProfile(), "mastery-all"));
+reset();
+for (const rank of RANKS) bump(rank, MASTERY_STEPS[2]);
+yes("13種すべてで通しの称号が出る", hasTitle(loadProfile(), "mastery-all"));
+yes("masteryAll が段3を認める", masteryAll(loadProfile(), 3));
+no("最上位はまだ出ない", hasTitle(loadProfile(), "mastery-master"));
+
+console.log("\n額縁");
+for (const t of MASTERY_TITLES) {
+  const d = titleDesign(t.id);
+  yes(`${t.name} に意匠がある`, d && d.motif && d.palette);
+}
+is("札1枚ぶんは宝飾(段3)", titleDesign("mastery-J").level, 3);
+is("13種の通しは絢爛(段5)", titleDesign("mastery-all").level, 5);
+is("最上位は極煌(段6)", titleDesign("mastery-master").level, 6);
+const names = MASTERY_TITLES.map((t) => t.name);
+is("名前が重なっていない", new Set(names).size, names.length);
+for (const t of MASTERY_TITLES)
+  yes(`${t.name} に取得方法の文がある`, !!(t.how && t.how.length));
+
+console.log("\n盤に効かせない(ここが崩れたら公平性が壊れる)");
+{
+  // 「印」の案は本人が取り下げた。熟練度が配り札や合法手に触れていないことを見張る。
+  // 触れさせたいときは、先にサーバー側の検証(src/server/verify-match.js)が要る
+  for (const f of [
+    "src/game/board.js",
+    "src/game/reducer.js",
+    "src/game/actions.js",
+    "src/game/areas.js",
+  ]) {
+    const src = fs.readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
+    no(`${f} は熟練度を見ない`, /mastery/i.test(src));
+  }
+  const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
+  yes(
+    "自分の手だけを数える(CPU の手も同じ入口を通るので持ち主を見る)",
+    /mover\.owner === mySeat/.test(game),
+  );
+  yes("チュートリアルは数えない", /MOVE_PIECE" && !tutorial && !E\.__foe/.test(game));
+}
+
+console.log(`\n${ok} 件 ok / ${fails.length} 件 NG`);
+if (fails.length) {
+  for (const f of fails) console.log(`  - ${f}`);
+  process.exit(1);
+}

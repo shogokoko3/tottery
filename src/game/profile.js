@@ -31,6 +31,11 @@ import {
   nextRating,
   wrFromProfile,
 } from "./rating.js";
+import {
+  RANKS,
+  MASTERY_STEPS,
+  MASTERY_PER_GAME,
+} from "./constants.js";
 import { findBadWord } from "./badwords.js";
 import { clearBlocked } from "./blocked.js";
 
@@ -94,6 +99,10 @@ const EMPTY = {
   // ガチャ称号の実績(collection.gachaStatsOf の写し)。称号判定に使う。獲得した称号は
   // titles に焼き付くので、表示・共有はこれが無くても効く(2026-09-21)
   gacha: null,
+  // 札ごとの熟練度。その札を盤に出して指した回数({ "J": 120, ... })。
+  // 1局で同じ札を数えるのは MASTERY_PER_GAME 回まで(長引かせる遊びを得にしない)。
+  // 恩恵は称号・アイコン・フレームだけ。盤の有利不利には一切効かせない(2026-09-22 本人の決め)
+  mastery: null,
   plays: 0,
   // 対戦だけの数(チュートリアルを含めない)。ミッションの条件に使う
   battles: 0,
@@ -128,6 +137,71 @@ const EMPTY = {
   ratedDraws: 0,
   rated: 0,
 };
+
+/**
+ * 札ごとの熟練度。
+ *
+ * **その札を盤に出して指した回数**で上がる(本人の決め 2026-09-22)。勝敗では上がらない。
+ * 負けても伸びるので、覚えたての人が痛くない。
+ *
+ * 1局で同じ札を数えるのは3回まで。ここに歯止めが無いと「わざと長引かせて
+ * 同じ札を指し続ける」のが一番効率のいい遊び方になり、盤がつまらなくなる。
+ *
+ * 段は5つで、**500回で頭打ち**にする。青天井にすると、1000局遊んだ人と
+ * 100局遊んだ人の差が永久に開き続け、あとから始めた人が追いつけない。
+ */
+export { MASTERY_STEPS, MASTERY_PER_GAME };
+
+/** 保存されている熟練度を、知っている札だけの数に整える */
+function normalizeMastery(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out = {};
+  for (const rank of RANKS) {
+    const n = Math.max(0, Math.floor(Number(raw[rank]) || 0));
+    if (n > 0) out[rank] = n;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/** その札の段(0〜5)。0 は「まだ段に届いていない」 */
+export function masteryStep(profile, rank) {
+  const n = (profile && profile.mastery && profile.mastery[rank]) || 0;
+  let step = 0;
+  for (const need of MASTERY_STEPS) if (n >= need) step += 1;
+  return step;
+}
+
+/** 全部の札が step 段に届いているか(通しの褒美の条件) */
+export function masteryAll(profile, step) {
+  return RANKS.every((rank) => masteryStep(profile, rank) >= step);
+}
+
+/**
+ * 1局ぶんの「指した回数」を熟練度に足す。
+ *
+ * used は { 札: その局で指した回数 }。数えるのは自分の指し手だけ。
+ * チュートリアルは台本なので呼ばない(画面側で外す)。
+ */
+export function recordMastery(used) {
+  const profile = loadProfile();
+  if (!used || typeof used !== "object") return profile;
+  const mastery = { ...(profile.mastery || {}) };
+  let moved = 0;
+  for (const rank of RANKS) {
+    const n = Math.min(MASTERY_PER_GAME, Math.floor(Number(used[rank]) || 0));
+    if (n <= 0) continue;
+    mastery[rank] = (mastery[rank] || 0) + n;
+    moved += n;
+  }
+  if (!moved) return profile;
+  const next = { ...profile, mastery };
+  // 届いた称号は焼き付ける。以後は熟練度の数字が無くても名乗れる(持ち点の称号と同じ)
+  const earned = newlyEarned(profile, next);
+  if (earned.length)
+    next.titles = [...next.titles, ...earned.map((t) => t.id)];
+  saveProfile(next);
+  return next;
+}
 
 /** 端末ごとの目印。名前が同じ人と区別するために持つ */
 function makeId() {
@@ -189,6 +263,7 @@ export function loadProfile() {
             normalsOwned: Number(saved.gacha.normalsOwned) || 0,
           }
         : null,
+    mastery: normalizeMastery(saved.mastery),
     plays: Number(saved.plays) || 0,
     battles,
     battleWins,

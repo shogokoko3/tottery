@@ -12,6 +12,11 @@ import { seasonTitle } from "./season.js";
  * そのときは何も出さない(findTitle が null を返す)。
  */
 import { FOIL_MISSION_DEFS } from "./foil-missions.js";
+import {
+  RANKS,
+  MASTERY_STEPS,
+  MASTERY_TITLE_STEP,
+} from "./constants.js";
 
 // ガチャの結果で自動解放される称号(2026-09-21 本人の指示)。
 // 各家系(family)は段階(tier)を持つ。一覧には3段目までを目標として掲載し、
@@ -156,6 +161,63 @@ export const GACHA_TITLES = [
   ...GACHA_NORMAL_COMPLETE,
 ];
 
+/**
+ * 熟練度の称号(2026-09-22 本人の決め)。
+ *
+ * **その札を盤に出して指した回数**で出る。勝敗では動かないので、負けても伸びる。
+ * 恩恵は名乗りだけ。盤の有利不利には一切効かせない(「印」の案は本人が取り下げた)。
+ *
+ * 名前はその札の動きをそのまま名乗る形にしてある。縦横と斜め、偶数と奇数が
+ * 名前の上で対になるので、規則を覚える助けにもなる。
+ */
+const MASTERY_NAMES = {
+  A: "乱世の奇手",
+  2: "一歩の堅陣",
+  3: "斜影の一歩",
+  4: "双進の勇",
+  5: "双斜の勇",
+  6: "偶進の理",
+  7: "偶斜の理",
+  8: "奇進の理",
+  9: "奇斜の理",
+  10: "跳躍の妙",
+  J: "縦横無尽",
+  Q: "斜貫無尽",
+  K: "王道無双",
+};
+
+const masteryNeed = MASTERY_STEPS[MASTERY_TITLE_STEP - 1];
+
+export const MASTERY_TITLES = [
+  ...RANKS.map((rank) => ({
+    id: `mastery-${rank}`,
+    name: MASTERY_NAMES[rank],
+    how: `${rank}で${masteryNeed}回指す`,
+    mastery: rank,
+    unlocked: (p) => (p?.mastery?.[rank] ?? 0) >= masteryNeed,
+  })),
+  // 通しの褒美。13種すべてを同じ段まで使い込んだ人にだけ出る
+  {
+    id: "mastery-all",
+    name: "十三道の使い手",
+    how: `すべての札で${masteryNeed}回指す`,
+    mastery: "all",
+    unlocked: (p) =>
+      RANKS.every((rank) => (p?.mastery?.[rank] ?? 0) >= masteryNeed),
+  },
+  {
+    id: "mastery-master",
+    name: "盤上無双",
+    how: `すべての札で${MASTERY_STEPS[MASTERY_STEPS.length - 1]}回指す`,
+    mastery: "all",
+    unlocked: (p) =>
+      RANKS.every(
+        (rank) =>
+          (p?.mastery?.[rank] ?? 0) >= MASTERY_STEPS[MASTERY_STEPS.length - 1],
+      ),
+  },
+];
+
 export const TITLES = [
   { id: "novice", name: "見習い", how: "最初から", free: true },
   { id: "first", name: "初陣", how: "1局遊ぶ", unlocked: (p) => p.plays >= 1 },
@@ -266,6 +328,8 @@ export const TITLES = [
   })),
   // ガチャの結果で自動解放される称号(段階つき)。一覧の絞り込みは account.jsx。
   ...GACHA_TITLES,
+  // 札ごとの熟練度で自動解放される称号
+  ...MASTERY_TITLES,
 ];
 
 /**

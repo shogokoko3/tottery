@@ -106,7 +106,9 @@ assert.ok(BACKUP_BODY_MAX > BACKUP_MAX, "本文の上限は控えより広い(JS
   assert.ok(/DeleteMeModal/.test(ui), "消すのは既存の画面を使う(道を2つ作らない)");
   assert.ok(/backupIfDue\(\)\.catch/.test(screens), "起動のたびに控えを預け直す");
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
-  assert.ok(/publishPlayer\(after\);[\s\S]{0,140}backupIfDue\(\)\.catch/.test(game), "1局終えるたびにも預け直す");
+  // 台帳へ載せる直後に預け直す。渡す変数の名前は変わりうるので名前で縛らない
+  // (熟練度を足したとき publishPlayer(after) → publishPlayer(withMastery) になった)
+  assert.ok(/publishPlayer\([A-Za-z_$][\w$]*\);[\s\S]{0,200}backupIfDue\(\)\.catch/.test(game), "1局終えるたびにも預け直す");
   const worker = fs.readFileSync(new URL("../src/server/worker.js", import.meta.url), "utf8");
   assert.ok(/wop === "backup-save"/.test(worker) && /wop === "backup-load"/.test(worker), "Worker に預かりの口");
   assert.ok(/backup-save"\s*\n?\s*\? BACKUP_BODY_MAX/.test(worker.replace(/\s+/g, (m) => (m.includes("\n") ? "\n" : " "))) || /BACKUP_BODY_MAX/.test(worker), "控えの本文の上限を広げる");

@@ -136,7 +136,7 @@ import {
   matchesNeed,
   upcomingNeedStep,
 } from "../game/tutorial.js";
-import { isTestPlay, recordGame } from "../game/profile.js";
+import { isTestPlay, recordGame, recordMastery } from "../game/profile.js";
 import { releaseXpNotice } from "../game/xp-notices.js";
 import { GAME_RULE_VERSION, hasAreaRules, hasCustomRules } from "../game/rule-version.js";
 import { isDefaultCustom, loadoutsForCustom, normalizeCustom } from "../game/custom-rules.js";
@@ -1142,6 +1142,8 @@ export function GameCore({
     // 黙って握りつぶすと「押しても何も起きない=壊れている」と読まれる
     [tutNudge, setTutNudge] = (0, useState)(null),
     foeIdxRef = (0, useRef)(0),
+    // その局で自分がどの札を何回指したか。終局時に熟練度へ足す
+    masteryRef = (0, useRef)({}),
     recordedRef = (0, useRef)(!1),
     xpNoticeRef = (0, useRef)(null),
     mountedRef = (0, useRef)(false),
@@ -1265,6 +1267,19 @@ export function GameCore({
         return;
       }
       setTutNudge(null);
+    }
+    // 札ごとの熟練度。自分が指した手だけを数える(2026-09-22 本人の決め)。
+    //
+    // ここで数える理由: y() は手番の唯一の入口で、pieceId も上で付いている。
+    // ただし **CPU の手も __foe 無しでここを通る**ので、持ち主を見て弾く。
+    // 通信で届いた相手の手は __foe が付く。チュートリアルは台本なので数えない。
+    // 恩恵は称号・アイコンだけで、盤の有利不利には効かない
+    if (E.type === "MOVE_PIECE" && !tutorial && !E.__foe && E.pieceId) {
+      const mover = a.pieces[E.pieceId];
+      const mySeat = network ? p : cpu ? 0 : a.currentTurn;
+      if (mover && mover.owner === mySeat && mover.rank)
+        masteryRef.current[mover.rank] =
+          (masteryRef.current[mover.rank] || 0) + 1;
     }
     let E0 =
       E.elapsedMs == null
@@ -2009,8 +2024,12 @@ export function GameCore({
         : null),
     });
     xpNoticeRef.current = after.xpNoticeId;
+    // 札ごとの熟練度。1局の上限は recordMastery 側で掛ける。
+    // 称号が新しく届いていれば、その中で profile.titles に焼き付く
+    const withMastery = recordMastery(masteryRef.current);
+    masteryRef.current = {};
     setRatingResult(after.delta === null ? null : after);
-    publishPlayer(after);
+    publishPlayer(withMastery);
     // 引き継ぎの控えも預け直す(本人確認済みのときだけ。失敗しても対局は止めない)
     backupIfDue().catch(() => {});
     // ランダムマッチの結果を控える。人に負けたら、次のランダムマッチは Bot(src/game/bot-match.js)
