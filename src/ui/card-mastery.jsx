@@ -19,6 +19,7 @@ import {
 } from "../game/constants.js";
 import { masteryProgress } from "../game/profile.js";
 import { MASTERY_TITLES, hasTitle } from "../game/titles.js";
+import { useCollection } from "../skins/store.js";
 import { CardFace } from "./cards.jsx";
 import { useMissionProfile } from "./mission-profile.js";
 import { FRAME_GRADES } from "./title-design.js";
@@ -37,6 +38,9 @@ const ALL_TITLES = MASTERY_TITLES.filter((t) => t.mastery === "all");
 
 export function CardMasteryScreen({ onBack }) {
   const [profile] = useMissionProfile();
+  // 装備中のスキンを札の絵に映す(2026-09-22 本人の指示)。equipped は { 札: スキンid }
+  const collection = useCollection();
+  const equipped = (collection && collection.equipped) || {};
   const [open, setOpen] = useState(null);
   const mastery = (profile && profile.mastery) || {};
   const rows = RANKS.map((rank) => {
@@ -90,7 +94,14 @@ export function CardMasteryScreen({ onBack }) {
                 aria-controls={`card-mastery-detail-${rank}`}
                 onClick={() => setOpen(isOpen ? null : rank)}
               >
-                <CardFace rank={rank} suit="spade" size="sm" isKing animated={false} />
+                <CardFace
+                  rank={rank}
+                  suit="spade"
+                  size="sm"
+                  isKing
+                  skinId={equipped[rank]}
+                  animated={false}
+                />
                 <span className="card-mastery-body">
                   <span className="card-mastery-head">
                     <b className="card-mastery-rank">{rank}</b>

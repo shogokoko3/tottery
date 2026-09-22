@@ -7105,6 +7105,12 @@ p.hint > span.gem-shop-diag {
 .card-mastery-title {
   min-width: 0;
 }
+/* 額縁の冠飾りは枠の上へはみ出す(title-frame.css の crest/regalia が top:-3〜-5px)。
+   そのままだと上のメーターの線に被るので、額縁のある行だけ間を空ける(2026-09-22 本人の報告) */
+.card-mastery-foot:has(.title-frame) {
+  margin-top: 8px;
+  align-items: flex-end;
+}
 .card-mastery-detail {
   padding: 0 12px 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
