@@ -164,7 +164,8 @@ export const GACHA_TITLES = [
 /**
  * 熟練度の称号(2026-09-22 本人の決め)。
  *
- * **その札を盤に出して指した回数**で出る。勝敗では動かないので、負けても伸びる。
+ * **その札を王に選び、王として動かした回数**で出る(2026-09-22 本人の決め)。
+ * 勝敗では動かないので、負けても伸びる。1局で育つのは王にした1種類だけ。
  * 恩恵は名乗りだけ。盤の有利不利には一切効かせない(「印」の案は本人が取り下げた)。
  *
  * 名前はその札の動きをそのまま名乗る形にしてある。縦横と斜め、偶数と奇数が
@@ -192,7 +193,7 @@ export const MASTERY_TITLES = [
   ...RANKS.map((rank) => ({
     id: `mastery-${rank}`,
     name: MASTERY_NAMES[rank],
-    how: `${rank}で${masteryNeed}回指す`,
+    how: `${rank}を王にして${masteryNeed}回動かす`,
     mastery: rank,
     unlocked: (p) => (p?.mastery?.[rank] ?? 0) >= masteryNeed,
   })),
@@ -200,7 +201,7 @@ export const MASTERY_TITLES = [
   {
     id: "mastery-all",
     name: "十三道の使い手",
-    how: `すべての札で${masteryNeed}回指す`,
+    how: `すべての札を王にして${masteryNeed}回動かす`,
     mastery: "all",
     unlocked: (p) =>
       RANKS.every((rank) => (p?.mastery?.[rank] ?? 0) >= masteryNeed),
@@ -208,7 +209,7 @@ export const MASTERY_TITLES = [
   {
     id: "mastery-master",
     name: "盤上無双",
-    how: `すべての札で${MASTERY_STEPS[MASTERY_STEPS.length - 1]}回指す`,
+    how: `すべての札を王にして${MASTERY_STEPS[MASTERY_STEPS.length - 1]}回動かす`,
     mastery: "all",
     unlocked: (p) =>
       RANKS.every(

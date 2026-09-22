@@ -6,14 +6,15 @@ import { TitleFrame } from "./title-frame.jsx";
  * 終局画面に出す、札ごとの熟練度のメーター(2026-09-22 本人の指示)。
  *
  * プレイヤーレベルのゲージとは別に置く。あちらは1本で「その人の歩み」を出すが、
- * こちらは**その局で使った札だけ**を並べて「何がどれだけ上がったか」を出す。
- * 使っていない札は出さない(13本並べると読む気が失せる)。
+ * こちらは**その局で王にした札**を出して「どれだけ上がったか」を見せる。
+ * 王に選んだ札しか育たないので、ふつうは1行だけになる(2026-09-22 本人の決め)。
  *
  * 段に届いた行だけ印を強くする。全部を光らせると、どこが変わったのか分からない。
  */
 export function MasteryGains({ gains, titles }) {
+  // 王を一度も動かさなかった局は、欄ごと出さない
   if (!gains || !gains.length) return null;
-  // 上がり幅が大きいものを先に。同じなら累計の多いものを先に
+  // 王は1局に1種類なので、ふつうは1行。念のため並べ替えは残す
   const rows = [...gains].sort(
     (a, b) => b.added - a.added || b.after - a.after,
   );
@@ -21,7 +22,7 @@ export function MasteryGains({ gains, titles }) {
     <section className="mastery-gains" aria-label="札の熟練度">
       <h4 className="mastery-gains-head">
         <span>札の熟練度</span>
-        <small>盤に出して指した回数</small>
+        <small>王として動かした回数</small>
       </h4>
       {rows.map((g) => {
         const p = g.progress;

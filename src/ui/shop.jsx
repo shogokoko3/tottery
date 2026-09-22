@@ -170,7 +170,7 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
               />
             )}
             <button className="btn btn-ghost btn-small" onClick={onGacha}>
-              ガチャ・装備へ <ArrowRight size={14} />
+              ガチャ・スキンへ <ArrowRight size={14} />
             </button>
           </div>
         )}

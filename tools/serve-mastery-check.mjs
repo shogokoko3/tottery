@@ -26,12 +26,14 @@ const gain = (rank, before, added) => ({
   progress: masteryProgress(before + added),
 });
 
+// 王は1局に1種類なので、出る行は**いつも1行**(2026-09-22 本人の決め)
 const 場面 = [
-  ['ふつうの1局(段は上がらない)', [gain('J',41,3), gain('2',12,2), gain('K',7,1)], []],
-  ['段が上がった', [gain('Q',78,3), gain('10',29,2)], []],
-  ['称号が届いた', [gain('J',79,3), gain('4',5,3)], [{id:'mastery-J',name:'縦横無尽'}]],
+  ['ふつうの1局(段は上がらない)', [gain('J',41,3)], []],
+  ['段が上がった', [gain('Q',78,3)], []],
+  ['称号が届いた', [gain('J',79,3)], [{id:'mastery-J',name:'縦横無尽'}]],
   ['極みに届いた', [gain('K',499,3)], []],
-  ['1枚だけ指した', [gain('A',0,1)], []],
+  ['王を1回だけ動かした', [gain('A',0,1)], []],
+  ['王をまったく動かさなかった局は、この欄ごと出ない', [], []],
 ];
 
 function App(){
@@ -39,7 +41,7 @@ function App(){
     <style>{styles+frames}</style>
     <h1 style={{color:'#dbc698',fontSize:20,letterSpacing:'.14em'}}>終局画面の熟練度メーター</h1>
     <p style={{color:'#93a1b6',fontSize:12,lineHeight:1.8}}>
-      プレイヤーレベルのゲージとは別の欄。その局で使った札だけを並べる。
+      プレイヤーレベルのゲージとは別の欄。王に選んだ札だけが育つので、出る行はいつも1行。
     </p>
     <div style={{maxWidth:470,margin:'0 auto'}}>
       {場面.map(([名,gains,titles])=>

@@ -1276,16 +1276,21 @@ export function GameCore({
       }
       setTutNudge(null);
     }
-    // 札ごとの熟練度。自分が指した手だけを数える(2026-09-22 本人の決め)。
+    // 札ごとの熟練度。**自分が王に選んだ札を、王として動かした回数**だけ数える
+    // (2026-09-22 本人の決め。それまでは指した手すべてを数えていた)。
+    // 1局で育つのは王にした1種類だけになる。
     //
     // ここで数える理由: y() は手番の唯一の入口で、pieceId も上で付いている。
     // ただし **CPU の手も __foe 無しでここを通る**ので、持ち主を見て弾く。
     // 通信で届いた相手の手は __foe が付く。チュートリアルは台本なので数えない。
+    //
+    // 王位の継承(2・3が倒れたとき)で継ぐのは**同じ数字**なので、
+    // 途中で王の札が変わることはない(reducer.js の「王位を継承」)。
     // 恩恵は称号・アイコンだけで、盤の有利不利には効かない
     if (E.type === "MOVE_PIECE" && !tutorial && !E.__foe && E.pieceId) {
       const mover = a.pieces[E.pieceId];
       const mySeat = network ? p : cpu ? 0 : a.currentTurn;
-      if (mover && mover.owner === mySeat && mover.rank)
+      if (mover && mover.owner === mySeat && mover.isKing && mover.rank)
         masteryRef.current[mover.rank] =
           (masteryRef.current[mover.rank] || 0) + 1;
     }

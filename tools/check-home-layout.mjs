@@ -68,7 +68,7 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
   const order = [...grid.matchAll(/<b>([^<]*)/g)].map((m) => m[1].trim()).filter(Boolean);
   assert.deepEqual(
     order.slice(0, 6),
-    ["チュートリアル", "ミッション", "詰めトッタリー", "ショップ", "バトルパス", "ガチャ・装備"],
+    ["チュートリアル", "ミッション", "詰めトッタリー", "ショップ", "バトルパス", "ガチャ・スキン"],
     "2列3段: 左上から チュートリアル・ミッション / 詰めトッタリー・ショップ / バトルパス・ガチャ",
   );
   assert.equal((grid.match(/home-tile home-tile-/g) || []).length, 6, "四角い入り口は6つ");

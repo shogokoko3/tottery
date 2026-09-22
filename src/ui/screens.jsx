@@ -522,7 +522,7 @@ export function MenuScreen({
           frameTheme={theme}
           tone="skins"
           icon={<Sparkle size={26} />}
-          label="ガチャ・装備"
+          label="ガチャ・スキン"
           note="英雄を召喚する"
           onClick={onSkins}
         />
@@ -1792,7 +1792,7 @@ export function TotteryApp() {
 function TotteryScreens() {
   const collection = useCollection();
   const [cpuSkins, setCpuSkins] = useState({});
-  // ガチャ・装備を開いたときの戻り先と、最初に出すタブ(ショップから来たら「加工」など)
+  // ガチャ・スキンを開いたときの戻り先と、最初に出すタブ(ショップから来たら「加工」など)
   const [skinsFrom, setSkinsFrom] = useState("menu");
   const [skinsTab, setSkinsTab] = useState("gacha");
   // CPU戦で選んだ相手のエリア({ type, king })。null なら相手が手札から王を選ぶ

@@ -94,7 +94,7 @@ export function TicketBuy({
       )}
       {layout !== "grid" && (
         <p className="hint">
-          使うときは無償ジェムから先に減ります。チケットはガチャ・装備の画面で使えます。
+          使うときは無償ジェムから先に減ります。チケットはガチャ・スキンの画面で使えます。
         </p>
       )}
       {message && (

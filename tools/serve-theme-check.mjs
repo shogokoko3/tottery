@@ -49,7 +49,7 @@ const screens={title:<HomeScreen onStart={back}/>,home:<MenuScreen onPlay={()=>s
 });
 const links = [
   ["home", "ホーム"],
-  ["skins", "ガチャ・装備"],
+  ["skins", "ガチャ・スキン"],
   ["missions", "ミッション"],
   ["tsume", "詰め"],
   ["pass", "バトルパス"],
