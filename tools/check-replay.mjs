@@ -12,19 +12,38 @@
  *
  * あわせて、布陣で盤に出した駒を手札に戻せるかも見る。9×9で戻せない
  * 不具合があったため。
+ *
+ * 乱数は種で固定する。以前はここが素の Math.random で、絵札に寄った手札
+ * (およそ2500局に1回)を引いたときだけ落ちていた。落ちても手元では再現できず、
+ * 「たまに赤くなる検査」になっていた。種を変えて回したいときは SEED=数 を渡す。
  */
 import {
   reducer,
   autoArrange,
   autoPickKing,
+  canFillBoard,
   isNotableLog,
 } from "../src/game/reducer.js";
 import { totalSlots, territoryRows } from "../src/game/board.js";
 import { cpuAction } from "../src/game/cpu.js";
 
 const GAMES = Number(process.env.GAMES || 120);
+const SEED = Number(process.env.SEED || 20260922);
 const problems = [];
 let events = 0;
+
+/** 種つきの乱数。同じ種なら毎回まったく同じ対局になる */
+function mulberry32(a) {
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+Math.random = mulberry32(SEED);
+console.log(`乱数の種: ${SEED}`);
 
 function inBoard(c, size) {
   return c && c.row >= 0 && c.row < size && c.col >= 0 && c.col < size;
@@ -178,6 +197,47 @@ for (const size of [5, 9]) {
     problems.push(`${size}×${size}: 埋まった状態から戻せなかった`);
   else console.log(`  ok   ${size}×${size} 枠が埋まっていても戻せる`);
 }
+
+// --- 自動配置は、並べきれる手札なら必ず枠をちょうど埋める -----------------
+// 採用上限は「K を軍に入れると J・Q が1枚ずつに減る」。札を見た順に決めていくと、
+// 先に来た K のせいで J・Q の枠が縮み、埋めきれないことがあった
+// (手札 Q3・K2・J3・8×2・3・7・10 で9枠中8枚)。絵札に寄った手札はめったに
+// 出ないので、種を変えて多めに引いて確かめる。
+const HANDS = Number(process.env.HANDS || 4000);
+for (const size of [5, 9]) {
+  const slots = totalSlots(size);
+  let short = 0;
+  let unfillable = 0;
+  let firstBad = null;
+  for (let seed = 0; seed < HANDS; seed++) {
+    Math.random = mulberry32(seed);
+    const s = reducer(
+      { phase: "intro" },
+      { type: "START_SETUP", size, setupMode: "simultaneous", handSize: 13 },
+    );
+    const hand = s.players[0].hand;
+    // 並べきれない手札は配り直される(rescueHand)ので、ここでは数えるだけ
+    if (!canFillBoard(hand, slots)) {
+      unfillable++;
+      continue;
+    }
+    const n = Object.keys(autoArrange(s, 0, null, null, null)).length;
+    if (n !== slots) {
+      short++;
+      if (!firstBad)
+        firstBad = `${n}枚/${slots}枠 手札=${hand.map((c) => c.rank).join(",")}`;
+    }
+  }
+  if (short)
+    problems.push(
+      `${size}×${size}: 並べきれる手札なのに自動配置が枠を埋めない(${short}/${HANDS}件, 例: ${firstBad})`,
+    );
+  else
+    console.log(
+      `  ok   ${size}×${size} 自動配置が${HANDS}通りの手札で枠を埋める(うち${unfillable}通りは配り直しになる手札)`,
+    );
+}
+Math.random = mulberry32(SEED);
 
 if (problems.length) {
   console.log(`\n${problems.length} 件の問題`);

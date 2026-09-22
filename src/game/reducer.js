@@ -849,6 +849,37 @@ function withSetupPlacement(state, idx, placement) {
 }
 
 /**
+ * 自動配置で K を軍に入れるか。
+ *
+ * 採用上限は「K を軍に入れると J・Q が1枚ずつに減る」。だから絵札に寄った手札では、
+ * K を入れたせいで枠を埋めきれないことがある(9×9でおよそ2500局に1回)。
+ * 実際そうなっていた: 手札 Q3・K2・J3・8×2・3・7・10 は、K を入れると
+ * K1+Q1+J1+8×2+3枚 = 8枚どまり。K を入れなければ Q2+J2+8×2+3枚 = 9枚で埋まる。
+ *
+ * 入れた場合と入れない場合で置ける枚数を数えて、多いほうを選ぶ。
+ * 同じ枚数なら K を入れる(軍で一番強い札なので)。
+ *
+ * placed は既に盤に出ている枚数、rest はまだ手札にある札。
+ */
+function adoptsKing(placed, rest, slots) {
+  // 既に置いてある駒は動かさないので、その並びで決まってしまうことがある
+  if ((placed.K || 0) > 0) return true;
+  if ((placed.J || 0) > 1 || (placed.Q || 0) > 1) return false;
+  const pool = { ...placed };
+  for (const card of rest) pool[card.rank] = (pool[card.rank] || 0) + 1;
+  if (!pool.K) return false;
+  const room = (kingRank) =>
+    Math.min(
+      slots,
+      Object.keys(pool).reduce(
+        (n, rank) => n + Math.min(pool[rank], maxAdopt(rank, kingRank)),
+        0,
+      ),
+    );
+  return room("K") >= room(null);
+}
+
+/**
  * 自陣を自動で埋める。keep を渡すと置いてある駒はそのままにして残りだけ埋める。
  * cellOrder / handOrder は乱数を外から与えるためのもの(通信時の再現用)。
  */
@@ -876,18 +907,22 @@ export function autoArrange(state, idx, cellOrder, handOrder, keep) {
   );
   const free = ordered.filter((at) => !takenCells.has(`${at.row}-${at.col}`));
 
+  // K を入れるかは、手札を見てから先に決める。札を見た順に決めていくと、
+  // 先に来た K のせいで J・Q の枠が縮み、埋めきれないことがあった
+  const kingRank = adoptsKing(
+    counts,
+    hand.filter((card) => !takenIds.has(card.id)),
+    slots,
+  )
+    ? "K"
+    : null;
+
   let cursor = 0;
   for (const card of hand) {
     if (Object.keys(placement).length >= slots) break;
     if (takenIds.has(card.id)) continue;
-    if (card.rank === "K") {
-      if ((counts.K || 0) >= 1 || (counts.J || 0) > 1 || (counts.Q || 0) > 1)
-        continue;
-    } else {
-      const hasK = (counts.K || 0) > 0;
-      const limit = maxAdopt(card.rank, hasK ? "K" : null);
-      if ((counts[card.rank] || 0) >= limit) continue;
-    }
+    // maxAdopt("K", null) は 0 なので、K を入れないと決めた回は K がここで落ちる
+    if ((counts[card.rank] || 0) >= maxAdopt(card.rank, kingRank)) continue;
     const at = free[cursor++];
     if (!at) break;
     placement[card.id] = at;
