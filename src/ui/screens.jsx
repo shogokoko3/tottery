@@ -456,8 +456,21 @@ export function MenuScreen({
           aria-label={`ジェム ${collection.gems || 0}。ジェムを買う`}
         >
           <GemAmount amount={collection.gems || 0} size={26} />
+          {/* 「+」は文字ではなく線の絵にする。金の丸に文字の「+」だと、細い線で描いた
+              チケットや矢印の中でそこだけ浮いて見えた(2026-09-22 本人の指摘) */}
           <span className="home-resource-plus" aria-hidden="true">
-            +
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            >
+              <circle cx="12" cy="12" r="10.4" strokeWidth="1.2" />
+              <path d="M12 7.6v8.8M7.6 12h8.8" />
+            </svg>
           </span>
         </button>
       </div>

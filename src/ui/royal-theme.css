@@ -463,22 +463,21 @@
 .tottery-root .home-resource-gems:active {
   background: rgba(255, 255, 255, 0.06);
 }
-.tottery-root .home-resource-gems:active .home-resource-plus {
-  filter: brightness(0.9);
-}
-/* 「+」。主操作の金の釦と同じ色にして、押せる印だと分かるようにする */
+/* 「+」。チケットの絵や矢印と同じ、細い金の線で描く。塗りつぶしの丸は帯の中で浮く */
 .tottery-root .home-resource-plus {
-  display: grid;
+  display: inline-grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #f1da98, #c2a25f);
-  color: #211b13;
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1;
-  box-shadow: 0 1px 0 #0006;
+  width: 22px;
+  height: 22px;
+  color: var(--gold-soft);
+  opacity: 0.92;
+}
+.tottery-root .home-resource-plus svg {
+  display: block;
+}
+.tottery-root .home-resource-gems:active .home-resource-plus {
+  color: var(--gold);
+  opacity: 1;
 }
 
 /* 未購入パスはAスキンと同じ鎖で封印する。購入操作は覆わない。 */
