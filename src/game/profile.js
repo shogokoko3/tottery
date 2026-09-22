@@ -163,12 +163,35 @@ function normalizeMastery(raw) {
   return Object.keys(out).length ? out : null;
 }
 
-/** その札の段(0〜5)。0 は「まだ段に届いていない」 */
-export function masteryStep(profile, rank) {
-  const n = (profile && profile.mastery && profile.mastery[rank]) || 0;
+/**
+ * 指した回数から、いまの段と「次の段までの進み具合」を出す。
+ * 終局画面のメーターがこれを使う(2026-09-22 本人の指示)。
+ */
+export function masteryProgress(count) {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
   let step = 0;
   for (const need of MASTERY_STEPS) if (n >= need) step += 1;
-  return step;
+  const done = step >= MASTERY_STEPS.length;
+  const floor = step === 0 ? 0 : MASTERY_STEPS[step - 1];
+  const ceil = done ? MASTERY_STEPS[MASTERY_STEPS.length - 1] : MASTERY_STEPS[step];
+  const span = Math.max(1, ceil - floor);
+  const into = Math.max(0, Math.min(n, ceil) - floor);
+  return {
+    count: n,
+    step,
+    done,
+    into,
+    need: span,
+    ratio: done ? 1 : into / span,
+    left: done ? 0 : ceil - n,
+    next: done ? null : ceil,
+  };
+}
+
+/** その札の段(0〜5)。0 は「まだ段に届いていない」 */
+export function masteryStep(profile, rank) {
+  return masteryProgress((profile && profile.mastery && profile.mastery[rank]) || 0)
+    .step;
 }
 
 /** 全部の札が step 段に届いているか(通しの褒美の条件) */
@@ -184,23 +207,37 @@ export function masteryAll(profile, step) {
  */
 export function recordMastery(used) {
   const profile = loadProfile();
-  if (!used || typeof used !== "object") return profile;
+  const none = { profile, gains: [], titles: [] };
+  if (!used || typeof used !== "object") return none;
   const mastery = { ...(profile.mastery || {}) };
-  let moved = 0;
+  const gains = [];
   for (const rank of RANKS) {
     const n = Math.min(MASTERY_PER_GAME, Math.floor(Number(used[rank]) || 0));
     if (n <= 0) continue;
-    mastery[rank] = (mastery[rank] || 0) + n;
-    moved += n;
+    const before = mastery[rank] || 0;
+    mastery[rank] = before + n;
+    gains.push({
+      rank,
+      added: n,
+      before,
+      after: mastery[rank],
+      stepBefore: masteryProgress(before).step,
+      progress: masteryProgress(mastery[rank]),
+    });
   }
-  if (!moved) return profile;
+  if (!gains.length) return none;
   const next = { ...profile, mastery };
   // 届いた称号は焼き付ける。以後は熟練度の数字が無くても名乗れる(持ち点の称号と同じ)
   const earned = newlyEarned(profile, next);
   if (earned.length)
     next.titles = [...next.titles, ...earned.map((t) => t.id)];
   saveProfile(next);
-  return next;
+  return {
+    profile: next,
+    gains,
+    // 終局画面で見せる、この局で届いた称号
+    titles: earned.map((t) => ({ id: t.id, name: t.name })),
+  };
 }
 
 /** 端末ごとの目印。名前が同じ人と区別するために持つ */

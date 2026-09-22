@@ -148,6 +148,7 @@ import {
 } from "../game/clock.js";
 import { titleNameOf } from "../game/titles.js";
 import { TitleFrame } from "./title-frame.jsx";
+import { MasteryGains } from "./mastery.jsx";
 import { publishPlayer } from "../net/players.js";
 
 /** 持ち時間の表示。自分の時計は下、相手の時計は上に置く */
@@ -444,6 +445,8 @@ export function GameView({
   onTutorialList,
   youAre,
   rating,
+  // その局の熟練度の上がり幅({ gains, titles })。プレイヤーレベルとは別の欄に出す
+  mastery = null,
   rematch,
   seasonResult,
 }) {
@@ -965,6 +968,9 @@ export function GameView({
             )}
           </div>
         )}
+        {/* 札ごとの熟練度。プレイヤーレベルのゲージ(XpGainToast)とは別に、
+            この局で使った札だけを並べる(2026-09-22 本人の指示) */}
+        {mastery && <MasteryGains gains={mastery.gains} titles={mastery.titles} />}
         {/*
           対局後のボタンは 2×2 に固定(本人の指示 2026-09-17):
           左上 振り返り / 右上 マッチングへ / 左下 ホームへ / 右下 もう一度遊ぶ。
@@ -1144,6 +1150,8 @@ export function GameCore({
     foeIdxRef = (0, useRef)(0),
     // その局で自分がどの札を何回指したか。終局時に熟練度へ足す
     masteryRef = (0, useRef)({}),
+    // 終局画面のメーターに出す、この局の上がり幅と届いた称号
+    [masteryResult, setMasteryResult] = (0, useState)(null),
     recordedRef = (0, useRef)(!1),
     xpNoticeRef = (0, useRef)(null),
     mountedRef = (0, useRef)(false),
@@ -2026,10 +2034,12 @@ export function GameCore({
     xpNoticeRef.current = after.xpNoticeId;
     // 札ごとの熟練度。1局の上限は recordMastery 側で掛ける。
     // 称号が新しく届いていれば、その中で profile.titles に焼き付く
-    const withMastery = recordMastery(masteryRef.current);
+    const mastery = recordMastery(masteryRef.current);
     masteryRef.current = {};
+    if (mastery.gains.length) setMasteryResult(mastery);
+    const afterMastery = mastery.profile;
     setRatingResult(after.delta === null ? null : after);
-    publishPlayer(withMastery);
+    publishPlayer(afterMastery);
     // 引き継ぎの控えも預け直す(本人確認済みのときだけ。失敗しても対局は止めない)
     backupIfDue().catch(() => {});
     // ランダムマッチの結果を控える。人に負けたら、次のランダムマッチは Bot(src/game/bot-match.js)
@@ -3436,6 +3446,7 @@ export function GameCore({
             onTutorialList={onTutorialList}
             youAre={network ? p : cpu ? 0 : null}
             rating={ratingResult}
+            mastery={masteryResult}
             seasonResult={seasonResult}
             rematch={
               network && onRematch

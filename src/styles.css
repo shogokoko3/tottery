@@ -2995,6 +2995,104 @@ body:has(.skin-overlay) {
 .title-choice-locked small {
   white-space: pre-line;
 }
+/* --- 終局画面の熟練度メーター(2026-09-22 本人の指示) ---
+   プレイヤーレベルのゲージとは別の欄。その局で使った札だけを並べ、
+   「何がどれだけ上がったか」を出す */
+.mastery-gains {
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(9, 20, 38, 0.55);
+  text-align: left;
+}
+.mastery-gains-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--gold-soft);
+}
+.mastery-gains-head small {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.mastery-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+}
+.mastery-row + .mastery-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.mastery-rank {
+  font-family: "Shippori Mincho", serif;
+  font-size: 15px;
+  text-align: center;
+  color: var(--text);
+}
+.mastery-meter {
+  min-width: 0;
+}
+.mastery-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.14);
+  overflow: hidden;
+}
+.mastery-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold-soft), var(--gold));
+  transition: width 0.5s ease;
+}
+.mastery-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.mastery-added {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold-soft);
+}
+/* 段に届いた行だけ強くする。全部光らせると、どこが変わったか分からない */
+.mastery-row-up .mastery-rank {
+  color: var(--gold);
+}
+.mastery-up {
+  color: var(--gold);
+  font-weight: 700;
+}
+.mastery-earned {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(212, 175, 55, 0.25);
+}
+.mastery-earned small {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--gold-soft);
+}
+.mastery-steps-note {
+  margin: 8px 0 0;
+  font-size: 10px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
 /* 一覧の見出し。取得済みと未取得を、色だけでなく「並ぶ場所」でも分ける */
 .title-group-head {
   display: flex;
