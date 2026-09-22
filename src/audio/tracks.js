@@ -120,6 +120,8 @@ export const SCREEN_TRACK = {
   skins: "title",
   missions: "title",
   battlepass: "title",
+  // 札ごとの熟練度を見る「カード」。ホームの一部なので同じ曲
+  cards: "title",
   letters: "title",
   shop: "title",
   // 詰めトッタリーは考える場面なので、布陣と同じ落ち着いた曲

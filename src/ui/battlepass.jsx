@@ -42,7 +42,8 @@ import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { useBattlePassUnlocked } from "./battlepass-access.js";
 import { BattlePassMagic } from "./battlepass-magic.jsx";
 
-export function BattlePassScreen({ onBack, onSkins }) {
+/** embedded: ミッション・バトルパスのタブ画面(quests.jsx)の中。見出しは向こうが出す */
+export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
   const pass = usePass();
   const collection = useCollection();
   const owned = useBattlePassUnlocked();
@@ -204,7 +205,7 @@ export function BattlePassScreen({ onBack, onSkins }) {
 
   return (
     <div className="setup-wrap">
-      <h2>バトルパス</h2>
+      {!embedded && <h2>バトルパス</h2>}
       {owned && (
         <p className="hint">
           相手の駒を取ると、真ん中のとなりのマスから埋まっていきます。

@@ -4487,7 +4487,9 @@ body:has(.skin-overlay) {
 .tottery-root:has(.missions-screen) > .build-tag {
   display: none;
 }
-.stage:has(> .missions-screen) {
+/* タブ画面(quests.jsx)の中にいるときも同じ(2026-09-22) */
+.stage:has(> .missions-screen),
+.stage:has(> .quests-screen.is-missions) {
   flex: 1;
   min-height: 0;
   padding: 12px max(12px, env(safe-area-inset-right))
@@ -5625,6 +5627,21 @@ body:has(.skin-overlay) {
 .home-tile-shop .home-tile-icon {
   color: #8fd8a4;
   background: rgba(143, 216, 164, 0.16);
+}
+/* ミッション・バトルパス(左下)。ミッションの琥珀を引き継ぐ */
+.home-tile-quests .home-tile-icon {
+  color: #f5c26b;
+  background: rgba(245, 194, 107, 0.22);
+}
+/* 2つの名は「・」で2行に分ける。1行に詰めると「バトル／パス」で折れて読みにくい */
+.home-tile-quests b {
+  text-align: center;
+  line-height: 1.3;
+}
+/* カード(右上)。札の赤で、ほかの入り口と見分ける */
+.home-tile-cards .home-tile-icon {
+  color: #f08a8a;
+  background: rgba(240, 138, 138, 0.16);
 }
 .home-tile-letters .home-tile-icon {
   color: #8fbce8;
@@ -6903,4 +6920,233 @@ p.hint > span.gem-shop-diag {
   .ace-foil-bar {
     margin: 0 0 8px;
   }
+}
+
+/* =========================================================================
+   ミッション・バトルパス(タブ画面 src/ui/quests.jsx、2026-09-22 本人の指示)
+   ========================================================================= */
+.quests-screen {
+  width: 100%;
+  max-width: 620px;
+  text-align: center;
+}
+/* ミッションのタブは、ミッション画面と同じく高さを固定して中だけを送る */
+.quests-screen.is-missions {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.quests-screen.is-missions > .missions-screen {
+  flex: 1;
+  min-height: 0;
+}
+.quests-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  flex-shrink: 0;
+  margin: 0 0 10px;
+}
+.quests-switch button {
+  position: relative;
+  min-height: 46px;
+  padding: 8px 6px;
+  border: 1px solid var(--btn-edge);
+  background: #0d1c30;
+  color: var(--text-dim);
+  font-family: "Shippori Mincho", serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.quests-switch button:first-child {
+  border-radius: 10px 0 0 10px;
+}
+.quests-switch button:last-child {
+  border-radius: 0 10px 10px 0;
+  border-left: 0;
+}
+.quests-switch button[aria-selected="true"] {
+  background: linear-gradient(180deg, #f1da98, #c2a25f);
+  color: #211b13;
+  text-shadow: none;
+}
+.quests-switch button:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: -4px;
+}
+.quests-switch .missions-tab-count {
+  top: 6px;
+  right: 10px;
+}
+/* バトルパス側は元の画面のまま。見出しを外したぶん上を詰める */
+.quests-screen.is-pass > .setup-wrap > .hint:first-child,
+.quests-screen.is-pass > .setup-wrap > .pass-reward:first-child {
+  margin-top: 0;
+}
+
+/* =========================================================================
+   カード(札ごとの熟練度 src/ui/card-mastery.jsx、2026-09-22 本人の指示)
+   ========================================================================= */
+.card-mastery-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.card-mastery-summary b {
+  font-size: 14px;
+  color: var(--gold-soft);
+}
+.card-mastery-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.card-mastery-row {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(9, 20, 38, 0.55);
+  overflow: hidden;
+}
+.card-mastery-row.is-reached {
+  border-color: rgba(212, 175, 55, 0.35);
+}
+.card-mastery-row.is-done {
+  border-color: rgba(255, 228, 161, 0.6);
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.14), rgba(9, 20, 38, 0.6));
+}
+.card-mastery-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.card-mastery-main:active {
+  background: rgba(255, 255, 255, 0.04);
+}
+.card-mastery-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.card-mastery-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.card-mastery-rank {
+  font-family: "Shippori Mincho", serif;
+  font-size: 18px;
+  color: var(--text);
+}
+.card-mastery-row.is-reached .card-mastery-rank {
+  color: var(--gold-soft);
+}
+.card-mastery-row.is-done .card-mastery-rank {
+  color: var(--gold);
+}
+.card-mastery-step {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+}
+.card-mastery-row.is-reached .card-mastery-step {
+  border-color: rgba(212, 175, 55, 0.4);
+  color: var(--gold-soft);
+}
+.card-mastery-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.card-mastery-main .mastery-track {
+  display: block;
+}
+.card-mastery-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.card-mastery-foot small {
+  font-size: 10px;
+}
+.card-mastery-left {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.card-mastery-title {
+  min-width: 0;
+}
+.card-mastery-detail {
+  padding: 0 12px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+.card-mastery-detail p {
+  margin: 8px 0 0;
+}
+.card-mastery-detail b {
+  margin-right: 4px;
+  color: var(--gold-soft);
+}
+.card-mastery-all {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(9, 20, 38, 0.55);
+}
+.card-mastery-all h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--gold-soft);
+}
+.card-mastery-all-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+.card-mastery-all-row + .card-mastery-all-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.card-mastery-all-name {
+  font-family: "Shippori Mincho", serif;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+.card-mastery-all-row small {
+  font-size: 10px;
+  color: var(--text-dim);
 }

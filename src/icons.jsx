@@ -29,6 +29,14 @@ export const Crown = (props) => (
   </IconBase>
 );
 
+/** 札を2枚重ねた形。ホームの「カード」(札ごとの熟練度)の入り口 */
+export const Cards = (props) => (
+  <IconBase {...props}>
+    <rect x="3" y="7" width="11" height="14" rx="2" />
+    <path d="M8 4.5h9a2 2 0 0 1 2 2V17" />
+  </IconBase>
+);
+
 export const Info = (props) => (
   <IconBase {...props}>
     <circle cx="12" cy="12" r="9" />

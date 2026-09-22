@@ -44,6 +44,7 @@ import {
   Mail,
   Shop,
   Ticket,
+  Cards,
 } from "../icons.jsx";
 import {
   LOBBY_TTL,
@@ -145,8 +146,8 @@ import SEASON_STYLES from "./season.css";
 import TSUME_STYLES from "./tsume.css";
 import { SkinsScreen } from "./skins.jsx";
 import { useMissionProfile } from "./mission-profile.js";
-import { MissionsScreen } from "./missions.jsx";
-import { BattlePassScreen } from "./battlepass.jsx";
+import { QuestsScreen } from "./quests.jsx";
+import { CardMasteryScreen } from "./card-mastery.jsx";
 import { LettersScreen, useUnreadLetters } from "./letters.jsx";
 import { LoginBonus } from "./loginbonus.jsx";
 import { GemShop } from "./gem-shop.jsx";
@@ -388,6 +389,7 @@ export function MenuScreen({
   onSkins,
   onBattlePass,
   onMissions,
+  onCards,
   onShop,
   onLetters,
   now = Date.now,
@@ -450,8 +452,10 @@ export function MenuScreen({
         <ArrowRight size={20} className="home-hero-arrow" />
       </button>
 
-      {/* 2列3段。左上から チュートリアル・ミッション / 詰めトッタリー・ショップ /
-          バトルパス・ガチャ(本人の指示 2026-09-17)。ランキングは「対戦する」の中へ移した */}
+      {/* 2列3段。左上から チュートリアル・カード / 詰めトッタリー・ショップ /
+          ミッション・バトルパス・ガチャ(本人の指示 2026-09-17、2026-09-22 に並べ替え)。
+          ミッションとバトルパスは1つの画面(quests.jsx)にまとめ、バトルパスがあった左下へ。
+          ミッションがあった右上は「カード」(札ごとの熟練度)。ランキングは「対戦する」の中 */}
       <div className="home-grid">
         <HomeTile
           frameTheme={theme}
@@ -470,12 +474,11 @@ export function MenuScreen({
         />
         <HomeTile
           frameTheme={theme}
-          tone="missions"
-          icon={<Check size={26} />}
-          label="ミッション"
-          note="褒美を受け取る"
-          badge={ready}
-          onClick={onMissions}
+          tone="cards"
+          icon={<Cards size={26} />}
+          label="カード"
+          note="札ごとの熟練度"
+          onClick={onCards}
         />
         <HomeTile
           frameTheme={theme}
@@ -512,11 +515,25 @@ export function MenuScreen({
         />
         <HomeTile
           frameTheme={theme}
-          tone="pass"
-          icon={passUnlocked ? <Grid size={26} /> : <BattlePassSkinLock className="home-pass-lock" />}
-          label="バトルパス"
-          note={passUnlocked ? "マスを埋める" : "購入して解放"}
-          onClick={onBattlePass}
+          tone="quests"
+          icon={<Check size={26} />}
+          label={
+            // 2つの名を1行に詰めると「バトル／パス」で折れる。「・」で2行に分ける
+            <>
+              ミッション・
+              <br />
+              バトルパス
+            </>
+          }
+          note={
+            ready > 0
+              ? `受け取れる褒美 ${ready}件`
+              : passUnlocked
+                ? "褒美を受け取る・マスを埋める"
+                : "褒美を受け取る"
+          }
+          badge={ready}
+          onClick={onMissions}
         />
         <HomeTile
           frameTheme={theme}
@@ -1914,6 +1931,7 @@ function TotteryScreens() {
       tsume: "menu",
       missions: "menu",
       battlepass: "menu",
+      cards: "menu",
       letters: "menu",
       // ランキングは「対戦する」の中にあるので、そこへ戻す
       ranking: "matching",
@@ -2147,6 +2165,7 @@ function TotteryScreens() {
               onSkins={() => t("skins")}
               onBattlePass={() => t("battlepass")}
               onMissions={() => t("missions")}
+              onCards={() => t("cards")}
               onLetters={() => t("letters")}
               onShop={() => t("shop")}
             />
@@ -2181,13 +2200,24 @@ function TotteryScreens() {
           ),
           ranking: <RankingScreen onBack={() => t("matching")} />,
           tsume: <TsumeScreen onBack={() => t("menu")} />,
-          missions: <MissionsScreen onBack={() => t("menu")} />,
-          battlepass: (
-            <BattlePassScreen
+          // ミッションとバトルパスは1つの画面。どちらを開いているかは画面の id で持つ
+          missions: (
+            <QuestsScreen
+              tab="missions"
+              onTab={t}
               onBack={() => t("menu")}
               onSkins={() => t("skins")}
             />
           ),
+          battlepass: (
+            <QuestsScreen
+              tab="battlepass"
+              onTab={t}
+              onBack={() => t("menu")}
+              onSkins={() => t("skins")}
+            />
+          ),
+          cards: <CardMasteryScreen onBack={() => t("menu")} />,
           letters: <LettersScreen onBack={() => t("menu")} />,
           tutorial: (
             <TutorialSelect onBack={() => t("menu")} onStart={startTutorial} />

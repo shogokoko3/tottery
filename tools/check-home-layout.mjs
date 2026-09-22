@@ -1,5 +1,9 @@
 // ホームの入り口の並びと、ランキングの置き場所の検査(本人の指示 2026-09-17)。
-//   1. ホームは2列3段。左上から チュートリアル・ミッション / 詰めトッタリー・ショップ / バトルパス・ガチャ
+//   1. ホームは2列3段。左上から チュートリアル・カード / 詰めトッタリー・ショップ / ミッション・バトルパス・ガチャ
+//      (2026-09-22 本人の指示: ミッションとバトルパスを1つにまとめてバトルパスの場所へ。
+//       ミッションがあった場所は「カード」＝札ごとの熟練度)
+//   1a. ミッション・バトルパスは1つの画面(QuestsScreen)で、上の切り替えで行き来する
+//   1b. カードの画面に13種の札の熟練度が並ぶ
 //   2. ランキングはホームに無く、「対戦する」(MatchingScreen)にある
 //   3. ショップの画面に、ジェム・チケット・フォイル・バトルパスの入り口がある
 import assert from "node:assert/strict";
@@ -19,8 +23,12 @@ try {
       contents: `import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';
 import {MenuScreen, MatchingScreen} from './src/ui/screens.jsx';
 import {ShopScreen} from './src/ui/shop.jsx';
+import {QuestsScreen} from './src/ui/quests.jsx';
+import {CardMasteryScreen} from './src/ui/card-mastery.jsx';
 const noop=()=>{};
-export const home=()=>renderToStaticMarkup(<MenuScreen onPlay={noop} onTutorial={noop} onTsume={noop} onSkins={noop} onBattlePass={noop} onMissions={noop} onShop={noop} onLetters={noop} />);
+export const home=()=>renderToStaticMarkup(<MenuScreen onPlay={noop} onTutorial={noop} onTsume={noop} onSkins={noop} onBattlePass={noop} onMissions={noop} onCards={noop} onShop={noop} onLetters={noop} />);
+export const quests=(tab)=>renderToStaticMarkup(<QuestsScreen tab={tab} onTab={noop} onBack={noop} onSkins={noop} />);
+export const cards=()=>renderToStaticMarkup(<CardMasteryScreen onBack={noop} />);
 export const matching=()=>renderToStaticMarkup(<MatchingScreen onOnline={noop} onFriend={noop} onCpu={noop} onBack={noop} onTutorial={noop} onRanking={noop} />);
 export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={noop} onFoil={noop} onBattlePass={noop} />);`,
     },
@@ -60,20 +68,49 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
   globalThis.window = globalThis;
   if (typeof globalThis.Image === "undefined") globalThis.Image = class { set src(_) {} };
   if (typeof globalThis.Audio === "undefined") globalThis.Audio = class { play() {} pause() {} };
-  const { home, matching, shop } = createRequire(import.meta.url)(outfile);
+  const { home, matching, shop, quests, cards } = createRequire(import.meta.url)(outfile);
 
   // 1. ホームの並び
   const html = home();
   const grid = html.slice(html.indexOf('class="home-grid"'));
-  const order = [...grid.matchAll(/<b>([^<]*)/g)].map((m) => m[1].trim()).filter(Boolean);
+  // 名は <b> の中。「ミッション・バトルパス」は <br> で2行にしているので、タグを外して読む
+  const order = [...grid.matchAll(/<b>(.*?)<\/b>/g)]
+    // 「おすすめ」の印(span)は名ではないので除く
+    .map((m) => m[1].replace(/<span[^>]*>.*?<\/span>/g, "").replace(/<[^>]+>/g, "").trim())
+    .filter(Boolean);
   assert.deepEqual(
     order.slice(0, 6),
-    ["チュートリアル", "ミッション", "詰めトッタリー", "ショップ", "バトルパス", "ガチャ・スキン"],
-    "2列3段: 左上から チュートリアル・ミッション / 詰めトッタリー・ショップ / バトルパス・ガチャ",
+    ["チュートリアル", "カード", "詰めトッタリー", "ショップ", "ミッション・バトルパス", "ガチャ・スキン"],
+    "2列3段: 左上から チュートリアル・カード / 詰めトッタリー・ショップ / ミッション・バトルパス・ガチャ",
   );
   assert.equal((grid.match(/home-tile home-tile-/g) || []).length, 6, "四角い入り口は6つ");
-  for (const tone of ["tutorial", "missions", "tsume", "shop", "pass", "skins"])
+  for (const tone of ["tutorial", "cards", "tsume", "shop", "quests", "skins"])
     assert.ok(grid.includes(`home-tile-${tone}`), `${tone} の欄がある`);
+  assert.ok(!grid.includes("home-tile-missions") && !grid.includes("home-tile-pass"), "ミッションとバトルパスの単独の入り口は無い");
+
+  // 1a. ミッション・バトルパスは1つの画面。切り替えの2つの札があり、開いている側の中身が出る
+  const qm = quests("missions");
+  assert.ok(qm.includes('class="quests-screen is-missions"'), "ミッションのタブ");
+  assert.ok(/role="tab"[^>]*aria-selected="true"[^>]*>ミッション/.test(qm), "ミッションが選ばれている");
+  assert.ok(/role="tab"[^>]*>バトルパス/.test(qm), "バトルパスの札がある");
+  assert.ok(qm.includes("missions-scroll"), "ミッションの一覧が出る");
+  assert.ok(!qm.includes("<h2>ミッション</h2>"), "見出しは切り替えの札が兼ねる(重ねない)");
+  const qp = quests("battlepass");
+  assert.ok(qp.includes('class="quests-screen is-pass"'), "バトルパスのタブ");
+  assert.ok(/role="tab"[^>]*aria-selected="true"[^>]*>バトルパス/.test(qp), "バトルパスが選ばれている");
+  assert.ok(qp.includes("pass-reward"), "バトルパスの中身が出る");
+  assert.ok(!qp.includes("<h2>バトルパス</h2>"), "見出しは切り替えの札が兼ねる(重ねない)");
+  for (const h of [qm, qp]) assert.ok(h.includes("ホームに戻る"), "どちらのタブにも「ホームに戻る」");
+
+  // 1b. カードの画面: 13種の札と、その熟練度
+  const cd = cards();
+  assert.ok(cd.includes("<h2>カード</h2>"), "カードの見出し");
+  for (const rank of ["A","2","3","4","5","6","7","8","9","10","J","Q","K"])
+    assert.ok(cd.includes(`aria-label="${rank} の熟練度"`), `${rank} の熟練度のメーター`);
+  assert.equal((cd.match(/card-mastery-row/g) || []).length, 13, "札は13種");
+  assert.ok(cd.includes("十三道の使い手") && cd.includes("盤上無双"), "通しの称号も出る");
+  assert.ok(cd.includes("盤の有利不利には効きません"), "盤に効かないことを断る");
+  assert.ok(cd.includes("ホームに戻る"), "カードにも「ホームに戻る」");
 
   // 2. ランキングの置き場所
   assert.ok(!html.includes("ランキング"), "ホームにランキングは無い");
@@ -100,11 +137,11 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
   assert.ok(/if \(screen === "home" \|\| screen === "game"\) return undefined;/.test(table), "タイトルと対局中だけは出さない");
   for (const [screen, to] of [
     ["menu", "home"], ["shop", "menu"], ["matching", "menu"], ["tutorial", "menu"],
-    ["tsume", "menu"], ["missions", "menu"], ["battlepass", "menu"], ["letters", "menu"],
+    ["tsume", "menu"], ["missions", "menu"], ["battlepass", "menu"], ["cards", "menu"], ["letters", "menu"],
     ["ranking", "matching"], ["online", "matching"], ["room", "matching"], ["nearby", "matching"],
   ])
     assert.ok(new RegExp(`${screen}: "${to}"`).test(table), `${screen} の戻り先は ${to}`);
   assert.ok(/skins: skinsFrom/.test(table) && /rules: rulesFrom/.test(table), "ガチャとルール設定は来た道へ戻る");
   assert.ok(/if \(screen === "online" \|\| screen === "room" \|\| screen === "nearby"\) return backToMatching;/.test(table), "待ち合わせからの戻りは後片付けを通す");
 }
-console.log("ホームの並び・ランキングは対戦する・ショップの中身・戻る釦 OK");
+console.log("ホームの並び・ミッションとバトルパスの統合・カードの熟練度・ランキングは対戦する・ショップの中身・戻る釦 OK");

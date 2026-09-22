@@ -37,7 +37,8 @@ const TABS = [
 // Existing lifetime missions belong to Normal.
 const categoryOf = (mission) => mission.category || "normal";
 
-export function MissionsScreen({ onBack }) {
+/** embedded: ミッション・バトルパスのタブ画面(quests.jsx)の中。見出しは向こうが出す */
+export function MissionsScreen({ onBack, embedded = false }) {
   const collection = useCollection();
   const [profile, setProfile] = useMissionProfile();
   const [busy, setBusy] = useState(false);
@@ -131,7 +132,7 @@ export function MissionsScreen({ onBack }) {
   return (
     <div className="setup-wrap missions-screen">
       <header className="missions-heading">
-        <h2>ミッション</h2>
+        {!embedded && <h2>ミッション</h2>}
         <div className="level-badge">
           <GemAmount amount={collection.gems || 0} size={26} />
           <small>条件を満たすと受け取れます</small>

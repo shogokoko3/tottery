@@ -3,7 +3,7 @@
 2026-09-22 着手。**次に触る人がこれだけ読めば続きを始められる**ことを目指して書く。
 決まりごとには理由を添える。理由が分かっていないと、良かれと思って壊してしまうため。
 
-関連コミット: `488b57d`(数える＋称号) → `cb0c82e`(終局メーター) → `48285a6`(王限定・表記変更)
+関連コミット: `488b57d`(数える＋称号) → `cb0c82e`(終局メーター) → `48285a6`(王限定・表記変更) → ホームの「カード」(2026-09-22、ミッションとバトルパスの統合と同時)
 
 ---
 
@@ -29,8 +29,9 @@
 | 称号15種 | [src/game/titles.js:174](../src/game/titles.js) `MASTERY_NAMES` / `:192` `MASTERY_TITLES`（`:333` で全体の表に合流） |
 | 額縁の意匠 | [src/ui/title-design.js:62](../src/ui/title-design.js) 〜 / `:165` で段を3に固定 |
 | 終局画面のメーター | [src/ui/mastery.jsx](../src/ui/mastery.jsx)、置き場所は `game.jsx:973` |
+| ホームの「カード」(13種の一覧) | [src/ui/card-mastery.jsx](../src/ui/card-mastery.jsx)。入り口はホーム右上、画面 id `cards`。段の呼び名は `masteryStepName` |
 | メーターの見た目 | `src/styles.css` の `.mastery-*` |
-| 検査 | [tools/check-mastery.mjs](../tools/check-mastery.mjs)（99件。`npm run check` に登録済み） |
+| 検査 | [tools/check-mastery.mjs](../tools/check-mastery.mjs)（99件。`npm run check` に登録済み）。カード画面の中身は `check-home-layout.mjs` |
 | 見え方の確認 | `node tools/serve-mastery-check.mjs` → http://127.0.0.1:4264 |
 
 ### 称号の名前
