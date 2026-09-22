@@ -3002,3 +3002,24 @@
   0%, 99% { background: transparent; }
   100% { background: #02070d; }
 }
+
+/* 「ほかのフォイルも」の「しばらく表示しない」(2026-09-22 本人の指示)。閉じるより控えめに置く */
+.foil-offer-snooze {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.foil-offer-snooze-btn {
+  min-height: 40px;
+  padding: 6px 18px;
+  font-size: 13px;
+}
+.foil-offer-snooze small {
+  font-size: 11px;
+  color: var(--text-dim, #93a1b6);
+  text-align: center;
+}

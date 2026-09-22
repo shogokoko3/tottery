@@ -101,6 +101,8 @@ import {
   bandOf,
   skinVisibleInCollection,
   startFoilWindow,
+  shouldOfferFoils,
+  snoozeFoilOffer,
 } from "../skins/foil-shop.js";
 import { addEther } from "../skins/collection.js";
 import { buyEther } from "../net/wallet.js";
@@ -1783,13 +1785,16 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
       ? []
       : (collection.pending?.results || []).filter((r) => byId(r.id)?.foil);
     // フォイルを引いたら、その時刻から72時間だけショップにフォイルの欄を並べる
-    // (2026-09-18 本人の指示。引くたびに引き直す)
+    // (2026-09-18 本人の指示)。並んでいる間に引いても引き直さず、ポップアップも出さない。
+    // 時間切れで消えたあとの次のフォイルでだけ、新しく始めてポップアップを出す
+    // (2026-09-22 本人の指示。「しばらく表示しない」を押していれば出さない)
+    const before = collection;
     const next = await run((s) => {
       const base = craftResult ? { ...s, lastCraft: null } : { ...s, pending: null };
       return pulledFoils.length ? startFoilWindow(base) : base;
     });
     // 有償ジェムはサーバーの財布にあるので、Web でも(iOS で買った分を)使える。店の釦だけ iOS 限定
-    if (next && pulledFoils.length && WALLET_SERVER) {
+    if (next && pulledFoils.length && WALLET_SERVER && shouldOfferFoils(before, next)) {
       const exclude = [
         ...new Set(pulledFoils.map((r) => bandOf(r.id)?.id).filter(Boolean)),
       ];
@@ -2538,6 +2543,10 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
           onBuy={buyFoilOffer}
           message={message}
           onClose={() => setFoilOffer(null)}
+          onSnooze={async () => {
+            await run((s) => snoozeFoilOffer(s));
+            setFoilOffer(null);
+          }}
           onShop={shopOk ? () => setShop(true) : null}
         />
       )}

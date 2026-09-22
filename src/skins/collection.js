@@ -193,6 +193,11 @@ export function normalize(raw) {
       Number.isFinite(value.foilOfferAt) && value.foilOfferAt > 0
         ? Math.floor(value.foilOfferAt)
         : null,
+    // 「しばらく表示しない」を押した人には、この時刻までポップアップを出さない(2026-09-22 本人の指示)
+    foilOfferSnoozeUntil:
+      Number.isFinite(value.foilOfferSnoozeUntil) && value.foilOfferSnoozeUntil > 0
+        ? Math.floor(value.foilOfferSnoozeUntil)
+        : null,
     // 対局中の演出(装備した駒の動画・A の魔法)。"full" か "off" だけ(2026-09-17 本人の指示で「短縮」を廃止)。
     // 以前の「短縮」は短くしたい人の選択なので off に寄せる。設定画面で変える
     motion: ["short", "off"].includes(value.motion) ? "off" : "full",

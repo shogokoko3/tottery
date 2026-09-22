@@ -113,9 +113,40 @@ export function foilWindowLabel(leftMs) {
   return rest ? `あと${days}日と${rest}時間` : `あと${days}日`;
 }
 
-/** フォイルを引いた印を押す(ここから72時間) */
+/**
+ * フォイルを引いた印を押す(ここから72時間)。
+ *
+ * **並んでいる間に引いても、引き直さない**(2026-09-22 本人の指示)。以前は引くたびに
+ * その時点から72時間に戻していたが、毎回「ほかのフォイルも」が出て圧が強すぎた。
+ * 商品が時間切れで消えたあと、次にフォイルを引いたときだけ新しく72時間が始まり、
+ * そのときだけポップアップを出す(画面側は foilWindow(before).open で見分ける)
+ */
 export function startFoilWindow(state, now = Date.now()) {
+  if (foilWindow(state, now).open) return state;
   return { ...state, foilOfferAt: now };
+}
+
+/**
+ * 「しばらく表示しない」(2026-09-22 本人の指示)。ガチャのあとのポップアップを1週間出さない。
+ * ショップのフォイルの欄はそのまま(消すのはポップアップだけ)
+ */
+export const FOIL_OFFER_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
+export function snoozeFoilOffer(state, now = Date.now()) {
+  return { ...state, foilOfferSnoozeUntil: now + FOIL_OFFER_SNOOZE_MS };
+}
+export function foilOfferSnoozed(collection, now = Date.now()) {
+  const until = collection?.foilOfferSnoozeUntil;
+  return Number.isFinite(until) && until > now;
+}
+
+/**
+ * ガチャの結果を閉じるときに「ほかのフォイルも」を出すか。
+ *   before … 閉じる前の台帳(72時間が開いていたか)
+ *   after  … 印を押したあとの台帳(しばらく表示しない、が効いているか)
+ * 新しく72時間が始まったときだけ、しかも止めていないときだけ出す
+ */
+export function shouldOfferFoils(before, after, now = Date.now()) {
+  return !foilWindow(before, now).open && foilWindow(after, now).open && !foilOfferSnoozed(after, now);
 }
 
 /** その商品の一部(skins)だけ買うときの値段。按分して四捨五入。空や商品外の札があれば null */

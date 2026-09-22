@@ -9,7 +9,7 @@
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { FOIL_PRODUCTS, productOf, priceFor, bandOf, ownsAllButSecret, skinVisibleInCollection, foilOffers, coversPool, FOIL_WINDOW_MS, foilWindow, foilWindowLabel, startFoilWindow } from "../src/skins/foil-shop.js";
+import { FOIL_PRODUCTS, productOf, priceFor, bandOf, ownsAllButSecret, skinVisibleInCollection, foilOffers, coversPool, FOIL_WINDOW_MS, foilWindow, foilWindowLabel, startFoilWindow, FOIL_OFFER_SNOOZE_MS, snoozeFoilOffer, foilOfferSnoozed, shouldOfferFoils } from "../src/skins/foil-shop.js";
 import { ALL_SKINS, byId, foilId } from "../src/skins/catalog.js";
 
 assert.equal(coversPool(), true, "15キャラのフォイルが商品1〜9にちょうど1回ずつ");
@@ -64,7 +64,7 @@ assert.equal(skinVisibleInCollection({ owned: {} }, null), false);
 
 // 配線
 const skins = readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
-assert.ok(/if \(next && pulledFoils\.length && WALLET_SERVER\)/.test(skins), "ガチャでフォイルが出て結果を閉じたら出す(Web でも有償ジェムがあれば買える)");
+assert.ok(/if \(next && pulledFoils\.length && WALLET_SERVER && shouldOfferFoils\(before, next\)\)/.test(skins), "ガチャでフォイルが出て結果を閉じたら出す(Web でも有償ジェムがあれば買える。新しく72時間が始まったときだけ)");
 assert.ok(/onShop=\{shopOk \? \(\) => setShop\(true\) : null\}/.test(skins), "ジェムを買う釦は iOS だけ");
 assert.ok(/setFoilOffer\(\{ exclude \}\)/.test(skins), "引いた帯を除いて出す");
 // 決済の呼び出しは src/ui/buy.js の1本に寄せてある(ショップ・ガチャ画面が同じ道を使う。2026-09-17)
@@ -94,9 +94,30 @@ console.log("フォイルの直接購入: 値段・15キャラを網羅・按分
   assert.equal(foilWindow(started, now).open, true, "引いた直後は並ぶ");
   assert.equal(foilWindow(started, now + FOIL_WINDOW_MS - 1000).open, true, "72時間ちょうどの直前まで並ぶ");
   assert.equal(foilWindow(started, now + FOIL_WINDOW_MS).open, false, "72時間で閉じる");
-  // 引き直すと、その時点から72時間
+  // 並んでいる間に引いても引き直さない(2026-09-22 本人の指示)。時間切れのあとの次のフォイルで新しく始まる
+  const during = startFoilWindow(started, now + 10 * 3600e3);
+  assert.equal(during.foilOfferAt, now, "並んでいる間は引き直さない");
+  assert.equal(foilWindow(during, now + FOIL_WINDOW_MS).open, false, "最初の72時間で閉じる");
   const again = startFoilWindow(started, now + 100 * 3600e3);
-  assert.equal(foilWindow(again, now + 101 * 3600e3).open, true, "引くたびに72時間に戻る");
+  assert.equal(again.foilOfferAt, now + 100 * 3600e3, "消えたあとに引くと、その時点から72時間");
+  assert.equal(foilWindow(again, now + 101 * 3600e3).open, true);
+  // ポップアップは「新しく始まったとき」だけ
+  assert.equal(shouldOfferFoils({}, started, now), true, "はじめて引いたときは出す");
+  assert.equal(shouldOfferFoils(started, during, now + 10 * 3600e3), false, "並んでいる間に引いても出さない");
+  assert.equal(shouldOfferFoils(started, again, now + 100 * 3600e3), true, "消えたあとに引けばまた出す");
+  assert.equal(shouldOfferFoils({}, {}, now), false, "フォイルを引いていなければ出さない");
+  // 「しばらく表示しない」は1週間。ポップアップだけ止め、欄は残る
+  assert.equal(FOIL_OFFER_SNOOZE_MS, 7 * 24 * 3600e3, "1週間");
+  const snoozed = snoozeFoilOffer(started, now);
+  assert.equal(foilOfferSnoozed(snoozed, now), true);
+  assert.equal(foilOfferSnoozed(snoozed, now + FOIL_OFFER_SNOOZE_MS - 1), true, "1週間の直前まで止まる");
+  assert.equal(foilOfferSnoozed(snoozed, now + FOIL_OFFER_SNOOZE_MS), false, "1週間で戻る");
+  assert.equal(foilOfferSnoozed({}, now), false);
+  assert.equal(foilWindow(snoozed, now).open, true, "止めても欄は並んだまま");
+  const t2 = now + 100 * 3600e3;
+  assert.equal(shouldOfferFoils(snoozed, startFoilWindow(snoozed, t2), t2), false, "止めている間は新しく始まっても出さない");
+  const t3 = now + FOIL_OFFER_SNOOZE_MS + 1;
+  assert.equal(shouldOfferFoils(snoozed, startFoilWindow(snoozed, t3), t3), true, "1週間過ぎれば出す");
   assert.equal(foilWindowLabel(50 * 60e3), "あと50分");
   assert.equal(foilWindowLabel(5 * 3600e3), "あと5時間");
   assert.equal(foilWindowLabel(51 * 3600e3), "あと2日と3時間");
@@ -107,12 +128,17 @@ console.log("フォイルの直接購入: 値段・15キャラを網羅・按分
   assert.equal(normalize({ foilOfferAt: now }).foilOfferAt, now, "保存から読み戻す");
   assert.equal(normalize({ foilOfferAt: "x" }).foilOfferAt, null, "壊れた値は無し");
   assert.equal(normalize({}).foilOfferAt, null);
+  assert.equal(normalize({ foilOfferSnoozeUntil: now }).foilOfferSnoozeUntil, now, "止めた期限も保存から読み戻す");
+  assert.equal(normalize({ foilOfferSnoozeUntil: -1 }).foilOfferSnoozeUntil, null);
   // 画面の配線
   const shop = fs.readFileSync(new URL("../src/ui/shop.jsx", import.meta.url), "utf8");
   assert.ok(/const foilKnown = foilRevealed\(collection\) && window\.open;/.test(shop), "ショップの欄は72時間の中だけ");
   assert.ok(/72時間だけ並びます/.test(shop), "閉じているときは理由を出す");
   const skins = fs.readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
-  assert.ok(/pulledFoils\.length \? startFoilWindow\(base\) : base/.test(skins.replace(/\s+/g, " ")), "ガチャでフォイルを引くたびに72時間を引き直す");
-  assert.ok(/if \(foilOffers\(next, \{ exclude \}\)\.length\) setFoilOffer\(\{ exclude \}\);/.test(skins), "引くたびにポップアップを出す");
+  assert.ok(/pulledFoils\.length \? startFoilWindow\(base\) : base/.test(skins.replace(/\s+/g, " ")), "ガチャでフォイルを引いたら72時間の印を押す(並んでいる間は引き直さない)");
+  assert.ok(/WALLET_SERVER && shouldOfferFoils\(before, next\)/.test(skins), "ポップアップは新しく始まったときだけ、止めていないときだけ");
+  assert.ok(/onSnooze=\{async \(\) => \{\s*await run\(\(s\) => snoozeFoilOffer\(s\)\);/.test(skins), "「しばらく表示しない」で台帳に期限を書く");
+  const offer = fs.readFileSync(new URL("../src/ui/foil-offer.jsx", import.meta.url), "utf8");
+  assert.ok(/しばらく表示しない/.test(offer) && /onSnooze/.test(offer), "シートに「しばらく表示しない」がある");
 }
-console.log("フォイルの欄は72時間だけ・引くたびに引き直す OK");
+console.log("フォイルの欄は72時間だけ・並んでいる間は引き直さない・ポップアップは新しく始まったときだけ・しばらく表示しない OK");

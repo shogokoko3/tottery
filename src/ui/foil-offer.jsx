@@ -179,6 +179,7 @@ export function FoilOfferSheet({
   onBuy,
   onClose,
   onShop,
+  onSnooze = null,
   message = "",
 }) {
   if (!offers.length) return null;
@@ -217,6 +218,21 @@ export function FoilOfferSheet({
         onShop={onShop}
         message={message}
       />
+      {/* 「しばらく表示しない」(2026-09-22 本人の指示)。1週間はガチャのあとに出さない。
+          ショップのフォイルの欄は残るので、買いたくなったらそちらから */}
+      {onSnooze && (
+        <div className="foil-offer-snooze">
+          <button
+            type="button"
+            className="skin-btn foil-offer-snooze-btn"
+            disabled={working}
+            onClick={onSnooze}
+          >
+            しばらく表示しない
+          </button>
+          <small>1週間はガチャのあとに出ません。ショップのフォイルの欄からは買えます</small>
+        </div>
+      )}
     </SkinModal>
   );
 }
