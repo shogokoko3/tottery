@@ -436,7 +436,31 @@ export function MenuScreen({
         {unread > 0 && <span className="home-news-count">{unread > 99 ? "99+" : unread}</span>}
       </button>
       </div>
-      <button className="home-resource-bar" onClick={() => (shopOk ? setShop(true) : onSkins())} aria-label={shopOk ? "ジェムを買う・確認" : "ジェムとチケットを確認"}><GemAmount amount={collection.gems || 0} size={26} /><span><Ticket size={16} /> {collection.tickets}枚</span>{shopOk ? <span className="home-resource-buy">ジェムを買う</span> : <ArrowRight size={14}/>}</button>
+      {/* 残高。左にチケット、右にジェム(2026-09-22 本人の指示で入れ替え)。
+          押せるのはジェムから「+」までで、押すとジェムの店が開く。「ジェムを買う」の文言は出さない。
+          店は iOS のアプリだけなので、ほかでは理由を出す(ショップ画面と同じ文言) */}
+      <div className="home-resource-bar" aria-label="いまの残高">
+        <span className="home-resource-tickets">
+          <Ticket size={16} /> {collection.tickets}枚
+        </span>
+        <button
+          type="button"
+          className="home-resource-gems"
+          onClick={() =>
+            shopOk
+              ? setShop(true)
+              : setShopMsg(
+                  "ジェムは iPhone・iPad のアプリでのみ買えます。ほかの買い物はこのままお使いいただけます。",
+                )
+          }
+          aria-label={`ジェム ${collection.gems || 0}。ジェムを買う`}
+        >
+          <GemAmount amount={collection.gems || 0} size={26} />
+          <span className="home-resource-plus" aria-hidden="true">
+            +
+          </span>
+        </button>
+      </div>
       {shopMsg && <p className="mission-message" role="status" aria-live="polite">{shopMsg}</p>}
 
       <HomeRealmPortrait theme={theme} />

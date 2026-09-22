@@ -368,7 +368,12 @@
 .tottery-root .gem-shop-panel {
   display: flex;
   flex-direction: column;
-  max-height: calc(100dvh - 32px);
+  /* 覆い(.modal-overlay)の内側にそろえる。上は貼り付けた帯、下はチュートリアルの帯のぶんを引く。
+     100dvh-32px のままだと商品が並んだとき覆いより高くなり、中央そろえで上へはみ出して
+     見出し「ジェムを買う」が帯の下線に被っていた(2026-09-22 本人の報告。iOS で再現) */
+  max-height: calc(
+    100dvh - 40px - var(--top-bar-h, 0px) - var(--tutorial-band, 0px)
+  );
   overflow: hidden;
 }
 .gem-shop-panel .modal-head,
@@ -436,6 +441,44 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+/* 残高の帯そのものは押せない(2026-09-22)。押せるのはジェムから「+」まで */
+.tottery-root .home-resource-bar {
+  cursor: default;
+}
+.tottery-root .home-resource-gems {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 2px 4px 2px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tottery-root .home-resource-gems:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+.tottery-root .home-resource-gems:active .home-resource-plus {
+  filter: brightness(0.9);
+}
+/* 「+」。主操作の金の釦と同じ色にして、押せる印だと分かるようにする */
+.tottery-root .home-resource-plus {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f1da98, #c2a25f);
+  color: #211b13;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 0 #0006;
 }
 
 /* 未購入パスはAスキンと同じ鎖で封印する。購入操作は覆わない。 */
