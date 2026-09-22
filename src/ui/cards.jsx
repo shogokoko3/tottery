@@ -80,7 +80,6 @@ export function CardFace({
           ♛
         </span>
       )}
-      {kingFrame && <span className="card-king-mark" aria-label="王">王</span>}
     </div>
   );
 }

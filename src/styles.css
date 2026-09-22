@@ -654,42 +654,24 @@ h3 {
 .card-captain {
   box-shadow: 0 0 10px rgba(212, 175, 55, 0.7);
 }
-/* J/Q/K use their original art, with the same gold identity as A–10 kings.
-   Keep this inside the card so small board cells cannot clip the king marker. */
+/* J/Q/K have no captain artwork. Match the existing gold rim and shared
+   captain glow, without adding a separate badge or covering the illustration. */
 .card-captain-fallback::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 2;
-  border: 2px solid #f5d573;
+  border: var(--captain-rim, 1.5px) solid #f5d573;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1px #684411, inset 0 0 8px #eac35680;
+  box-shadow: inset 0 0 0 .5px #684411;
   pointer-events: none;
 }
-.card-king-mark {
-  position: absolute;
-  right: 2px;
-  bottom: 2px;
-  z-index: 3;
-  min-width: 16px;
-  padding: 1px 2px;
-  border: 1px solid #ffe9a0;
-  border-radius: 3px 0 2px 0;
-  background: linear-gradient(135deg, #ffedaf, #d6aa47);
-  color: #302006;
-  font: 800 11px/1.1 "Yu Mincho", serif;
-  text-align: center;
-  box-shadow: 0 1px 3px #000a;
-  pointer-events: none;
+.card-captain-fallback[data-size="xs"],
+.card-captain-fallback[data-size="sm"] {
+  --captain-rim: 1px;
 }
-.card-face[data-size="xs"] .card-king-mark {
-  min-width: 12px;
-  padding: 0 1px;
-  font-size: 9px;
-}
-.card-face[data-size="lg"] .card-king-mark {
-  min-width: 21px;
-  font-size: 14px;
+.card-captain-fallback[data-size="lg"] {
+  --captain-rim: 2px;
 }
 /* 絵柄は共通なので、赤スートだけ色味を重ねて区別する */
 .card-tint {

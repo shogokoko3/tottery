@@ -305,14 +305,15 @@ try {
     assert.match(html, /skin-king-mark/);
   }
   // Normal J/Q/K have no captain image: their own/revealed faces still need
-  // an unmistakable king marker. Hidden enemies must not expose the role.
+  // the shared gold king treatment, without a custom text badge. Hidden enemies
+  // must not expose the role.
   for (const rank of ["J", "Q", "K"]) {
     for (const suit of ["spade", "heart", "diamond", "club"]) {
       const king = { ...ace, rank, suit };
       for (const [viewer, revealed] of [[0, false], [1, true]]) {
         const html = render({ ...king, revealed }, viewer, [{}, {}]);
         assert.match(html, /card-captain-fallback/);
-        assert.match(html, /class="card-king-mark" aria-label="王">王/);
+        assert.doesNotMatch(html, /card-king-mark|>王<|skin-king-mark/);
       }
       const hidden = render(king, 1, [{}, {}]);
       assert.match(hidden, /card-back/);
