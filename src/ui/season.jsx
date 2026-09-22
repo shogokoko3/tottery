@@ -280,7 +280,18 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
                     size="sm"
                   />
                   <span className="rank-name">
-                    {identities[row.uid]?.name || row.name}
+                    <span className="rank-name-text">
+                      {identities[row.uid]?.name || row.name}
+                    </span>
+                    {/* 称号は額縁ごと出す(2026-09-23 本人の指示)。称号 id は通算の表(ranks)が持っている。
+                        知らない id・未設定なら TitleFrame が null を返すので何も出ない */}
+                    {identities[row.uid]?.title && (
+                      <TitleFrame
+                        id={identities[row.uid].title}
+                        size="compact"
+                        className="rank-title"
+                      />
+                    )}
                   </span>
                   <b className="rank-score">{row.rating}</b>
                   {row.uid !== data.uid && (

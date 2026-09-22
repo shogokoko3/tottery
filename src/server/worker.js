@@ -62,6 +62,8 @@ async function handleApi(request, env, url) {
     // 店の診断の一覧。運営の Firebase トークンか、読み取り専用の秘密(DIAG_TOKEN。wrangler secret)で読める
     const adminDiag = url.pathname === "/api/admin/diag";
     const adminPass = url.pathname === "/api/admin/pass-complete";
+    // 運営: 指定した uid のシーズン記録をまとめて消す(テストプレイヤーの片付け。2026-09-23 本人の指示)
+    const adminForget = url.pathname === "/api/admin/season-forget";
     if (
       !adminSession &&
       !adminSeason &&
@@ -71,6 +73,7 @@ async function handleApi(request, env, url) {
       !adminGacha &&
       !adminDiag &&
       !adminPass &&
+      !adminForget &&
       !/^\/api\/(season|wallet|iap)\//.test(url.pathname)
     )
       return json({ error: "見つかりません。" }, 404);
@@ -119,7 +122,7 @@ async function handleApi(request, env, url) {
           ? json({ uid })
           : json({ error: "運営権限がありません。" }, 403);
       if (
-        (adminSeason || adminWallet || adminGrant || adminPurchases || adminGacha || adminDiag || adminPass) &&
+        (adminSeason || adminWallet || adminGrant || adminPurchases || adminGacha || adminDiag || adminPass || adminForget) &&
         uid !== OPERATOR_UID
       )
         return json({ error: "運営権限がありません。" }, 403);
@@ -133,6 +136,15 @@ async function handleApi(request, env, url) {
         );
       if (adminSeason) {
         return call("admin-summary");
+      }
+      // 運営: uid の一覧(200件まで)のシーズン記録を、本人の「自分の記録を消す」と同じ手順で消す。
+      // 財布(wallet)は触らない(テストプレイヤーには無い。実際の人を間違えて指しても課金の記録は残る)
+      if (adminForget) {
+        const uids = Array.isArray(body.uids)
+          ? body.uids.filter((x) => typeof x === "string" && /^[\w-]{1,128}$/.test(x)).slice(0, 200)
+          : [];
+        if (!uids.length) return json({ error: "uids を指定してください。" }, 400);
+        return call("admin-forget", { uids });
       }
       // 未使用残高(資金決済法の集計)。運営だけ
       if (adminWallet) return call("admin-unused");
@@ -296,6 +308,14 @@ export class SeasonLedger {
         if (op === "summary") return l.summary(uid, now);
         if (op === "admin-summary" && uid === OPERATOR_UID)
           return l.adminSummary(now);
+        if (op === "admin-forget" && uid === OPERATOR_UID) {
+          const done = [];
+          for (const target of args.uids || []) {
+            l.forget(target);
+            done.push(target);
+          }
+          return { ok: true, forgotten: done.length, uids: done };
+        }
         if (op === "forget") {
           this.wallet.forget(uid);
           return l.forget(uid);
