@@ -8,6 +8,7 @@ import {
   SEASON_FRAME,
 } from "../game/season.js";
 import { displayRating, nextRating } from "../game/rating.js";
+import { TEST_PLAYERS_2026_09_08 } from "./test-players-2026-09-08.js";
 
 /** 記録を消した人の目印の代わり。matches に残る */
 export const FORGOTTEN = "forgotten";
@@ -60,6 +61,20 @@ export class Ledger {
     sql(
       "CREATE TABLE IF NOT EXISTS appearance (uid TEXT PRIMARY KEY, back TEXT, frame TEXT)",
     );
+    // 一度きりの片付け。済んだものは cleanups に控え、二度は走らない
+    sql("CREATE TABLE IF NOT EXISTS cleanups (id TEXT PRIMARY KEY, at INTEGER)");
+    // 2026-09-08 にまとめて登録されたテストプレイヤー100名を、本人の「自分の記録を消す」と同じ手順で
+    // 消す(2026-09-23 本人の指示。実際の人には触らない。uid の一覧は test-players-2026-09-08.js)
+    this.cleanupOnce("test-players-2026-09-08", () => {
+      for (const uid of TEST_PLAYERS_2026_09_08) this.forget(uid);
+    });
+  }
+  /** 名前つきの片付けを一度だけ走らせる(2026-09-23)。配信のたびに走っても二度目は何もしない */
+  cleanupOnce(id, run) {
+    if (this.sql("SELECT id FROM cleanups WHERE id=?", id).length) return false;
+    run();
+    this.sql("INSERT OR IGNORE INTO cleanups VALUES (?,?)", id, Date.now());
+    return true;
   }
   current(now) {
     const season = seasonAt(now);
