@@ -50,6 +50,28 @@ export function DiscardPanel({ cards, label, color, owner }) {
     </div>
   );
 }
+/**
+ * 引き直しの1枚。**MulliganHand の外に置く**(2026-09-23 本人の報告「カードが小刻みに震える」)。
+ * 描画のたびに中で部品を作り直すと React が毎回張り替え、残り時間の刻み(200ms)ごとに
+ * 札が描き直されて震えて見えた。部品の型を固定すれば、同じ札はそのまま残る
+ */
+function MulliganCard({ card, selected, focus, onToggle, owner, size }) {
+  const picked = selected.has(card.id);
+  return (
+    <div
+      className={`hand-card ${picked ? "hand-card-selected" : ""} ${
+        focus && focus.cards && focus.cards.includes(card.id)
+          ? "guide-target"
+          : ""
+      }`}
+      onClick={() => onToggle(card.id)}
+    >
+      <CardFace owner={owner} rank={card.rank} suit={card.suit} size={size} />
+      {picked && <span className="discard-badge">✕</span>}
+    </div>
+  );
+}
+
 export function MulliganHand({ hand, selected, onToggle, focus, owner }) {
   const width = useWindowWidth();
   const wide = width >= 480;
@@ -58,38 +80,24 @@ export function MulliganHand({ hand, selected, onToggle, focus, owner }) {
     const d = RANKS.indexOf(a.rank) - RANKS.indexOf(b.rank);
     return d !== 0 ? d : SUITS.indexOf(a.suit) - SUITS.indexOf(b.suit);
   });
-  const Card = ({ card }) => (
-    <div
-      className={`hand-card ${selected.has(card.id) ? "hand-card-selected" : ""} ${
-        focus && focus.cards && focus.cards.includes(card.id)
-          ? "guide-target"
-          : ""
-      }`}
-      onClick={() => onToggle(card.id)}
-    >
-      <CardFace owner={owner} rank={card.rank} suit={card.suit} size={size} />
-      {selected.has(card.id) && <span className="discard-badge">✕</span>}
-    </div>
+  const card = (c) => (
+    <MulliganCard
+      card={c}
+      selected={selected}
+      focus={focus}
+      onToggle={onToggle}
+      owner={owner}
+      size={size}
+      key={c.id}
+    />
   );
   return wide ? (
     <div className="hand-split">
-      <div className="hand-row">
-        {sorted.slice(0, 7).map((card) => (
-          <Card card={card} key={card.id} />
-        ))}
-      </div>
-      <div className="hand-row">
-        {sorted.slice(7).map((card) => (
-          <Card card={card} key={card.id} />
-        ))}
-      </div>
+      <div className="hand-row">{sorted.slice(0, 7).map(card)}</div>
+      <div className="hand-row">{sorted.slice(7).map(card)}</div>
     </div>
   ) : (
-    <div className="hand-grid">
-      {sorted.map((card) => (
-        <Card card={card} key={card.id} />
-      ))}
-    </div>
+    <div className="hand-grid">{sorted.map(card)}</div>
   );
 }
 export function WaitingWithBoard({
