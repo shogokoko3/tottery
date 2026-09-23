@@ -39,7 +39,7 @@ is("海: 対象が AREA_TUNING と同じ", byType.sea.effect.includes(AREA_TUNIN
 is("森: 体数が AREA_TUNING と同じ", byType.forest.effect.includes(`${AREA_TUNING.forestReveals}体`), true);
 is("氷: 体数が AREA_TUNING と同じ", byType.ice.effect.includes(`${AREA_TUNING.iceTargets}体`), true);
 is("氷: ターン数が AREA_TUNING と同じ(表記は「ターン」。2026-09-16 本人の指示)", byType.ice.effect.includes(`${AREA_TUNING.freezeTurns}ターン`), true);
-is("空: 全10が2回、の説明は AREA_TUNING と同じ", byType.sky.effect.includes("全て1手番に2回"), AREA_TUNING.skyAllTens);
+is("空: 全10が2回、の説明は AREA_TUNING と同じ", byType.sky.effect.includes("全て1ターンに2回"), AREA_TUNING.skyAllTens);
 is("宮殿: 上限の説明", byType.palace.effect.includes(AREA_TUNING.palaceCap === "K" ? "→K" : `${AREA_TUNING.palaceCap}まで`), true);
 
 for (const f of fails) console.log("  NG  " + f);

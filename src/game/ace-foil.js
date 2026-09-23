@@ -52,7 +52,7 @@ export function canUseAceFoil(state, player = state.currentTurn, aId = null) {
   )
     return { ok: false, why: "通常の行動の前にだけ使えます" };
   if (state.aceFoilUsedTurn?.[player] === (state.turnNo || 0))
-    return { ok: false, why: "この手番では発動済みです" };
+    return { ok: false, why: "このターンでは発動済みです" };
   const ace = Object.values(state.pieces || {})
     .filter(
       (piece) =>

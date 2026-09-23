@@ -123,7 +123,7 @@ function SkinAreaNote({ skin, owned, equipped }) {
     return (
       <div className="skins-area-note">
         <b>マジカルシャッフル · 9×9</b>
-        <p>Aが王でなくても、毎回の自分の手番に任意で1回発動。自軍のAと王を除く駒からランダムな3体の位置を入れ替えます。相手の王も対象です。発動後も通常の移動ができます。</p>
+        <p>Aが王でなくても、毎回の自分のターンに任意で1回発動。自軍のAと王を除く駒からランダムな3体の位置を入れ替えます。相手の王も対象です。発動後も通常の移動ができます。</p>
       </div>
     );
   const type = AREA_BY_RANK[skin.rank];
@@ -146,7 +146,7 @@ function SkinAreaNote({ skin, owned, equipped }) {
       <p>{info.text}</p>
       <p className="skins-area-how">
         このフォイルを <b>{skin.rank}</b> に装備し、<b>{skin.rank} を王</b>
-        にすると使えます（9×9の対局のみ・自分の手番の初めに1回まで）。
+        にすると使えます（9×9の対局のみ・自分のターンの初めに1回まで）。
         {!owned
           ? " まだ持っていません。ガチャや錬成でフォイルを引くか、同じキャラを通算100枚集めて加工すると手に入ります。"
           : equipped

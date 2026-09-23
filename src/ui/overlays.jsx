@@ -50,7 +50,7 @@ export function Interstitial({ forPlayer, kind, onReady }) {
       dice: "サイコロフェーズ",
       mulligan: "引き直しフェーズ",
       setup: "布陣フェーズ",
-      turn: "手番交代",
+      turn: "ターン交代",
     };
   return (
     <div className="interstitial">

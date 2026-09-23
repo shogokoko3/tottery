@@ -252,7 +252,7 @@ function PuzzleAttempt({ q, receipt, onClear, onRetry }) {
         ) {
           setFailed(true);
           setFeedback(
-            "この手番では王を取れませんでした。やり直して、別の手を探しましょう。",
+            "このターンでは王を取れませんでした。やり直して、別の手を探しましょう。",
           );
         } else {
           setSelected(next.extraMoveFor);

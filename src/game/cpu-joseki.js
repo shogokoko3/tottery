@@ -88,7 +88,7 @@ export const JOSEKI_INFO = Object.freeze({
   palace: {
     label: "宮殿",
     style: "覇道",
-    text: "毎手番の昇格で仲間を育て、強い駒がそろったら進軍してくる",
+    text: "毎ターンの昇格で仲間を育て、強い駒がそろったら進軍してくる",
   },
 });
 

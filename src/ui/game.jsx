@@ -221,7 +221,7 @@ export function ClockBar({
                   >
                     {warning &&
                       (remaining === 0
-                        ? "次の手番から追加なし"
+                        ? "次のターンから追加なし"
                         : `⚠ 追加は残り${remaining}回`)}
                   </div>
                 </div>
@@ -232,7 +232,7 @@ export function ClockBar({
       </div>
       {limited && (
         <p className="clock-rule-hint">
-          手番開始時に30秒以下なら＋10秒・各6回まで
+          ターン開始時に30秒以下なら＋10秒・各6回まで
         </p>
       )}
     </div>
@@ -451,7 +451,7 @@ function AdjudicationResult({ state, names }) {
     <section className="adjudication-result" aria-label="判定結果の内訳">
       <p>
         {result.reason === "no-legal-action"
-          ? "手番側に指せる手がなく、対局を続けられないため判定になりました。"
+          ? "動く側に指せる手がなく、対局を続けられないため判定になりました。"
           : "駒の動ける範囲から、どちらの王も討てない局面と判定しました。"}
       </p>
       <div className="adjudication-scores">
@@ -2993,13 +2993,13 @@ export function GameCore({
           <div className="area-bar ace-foil-bar" role="group" aria-label="Aフォイルの魔法">
             <span
               className="area-chip area-chip-ace"
-              title="Aフォイルの魔法: 自分のA・王を除く3体をランダムに入れ替える。毎手番1回、通常の行動の前に。発動後も通常の行動ができる"
+              title="Aフォイルの魔法: 自分のA・王を除く3体をランダムに入れ替える。毎ターン1回、通常の行動の前に。発動後も通常の行動ができる"
             >
               <b>Aフォイル</b>
               <small>
                 {a.aceFoilUsedTurn?.[P] === (a.turnNo || 0)
-                  ? "この手番は発動済み"
-                  : "毎手番1回・行動前に"}
+                  ? "このターンは発動済み"
+                  : "毎ターン1回・行動前に"}
               </small>
             </span>
             {/* 釦の枠は使用済みでも残す(見えなくするだけ)。出たり消えたりで帯の幅と高さが変わらない */}
@@ -3019,7 +3019,7 @@ export function GameCore({
                 !!areaPick ||
                 a.aceFoilUsedTurn?.[P] === (a.turnNo || 0)
               }
-              title={aceFoil.why || "毎手番1回・通常の行動前に任意発動"}
+              title={aceFoil.why || "毎ターン1回・通常の行動前に任意発動"}
               onClick={() => y({ type: "USE_ACE_FOIL" })}
             >
               発動
@@ -3058,7 +3058,7 @@ export function GameCore({
           {s ? (
             s
           ) : network && !x ? (
-            "相手の手番です"
+            "相手のターンです"
           ) : cpu && !x ? (
             <>
               <Dice size={14} className="spin-icon" />{" "}
@@ -3451,7 +3451,7 @@ export function GameCore({
                     })
                   }
                 >
-                  使わず手番を終える
+                  使わずターンを終える
                 </button>
               </div>
             );

@@ -54,37 +54,37 @@ export const AREA_BY_RANK = Object.freeze({
 export const AREA_INFO = Object.freeze({
   earth: {
     name: "土のエリア",
-    text: "毎手番の初めに自動発動。直前に動いた相手の駒の正体を必ず見抜く。王も対象。正体は自分だけに表示。",
+    text: "毎ターンの初めに自動発動。直前に動いた相手の駒の正体を必ず見抜く。王も対象。正体は自分だけに表示。",
     usesTurn: false,
     needsPiece: false,
   },
   sea: {
     name: "海のエリア",
-    text: "毎手番の初めに任意発動。相手の全駒を中央へ最大1マス引き寄せる(斜めの先が埋まっていれば縦か横で寄る)。自分の駒は動かず、寄れる空きマスが無い駒はそのまま。発動後も移動できる。",
+    text: "毎ターンの初めに任意発動。相手の全駒を中央へ最大1マス引き寄せる(斜めの先が埋まっていれば縦か横で寄る)。自分の駒は動かず、寄れる空きマスが無い駒はそのまま。発動後も移動できる。",
     usesTurn: false,
     needsPiece: false,
   },
   forest: {
     name: "森のエリア",
-    text: "毎手番の初めに自動発動。相手の王以外で、正体を知らない駒から最大2体をランダムに見抜く。見抜いた駒は自分にだけ表向きになる。",
+    text: "毎ターンの初めに自動発動。相手の王以外で、正体を知らない駒から最大2体をランダムに見抜く。見抜いた駒は自分にだけ表向きになる。",
     usesTurn: false,
     needsPiece: false,
   },
   ice: {
     name: "氷のエリア",
-    text: "毎手番の初めに自動発動。相手の駒(王も)をランダムに1体凍らせ、相手の3ターン動けなくする。凍結中の駒なら残りに3ターン追加。",
+    text: "毎ターンの初めに自動発動。相手の駒(王も)をランダムに1体凍らせ、相手の3ターン動けなくする。凍結中の駒なら残りに3ターン追加。",
     usesTurn: false,
     needsPiece: false,
   },
   sky: {
     name: "空のエリア",
-    text: "毎手番の初めに任意発動。自分の駒1体(王・10以外)を10に変身させて公開。以後、自分の10は1手番に同じ1体を2回動かせる。発動後も移動できる。",
+    text: "毎ターンの初めに任意発動。自分の駒1体(王・10以外)を10に変身させて公開。以後、自分の10は1ターンに同じ1体を2回動かせる。発動後も移動できる。",
     usesTurn: false,
     needsPiece: true,
   },
   palace: {
     name: "宮殿",
-    text: "毎手番の初めに任意発動。自分の駒1体(王・A・K以外)を1段階昇格させて公開。1局に1回だけ2段階も選べる。Kが上限。発動後も移動できる。",
+    text: "毎ターンの初めに任意発動。自分の駒1体(王・A・K以外)を1段階昇格させて公開。1局に1回だけ2段階も選べる。Kが上限。発動後も移動できる。",
     usesTurn: false,
     needsPiece: true,
   },
@@ -334,12 +334,12 @@ export function canUseArea(state, player) {
     return {
       ok: false,
       why: recurringArea(state, area.type)
-        ? "この手番では発動済みです"
+        ? "このターンでは発動済みです"
         : "この局ではもう使いました",
     };
   if (state.currentTurn !== player) return { ok: false, why: "相手の番です" };
   if (state.extraMoveFor || state.extraUsed || state.pendingKingChoice)
-    return { ok: false, why: "手番の初めにだけ使えます" };
+    return { ok: false, why: "ターンの初めにだけ使えます" };
   switch (area.type) {
     case "earth":
       if (!earthTarget(state, player))

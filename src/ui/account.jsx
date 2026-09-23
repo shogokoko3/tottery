@@ -77,7 +77,7 @@ export function NameSetupScreen({ onDone, notice }) {
         <h2>名前を決めてください</h2>
         {notice && <p className="name-notice">{notice}</p>}
         <p className="hint">
-          対戦中の手番や記録に、この名前が出ます。
+          対戦中のターンや記録に、この名前が出ます。
           <br />
           対戦相手と、インターネット上のランキングに出ます。
           <br />

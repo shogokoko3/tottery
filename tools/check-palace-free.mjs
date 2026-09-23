@@ -16,7 +16,7 @@ for (const version of [6, 7]) {
   assert.equal(t.turnNo, s.turnNo + (version === 7 ? 0 : 1));
   assert.equal(reducer(t, a), t, "no repeated promotion in same turn");
   const text = areaEventText(areaEvent(s, t, 0), "resolve");
-  assert(text.includes(version === 7 ? "続けて駒を動かせる" : "相手の手番へ"));
+  assert(text.includes(version === 7 ? "続けて駒を動かせる" : "相手のターンへ"));
   if (version === 7) {
     assert.equal(canUseArea(t, 0).ok, false);
     for (const id of ["fx1", "fx2"]) {

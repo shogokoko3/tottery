@@ -194,7 +194,7 @@ export function adjudicatePosition(state) {
     interstitial: null,
     log: [
       ...state.log,
-      `${reason === "dead-position" ? "互いの王を討てない局面" : "手番側に可能な行動がない局面"}のため布陣判定: 赤${totals[0]}・青${totals[1]}。${result}`,
+      `${reason === "dead-position" ? "互いの王を討てない局面" : "動く側に可能な行動がない局面"}のため布陣判定: 赤${totals[0]}・青${totals[1]}。${result}`,
     ],
   };
 }

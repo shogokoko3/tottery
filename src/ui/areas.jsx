@@ -49,7 +49,7 @@ export function AreaBar({
     ? {
         ...AREA_INFO[mine.type],
         ...(areaUsesTurn(state, mine.type)
-          ? { text: "手番を使い、自分の駒1体を1段昇格させる(Kまで・公開)" }
+          ? { text: "ターンを使い、自分の駒1体を1段昇格させる(Kまで・公開)" }
           : {}),
       }
     : null;
@@ -148,7 +148,7 @@ export function AreaBar({
             {info.name}
             <small>
               {recurringArea(state, mine.type)
-                ? "毎手番"
+                ? "毎ターン"
                 : mine.used
                   ? "使用済み"
                   : "未使用"}
@@ -189,7 +189,7 @@ export function AreaBar({
             {AREA_INFO[areas[foe].type].name}
             <small>
               {recurringArea(state, areas[foe].type)
-                ? "毎手番"
+                ? "毎ターン"
                 : areas[foe].used
                   ? "使用済み"
                   : "未使用"}

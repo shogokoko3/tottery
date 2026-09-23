@@ -208,7 +208,7 @@ export const FORMATIONS = Object.freeze([
     name: "昇格の砦",
     title: "覇道",
     area: "palace",
-    flavor: "宮殿に、10を3枚と9を昇格の種に据えた布陣。毎手番の昇格で仲間を育て、倒れたJ・Qは予備札で呼び戻す。",
+    flavor: "宮殿に、10を3枚と9を昇格の種に据えた布陣。毎ターンの昇格で仲間を育て、倒れたJ・Qは予備札で呼び戻す。",
     counts: { K: 1, J: 1, Q: 1, 10: 3, 9: 1, 4: 1, 2: 1 },
     width: 7,
     cells: [
