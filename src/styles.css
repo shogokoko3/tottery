@@ -8224,3 +8224,43 @@ p.hint > span.gem-shop-diag {
 .profile-edit-panel > .setup-actions {
   margin-top: 10px;
 }
+
+/* ===== 対局画面(2026-09-24 本人の指示) =====
+   手番の帯は出さない。A の入れ替えの確認は画面の下に貼り付け、送らずに押せるようにする */
+.ace-shuffle-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 55;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  border: 1px solid var(--gold);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(170deg, #132844, #0b1729);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55);
+  color: var(--text);
+}
+.ace-shuffle-bar > span {
+  flex: 1 1 100%;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ace-shuffle-bar .btn {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  padding: 8px 12px;
+}
+/* エラーの案内は盤の上に重ねる(枠は取らない) */
+.area-notice-slot .play-status {
+  margin: 4px auto 0;
+  max-width: 92%;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(8, 10, 22, 0.86);
+  white-space: normal;
+  pointer-events: none;
+}

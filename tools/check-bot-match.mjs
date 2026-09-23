@@ -190,7 +190,9 @@ assert.equal(matchesBot("abc"), true);
   assert.ok(/online: !!network && !network\.nearby && !tutorial,/.test(game), "ミッションのオンライン回数には数えない(network のときだけ。近くの端末も数えない)");
   // 2026-09-23 本人の指示: Bot 戦もシーズン台帳へ送る(部屋が無いので id と勝敗だけ。tools/check-bot-season.mjs)
   assert.ok(/useSeasonMatch\(\s*a,\s*network,\s*round,\s*!!tutorial \|\| \(!network\?\.random && !bot\),\s*bot,\s*\)/.test(game), "シーズン台帳はランダムマッチ(人)と Bot 戦のときだけ(フレンド・近くの端末は送らない)");
-  assert.ok(/tutorial \|\| bot \? "相手の番です"/.test(game), "Bot 戦で「CPU」と出さない");
+  // 2026-09-24 本人の指示で「相手の番です」「CPUが考えています…」の案内の行ごと廃止(持ち時間の減りで分かる)。
+  // Bot 戦で「CPU」と出す文が戻らないことだけ見る
+  assert.ok(!/CPUが考えています/.test(game), "Bot 戦で「CPU」と出さない(案内の行そのものを出さない)");
   assert.ok(/if \(\(network && network\.random\) \|\| bot\) noteRandomResult\(\{ won, vsBot: !!bot \}\);/.test(game), "ランダムマッチの結果を控える(人に負けたら次は Bot)");
 }
 console.log("ランダムマッチの練習相手(Bot): 判定・3段階の強さ・6エリア均等・持ち点が 1750 に届く・配線 OK");

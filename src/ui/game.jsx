@@ -3312,7 +3312,8 @@ export function GameCore({
             viewer={P}
           />
         )}
-        <TurnBar state={displayed} viewer={P} />
+        {/* 手番の帯(「○○の番です」＋最後の記録)は出さない(2026-09-24 本人の指示)。
+            どちらの番かは持ち時間が減っていることで分かり、何をしたかは盤の下の「記録」で読む */}
         {logOpen && (
           <LiveLogModal log={displayed.log} onClose={() => setLogOpen(false)} />
         )}
@@ -3405,29 +3406,16 @@ export function GameCore({
             }}
           />
         )}
-        {/* 案内は1行ぶんの枠に固定して出す。出たり消えたりで盤が上下しないように(2026-09-23 本人の指示) */}
-        <p
-          className={`hint play-status ${s ? "play-status-alert" : ""}`}
-          role="status"
-          aria-live="polite"
-        >
-          {s ? (
-            s
-          ) : network && !x ? (
-            "相手のターンです"
-          ) : cpu && !x ? (
-            <>
-              <Dice size={14} className="spin-icon" />{" "}
-              {tutorial || bot ? "相手の番です" : "CPUが考えています…"}
-            </>
-          ) : (
-            " "
-          )}
-        </p>
         <div className="board-outer">
           {/* エリアの知らせは盤の上に重ねる。流れの中に置くと、出る瞬間に盤が下がる(2026-09-23 本人の指示) */}
           <div className="area-notice-slot" aria-live="polite">
             <AreaEffectNotice effect={areaFx} names={names} />
+            {/* エラーの案内も盤の上に重ねる。「相手のターンです」の類は出さない(2026-09-24 本人の指示。持ち時間の減りで分かる) */}
+            {s && (
+              <p className="hint play-status play-status-alert" role="status">
+                {s}
+              </p>
+            )}
           </div>
           <div
             className="board-frame"
@@ -3739,8 +3727,9 @@ export function GameCore({
           </div>
         </div>
         {aceMagic.boardEffect}
+        {/* A の入れ替えの確認は画面の下に貼り付ける。盤の下に置くと送らないと押せなかった(2026-09-24 本人の指摘) */}
         {Pl && (
-          <div className="action-bar">
+          <div className="action-bar ace-shuffle-bar" role="group" aria-label="Aの入れ替えの確認">
             <span>
               入れ替える駒を2つ選択({a.shuffleMode.picks.length}/2)
               <br />
