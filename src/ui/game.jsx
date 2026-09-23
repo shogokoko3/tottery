@@ -1054,22 +1054,12 @@ export function GameView({
           </div>
         )}
         <SeasonMatchNotice result={seasonResult} />
-        {/* 勝利チャンス(2026-09-23 本人の指示)。成功なら褒美、しくじれば次の対局に持ち越し */}
-        {chance && chance.wasChance && (
-          <div
-            className={`chance-notice ${chance.rewarded ? "chance-notice-won" : ""}`}
-            role="status"
-          >
-            {chance.rewarded ? (
-              <>
-                <b>勝利チャンス成功！</b> ガチャチケット{WIN_CHANCE_REWARD_TICKETS}枚を受け取りました
-                {chance.left > 0 ? `(今日あと${chance.left}回)` : "(今日はここまで)"}
-              </>
-            ) : (
-              <>
-                <b>勝利チャンス</b> は次の対局に持ち越し。勝てばガチャチケット{WIN_CHANCE_REWARD_TICKETS}枚
-              </>
-            )}
+        {/* 勝利チャンス(2026-09-23 本人の指示)。終局で知らせるのは成功したときだけ。
+            しくじったときは何も出さない(次の対局の「対戦相手」の画面でまた知らせる) */}
+        {chance && chance.rewarded && (
+          <div className="chance-notice chance-notice-won" role="status">
+            <b>勝利チャンス成功！</b> ガチャチケット{WIN_CHANCE_REWARD_TICKETS}枚を受け取りました
+            {chance.left > 0 ? `(今日あと${chance.left}回)` : "(今日はここまで)"}
           </div>
         )}
         {rating && (
