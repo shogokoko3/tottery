@@ -35,7 +35,7 @@ export function unlockedBackgrounds(collection) {
  * 「勝率」だけは割合。無いものは null(表示は「—」)
  */
 export const SHOWCASE = Object.freeze([
-  { id: "rating", label: "持ち点", unit: "", value: (c) => c.rating ?? null },
+  { id: "rating", label: "レート", unit: "", value: (c) => c.rating ?? null },
   { id: "battles", label: "対局数", unit: "局", value: (c) => c.stats.battles },
   { id: "wins", label: "勝利数", unit: "勝", value: (c) => c.stats.wins },
   {

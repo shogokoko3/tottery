@@ -4,7 +4,7 @@ import { seasonTitle } from "./season.js";
  *
  * 対戦相手にも渡して、マッチしたときに名前と一緒に見せる。
  * 手に入れ方は2通り:
- *   - 対局数・勝数・持ち点から自動で決まるもの(unlocked で判定)
+ *   - 対局数・勝数・レートから自動で決まるもの(unlocked で判定)
  *   - あとから配るもの(profile.titles に id を持たせる)
  * 一覧はここのデータだけ書き足せば増える。free: true は最初から使える。
  *
@@ -305,19 +305,19 @@ export const TITLES = [
   {
     id: "rank-shi",
     name: "士の位",
-    how: "持ち点 1600",
+    how: "レート 1600",
     unlocked: (p) => p.rating >= 1600,
   },
   {
     id: "rank-sho",
     name: "将の位",
-    how: "持ち点 1800",
+    how: "レート 1800",
     unlocked: (p) => p.rating >= 1800,
   },
   {
     id: "rank-o",
     name: "王の位",
-    how: "持ち点 2000",
+    how: "レート 2000",
     unlocked: (p) => p.rating >= 2000,
   },
   // Ownership completes a mission; only its explicit reward claim grants a title.

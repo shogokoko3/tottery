@@ -96,7 +96,7 @@ assert.ok(/\.rank-title \{/.test(css) && /\.rank-name-text \{/.test(css), "行�
   const game = readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
   assert.ok(/if \(Math\.abs\(diff\) <= 40\) return \{ \.\.\.prev, rating: r, delta: prev\.delta \+ diff \};/.test(game), "近ければ上下ぶんだけ直す");
   assert.ok(/return \{ \.\.\.prev, rating: r, before: r - prev\.delta, adjusted: true \};/.test(game), "大きく違えばサーバーでの前後で出す(勝ったのに下がって見せない)");
-  assert.ok(/持ち点はサーバーの記録に合わせています/.test(game), "合わせた旨を添える");
+  assert.ok(/レートはサーバーの記録に合わせています/.test(game), "合わせた旨を添える");
 }
 
 console.log("運営のまとめて忘れる口・消す道具・ランキングの称号・起動時の一度きりの片付け・持ち点の置き直し OK");

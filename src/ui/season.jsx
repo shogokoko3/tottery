@@ -67,7 +67,7 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
       if (mounted.current && names.ok)
         setIdentities(Object.fromEntries(names.list.map((r) => [r.id, r])));
       if (mounted.current) setData(next);
-      // サーバーの持ち点が正。開いたときにも端末へ写す(2026-09-23)
+      // サーバーのレートが正。開いたときにも端末へ写す(2026-09-23)
       if (Number.isFinite(next?.player?.rating)) {
         const before = loadProfile().rating;
         const after = adoptServerRating(next.player.rating);
@@ -220,7 +220,7 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
               </span>
               <strong>
                 {p.rating}
-                <small>持ち点</small>
+                <small>レート</small>
               </strong>
               <span className="season-place">
                 {p.place ? `${p.place}位` : "未掲載"}
@@ -262,7 +262,7 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
           <RankGuide />
           <h4>月末の記念称号</h4>
           <p className="hint">
-            最終1位は「覇者」、3位以内は「三傑」、10位以内は「十傑」。翌月1日5時に確定します。同じ持ち点は同順位です。
+            最終1位は「覇者」、3位以内は「三傑」、10位以内は「十傑」。翌月1日5時に確定します。同じレートは同順位です。
           </p>
         </>
       )}
@@ -570,7 +570,7 @@ export function useSeasonMatch(state, network, round, disabled, bot = null) {
   const eligible = (!!network || !!bot) && state.boardSize === 9 && !disabled;
   const [status, setStatus] = useState(""),
     [error, setError] = useState(""),
-    // サーバーが出した対局後の持ち点。端末の仮の値を、届いたらこれに合わせる(2026-09-23)
+    // サーバーが出した対局後のレート。端末の仮の値を、届いたらこれに合わせる(2026-09-23)
     [serverRating, setServerRating] = useState(null);
   const flight = useRef(null),
     done = useRef(false),
@@ -611,7 +611,7 @@ export function useSeasonMatch(state, network, round, disabled, bot = null) {
           try {
             const result = await finishSeasonMatch(match);
             done.current = true;
-            // サーバーの持ち点を端末の持ち点にし、通算(ranks)にも置き直す
+            // サーバーのレートを端末のレートにし、通算(ranks)にも置き直す
             const r = result?.player?.rating;
             if (Number.isFinite(r)) {
               const before = loadProfile().rating;

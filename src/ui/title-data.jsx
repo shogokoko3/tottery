@@ -108,7 +108,7 @@ function DataManageModal({ onClose }) {
           </div>
         </div>
         <p className="settings-note">
-          名前・戦績・持ち点と、公開ランキングのあなたの行を消します。元には戻せません。
+          名前・戦績・レートと、公開ランキングのあなたの行を消します。元には戻せません。
         </p>
         <button className="btn btn-primary btn-wide" onClick={onClose}>
           とじる
@@ -206,7 +206,7 @@ function DataTransferModal({ onClose }) {
         </div>
         <p className="hint">
           Apple ID にこの記録を結びつけます。新しい端末で同じ Apple ID からサインインすると、
-          名前・レベル・戦績・持ち点・持っているスキンとジェムを引き継げます。
+          名前・レベル・戦績・レート・持っているスキンとジェムを引き継げます。
         </p>
         <div className="settings-list">
           <div className="settings-row">

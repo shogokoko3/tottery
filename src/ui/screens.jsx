@@ -150,6 +150,7 @@ import TSUME_STYLES from "./tsume.css";
 import { SkinsScreen } from "./skins.jsx";
 import { useFriendAlerts } from "./friends.jsx";
 import { InboxScreen } from "./inbox.jsx";
+import { OpenSettings, useOpenSettings } from "./open-settings.js";
 import { ProfileScreen } from "./profile.jsx";
 import { inviteFriend } from "../net/friends.js";
 import { useMissionProfile } from "./mission-profile.js";
@@ -189,7 +190,7 @@ function myTitle() {
   return titleOf(loadProfile()).id;
 }
 
-/** いまの持ち点。相手に渡して、対局後の増減を互いに計算する */
+/** いまのレート。相手に渡して、対局後の増減を互いに計算する */
 function myRating() {
   return loadProfile().rating;
 }
@@ -198,8 +199,7 @@ function myRating() {
  * 設定を開く手。GameShell が持っている設定の札を、
  * その下に置かれた画面(ホームなど)からも開けるようにする。
  */
-const OpenSettings = createContext(null);
-export const useOpenSettings = () => useContext(OpenSettings);
+export { useOpenSettings };
 
 export function GameShell({
   children,
@@ -786,7 +786,7 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady =
       [],
     ),
     (0, useEffect)(() => {
-      // 持ち点が 1750 に届くまでの練習相手(Bot、src/game/bot-match.js)。
+      // レートが 1750 に届くまでの練習相手(Bot、src/game/bot-match.js)。
       //   直前に人に負けていたら、探さずに数秒「探しています」を見せてから Bot。
       //   それ以外はまず人を探し、BOT_WAIT_MS 経っても組めなければ Bot に切り替える
       //   (画面を離れるときの後片付けが掲示と部屋を消す)
@@ -1128,7 +1128,7 @@ function CustomRulesPanel({ custom, size, onChange }) {
       <p className="hint">
         始める側の設定が使われます(CPU戦は自分、ルームは作る側、近くの端末はタップされた側)。
         <br />
-        持ち点は動きません。
+        レートは動きません。
       </p>
     </div>
   );
@@ -1236,7 +1236,7 @@ export function RulesSelectScreen({
               </span>
               <small>
                 {i === 5 ? "5枚で戦う短期戦" : foilRevealed(getCollection()) ? "9枚で戦う本格戦。王のフォイルで盤面エリアが立つ" : "9枚で戦う本格戦"}
-                {/* 持ち点が動くのは9×9だけ。選ぶ前に分かるようにしておく */}
+                {/* レートが動くのは9×9だけ。選ぶ前に分かるようにしておく */}
                 {ranked && i === 9 && (
                   <>
                     <br />
@@ -1325,7 +1325,7 @@ export function RulesSelectScreen({
  * 近くの端末と対戦(Bluetooth / 近距離 Wi‑Fi、インターネット不要。src/net/nearby.js)。
  * 両端末がこの画面を開くと互いに見つかり、どちらかが相手をタップすると対局へ。
  * タップした側がゲスト(後手の席)、された側がホスト(先手の席・盤の大きさはこちらの設定)。
- * 持ち点・シーズン・オンラインの回数には数えない
+ * レート・シーズン・オンラインの回数には数えない
  */
 export function NearbyScreen({ boardSize, onReady, onBack }) {
   const loadout = useRef(mySkins()).current;
@@ -1436,7 +1436,7 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
         </p>
       )}
       <p className="code-note">
-        <Info size={14} /> 盤の大きさは、タップされた側(先手)の設定になります。持ち点は動きません。
+        <Info size={14} /> 盤の大きさは、タップされた側(先手)の設定になります。レートは動きません。
       </p>
       <button className="btn btn-ghost btn-wide" style={{ marginTop: 12 }} onClick={onBack}>
         <ArrowLeft size={18} /> フレンド対戦に戻る
@@ -1887,7 +1887,7 @@ function TotteryScreens() {
   // CPU の装備からフォイルを外す(「エリアなし」用。フォイルの王でしかエリアは立たない)
   const stripFoils = (loadout) =>
     Object.fromEntries(Object.entries(loadout || {}).map(([rank, id]) => [rank, baseSkinId(id)]));
-  // ランダムマッチの練習相手(Bot)。持ち点 1750 未満のあいだ、人の代わりに当たる。中身は CPU(強さ3段階)
+  // ランダムマッチの練習相手(Bot)。レート 1750 未満のあいだ、人の代わりに当たる。中身は CPU(強さ3段階)
   const [bot, setBot] = useState(null);
   // はじめて遊ぶときは、まず名前を決めてもらう
   let [named, setNamed] = (0, useState)(() => hasName()),
@@ -1940,7 +1940,7 @@ function TotteryScreens() {
       const me = loadProfile();
       if (auth && me.id !== auth.uid) {
         // 端末が名乗っていた古い鍵から、Firebase の uid へ持ち替える。
-        // 名前・持ち点・戦績は端末の中にあるので、鍵が変わっても失われない。
+        // 名前・レート・戦績は端末の中にあるので、鍵が変わっても失われない。
         //
         // まだ名前が無い(id も無い)初回起動でも、ここを通しておく。
         // 通さないと、名前を決めたときに端末が自分で p… という鍵を作り、
@@ -2119,7 +2119,7 @@ function TotteryScreens() {
           ? [mine.icon, bot ? bot.icon : null]
           : [null, null],
       // 称号はマッチした相手と交わすもの。CPU戦・同じ端末では渡さない。
-      // Bot(ランダムマッチの練習相手)は人物として見せるので、持ち点に応じた称号を名乗る(2026-09-23)
+      // Bot(ランダムマッチの練習相手)は人物として見せるので、レートに応じた称号を名乗る(2026-09-23)
       titles = a
         ? a.titles || [null, null]
         : bot
@@ -2159,7 +2159,7 @@ function TotteryScreens() {
             cpuArea={
               d && !tut && i === 9 && foilRevealed(collection) && (!localPool || bot) ? cpuArea : null
             }
-            // ランダムマッチの練習相手。人との対局と同じ扱い(持ち点が動く、札は絞らない)
+            // ランダムマッチの練習相手。人との対局と同じ扱い(レートが動く、札は絞らない)
             bot={d && !tut ? bot : null}
             // 詳細設定は CPU戦・同じ端末・フレンド対戦(合言葉・近くの端末)だけ。ランダムマッチ・Bot・チュートリアルでは使わない
             custom={!tut && !bot && !(a && a.random) ? customRules : null}
@@ -2329,7 +2329,6 @@ function TotteryScreens() {
               onBack={() => t(profileFrom)}
               backLabel={profileFrom === "friends" ? "フレンドに戻る" : "ホームに戻る"}
               onFriends={() => t("friends")}
-              onSettings={() => n(!0)}
               onInvite={inviteToRoom}
               onRemoved={() => t("friends")}
             />
@@ -2343,7 +2342,7 @@ function TotteryScreens() {
               boardSize={i}
               onBack={() => t("matching")}
               onRoomReady={v}
-              // 持ち点 1750 未満: Bot と組む。中身は CPU 戦の作りをそのまま使う
+              // レート 1750 未満: Bot と組む。中身は CPU 戦の作りをそのまま使う
               onBotReady={(b) => {
                 clearBotNow();
                 setCpuSkins(createCpuLoadout());

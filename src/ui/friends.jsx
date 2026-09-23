@@ -92,7 +92,7 @@ function FriendTag({ f, onClick }) {
         {f.title ? <TitleFrame id={f.title} size="compact" /> : <span className="friend-tag-notitle">称号なし</span>}
         <b className="friend-tag-name">{f.name || "名無し"}</b>
         <small>
-          {Number.isFinite(f.rating) ? `持ち点 ${f.rating}` : ""}
+          {Number.isFinite(f.rating) ? `レート ${f.rating}` : ""}
           {f.level ? ` · Lv${f.level}` : ""}
           {f.seen ? ` · ${agoText(f.seen)}` : ""}
         </small>

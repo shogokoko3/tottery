@@ -552,7 +552,7 @@ export function DeleteMeModal({ onClose, onDeleted }) {
         {step === "ask" && (
           <>
             <p className="hint">
-              名前・アイコン・称号・戦績・持ち点と、公開ランキングに載っているあなたの行を消します。見えなくした人の一覧も消えます。
+              名前・アイコン・称号・戦績・レートと、公開ランキングに載っているあなたの行を消します。見えなくした人の一覧も消えます。
               <b>元には戻せません。</b>
             </p>
             <p className="hint">
@@ -753,7 +753,7 @@ export function SettingsModal({ onClose }) {
                 </div>
               </div>
               <p className="settings-note">
-                名前・戦績・持ち点と、公開ランキングのあなたの行を消します。元には戻せません。
+                名前・戦績・レートと、公開ランキングのあなたの行を消します。元には戻せません。
               </p>
             </>
           )}
@@ -865,7 +865,7 @@ export function ResignConfirm({ onCancel, onResign, viewer }) {
     </div>
   );
 }
-/** counts: 持ち点に数える対局か(ランダムマッチの 9×9)。フレンド対戦・近くの端末・5×5 は数えない */
+/** counts: レートに数える対局か(ランダムマッチの 9×9)。フレンド対戦・近くの端末・5×5 は数えない */
 export function QuitConfirm({ onCancel, onQuit, network, counts = !!network }) {
   return (
     <div className="modal-overlay" onClick={onCancel}>
@@ -883,13 +883,13 @@ export function QuitConfirm({ onCancel, onQuit, network, counts = !!network }) {
         <p className="hint">
           {network && !counts ? (
             <>
-              途中でやめると<b>降参</b>になり、相手の勝ちとして勝敗がつきます。相手には「降参」と伝わります(この対局は持ち点に数えません)。
+              途中でやめると<b>降参</b>になり、相手の勝ちとして勝敗がつきます。相手には「降参」と伝わります(この対局はレートに数えません)。
             </>
           ) : network ? (
             <>
               オンライン対戦では、途中でやめると<b>降参</b>になります。
               <br />
-              相手の勝ちとして勝敗がつき、持ち点(月間シーズンの成績)を清算します。相手には「降参」と伝わります。
+              相手の勝ちとして勝敗がつき、レート(月間シーズンの成績)を清算します。相手には「降参」と伝わります。
             </>
           ) : (
             "今の対局は最初からやり直しになります。"

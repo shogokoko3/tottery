@@ -95,7 +95,7 @@ function when(ms) {
 }
 
 const SORTS = {
-  rating: { label: "持ち点", by: (a, b) => (b.rating || 0) - (a.rating || 0) },
+  rating: { label: "レート", by: (a, b) => (b.rating || 0) - (a.rating || 0) },
   at: { label: "最終更新", by: (a, b) => (b.at || 0) - (a.at || 0) },
   plays: { label: "対局数", by: (a, b) => (b.plays || 0) - (a.plays || 0) },
   name: {
@@ -711,7 +711,7 @@ function AdminDashboard({ onSignOut }) {
   async function removeRank(row) {
     if (
       !window.confirm(
-        `「${row.name || row.id}」の成績をサーバーから消します。\n本人の端末の記録は消えず、次の持ち点つき対局でまた載ります。`,
+        `「${row.name || row.id}」の成績をサーバーから消します。\n本人の端末の記録は消えず、次のレートつき対局でまた載ります。`,
       )
     )
       return;
@@ -1054,7 +1054,7 @@ function AdminDashboard({ onSignOut }) {
         <section className="admin-card" id="admin-ranks">
           <h2>9×9オンライン・通算成績</h2>
           <p className="hint">
-            9×9オンライン対戦が1戦以上あるプレイヤーを掲載します。持ち点はゲームの通算ランキングと同じ表示です。
+            9×9オンライン対戦が1戦以上あるプレイヤーを掲載します。レートはゲームの通算ランキングと同じ表示です。
           </p>
           {ranksError && <p className="admin-error">{ranksError}</p>}
           {!playersError && !ranksError && differences.length > 0 && (
@@ -1071,7 +1071,7 @@ function AdminDashboard({ onSignOut }) {
                 id={r.id}
                 kind="rank"
                 name={r.name || "(名無し)"}
-                sub={`持ち点 ${ratingWithWorld(r.rating, world)} · 9×9オンライン ${r.rated}戦 · ${ago(r.at)}`}
+                sub={`レート ${ratingWithWorld(r.rating, world)} · 9×9オンライン ${r.rated}戦 · ${ago(r.at)}`}
               />
             ))}
             {ranks && rows.length === 0 && (
@@ -1107,7 +1107,7 @@ function AdminDashboard({ onSignOut }) {
                           {r.place
                             ? `${r.place}位`
                             : `順位確定まで${Math.max(0, 10 - r.rated)}戦`}{" "}
-                          · 持ち点 {r.rating} · {r.rated}戦 {r.wins}勝 {r.draws}
+                          · レート {r.rating} · {r.rated}戦 {r.wins}勝 {r.draws}
                           分
                         </small>
                       </span>
@@ -1366,13 +1366,13 @@ function AdminDashboard({ onSignOut }) {
             ) : (
               <>
                 <p className="hint">
-                  全対戦はCPU・5×5・チュートリアルを含みます。通算の持ち点に反映するのは9×9オンライン対戦だけです。
+                  全対戦はCPU・5×5・チュートリアルを含みます。通算のレートに反映するのは9×9オンライン対戦だけです。
                 </p>
                 <Line label="称号">
                   {titleNameOf(opened.title) ||
                     (opened.title ? `? ${opened.title}` : "—")}
                 </Line>
-                <Line label="通算ランキングの持ち点">
+                <Line label="通算ランキングのレート">
                   {typeof opened.rating === "number"
                     ? `${ratingWithWorld(opened.rating, world)} (${rankTitle(opened.rating, opened.rated)})`
                     : "—"}

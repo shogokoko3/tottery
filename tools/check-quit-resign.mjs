@@ -18,7 +18,7 @@ assert.ok(/setTimeout\(leaveGame, QUIT_RESIGN_GRACE_MS\)/.test(quit), "届くの
 assert.ok(/if \(!inPlay\) \{\s*leaveGame\(\);\s*return;/.test(quit), "手元・CPU・終局後はそのまま抜ける");
 assert.ok(/onQuit=\{\(\) => \{\s*\(r\(!1\), quitGame\(\)\);/.test(game), "やめる確認の「やめる」が quitGame を呼ぶ");
 const qc = overlays.slice(overlays.indexOf("export function QuitConfirm"));
-assert.ok(qc.includes("降参") && qc.includes("持ち点"), "確認の文言に降参と持ち点の清算");
+assert.ok(qc.includes("降参") && qc.includes("レート"), "確認の文言に降参と持ち点の清算");
 assert.ok(qc.includes("降参してホームに戻る"), "オンラインのボタンは「降参してホームに戻る」");
 assert.ok(qc.includes("今の対局は最初からやり直しになります。"), "手元の文言は従来どおり");
 console.log("途中でやめる＝降参: 文言・RESIGN 送信・待ってから片付け・手元はそのまま OK");

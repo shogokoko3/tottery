@@ -1,9 +1,9 @@
 /**
  * プロフィール(2026-09-23 本人の指示)。自分のものと、フレンドのもの。
  *
- * 見せるもの: 背景(着せ替え)・アイコンと額縁・名前・レベル・固定の称号(真ん中に大きく)・
- * 対局で見せる称号・持ち点と月間の順位・記録のアピール(3つまで)・戦績。
- * 自分のときは「プロフィールを編集」で背景・アピール・固定の称号を選ぶ(src/game/profile-card.js)。
+ * 見せるもの: 背景(着せ替え)・アイコンと額縁・レベルとレート・名前・プロフィールの称号(真ん中に大きく)・
+ * 対局で見せる称号・レートと月間の順位・記録のアピール(3つまで)・戦績。
+ * 自分のときは「プロフィールを編集」で背景・アピール・プロフィールの称号を選ぶ(src/game/profile-card.js)。
  * フレンドのときは、チケットを贈る・対戦に招待する・フレンドから外す。
  */
 import { useEffect, useState } from "react";
@@ -28,6 +28,7 @@ import { PlayerIcon } from "./playericon.jsx";
 import { TitleFrame } from "./title-frame.jsx";
 import { TitleChoice } from "./account.jsx";
 import { agoText, usePublishProfileCard } from "./friends.jsx";
+import { useOpenSettings } from "./open-settings.js";
 import { ArrowLeft, Check, Close, DoorIn, Settings, Ticket, Users, Lock } from "../icons.jsx";
 
 const bgImage = (bg) => (bg && bg !== STANDARD_BG ? `skins/home-v1/${bg}-home-decor.webp` : null);
@@ -47,21 +48,18 @@ export function ProfileCard({ view, name, mine }) {
     >
       <div className="profile-head">
         <PlayerIcon icon={card.icon} name={name} size="lg" frame={card.frame} />
+        {/* レベルとレートを名前の上に。ふだん付けている称号は出さない(2026-09-24 本人の指示) */}
         <div className="profile-id">
-          <b className="profile-name">{name || "名無し"}</b>
           <span className="profile-sub">
             Lv {card.level || 0}
-            {Number.isFinite(view.rating) ? ` · 持ち点 ${view.rating}` : ""}
+            {Number.isFinite(view.rating) ? ` · レート ${view.rating}` : ""}
             {view.place ? ` · 今月 ${view.place}位` : ""}
           </span>
-          {card.title && findTitle(card.title) && (
-            <TitleFrame id={card.title} size="compact" className="profile-title-compact" />
-          )}
+          <b className="profile-name">{name || "名無し"}</b>
         </div>
       </div>
       {card.pinnedTitle && findTitle(card.pinnedTitle) && (
         <div className="profile-pinned">
-          <small>{mine ? "固定の称号" : "誇りの称号"}</small>
           <TitleFrame id={card.pinnedTitle} size="showcase" />
         </div>
       )}
@@ -98,7 +96,7 @@ export function ProfileCard({ view, name, mine }) {
   );
 }
 
-/** 固定の称号を選ぶ(対局で見せる称号とは別) */
+/** プロフィールの称号を選ぶ(対局で見せる称号とは別) */
 function PinnedTitlePicker({ profile, collection, picked, onPick, onClose }) {
   const [cur, setCur] = useState(picked || "");
   const visible = availableTitles(profile).filter((t) => {
@@ -114,21 +112,21 @@ function PinnedTitlePicker({ profile, collection, picked, onPick, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel title-picker-panel" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h3>固定の称号を選ぶ</h3>
+          <h3>プロフィールの称号を選ぶ</h3>
           <button className="icon-btn" onClick={onClose} aria-label="閉じる">
             <Close size={18} />
           </button>
         </div>
         <div className="title-picker-scroll">
           <div className="title-pick-preview" aria-live="polite">
-            <small>プロフィールの真ん中に据える称号</small>
+            <small>プロフィールに据える称号</small>
             <b>{profile.name || "あなた"}</b>
             {cur ? <TitleFrame id={cur} size="showcase" animated={collection.motion !== "off"} /> : <span className="hint">なし</span>}
           </div>
           <div className="title-list">
             <button className={`title-choice ${!cur ? "title-choice-on" : ""}`} onClick={() => setCur("")}>
-              <b>固定しない</b>
-              <small>対局で見せる称号だけを出します</small>
+              <b>称号を出さない</b>
+              <small>プロフィールに称号を載せません</small>
             </button>
             <p className="title-group-head title-group-head-mine">
               <Check size={13} /> 使える称号 <b>{mine.length}</b>
@@ -165,7 +163,7 @@ function PinnedTitlePicker({ profile, collection, picked, onPick, onClose }) {
   );
 }
 
-/** 背景・アピール・固定の称号を選ぶ */
+/** 背景・アピール・プロフィールの称号を選ぶ */
 export function ProfileEditModal({ onClose, onSaved }) {
   const profile = loadProfile();
   const collection = useCollection();
@@ -257,14 +255,14 @@ export function ProfileEditModal({ onClose, onSaved }) {
             })}
           </div>
 
-          <p className="profile-edit-head">固定の称号</p>
+          <p className="profile-edit-head">プロフィールの称号</p>
           <button className="title-tag profile-pinned-pick" onClick={() => setPickTitle(true)}>
             {card.pinnedTitle && hasTitle(profile, card.pinnedTitle) ? (
               <TitleFrame id={card.pinnedTitle} size="showcase" />
             ) : (
-              <span className="hint">固定していません</span>
+              <span className="hint">称号を出していません</span>
             )}
-            <span className="title-tag-edit">固定の称号を選ぶ</span>
+            <span className="title-tag-edit">称号を選ぶ</span>
           </button>
           {error && (
             <p className="hint friends-error" role="alert">
@@ -303,6 +301,9 @@ export function ProfileScreen({ uid = null, onBack, backLabel = "ホームに戻
   const me = myUid();
   const mine = !uid || uid === me;
   usePublishProfileCard(mine ? profile : null, collection);
+  // 設定の幕は GameShell が持つ。渡されなければ context から(カード早見表ではない。2026-09-24 本人の指摘)
+  const ctxOpenSettings = useOpenSettings();
+  const openSettings = onSettings || ctxOpenSettings;
   const [remote, setRemote] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -323,7 +324,7 @@ export function ProfileScreen({ uid = null, onBack, backLabel = "ホームに戻
     };
   }, [uid, me, version]);
 
-  // 自分のは端末の記録から即座に組む(サーバーの返事は持ち点・順位だけ足す)
+  // 自分のは端末の記録から即座に組む(サーバーの返事はレート・順位だけ足す)
   const view = mine
     ? {
         card: buildProfileCard(profile, collection, { bestPlace: remote?.best }),
@@ -373,8 +374,8 @@ export function ProfileScreen({ uid = null, onBack, backLabel = "ホームに戻
           <button className="btn btn-primary" onClick={() => setEdit(true)}>
             プロフィールを編集
           </button>
-          {onSettings && (
-            <button className="btn btn-ghost" onClick={onSettings}>
+          {openSettings && (
+            <button className="btn btn-ghost" onClick={openSettings}>
               <Settings size={16} /> 名前・アイコン・称号を変える
             </button>
           )}

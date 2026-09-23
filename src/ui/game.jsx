@@ -348,7 +348,7 @@ export function TurnBar({ state, viewer, onLog = null }) {
 
 /**
  * マッチング後の「対戦相手」の画面(2026-09-23 本人の指示)。
- * サイコロを振る前に、誰と当たったのかを名前・称号・持ち点で見せる。
+ * サイコロを振る前に、誰と当たったのかを名前・称号・レートで見せる。
  * 数秒で自動的に進むが、釦でも進める。勝利チャンスの対局ならここで知らせる
  */
 export function MatchIntro({ me, ratings, chance, onDone, seconds = 6 }) {
@@ -377,7 +377,7 @@ export function MatchIntro({ me, ratings, chance, onDone, seconds = 6 }) {
       )}
       <b className="match-intro-name">{nameOf(idx, names)}</b>
       <span className="match-intro-rating">
-        持ち点 <b>{Number.isFinite(ratings?.[idx]) ? ratings[idx] : "—"}</b>
+        レート <b>{Number.isFinite(ratings?.[idx]) ? ratings[idx] : "—"}</b>
       </span>
     </div>
   );
@@ -964,7 +964,7 @@ export function GameView({
       <div
         className={`modal-panel gameover-panel ${lost ? "defeat-panel" : ""}`}
       >
-        {/* 真ん中(結果・王の札・持ち点・熟練度)だけを送り、下の 2×2 の釦は常に見せる
+        {/* 真ん中(結果・王の札・レート・熟練度)だけを送り、下の 2×2 の釦は常に見せる
             (2026-09-23 本人の指示「全てのボタンが1画面に収まるように」) */}
         <div className="gameover-body">
         {drawn ? (
@@ -1070,7 +1070,7 @@ export function GameView({
         )}
         {rating && (
           <div className="rating-change">
-            <span className="rating-label">レーティング</span>
+            <span className="rating-label">レート</span>
             <span className="rating-nums">
               {rating.before}
               <span className="rating-arrow">→</span>
@@ -1083,7 +1083,7 @@ export function GameView({
             </span>
             {rating.adjusted && (
               <small className="rating-adjusted">
-                持ち点はサーバーの記録に合わせています
+                レートはサーバーの記録に合わせています
               </small>
             )}
           </div>
@@ -1252,7 +1252,7 @@ export function GameCore({
   pool = null,
   handSize = null,
   // ランダムマッチの練習相手({ id, name, icon, rating })。cpu と一緒に立つ。
-  // 持ち点は人との対局と同じに動かし、シーズン台帳とミッションのオンライン回数には数えない
+  // レートは人との対局と同じに動かし、シーズン台帳とミッションのオンライン回数には数えない
   bot = null,
   tutorial,
   round = 0,
@@ -1263,7 +1263,7 @@ export function GameCore({
 }) {
   const names = useNames();
   const { skins } = useSeats();
-  // 持ち点・シーズンに数えるのはランダムマッチ(network.random)の 9×9 だけ。
+  // レート・シーズンに数えるのはランダムマッチ(network.random)の 9×9 だけ。
   // フレンド対戦(合言葉・近くの端末)はランキングに載らない(本人の指示 2026-09-17)
   const matchRatings = useMatchRatings(
     network,
@@ -1390,7 +1390,7 @@ export function GameCore({
     !!tutorial || (!network?.random && !bot),
     bot,
   );
-  // サーバーの持ち点が届いたら、対局後の表示(仮の値)をそれに合わせる(2026-09-23 本人の指示)
+  // サーバーのレートが届いたら、対局後の表示(仮の値)をそれに合わせる(2026-09-23 本人の指示)
   (0, useEffect)(() => {
     const r = seasonResult.serverRating;
     if (!Number.isFinite(r)) return;
@@ -1398,7 +1398,7 @@ export function GameCore({
       if (!prev || !Number.isFinite(prev.before) || !Number.isFinite(prev.delta)) return prev;
       const diff = r - prev.rating;
       // 端末の見込みとサーバーの値が近ければ、そのぶんだけ上下を直す。
-      // 大きく違うのは「サーバーの持ち点に合わせた」場面(統一の初回など)。勝ったのに下がって見せない。
+      // 大きく違うのは「サーバーのレートに合わせた」場面(統一の初回など)。勝ったのに下がって見せない。
       // サーバーでの前後(サーバーの値から上下ぶんを引いた値 → サーバーの値)を出し、合わせた旨を添える
       if (Math.abs(diff) <= 40) return { ...prev, rating: r, delta: prev.delta + diff };
       return { ...prev, rating: r, before: r - prev.delta, adjusted: true };
@@ -1975,7 +1975,7 @@ export function GameCore({
     //
     // 申告できるのが手番側の端末だけだと、相手が黙って何も送らないかぎり
     // 対局が永久に止まる。こちらから終わらせる手立てが「降参」しか無く、
-    // それでは自分にだけ負けと持ち点の減少が付く。
+    // それでは自分にだけ負けとレートの減少が付く。
     //
     // 待っている側は、時計のずれと通信の遅れを見込んで少し待ってから
     // 申告する(先に手が届けば、この効果は作り直されて申告は起きない)
@@ -2022,12 +2022,12 @@ export function GameCore({
   }
   /**
    * 対局を途中でやめる。
-   * オンラインで対局が始まっていれば、やめる＝降参として扱い、相手の勝ちで成績(持ち点)を清算する
+   * オンラインで対局が始まっていれば、やめる＝降参として扱い、相手の勝ちで成績(レート)を清算する
    * (本人の指示 2026-09-16)。降参の手を部屋へ送ってから片付ける(記録の照合は部屋の手順を読むので、
    * 送る前に部屋を消すと相手の記録も通らない)。手元・CPU の対局はそのまま抜ける
    */
   function quitGame() {
-    // Bot(ランダムマッチの練習相手)も 9×9 なら持ち点に数えるので、同じく降参にする
+    // Bot(ランダムマッチの練習相手)も 9×9 ならレートに数えるので、同じく降参にする
     const inPlay =
       (!!network || !!bot) &&
       (a.phase === "play" || a.phase === "setup") &&
@@ -2230,10 +2230,10 @@ export function GameCore({
   }, [a.phase]);
 
   // 対局が終わったら1局ぶん記録する。レベルの元になる。
-  // オンラインで相手の持ち点が分かっていれば、レーティングもここで動かす
+  // オンラインで相手のレートが分かっていれば、レーティングもここで動かす
   // 「もう一度遊ぶ」で盤が初期化されても、記録済みの印は残っていた。
   // そのままだと2局目以降が誰の分も記録されない(対戦数・勝数・経験値・
-  // 持ち点・称号の判定がまるごと止まる)
+  // レート・称号の判定がまるごと止まる)
   (0, useEffect)(() => {
     if (a.phase !== "gameover") {
       recordedRef.current = !1;
@@ -2248,11 +2248,11 @@ export function GameCore({
     if (recordedRef.current || !matchRatings.ready) return;
     recordedRef.current = !0;
     const won = a.winner === null ? null : a.winner === (network ? p : 0);
-    // 持ち点(とランキング)に数えるのは、**9×9のランダムマッチだけ**。
-    // 5×5は短期戦で運の割合が大きく、同じ物差しに載せると持ち点が
+    // レート(とランキング)に数えるのは、**9×9のランダムマッチだけ**。
+    // 5×5は短期戦で運の割合が大きく、同じ物差しに載せるとレートが
     // 実力を表さなくなる。CPU戦とチュートリアルは相手の強さが決まらない。
     // フレンド対戦(合言葉・近くの端末)も数えない(本人の指示 2026-09-17。知り合い同士で点を回せてしまう)
-    // Bot(ランダムマッチの練習相手)は 9×9 なら持ち点に数える。相手の点は Bot の人物の点
+    // Bot(ランダムマッチの練習相手)は 9×9 ならレートに数える。相手の点は Bot の人物の点
     const ranked = (!!(network && network.random) || !!bot) && a.boardSize === 9;
     const foeRating = !ranked
       ? null
@@ -2583,7 +2583,7 @@ export function GameCore({
         />
       </GameShell>
     );
-  // マッチング後の「対戦相手」(2026-09-23 本人の指示)。名前・称号・持ち点を見せてからサイコロへ
+  // マッチング後の「対戦相手」(2026-09-23 本人の指示)。名前・称号・レートを見せてからサイコロへ
   if (showIntro && matchRatings.ready)
     return (
       <GameShell
