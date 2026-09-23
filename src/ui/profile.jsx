@@ -48,13 +48,9 @@ export function ProfileCard({ view, name, mine }) {
     >
       <div className="profile-head">
         <PlayerIcon icon={card.icon} name={name} size="lg" frame={card.frame} />
-        {/* レベルとレートを名前の上に。ふだん付けている称号は出さない(2026-09-24 本人の指示) */}
+        {/* 名前だけ。レベルとレートは出さない(2026-09-24 本人の指示。見せたい記録はアピールで選ぶ)。
+            ふだん付けている称号も出さない */}
         <div className="profile-id">
-          <span className="profile-sub">
-            Lv {card.level || 0}
-            {Number.isFinite(view.rating) ? ` · レート ${view.rating}` : ""}
-            {view.place ? ` · 今月 ${view.place}位` : ""}
-          </span>
           <b className="profile-name">{name || "名無し"}</b>
         </div>
       </div>
