@@ -9,6 +9,7 @@ import {
 } from "../game/season.js";
 import { displayRating, nextRating } from "../game/rating.js";
 import { TEST_PLAYERS_2026_09_08 } from "./test-players-2026-09-08.js";
+import { RATING_RESTORE_2026_09_23 } from "./rating-restore-2026-09-23.js";
 
 /** 記録を消した人の目印の代わり。matches に残る */
 export const FORGOTTEN = "forgotten";
@@ -69,6 +70,14 @@ export class Ledger {
     // 消す(2026-09-23 本人の指示。実際の人には触らない。uid の一覧は test-players-2026-09-08.js)
     this.cleanupOnce("test-players-2026-09-08", () => {
       for (const uid of TEST_PLAYERS_2026_09_08) this.forget(uid);
+    });
+    // 持ち点をサーバーの1つに統一した(2026-09-23)ときの巻き戻しを直す。統一前にサーバーに記録の無かった
+    // Bot 戦のぶん、端末の持ち点よりサーバーが低く、勝ったのに下がって見えた(本人の報告)。
+    // 該当の人の今月の持ち点を、端末が持っていた値に置き直す(一度だけ。行が無ければ何もしない)
+    this.cleanupOnce("restore-rating-2026-09-23", () => {
+      for (const { uid, season, rating } of RATING_RESTORE_2026_09_23)
+        if (this.sql("SELECT uid FROM players WHERE season=? AND uid=?", season, uid).length)
+          this.sql("INSERT OR REPLACE INTO elo_ratings VALUES (?,?,?)", season, uid, rating);
     });
   }
   /** 名前つきの片付けを一度だけ走らせる(2026-09-23)。配信のたびに走っても二度目は何もしない */

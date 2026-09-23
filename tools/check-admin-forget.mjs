@@ -75,4 +75,28 @@ assert.ok(/\.rank-title \{/.test(css) && /\.rank-name-text \{/.test(css), "行�
   assert.equal(l3.list("2026-09").length, 2, "二度目の起動では何も消えない");
 }
 
-console.log("運営のまとめて忘れる口・消す道具・ランキングの称号・起動時の一度きりの片付け OK");
+// 6. 持ち点の置き直し(2026-09-23)。行がある人だけ、今月の持ち点を端末が持っていた値に。二度目は走らない
+{
+  const { RATING_RESTORE_2026_09_23 } = await import("../src/server/rating-restore-2026-09-23.js");
+  const target = RATING_RESTORE_2026_09_23[0];
+  const db4 = new DatabaseSync(":memory:");
+  const sql4 = (q, ...args) => db4.prepare(q).all(...args);
+  const l4 = new Ledger(sql4); // 行が無い → 何も起きない
+  assert.equal(sql4("SELECT COUNT(*) AS n FROM elo_ratings")[0].n, 0, "行が無ければ置かない");
+  sql4("DELETE FROM cleanups WHERE id='restore-rating-2026-09-23'");
+  l4.recordBot(target.uid, { id: "b1", winner: 0, name: "と", icon: null }, Date.parse("2026-09-23T03:00:00Z"));
+  const before = l4.list(target.season).find((p) => p.uid === target.uid).rating;
+  assert.notEqual(before, target.rating);
+  const l5 = new Ledger(sql4);
+  assert.equal(l5.list(target.season).find((p) => p.uid === target.uid).rating, target.rating, "起動時に置き直す");
+  l5.recordBot(target.uid, { id: "b2", winner: 1, name: "と", icon: null }, Date.parse("2026-09-23T04:00:00Z"));
+  const after = l5.list(target.season).find((p) => p.uid === target.uid).rating;
+  new Ledger(sql4);
+  assert.equal(l5.list(target.season).find((p) => p.uid === target.uid).rating, after, "二度目の起動では触らない");
+  const game = readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  assert.ok(/if \(Math\.abs\(diff\) <= 40\) return \{ \.\.\.prev, rating: r, delta: prev\.delta \+ diff \};/.test(game), "近ければ上下ぶんだけ直す");
+  assert.ok(/return \{ \.\.\.prev, rating: r, before: r - prev\.delta, adjusted: true \};/.test(game), "大きく違えばサーバーでの前後で出す(勝ったのに下がって見せない)");
+  assert.ok(/持ち点はサーバーの記録に合わせています/.test(game), "合わせた旨を添える");
+}
+
+console.log("運営のまとめて忘れる口・消す道具・ランキングの称号・起動時の一度きりの片付け・持ち点の置き直し OK");

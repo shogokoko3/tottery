@@ -99,7 +99,7 @@ assert.equal(seasonMatchKey({ code: "ABCD", createdAt: 1, round: 0, uid: "u" }),
   assert.ok(/if \(Number\.isFinite\(next\?\.player\?\.rating\)\)/.test(season) && /adoptServerRating\(next\.player\.rating\)/.test(season), "ランキングを開いたときにも写す");
   assert.ok(/publishPlayer\(after\)/.test(season), "変わったら通算(ranks)にも置き直す");
   const game = readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
-  assert.ok(/const r = seasonResult\.serverRating;/.test(game) && /delta: r - prev\.before/.test(game), "対局後の表示もサーバーの値に合わせる");
+  assert.ok(/const r = seasonResult\.serverRating;/.test(game) && /delta: prev\.delta \+ diff/.test(game), "対局後の表示もサーバーの値に合わせる");
 }
 
 // 配線

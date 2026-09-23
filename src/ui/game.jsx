@@ -1078,6 +1078,11 @@ export function GameView({
                 {rating.delta >= 0 ? `+${rating.delta}` : rating.delta}
               </span>
             </span>
+            {rating.adjusted && (
+              <small className="rating-adjusted">
+                持ち点はサーバーの記録に合わせています
+              </small>
+            )}
           </div>
         )}
         {tutorial && won && (
@@ -1385,11 +1390,15 @@ export function GameCore({
   (0, useEffect)(() => {
     const r = seasonResult.serverRating;
     if (!Number.isFinite(r)) return;
-    setRatingResult((prev) =>
-      prev && Number.isFinite(prev.before)
-        ? { ...prev, rating: r, delta: r - prev.before }
-        : prev,
-    );
+    setRatingResult((prev) => {
+      if (!prev || !Number.isFinite(prev.before) || !Number.isFinite(prev.delta)) return prev;
+      const diff = r - prev.rating;
+      // 端末の見込みとサーバーの値が近ければ、そのぶんだけ上下を直す。
+      // 大きく違うのは「サーバーの持ち点に合わせた」場面(統一の初回など)。勝ったのに下がって見せない。
+      // サーバーでの前後(サーバーの値から上下ぶんを引いた値 → サーバーの値)を出し、合わせた旨を添える
+      if (Math.abs(diff) <= 40) return { ...prev, rating: r, delta: prev.delta + diff };
+      return { ...prev, rating: r, before: r - prev.delta, adjusted: true };
+    });
   }, [seasonResult.serverRating]);
   const boardRef = useRef(null);
   const aceMagic = useAceMagic(a, skins, {

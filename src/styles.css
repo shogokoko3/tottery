@@ -7482,3 +7482,10 @@ p.hint > span.gem-shop-diag {
   border-color: rgba(143, 188, 232, 0.5);
   color: #8fbce8;
 }
+/* 持ち点をサーバーの記録に合わせたときの添え書き(2026-09-23) */
+.rating-adjusted {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
