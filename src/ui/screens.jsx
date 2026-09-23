@@ -206,6 +206,9 @@ export function GameShell({
   onHome,
   title,
   sheet,
+  // 下に貼り付く帯(チュートリアル)があるときだけ true。舞台の下に帯のぶんの余白を足す。
+  // sheet は演出の断片で常に truthy なので、これで見分ける(帯が無いのに 264px 空いていた。2026-09-23)
+  band = false,
   focusButton,
   // 右上に足す釦(チュートリアル中の「飛ばす」など)。無ければ何も出ない
   topExtra = null,
@@ -270,7 +273,7 @@ export function GameShell({
       {isTestPlay() && (
         <div className="test-badge">テストプレイ中 · 時間制限なし</div>
       )}
-      <main className={`stage ${sheet ? "stage-with-sheet" : ""}`}>
+      <main className={`stage ${band ? "stage-with-sheet" : ""}`}>
         <OpenSettings.Provider value={() => f(!0)}>
           {children}
         </OpenSettings.Provider>

@@ -964,6 +964,9 @@ export function GameView({
       <div
         className={`modal-panel gameover-panel ${lost ? "defeat-panel" : ""}`}
       >
+        {/* 真ん中(結果・王の札・持ち点・熟練度)だけを送り、下の 2×2 の釦は常に見せる
+            (2026-09-23 本人の指示「全てのボタンが1画面に収まるように」) */}
+        <div className="gameover-body">
         {drawn ? (
           <span className="adjudication-draw-mark" aria-hidden="true">
             ＝
@@ -1113,6 +1116,7 @@ export function GameView({
         {/* 札ごとの熟練度。プレイヤーレベルのゲージ(XpGainToast)とは別に、
             この局で使った札だけを並べる(2026-09-22 本人の指示) */}
         {mastery && <MasteryGains gains={mastery.gains} titles={mastery.titles} />}
+        </div>
         {/*
           対局後のボタンは 2×2 に固定(本人の指示 2026-09-17):
           左上 振り返り / 右上 マッチングへ / 左下 ホームへ / 右下 もう一度遊ぶ。
@@ -2540,6 +2544,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -2562,6 +2567,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -2583,6 +2589,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -2611,6 +2618,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -2634,6 +2642,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -2668,6 +2677,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -2682,6 +2692,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -2698,6 +2709,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -2725,6 +2737,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -2740,6 +2753,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -2766,6 +2780,7 @@ export function GameCore({
         <GameShell
           topExtra={skipMenu}
           sheet={presentationSheet}
+          band={!!tutSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -2790,6 +2805,7 @@ export function GameCore({
         <GameShell
         topExtra={skipMenu}
           sheet={presentationSheet}
+          band={!!tutSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -2839,6 +2855,7 @@ export function GameCore({
         <GameShell
         topExtra={skipMenu}
           sheet={presentationSheet}
+          band={!!tutSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -2853,6 +2870,7 @@ export function GameCore({
         <GameShell
         topExtra={skipMenu}
           sheet={presentationSheet}
+          band={!!tutSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -2867,6 +2885,7 @@ export function GameCore({
         <GameShell
         topExtra={skipMenu}
           sheet={presentationSheet}
+          band={!!tutSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -2895,6 +2914,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -2961,6 +2981,7 @@ export function GameCore({
         <GameShell
           topExtra={skipMenu}
           sheet={presentationSheet}
+          band={!!tutSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -3029,6 +3050,7 @@ export function GameCore({
         <GameShell
         topExtra={skipMenu}
           sheet={presentationSheet}
+          band={!!tutSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -3055,6 +3077,7 @@ export function GameCore({
         <GameShell
         topExtra={skipMenu}
           sheet={presentationSheet}
+          band={!!tutSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -3078,6 +3101,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -3151,6 +3175,7 @@ export function GameCore({
         <GameShell
         topExtra={skipMenu}
           sheet={presentationSheet}
+          band={!!tutSheet}
           focusButton={tutButton}
           showRules={i}
           setShowRules={f}
@@ -3179,6 +3204,7 @@ export function GameCore({
       <GameShell
         topExtra={skipMenu}
         sheet={presentationSheet}
+        band={!!tutSheet}
         focusButton={tutButton}
         showRules={i}
         setShowRules={f}
@@ -3262,6 +3288,7 @@ export function GameCore({
     <GameShell
         topExtra={skipMenu}
       sheet={presentationSheet}
+      band={!!tutSheet}
       focusButton={tutButton}
       showRules={i}
       setShowRules={f}

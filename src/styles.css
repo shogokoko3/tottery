@@ -7691,3 +7691,139 @@ p.hint > span.gem-shop-diag {
 .rank-list {
   max-height: max(220px, calc(100dvh - 430px));
 }
+
+/* ===== 布陣・王選びを1画面に収める(2026-09-23 本人の指示) =====
+   見出し・先攻後攻・残り時間は1つの帯にまとめて上に貼り付ける。
+   配置しながら残り時間を見られ、盤と手札はスクロールなしで届く */
+/* 根(.tottery-root)は overflow:hidden で、文書ごと送られるので sticky が効かない。
+   そこで布陣の枠そのものを送る箱にし、帯はその中で貼り付く。
+   ふつうの端末では中身が収まって送る必要がなく、背の低い端末(375×667)だけ盤の下が送られる */
+.setup-wrap-compact {
+  max-height: calc(100dvh - var(--top-bar-h, 56px) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  margin: -8px 0;
+}
+.setup-wrap-compact .setup-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 0 6px;
+  padding: 4px 4px 6px;
+  background: rgba(9, 18, 34, 0.94);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+}
+.setup-wrap-compact .setup-head h2 {
+  font-size: 16px;
+  padding-bottom: 0;
+  margin: 0 0 4px;
+}
+.setup-wrap-compact .setup-head h2::after {
+  content: none;
+}
+.setup-wrap-compact .setup-head .setup-order {
+  margin: 0 0 4px;
+  font-size: 11px;
+}
+.setup-wrap-compact .setup-head .setup-timer {
+  margin: 0 auto;
+}
+.setup-wrap-compact .setup-head .setup-timer-head {
+  margin-bottom: 2px;
+}
+.setup-wrap-compact .setup-head .setup-timer-track {
+  height: 4px;
+}
+/* 案内は1行。配置の数と採用合計を同じ行に並べる */
+.setup-wrap-compact .setup-hint-line {
+  margin: 0 0 6px;
+  /* 幅 375px の端末(内側 335px)でも1行に収まる大きさ */
+  font-size: 11.5px;
+  line-height: 1.5;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  column-gap: 8px;
+}
+.setup-wrap-compact .setup-hint-line .hint-count {
+  margin-left: 0;
+}
+.setup-wrap-compact .setup-adoption-total {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.setup-wrap-compact .setup-adoption-total strong {
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+/* 背の低い画面では盤を少し詰めて、手札と釦まで届かせる */
+.setup-wrap-compact .mini-board {
+  /* 375×667 では 247px(帯 98 + 案内 20 + 手札 2段 140 + 釦 46 + 余白 を引いた残り) */
+  width: min(78vw, 320px, calc(100dvh - 420px));
+  min-width: 220px;
+}
+.setup-wrap-compact .arrange-layout {
+  margin-bottom: 8px;
+}
+.setup-wrap-compact .tray {
+  margin-bottom: 8px;
+}
+.setup-wrap-compact .tray-label {
+  margin-bottom: 4px;
+}
+.setup-wrap-compact .hand-card {
+  /* 40px の札 + 縁 2px = 44px。7枚 + 隙間 4px×6 = 332px で、幅 375px の端末(内側 335px)にも収まる */
+  padding: 0;
+}
+
+/* ===== 終局の画面は釦を下に留める(2026-09-23 本人の指示「全てのボタンが1画面に」) =====
+   中身(王の札・持ち点・熟練度)は真ん中だけを送り、2×2 の釦はいつも見える */
+.gameover-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 14px;
+}
+.gameover-panel > .gameover-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -6px;
+  /* 王の札の足元の影(::after が 16px はみ出す)のぶんを空け、送る必要を無くす */
+  padding: 0 6px 18px;
+}
+.gameover-panel > .gameover-grid {
+  flex: none;
+  margin-top: 10px;
+  padding-top: 10px;
+}
+/* 王の札は勝ち名乗りの飾り。小さくしても意味は変わらないので、釦のぶんを譲る
+   (負けの札は 210px 幅で 370px の高さがあり、それだけで画面の半分を取っていた) */
+.gameover-panel .king-card {
+  width: min(36vw, 140px);
+  margin: 6px auto 12px;
+}
+.gameover-panel .win-card {
+  width: min(28vw, 110px);
+  margin: 6px auto 2px;
+}
+.gameover-panel .rating-change {
+  margin: 8px 0 2px;
+}
+.gameover-panel .mastery-gains {
+  margin: 8px 0 2px;
+  padding: 8px 10px;
+}
+.gameover-panel .season-match-notice {
+  margin-top: 6px;
+}
+.gameover-panel h2 {
+  margin: 6px 0 4px;
+}

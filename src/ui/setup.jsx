@@ -584,17 +584,21 @@ export function PlaceStep({
   const dragCard = drag ? findHandCard(player, drag.cardId) : null;
 
   return (
-    <div className="setup-wrap">
-      <h2 style={{ color: PLAYER_META[pIdx].color }}>
-        {nameOf(pIdx, names)}: カードを盤面に配置してね
-      </h2>
-      <SetupOrderNote state={state} pIdx={pIdx} />
-      <SetupTimer
-        remainingMs={remainingMs}
-        label="布陣の残り時間"
-        paused={paused}
-        limitMs={limitMs}
-      />
+    <div className="setup-wrap setup-wrap-compact">
+      {/* 見出し・先攻後攻・残り時間は1つの帯にまとめ、スクロールしても上に貼り付く。
+          盤と手札を1画面に収め、配置しながら残り時間を見られるようにする(2026-09-23 本人の指示) */}
+      <div className="setup-head">
+        <h2 style={{ color: PLAYER_META[pIdx].color }}>
+          {nameOf(pIdx, names)}: カードを盤面に配置してね
+        </h2>
+        <SetupOrderNote state={state} pIdx={pIdx} />
+        <SetupTimer
+          remainingMs={remainingMs}
+          label="布陣の残り時間"
+          paused={paused}
+          limitMs={limitMs}
+        />
+      </div>
       {/* 絵札に偏って盤に並べきれない手札は、数字の札で配り直している。
           黙って差し替えると「引いた札と違う」と読まれるので、必ず伝える */}
       {state.handRescued && state.handRescued[pIdx] && (
@@ -604,30 +608,30 @@ export function PlaceStep({
           手札と捨て札を予備札に戻し、数字の札だけで配り直しています。引き直しはできません。
         </p>
       )}
-      {terse ? (
-        <p className="hint">
-          <span className="legend-dot" />
-          は動ける先
-          <strong className="hint-count">
-            {placedCount}/{slots}
-          </strong>
-        </p>
-      ) : (
-        <p className="hint">
-          手札を自陣へドラッグ。タップで選んでからマスをタップでも置けます。盤の外へドラッグすると手札に戻せます。
-          <span className="legend-dot" />
-          はその駒が動ける先です。
-          <strong className="hint-count">
-            {placedCount}/{slots}
-          </strong>
-        </p>
-      )}
-      {hasAdjudicationRules(state.ruleVersion) && !terse && (
-        <p className="setup-adoption-total">
-          採用合計：<strong>{adoptionTotal}</strong>{" "}
-          <span className="hint">終局不能の判定では低い側が勝ち</span>
-        </p>
-      )}
+      {/* 案内は1行に絞る(長い説明が盤を画面の下へ押し出していた)。
+          配置の数と採用合計は同じ行に並べる */}
+      <p className="hint setup-hint-line">
+        {terse ? (
+          <>
+            <span className="legend-dot" />
+            は動ける先
+          </>
+        ) : (
+          <>
+            タップかドラッグで置く。
+            <span className="legend-dot" />
+            は動ける先
+          </>
+        )}
+        <strong className="hint-count">
+          {placedCount}/{slots}
+        </strong>
+        {hasAdjudicationRules(state.ruleVersion) && !terse && (
+          <span className="setup-adoption-total">
+            採用合計 <strong>{adoptionTotal}</strong>
+          </span>
+        )}
+      </p>
       <div className="arrange-layout">
         <div
           className="mini-board"
@@ -704,7 +708,13 @@ export function PlaceStep({
               onPointerDown={(e) => startDrag(e, card.id, null)}
               key={card.id}
             >
-              <CardFace owner={pIdx} rank={card.rank} suit={card.suit} />
+              {/* 9×9 の13枚は2段(7枚×2)に収める。5×5 はこれまでの大きさ */}
+              <CardFace
+                owner={pIdx}
+                rank={card.rank}
+                suit={card.suit}
+                size={hand.length > 10 || slots > 5 ? "tray" : undefined}
+              />
             </div>
           ))}
         </div>
@@ -788,19 +798,21 @@ export function KingStep({
       : null;
   const flipped = pIdx === 1;
   return (
-    <div className="setup-wrap">
-      <h2 style={{ color: PLAYER_META[pIdx].color }}>
-        {nameOf(pIdx, names)}: 王にするカードを決めてね
-      </h2>
-      <SetupOrderNote state={state} pIdx={pIdx} />
-      <SetupTimer
-        remainingMs={remainingMs}
-        label="王を選ぶ残り時間"
-        paused={paused}
-        limitMs={limitMs}
-      />
+    <div className="setup-wrap setup-wrap-compact">
+      <div className="setup-head">
+        <h2 style={{ color: PLAYER_META[pIdx].color }}>
+          {nameOf(pIdx, names)}: 王にするカードを決めてね
+        </h2>
+        <SetupOrderNote state={state} pIdx={pIdx} />
+        <SetupTimer
+          remainingMs={remainingMs}
+          label="王を選ぶ残り時間"
+          paused={paused}
+          limitMs={limitMs}
+        />
+      </div>
       {!terse && (
-        <p className="hint">
+        <p className="hint setup-hint-line">
           {revealMode
             ? `相手に公開する駒を${revealWant}枚タップで選んでください(王は選べません)。残り${revealWant - chosenReveals.length}枚`
             : hasK
