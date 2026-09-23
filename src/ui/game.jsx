@@ -3297,7 +3297,7 @@ export function GameCore({
         if (!fxBusy) r(!0);
       }}
     >
-      <div className="play-wrap">
+      <div className={`play-wrap${Pl ? " has-shuffle-bar" : ""}`}>
         {network && a.ruleVersion !== GAME_RULE_VERSION && (
           <p className="hint">
             この対局は従来ルールで進みます。新しいルールを使うには、両者が再読み込みして新しい対局を始めてください。
@@ -3732,8 +3732,7 @@ export function GameCore({
           <div className="action-bar ace-shuffle-bar" role="group" aria-label="Aの入れ替えの確認">
             <span>
               入れ替える駒を2つ選択({a.shuffleMode.picks.length}/2)
-              <br />
-              味方だけを選ぶと、囲んだ相手を取れます
+              <small>味方だけを選ぶと、囲んだ相手を取れます</small>
             </span>
             <button
               className="btn btn-primary"

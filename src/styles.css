@@ -8235,19 +8235,30 @@ p.hint > span.gem-shop-diag {
   z-index: 55;
   max-width: 560px;
   margin: 0 auto;
-  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  padding: 8px 14px calc(8px + env(safe-area-inset-bottom));
   border: 1px solid var(--gold);
   border-bottom: 0;
   border-radius: 14px 14px 0 0;
   background: linear-gradient(170deg, #132844, #0b1729);
   box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55);
   color: var(--text);
+  gap: 6px 10px;
 }
 .ace-shuffle-bar > span {
   flex: 1 1 100%;
   text-align: center;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.4;
+  color: var(--text);
+}
+.ace-shuffle-bar > span > small {
+  display: block;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+/* 帯が画面の下を覆うぶん、盤の下(記録・失った駒・釦)に余白を足して送れば見えるようにする(2026-09-24 本人の指摘) */
+.play-wrap.has-shuffle-bar {
+  padding-bottom: calc(112px + env(safe-area-inset-bottom));
 }
 .ace-shuffle-bar .btn {
   flex: 1 1 auto;
