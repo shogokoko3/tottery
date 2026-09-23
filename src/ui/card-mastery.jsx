@@ -2,8 +2,8 @@ import { ArrowLeft } from "../icons.jsx";
 /**
  * ホームの「カード」。札ごとの熟練度を見る画面(2026-09-22 本人の指示)。
  *
- * 熟練度は**その札を王に選び、王として動かした回数**(src/game/profile.js)。
- * 13種の札を A〜K の順に並べ、いまの回数・段・次の段までの残り・称号を出す。
+ * 熟練度は**その札を王に選んでためた点**(src/game/profile.js)。
+ * 13種の札を A〜K の順に並べ、いまの点・段・次の段までの残り・称号を出す。
  * 札を押すと、その札の動きと王にしたときの能力を開く。
  *
  * ここは見るだけ。数えるのは対局(src/ui/game.jsx)、貯めるのは recordMastery。
@@ -62,8 +62,8 @@ export function CardMasteryScreen({ onBack }) {
     <div className="setup-wrap card-mastery">
       <h2>カード</h2>
       <p className="hint">
-        王に選んだ札を、王として動かした回数がたまります。
-        段に届くと称号が手に入ります。盤の有利不利には効きません。
+        王に選んだ札に点がたまります。王に選ぶ +1、王として動かす +1(1局3回まで)、
+        王で相手の駒を取る +1、王で相手の王を討つ +5。段に届くと称号が手に入ります。盤の有利不利には効きません。
       </p>
       <div className="card-mastery-summary" aria-label="熟練度のまとめ">
         <span>
@@ -76,7 +76,7 @@ export function CardMasteryScreen({ onBack }) {
           極み <b>{mastered}</b>/{RANKS.length}
         </span>
         <span>
-          合計 <b>{total}</b>回
+          合計 <b>{total}</b>点
         </span>
       </div>
       <ul className="card-mastery-list">
@@ -107,7 +107,7 @@ export function CardMasteryScreen({ onBack }) {
                     <b className="card-mastery-rank">{rank}</b>
                     <span className="card-mastery-step">{masteryStepName(p.step)}</span>
                     <span className="card-mastery-count">
-                      {p.done ? `${p.count}回` : `${p.count} / ${p.next}回`}
+                      {p.done ? `${p.count}点` : `${p.count} / ${p.next}点`}
                     </span>
                   </span>
                   <span
@@ -119,8 +119,8 @@ export function CardMasteryScreen({ onBack }) {
                     aria-valuenow={Math.round(p.ratio * 100)}
                     aria-valuetext={
                       p.done
-                        ? `極み（${p.count}回）`
-                        : `${p.count}回。次の段まであと${p.left}回`
+                        ? `極み（${p.count}点）`
+                        : `${p.count}点。次の段まであと${p.left}点`
                     }
                   >
                     <span style={{ width: `${p.ratio * 100}%` }} />
@@ -130,7 +130,7 @@ export function CardMasteryScreen({ onBack }) {
                       <TitleFrame id={title.id} size="compact" className="card-mastery-title" />
                     ) : title ? (
                       <small>
-                        あと{Math.max(0, titleNeed - p.count)}回で称号「{title.name}」
+                        あと{Math.max(0, titleNeed - p.count)}点で称号「{title.name}」
                       </small>
                     ) : null}
                     {!p.done && (
@@ -168,7 +168,7 @@ export function CardMasteryScreen({ onBack }) {
             </small>
           </div>
         ))}
-        <p className="mastery-steps-note">段の境目: {MASTERY_STEPS.join(" · ")}回</p>
+        <p className="mastery-steps-note">段の境目: {MASTERY_STEPS.join(" · ")}点</p>
       </section>
       <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る

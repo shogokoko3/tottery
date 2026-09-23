@@ -22,7 +22,7 @@ export function MasteryGains({ gains, titles }) {
     <section className="mastery-gains" aria-label="札の熟練度">
       <h4 className="mastery-gains-head">
         <span>札の熟練度</span>
-        <small>王として動かした回数</small>
+        <small>王に選んだ札にたまる点</small>
       </h4>
       {rows.map((g) => {
         const p = g.progress;
@@ -43,8 +43,8 @@ export function MasteryGains({ gains, titles }) {
                 aria-valuenow={Math.round(p.ratio * 100)}
                 aria-valuetext={
                   p.done
-                    ? `極み（${p.count}回）`
-                    : `${p.count}回。次の段まであと${p.left}回`
+                    ? `極み（${p.count}点）`
+                    : `${p.count}点。次の段まであと${p.left}点`
                 }
               >
                 <span style={{ width: `${p.ratio * 100}%` }} />
@@ -52,8 +52,8 @@ export function MasteryGains({ gains, titles }) {
               <div className="mastery-detail">
                 <span>
                   {p.done
-                    ? `極み · 累計${p.count}回`
-                    : `${p.count} / ${p.next}回`}
+                    ? `極み · 累計${p.count}点`
+                    : `${p.count} / ${p.next}点`}
                 </span>
                 {stepUp ? (
                   <b className="mastery-up">
@@ -71,6 +71,19 @@ export function MasteryGains({ gains, titles }) {
               </div>
             </div>
             <span className="mastery-added">+{g.added}</span>
+            {/* 点の内訳(2026-09-24)。何で稼いだかが分からないと、次に何をすればいいか分からない */}
+            {g.points && (
+              <small className="mastery-breakdown">
+                {[
+                  g.points.king ? `王に選んだ +${g.points.king}` : null,
+                  g.points.moves ? `王を動かした +${g.points.moves}` : null,
+                  g.points.captures ? `王で取った +${g.points.captures}` : null,
+                  g.points.kingCapture ? `王を討った +${g.points.kingCapture}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </small>
+            )}
           </div>
         );
       })}
@@ -83,9 +96,9 @@ export function MasteryGains({ gains, titles }) {
           ))}
         </div>
       )}
-      {/* 段の境目を添える。あと何回でどうなるのかが読めないと、伸ばす気にならない */}
+      {/* 段の境目を添える。あと何点でどうなるのかが読めないと、伸ばす気にならない */}
       <p className="mastery-steps-note">
-        段の境目: {MASTERY_STEPS.join(" · ")}回
+        段の境目: {MASTERY_STEPS.join(" · ")}点
       </p>
     </section>
   );

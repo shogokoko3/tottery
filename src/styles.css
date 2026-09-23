@@ -8292,3 +8292,10 @@ p.hint > span.gem-shop-diag {
 .friends-lead .nowrap {
   white-space: nowrap;
 }
+/* 熟練度の点の内訳(終局のメーター。2026-09-24) */
+.mastery-breakdown {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}

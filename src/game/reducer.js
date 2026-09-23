@@ -2145,6 +2145,8 @@ function coreReducer(state, action) {
           from: { row: mover.row, col: mover.col },
           to: { row: action.row, col: action.col },
           owner: state.currentTurn,
+          // どの駒が動いたか(熟練度が「王で取ったか」を見る。2026-09-24)
+          pieceId: mover.id,
           captured: defeated.length > 0,
           // 演出をやり直させるための通し番号
           seq: (state.lastMove ? state.lastMove.seq || 0 : 0) + 1,

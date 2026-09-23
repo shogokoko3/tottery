@@ -164,27 +164,35 @@ export const GACHA_TITLES = [
 /**
  * 熟練度の称号(2026-09-22 本人の決め)。
  *
- * **その札を王に選び、王として動かした回数**で出る(2026-09-22 本人の決め)。
+ * **その札を王に選んでためた点**で出る(2026-09-22 本人の決め。2026-09-24 に点数へ)。
  * 勝敗では動かないので、負けても伸びる。1局で育つのは王にした1種類だけ。
  * 恩恵は名乗りだけ。盤の有利不利には一切効かせない(「印」の案は本人が取り下げた)。
  *
  * 名前はその札の動きをそのまま名乗る形にしてある。縦横と斜め、偶数と奇数が
  * 名前の上で対になるので、規則を覚える助けにもなる。
  */
+/**
+ * 熟練度の称号(2026-09-24 本人の指示で、動き方ではなく**札の人物**から付け直した)。
+ * 通常札の絵柄(assets/cards/normal)に描かれた人物:
+ *   A 黒装束で顔を覆った暗殺者 / 2 鍬を担いだ農村の若者 / 3 鎌を持つ農村の娘 /
+ *   4 外套と頭巾の斥候 / 5 弓を携えた狩人の女 / 6 白銀の甲冑の若い騎士 / 7 細剣を構える女剣士 /
+ *   8 大棍棒を担ぐ屈強な戦士 / 9 大斧と毛皮の髭の戦士 / 10 槍を掲げた騎馬の騎士 /
+ *   J 白い礼装の公子 / Q 冠を戴く女王 / K 王冠と毛皮の王
+ */
 const MASTERY_NAMES = {
-  A: "乱世の奇手",
-  2: "一歩の堅陣",
-  3: "斜影の一歩",
-  4: "双進の勇",
-  5: "双斜の勇",
-  6: "偶進の理",
-  7: "偶斜の理",
-  8: "奇進の理",
-  9: "奇斜の理",
-  10: "跳躍の妙",
-  J: "縦横無尽",
-  Q: "斜貫無尽",
-  K: "王道無双",
+  A: "夜霧の暗殺者",
+  2: "大地を耕す者",
+  3: "刈り入れの乙女",
+  4: "森影の斥候",
+  5: "風読みの狩人",
+  6: "誓いの若騎士",
+  7: "銀線の剣姫",
+  8: "鉄槌の猛者",
+  9: "凍土の斧戦士",
+  10: "疾駆の槍騎兵",
+  J: "白衣の公子",
+  Q: "戴冠の女王",
+  K: "至高の君主",
 };
 
 const masteryNeed = MASTERY_STEPS[MASTERY_TITLE_STEP - 1];
@@ -193,15 +201,15 @@ export const MASTERY_TITLES = [
   ...RANKS.map((rank) => ({
     id: `mastery-${rank}`,
     name: MASTERY_NAMES[rank],
-    how: `${rank}を王にして${masteryNeed}回動かす`,
+    how: `${rank}を王にして${masteryNeed}点ためる`,
     mastery: rank,
     unlocked: (p) => (p?.mastery?.[rank] ?? 0) >= masteryNeed,
   })),
   // 通しの褒美。13種すべてを同じ段まで使い込んだ人にだけ出る
   {
     id: "mastery-all",
-    name: "十三道の使い手",
-    how: `すべての札を王にして${masteryNeed}回動かす`,
+    name: "十三英雄の主",
+    how: `すべての札を王にして${masteryNeed}点ためる`,
     mastery: "all",
     unlocked: (p) =>
       RANKS.every((rank) => (p?.mastery?.[rank] ?? 0) >= masteryNeed),
@@ -209,7 +217,7 @@ export const MASTERY_TITLES = [
   {
     id: "mastery-master",
     name: "盤上無双",
-    how: `すべての札を王にして${MASTERY_STEPS[MASTERY_STEPS.length - 1]}回動かす`,
+    how: `すべての札を王にして${MASTERY_STEPS[MASTERY_STEPS.length - 1]}点ためる`,
     mastery: "all",
     unlocked: (p) =>
       RANKS.every(

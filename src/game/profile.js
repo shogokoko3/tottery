@@ -36,6 +36,7 @@ import {
 import {
   RANKS,
   MASTERY_STEPS,
+  MASTERY_POINTS,
   MASTERY_PER_GAME,
 } from "./constants.js";
 import { findBadWord } from "./badwords.js";
@@ -101,8 +102,7 @@ const EMPTY = {
   // ガチャ称号の実績(collection.gachaStatsOf の写し)。称号判定に使う。獲得した称号は
   // titles に焼き付くので、表示・共有はこれが無くても効く(2026-09-21)
   gacha: null,
-  // 札ごとの熟練度。その札を王に選び、王として動かした回数({ "J": 120, ... })。
-  // 1局で同じ札を数えるのは MASTERY_PER_GAME 回まで(長引かせる遊びを得にしない)。
+  // 札ごとの熟練度の点({ "J": 120, ... })。王に選ぶ・王として動かす(1局3回まで)・王で取る・王で王を討つ。
   // 恩恵は称号・アイコン・フレームだけ。盤の有利不利には一切効かせない(2026-09-22 本人の決め)
   mastery: null,
   plays: 0,
@@ -145,17 +145,17 @@ const EMPTY = {
 /**
  * 札ごとの熟練度。
  *
- * **その札を王に選び、王として動かした回数**で上がる(本人の決め 2026-09-22)。
+ * **その札を王に選んでためた点**で上がる(本人の決め 2026-09-22。2026-09-24 に点数へ)。
+ * 王に選ぶ +1、王として動かす +1(1局3回まで)、王で相手の駒を取る +1、王で相手の王を討つ +5。
  * 勝敗では上がらない。1局で育つのは王にした1種類だけ。
- * 負けても伸びるので、覚えたての人が痛くない。
  *
- * 1局で同じ札を数えるのは3回まで。ここに歯止めが無いと「わざと長引かせて
- * 同じ札を指し続ける」のが一番効率のいい遊び方になり、盤がつまらなくなる。
+ * 動かした点に上限があるのは、無いと「わざと長引かせて同じ札を指し続ける」のが
+ * 一番効率のいい遊び方になり、盤がつまらなくなるため。
  *
- * 段は5つで、**500回で頭打ち**にする。青天井にすると、1000局遊んだ人と
+ * 段は5つで、**500点で頭打ち**にする。青天井にすると、1000局遊んだ人と
  * 100局遊んだ人の差が永久に開き続け、あとから始めた人が追いつけない。
  */
-export { MASTERY_STEPS, MASTERY_PER_GAME };
+export { MASTERY_STEPS, MASTERY_PER_GAME, MASTERY_POINTS };
 
 /** 保存されている熟練度を、知っている札だけの数に整える */
 function normalizeMastery(raw) {
@@ -205,9 +205,26 @@ export function masteryAll(profile, step) {
 }
 
 /**
- * 1局ぶんの「指した回数」を熟練度に足す。
+ * 1局ぶんの記録を点にする(2026-09-24 本人の指示)。
+ * t は { king: 王に選んだか, moves: 王として動かした手数, captures: 王で取った相手の駒の数, kingCapture: 王で相手の王を討ったか }。
+ * 数だけ(旧い呼び方: 動かした回数)でも受ける。
+ * 上限: 動かした点は MASTERY_POINTS.moveMax まで、取った点は captureMax まで(相手の軍より多くは取れない)。
+ * どれも端末の手の中身ではなく、reducer の結果から数えたものを渡す(画面側)。
+ */
+export function masteryPoints(t) {
+  const clampN = (x, max) => Math.max(0, Math.min(max, Math.floor(Number(x) || 0)));
+  const tally = typeof t === "number" ? { moves: t } : t && typeof t === "object" ? t : {};
+  const king = tally.king ? MASTERY_POINTS.king : 0;
+  const moves = clampN(tally.moves, MASTERY_POINTS.moveMax) * MASTERY_POINTS.move;
+  const captures = clampN(tally.captures, MASTERY_POINTS.captureMax) * MASTERY_POINTS.capture;
+  const kingCapture = tally.kingCapture ? MASTERY_POINTS.kingCapture : 0;
+  return { king, moves, captures, kingCapture, total: king + moves + captures + kingCapture };
+}
+
+/**
+ * 1局ぶんの点を熟練度に足す。
  *
- * used は { 札: その局で王として動かした回数 }。数えるのは自分の王の手だけ。
+ * used は { 札: 記録(masteryPoints に渡す形) }。数えるのは自分が王に選んだ札だけ(1局に1種類)。
  * チュートリアルは台本なので呼ばない(画面側で外す)。
  */
 export function recordMastery(used) {
@@ -217,13 +234,16 @@ export function recordMastery(used) {
   const mastery = { ...(profile.mastery || {}) };
   const gains = [];
   for (const rank of RANKS) {
-    const n = Math.min(MASTERY_PER_GAME, Math.floor(Number(used[rank]) || 0));
+    if (used[rank] == null) continue;
+    const points = masteryPoints(used[rank]);
+    const n = points.total;
     if (n <= 0) continue;
     const before = mastery[rank] || 0;
     mastery[rank] = before + n;
     gains.push({
       rank,
       added: n,
+      points,
       before,
       after: mastery[rank],
       stepBefore: masteryProgress(before).step,

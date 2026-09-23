@@ -108,7 +108,7 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
   for (const rank of ["A","2","3","4","5","6","7","8","9","10","J","Q","K"])
     assert.ok(cd.includes(`aria-label="${rank} の熟練度"`), `${rank} の熟練度のメーター`);
   assert.equal((cd.match(/card-mastery-row/g) || []).length, 13, "札は13種");
-  assert.ok(cd.includes("十三道の使い手") && cd.includes("盤上無双"), "通しの称号も出る");
+  assert.ok(cd.includes("十三英雄の主") && cd.includes("盤上無双"), "通しの称号も出る");
   assert.ok(cd.includes("盤の有利不利には効きません"), "盤に効かないことを断る");
   assert.ok(cd.includes("ホームに戻る"), "カードにも「ホームに戻る」");
 

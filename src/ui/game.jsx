@@ -1294,8 +1294,10 @@ export function GameCore({
     // 黙って握りつぶすと「押しても何も起きない=壊れている」と読まれる
     [tutNudge, setTutNudge] = (0, useState)(null),
     foeIdxRef = (0, useRef)(0),
-    // その局で自分がどの札を何回指したか。終局時に熟練度へ足す
+    // その局の熟練度の記録 { 札: { king, moves, captures, kingCapture } }。終局時に点にして足す(src/game/profile.js masteryPoints)
     masteryRef = (0, useRef)({}),
+    // 撃破の記録(lastDefeat.seq)をどこまで数えたか。同じ撃破を二度数えない
+    masteryDefeatRef = (0, useRef)(0),
     // 終局画面のメーターに出す、この局の上がり幅と届いた称号
     [masteryResult, setMasteryResult] = (0, useState)(null),
     recordedRef = (0, useRef)(!1),
@@ -1527,9 +1529,11 @@ export function GameCore({
     if (E.type === "MOVE_PIECE" && !tutorial && !E.__foe && E.pieceId) {
       const mover = a.pieces[E.pieceId];
       const mySeat = network ? p : cpu ? 0 : a.currentTurn;
-      if (mover && mover.owner === mySeat && mover.isKing && mover.rank)
-        masteryRef.current[mover.rank] =
-          (masteryRef.current[mover.rank] || 0) + 1;
+      // 王かどうかは席の kingId で見る(2026-09-24。オンラインでも同じ形で持っている)
+      if (mover && mover.owner === mySeat && a.players?.[mySeat]?.kingId === mover.id && mover.rank) {
+        const t = (masteryRef.current[mover.rank] ||= { king: 0, moves: 0, captures: 0, kingCapture: 0 });
+        t.moves += 1;
+      }
     }
     let E0 =
       E.elapsedMs == null
@@ -2229,6 +2233,40 @@ export function GameCore({
     setFormationGot(got);
   }, [a.phase]);
 
+  // 熟練度: 王に選んだ点(+1)。対局が始まった(play に入った)ときに、自分の席の王の札へ(2026-09-24 本人の指示)。
+  // 1台で交互に指す対局は両方の席が自分なので、両方に付ける
+  (0, useEffect)(() => {
+    if (a.phase !== "play" || tutorial) return;
+    const seats = network ? [p] : cpu ? [0] : [0, 1];
+    for (const seat of seats) {
+      const rank = kingRankOf(a, seat);
+      if (!rank) continue;
+      const t = (masteryRef.current[rank] ||= { king: 0, moves: 0, captures: 0, kingCapture: 0 });
+      t.king = 1;
+    }
+  }, [a.phase]);
+  // 熟練度: 王で相手の駒を取った点(+1/体)と、王で相手の王を討った点(+5)。
+  // 端末の手の中身ではなく reducer の結果(lastDefeat・captureReveal)から数える(細工した手を送っても点にならない)。
+  // 同じ撃破は seq で一度だけ。取れる数は相手の軍を超えない(masteryPoints が上限を掛ける)
+  (0, useEffect)(() => {
+    const d = a.lastDefeat;
+    if (!d || tutorial || d.seq === masteryDefeatRef.current) return;
+    masteryDefeatRef.current = d.seq;
+    if (d.via !== "capture") return;
+    const by = d.by;
+    const mine = network ? by === p : cpu ? by === 0 : true;
+    if (!mine) return;
+    const kingId = a.players?.[by]?.kingId;
+    if (!kingId || a.lastMove?.pieceId !== kingId) return;
+    const rank = kingRankOf(a, by);
+    if (!rank) return;
+    const defeated = (a.captureReveal?.defeated || []).filter((x) => x.owner !== by);
+    if (!defeated.length) return;
+    const t = (masteryRef.current[rank] ||= { king: 0, moves: 0, captures: 0, kingCapture: 0 });
+    t.captures += defeated.length;
+    if (defeated.some((x) => x.isKing)) t.kingCapture = 1;
+  }, [a.lastDefeat]);
+
   // 対局が終わったら1局ぶん記録する。レベルの元になる。
   // オンラインで相手のレートが分かっていれば、レーティングもここで動かす
   // 「もう一度遊ぶ」で盤が初期化されても、記録済みの印は残っていた。
@@ -2286,6 +2324,7 @@ export function GameCore({
     // 称号が新しく届いていれば、その中で profile.titles に焼き付く
     const mastery = recordMastery(masteryRef.current);
     masteryRef.current = {};
+    masteryDefeatRef.current = 0;
     if (mastery.gains.length) setMasteryResult(mastery);
     const afterMastery = mastery.profile;
     setRatingResult(after.delta === null ? null : after);

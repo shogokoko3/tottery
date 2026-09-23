@@ -20,17 +20,26 @@ export const RANKS = [
 export const SUITS = ["spade", "heart", "diamond", "club"];
 
 /**
- * 札ごとの熟練度の段。**その札を王に選び、王として動かした回数**の境目(本人の決め 2026-09-22)。
+ * 札ごとの熟練度の段。**その札を王に選んでためた点**の境目(本人の決め 2026-09-22。2026-09-24 に回数から点へ)。
  *
- * 500回で頭打ちにするのは意図的。青天井にすると1000局遊んだ人と100局遊んだ人の
+ * 500点で頭打ちにするのは意図的。青天井にすると1000局遊んだ人と100局遊んだ人の
  * 差が永久に開き続け、あとから始めた人が追いつけない。
- * 1局で同じ札を数えるのは MASTERY_PER_GAME 回まで(長引かせる遊びを得にしない)。
+ * 王を動かした点は1局に MASTERY_PER_GAME 回まで(長引かせる遊びを得にしない)。
  *
  * ここに置くのは、称号(titles.js)と記録(profile.js)の両方が見るため。
  * titles.js から profile.js を読むと輪になる。
  */
 export const MASTERY_STEPS = [10, 30, 80, 200, 500];
 export const MASTERY_PER_GAME = 3;
+/**
+ * 熟練度の点(2026-09-24 本人の指示で回数から点数へ)。1局で王に選んだ札にだけ入る。
+ *   king        王に選んだ: +1(1局に1回)
+ *   move        王として動かした: 1手 +1、1局に moveMax 回まで(長引かせる遊びを得にしない)
+ *   capture     王で相手の駒を取った: 1体 +1。上限は置かないが、相手の軍(9×9 で 9 体)を超えては数えない。
+ *               数えるのは reducer の結果(撃破の記録)からで、端末の手の中身は見ない
+ *   kingCapture 王で相手の王を討った: さらに +5
+ */
+export const MASTERY_POINTS = Object.freeze({ king: 1, move: 1, moveMax: MASTERY_PER_GAME, capture: 1, captureMax: 9, kingCapture: 5 });
 /** 称号が出る段と、アイコンが出る段 */
 export const MASTERY_TITLE_STEP = 3;
 export const MASTERY_ICON_STEP = 5;

@@ -2,11 +2,12 @@
  * 札ごとの熟練度(2026-09-22 本人の決め)を確かめる。
  *
  * 決めごと:
- *   - **その札を王に選び、王として動かした回数**で上がる(2026-09-22 に本人が変更)。
+ *   - **その札を王に選んでためた点**で上がる(2026-09-22 に本人が変更。2026-09-24 に点数へ:
+ *     王に選ぶ +1、王として動かす +1(1局3回まで)、王で取る +1(相手の軍まで)、王で王を討つ +5)。
  *     勝敗では動かない(負けても伸びる)。1局で育つのは王にした1種類だけ
- *   - 1局で同じ札を数えるのは3回まで。無いと「わざと長引かせて同じ札を指す」のが
+ *   - 動かした点は1局3回まで。無いと「わざと長引かせて同じ札を指す」のが
  *     一番効率のいい遊び方になり、盤がつまらなくなる
- *   - 段は5つで500回で頭打ち。青天井にすると、あとから始めた人が追いつけない
+ *   - 段は5つで500点で頭打ち。青天井にすると、あとから始めた人が追いつけない
  *   - **恩恵は称号・アイコンだけ。盤の有利不利には一切効かせない**(「印」の案は取り下げ)
  * 通信はしない。
  */
@@ -29,6 +30,8 @@ const {
   masteryProgress,
   MASTERY_STEPS,
   MASTERY_PER_GAME,
+  MASTERY_POINTS,
+  masteryPoints,
 } = await import("../src/game/profile.js");
 const { MASTERY_TITLES } = await import("../src/game/titles.js");
 const { hasTitle, findTitle } = await import("../src/game/titles.js");
@@ -63,10 +66,26 @@ is("次の局のぶんを足す", loadProfile().mastery, { J: 3, Q: 1 });
 reset();
 recordMastery({ J: 99 });
 is(
-  `1局で数えるのは${MASTERY_PER_GAME}回まで(長引かせる遊びを得にしない)`,
+  `動かした点は1局${MASTERY_PER_GAME}回まで(長引かせる遊びを得にしない)`,
   loadProfile().mastery,
   { J: MASTERY_PER_GAME },
 );
+
+console.log("\n点の決まり(2026-09-24 本人の指示)");
+is("王に選んだ +1", masteryPoints({ king: true }).total, 1);
+is("王として動かした +1/手、3手まで", masteryPoints({ moves: 7 }).moves, 3);
+is("王で取った +1/体", masteryPoints({ captures: 4 }).captures, 4);
+is(`王で取った点は相手の軍(${MASTERY_POINTS.captureMax})を超えない(細工よけ)`, masteryPoints({ captures: 99 }).captures, MASTERY_POINTS.captureMax);
+is("王で相手の王を討った +5", masteryPoints({ kingCapture: true }).kingCapture, 5);
+is("全部そろうと 1+3+9+5", masteryPoints({ king: true, moves: 9, captures: 9, kingCapture: true }).total, 18);
+is("負の数・文字は 0", masteryPoints({ moves: -3, captures: "x" }).total, 0);
+is("数だけなら動かした回数として読む(旧い呼び方)", masteryPoints(2).total, 2);
+reset();
+{
+  const r = recordMastery({ K: { king: true, moves: 2, captures: 1, kingCapture: true } });
+  is("記録は点で足す", loadProfile().mastery, { K: 9 });
+  is("内訳を返す", r.gains[0].points, { king: 1, moves: 2, captures: 1, kingCapture: 5, total: 9 });
+}
 reset();
 recordMastery({ 王: 5, "": 3, X: 9 });
 is("知らない札は数えない", loadProfile().mastery, null);
@@ -80,7 +99,7 @@ reset();
 {
   const r = recordMastery({ J: 2, Q: 1 });
   is("上がった札だけを返す", r.gains.map((g) => g.rank).sort(), ["J", "Q"]);
-  is("何回上がったか", r.gains.find((g) => g.rank === "J").added, 2);
+  is("何点上がったか", r.gains.find((g) => g.rank === "J").added, 2);
   is("上がる前の数", r.gains.find((g) => g.rank === "J").before, 0);
   is("上がった後の数", r.gains.find((g) => g.rank === "J").after, 2);
   yes("メーターの進み具合を添える", r.gains[0].progress.ratio > 0);
@@ -107,19 +126,19 @@ reset();
     recordMastery({ J: MASTERY_PER_GAME });
   const r = recordMastery({ J: MASTERY_PER_GAME });
   is("届いた称号を返す", r.titles.map((t) => t.id), ["mastery-J"]);
-  is("名前も添える", r.titles[0].name, "縦横無尽");
+  is("名前も添える", r.titles[0].name, "白衣の公子");
   yes("取得方法の文も王の言い方にそろえる", /王にして/.test(findTitle("mastery-J").how));
 }
 {
   // メーターは「その段の中での進み具合」を出す。段をまたぐと振り出しに戻る
   const p0 = masteryProgress(0);
-  is("0回: 段0・次は10", [p0.step, p0.next, p0.into, p0.need], [0, 10, 0, 10]);
+  is("0点: 段0・次は10", [p0.step, p0.next, p0.into, p0.need], [0, 10, 0, 10]);
   const p1 = masteryProgress(10);
-  is("10回: 段1・次は30・進み0", [p1.step, p1.next, p1.into, p1.need], [1, 30, 0, 20]);
+  is("10点: 段1・次は30・進み0", [p1.step, p1.next, p1.into, p1.need], [1, 30, 0, 20]);
   const p2 = masteryProgress(20);
-  is("20回: 段1・半分", [p2.step, p2.into, p2.need], [1, 10, 20]);
+  is("20点: 段1・半分", [p2.step, p2.into, p2.need], [1, 10, 20]);
   const top = masteryProgress(500);
-  is("500回: 頭打ち", [top.step, top.done, top.ratio, top.left], [5, true, 1, 0]);
+  is("500点: 頭打ち", [top.step, top.done, top.ratio, top.left], [5, true, 1, 0]);
   const over = masteryProgress(9999);
   is("それ以上指しても頭打ちのまま", [over.step, over.done], [5, true]);
 }
@@ -140,17 +159,17 @@ reset();
 console.log("\n段");
 reset();
 const bump = (rank, n) => {
-  // 1局3回までなので、回数ぶん「対局」を重ねる
+  // 動かした点は1局3回までなので、点のぶん「対局」を重ねる
   for (let i = 0; i < Math.ceil(n / MASTERY_PER_GAME); i++)
     recordMastery({ [rank]: MASTERY_PER_GAME });
 };
-is("0回は段0", masteryStep(loadProfile(), "J"), 0);
+is("0点は段0", masteryStep(loadProfile(), "J"), 0);
 bump("J", MASTERY_STEPS[0]);
-is(`${MASTERY_STEPS[0]}回で段1`, masteryStep(loadProfile(), "J"), 1);
+is(`${MASTERY_STEPS[0]}点で段1`, masteryStep(loadProfile(), "J"), 1);
 bump("J", MASTERY_STEPS[2] - MASTERY_STEPS[0]);
-is(`${MASTERY_STEPS[2]}回で段3(称号が出る段)`, masteryStep(loadProfile(), "J") >= 3, true);
+is(`${MASTERY_STEPS[2]}点で段3(称号が出る段)`, masteryStep(loadProfile(), "J") >= 3, true);
 is("段は5つ", MASTERY_STEPS.length, 5);
-is("頭打ちは500回", MASTERY_STEPS[MASTERY_STEPS.length - 1], 500);
+is("頭打ちは500点", MASTERY_STEPS[MASTERY_STEPS.length - 1], 500);
 
 console.log("\n称号");
 reset();
@@ -159,7 +178,7 @@ for (const rank of RANKS)
   yes(`${rank} の称号がある`, MASTERY_TITLES.some((t) => t.mastery === rank));
 no("まだ何も指していない人は名乗れない", hasTitle(loadProfile(), "mastery-J"));
 bump("J", MASTERY_STEPS[2]);
-yes("Jを80回指すと名乗れる", hasTitle(loadProfile(), "mastery-J"));
+yes("Jを80点ためると名乗れる", hasTitle(loadProfile(), "mastery-J"));
 no("他の札の称号は出ない", hasTitle(loadProfile(), "mastery-Q"));
 yes(
   "届いた称号は焼き付く(熟練度の数字が無くても名乗れる)",
@@ -205,9 +224,13 @@ console.log("\n盤に効かせない(ここが崩れたら公平性が壊れる)
   );
   // 2026-09-22 本人の変更: 王に選んだ札だけが貯まる
   yes(
-    "王として動かした手だけを数える",
-    /mover\.owner === mySeat && mover\.isKing && mover\.rank/.test(game),
+    "王として動かした手だけを数える(王かどうかは席の kingId で見る。2026-09-24)",
+    /mover\.owner === mySeat && a\.players\?\.\[mySeat\]\?\.kingId === mover\.id && mover\.rank/.test(game),
   );
+  yes("王に選んだ点は play に入ったときに付ける", /t\.king = 1;/.test(game));
+  yes("取った点は reducer の撃破の記録から数える", /d\.via !== "capture"/.test(game) && /a\.lastMove\?\.pieceId !== kingId/.test(game));
+  yes("同じ撃破は seq で一度だけ", /d\.seq === masteryDefeatRef\.current/.test(game));
+  yes("王を討てば +5 の旗", /t\.kingCapture = 1;/.test(game));
   yes("チュートリアルは数えない", /MOVE_PIECE" && !tutorial && !E\.__foe/.test(game));
 }
 
