@@ -48,8 +48,8 @@ assert.equal(rows.filter((m) => m.category === "daily").length, 4);
 assert.equal(rows.filter((m) => m.category === "weekly").length, 3);
 assert.equal(
   rows.filter((m) => m.reward.type === "gems").length,
-  4,
-  "gems: online daily, tsume/wins/king weekly",
+  5,
+  "gems: login/online daily, tsume/wins/king weekly (2026-09-24: week 380 so a free player reaches the pass in ~4 weeks)",
 );
 // 詰めトッタリー: 今週クリアした日数を数える(先週・来週の分は数えない)
 {
@@ -211,10 +211,10 @@ try {
     collection = claimPeriodicMission(collection, profile, row.id, monday);
   assert.equal(
     collection.gems,
-    5,
-    "daily: 5 free gems from the online match",
+    20,
+    "daily: 10 login + 10 online (free gems)",
   );
-  assert.equal(collection.ether, 70, "daily: 10 login + 30 all + 30 gacha");
+  assert.equal(collection.ether, 60, "daily: 30 all + 30 gacha");
   const again = claimPeriodicMission(
     collection,
     profile,
@@ -304,7 +304,7 @@ try {
     updateCollection((s) => claimPeriodicMission(s, live, dailyLogin, monday)),
     updateCollection((s) => claimPeriodicMission(s, live, dailyLogin, monday)),
   ]);
-  assert.equal(getCollection().ether, 10, "concurrent claims grant once");
+  assert.equal(getCollection().gems, 10, "concurrent claims grant once (login = 10 gems)");
   assert.equal(getCollection().missionClaims.length, 1);
   assert.equal(
     listMissions(live, getCollection()).filter((m) => m.periodic).length,

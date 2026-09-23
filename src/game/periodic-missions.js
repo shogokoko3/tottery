@@ -124,13 +124,19 @@ export function recordMissionGame(
   };
 }
 
+/**
+ * ジェムの配分(2026-09-24 本人の決め)。無課金でもバトルパス(1,500)に4週間で届くように、週 380:
+ *   デイリー ログイン 10・オンライン対戦 10、詰めトッタリーのクリア 10(src/game/tsume-daily.js) = 1日 30 → 週 210
+ *   ウィークリー 詰め5回 50・オンライン5勝 60・今週の数字の王で勝利 60 = 週 170
+ * 量は十の位まで(一の位は 0)。サーバーの上限(1回100・1日500)には収まる
+ */
 export const PERIODIC_MISSIONS = [
   {
     key: "login",
     category: "daily",
     name: "ログインする",
     goal: 1,
-    reward: { type: "ether", amount: 10 },
+    reward: { type: "gems", amount: 10 },
   },
   {
     key: "all",
@@ -145,7 +151,7 @@ export const PERIODIC_MISSIONS = [
     category: "daily",
     name: "オンライン対戦をする",
     goal: 1,
-    reward: { type: "gems", amount: 5 },
+    reward: { type: "gems", amount: 10 },
   },
   {
     key: "gacha",
@@ -160,7 +166,7 @@ export const PERIODIC_MISSIONS = [
     name: "詰めトッタリーをクリアする",
     goal: 5,
     segments: true,
-    reward: { type: "gems", amount: 20 },
+    reward: { type: "gems", amount: 50 },
   },
   {
     key: "wins",
@@ -168,7 +174,7 @@ export const PERIODIC_MISSIONS = [
     name: "オンライン対戦で勝利する",
     goal: 5,
     segments: true,
-    reward: { type: "gems", amount: 20 },
+    reward: { type: "gems", amount: 60 },
   },
   {
     key: "king",
@@ -176,7 +182,7 @@ export const PERIODIC_MISSIONS = [
     // 実際の名前は periodicMissionRows が今週の数字を入れて作る
     name: "今週の数字を王にしてオンライン対戦で勝利する",
     goal: 1,
-    reward: { type: "gems", amount: 20 },
+    reward: { type: "gems", amount: 60 },
   },
 ];
 

@@ -238,7 +238,7 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
               </p>
             ) : (
               <BattlePassBuy
-                gemsPaid={gemsPaid}
+                gems={gems}
                 working={working}
                 onBuy={() => run(() => buyPassFor())}
                 onShop={shopOk ? openGems : null}

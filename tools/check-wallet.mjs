@@ -105,19 +105,28 @@ const freeAfterEx = Math.max(0, freeBefore - exPrice);
 const paidAfterEx = PACK.paid - Math.max(0, exPrice - freeBefore);
 is("両替は無償から先に減る", pick(w.exchange("A", "x-1", 10, T)), { tickets: beforeT + 10, gems: paidAfterEx + freeAfterEx, paid: paidAfterEx, free: freeAfterEx });
 is("同じ両替は二度効かない", w.exchange("A", "x-1", 10, T).applied, false);
-// バトルパスは**有償ジェムだけ**で買う(無償・おまけでは買えない。2026-09-13 本人の決め)
-// A は有償600・無償が多いが、有償が1500に足りないので買えない
-await throws("有償が足りないとバトルパスは買えない(無償では不可)", () => w.buyPass("A", "p-1", T), /有償ジェム/);
-is("買えなかったのでAの残高は動かない", pick(w.summary("A")), { tickets: beforeT + 10, gems: paidAfterEx + freeAfterEx, paid: paidAfterEx, free: freeAfterEx });
+// バトルパスはジェム(無償→有償の順)で買える(2026-09-24 本人の決め。それまでは有償だけ)。
+// A の合計(有償+無償)が 1500 に足りるかどうかで決まる
 is("使う順(両替など)は無償→有償", GEM_CONSUME_ORDER, ["free", "paid"]);
 {
-  // 有償が足りる uid: 有償だけが 1500 減り、無償は動かない
+  const total = paidAfterEx + freeAfterEx;
+  if (total < BATTLEPASS_GEMS) {
+    await throws("合計が足りないとバトルパスは買えない", () => w.buyPass("A", "p-1", T), /ジェムが足りません/);
+    is("買えなかったのでAの残高は動かない", pick(w.summary("A")), { tickets: beforeT + 10, gems: total, paid: paidAfterEx, free: freeAfterEx });
+  } else {
+    const b = w.buyPass("A", "p-1", T);
+    const useFree = Math.min(freeAfterEx, BATTLEPASS_GEMS);
+    is("無償から先に減り、足りない分を有償から", { paid: b.gemsPaid, free: b.gemsFree }, { paid: paidAfterEx - (BATTLEPASS_GEMS - useFree), free: freeAfterEx - useFree });
+  }
+}
+{
+  // 無償だけで足りる uid: 無償だけが 1500 減り、有償は動かない(無課金でも買える)
   const big = GEM_PACKS[5]; // 10000円: paid=10000, free=3000
   const pp = w.purchase("P", { transactionId: "bigP", productId: big.id, environment: "Production", purchaseDate: T }, T);
   const beforePaid = pp.gemsPaid, beforeFree = pp.gemsFree; // 初回2倍: paid=10000, free=3000+10000
   const bought = w.buyPass("P", "pp", T);
-  is("有償だけでバトルパスを買える(有償1500減・無償は不変)", { paid: bought.gemsPaid, free: bought.gemsFree, ent: bought.entitlements }, { paid: beforePaid - BATTLEPASS_GEMS, free: beforeFree, ent: [BATTLEPASS_ENTITLEMENT] });
-  is("既に持っていれば減らさない", w.buyPass("P", "pp2", T).gemsPaid, beforePaid - BATTLEPASS_GEMS);
+  is("無償から先にバトルパスを買う(無償1500減・有償は不変)", { paid: bought.gemsPaid, free: bought.gemsFree, ent: bought.entitlements }, { paid: beforePaid, free: beforeFree - BATTLEPASS_GEMS, ent: [BATTLEPASS_ENTITLEMENT] });
+  is("既に持っていれば減らさない", w.buyPass("P", "pp2", T).gemsFree, beforeFree - BATTLEPASS_GEMS);
 }
 await throws("合計が足りなければ両替は失敗し", () => w.exchange("E", "ex", 100, T), /ジェムが足りません/);
 {
@@ -126,9 +135,9 @@ await throws("合計が足りなければ両替は失敗し", () => w.exchange("
   const uw = new Wallet((q, ...a) => D.prepare(q).all(...a));
   const pk = GEM_PACKS[2]; // 1500円: paid=1500, free=230
   uw.purchase("U", { transactionId: "u1", productId: pk.id, environment: "Production", purchaseDate: T }, T); // 初回2倍: paid=1500, free=230+1500
-  uw.buyPass("U", "up", T); // 有償1500減 → paid=0
+  uw.buyPass("U", "up", T); // 無償(230+1500)から1500減 → paid は 1500 のまま
   const u = uw.unused();
-  is("未使用残高は有償だけを数える(無償は別枠)", { unused: u.unusedGems, free: u.unusedFreeGems, issued: u.issuedGems, used: u.usedGems, over: u.over }, { unused: 0, free: pk.free + pk.paid, issued: pk.paid, used: pk.paid, over: false });
+  is("未使用残高は有償だけを数える(無償は別枠。パスは無償から払う)", { unused: u.unusedGems, free: u.unusedFreeGems, issued: u.issuedGems, used: u.usedGems, over: u.over }, { unused: pk.paid, free: pk.free + pk.paid - BATTLEPASS_GEMS, issued: pk.paid, used: 0, over: false });
 }
 
 console.log("\n初課金特典は初回だけ(2回目には付かない)");

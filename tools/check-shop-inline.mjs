@@ -128,7 +128,8 @@ export const allFoilIds=()=>ALL_FOIL_SKINS.map((s)=>s.id);`,
   assert.ok(t.includes("チケット1枚") && t.includes(`チケット${TICKET_BUNDLE.tickets}枚`), "1枚と10枚");
   assert.ok(t.includes(GEM_PER_TICKET.toLocaleString("ja-JP")) && t.includes(TICKET_BUNDLE.gems.toLocaleString("ja-JP")), "値段はカタログから");
   const p = pass();
-  assert.ok(p.includes(BATTLEPASS_GEMS.toLocaleString("ja-JP")) && p.includes("有償ジェム"), "パスは有償ジェムの値段");
+  // 2026-09-24 本人の決め: パスは無償ジェムでも買える。有償限定の文言は出さない
+  assert.ok(p.includes(BATTLEPASS_GEMS.toLocaleString("ja-JP")) && p.includes("無償ジェムでも解放できます") && !p.includes("有償ジェムのみ"), "パスの値段と、無償でも買える旨");
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });
 }

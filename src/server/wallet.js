@@ -427,12 +427,10 @@ export class Wallet {
   buyPass(uid, id, now) {
     if (this.entitlementsOf(uid).includes(BATTLEPASS_ENTITLEMENT))
       return { applied: false, ...this.summary(uid) };
-    // バトルパスは**有償ジェムだけ**で買う(無償・おまけでは買えない。2026-09-13 本人の決め)。
-    // 冪等: 同じ id が既にあれば apply が applied:false を返し、二重には減らない
-    const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
-    if (!seen && this.row(uid).gems < BATTLEPASS_GEMS)
-      throw new Error(`有償ジェムが足りません(あと${BATTLEPASS_GEMS - this.row(uid).gems})`);
-    const r = this.apply(uid, id, { gemsPaid: -BATTLEPASS_GEMS }, "pass", BATTLEPASS_ENTITLEMENT, now);
+    // バトルパスはジェム(無償→有償の順)で買える(2026-09-24 本人の決め。それまでは有償だけ:2026-09-13)。
+    // 無課金でもミッションのジェムを4週間ためれば届く量にしてある(週380)。
+    // 冪等: 同じ id が既にあれば spendGems が applied:false を返し、二重には減らない
+    const r = this.spendGems(uid, id, BATTLEPASS_GEMS, "pass", BATTLEPASS_ENTITLEMENT, now);
     if (r.applied)
       this.sql("INSERT OR IGNORE INTO entitlements VALUES (?,?,?,?)", uid, BATTLEPASS_ENTITLEMENT, id, now);
     return { ...r, ...this.summary(uid) };
@@ -542,7 +540,8 @@ export class Wallet {
   unused() {
     const r = this.sql("SELECT COUNT(*) AS holders, COALESCE(SUM(gems),0) AS paid, COALESCE(SUM(gems_free),0) AS free FROM wallets WHERE gems>0 OR gems_free>0")[0];
     const issued = this.sql("SELECT COALESCE(SUM(gems),0) AS n FROM wallet_ledger WHERE kind='purchase'")[0].n;
-    const used = -this.sql("SELECT COALESCE(SUM(gems),0) AS n FROM wallet_ledger WHERE gems<0")[0].n;
+    // -0 を返さない(検査の deepStrictEqual が 0 と区別する)
+    const used = -this.sql("SELECT COALESCE(SUM(gems),0) AS n FROM wallet_ledger WHERE gems<0")[0].n || 0;
     return { holders: r.holders, unusedGems: r.paid, unusedFreeGems: r.free, issuedGems: issued, usedGems: used, yen: r.paid, threshold: 10000000, over: r.paid > 10000000 };
   }
   /** 店の診断を控える(端末の申告)。値は形だけ見て切り詰める。uid ごとに最新の1件だけ残す */

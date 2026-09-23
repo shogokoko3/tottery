@@ -291,7 +291,7 @@ for (const q of TSUME_QUESTIONS) {
   assert.equal(joinDailyTsume(collection, day, at), collection);
   assert.throws(() => clearDailyTsume(collection, day, {}, at));
   collection = normalize(clearDailyTsume(collection, day, evidence, at));
-  assert.equal(collection.gems, 7);
+  assert.equal(collection.gems, 12, "clear: +10 gems (2026-09-24)");
   assert.equal(collection.ether, 59);
   assert.equal(tsumeReceipt(collection, day).cleared, true);
   assert.equal(clearDailyTsume(collection, day, evidence, at), collection);
@@ -345,13 +345,13 @@ await Promise.all(
     updateCollection((c) => clearDailyTsume(c, day, { answer: 2 }, start)),
   ),
 );
-assert.equal(getCollection().gems, 5);
+assert.equal(getCollection().gems, 10);
 const tomorrow = dailyTsume(start + 86400000);
 await updateCollection((c) =>
   joinDailyTsume(c, tomorrow.day, start + 86400000),
 );
 assert.equal(getCollection().ether, 100);
-assert.equal(getCollection().gems, 5);
+assert.equal(getCollection().gems, 10);
 console.log(
   "10年分の直近15問除外・ランダム出題の再現性・全30問・朝5時更新・報酬保存の検証 OK",
 );
