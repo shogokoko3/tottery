@@ -1252,7 +1252,7 @@ export function GameCore({
   pool = null,
   handSize = null,
   // ランダムマッチの練習相手({ id, name, icon, rating })。cpu と一緒に立つ。
-  // レートは人との対局と同じに動かし、シーズン台帳とミッションのオンライン回数には数えない
+  // レートは人との対局と同じに動かす。シーズン台帳(2026-09-23)とミッションのオンライン回数(2026-09-24)にも数える
   bot = null,
   tutorial,
   round = 0,
@@ -2300,11 +2300,16 @@ export function GameCore({
           ? matchRatings.ratings[1 - p]
           : null;
     // チュートリアルは話ごとの経験値。対戦の数には数えない
+    // Bot(ランダムマッチの練習相手)もオンライン対戦として数える(2026-09-24 本人の報告)。
+    // レート 1750 未満はランダムマッチで必ず Bot と当たるので、数えないと
+    // 「オンライン対戦をする」のミッションが誰にも達成できなかった。近くの端末は数えない
     const after = recordGame(won, {
-      online: !!network && !network.nearby && !tutorial,
+      online: ((!!network && !network.nearby) || !!bot) && !tutorial,
       matchId: network
         ? `${network.code}:${network.createdAt || 0}:${round}`
-        : null,
+        : bot
+          ? `bot:${bot.matchId || bot.id}:${round}`
+          : null,
       // 今週の数字のミッション用。王の数字は継承しても変わらない
       kingRank: kingRankOf(a, network ? p : 0),
       deferXpNotice: true,

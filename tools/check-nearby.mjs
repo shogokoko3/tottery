@@ -159,7 +159,7 @@ assert.match(fb, /export async function deleteRoomKeepalive\(code\) \{\s*if \(is
 assert.match(fb, /export async function leaveRoomKeepalive\(code\) \{\s*if \(isNearbyCode\(code\)\) return nearby\(\)\.leaveRoom\(\);/);
 const game = fs.readFileSync("src/ui/game.jsx", "utf8");
 assert.match(game, /const ranked = \(!!\(network && network\.random\) \|\| !!bot\) && a\.boardSize === 9;/, "近くの端末(とフレンド対戦)は持ち点に数えない。数えるのはランダムマッチだけ");
-assert.match(game, /online: !!network && !network\.nearby && !tutorial,/, "オンラインの回数にも数えない");
+assert.match(game, /online: \(\(!!network && !network\.nearby\) \|\| !!bot\) && !tutorial,/, "オンラインの回数にも数えない(近くの端末は除く。Bot は数える 2026-09-24)");
 assert.match(game, /!!network && !!network\.random && boardSize === 9 && !tutorial,/, "持ち点の読み出しはランダムマッチだけ");
 // 2026-09-23: Bot 戦もシーズンに送る(ランダムマッチの練習相手)。近くの端末・合言葉は今までどおり送らない
 assert.match(game, /useSeasonMatch\(\s*a,\s*network,\s*round,\s*!!tutorial \|\| \(!network\?\.random && !bot\),\s*bot,\s*\)/, "シーズンの記録はランダムマッチ(人・Bot)だけ");
