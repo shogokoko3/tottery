@@ -165,8 +165,12 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, initi
   return (
     <div className="setup-wrap friends-screen">
       {!embedded && <h2>フレンド</h2>}
-      <p className="hint">
-        フレンド ID を伝え合って登録します。{state?.max || 50}人まで。1日1回、フレンド1人にガチャチケットを贈れます。
+      {/* 数字の途中で折り返すと読めない(「1 / 日1回」)ので、文ごとに行を分け、数字は切らない */}
+      <p className="hint friends-lead">
+        <span>フレンド ID を伝え合って登録します。<span className="nowrap">{state?.max || 50}人まで。</span></span>
+        <span>
+          <span className="nowrap">1日1回</span>、フレンド1人に<span className="nowrap">ガチャチケットを贈れます。</span>
+        </span>
       </p>
 
       <section className="friends-me" aria-label="自分のフレンド ID">

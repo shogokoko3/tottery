@@ -8271,3 +8271,13 @@ p.hint > span.gem-shop-diag {
   line-height: 1.25;
   letter-spacing: 0;
 }
+/* フレンドの説明は文ごとに行を分け、数字は途中で切らない(2026-09-24 本人の指摘) */
+.friends-lead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-wrap: pretty;
+}
+.friends-lead .nowrap {
+  white-space: nowrap;
+}
