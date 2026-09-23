@@ -17,7 +17,8 @@ import {
   SEASON_BACK,
   SEASON_FRAME,
 } from "../game/season.js";
-import { loadProfile } from "../game/profile.js";
+import { loadProfile, adoptServerRating } from "../game/profile.js";
+import { publishPlayer } from "../net/players.js";
 import { readRanks } from "../net/ranking.js";
 import { PlayerIcon } from "./playericon.jsx";
 import { TitleFrame } from "./title-frame.jsx";
@@ -66,6 +67,12 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
       if (mounted.current && names.ok)
         setIdentities(Object.fromEntries(names.list.map((r) => [r.id, r])));
       if (mounted.current) setData(next);
+      // サーバーの持ち点が正。開いたときにも端末へ写す(2026-09-23)
+      if (Number.isFinite(next?.player?.rating)) {
+        const before = loadProfile().rating;
+        const after = adoptServerRating(next.player.rating);
+        if (after.rating !== before) publishPlayer(after);
+      }
     } catch (e) {
       if (mounted.current) setError(e.message);
     } finally {
@@ -280,10 +287,8 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
                     size="sm"
                   />
                   <span className="rank-name">
-                    <span className="rank-name-text">
-                      {identities[row.uid]?.name || row.name}
-                    </span>
-                    {/* 称号は額縁ごと出す(2026-09-23 本人の指示)。称号 id は通算の表(ranks)が持っている。
+                    {/* 称号は額縁ごと、名前の上に出す(2026-09-23 本人の指示「上に称号、下に名前」)。
+                        額縁の幅は文字に合わせず一律(.rank-title)。称号 id は通算の表(ranks)が持っている。
                         知らない id・未設定なら TitleFrame が null を返すので何も出ない */}
                     {identities[row.uid]?.title && (
                       <TitleFrame
@@ -292,6 +297,9 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
                         className="rank-title"
                       />
                     )}
+                    <span className="rank-name-text">
+                      {identities[row.uid]?.name || row.name}
+                    </span>
                   </span>
                   <b className="rank-score">{row.rating}</b>
                   {row.uid !== data.uid && (
@@ -561,7 +569,9 @@ export function AppearanceSeats({ network, cpu, tutorial, children }) {
 export function useSeasonMatch(state, network, round, disabled, bot = null) {
   const eligible = (!!network || !!bot) && state.boardSize === 9 && !disabled;
   const [status, setStatus] = useState(""),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    // サーバーが出した対局後の持ち点。端末の仮の値を、届いたらこれに合わせる(2026-09-23)
+    [serverRating, setServerRating] = useState(null);
   const flight = useRef(null),
     done = useRef(false),
     mounted = useRef(true);
@@ -599,8 +609,16 @@ export function useSeasonMatch(state, network, round, disabled, bot = null) {
         let last;
         for (let i = 0; i < 3; i++) {
           try {
-            await finishSeasonMatch(match);
+            const result = await finishSeasonMatch(match);
             done.current = true;
+            // サーバーの持ち点を端末の持ち点にし、通算(ranks)にも置き直す
+            const r = result?.player?.rating;
+            if (Number.isFinite(r)) {
+              const before = loadProfile().rating;
+              const after = adoptServerRating(r);
+              if (after.rating !== before) publishPlayer(after);
+              if (mounted.current) setServerRating(after.rating);
+            }
             if (mounted.current) setStatus("done");
             return true;
           } catch (e) {
@@ -630,7 +648,7 @@ export function useSeasonMatch(state, network, round, disabled, bot = null) {
   useEffect(() => {
     if (match) submit();
   }, [state.phase]);
-  return { active: !!match, status, error, submit, done };
+  return { active: !!match, status, error, submit, done, serverRating };
 }
 export function SeasonMatchNotice({ result }) {
   if (!result?.active) return null;

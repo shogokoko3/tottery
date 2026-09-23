@@ -1230,6 +1230,16 @@ export function GameCore({
     !!tutorial || (!network?.random && !bot),
     bot,
   );
+  // サーバーの持ち点が届いたら、対局後の表示(仮の値)をそれに合わせる(2026-09-23 本人の指示)
+  (0, useEffect)(() => {
+    const r = seasonResult.serverRating;
+    if (!Number.isFinite(r)) return;
+    setRatingResult((prev) =>
+      prev && Number.isFinite(prev.before)
+        ? { ...prev, rating: r, delta: r - prev.before }
+        : prev,
+    );
+  }, [seasonResult.serverRating]);
   const boardRef = useRef(null);
   const aceMagic = useAceMagic(a, skins, {
     disabled: !!tutorial,

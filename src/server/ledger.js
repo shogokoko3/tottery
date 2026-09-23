@@ -119,6 +119,34 @@ export class Ledger {
       return { ...p, rating, place: p.rated >= LISTED_AFTER ? place : null };
     });
   }
+  /**
+   * その人のこのシーズンの行。無ければ**前のシーズンの持ち点を引き継いだ**空の行
+   * (2026-09-23 本人の指示「オンラインのレーティングと持ち点は同じもの」。
+   * 以前は毎月 1500 から始めていたが、端末の持ち点と別の数になっていた)。
+   * 月ごとの対局数・勝ち・到達段階は新しく数え直す。持ち点だけが続く
+   */
+  playerRow(uid, seasonId) {
+    const row = this.sql(
+      "SELECT p.*, e.rating FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid WHERE p.season=? AND p.uid=?",
+      seasonId,
+      uid,
+    )[0];
+    if (row) return { ...row, rating: row.rating ?? displayRating(row.wr) };
+    const prev = this.sql(
+      "SELECT p.wr, e.rating FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid WHERE p.uid=? AND p.season<>? ORDER BY p.season DESC LIMIT 1",
+      uid,
+      seasonId,
+    )[0];
+    return {
+      wr: 0.5,
+      rated: 0,
+      wins: 0,
+      draws: 0,
+      highest: 0,
+      best: null,
+      rating: prev ? (prev.rating ?? displayRating(prev.wr)) : displayRating(0.5),
+    };
+  }
   result(uid, id) {
     const m = this.sql("SELECT * FROM matches WHERE id=?", id)[0];
     if (m && m.host !== uid && m.guest !== uid)
@@ -137,14 +165,9 @@ export class Ledger {
     )
       return;
     const season = this.current(now);
-    const before = [match.host, match.guest].map((uid) => {
-      const p = this.sql(
-        "SELECT p.*, e.rating FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid WHERE p.season=? AND p.uid=?",
-        season.id,
-        uid,
-      )[0] || { wr: 0.5, rated: 0, wins: 0, draws: 0, highest: 0, best: null };
-      return { ...p, rating: p.rating ?? displayRating(p.wr) };
-    });
+    const before = [match.host, match.guest].map((uid) =>
+      this.playerRow(uid, season.id),
+    );
     for (const [seat, uid] of [match.host, match.guest].entries()) {
       const p = before[seat];
       const won = match.winner === null ? null : seat === match.winner;
@@ -224,12 +247,7 @@ export class Ledger {
     if (this.sql("SELECT id FROM matches WHERE id=?", matchId)[0])
       return { recorded: false, reason: "duplicate" };
     const season = this.current(now);
-    const row = this.sql(
-      "SELECT p.*, e.rating FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid WHERE p.season=? AND p.uid=?",
-      season.id,
-      uid,
-    )[0] || { wr: 0.5, rated: 0, wins: 0, draws: 0, highest: 0, best: null };
-    const p = { ...row, rating: row.rating ?? displayRating(row.wr) };
+    const p = this.playerRow(uid, season.id);
     if (p.rating >= until) return { recorded: false, reason: "human-stage" };
     const won = winner === null ? null : winner === 0;
     const next = {

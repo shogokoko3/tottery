@@ -562,6 +562,29 @@ export function grantIcon(id) {
  * won は true が勝ち、false が負け、null が引き分け。
  * 引き分けでも通常対局の経験値は入り、チュートリアルはクリアに数えない。
  */
+/**
+ * サーバー(月間シーズンの台帳)が出した持ち点を、端末の持ち点にする(2026-09-23 本人の指示
+ * 「オンラインのレーティングと持ち点は同じもの」)。
+ *
+ * 対局の直後は端末が同じ式で仮の値を出すが、正はサーバー。届いたら上書きし、
+ * 持ち点で決まる称号もここで焼き付ける。変わらなければ何もしない
+ */
+export function adoptServerRating(rating) {
+  const profile = loadProfile();
+  if (!Number.isFinite(Number(rating))) return profile;
+  const value = normalizeRating(rating);
+  if (value === profile.rating && profile.ratingVersion === RATING_VERSION)
+    return profile;
+  const next = { ...profile, rating: value, ratingVersion: RATING_VERSION };
+  const newTitles = newlyEarned(profile, next);
+  next.titles = [
+    ...next.titles,
+    ...newTitles.map((t) => t.id).filter((id) => !next.titles.includes(id)),
+  ];
+  saveProfile(next);
+  return next;
+}
+
 export function recordGame(won, opts) {
   const profile = loadProfile();
   const draw = won === null;

@@ -69,6 +69,39 @@ assert.ok(b1.matchId && b2.matchId && b1.matchId !== b2.matchId, "局ごとの�
 assert.equal(seasonMatchKey({ bot: true, id: "x", uid: "u" }), "bot:u:x");
 assert.equal(seasonMatchKey({ code: "ABCD", createdAt: 1, round: 0, uid: "u" }), "ABCD:1:0:u");
 
+// 月をまたいでも持ち点は続く(2026-09-23 本人の指示「レーティングと持ち点は同じもの」。以前は毎月 1500 から)
+{
+  const db3 = new DatabaseSync(":memory:");
+  const sql3 = (q, ...args) => db3.prepare(q).all(...args);
+  const l3 = new Ledger(sql3);
+  const sep = Date.parse("2026-09-20T03:00:00Z"), oct = Date.parse("2026-10-05T03:00:00Z");
+  for (let i = 0; i < 3; i++) l3.recordBot("u", { id: `s${i}`, winner: 0, name: "う", icon: null }, sep + i);
+  const endSep = l3.list("2026-09").find((p) => p.uid === "u").rating;
+  assert.ok(endSep > START_RATING, "9月に勝って上がった");
+  const r = l3.recordBot("u", { id: "o1", winner: 1, name: "う", icon: null }, oct);
+  assert.equal(r.rating, endSep - ELO_K / 2, "10月の1戦目は9月の最後の持ち点から始まる(1500 に戻らない)");
+  const octRow = l3.list("2026-10").find((p) => p.uid === "u");
+  assert.equal(octRow.rated, 1, "月の対局数は数え直す");
+  assert.equal(octRow.wins, 0);
+  assert.equal(l3.playerRow("newcomer", "2026-10").rating, START_RATING, "はじめての人は 1500");
+  // 人との対局でも同じ
+  const m = { id: "h1", host: "u", guest: "v", winner: 1, names: ["う", "ぶ"], icons: [null, null] };
+  l3.record(m, oct + 10);
+  assert.equal(l3.list("2026-10").find((p) => p.uid === "v").rating, START_RATING + Math.round(ELO_K * (1 - 1 / (1 + 10 ** ((endSep - ELO_K / 2 - START_RATING) / 400)))), "相手(新規)は 1500 から、こちらは引き継いだ点から計算");
+}
+
+// 端末はサーバーの持ち点に合わせる
+{
+  const profile = readFileSync(new URL("../src/game/profile.js", import.meta.url), "utf8");
+  assert.ok(/export function adoptServerRating\(rating\)/.test(profile), "adoptServerRating がある");
+  const season = readFileSync(new URL("../src/ui/season.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  assert.ok(/const result = await finishSeasonMatch\(match\);/.test(season) && /adoptServerRating\(r\)/.test(season), "対局後にサーバーの持ち点を端末へ写す");
+  assert.ok(/if \(Number\.isFinite\(next\?\.player\?\.rating\)\)/.test(season) && /adoptServerRating\(next\.player\.rating\)/.test(season), "ランキングを開いたときにも写す");
+  assert.ok(/publishPlayer\(after\)/.test(season), "変わったら通算(ranks)にも置き直す");
+  const game = readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  assert.ok(/const r = seasonResult\.serverRating;/.test(game) && /delta: r - prev\.before/.test(game), "対局後の表示もサーバーの値に合わせる");
+}
+
 // 配線
 const worker = readFileSync(new URL("../src/server/worker.js", import.meta.url), "utf8").replace(/\s+/g, " ");
 assert.ok(/if \(op === "finish" && body\.bot === true\)/.test(worker), "finish に Bot の枝がある");
