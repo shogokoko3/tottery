@@ -163,10 +163,13 @@ export function AreaBar({
           <small>エリアなし</small>
         )}
       </span>
-      {mine && !isAutomaticArea(state, mine.type) && !mine.used && myTurn && (
+      {/* 「発動」の枠は相手の番でも残す(見えなくするだけ)。出たり消えたりで帯の幅と高さが変わり、
+          盤が上下していた(2026-09-23 本人の指示)。自動のエリア(海など)は釦そのものが無い */}
+      {mine && !isAutomaticArea(state, mine.type) && (
         <button
           className={`btn btn-primary btn-small ${focusFire ? "guide-target" : ""}`}
-          disabled={!can.ok}
+          style={!mine.used && myTurn ? undefined : { visibility: "hidden" }}
+          disabled={!can.ok || mine.used || !myTurn}
           title={can.ok ? info.text : can.why}
           onClick={() => {
             if (!can.ok) return;
@@ -212,17 +215,19 @@ export function AreaBar({
           ?
         </button>
       )}
-      {mine &&
+      {/* 但し書きの行も常に1行ぶん取っておく(無いときは空白)。高さが変わらない */}
+      <small className="area-why">
+        {mine &&
         !isAutomaticArea(state, mine.type) &&
         !mine.used &&
         myTurn &&
         !can.ok &&
-        can.why && <small className="area-why">{can.why}</small>}
-      {mine?.type === "sea" && state.ruleVersion >= 10 && myTurn && can.ok && (
-        <small className="area-why">
-          発動は任意です。使わずに駒を動かせます。
-        </small>
-      )}
+        can.why
+          ? can.why
+          : mine?.type === "sea" && state.ruleVersion >= 10 && myTurn && can.ok
+            ? "発動は任意です。使わずに駒を動かせます。"
+            : " "}
+      </small>
     </div>
   );
 }

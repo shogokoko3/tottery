@@ -66,34 +66,33 @@ export function clearSeasonQueue() {
     /* 消せなくても、uid が違えば再送はされない */
   }
 }
+/** 送る対局の形が正しいか。人との対局は部屋の鍵(code・createdAt・round)、Bot との対局は id */
+function validMatch(m) {
+  if (!m || typeof m.uid !== "string") return false;
+  if (m.bot === true) return typeof m.id === "string" && [0, 1, null].includes(m.winner);
+  return (
+    typeof m.code === "string" &&
+    Number.isSafeInteger(m.createdAt) &&
+    Number.isInteger(m.round)
+  );
+}
+/** 同じ対局かどうかを見分ける鍵 */
+export function seasonMatchKey(m) {
+  return m.bot === true
+    ? `bot:${m.uid}:${m.id}`
+    : `${m.code}:${m.createdAt}:${m.round}:${m.uid}`;
+}
 function pending() {
   try {
     const list = JSON.parse(localStorage.getItem(QUEUE) || "[]");
-    return Array.isArray(list)
-      ? list.filter(
-          (m) =>
-            m &&
-            typeof m.uid === "string" &&
-            typeof m.code === "string" &&
-            Number.isSafeInteger(m.createdAt) &&
-            Number.isInteger(m.round),
-        )
-      : [];
+    return Array.isArray(list) ? list.filter(validMatch) : [];
   } catch {
     return [];
   }
 }
 export function queueSeasonMatch(match) {
   const list = pending();
-  if (
-    !list.some(
-      (m) =>
-        m.code === match.code &&
-        m.createdAt === match.createdAt &&
-        m.round === match.round &&
-        m.uid === match.uid,
-    )
-  ) {
+  if (!list.some((m) => seasonMatchKey(m) === seasonMatchKey(match))) {
     list.push(match);
     localStorage.setItem(QUEUE, JSON.stringify(list));
   }
@@ -103,15 +102,7 @@ export async function finishSeasonMatch(match) {
   localStorage.setItem(
     QUEUE,
     JSON.stringify(
-      pending().filter(
-        (m) =>
-          !(
-            m.code === match.code &&
-            m.createdAt === match.createdAt &&
-            m.round === match.round &&
-            m.uid === match.uid
-          ),
-      ),
+      pending().filter((m) => seasonMatchKey(m) !== seasonMatchKey(match)),
     ),
   );
   return result;

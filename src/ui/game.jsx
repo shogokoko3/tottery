@@ -288,7 +288,12 @@ export function LogLine({ text, index, active, onPick }) {
   );
 }
 
-export function TurnBar({ state, viewer }) {
+/**
+ * 手番の帯。**高さを変えない**(2026-09-23 本人の指示。文が長いと折り返して盤が上下していた)。
+ * 上の行に手番、下の行に最後の記録。記録は2行ぶんの高さに固定し、あふれた分は切る。
+ * 「記録」を押すと対局中でも全部の記録が読める(onLog)
+ */
+export function TurnBar({ state, viewer, onLog = null }) {
   const names = useNames();
   let l = PLAYER_META[state.currentTurn],
     n = state.currentTurn === viewer,
@@ -306,21 +311,67 @@ export function TurnBar({ state, viewer }) {
       : state.log[state.log.length - 1];
   return (
     <div className="turn-bar">
-      <span
-        className="turn-dot"
-        style={{
-          background: l.color,
-        }}
-      />
-      <span
-        style={{
-          color: l.color,
-          fontWeight: 700,
-        }}
-      >
-        {playerLabel(state.currentTurn, viewer, names)}の番です
-      </span>
-      <span className="turn-log">{withNames(log, names)}</span>
+      <div className="turn-bar-head">
+        <span
+          className="turn-dot"
+          style={{
+            background: l.color,
+          }}
+        />
+        <span
+          className="turn-who"
+          style={{
+            color: l.color,
+            fontWeight: 700,
+          }}
+        >
+          {playerLabel(state.currentTurn, viewer, names)}の番です
+        </span>
+        {onLog && (
+          <button
+            type="button"
+            className="turn-log-btn"
+            onClick={onLog}
+            aria-label="対局の記録を見る"
+          >
+            記録
+          </button>
+        )}
+      </div>
+      <span className="turn-log">{withNames(log, names) || " "}</span>
+    </div>
+  );
+}
+
+/**
+ * 対局中に読む記録(2026-09-23 本人の指示)。振り返り(ReviewModal)と同じ行の部品を使うが、
+ * 盤面へ飛ぶ操作は付けない(対局中に盤を戻すと紛らわしい)。新しい行が下
+ */
+export function LiveLogModal({ log, onClose }) {
+  const listRef = useRef(null);
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [log.length]);
+  return (
+    <div className="modal-overlay" role="dialog" aria-label="対局の記録">
+      <div className="modal-panel live-log-panel">
+        <div className="modal-head">
+          <h3>対局の記録</h3>
+          <button className="btn btn-ghost btn-small" onClick={onClose}>
+            閉じる
+          </button>
+        </div>
+        <div className="live-log-scroll" ref={listRef}>
+          <ol className="log-list">
+            {log.length ? (
+              log.map((s, v) => <LogLine text={s} index={v} key={v} />)
+            ) : (
+              <li>まだ記録はありません</li>
+            )}
+          </ol>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1158,6 +1209,8 @@ export function GameCore({
     [ratingResult, setRatingResult] = (0, useState)(null),
     // 盤面エリア: 空・宮殿で「どの駒か」を選んでいる最中
     [areaPick, setAreaPick] = (0, useState)(false),
+    // 対局中に記録を読む幕(2026-09-23 本人の指示)
+    [logOpen, setLogOpen] = (0, useState)(false),
     // 駒選びで選んだ駒。「確定」を押すまで発動しない(ワンタップで確定していたのを本人の指摘で改めた)
     [areaChoice, setAreaChoice] = (0, useState)(null),
     // テストプレイ中は、布陣の1分も対局の持ち時間も止める
@@ -1167,7 +1220,15 @@ export function GameCore({
   // 自分が取った駒をバトルパスへ。チュートリアルでは進めない
   useBattlePass(a, network ? p : cpu ? 0 : a.currentTurn, !!tutorial, !!network);
 
-  const seasonResult = useSeasonMatch(a, network, round, !!tutorial || !network?.random);
+  // シーズン台帳へ送るのは、ランダムマッチ(人)と Bot 戦の 9×9(2026-09-23 本人の指示で Bot も)。
+  // フレンド対戦(合言葉・近くの端末)と CPU 戦・チュートリアルは送らない
+  const seasonResult = useSeasonMatch(
+    a,
+    network,
+    round,
+    !!tutorial || (!network?.random && !bot),
+    bot,
+  );
   const boardRef = useRef(null);
   const aceMagic = useAceMagic(a, skins, {
     disabled: !!tutorial,
@@ -2893,7 +2954,10 @@ export function GameCore({
             viewer={P}
           />
         )}
-        <TurnBar state={displayed} viewer={P} />
+        <TurnBar state={displayed} viewer={P} onLog={() => setLogOpen(true)} />
+        {logOpen && (
+          <LiveLogModal log={displayed.log} onClose={() => setLogOpen(false)} />
+        )}
         {a.phase === "play" && (
           <AreaBar
             state={a}
@@ -2938,26 +3002,31 @@ export function GameCore({
                   : "毎手番1回・行動前に"}
               </small>
             </span>
-            {a.aceFoilUsedTurn?.[P] !== (a.turnNo || 0) && (
-              <button
-                className="btn btn-primary btn-small"
-                disabled={
-                  !x ||
-                  !aceFoil.ok ||
-                  !!pendingCapture ||
-                  !!a.selectedId ||
-                  !!a.shuffleMode ||
-                  !!areaPick
-                }
-                title={aceFoil.why || "毎手番1回・通常の行動前に任意発動"}
-                onClick={() => y({ type: "USE_ACE_FOIL" })}
-              >
-                発動
-              </button>
-            )}
-            {x && !aceFoil.ok && aceFoil.why && (
-              <small className="area-why">{aceFoil.why}</small>
-            )}
+            {/* 釦の枠は使用済みでも残す(見えなくするだけ)。出たり消えたりで帯の幅と高さが変わらない */}
+            <button
+              className="btn btn-primary btn-small"
+              style={
+                a.aceFoilUsedTurn?.[P] === (a.turnNo || 0)
+                  ? { visibility: "hidden" }
+                  : undefined
+              }
+              disabled={
+                !x ||
+                !aceFoil.ok ||
+                !!pendingCapture ||
+                !!a.selectedId ||
+                !!a.shuffleMode ||
+                !!areaPick ||
+                a.aceFoilUsedTurn?.[P] === (a.turnNo || 0)
+              }
+              title={aceFoil.why || "毎手番1回・通常の行動前に任意発動"}
+              onClick={() => y({ type: "USE_ACE_FOIL" })}
+            >
+              発動
+            </button>
+            <small className="area-why">
+              {x && !aceFoil.ok && aceFoil.why ? aceFoil.why : " "}
+            </small>
           </div>
         )}
         {pendingCapture && (
@@ -2980,40 +3049,30 @@ export function GameCore({
             }}
           />
         )}
-        {s && (
-          <p
-            className="hint"
-            style={{
-              textAlign: "center",
-              color: "#e2896f",
-            }}
-          >
-            {s}
-          </p>
-        )}
-        {network && !x && (
-          <p
-            className="hint"
-            style={{
-              textAlign: "center",
-            }}
-          >
-            相手の手番です
-          </p>
-        )}
-        {cpu && !x && (
-          <p
-            className="hint"
-            style={{
-              textAlign: "center",
-            }}
-          >
-            <Dice size={14} className="spin-icon" />{" "}
-            {tutorial || bot ? "相手の番です" : "CPUが考えています…"}
-          </p>
-        )}
-        <AreaEffectNotice effect={areaFx} names={names} />
+        {/* 案内は1行ぶんの枠に固定して出す。出たり消えたりで盤が上下しないように(2026-09-23 本人の指示) */}
+        <p
+          className={`hint play-status ${s ? "play-status-alert" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
+          {s ? (
+            s
+          ) : network && !x ? (
+            "相手の手番です"
+          ) : cpu && !x ? (
+            <>
+              <Dice size={14} className="spin-icon" />{" "}
+              {tutorial || bot ? "相手の番です" : "CPUが考えています…"}
+            </>
+          ) : (
+            " "
+          )}
+        </p>
         <div className="board-outer">
+          {/* エリアの知らせは盤の上に重ねる。流れの中に置くと、出る瞬間に盤が下がる(2026-09-23 本人の指示) */}
+          <div className="area-notice-slot" aria-live="polite">
+            <AreaEffectNotice effect={areaFx} names={names} />
+          </div>
           <div
             className="board-frame"
             style={{
@@ -3037,6 +3096,46 @@ export function GameCore({
             >
               <FieldBackdrop theme={fieldTheme} areas={displayed.areas} />
               <AreaEffects effect={areaFx} flipped={Jl} />
+              {/* 相手の直前の手を矢印で示す(2026-09-23 本人の指示「どこからどこへ動いたか」)。
+                  出発点と着地点のマスの印だけでは、出発点(空いたマス)が目に入らなかった。
+                  自分の手は自分が指したので出さない。1台の端末で交互に指すときは両方に出す */}
+              {a.lastMove &&
+                !aceMagic.busy &&
+                a.lastMove.from &&
+                a.lastMove.to &&
+                (P == null || a.lastMove.owner !== P) && (
+                  <svg
+                    className="last-move-arrow"
+                    viewBox={`0 0 ${R} ${R}`}
+                    preserveAspectRatio="none"
+                    aria-hidden="true"
+                    style={{ "--lm-arrow": PLAYER_META[a.lastMove.owner]?.soft }}
+                  >
+                    {(() => {
+                      const fr = Jl ? R - 1 - a.lastMove.from.row : a.lastMove.from.row;
+                      const fc = Jl ? R - 1 - a.lastMove.from.col : a.lastMove.from.col;
+                      const tr = Jl ? R - 1 - a.lastMove.to.row : a.lastMove.to.row;
+                      const tc = Jl ? R - 1 - a.lastMove.to.col : a.lastMove.to.col;
+                      const x1 = fc + 0.5, y1 = fr + 0.5, x2 = tc + 0.5, y2 = tr + 0.5;
+                      const dx = x2 - x1, dy = y2 - y1;
+                      const len = Math.hypot(dx, dy) || 1;
+                      // 矢の先はマスの中心より手前で止める(駒の絵に被せない)
+                      const ex = x2 - (dx / len) * 0.38, ey = y2 - (dy / len) * 0.38;
+                      const sx = x1 + (dx / len) * 0.2, sy = y1 + (dy / len) * 0.2;
+                      // 矢じり(線の向きに合わせた二等辺三角形)
+                      const ux = dx / len, uy = dy / len, hw = 0.16, hl = 0.28;
+                      const hx = ex - ux * hl, hy = ey - uy * hl;
+                      const head = `${ex},${ey} ${hx - uy * hw},${hy + ux * hw} ${hx + uy * hw},${hy - ux * hw}`;
+                      return (
+                        <>
+                          <circle className="last-move-arrow-start" cx={x1} cy={y1} r="0.14" />
+                          <line className="last-move-arrow-line" x1={sx} y1={sy} x2={hx} y2={hy} />
+                          <polygon className="last-move-arrow-head" points={head} />
+                        </>
+                      );
+                    })()}
+                  </svg>
+                )}
               {/* 台本が「この駒をここへ」と言っているあいだ、その動きを薄い駒で繰り返して見せる
                   (2026-09-18 本人の指示。読むより見るほうが早い) */}
               {tutMoveHint && (

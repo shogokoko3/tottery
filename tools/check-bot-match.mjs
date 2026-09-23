@@ -188,7 +188,8 @@ assert.equal(matchesBot("abc"), true);
   assert.ok(/const CPU_TURN_MS = 5000;/.test(game) && /foeWait\(a, E, CPU_TURN_MS\)/.test(game), "CPU・Bot は対局中の1手に5秒使う(2026-09-17)");
   assert.ok(/\? bot\.rating/.test(game), "相手の点は Bot の人物の点");
   assert.ok(/online: !!network && !network\.nearby && !tutorial,/.test(game), "ミッションのオンライン回数には数えない(network のときだけ。近くの端末も数えない)");
-  assert.ok(/useSeasonMatch\(a, network, round, !!tutorial \|\| !network\?\.random\)/.test(game), "シーズン台帳はランダムマッチのときだけ(Bot・フレンド・近くの端末は送らない)");
+  // 2026-09-23 本人の指示: Bot 戦もシーズン台帳へ送る(部屋が無いので id と勝敗だけ。tools/check-bot-season.mjs)
+  assert.ok(/useSeasonMatch\(\s*a,\s*network,\s*round,\s*!!tutorial \|\| \(!network\?\.random && !bot\),\s*bot,\s*\)/.test(game), "シーズン台帳はランダムマッチ(人)と Bot 戦のときだけ(フレンド・近くの端末は送らない)");
   assert.ok(/tutorial \|\| bot \? "相手の番です"/.test(game), "Bot 戦で「CPU」と出さない");
   assert.ok(/if \(\(network && network\.random\) \|\| bot\) noteRandomResult\(\{ won, vsBot: !!bot \}\);/.test(game), "ランダムマッチの結果を控える(人に負けたら次は Bot)");
 }

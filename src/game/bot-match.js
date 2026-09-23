@@ -95,7 +95,10 @@ export function makeBot(myRating, myName = null, rng = Math.random) {
   // エリアは6種を均等に。王はそのエリアの帯からランダム
   const area = JOSEKI_AREAS[Math.floor(rng() * JOSEKI_AREAS.length)];
   const king = pickJosekiKing(area, rng);
-  return { id: `bot:${name}`, name, icon, rating, tier, blunder, area, king };
+  // matchId はこの1局の目印。シーズン台帳に送るとき、同じ局を二度数えないための鍵(2026-09-23)
+  // rng だけから作る(rng を固定すれば同じ人物、の検査を保つ)。62 ビットあれば同じ局が重なることはない
+  const matchId = `${Math.floor(rng() * 2 ** 31).toString(36)}${Math.floor(rng() * 2 ** 31).toString(36)}`;
+  return { id: `bot:${name}`, name, icon, rating, tier, blunder, area, king, matchId };
 }
 
 /** 合法な手からランダムに1つ(A の入れ替えと凍った駒は除く)。無ければ null */

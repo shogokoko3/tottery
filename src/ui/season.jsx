@@ -552,8 +552,14 @@ export function AppearanceSeats({ network, cpu, tutorial, children }) {
   );
 }
 
-export function useSeasonMatch(state, network, round, disabled) {
-  const eligible = !!network && state.boardSize === 9 && !disabled;
+/**
+ * 対局が終わったら月間シーズンへ送る。
+ *   人との対局(network) … 部屋の鍵を送り、サーバーが手順を再生して確かめる
+ *   Bot との対局(bot)   … 2026-09-23 本人の指示。部屋が無いので id と勝敗だけ送る。
+ *                         サーバーは相手の点を本人と同じとみなし、1750 以上なら数えない
+ */
+export function useSeasonMatch(state, network, round, disabled, bot = null) {
+  const eligible = (!!network || !!bot) && state.boardSize === 9 && !disabled;
   const [status, setStatus] = useState(""),
     [error, setError] = useState("");
   const flight = useRef(null),
@@ -561,13 +567,26 @@ export function useSeasonMatch(state, network, round, disabled) {
     mounted = useRef(true);
   const match =
     eligible && state.phase === "gameover" && state.setupDone?.every(Boolean)
-      ? {
-          code: network.code,
-          createdAt: network.createdAt,
-          round,
-          winner: state.winner,
-          uid: myUid(),
-        }
+      ? bot
+        ? (() => {
+            const me = loadProfile();
+            return {
+              bot: true,
+              id: bot.matchId || `${bot.id}:${round}`,
+              // Bot 戦は自分が席0。勝者は 0(自分)・1(Bot)・null(引き分け)
+              winner: state.winner,
+              name: me.name || "名無し",
+              icon: me.icon || null,
+              uid: myUid(),
+            };
+          })()
+        : {
+            code: network.code,
+            createdAt: network.createdAt,
+            round,
+            winner: state.winner,
+            uid: myUid(),
+          }
       : null;
   function submit() {
     if (!match || done.current) return Promise.resolve(true);

@@ -206,6 +206,64 @@ export class Ledger {
         );
     }
   }
+  /**
+   * ランダムマッチの練習相手(Bot)との対局を記録する(2026-09-23 本人の指示「オンライン対戦の結果を
+   * ランキングに反映して」。持ち点 1750 未満は人と組まず Bot と当たるので、これが無いと
+   * 始めたばかりの人がランキングに一度も載れない)。
+   *
+   * Bot の対局は部屋(Firebase)が無く、手順を再生して確かめられない。だから
+   *   - 相手の点は端末の言い値を使わず、**本人のサーバー上の点と同じ**とみなす(同格 = ±16)
+   *   - 本人の点が BOT_UNTIL_RATING(1750)以上なら数えない(人と組む段階。Bot で稼げない)
+   *   - 同じ id は二度記録しない(matches に host=本人・guest="bot" で残す)
+   */
+  recordBot(uid, { id, winner, name, icon }, now, until = 1750) {
+    const matchId = `bot:${uid}:${id}`;
+    if (this.sql("SELECT id FROM matches WHERE id=?", matchId)[0])
+      return { recorded: false, reason: "duplicate" };
+    const season = this.current(now);
+    const row = this.sql(
+      "SELECT p.*, e.rating FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid WHERE p.season=? AND p.uid=?",
+      season.id,
+      uid,
+    )[0] || { wr: 0.5, rated: 0, wins: 0, draws: 0, highest: 0, best: null };
+    const p = { ...row, rating: row.rating ?? displayRating(row.wr) };
+    if (p.rating >= until) return { recorded: false, reason: "human-stage" };
+    const won = winner === null ? null : winner === 0;
+    const next = {
+      ...p,
+      ...nextRating(p.rating, p.rating, won),
+      rated: p.rated + 1,
+    };
+    next.wr =
+      (p.wins + Number(won === true) + (p.draws + Number(won === null)) * 0.5) /
+      next.rated;
+    next.highest = Math.max(p.highest, tierOf(next));
+    this.sql("INSERT OR REPLACE INTO elo_ratings VALUES (?,?,?)", season.id, uid, next.rating);
+    this.sql(
+      "INSERT OR REPLACE INTO players VALUES (?,?,?,?,?,?,?,?,?,?)",
+      season.id,
+      uid,
+      name,
+      icon,
+      next.wr,
+      next.rated,
+      p.wins + Number(won === true),
+      p.draws + Number(won === null),
+      next.highest,
+      p.best,
+    );
+    this.sql(
+      "INSERT INTO matches (id, season, host, guest, winner, finished, fp) VALUES (?,?,?,?,?,?,?)",
+      matchId,
+      season.id,
+      uid,
+      "bot",
+      winner,
+      now,
+      null,
+    );
+    return { recorded: true, rating: next.rating, delta: next.delta };
+  }
   claims(uid) {
     return this.sql(
       "SELECT id,season,claimed FROM claims WHERE uid=? ORDER BY claimed",

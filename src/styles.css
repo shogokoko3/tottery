@@ -7187,3 +7187,129 @@ p.hint > span.gem-shop-diag {
   font-size: 10px;
   color: var(--text-dim);
 }
+
+/* =========================================================================
+   対局画面の上部を動かさない(2026-09-23 本人の指示)
+   手番の帯・エリアの帯・案内・エリアの知らせは、中身の有無で高さを変えない
+   ========================================================================= */
+.turn-bar {
+  display: block;
+  margin-bottom: 8px;
+}
+.turn-bar-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+.turn-who {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.turn-log-btn {
+  margin-left: auto;
+  flex: none;
+  min-height: 28px;
+  padding: 2px 10px;
+  border: 1px solid var(--btn-edge);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--gold-soft);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.turn-bar .turn-log {
+  display: block;
+  margin: 2px 0 0;
+  /* 2行ぶんに固定。長い記録は3行目以降を切る(全文は「記録」で読める) */
+  height: 2.8em;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-align: left;
+}
+/* 案内の行。1行ぶんの高さを常に取る */
+.play-status {
+  min-height: 1.6em;
+  margin: 0 0 8px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.play-status-alert {
+  color: #e2896f;
+}
+/* エリアの知らせは盤の上に重ねる(流れの中に置かない)。盤の高さは変わらない */
+.board-outer {
+  position: relative;
+}
+.area-notice-slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6px;
+  z-index: 8;
+  pointer-events: none;
+}
+.area-notice-slot .area-effect-notice {
+  margin: 0 auto;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+/* エリアの帯。釦と但し書きの枠を常に取る */
+.area-bar {
+  min-height: 74px;
+  align-content: flex-start;
+}
+.area-bar .area-why {
+  min-height: 1.4em;
+  font-size: 11px;
+}
+/* 対局中の記録の幕 */
+.live-log-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 40px - var(--top-bar-h, 0px) - var(--tutorial-band, 0px));
+  overflow: hidden;
+}
+.live-log-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  text-align: left;
+}
+.live-log-panel .log-list {
+  padding-left: 18px;
+}
+/* 相手の直前の手の矢印。マスの上・駒の下に敷かない(駒に隠れると意味が無い)ので駒の上に置く */
+.last-move-arrow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+  overflow: visible;
+}
+.last-move-arrow-line {
+  stroke: var(--lm-arrow, #f0d98a);
+  stroke-width: 0.09;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 0.04px #000);
+  opacity: 0.92;
+}
+.last-move-arrow-head {
+  fill: var(--lm-arrow, #f0d98a);
+  opacity: 0.95;
+}
+.last-move-arrow-start {
+  fill: none;
+  stroke: var(--lm-arrow, #f0d98a);
+  stroke-width: 0.06;
+  opacity: 0.9;
+}

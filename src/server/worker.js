@@ -11,6 +11,7 @@ import { Wallet, BACKUP_MAX } from "./wallet.js";
 import { verifyAppleTransaction } from "./applejws.js";
 import { minAppBuild, updateUrl } from "./app-version.js";
 import { seasonAt, seasonRewards } from "../game/season.js";
+import { BOT_UNTIL_RATING } from "../game/bot-match.js";
 
 const json = (data, status = 200) =>
   Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -233,6 +234,23 @@ async function handleApi(request, env, url) {
       if (url.pathname.startsWith("/api/iap/"))
         return json({ error: "見つかりません。" }, 404);
       const op = url.pathname.slice("/api/season/".length);
+      // Bot(ランダムマッチの練習相手)との対局(2026-09-23 本人の指示)。部屋が無いので手順は確かめられない。
+      // 相手の点は台帳が本人の点と同じとみなし(端末の言い値は読まない)、本人が 1750 以上なら数えない
+      if (op === "finish" && body.bot === true) {
+        if (
+          typeof body.id !== "string" ||
+          !/^[\w:-]{4,80}$/.test(body.id) ||
+          ![0, 1, null].includes(body.winner)
+        )
+          return json({ error: "対局の指定が正しくありません。" }, 400);
+        const name =
+          typeof body.name === "string" && body.name.trim().length >= 1
+            ? body.name.trim().slice(0, 10)
+            : "名無し";
+        const icon =
+          typeof body.icon === "string" && /^[\w-]{1,32}$/.test(body.icon) ? body.icon : null;
+        return call("record-bot", { id: body.id, winner: body.winner, name, icon });
+      }
       if (op === "finish") {
         if (
           !/^[A-Z0-9]{4,10}$/i.test(body.code || "") ||
@@ -306,6 +324,10 @@ export class SeasonLedger {
           return l.summary(uid, now);
         }
         if (op === "summary") return l.summary(uid, now);
+        if (op === "record-bot") {
+          l.recordBot(uid, args, now, BOT_UNTIL_RATING);
+          return l.summary(uid, now);
+        }
         if (op === "admin-summary" && uid === OPERATOR_UID)
           return l.adminSummary(now);
         if (op === "admin-forget" && uid === OPERATOR_UID) {
