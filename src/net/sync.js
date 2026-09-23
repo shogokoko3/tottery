@@ -164,13 +164,17 @@ export function acceptAct(act, me, seat, foeUid) {
  */
 export function withLocalContext(action, state) {
   switch (action.type) {
-    case "CONFIRM_MULLIGAN":
+    case "CONFIRM_MULLIGAN": {
+      // 版18以降は両者が同時に選ぶので、手が名乗る席の選択を畳む(名乗りが無ければ順番の席)
+      const who =
+        action.player === 0 || action.player === 1
+          ? action.player
+          : state.mulliganIdx;
       return {
         ...action,
-        discardIds: [
-          ...(state.players[state.mulliganIdx]._mulliganSelected || []),
-        ],
+        discardIds: [...(state.players[who]._mulliganSelected || [])],
       };
+    }
     case "SETUP_CONFIRM": {
       // 同時配置では相手の布陣を受け取っていないので、自分の分を丸ごと積んで送る
       const idx =

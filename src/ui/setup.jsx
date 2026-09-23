@@ -250,6 +250,22 @@ export function territoryOwnerOf(e, t, l) {
     a = territoryRows(l, 1);
   return e >= n[0] && e <= n[1] ? 0 : e >= a[0] && e <= a[1] ? 1 : null;
 }
+/**
+ * 布陣中に、自分が先攻か後攻かを示す(2026-09-23 本人の指示)。
+ * サイコロで決まった順。布陣ボーナス(ストレート)で入れ替わることがあるので「サイコロの結果」と添える
+ */
+export function SetupOrderNote({ state, pIdx }) {
+  const first = state && state.firstPlayer;
+  if (first !== 0 && first !== 1) return null;
+  const mine = first === pIdx;
+  return (
+    <p className={`setup-order ${mine ? "setup-order-first" : "setup-order-second"}`}>
+      <b>{mine ? "あなたは先攻" : "あなたは後攻"}</b>
+      <span>{mine ? "サイコロの結果、先に動きます" : "サイコロの結果、相手が先に動きます"}</span>
+    </p>
+  );
+}
+
 /** 残り時間の帯。10秒を切ったら赤くする */
 export function SetupTimer({ remainingMs, label, paused, limitMs }) {
   if (remainingMs == null)
@@ -564,6 +580,7 @@ export function PlaceStep({
       <h2 style={{ color: PLAYER_META[pIdx].color }}>
         {nameOf(pIdx, names)}: カードを盤面に配置してね
       </h2>
+      <SetupOrderNote state={state} pIdx={pIdx} />
       <SetupTimer
         remainingMs={remainingMs}
         label="布陣の残り時間"
@@ -767,6 +784,7 @@ export function KingStep({
       <h2 style={{ color: PLAYER_META[pIdx].color }}>
         {nameOf(pIdx, names)}: 王にするカードを決めてね
       </h2>
+      <SetupOrderNote state={state} pIdx={pIdx} />
       <SetupTimer
         remainingMs={remainingMs}
         label="王を選ぶ残り時間"

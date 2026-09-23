@@ -7,6 +7,7 @@ import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
 import { adjudicatePosition, withInitialArmies } from "./adjudication.js";
 import {
   hasAdjudicationRules,
+  hasSimultaneousPrep,
   hasBonusAckRules,
   REVENGE_NO_RESERVE_RULE_VERSION,
 } from "./rule-version.js";
@@ -15,7 +16,36 @@ import {
   replenishReserve,
   reserveSeed,
   recyclesReserve,
+  seededShuffle,
 } from "./reserve.js";
+
+/** 版18以降: サイコロと引き直しを両者同時に(2026-09-23 本人の指示) */
+const simPrep = (state) => hasSimultaneousPrep(state.ruleVersion);
+
+/** 両方の目がそろったら先手を決める(同じ目なら振り直し待ち)。そろっていなければそのまま */
+function resolveDice(state) {
+  if (state.dice[0] === null || state.dice[1] === null) return state;
+  if (state.dice[0] === state.dice[1])
+    return {
+      ...state,
+      diceIdx: 3,
+      log: [
+        ...state.log,
+        `サイコロが同じ目(${state.dice[0]})だったので振り直します`,
+      ],
+    };
+  const first = state.dice[0] > state.dice[1] ? 0 : 1;
+  return {
+    ...state,
+    diceIdx: 2,
+    firstPlayer: first,
+    currentTurn: first,
+    log: [
+      ...state.log,
+      `サイコロ: ${PLAYER_META[0].name}=${state.dice[0]} / ${PLAYER_META[1].name}=${state.dice[1]} → ${PLAYER_META[first].name}が先手`,
+    ],
+  };
+}
 import { CLOCK_INITIAL_MS, grantTurnTime } from "./clock.js";
 import {
   areaUsesTurn,
@@ -103,9 +133,11 @@ function expectedActor(state, type) {
     case "CHOOSE_HEIR":
       return state.pendingKingChoice ? state.pendingKingChoice.owner : null;
     case "CONFIRM_MULLIGAN":
-      return state.mulliganIdx;
+      // 版18以降は両者が同時に選ぶ。どちらの席からも来る(自分の分だけ。reducer が済みを見る)
+      return simPrep(state) ? null : state.mulliganIdx;
     case "ROLL_DICE_SINGLE":
-      // 自分の目は自分で振る
+      // 自分の目は自分で振る。版18以降は順番が無いので席で縛らない(自分の目だけ振れる)
+      if (simPrep(state)) return null;
       return state.diceIdx === 0 || state.diceIdx === 1 ? state.diceIdx : null;
     default:
       return null;
@@ -356,7 +388,8 @@ function seedsPresent(state, action) {
         Number.isInteger(action.value) && action.value >= 1 && action.value <= 6
       );
     case "CONFIRM_MULLIGAN":
-      return Array.isArray(action.reserveOrder);
+      // 版18以降は予備札を GOTO_MULLIGAN で決定的に並べてあるので、並びを手に載せない
+      return simPrep(state) || Array.isArray(action.reserveOrder);
     case "CONFIRM_SHUFFLE":
       return (
         Array.isArray(action.order) &&
@@ -447,6 +480,9 @@ export function setupLimitMs(size) {
 }
 /** 王を選ぶのに使える時間 */
 export const KING_LIMIT_MS = 15 * 1000;
+/** 版18以降: サイコロを振る時間(切れたら自動で振る)と、引き直しの時間(切れたら選んでいる札で確定) */
+export const DICE_LIMIT_MS = 20 * 1000;
+export const MULLIGAN_LIMIT_MS = 60 * 1000;
 
 export function initialState() {
   return {
@@ -463,6 +499,8 @@ export function initialState() {
     dice: [null, null],
     diceIdx: 0,
     mulliganIdx: 0,
+    // 版18以降: 引き直しを済ませた席 [先手側でなく席0, 席1]
+    mulliganDone: [false, false],
     /** 使っているカードプール(チュートリアル用。null なら全部) */
     pool: null,
     /** 詳細設定(src/game/custom-rules.js)。null ならクラシック */
@@ -1450,14 +1488,23 @@ function coreReducer(state, action) {
     }
 
     case "ROLL_DICE_SINGLE": {
-      if (state.dice[state.diceIdx] !== null) return state;
+      // 版18以降は各自が自分の目を振る(順番は無い)。席を名乗る手はその席の目、
+      // 名乗らない手(同じ端末の順番の画面)は diceIdx の目。両方そろった時点で先手が決まる
+      const sim = simPrep(state);
+      if (sim && state.diceIdx >= 2) return state;
+      const idx = sim && fromNetwork(action) ? action.player : state.diceIdx;
+      if (idx !== 0 && idx !== 1) return state;
+      if (state.dice[idx] !== null) return state;
       const value = action.value || 1 + Math.floor(Math.random() * 6);
       const dice = [...state.dice];
-      dice[state.diceIdx] = value;
-      return { ...state, dice };
+      dice[idx] = value;
+      const next = { ...state, dice };
+      return sim ? resolveDice(next) : next;
     }
 
     case "NEXT_DICE_STEP": {
+      // 版18以降は目がそろった時点で決まっているので、決まったあとは何もしない
+      if (simPrep(state) && state.diceIdx >= 2) return state;
       if (state.diceIdx === 0 && state.dice[0] !== null) {
         return {
           ...state,
@@ -1465,30 +1512,7 @@ function coreReducer(state, action) {
           interstitial: { forPlayer: 1, kind: "dice" },
         };
       }
-      if (state.dice[0] !== null && state.dice[1] !== null) {
-        if (state.dice[0] === state.dice[1]) {
-          return {
-            ...state,
-            diceIdx: 3,
-            log: [
-              ...state.log,
-              `サイコロが同じ目(${state.dice[0]})だったので振り直します`,
-            ],
-          };
-        }
-        const first = state.dice[0] > state.dice[1] ? 0 : 1;
-        return {
-          ...state,
-          diceIdx: 2,
-          firstPlayer: first,
-          currentTurn: first,
-          log: [
-            ...state.log,
-            `サイコロ: ${PLAYER_META[0].name}=${state.dice[0]} / ${PLAYER_META[1].name}=${state.dice[1]} → ${PLAYER_META[first].name}が先手`,
-          ],
-        };
-      }
-      return state;
+      return resolveDice(state);
     }
 
     case "REROLL_DICE":
@@ -1513,6 +1537,20 @@ function coreReducer(state, action) {
       // 先手が決まってから進む。これが無いと、対局開始直後に1件送るだけで
       // サイコロを飛ばして先手を自分にできる
       if (state.diceIdx !== 2) return state;
+      if (simPrep(state)) {
+        // 両者が同時に引くので、乱数を手に載せられない。予備札をここで決定的に並べ、
+        // 先手は前から・後手は後ろから引く(CONFIRM_MULLIGAN)。どちらが先に届いても同じ結果になる
+        const shuffled = seededShuffle(state.reserve, state.reserveShuffleState);
+        return {
+          ...state,
+          phase: "mulligan",
+          mulliganIdx: state.firstPlayer,
+          mulliganDone: [false, false],
+          reserve: shuffled.cards,
+          reserveShuffleState: shuffled.seed,
+          interstitial: { forPlayer: state.firstPlayer, kind: "mulligan" },
+        };
+      }
       return {
         ...state,
         phase: "mulligan",
@@ -1521,19 +1559,26 @@ function coreReducer(state, action) {
       };
 
     case "TOGGLE_MULLIGAN_CARD": {
-      const idx = state.mulliganIdx;
+      const sim = simPrep(state);
+      const idx = sim && fromNetwork(action) ? action.player : state.mulliganIdx;
+      if (sim && state.mulliganDone && state.mulliganDone[idx]) return state;
+      // 版18以降は両者が同じ予備札から同時に引くので、一人が引けるのは半分まで
+      const limit = sim ? Math.floor(state.reserve.length / 2) : state.reserve.length;
       const players = state.players.map((p, i) => {
         if (i !== idx) return p;
         const picked = new Set(p._mulliganSelected || []);
         if (picked.has(action.cardId)) picked.delete(action.cardId);
-        else if (picked.size < state.reserve.length) picked.add(action.cardId);
+        else if (picked.size < limit) picked.add(action.cardId);
         return { ...p, _mulliganSelected: [...picked] };
       });
       return { ...state, players };
     }
 
     case "CONFIRM_MULLIGAN": {
-      const idx = state.mulliganIdx;
+      const sim = simPrep(state);
+      const idx = sim && fromNetwork(action) ? action.player : state.mulliganIdx;
+      if (idx !== 0 && idx !== 1) return state;
+      if (sim && state.mulliganDone && state.mulliganDone[idx]) return state;
       const players = [...state.players];
       const me = { ...players[idx] };
       if (action.discardIds !== undefined && !Array.isArray(action.discardIds))
@@ -1546,6 +1591,58 @@ function coreReducer(state, action) {
         .filter((c) => discardIds.has(c.id))
         .map((c) => ({ ...c, owner: idx }));
       const count = discarded.length;
+      if (sim) {
+        // 版18以降: 予備札は GOTO_MULLIGAN で並べてある。席0は前から、席1は後ろから引く。
+        // 相手の確定がどちらの順で届いても、引く札は同じ(半分を超えては引けない)
+        const half = Math.floor(state.reserve.length / 2);
+        if (count > half) return state;
+        const reserve = state.reserve;
+        const drawn =
+          idx === 0 ? reserve.slice(0, count) : reserve.slice(reserve.length - count);
+        const rest =
+          idx === 0 ? reserve.slice(count) : reserve.slice(0, reserve.length - count);
+        me.hand = [...kept, ...drawn];
+        me.discard = [...me.discard, ...discarded];
+        delete me._mulliganSelected;
+        players[idx] = me;
+        const done = replaceAt(state.mulliganDone || [false, false], idx, true);
+        const log = [...state.log, `${PLAYER_META[idx].name}が${count}枚を引き直した`];
+        const discardPile = discardCards(state, discarded).discardPile;
+        if (!done[1 - idx])
+          return {
+            ...state,
+            players,
+            reserve: rest,
+            discardPile,
+            mulliganDone: done,
+            mulliganIdx: 1 - idx,
+            log,
+            interstitial: { forPlayer: 1 - idx, kind: "mulligan" },
+          };
+        let entering = {
+          ...state,
+          players,
+          reserve: rest,
+          discardPile,
+          mulliganDone: done,
+          log,
+          phase: "setup",
+          setupIdx: state.firstPlayer,
+          setupSteps: ["place", "place"],
+          setupPickKings: [null, null],
+          setupPlacements: [{}, {}],
+          setupDone: [false, false],
+          interstitial:
+            state.setupMode === "simultaneous"
+              ? null
+              : { forPlayer: state.firstPlayer, kind: "setup" },
+        };
+        const slots = armySlots(entering);
+        for (const who of [0, 1])
+          if (!canFillBoard(entering.players[who].hand, slots))
+            entering = rescueHand(entering, who);
+        return entering;
+      }
       // 予備札は両者で1つしかない。並べ替えでない列を渡されると、
       // 載らなかった札が黙って消える(空の列なら予備札が0枚になり、
       // 後から引き直す側が1枚も選べなくなる)

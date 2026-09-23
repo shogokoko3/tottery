@@ -11,6 +11,24 @@ export function reserveSeed(deck) {
   return seed || 1;
 }
 
+/**
+ * 決定的な並べ替え(xorshift32)。同じ札と同じ seed なら、端末とサーバーで必ず同じ並びになる。
+ * 補充(replenishReserve)と、版18の引き直しの並び(両者が同時に引くので、乱数を手に載せられない)で使う
+ */
+export function seededShuffle(list, seed) {
+  const cards = [...list];
+  let s = (seed >>> 0) || 1;
+  for (let i = cards.length - 1; i > 0; i--) {
+    s ^= s << 13;
+    s ^= s >>> 17;
+    s ^= s << 5;
+    s >>>= 0;
+    const j = Math.floor((s / 4294967296) * (i + 1));
+    [cards[i], cards[j]] = [cards[j], cards[i]];
+  }
+  return { cards, seed: s };
+}
+
 export function discardCards(state, cards) {
   if (!recyclesReserve(state) || !cards.length) return state;
   const pool = new Map((state.discardPile || []).map((c) => [c.id, c]));
@@ -27,16 +45,10 @@ export function replenishReserve(state) {
     state.winner != null
   )
     return state;
-  const cards = [...state.discardPile];
-  let seed = state.reserveShuffleState || reserveSeed(cards);
-  for (let i = cards.length - 1; i > 0; i--) {
-    seed ^= seed << 13;
-    seed ^= seed >>> 17;
-    seed ^= seed << 5;
-    seed >>>= 0;
-    const j = Math.floor((seed / 4294967296) * (i + 1));
-    [cards[i], cards[j]] = [cards[j], cards[i]];
-  }
+  const { cards, seed } = seededShuffle(
+    state.discardPile,
+    state.reserveShuffleState || reserveSeed(state.discardPile),
+  );
   const ids = new Set(cards.map((c) => c.id));
   return {
     ...state,

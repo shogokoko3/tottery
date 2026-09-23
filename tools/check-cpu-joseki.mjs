@@ -185,7 +185,8 @@ assert.ok(totalChecks >= 12, `伏せ札の不変性を十分な回数見た(${to
     { type: "START_SETUP", size: 9, setupMode: "simultaneous", deck, areas: true, loadouts: [{}, {}], ruleVersion: GAME_RULE_VERSION },
   );
   Math.random = realRandom;
-  assert.equal(josekiCpuAction(s, 1, "nowhere"), cpuInformedAction(s, 1), "未知のエリアは通常CPU");
+  // 版18以降は開始直後から CPU が自分のサイコロを振る(手は毎回新しい物なので中身で比べる)
+  assert.deepEqual(josekiCpuAction(s, 1, "nowhere"), cpuInformedAction(s, 1), "未知のエリアは通常CPU");
   assert.equal(josekiDeck("nowhere", "10"), null);
 }
 // CPUの装備: どのスキンを引いても、選んだ王の数字にはフォイルが付く(エリアが立つ)

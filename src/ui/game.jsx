@@ -19,7 +19,7 @@ import { useGameBgm, useGameSounds } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
 import { enrichAction } from "../game/actions.js";
 import { ACE_FOIL_SKIN_ID, canUseAceFoil } from "../game/ace-foil.js";
-import { ACE_FOIL_RULE_VERSION } from "../game/rule-version.js";
+import { ACE_FOIL_RULE_VERSION, hasSimultaneousPrep } from "../game/rule-version.js";
 import {
   isFrozen,
   isKnownTo,
@@ -57,6 +57,8 @@ import {
   reducer,
   CLOCK_INITIAL_MS,
   KING_LIMIT_MS,
+  DICE_LIMIT_MS,
+  MULLIGAN_LIMIT_MS,
   setupLimitMs,
   setupWaiting,
 } from "../game/reducer.js";
@@ -117,7 +119,7 @@ import { takePresentationBatch } from "../net/presentation.js";
 import { CardFace, Piece } from "./cards.jsx";
 import { useNames, useSeats } from "./names.jsx";
 import { PlayerIcon } from "./playericon.jsx";
-import { DIE_SETTLE_MS, DiceStage, DiceStep, Die } from "./dice.jsx";
+import { DIE_SETTLE_MS, DiceDuo, DiceStage, DiceStep, Die, MatchupBar } from "./dice.jsx";
 import {
   CaptureRevealModal,
   Interstitial,
@@ -138,6 +140,7 @@ import {
   WaitingScreen,
   WaitingWithBoard,
   territoryOwnerOf,
+  SetupTimer,
 } from "./setup.jsx";
 import { CaptureConfirm } from "./overlays.jsx";
 import { TutorialSheet, TutorialSkipMenu } from "./tutorial.jsx";
@@ -1307,6 +1310,57 @@ export function GameCore({
   const chanceAtStart = (0, useRef)(chanceEligible ? loadWinChance() : null).current;
   // 対戦相手の画面はオンライン(人・Bot)だけ。CPU 戦・同じ端末・チュートリアルには出さない
   const showIntro = !!(network || bot) && !tutorial && !introDone;
+  // 版18以降: サイコロと引き直しを両者同時に(2026-09-23 本人の指示)。画面はオンライン・CPU 戦で使う。
+  // 同じ端末で交互に指す対戦とチュートリアルは順番の画面のまま(盤の決まりは同じ版で動く)
+  const simPrep = hasSimultaneousPrep(a.ruleVersion) && !!(network || cpu) && !tutorial;
+  const prepSeat = network ? p : 0;
+  // サイコロ(20秒)と引き直し(1分)の時計。両者が同じ場面に入った時刻から数える(端末ごと)。
+  // サイコロは振り直し(両方の目が消える)のたびに数え直す
+  const prepClockRef = (0, useRef)(null);
+  const diceFresh = a.phase === "dice" && a.dice[0] === null && a.dice[1] === null;
+  (0, useEffect)(() => {
+    if (!simPrep) {
+      prepClockRef.current = null;
+      return;
+    }
+    if (a.phase === "dice" && diceFresh)
+      prepClockRef.current = { phase: "dice", at: Date.now() };
+    else if (a.phase === "mulligan" && prepClockRef.current?.phase !== "mulligan")
+      prepClockRef.current = { phase: "mulligan", at: Date.now() };
+    else if (a.phase !== "dice" && a.phase !== "mulligan") prepClockRef.current = null;
+    setNowMs(Date.now());
+  }, [simPrep, a.phase, diceFresh]);
+  const prepLimit = a.phase === "dice" ? DICE_LIMIT_MS : MULLIGAN_LIMIT_MS;
+  const prepRemaining =
+    simPrep &&
+    // noLimit はこの下で宣言される(let)ので、ここでは同じ条件を直接書く
+    !(tutorial || testPlay) &&
+    prepClockRef.current &&
+    prepClockRef.current.phase === a.phase
+      ? prepLimit - (nowMs - prepClockRef.current.at)
+      : null;
+  const prepExpired = prepRemaining !== null && prepRemaining <= 0;
+  // 時間切れ: サイコロは自動で振る。引き直しは選んでいる札でそのまま確定
+  (0, useEffect)(() => {
+    if (!simPrep || !prepExpired) return;
+    if (a.phase === "dice" && a.diceIdx < 2 && a.dice[prepSeat] === null)
+      y({ type: "ROLL_DICE_SINGLE", player: prepSeat });
+    if (a.phase === "mulligan" && !(a.mulliganDone && a.mulliganDone[prepSeat]))
+      y({ type: "CONFIRM_MULLIGAN", player: prepSeat });
+  }, [simPrep, prepExpired, a.phase]);
+  // 目がそろったあとの進行はホスト(CPU 戦は自分)が自動で。両者が結果を見てから進む
+  (0, useEffect)(() => {
+    if (!simPrep || a.phase !== "dice") return;
+    if (network && p !== 0) return;
+    if (a.diceIdx === 3) {
+      const t = setTimeout(() => y({ type: "REROLL_DICE" }), DIE_SETTLE_MS + 1600);
+      return () => clearTimeout(t);
+    }
+    if (a.diceIdx === 2) {
+      const t = setTimeout(() => y({ type: "GOTO_MULLIGAN" }), DIE_SETTLE_MS + 2200);
+      return () => clearTimeout(t);
+    }
+  }, [simPrep, a.phase, a.diceIdx]);
   // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない
   let noLimit = !!tutorial || testPlay;
   // 自分が取った駒をバトルパスへ。チュートリアルでは進めない
@@ -1786,7 +1840,12 @@ export function GameCore({
 
   // 1秒未満の刻みで残り時間を描き替える
   ((0, useEffect)(() => {
-    if (a.phase !== "play" && a.phase !== "setup") return;
+    if (
+      a.phase !== "play" &&
+      a.phase !== "setup" &&
+      !(simPrep && (a.phase === "dice" || a.phase === "mulligan"))
+    )
+      return;
     let id = setInterval(() => setNowMs(Date.now()), 200);
     return () => clearInterval(id);
   }, [a.phase]),
@@ -2686,6 +2745,31 @@ export function GameCore({
       </GameShell>
     );
   if (a.phase === "dice") {
+    // 版18以降(オンライン・CPU 戦): 両者が同時に振る。相手の目は届いた瞬間に転がって止まる
+    if (simPrep)
+      return (
+        <GameShell
+          topExtra={skipMenu}
+          sheet={presentationSheet}
+          focusButton={tutButton}
+          showRules={i}
+          setShowRules={f}
+          netInfo={N}
+          onBack={() => {
+            if (!fxBusy) r(!0);
+          }}
+        >
+          <DiceDuo
+            dice={a.dice}
+            me={prepSeat}
+            onRoll={() => y({ type: "ROLL_DICE_SINGLE", player: prepSeat })}
+            remainingMs={a.diceIdx < 2 ? prepRemaining : null}
+            limitMs={DICE_LIMIT_MS}
+            firstPlayer={a.firstPlayer}
+            tie={a.diceIdx === 3}
+          />
+        </GameShell>
+      );
     if (a.diceIdx === 3)
       return (
         <GameShell
@@ -2850,6 +2934,83 @@ export function GameCore({
     );
   }
   if (a.phase === "mulligan") {
+    // 版18以降(オンライン・CPU 戦): 両者が同時に選ぶ。1分で選んでいる札のまま確定。相手の名前と称号を上に出す
+    if (simPrep) {
+      const me = prepSeat,
+        U = a.players[me],
+        be = new Set(U._mulliganSelected || []),
+        done = !!(a.mulliganDone && a.mulliganDone[me]),
+        foeDone = !!(a.mulliganDone && a.mulliganDone[1 - me]),
+        limit = Math.floor(a.reserve.length / 2);
+      return (
+        <GameShell
+          topExtra={skipMenu}
+          sheet={presentationSheet}
+          focusButton={tutButton}
+          showRules={i}
+          setShowRules={f}
+          netInfo={N}
+          onBack={() => {
+            if (!fxBusy) r(!0);
+          }}
+        >
+          <div className="setup-wrap">
+            <MatchupBar viewer={me} />
+            <h2 style={{ color: PLAYER_META[me].color }}>交換するカードを選んでね</h2>
+            {a.firstPlayer !== null && a.firstPlayer !== undefined && (
+              <p className="mulligan-order">
+                <b>{me === a.firstPlayer ? "先手" : "後手"}</b>
+                <span>
+                  {playerLabel(a.firstPlayer, P, names)}が先手・
+                  {playerLabel(1 - a.firstPlayer, P, names)}が後手
+                </span>
+              </p>
+            )}
+            <SetupTimer
+              remainingMs={prepRemaining}
+              label={done ? "相手の残り時間" : "引き直しの残り時間"}
+              limitMs={MULLIGAN_LIMIT_MS}
+            />
+            <p className="hint">
+              {done
+                ? foeDone
+                  ? "そろいました。布陣へ進みます…"
+                  : "確定しました。相手が交換するカードを選んでいます…"
+                : `捨てたい札をタップ(もう一度タップで取り消し)。同じ枚数を予備札から引き直します(${limit}枚まで)。時間が来たら、選んでいる札のまま引き直します。`}
+            </p>
+            <MulliganHand
+              owner={me}
+              focus={tutFocus}
+              hand={U.hand}
+              selected={be}
+              onToggle={
+                done
+                  ? () => {}
+                  : (at) => y({ type: "TOGGLE_MULLIGAN_CARD", cardId: at, player: me })
+              }
+            />
+            <DiscardPanel
+              owner={1 - me}
+              cards={a.players[1 - me].discard}
+              label={`${shortPlayerLabel(1 - me, P, names)}(${PLAYER_META[1 - me].name})が捨てたカード`}
+              color={PLAYER_META[1 - me].color}
+            />
+            {!done ? (
+              <button
+                className="btn btn-primary"
+                onClick={() => y({ type: "CONFIRM_MULLIGAN", player: me })}
+              >
+                {be.size}枚 引き直して確定 <Check size={16} />
+              </button>
+            ) : (
+              <p className="hint">
+                {foeDone ? "" : "相手が確定するか、時間が来るまでお待ちください。"}
+              </p>
+            )}
+          </div>
+        </GameShell>
+      );
+    }
     if (cpu && a.mulliganIdx !== 0)
       return (
         <GameShell

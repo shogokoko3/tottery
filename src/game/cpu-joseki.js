@@ -9,6 +9,7 @@
  *
  * 定石そのものは reports/fortress-tactics/定石集.html にまとめてある。
  */
+import { capDiscards } from "./cpu.js";
 import {
   buildDeck,
   getLegalMoves as legal,
@@ -1312,7 +1313,11 @@ export function josekiCpuAction(state, player, area, wantKing = null) {
   if (state.phase === "mulligan" && state.mulliganIdx === player)
     return {
       type: "CONFIRM_MULLIGAN",
-      discardIds: side ? side.discards(state, player) : strategicDiscards(state, player),
+      // 版18以降は半分まで(reducer の線)
+      discardIds: capDiscards(
+        state,
+        side ? side.discards(state, player) : strategicDiscards(state, player),
+      ),
     };
   if (
     state.phase === "setup" &&

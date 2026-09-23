@@ -15,7 +15,7 @@ import {
 } from "./cpu-strategy.js";
 import { opponentKingBelief } from "./king-belief.js";
 // 公開情報と自分だけが見抜いた情報を使うCPU。伏せ札の数字・王かどうかは評価に使わない。
-import { cpuAction, bestShuffle } from "./cpu.js";
+import { cpuAction, bestShuffle, capDiscards } from "./cpu.js";
 import { getLegalMoves, kingRankOf, territoryRows } from "./board.js";
 import { canUseArea, isFrozen, isKnownTo, skyCandidates } from "./areas.js";
 import { automaticAreaAction } from "./area-presentation.js";
@@ -42,7 +42,8 @@ export function cpuInformedAction(state, player, options = {}) {
   if (state.phase === "mulligan" && state.mulliganIdx === player)
     return {
       type: "CONFIRM_MULLIGAN",
-      discardIds: strategicDiscards(state, player),
+      // 版18以降は半分まで(reducer の線)。超えると弾かれて引き直しから抜けられない
+      discardIds: capDiscards(state, strategicDiscards(state, player)),
     };
   if (
     state.phase === "setup" &&

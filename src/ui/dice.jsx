@@ -220,6 +220,113 @@ export function MatchupBar({ viewer }) {
   );
 }
 
+/**
+ * 版18以降: 両者が同時に振るサイコロ(2026-09-23 本人の指示)。
+ * 左に自分、右に相手。自分は釦で振る(20秒で自動)。相手の目は届いた瞬間に転がして止まる。
+ *   dice     … [席0の目, 席1の目](null は未)
+ *   me       … 自分の席
+ *   onRoll   … 自分の目を振る
+ *   remainingMs / limitMs … 残り時間の帯(両者同じ時計)
+ *   settledAll … 両方そろって先手が決まったか(結果の文言を出す)
+ */
+export function DiceDuo({
+  dice,
+  me,
+  onRoll,
+  remainingMs,
+  limitMs,
+  firstPlayer,
+  tie = false,
+}) {
+  const names = useNames();
+  const [pressed, setPressed] = useState(false);
+  // 押してから 900ms 転がして、それから出目を決める(1人用の DiceStep と同じ手触り)
+  useEffect(() => {
+    if (!pressed) return;
+    const t = setTimeout(() => {
+      setPressed(false);
+      onRoll();
+    }, 900);
+    return () => clearTimeout(t);
+  }, [pressed]);
+  const foe = 1 - me;
+  const mineRolling = pressed || dice[me] === null;
+  const mineSettled = useSettled(dice[me], mineRolling);
+  const foeSettled = useSettled(dice[foe], dice[foe] === null);
+  const both = dice[0] !== null && dice[1] !== null;
+  const side = (idx, rolling, settled) => {
+    const meta = PLAYER_META[idx];
+    const v = dice[idx];
+    return (
+      <div
+        className={`dice-duo-side ${idx === me ? "dice-duo-me" : ""} ${both && !tie && firstPlayer === idx ? "dice-winner" : ""}`}
+      >
+        <b style={{ color: meta.color }}>{playerLabel(idx, me, names)}</b>
+        <div className="die-stage die-stage-small">
+          <DieCube value={v === null ? 1 : v} rolling={rolling && !settled ? true : v === null ? false : !settled} color={meta.color} />
+        </div>
+        <small className="dice-duo-status" style={{ color: meta.color }}>
+          {v === null
+            ? idx === me
+              ? pressed
+                ? "転がしています…"
+                : "まだ振っていません"
+              : "相手が振るのを待っています…"
+            : settled
+              ? `${v} が出ました`
+              : "転がしています…"}
+        </small>
+      </div>
+    );
+  };
+  return (
+    <div className="center-stage dice-duo">
+      <MatchupBar viewer={me} />
+      <h2>サイコロで先手を決めます</h2>
+      {remainingMs != null && (
+        <div className={`setup-timer ${remainingMs <= 5000 ? "setup-timer-urgent" : ""}`}>
+          <div className="setup-timer-head">
+            <span>振る残り時間</span>
+            <strong>{Math.max(0, Math.ceil(remainingMs / 1000))}秒</strong>
+          </div>
+          <div className="setup-timer-track">
+            <div
+              className="setup-timer-fill"
+              style={{ width: `${Math.max(0, Math.min(1, remainingMs / (limitMs || 20000))) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+      <div className="dice-duo-sides">
+        {side(me, mineRolling, mineSettled)}
+        <span className="matchup-vs" aria-hidden="true">
+          vs
+        </span>
+        {side(foe, dice[foe] === null, foeSettled)}
+      </div>
+      {dice[me] === null ? (
+        <button
+          className="btn btn-primary"
+          disabled={pressed}
+          onClick={() => setPressed(true)}
+        >
+          {pressed ? "転がしています…" : "サイコロを振る"}
+        </button>
+      ) : both && mineSettled && foeSettled ? (
+        tie ? (
+          <p className="hint">同じ目でした。もう一度振ります…</p>
+        ) : (
+          <p style={{ color: PLAYER_META[firstPlayer].color, fontWeight: 700 }}>
+            {playerLabel(firstPlayer, me, names)}が先手です
+          </p>
+        )
+      ) : (
+        <p className="hint">相手のサイコロを待っています…</p>
+      )}
+    </div>
+  );
+}
+
 export function DiceStage({ playerIdx, value }) {
   let names = useNames(),
     l = PLAYER_META[playerIdx],

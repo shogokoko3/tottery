@@ -5,7 +5,7 @@ import {
   kingRankOf,
   shuffle,
 } from "./board.js";
-import { hasAdjudicationRules } from "./rule-version.js";
+import { hasAdjudicationRules, hasSimultaneousPrep } from "./rule-version.js";
 import { shouldUseSea } from "./cpu-sea.js";
 import {
   canUseArea,
@@ -55,9 +55,28 @@ export function pickKing(state, player = state.setupIdx) {
 }
 
 /** 引き直すカードを選ぶ。採用上限を超えた余りから最大4枚 */
-export function pickMulliganDiscards(state) {
-  const me = state.players[state.mulliganIdx];
+/**
+ * 引き直せる枚数の上限。版18以降は両者が同じ予備札から同時に引くので半分まで(reducer と同じ線)。
+ * CPU の各流派(通常・informed・定石)はこれで捨て札を切り詰める。超えると reducer に弾かれて止まる
+ */
+export function mulliganCap(state) {
+  return hasSimultaneousPrep(state.ruleVersion)
+    ? Math.floor((state.reserve || []).length / 2)
+    : Infinity;
+}
+export function capDiscards(state, ids) {
+  const cap = mulliganCap(state);
+  return Array.isArray(ids) && ids.length > cap ? ids.slice(0, cap) : ids;
+}
+
+export function pickMulliganDiscards(state, player = null) {
+  const who = player === 0 || player === 1 ? player : state.mulliganIdx;
+  const me = state.players[who];
   const slots = armySlots(state);
+  // 版18以降は両者が同じ予備札から同時に引くので、一人が引けるのは半分まで
+  const cap = hasSimultaneousPrep(state.ruleVersion)
+    ? Math.min(4, Math.floor(state.reserve.length / 2))
+    : 4;
   const counts = {};
   const keep = [];
   const spare = [];
@@ -76,7 +95,7 @@ export function pickMulliganDiscards(state) {
       spare.push(card);
     }
   }
-  return spare.slice(0, 4).map((c) => c.id);
+  return spare.slice(0, cap).map((c) => c.id);
 }
 
 /** 一番よさそうな移動。取れる手を強く優先し、あとは前進を少し評価する */
@@ -236,7 +255,13 @@ export function cpuAction(state, player) {
       : { type: "ACK_KING_CHOICE" };
   }
 
+  // 版18以降(サイコロ・引き直しを同時に)は、自分の分が済んでいなければすぐ動く。順番は無い
+  const sim = hasSimultaneousPrep(state.ruleVersion);
   if (state.phase === "dice") {
+    if (sim)
+      return state.diceIdx < 2 && state.dice[player] === null
+        ? { type: "ROLL_DICE_SINGLE", player }
+        : null;
     if (state.diceIdx !== player) return null;
     return state.dice[player] === null
       ? { type: "ROLL_DICE_SINGLE" }
@@ -244,6 +269,14 @@ export function cpuAction(state, player) {
   }
 
   if (state.phase === "mulligan") {
+    if (sim) {
+      if (state.mulliganDone && state.mulliganDone[player]) return null;
+      return {
+        type: "CONFIRM_MULLIGAN",
+        player,
+        discardIds: pickMulliganDiscards(state, player),
+      };
+    }
     if (state.mulliganIdx !== player) return null;
     return {
       type: "CONFIRM_MULLIGAN",

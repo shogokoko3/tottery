@@ -26,7 +26,21 @@
 //     自分のA・王を除き、手番・追加行動を使わず、包囲取りも起こさない。
 // 17: 詳細設定(src/game/custom-rules.js)。START_SETUP の custom(使う札・エリアの側・公開)と
 //     SETUP_CONFIRM の revealIds(自分で選んだ公開)が通信に載る(2026-09-17 本人の指示)。
-export const GAME_RULE_VERSION = 17;
+// 18: サイコロと引き直しを両者同時に(2026-09-23 本人の指示)。サイコロは各自が自分の目を振り(20秒で自動)、
+//     両方そろった時点で先手が決まる(NEXT_DICE_STEP は要らない)。引き直しは両者が同時に選び(1分で自動確定)、
+//     予備札は GOTO_MULLIGAN で決定的に並べ替え、先手は前から・後手は後ろから引く(適用順に依らない)。
+//     通信の手の形式は変わらない(ROLL_DICE_SINGLE / CONFIRM_MULLIGAN に player が付くだけ)。
+export const GAME_RULE_VERSION = 18;
+export const SIMULTANEOUS_PREP_RULE_VERSION = 18;
+
+/** サイコロと引き直しを同時に進める版か */
+export function hasSimultaneousPrep(version) {
+  return (
+    Number.isInteger(version) &&
+    version >= SIMULTANEOUS_PREP_RULE_VERSION &&
+    version <= GAME_RULE_VERSION
+  );
+}
 export const CUSTOM_RULES_VERSION = 17;
 export const ACE_FOIL_RULE_VERSION = 16;
 export const REVENGE_NO_RESERVE_RULE_VERSION = 15;
