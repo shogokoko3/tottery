@@ -124,6 +124,9 @@ export const SCREEN_TRACK = {
   cards: "title",
   letters: "title",
   shop: "title",
+  // フレンドとプロフィール(2026-09-23)。ホームの続きなので同じ曲
+  friends: "title",
+  profile: "title",
   // 詰めトッタリーは考える場面なので、布陣と同じ落ち着いた曲
   tsume: "setup",
   // 相手を待っているあいだは、数分続いても飽きない薄い曲にする

@@ -322,7 +322,7 @@ export function IconPickModal({ onClose, onSaved }) {
  * 額縁を入れたときに「薄くする」指定が打ち消され、どちらも同じ濃さで並んでいた。
  * いまは 色(未取得は灰色)・錠前・枠線・並ぶ場所 の4つで分けている。
  */
-function TitleChoice({ title: t, owned, picked, onPick }) {
+export function TitleChoice({ title: t, owned, picked, onPick }) {
   return (
     <button
       className={`title-choice ${picked ? "title-choice-on" : ""} ${

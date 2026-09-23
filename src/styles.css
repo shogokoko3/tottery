@@ -7827,3 +7827,400 @@ p.hint > span.gem-shop-diag {
 .gameover-panel h2 {
   margin: 6px 0 4px;
 }
+
+/* ===== フレンドとプロフィール(2026-09-23 本人の指示) ===== */
+.home-wrap .home-account-row.has-friends {
+  grid-template-columns: minmax(0, 1fr) 68px 68px;
+}
+@media (max-width: 390px) {
+  .home-wrap .home-account-row.has-friends {
+    grid-template-columns: minmax(0, 1fr) 60px 60px;
+    gap: 6px;
+  }
+}
+.home-friends svg {
+  color: var(--gold-soft);
+}
+.friends-screen,
+.profile-screen {
+  max-width: 480px;
+}
+.friends-me {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(9, 20, 38, 0.6);
+  text-align: left;
+}
+.friends-me > small {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+}
+.friends-code-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 10px;
+}
+.friends-code {
+  flex: 1;
+  font: 700 22px/1.2 "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 0.12em;
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+.friends-add-row {
+  display: flex;
+  gap: 8px;
+}
+.friends-add-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.friends-add-input::placeholder {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-dim);
+}
+.friends-notice {
+  color: var(--gold-soft);
+}
+.friends-error {
+  color: #e2896f;
+}
+.friends-box {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(240, 217, 165, 0.55);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.18), rgba(212, 175, 55, 0.06));
+  text-align: left;
+}
+.friends-box-invite {
+  border-color: rgba(143, 188, 232, 0.6);
+  background: linear-gradient(180deg, rgba(143, 188, 232, 0.16), rgba(143, 188, 232, 0.05));
+}
+.friends-box-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold-soft);
+  font-size: 14px;
+}
+.friends-box-invite .friends-box-head {
+  color: #cfe3f7;
+}
+.friends-box-head span {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.friends-box-from {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.friends-box .btn-wide {
+  width: 100%;
+}
+.friends-list {
+  margin: 0 0 14px;
+  text-align: left;
+}
+.friends-list-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+.friends-list-head b {
+  color: var(--gold-soft);
+}
+.friend-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 10px 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(9, 20, 38, 0.6);
+}
+.friend-row + .friend-row {
+  margin-top: 8px;
+}
+.friend-tag {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.friend-tag:disabled {
+  cursor: default;
+}
+.friend-tag-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.friend-tag-body .title-frame {
+  max-width: 100%;
+}
+.friend-tag-notitle {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.friend-tag-name {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.friend-tag-body small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.friend-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.friend-row-actions .btn-small {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.friend-more {
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+  line-height: 1;
+}
+.friend-remove-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.friend-remove-yes {
+  color: #e2896f;
+  border-color: rgba(226, 137, 111, 0.5);
+}
+/* ---- プロフィール ---- */
+.profile-card {
+  position: relative;
+  overflow: hidden;
+  margin: 0 0 12px;
+  padding: 16px 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(170deg, #132844, #0b1729);
+  text-align: left;
+}
+.profile-card.has-bg {
+  border-color: rgba(212, 175, 55, 0.4);
+  background: linear-gradient(rgba(6, 11, 19, 0.55), rgba(4, 9, 16, 0.82)), var(--profile-bg) center / cover no-repeat;
+}
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.profile-id {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+.profile-name {
+  font-family: "Shippori Mincho", serif;
+  font-size: 20px;
+  color: var(--gold-soft);
+}
+.profile-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.profile-pinned {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 4px;
+}
+.profile-pinned small {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+}
+.profile-showcase {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.profile-showcase-item {
+  padding: 8px 6px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 10px;
+  background: rgba(212, 175, 55, 0.1);
+  text-align: center;
+}
+.profile-showcase-item b {
+  display: block;
+  font-size: 18px;
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-showcase-item span {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.3;
+}
+.profile-stats {
+  margin-top: 12px;
+}
+.profile-seen {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: right;
+}
+.profile-actions {
+  margin: 0 0 12px;
+}
+.profile-actions .btn {
+  width: 100%;
+}
+/* 編集 */
+.profile-edit-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 12px;
+}
+.profile-edit-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -6px;
+  padding: 0 6px 8px;
+}
+.profile-edit-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 14px 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  text-align: left;
+}
+.profile-edit-head small {
+  color: var(--text-dim);
+  letter-spacing: 0;
+}
+.profile-bg-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.profile-bg-choice {
+  position: relative;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: linear-gradient(rgba(6, 11, 19, 0.5), rgba(4, 9, 16, 0.8)), var(--profile-bg, linear-gradient(170deg, #132844, #0b1729)) center / cover;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.profile-bg-choice b {
+  display: block;
+  font-size: 13px;
+}
+.profile-bg-choice small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.3;
+}
+.profile-bg-choice.is-on {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold) inset, 0 0 12px rgba(212, 175, 55, 0.3);
+}
+.profile-bg-choice.is-locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.profile-showcase-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.profile-showcase-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(9, 20, 38, 0.6);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.profile-showcase-choice.is-on {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.16);
+  color: var(--gold-soft);
+}
+.profile-showcase-choice:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.profile-pinned-pick {
+  margin-top: 2px;
+}
+.profile-edit-panel > .setup-actions {
+  margin-top: 10px;
+}

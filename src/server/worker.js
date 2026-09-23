@@ -12,6 +12,7 @@ import { verifyAppleTransaction } from "./applejws.js";
 import { minAppBuild, updateUrl } from "./app-version.js";
 import { seasonAt, seasonRewards } from "../game/season.js";
 import { BOT_UNTIL_RATING } from "../game/bot-match.js";
+import { Friends } from "./friends.js";
 
 const json = (data, status = 200) =>
   Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -41,7 +42,7 @@ export default {
     // iOS アプリからの事前確認(preflight)。シーズンの口だけ
     if (
       request.method === "OPTIONS" &&
-      /^\/api\/(season|wallet|iap)\//.test(url.pathname)
+      /^\/api\/(season|wallet|iap|friends)\//.test(url.pathname)
     )
       return withCors(new Response(null, { status: 204 }), request);
     return withCors(await handleApi(request, env, url), request);
@@ -75,7 +76,7 @@ async function handleApi(request, env, url) {
       !adminDiag &&
       !adminPass &&
       !adminForget &&
-      !/^\/api\/(season|wallet|iap)\//.test(url.pathname)
+      !/^\/api\/(season|wallet|iap|friends)\//.test(url.pathname)
     )
       return json({ error: "見つかりません。" }, 404);
     if (request.method !== "POST")
@@ -233,6 +234,28 @@ async function handleApi(request, env, url) {
         return call("wallet-diag", { diag: body.diag });
       if (url.pathname.startsWith("/api/iap/"))
         return json({ error: "見つかりません。" }, 404);
+      // ---- フレンドとプロフィール(2026-09-23 本人の指示) ----
+      // 相手は uid(申請だけはフレンド ID)。形だけここで見て、決まりは Durable Object(src/server/friends.js)が守る
+      if (url.pathname.startsWith("/api/friends/")) {
+        const fop = url.pathname.slice("/api/friends/".length);
+        const who = (x) => (typeof x === "string" && /^[\w-]{1,128}$/.test(x) ? x : null);
+        if (fop === "state") return call("friends-state");
+        if (fop === "request" && typeof body.code === "string" && body.code.length <= 16)
+          return call("friends-request", { code: body.code });
+        if (fop === "accept" && who(body.uid)) return call("friends-accept", { uid: body.uid });
+        if (fop === "decline" && who(body.uid)) return call("friends-decline", { uid: body.uid });
+        if (fop === "cancel" && who(body.uid)) return call("friends-cancel", { uid: body.uid });
+        if (fop === "remove" && who(body.uid)) return call("friends-remove", { uid: body.uid });
+        if (fop === "gift" && who(body.uid)) return call("friends-gift", { uid: body.uid });
+        if (fop === "claim") return call("friends-claim");
+        if (fop === "invite" && who(body.uid) && typeof body.code === "string" && body.code.length <= 16)
+          return call("friends-invite", { uid: body.uid, code: body.code });
+        if (fop === "cancel-invite" && who(body.uid)) return call("friends-cancel-invite", { uid: body.uid });
+        if (fop === "profile-set" && body.card && typeof body.card === "object")
+          return call("friends-profile-set", { card: body.card });
+        if (fop === "profile-get" && who(body.uid)) return call("friends-profile-get", { uid: body.uid });
+        return json({ error: "見つかりません。" }, 404);
+      }
       const op = url.pathname.slice("/api/season/".length);
       // Bot(ランダムマッチの練習相手)との対局(2026-09-23 本人の指示)。部屋が無いので手順は確かめられない。
       // 相手の点は台帳が本人の点と同じとみなし(端末の言い値は読まない)、本人が 1750 以上なら数えない
@@ -310,6 +333,7 @@ export class SeasonLedger {
       ctx.storage.sql.exec(query, ...params).toArray();
     this.ledger = new Ledger(sql);
     this.wallet = new Wallet(sql);
+    this.friends = new Friends(sql);
   }
   async fetch(request) {
     const { op, uid, ...args } = await request.json(),
@@ -340,7 +364,55 @@ export class SeasonLedger {
         }
         if (op === "forget") {
           this.wallet.forget(uid);
+          this.friends.forget(uid);
           return l.forget(uid);
+        }
+        // ---- フレンドとプロフィール(src/server/friends.js) ----
+        const fr = this.friends;
+        // 持ち点は台帳から足す(端末の言い値は読まない)。今月の行が無ければ前月からの持ち越し
+        const ratingOf = (id) => l.playerRow(id, l.current(now).id).rating;
+        const withRating = (tag) => ({ ...tag, rating: ratingOf(tag.uid) });
+        if (op === "friends-state") {
+          const st = fr.state(uid, now);
+          return {
+            ...st,
+            friends: st.friends.map(withRating),
+            requestsIn: st.requestsIn.map(withRating),
+            requestsOut: st.requestsOut.map(withRating),
+          };
+        }
+        if (op === "friends-request") return fr.request(uid, args.code, now);
+        if (op === "friends-accept") return fr.accept(uid, args.uid, now);
+        if (op === "friends-decline") return fr.decline(uid, args.uid);
+        if (op === "friends-cancel") return fr.cancel(uid, args.uid);
+        if (op === "friends-remove") return fr.remove(uid, args.uid);
+        if (op === "friends-gift") return fr.gift(uid, args.uid, now);
+        if (op === "friends-claim") {
+          // 受け取った贈り物は id ごとに1枚(同じ id は財布が二度足さない)
+          const list = fr.claimGifts(uid, now);
+          for (const g of list) w.credit(uid, g.id, 1, "friend-gift", now);
+          return { claimed: list.map((g) => ({ ...g, from: fr.tag(g.fromUid) })), wallet: w.summary(uid, now) };
+        }
+        if (op === "friends-invite") return fr.invite(uid, args.uid, args.code, now);
+        if (op === "friends-cancel-invite") return fr.cancelInvite(uid, args.uid);
+        if (op === "friends-profile-set") return fr.setProfile(uid, args.card, now);
+        if (op === "friends-profile-get") {
+          // 他人のプロフィールはフレンドだけ。自分のはいつでも
+          if (args.uid !== uid && !fr.isFriend(uid, args.uid)) throw new Error("フレンドのプロフィールだけ見られます。");
+          const card = fr.profileOf(args.uid);
+          const season = l.current(now).id;
+          const row = l.playerRow(args.uid, season);
+          const player = l.list(season).find((p) => p.uid === args.uid) || null;
+          return {
+            uid: args.uid,
+            card,
+            rating: row.rating,
+            place: player?.place || null,
+            best: player?.best || null,
+            rated: player?.rated || 0,
+            appearance: l.appearance(args.uid),
+            friend: args.uid === uid || fr.isFriend(uid, args.uid),
+          };
         }
         const w = this.wallet;
         if (op === "wallet-summary") return w.summary(uid, now);

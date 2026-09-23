@@ -10,6 +10,9 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { Friends } from "../src/server/friends.js";
+import { Wallet } from "../src/server/wallet.js";
 
 const root = process.cwd();
 const firstPort = Number(process.env.PORT || 4199);
@@ -76,9 +79,78 @@ function fakeSeason(req, res, path) {
   });
 }
 
+/**
+ * フレンドの見本(2026-09-23)。本物の src/server/friends.js をメモリの SQLite で動かす。
+ * 本人確認は無く、誰が呼んでも uid は "me"。開くたびに消える。
+ * 最初から: フレンド「見本のたろう」(贈り物と招待つき)、申請「見本のはなこ」
+ */
+const fdb = new DatabaseSync(":memory:");
+const fsql = (q, ...a) => fdb.prepare(q).all(...a);
+const friends = new Friends(fsql);
+const fwallet = new Wallet(fsql);
+{
+  const t = Date.now();
+  friends.setProfile("taro", { name: "見本のたろう", icon: "spade", title: "rank-shi", pinnedTitle: "fortress", bg: "sea", level: 22, showcase: ["rating", "wins", "streak"], stats: { battles: 120, wins: 70, draws: 3, rated: 40, titles: 9, streak: 12, days: 60, mastery: 300, tsume: 15 } }, t - 3600e3);
+  friends.setProfile("hana", { name: "見本のはなこ", icon: "heart", title: "novice", level: 5, showcase: [], stats: { battles: 8, wins: 3 } }, t - 86400e3);
+  friends.link("me", "taro", t - 86400e3 * 3);
+  friends.request("hana", friends.codeOf("me", t), t - 600e3);
+  friends.gift("taro", "me", t - 1800e3);
+  friends.invite("taro", "me", "ABCDEF", t - 30e3);
+}
+function fakeFriends(req, res, path) {
+  const send = (status, data) => {
+    res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(data));
+  };
+  if (req.method !== "POST") return send(405, { error: "POSTを使用してください。" });
+  let raw = "";
+  req.on("data", (c) => (raw += c));
+  req.on("end", () => {
+    let body = {};
+    try {
+      body = JSON.parse(raw || "{}");
+    } catch {}
+    const op = path.slice("/api/friends/".length);
+    const uid = "me",
+      now = Date.now();
+    const rating = (u) => (u === "taro" ? 1612 : u === "hana" ? 1500 : 1637);
+    const withRating = (tag) => ({ ...tag, rating: rating(tag.uid) });
+    try {
+      if (op === "state") {
+        const st = friends.state(uid, now);
+        return send(200, { ...st, friends: st.friends.map(withRating), requestsIn: st.requestsIn.map(withRating), requestsOut: st.requestsOut.map(withRating) });
+      }
+      if (op === "request") return send(200, friends.request(uid, body.code, now));
+      if (op === "accept") return send(200, friends.accept(uid, body.uid, now));
+      if (op === "decline") return send(200, friends.decline(uid, body.uid));
+      if (op === "cancel") return send(200, friends.cancel(uid, body.uid));
+      if (op === "remove") return send(200, friends.remove(uid, body.uid));
+      if (op === "gift") return send(200, friends.gift(uid, body.uid, now));
+      if (op === "claim") {
+        const list = friends.claimGifts(uid, now);
+        for (const g of list) fwallet.credit(uid, g.id, 1, "friend-gift", now);
+        return send(200, { claimed: list.map((g) => ({ ...g, from: friends.tag(g.fromUid) })), wallet: fwallet.summary(uid, now) });
+      }
+      if (op === "invite") return send(200, friends.invite(uid, body.uid, body.code, now));
+      if (op === "cancel-invite") return send(200, friends.cancelInvite(uid, body.uid));
+      if (op === "profile-set") return send(200, friends.setProfile(uid, body.card, now));
+      if (op === "profile-get") {
+        // 端末の本当の uid は Firebase のもの。見本の2人以外は「自分」とみなす
+        const target = ["taro", "hana"].includes(body.uid) ? body.uid : uid;
+        if (target !== uid && !friends.isFriend(uid, target)) return send(400, { error: "フレンドのプロフィールだけ見られます。" });
+        return send(200, { uid: target, card: friends.profileOf(target), rating: rating(target), place: target === "taro" ? 12 : null, best: target === "taro" ? 4 : null, rated: 0, appearance: { back: null, frame: null }, friend: true });
+      }
+      return send(404, { error: "見つかりません。" });
+    } catch (e) {
+      return send(400, { error: e.message });
+    }
+  });
+}
+
 const server = createServer(async (req, res) => {
   const path = decodeURIComponent(req.url.split("?")[0]);
   if (path.startsWith("/api/season/")) return fakeSeason(req, res, path);
+  if (path.startsWith("/api/friends/")) return fakeFriends(req, res, path);
   // 本番は /privacy で privacy.html が出る(Cloudflare の静的配信の既定)。手元でも同じに
   if (path === "/privacy") req.url = "/privacy.html";
   const rel = normalize(

@@ -12,6 +12,7 @@
  */
 
 import { hasIcon } from "./icons.js";
+import { normalizeCard } from "./profile-card.js";
 import { findTitle, hasTitle, newlyEarned } from "./titles.js";
 import { SECRETS } from "./secrets.js";
 import { MAX_LEVEL, XP, levelOfXp, progressOfXp } from "./level.js";
@@ -137,6 +138,8 @@ const EMPTY = {
   ratedWins: 0,
   ratedDraws: 0,
   rated: 0,
+  // プロフィールの飾り(背景・記録のアピール・固定の称号。src/game/profile-card.js)
+  card: null,
 };
 
 /**
@@ -338,6 +341,7 @@ export function loadProfile() {
     ratedWins: Number(saved.ratedWins) || 0,
     ratedDraws: Number(saved.ratedDraws) || 0,
     rated: Number(saved.rated) || 0,
+    card: saved.card ? normalizeCard(saved.card) : null,
   };
 }
 
@@ -478,6 +482,20 @@ export function saveIcon(id) {
   const profile = loadProfile();
   if (!hasIcon(profile, id)) return profile;
   const next = { ...profile, icon: id };
+  saveProfile(next);
+  return next;
+}
+
+/**
+ * プロフィールの飾りを選ぶ(2026-09-23)。固定の称号は持っているものだけ。
+ * 背景の解放は所持品(collection)で決まるので、呼ぶ側(画面)が unlockedBackgrounds で絞ってから渡す。
+ * 写しを作るときにも落とす(buildProfileCard)
+ */
+export function saveProfileCard(raw) {
+  const profile = loadProfile();
+  const card = normalizeCard(raw);
+  if (card.pinnedTitle && !hasTitle(profile, card.pinnedTitle)) card.pinnedTitle = null;
+  const next = { ...profile, card };
   saveProfile(next);
   return next;
 }

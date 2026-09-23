@@ -148,6 +148,9 @@ import AREA_STYLES from "./area-effects.css";
 import SEASON_STYLES from "./season.css";
 import TSUME_STYLES from "./tsume.css";
 import { SkinsScreen } from "./skins.jsx";
+import { FriendsScreen, useFriendAlerts } from "./friends.jsx";
+import { ProfileScreen } from "./profile.jsx";
+import { inviteFriend } from "../net/friends.js";
 import { useMissionProfile } from "./mission-profile.js";
 import { QuestsScreen } from "./quests.jsx";
 import { CardMasteryScreen } from "./card-mastery.jsx";
@@ -327,15 +330,15 @@ export function HomeScreen({ onStart }) {
  * 「いまの自分」(名前・称号・レベル)をひと目で出す。残高はその下のバーへ。
  * 押すと設定が開く。名前やアイコンを変えるのはそこ。
  */
-function HomeSelf({ profile }) {
+function HomeSelf({ profile, onProfile = null }) {
   const { season } = useCollection();
   const openSettings = useOpenSettings();
   const progress = levelProgress(profile);
   return (
     <button
       className="home-self"
-      onClick={openSettings || void 0}
-      aria-label="自分の設定を開く"
+      onClick={onProfile || openSettings || void 0}
+      aria-label={onProfile ? "自分のプロフィールを開く" : "自分の設定を開く"}
     >
       <PlayerIcon
         icon={profile.icon}
@@ -398,11 +401,15 @@ export function MenuScreen({
   onCards,
   onShop,
   onLetters,
+  onFriends = null,
+  onProfile = null,
   now = Date.now,
 }) {
   const [profile] = useMissionProfile();
   // 受け取れるミッションの数と、未読のお知らせ。入り口に印を出す
   const unread = useUnreadLetters();
+  // フレンドの申請・贈り物・招待(2026-09-23)。入り口に印を出す
+  const friendAlerts = useFriendAlerts();
   const passUnlocked = useBattlePassUnlocked();
   const collection = useCollection();
   const themeId = homeThemeOf(collection);
@@ -434,13 +441,20 @@ export function MenuScreen({
       {/* その日のぶんがまだなら、ここに着いたときに札が出る */}
       <LoginBonus />
 
-      <div className="home-account-row">
-      <HomeSelf profile={profile} />
+      <div className={`home-account-row${onFriends ? " has-friends" : ""}`}>
+      <HomeSelf profile={profile} onProfile={onProfile} />
       <button className="home-news" onClick={onLetters} aria-label={`運営からのお知らせ${unread > 0 ? ` 未読${unread}件` : ""}`}>
         <Mail size={15} />
         <span>お知らせ</span>
         {unread > 0 && <span className="home-news-count">{unread > 99 ? "99+" : unread}</span>}
       </button>
+      {onFriends && (
+        <button className="home-news home-friends" onClick={onFriends} aria-label={`フレンド${friendAlerts > 0 ? ` 届いているもの${friendAlerts}件` : ""}`}>
+          <Users size={15} />
+          <span>フレンド</span>
+          {friendAlerts > 0 && <span className="home-news-count">{friendAlerts > 99 ? "99+" : friendAlerts}</span>}
+        </button>
+      )}
       </div>
       {/* 残高。左にチケット、右にジェム(2026-09-22 本人の指示で入れ替え)。
           押せるのはジェムから「+」までで、押すとジェムの店が開く。「ジェムを買う」の文言は出さない。
@@ -1441,6 +1455,9 @@ export function RoomScreen({
   // リンク(?room=ABCDEF)から開いたときの合言葉。通信が通ったら自動で参加する(使ったら onCodeUsed で捨てる)
   initialCode = "",
   onCodeUsed = null,
+  // フレンドを招待して作る部屋(2026-09-23)。できた合言葉を onRoomCreated で相手に届ける
+  inviteName = "",
+  onRoomCreated = null,
 }) {
   const loadout = useRef(mySkins()).current;
   // 「コピーしました」などの短い知らせ
@@ -1542,6 +1559,7 @@ export function RoomScreen({
       return;
     }
     (o(P), i("waitingHost"));
+    if (onRoomCreated) onRoomCreated(P);
   }
   async function T(given = null) {
     let P = cleanRoomCode(given || r);
@@ -1651,9 +1669,16 @@ export function RoomScreen({
       <Users size={28} className="dim-icon" />
       <h2>ルームを作成しました</h2>
       <div className="room-code" aria-label={`合言葉 ${f}`}>{formatRoomCode(f)}</div>
-      <p className="hint">
-        この合言葉を相手に伝えるか、リンクを送ってください。相手が参加すると自動的に始まります。
-      </p>
+      {inviteName ? (
+        <p className="hint">
+          <b>{inviteName}</b> に招待を届けました。相手がフレンドの画面で「参加する」を押すと自動的に始まります。
+          合言葉やリンクを直接送っても入れます。
+        </p>
+      ) : (
+        <p className="hint">
+          この合言葉を相手に伝えるか、リンクを送ってください。相手が参加すると自動的に始まります。
+        </p>
+      )}
       <div className="share-row">
         <button className="btn btn-primary" onClick={shareLink}>
           <Mail size={16} /> リンクを共有
@@ -1885,7 +1910,19 @@ function TotteryScreens() {
     // 詳細設定(src/game/custom-rules.js)。端末に覚える。null ならクラシック
     [customRules, setCustomRules] = (0, useState)(() => loadCustomRules()),
     // リンク(?room=ABCDEF)から開いたときの合言葉。名前を決めたらフレンド対戦の画面へ
-    [pendingRoom, setPendingRoom] = (0, useState)(() => roomFromLocation());
+    [pendingRoom, setPendingRoom] = (0, useState)(() => roomFromLocation()),
+    // フレンド(2026-09-23)。開いているプロフィールの uid(null なら自分)と戻り先、招待の相手
+    [profileUid, setProfileUid] = (0, useState)(null),
+    [profileFrom, setProfileFrom] = (0, useState)("menu"),
+    [inviteTo, setInviteTo] = (0, useState)(null);
+  // フレンドを対戦に招待する: ルールを決めて部屋を作り、できた合言葉を相手に届ける(RoomScreen の onRoomCreated)
+  function inviteToRoom(friend) {
+    (setInviteTo(friend), setPendingRoom(""), u(null), m(!1), r("room"), setRulesFrom("room"), t("rules"));
+  }
+  // 届いた招待に乗る: リンクから開いたときと同じ道(合言葉で自動参加)
+  function joinInvite(code) {
+    (setInviteTo(null), setPendingRoom(code), u(null), m(!1), t("room"));
+  }
   useEffect(() => {
     if (named && pendingRoom) t("room");
   }, [named, pendingRoom]);
@@ -1977,6 +2014,8 @@ function TotteryScreens() {
       battlepass: "menu",
       cards: "menu",
       letters: "menu",
+      friends: "menu",
+      profile: profileFrom,
       // ランキングは「対戦する」の中にあるので、そこへ戻す
       ranking: "matching",
       online: "matching",
@@ -2217,6 +2256,10 @@ function TotteryScreens() {
               onCards={() => t("cards")}
               onLetters={() => t("letters")}
               onShop={() => t("shop")}
+              onFriends={() => t("friends")}
+              onProfile={() => {
+                (setProfileUid(null), setProfileFrom("menu"), t("profile"));
+              }}
             />
           ),
           matching: (
@@ -2232,7 +2275,7 @@ function TotteryScreens() {
                   t("rules"));
               }}
               onFriend={() => {
-                (u(null), m(!1), t("room"));
+                (setInviteTo(null), u(null), m(!1), t("room"));
               }}
               onCpu={() => {
                 setCpuSkins(createCpuLoadout());
@@ -2267,6 +2310,27 @@ function TotteryScreens() {
             />
           ),
           cards: <CardMasteryScreen onBack={() => t("menu")} />,
+          friends: (
+            <FriendsScreen
+              onBack={() => t("menu")}
+              onProfile={(uid) => {
+                (setProfileUid(uid), setProfileFrom("friends"), t("profile"));
+              }}
+              onInvite={inviteToRoom}
+              onJoinInvite={joinInvite}
+            />
+          ),
+          profile: (
+            <ProfileScreen
+              uid={profileUid}
+              onBack={() => t(profileFrom)}
+              backLabel={profileFrom === "friends" ? "フレンドに戻る" : "ホームに戻る"}
+              onFriends={() => t("friends")}
+              onSettings={() => n(!0)}
+              onInvite={inviteToRoom}
+              onRemoved={() => t("friends")}
+            />
+          ),
           letters: <LettersScreen onBack={() => t("menu")} />,
           tutorial: (
             <TutorialSelect onBack={() => t("menu")} onStart={startTutorial} />
@@ -2292,6 +2356,12 @@ function TotteryScreens() {
               autoCreate={p}
               initialCode={pendingRoom}
               onCodeUsed={() => setPendingRoom("")}
+              inviteName={inviteTo ? inviteTo.name : ""}
+              onRoomCreated={(code) => {
+                // 招待した相手に合言葉を届ける。届かなくても部屋は残る(合言葉を伝えれば入れる)。
+                // 相手の名前は待つ画面に出し続けるので、ここでは消さない(部屋を出るときに消す)
+                if (inviteTo) inviteFriend(inviteTo.uid, code).catch(() => {});
+              }}
               onNearby={() => {
                 (setPendingRoom(""), r("nearby"), setRulesFrom("room"), t("rules"));
               }}
@@ -2308,7 +2378,7 @@ function TotteryScreens() {
               }}
               onRoomReady={v}
               onBackToMatching={() => {
-                (setPendingRoom(""), w(!1), t("matching"));
+                (setPendingRoom(""), setInviteTo(null), w(!1), t("matching"));
               }}
             />
           ),
