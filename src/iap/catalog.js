@@ -103,8 +103,9 @@ export const BATTLEPASS_WEEK_TICKET_MAX =
 /** 初課金特典: 初めての有料購入だけ、購入ジェムを2倍(おまけは無償)＋このスキン */
 export const FIRST_PURCHASE_SKIN = "pegasus-knight";
 /** 無償ジェムの獲得(端末の申告)の上限。1回と1日(UTC) */
-export const FREE_GEM_EVENT_MAX = 100;
-export const FREE_GEM_DAILY_MAX = 500; // ミッション等の正規の受け取りが1日で詰まらない量
+// 実績ミッションのジェムは一律 500(2026-09-24)。1日に複数の区切り(レベル5と10戦など)＋デイリー分が重なっても詰まらない量
+export const FREE_GEM_EVENT_MAX = 500;
+export const FREE_GEM_DAILY_MAX = 2500; // ミッション等の正規の受け取りが1日で詰まらない量
 /** 広告リワード: 広告を1本見るとガチャ1回ぶん(チケット1枚)。1日3回まで */
 export const ADS_PER_DAY = 3;
 export const AD_REWARD_TICKETS = 1;
