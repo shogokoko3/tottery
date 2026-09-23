@@ -76,6 +76,21 @@ f.request("A", codeD, T0);
 f.cancel("A", "D");
 assert.equal(f.state("D", T0).requestsIn.length, 0, "取り消せる");
 
+// 入口ごとの受付(2026-09-24 本人の指示)。切った入口からは「いっぱい」の文で断る(断っていることを伝えない)
+{
+  f.setProfile("B", { name: "びー", accept: { code: true, match: false, rank: true } }, T0);
+  assert.throws(() => f.requestUid("D", "B", T0, "match"), /相手のフレンドがいっぱいです/, "対戦相手からは受けない設定");
+  assert.equal(f.state("B", T0).requestsIn.length, 0, "申請は残らない");
+  assert.equal(f.requestUid("D", "B", T0, "rank").friend, false, "ランキングからは受ける");
+  f.decline("B", "D");
+  assert.throws(() => f.requestUid("D", "B", T0, "nope"), /入口/);
+  assert.throws(() => f.requestUid("D", "D", T0, "rank"), /自分/);
+  assert.equal(f.acceptsFrom("nobody", "match"), true, "写しを送っていない人は全部受ける");
+  f.setProfile("B", { name: "びー" }, T0);
+  assert.deepEqual(f.profileOf("B").accept, { code: true, match: true, rank: true }, "無ければ全部受ける");
+  assert.equal(f.state("B", T0).requestsIn.length, 0);
+}
+
 // 外す
 f.remove("A", "C");
 assert.ok(!f.isFriend("A", "C") && !f.isFriend("C", "A"));
@@ -166,7 +181,8 @@ assert.notEqual(f.codeOf("A", T0), codeA, "ID も作り直し");
 // 配線(Worker と端末)
 const worker = readFileSync(new URL("../src/server/worker.js", import.meta.url), "utf8").replace(/\s+/g, " ");
 assert.ok(/\/\^\\\/api\\\/\(season\|wallet\|iap\|friends\)\\\//.test(worker), "CORS と本文の判定に friends が入っている");
-for (const op of ["friends-state", "friends-request", "friends-accept", "friends-decline", "friends-cancel", "friends-remove", "friends-gift", "friends-claim", "friends-invite", "friends-cancel-invite", "friends-profile-set", "friends-profile-get"])
+assert.ok(/call\("friends-request-uid", \{ target: body\.uid, source: body\.source \}\)/.test(worker), "uid で申請する口(対戦相手・ランキング)");
+for (const op of ["friends-state", "friends-request", "friends-request-uid", "friends-accept", "friends-decline", "friends-cancel", "friends-remove", "friends-gift", "friends-claim", "friends-invite", "friends-cancel-invite", "friends-profile-set", "friends-profile-get"])
   assert.ok(worker.includes(`"${op}"`), `Durable Object に ${op}`);
 assert.ok(/this\.friends\.forget\(uid\)/.test(worker), "記録を消すときフレンドも消す");
 assert.ok(/w\.credit\(uid, g\.id, 1, "friend-gift", now\)/.test(worker), "受け取った贈り物は id ごとに1枚");

@@ -244,6 +244,9 @@ async function handleApi(request, env, url) {
         if (fop === "state") return call("friends-state");
         if (fop === "request" && typeof body.code === "string" && body.code.length <= 16)
           return call("friends-request", { code: body.code });
+        // 対戦した相手・ランキングの人へ、uid で申請する(2026-09-24)。相手の受付の設定は DO が見る
+        if (fop === "request" && who(body.uid) && (body.source === "match" || body.source === "rank"))
+          return call("friends-request-uid", { target: body.uid, source: body.source });
         // 相手は target で渡す。call() は { op, uid, ...args } なので、uid の名で渡すと本人の uid を上書きしてしまう
         // (承認しても申請が残る不具合の原因。2026-09-24 本人の報告)
         if (fop === "accept" && who(body.uid)) return call("friends-accept", { target: body.uid });
@@ -385,7 +388,8 @@ export class SeasonLedger {
             requestsOut: st.requestsOut.map(withRating),
           };
         }
-        if (op === "friends-request") return fr.request(uid, args.code, now);
+        if (op === "friends-request") return fr.request(uid, args.code, now, "code");
+        if (op === "friends-request-uid") return fr.requestUid(uid, args.target, now, args.source);
         if (op === "friends-accept") return fr.accept(uid, args.target, now);
         if (op === "friends-decline") return fr.decline(uid, args.target);
         if (op === "friends-cancel") return fr.cancel(uid, args.target);

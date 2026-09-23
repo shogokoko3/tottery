@@ -444,7 +444,6 @@ export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
       {shop && (
         <GemShop
           gems={collection.gems || 0}
-          gems={collection.gems || 0}
           gemsFree={collection.gemsFree || 0}
           onClose={() => setShop(false)}
           onMessage={setMessage}

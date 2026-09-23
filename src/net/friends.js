@@ -39,6 +39,8 @@ async function friendsRequest(op, body = {}) {
 export const readFriends = () => friendsRequest("state");
 /** フレンド ID で申請する。互いに申請していればその場でフレンドになる({friend:true}) */
 export const requestFriend = (code) => friendsRequest("request", { code: String(code || "").trim() });
+/** 対戦した相手(source "match")・ランキングの人(source "rank")へ uid で申請する。相手が受け付けていなければ「いっぱい」の文で断られる */
+export const requestFriendByUid = (uid, source) => friendsRequest("request", { uid, source });
 export const acceptFriend = (uid) => friendsRequest("accept", { uid });
 export const declineFriend = (uid) => friendsRequest("decline", { uid });
 export const cancelFriendRequest = (uid) => friendsRequest("cancel", { uid });

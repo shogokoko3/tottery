@@ -250,9 +250,8 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
                 <p>レート あと{Math.max(0, next.rating - p.rating)}点</p>
               </>
             )}
-            {p.rated < 10 && (
-              <small>あと{10 - p.rated}戦でランキングに掲載されます。</small>
-            )}
+            {/* 1戦から載る(2026-09-23 本人の指示。以前は10戦) */}
+            {p.rated < 1 && <small>1戦するとランキングに掲載されます。</small>}
           </div>
           <h4>到達報酬</h4>
           {rewards(data.season.id, p, false)}
@@ -297,9 +296,25 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
                         className="rank-title"
                       />
                     )}
-                    <span className="rank-name-text">
-                      {identities[row.uid]?.name || row.name}
-                    </span>
+                    {/* 名前を押しても同じ幕(フレンド申請・通報・見えなくする)。2026-09-24 本人の指示 */}
+                    {row.uid !== data.uid ? (
+                      <button
+                        type="button"
+                        className="rank-name-text rank-name-btn"
+                        onClick={() =>
+                          setActing({
+                            id: row.uid,
+                            name: identities[row.uid]?.name || row.name,
+                          })
+                        }
+                      >
+                        {identities[row.uid]?.name || row.name}
+                      </button>
+                    ) : (
+                      <span className="rank-name-text">
+                        {identities[row.uid]?.name || row.name}
+                      </span>
+                    )}
                   </span>
                   <b className="rank-score">{row.rating}</b>
                   {row.uid !== data.uid && (

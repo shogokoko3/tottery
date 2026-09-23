@@ -120,7 +120,8 @@ function fakeFriends(req, res, path) {
         const st = friends.state(uid, now);
         return send(200, { ...st, friends: st.friends.map(withRating), requestsIn: st.requestsIn.map(withRating), requestsOut: st.requestsOut.map(withRating) });
       }
-      if (op === "request") return send(200, friends.request(uid, body.code, now));
+      if (op === "request" && typeof body.code === "string") return send(200, friends.request(uid, body.code, now, "code"));
+      if (op === "request") return send(200, friends.requestUid(uid, body.uid, now, body.source));
       if (op === "accept") return send(200, friends.accept(uid, body.uid, now));
       if (op === "decline") return send(200, friends.decline(uid, body.uid));
       if (op === "cancel") return send(200, friends.cancel(uid, body.uid));

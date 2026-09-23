@@ -18,6 +18,16 @@ import { RANKS } from "./constants.js";
 
 export const STANDARD_BG = "standard";
 export const SHOWCASE_MAX = 3;
+/** フレンド申請の入口(サーバーの REQUEST_SOURCES と同じ)。入口ごとに受け付けるかを決める(2026-09-24 本人の指示) */
+export const REQUEST_SOURCES = Object.freeze([
+  { id: "code", label: "フレンド ID で", note: "ID を伝えた相手からの申請" },
+  { id: "match", label: "対戦した相手から", note: "ランダムマッチで当たった相手が、終局の画面から" },
+  { id: "rank", label: "ランキングから", note: "ランキングで名前を押した人から" },
+]);
+export function normalizeAccept(raw) {
+  const a = raw && typeof raw === "object" ? raw : {};
+  return Object.fromEntries(REQUEST_SOURCES.map((s) => [s.id, a[s.id] !== false]));
+}
 
 /** 背景の候補。標準はいつでも。7エリアはホームの着せ替えと同じ解放条件 */
 export const PROFILE_BACKGROUNDS = Object.freeze([
@@ -65,6 +75,7 @@ export function normalizeCard(raw) {
       ? [...new Set(c.showcase.filter((id) => SHOWCASE_IDS.includes(id)))].slice(0, SHOWCASE_MAX)
       : [],
     pinnedTitle: typeof c.pinnedTitle === "string" && c.pinnedTitle ? c.pinnedTitle : null,
+    accept: normalizeAccept(c.accept),
   };
 }
 
@@ -96,6 +107,7 @@ export function buildProfileCard(profile, collection, extra = {}) {
     frame: (collection && collection.season && collection.season.frame) || "",
     level: levelOfXp((profile && profile.xp) || 0),
     showcase: card.showcase,
+    accept: card.accept,
     stats: {
       battles: (profile && profile.battles) || 0,
       wins: (profile && profile.battleWins) || 0,

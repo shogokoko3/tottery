@@ -17,6 +17,7 @@ import { movePresentationMs } from "../game/capture-presentation.js";
 import { useEffect, useRef, useState } from "react";
 import { useGameBgm, useGameSounds } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
+import { requestFriendByUid } from "../net/friends.js";
 import { enrichAction } from "../game/actions.js";
 import { ACE_FOIL_SKIN_ID, canUseAceFoil } from "../game/ace-foil.js";
 import { ACE_FOIL_RULE_VERSION, hasSimultaneousPrep } from "../game/rule-version.js";
@@ -75,6 +76,7 @@ import {
   RotateCcw,
   Shuffle,
   Sparkle,
+  Users,
 } from "../icons.jsx";
 import {
   bumpRound,
@@ -551,6 +553,36 @@ function AdjudicationResult({ state, names }) {
         対局開始時に採用した全ての札を合計します。A=1、J=11、Q=12、K=13。倒れた駒も含み、途中で投入した予備札は含みません。
       </p>
     </section>
+  );
+}
+
+/** 終局の札の「相手にフレンド申請」。入口は "match"(相手が受け付けていなければ「いっぱい」の文で断られる) */
+function FoeFriendRequest({ uid, name }) {
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  return (
+    <div className="foe-friend">
+      <button
+        className="btn btn-ghost btn-small"
+        disabled={busy || done}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            const r = await requestFriendByUid(uid, "match");
+            setMsg(r.friend ? "フレンドになりました" : "フレンド申請を送りました");
+            setDone(true);
+          } catch (e) {
+            setMsg(e.message || "送れませんでした");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <Users size={14} /> {name ? `${name} にフレンド申請` : "相手にフレンド申請"}
+      </button>
+      {msg && <small className="foe-friend-msg">{msg}</small>}
+    </div>
   );
 }
 
@@ -1060,6 +1092,10 @@ export function GameView({
           </div>
         )}
         <SeasonMatchNotice result={seasonResult} />
+        {/* 対戦した相手にフレンド申請(2026-09-24 本人の指示)。人との対局(部屋がある)だけ。Bot・CPU・チュートリアルには出ない */}
+        {network && network.foeUid && !tutorial && (
+          <FoeFriendRequest uid={network.foeUid} name={names ? names[1 - myIdx] : null} />
+        )}
         {/* 勝利チャンス(2026-09-23 本人の指示)。終局で知らせるのは成功したときだけ。
             しくじったときは何も出さない(次の対局の「対戦相手」の画面でまた知らせる) */}
         {chance && chance.rewarded && (

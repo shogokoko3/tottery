@@ -9,15 +9,33 @@ import { useState } from "react";
 import { loadProfile } from "../game/profile.js";
 import { block } from "../game/blocked.js";
 import { REASONS, sendReport } from "../net/reports.js";
-import { Close } from "../icons.jsx";
+import { requestFriendByUid } from "../net/friends.js";
+import { Close, Users } from "../icons.jsx";
 
-export function PlayerActionModal({ target, onClose, onChanged }) {
+export function PlayerActionModal({ target, onClose, onChanged, friendSource = "rank" }) {
   // "menu" 何をするか / "reason" 理由を選ぶ / "sending" 送信中
   // "sent" 送れた / "error" 送れなかった / "blocked" 見えなくした
   const [step, setStep] = useState("menu");
   const [error, setError] = useState("");
+  // フレンド申請(2026-09-24 本人の指示)。ランキングの人へは "rank"。結果の一言をここに出す
+  const [friendMsg, setFriendMsg] = useState("");
+  const [friendBusy, setFriendBusy] = useState(false);
 
   const name = (target && target.name) || "この人";
+
+  async function befriend() {
+    if (friendBusy) return;
+    setFriendBusy(true);
+    setFriendMsg("");
+    try {
+      const r = await requestFriendByUid(target.id, friendSource);
+      setFriendMsg(r.friend ? `${name} とフレンドになりました` : "フレンド申請を送りました");
+    } catch (e) {
+      setFriendMsg(e.message || "送れませんでした");
+    } finally {
+      setFriendBusy(false);
+    }
+  }
 
   async function send(reasonId) {
     setStep("sending");
@@ -51,6 +69,12 @@ export function PlayerActionModal({ target, onClose, onChanged }) {
 
         {step === "menu" && (
           <div className="report-body">
+            <button className="btn btn-ghost report-choice" disabled={friendBusy} onClick={befriend}>
+              <b>
+                <Users size={14} /> フレンド申請を送る
+              </b>
+              <span>{friendMsg || "相手が承認するとフレンドになります"}</span>
+            </button>
             <button
               className="btn btn-ghost report-choice"
               onClick={() => setStep("reason")}

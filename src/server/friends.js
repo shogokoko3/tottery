@@ -34,6 +34,10 @@ export const SHOWCASE_IDS = [
   "bestPlace",
 ];
 export const SHOWCASE_MAX = 3;
+/** 申請の入口。code = フレンド ID、match = 対戦した相手、rank = ランキング。受け付けるかは本人が入口ごとに決める */
+export const REQUEST_SOURCES = ["code", "match", "rank"];
+/** 受け付けていない入口からの申請に返す文。断っていることは相手に伝えない(「いっぱい」と同じ文にする。2026-09-24 本人の指示) */
+export const FULL_MESSAGE = "相手のフレンドがいっぱいです。";
 const NAME_MAX = 10;
 const TAG_MAX = 40;
 
@@ -64,6 +68,10 @@ export function sanitizeProfileCard(raw) {
     frame: str(p.frame, TAG_MAX),
     level: num(p.level, 100),
     showcase,
+    // 申請の受付(入口ごと)。無ければ全部受ける
+    accept: Object.fromEntries(
+      REQUEST_SOURCES.map((k) => [k, !(p.accept && typeof p.accept === "object" && p.accept[k] === false)]),
+    ),
     stats: {
       battles: num(stats.battles, 1e9),
       wins: num(stats.wins, 1e9),
@@ -137,14 +145,30 @@ export class Friends {
     this.sql("DELETE FROM friend_requests WHERE (from_uid=? AND to_uid=?) OR (from_uid=? AND to_uid=?)", a, b, b, a);
   }
 
+  /** その入口からの申請を受け付けているか(写しを送っていない人は全部受ける) */
+  acceptsFrom(uid, source) {
+    const p = this.profileOf(uid);
+    return !p || !p.accept || p.accept[source] !== false;
+  }
   /** フレンド ID で申請する。互いに申請していれば、その場で結ぶ */
-  request(uid, code, now) {
+  request(uid, code, now, source = "code") {
     const target = this.uidOfCode(code);
     if (!target) throw new Error("そのフレンド ID は見つかりません。");
     if (target === uid) throw new Error("自分のフレンド ID です。");
+    return this.requestUid(uid, target, now, source);
+  }
+  /**
+   * 相手の uid で申請する(対戦した相手・ランキング)。source で相手の受付の設定を見る。
+   * 受け付けていないときは「いっぱい」と同じ文で断る(断っていることを相手に伝えない)
+   */
+  requestUid(uid, target, now, source = "code") {
+    if (!REQUEST_SOURCES.includes(source)) throw new Error("申請の入口が正しくありません。");
+    if (typeof target !== "string" || !target) throw new Error("相手が見つかりません。");
+    if (target === uid) throw new Error("自分には申請できません。");
     if (this.isFriend(uid, target)) return { ok: true, friend: true, uid: target };
     if (this.count(uid) >= FRIEND_MAX) throw new Error(`フレンドは${FRIEND_MAX}人までです。`);
-    if (this.count(target) >= FRIEND_MAX) throw new Error("相手のフレンドがいっぱいです。");
+    if (this.count(target) >= FRIEND_MAX) throw new Error(FULL_MESSAGE);
+    if (!this.acceptsFrom(target, source)) throw new Error(FULL_MESSAGE);
     if (this.sql("SELECT 1 FROM friend_requests WHERE from_uid=? AND to_uid=?", target, uid).length) {
       this.link(uid, target, now);
       return { ok: true, friend: true, uid: target };

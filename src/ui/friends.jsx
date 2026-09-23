@@ -11,7 +11,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCollection } from "../skins/store.js";
 import { useMissionProfile } from "./mission-profile.js";
-import { buildProfileCard } from "../game/profile-card.js";
+import { buildProfileCard, normalizeAccept, REQUEST_SOURCES } from "../game/profile-card.js";
+import { saveProfileCard } from "../game/profile.js";
 import {
   readFriends,
   requestFriend,
@@ -84,18 +85,21 @@ export function useFriendAlerts() {
   return n;
 }
 
-function FriendTag({ f, onClick }) {
+/** 名札。brief なら アイコン・称号・名前だけ(申請の行。2026-09-24 本人の指示でレートとレベルは出さない) */
+function FriendTag({ f, onClick, brief = false }) {
   return (
     <button className="friend-tag" onClick={onClick} disabled={!onClick}>
       <PlayerIcon icon={f.icon} name={f.name} size="md" frame={f.frame} />
       <span className="friend-tag-body">
         {f.title ? <TitleFrame id={f.title} size="compact" /> : <span className="friend-tag-notitle">称号なし</span>}
         <b className="friend-tag-name">{f.name || "名無し"}</b>
-        <small>
-          {Number.isFinite(f.rating) ? `レート ${f.rating}` : ""}
-          {f.level ? ` · Lv${f.level}` : ""}
-          {f.seen ? ` · ${agoText(f.seen)}` : ""}
-        </small>
+        {!brief && (
+          <small>
+            {Number.isFinite(f.rating) ? `レート ${f.rating}` : ""}
+            {f.level ? ` · Lv${f.level}` : ""}
+            {f.seen ? ` · ${agoText(f.seen)}` : ""}
+          </small>
+        )}
       </span>
     </button>
   );
@@ -262,7 +266,7 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, initi
           </p>
           {requestsIn.map((f) => (
             <div className="friend-row" key={f.uid}>
-              <FriendTag f={f} />
+              <FriendTag f={f} brief />
               <div className="friend-row-actions">
                 <button
                   className="btn btn-primary btn-small"
@@ -332,12 +336,40 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, initi
         ))}
       </section>
 
+      {/* 申請の受付(入口ごとに切れる。2026-09-24 本人の指示)。切った入口からの申請は、相手には「いっぱい」と見える */}
+      <section className="friends-list friends-accept" aria-label="申請の受付">
+        <p className="friends-list-head">申請の受付</p>
+        {REQUEST_SOURCES.map((src) => {
+          const accept = normalizeAccept(profile?.card?.accept);
+          const on = accept[src.id];
+          return (
+            <label className="friends-accept-row" key={src.id}>
+              <span>
+                <b>{src.label}</b>
+                <small>{src.note}</small>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                aria-checked={on}
+                checked={on}
+                onChange={(e) => {
+                  const next = saveProfileCard({ ...(profile?.card || {}), accept: { ...accept, [src.id]: e.target.checked } });
+                  publishProfileCard(buildProfileCard(next, collection)).catch(() => {});
+                }}
+              />
+            </label>
+          );
+        })}
+        <p className="hint">切った入口からの申請は届きません。相手には「フレンドがいっぱい」と表示されます。</p>
+      </section>
+
       {(state?.requestsOut || []).length > 0 && (
         <section className="friends-list" aria-label="送った申請">
           <p className="friends-list-head">送った申請 <b>{state.requestsOut.length}</b></p>
           {state.requestsOut.map((f) => (
             <div className="friend-row" key={f.uid}>
-              <FriendTag f={f} />
+              <FriendTag f={f} brief />
               <div className="friend-row-actions">
                 <button
                   className="btn btn-ghost btn-small"
