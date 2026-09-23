@@ -6,6 +6,8 @@ import { createRequire } from "node:module";
 import { build } from "esbuild";
 import { byId } from "../src/skins/catalog.js";
 import { foilRevealRoute } from "../src/skins/reveal.js";
+import { createFoilUnveilingAssets } from "../src/skins/foil-unveiling-assets.js";
+import { FOIL_IMAGE_TIMEOUT_MS } from "../src/skins/foil-acquisition.js";
 import {
   foilUnveilingPlan,
   foilUnveilingFrame,
@@ -139,6 +141,44 @@ cancel();
 stale();
 assert.equal(called, 0);
 
+// Preparation is shared with the gate, and never waits for an unused normal
+// image. Failed/stalled transfers settle before the earliest identity reveal.
+assert.ok(FOIL_IMAGE_TIMEOUT_MS < foilUnveilingPlan().reveal);
+const images = [], loadTimers = new Map();
+let loadTimerId = 0;
+const assets = createFoilUnveilingAssets({
+  createImage() {
+    const image = { naturalWidth: 1086, decode: async () => {} };
+    images.push(image);
+    return image;
+  },
+  setTimer(fn) { loadTimers.set(++loadTimerId, fn); return loadTimerId; },
+  clearTimer(id) { loadTimers.delete(id); },
+});
+const first = assets.prepare(legend);
+assert.equal(first, assets.prepare(legend), "gate and reveal share a decoded image");
+assert.equal(images.length, 1, "only the actual foil is loaded on success");
+await images[0].onload();
+assert.deepEqual(await first.promise, { fallback: false, missing: false });
+assert.equal(loadTimers.size, 0);
+const fallbackAsset = assets.prepare(byId("elf-male:foil"));
+images[1].onerror();
+assert.equal(images[2].src, byId("elf-male").card);
+await images[2].onload();
+assert.deepEqual(await fallbackAsset.promise, { fallback: true, missing: false });
+const stalled = assets.prepare(byId("elf-female:foil"));
+const lateLoad = images[3].onload;
+[...loadTimers.values()][0]();
+assert.deepEqual(await stalled.promise, { fallback: false, missing: true });
+await lateLoad();
+assert.equal(stalled.value.missing, true, "late image cannot change the resolved reveal midway");
+const abandoned = assets.prepare(byId("demon-k:foil"));
+assets.dispose();
+assert.equal((await abandoned.promise).missing, true);
+assert.equal(loadTimers.size, 0);
+assert.ok(images.every(image => !image.onload && !image.onerror));
+assert.equal(first.images.length, 0, "release decoded images when leaving the draw");
+
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "tottery-unveiling-"));
 try {
   const outfile = path.join(temp, "view.cjs");
@@ -157,18 +197,25 @@ try {
     logLevel: "silent",
   });
   const { render } = createRequire(import.meta.url)(outfile);
+  const concealed = html => {
+    assert.match(html, /class="foil-unveiling-cover "/,
+      "pre-painted artwork stays underneath the opaque seal until reveal");
+    assert.doesNotMatch(html, /foil-unveiling-cover is-opening/);
+    assert.match(html, /<img aria-hidden="true" decoding="async"[^>]*alt=""/,
+      "prepared artwork never announces its identity to assistive technology");
+  };
   // A freeze's extra 30% conversion first shows the already-revealed normal SSR,
   // then explicitly promotes it. Existing drawn foils remain sealed as before.
   const promoted = byId("angel-k:foil"), normal = byId("angel-k");
   for (const phase of ["select", "lift", "gather"]) {
     const html = render({skin:promoted,route:"surprise",phase,upgradedFromNormal:true,fromGrid:true});
     assert.ok(html.includes(normal.card));
-    assert.ok(!html.includes(promoted.card));
+    concealed(html);
     assert.ok(!html.includes("foil-seal-word"), "裏側から箔の当選を先に漏らさない");
   }
   const conversion = render({skin:promoted,route:"surprise",phase:"seal",upgradedFromNormal:true});
   assert.match(conversion, /フォイル昇格/);
-  assert.ok(!conversion.includes(promoted.card));
+  concealed(conversion);
   assert.ok(render({skin:promoted,route:"surprise",phase:"reveal",upgradedFromNormal:true}).includes(promoted.card));
   for (const id of ["zombie-male", "elf-female", "angel-k"]) {
     const skin = byId(id + ":foil"),
@@ -188,10 +235,7 @@ try {
           !html.includes(skin.name),
           `${phase}: no accessible identity`,
         );
-        assert.ok(
-          !html.includes(base.card) && !html.includes(skin.card),
-          `${phase}: no artwork rendered`,
-        );
+        concealed(html);
         assert.match(html, /foil-seal/);
         assert.ok(
           !/>[^<]*\b(?:SSR|SR|R)\b[^<]*</.test(html),
@@ -237,6 +281,12 @@ try {
 const css = fs.readFileSync("src/ui/foil-unveiling.css", "utf8");
 assert.match(css, /@keyframes foil-cover-release\s*\{\s*0%, 25%\s*\{\s*opacity:\s*1;/, "キャラ画像が現れ始めるまで封印を完全に保つ");
 assert.match(css, /@keyframes foil-identity-bloom\s*\{\s*0%\s*\{\s*opacity:\s*0\.85;/, "公開の最初のフレームから発光をつなぐ");
+assert.doesNotMatch(css.match(/@keyframes foil-identity-arrive[\s\S]*?@keyframes/)?.[0] || "", /filter:|clip-path:/,
+  "identity crossfade uses composited opacity/transform, not per-frame image filtering");
+assert.match(css, /\.foil-unveiling-cover\s*\{[^}]*z-index:\s*2;/,
+  "opaque seal covers the prepainted artwork (z-index 1)");
+assert.match(css, /\.foil-unveiling-card > \.foil-unveiling-art\s*\{[^}]*backface-visibility:\s*hidden;/,
+  "a lifting card never exposes artwork through its reverse face");
 console.log(
   `フォイルの正体: 開示前の絵・名前・レアリティ・読み上げを伏せる／開示時に完成箔／SSR2経路50% (${special}/10000)／時間境界と中断: OK`,
 );

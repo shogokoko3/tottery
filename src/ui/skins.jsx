@@ -108,6 +108,7 @@ import { addEther } from "../skins/collection.js";
 import { buyEther } from "../net/wallet.js";
 import { FoilAcquisition } from "./foil-acquisition.jsx";
 import { FoilSeal, FoilUnveiling } from "./foil-unveiling.jsx";
+import { createFoilUnveilingAssets } from "../skins/foil-unveiling-assets.js";
 import { SummonIntro } from "./summon-intro.jsx";
 import { warmSummonIntro } from "../skins/summon-preload.js";
 
@@ -468,6 +469,19 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0, freeze: freez
   const foilIndexes = useMemo(() => summonFoilOrder(results, freeze), [results, freeze]);
   const foilRoutes = useMemo(() => results.map((result, index) => freezeFoilUpgrade(freeze, index, result.id) ? "surprise" : foilRevealRoute(byId(result.id), `${drawNumber}#${seedOf(results)}#${index}`)), [results, drawNumber, freeze]);
   const activeFoil = foilStart && !reduce ? foilIndexes.find(index => !revealedFoils[index]) : undefined;
+  const foilAssets = useRef(null);
+  useEffect(() => {
+    const assets = createFoilUnveilingAssets();
+    foilAssets.current = assets;
+    return () => { assets.dispose(); foilAssets.current = null; };
+  }, []);
+  useEffect(() => {
+    if (reduce) return;
+    // Transfer/decode while the gate and rarity promotions play, then keep the
+    // following reveal ready as the current foil takes centre stage.
+    foilIndexes.filter(index => !revealedFoils[index]).slice(0, 2)
+      .forEach(index => foilAssets.current?.prepare(byId(results[index].id)));
+  }, [foilIndexes, revealedFoils, results, reduce]);
   useEffect(() => {
     if (!intro && !freezeLocked && activeFoil === undefined)
       revealRef.current?.querySelector(".reveal-card")?.focus({ preventScroll: true });
@@ -613,6 +627,7 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0, freeze: freez
         fromGrid={results.length > 1}
         sourceRef={revealRef}
         sourceIndex={activeFoil}
+        assets={foilAssets.current}
         onComplete={() => unveilAt(activeFoil)}
       />}
     </SkinModal>

@@ -8,7 +8,7 @@ import {
 import { cardBackImg } from "../assets.js";
 import { baseSkinId, byId } from "../skins/catalog.js";
 import { scheduleFoilUnveiling } from "../skins/foil-unveiling.js";
-import { FOIL_IMAGE_TIMEOUT_MS } from "../skins/foil-acquisition.js";
+import { createFoilUnveilingAssets } from "../skins/foil-unveiling-assets.js";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import styles from "./foil-unveiling.css";
 
@@ -36,14 +36,6 @@ export function FoilSeal({ legend = false }) {
           className="foil-seal-frame"
           d="M8 30V9h20M62 9h20v21M8 90v21h20M62 111h20V90M39 9l6-4 6 4-6 4zM39 111l6-4 6 4-6 4z"
         />
-        <g className="foil-seal-orbit">
-          <circle cx="45" cy="54" r="28" strokeDasharray="34 5 2 5" />
-          <path d="M45 21l3 5-3 5-3-5zM45 77l3 5-3 5-3-5zM12 54l5-3 5 3-5 3zM68 54l5-3 5 3-5 3z" />
-        </g>
-        <g className="foil-seal-orbit inner">
-          <circle cx="45" cy="54" r="21" strokeDasharray="21 12" />
-          <path d="M45 32l19 33H26z" />
-        </g>
         <path className="foil-seal-gem" d="M45 40l9 14-9 14-9-14z" />
         {legend && (
           <g className="foil-seal-regalia">
@@ -57,14 +49,24 @@ export function FoilSeal({ legend = false }) {
           </g>
         )}
       </svg>
+      {/* Rotate whole SVG layers, not their child groups: browsers can reuse
+          their rasterized texture rather than repainting the seal each frame. */}
+      <svg className="foil-seal-orbit" viewBox="0 0 90 120" fill="none">
+        <circle cx="45" cy="54" r="28" strokeDasharray="34 5 2 5" />
+        <path d="M45 21l3 5-3 5-3-5zM45 77l3 5-3 5-3-5zM12 54l5-3 5 3-5 3zM68 54l5-3 5 3-5 3z" />
+      </svg>
+      <svg className="foil-seal-orbit inner" viewBox="0 0 90 120" fill="none">
+        <circle cx="45" cy="54" r="21" strokeDasharray="21 12" />
+        <path d="M45 32l19 33H26z" />
+      </svg>
       <span className="foil-seal-word">FOIL</span>
     </span>
   );
 }
 
-function UnveilingBurst() {
+function UnveilingBurst({ active }) {
   return (
-    <span className="foil-unveiling-burst" aria-hidden="true">
+    <span className={`foil-unveiling-burst ${active ? "is-playing" : ""}`} aria-hidden="true">
       <span className="foil-unveiling-corona" />
       <span className="foil-unveiling-wave" />
       <span className="foil-unveiling-wave echo" />
@@ -172,9 +174,7 @@ export function FoilUnveilingView({
               : "この輝きは、誰のものか。"}
       </p>
       <div className="foil-unveiling-card">
-        {(visible || upgrading) && (
-          <UnveilingBurst key={upgrading ? "promotion" : "identity"} />
-        )}
+        <UnveilingBurst active={visible || upgrading} />
         {/* Keep the seal painted until the arriving artwork has taken over.
             Removing it at reveal left a blank card while art/bloom were at 0. */}
         <span
@@ -196,19 +196,19 @@ export function FoilUnveilingView({
             <strong className={`foil-unveiling-promotion-label ${upgradedFromNormal ? "is-foil-conversion" : ""}`}>{upgradedFromNormal ? "フォイル昇格" : "昇格"}</strong>
           </>
         )}
-        {visible && !missing && (
+        {!missing && (
           <FoilArtwork
             skin={shown}
             src={shown.card}
-            alt={skin.name}
+            alt={visible ? skin.name : ""}
+            aria-hidden={!visible || undefined}
+            decoding="async"
             animated={false}
             className="foil-unveiling-art"
           />
         )}
         <span className="foil-unveiling-rim" aria-hidden="true" />
-        {visible && (
-          <span className="foil-unveiling-bloom" aria-hidden="true" />
-        )}
+        <span className={`foil-unveiling-bloom ${visible ? "is-playing" : ""}`} aria-hidden="true" />
       </div>
       <div className="foil-unveiling-name" aria-live="polite">
         {visible && (
@@ -232,10 +232,11 @@ export function FoilUnveiling({
   sourceRef,
   sourceIndex,
   fromGrid = false,
+  assets,
   onComplete,
 }) {
   const [view, setView] = useState({
-    phase: reduce ? "complete" : "waiting",
+    phase: reduce ? "complete" : fromGrid ? "select" : "gather",
     fallback: false,
     missing: false,
   });
@@ -267,59 +268,33 @@ export function FoilUnveiling({
   }, []);
   callback.current = onComplete;
   useEffect(() => {
-    let active = true,
-      started = false,
-      cancelTimeline;
-    const base = byId(baseSkinId(skin.id));
-    const ready = [reduce, reduce],
-      loaders = [];
-    function start() {
-      if (!active || started) return;
-      started = true;
-      clearTimeout(timeout);
-      cancelTimeline = scheduleFoilUnveiling({
-        legend: skin.rarity === "SSR",
-        reduce,
-        fromGrid,
-        onFrame: ({ phase }) =>
-          active &&
-          setView({
-            phase,
-            fallback: !ready[0],
-            missing: !ready[0] && !ready[1],
-          }),
-      });
-    }
-    const timeout = setTimeout(start, FOIL_IMAGE_TIMEOUT_MS);
-    if (reduce) start();
-    else
-      Promise.allSettled(
-        [skin.card, base.card].map(
-          (source, i) =>
-            new Promise((resolve, reject) => {
-              const image = new Image();
-              loaders.push(image);
-              image.onload = () =>
-                Promise.resolve(image.decode?.()).then(() => {
-                  if (!active) return;
-                  ready[i] = image.naturalWidth > 0;
-                  resolve();
-                }, reject);
-              image.onerror = reject;
-              image.src = source;
-            }),
-        ),
-      ).then(start);
+    let active = true;
+    const loader = assets || createFoilUnveilingAssets();
+    const prepared = loader.prepare(skin);
+    // Start moving immediately. Image readiness is resolved during the build-up,
+    // not by freezing the selected card before its animation. The load deadline
+    // is shorter than even the shortest build-up to the identity reveal.
+    prepared.promise.then(value => {
+      if (active && !reduce) setView(view => ({ ...view, ...value }));
+    });
+    const cancelTimeline = scheduleFoilUnveiling({
+      legend: skin.rarity === "SSR",
+      reduce,
+      fromGrid,
+      onFrame: ({ phase }) =>
+        active &&
+        setView(view => ({
+          ...view,
+          phase,
+          ...(prepared.value || {}),
+        })),
+    });
     return () => {
       active = false;
-      clearTimeout(timeout);
-      cancelTimeline?.();
-      loaders.forEach((image) => {
-        image.onload = null;
-        image.onerror = null;
-      });
+      cancelTimeline();
+      if (!assets) loader.dispose();
     };
-  }, [skin, reduce, fromGrid]);
+  }, [skin.id, skin.rarity, reduce, fromGrid, assets]);
   useEffect(() => {
     if (view.phase !== "complete" || notified.current) return;
     notified.current = true;

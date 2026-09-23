@@ -27,6 +27,7 @@
   );
   filter: blur(10px);
   animation: foil-seal-drift 8s linear infinite;
+  will-change: transform;
 }
 .foil-seal svg {
   position: absolute;
@@ -35,16 +36,17 @@
   height: 100%;
   stroke: #efe0ab;
   stroke-width: 0.65;
-  filter: drop-shadow(0 0 3px #a0d5ff);
+  /* Avoid re-rasterizing every rotating orbit through a filtered parent SVG. */
 }
 .foil-seal-frame {
   stroke-width: 1;
 }
-.foil-seal-orbit {
-  transform-origin: 45px 54px;
+.foil-seal svg.foil-seal-orbit {
+  transform-origin: 50% 45%;
   animation: foil-seal-orbit 10s linear infinite;
+  will-change: transform;
 }
-.foil-seal-orbit.inner {
+.foil-seal svg.foil-seal-orbit.inner {
   animation-direction: reverse;
   animation-duration: 7s;
   stroke: #bef4ff;
@@ -52,7 +54,6 @@
 .foil-seal-gem {
   fill: #d2efffb3;
   stroke: #f9edc6;
-  filter: drop-shadow(0 0 5px #d5e5ff);
 }
 .foil-seal-word {
   position: absolute;
@@ -75,7 +76,6 @@
 }
 .foil-seal.is-legend svg {
   stroke: #ffdf94;
-  filter: drop-shadow(0 0 4px #ffd57c);
 }
 .foil-seal-regalia {
   stroke: #ffe9aa;
@@ -85,7 +85,6 @@
 .foil-seal-crown {
   fill: #b5833f;
   stroke-width: 1.3;
-  filter: drop-shadow(0 0 3px #ffc568);
 }
 .foil-unveiling-stage {
   outline: none;
@@ -197,21 +196,28 @@
     0 20px 50px #0009,
     0 0 30px #aeceef44;
   transform: translateY(8px) scale(0.96);
-  transition:
-    transform 1s cubic-bezier(0.18, 0.8, 0.2, 1),
-    box-shadow 0.7s;
+  transition: transform 1s cubic-bezier(0.18, 0.8, 0.2, 1);
+  will-change: transform;
 }
-.foil-unveiling-card .foil-seal {
-  transition: filter 0.55s;
+.foil-unveiling-card .foil-seal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 44%, #fff4caaa, #b9e9ff33 40%, transparent 72%);
+  opacity: 0;
+  transition: opacity 0.55s;
+  pointer-events: none;
 }
-.foil-unveiling-card .foil-seal svg {
-  transition:
-    transform 0.55s,
-    filter 0.55s;
+.foil-unveiling-card .foil-seal svg:not(.foil-seal-orbit) {
+  transition: transform 0.55s;
 }
 .has-foil-unveiling .reveal-card:not(.is-foil-selected) {
-  filter: brightness(0.3) saturate(0.65);
-  transition: filter 0.55s ease;
+  opacity: 0.3;
+  transition: opacity 0.55s ease;
+}
+.has-foil-unveiling .reveal-card *,
+.has-foil-unveiling .reveal-omen {
+  animation-play-state: paused !important;
 }
 .has-foil-unveiling .reveal-card.is-foil-selected {
   visibility: hidden;
@@ -261,6 +267,8 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  z-index: 2;
+  will-change: opacity;
 }
 .foil-unveiling-cover.is-opening {
   animation: foil-cover-release 0.8s ease-in both;
@@ -274,6 +282,7 @@
   inset: 0;
   border-radius: inherit;
   transform: rotateY(180deg);
+  z-index: 2;
 }
 .foil-unveiling-stage.from-grid:is(
     [data-phase="gather"],
@@ -295,7 +304,7 @@
     inset 0 0 28px #adcdff55;
   animation: foil-chosen-ring 0.7s ease-out both;
 }
-.foil-unveiling-stage.from-grid[data-phase="select"] .foil-seal {
+.foil-unveiling-stage.from-grid[data-phase="select"] .foil-seal::after {
   animation: foil-chosen-light 0.7s ease-in-out both;
 }
 @keyframes foil-card-chosen {
@@ -309,9 +318,6 @@
         calc(var(--source-y, 0px) - 12px)
       )
       scale(calc(var(--source-scale, 1) * 1.06));
-    box-shadow:
-      0 0 42px #ffe7aecc,
-      0 0 95px #b5caff77;
   }
 }
 @keyframes foil-card-lift {
@@ -319,9 +325,6 @@
     transform: perspective(900px)
       translate(var(--source-x, 0px), calc(var(--source-y, 0px) - 12px))
       scale(calc(var(--source-scale, 1) * 1.06)) rotateY(0deg);
-    box-shadow:
-      0 0 42px #ffe7aecc,
-      0 0 95px #b5caff77;
   }
   100% {
     transform: perspective(900px) translate(0, 8px) scale(0.96) rotateY(720deg);
@@ -350,10 +353,10 @@
 }
 @keyframes foil-chosen-light {
   from {
-    filter: brightness(1);
+    opacity: 0;
   }
   to {
-    filter: brightness(1.8);
+    opacity: 0.65;
   }
 }
 .foil-unveiling-stage[data-phase="seal"] .foil-unveiling-card {
@@ -362,15 +365,11 @@
     0 0 40px #bdeaff88,
     0 0 80px #dfb87b44;
 }
-.foil-unveiling-stage[data-phase="seal"] .foil-seal {
-  filter: brightness(1.85);
+.foil-unveiling-stage[data-phase="seal"] .foil-seal::after {
+  opacity: 0.7;
 }
-.foil-unveiling-stage[data-phase="seal"] .foil-seal svg {
+.foil-unveiling-stage[data-phase="seal"] .foil-seal svg:not(.foil-seal-orbit) {
   transform: scale(1.06);
-  filter: drop-shadow(0 0 8px #ffebbb);
-}
-.foil-unveiling-stage[data-phase="seal"] .foil-seal-orbit {
-  animation-duration: 2.4s;
 }
 /* A full quiet beat keeps the identity concealed before the final release. */
 .foil-unveiling-stage[data-phase="hush"] .foil-unveiling-card {
@@ -384,16 +383,13 @@
   opacity: 0.4;
   transition-duration: 0.6s;
 }
-.foil-unveiling-stage[data-phase="hush"] .foil-seal {
-  filter: brightness(1.65);
+.foil-unveiling-stage[data-phase="hush"] .foil-seal::after {
+  /* Keep anticipation alive instead of resembling a frozen loading frame. */
+  animation: foil-hush-light 1s ease-in both;
 }
-.foil-unveiling-stage[data-phase="hush"] .foil-seal-orbit {
-  animation-duration: 2.4s;
-  animation-play-state: paused;
-}
-.foil-unveiling-stage[data-phase="hush"] .foil-seal-mist,
-.foil-unveiling-stage[data-phase="hush"] .foil-unveiling-motes i {
-  animation-play-state: paused;
+@keyframes foil-hush-light {
+  from { opacity: 0.35; transform: scale(0.88); }
+  to { opacity: 0.85; transform: scale(1.08); }
 }
 .foil-unveiling-stage[data-phase="hush"] .foil-unveiling-status {
   opacity: 0;
@@ -429,6 +425,7 @@
 }
 .foil-unveiling-upgrade {
   position: absolute;
+  z-index: 3;
   inset: -22%;
   border-radius: 50%;
   pointer-events: none;
@@ -522,6 +519,17 @@
   height: 100%;
   overflow: hidden;
   border-radius: 11px;
+}
+.foil-unveiling-card > .foil-unveiling-art {
+  position: absolute;
+  z-index: 1;
+  /* Rasterize under the opaque front/back seals before reveal. opacity:0 here
+     lets mobile browsers defer the texture upload until the reveal frame. */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: opacity, transform;
+}
+.foil-unveiling-stage:is([data-phase="reveal"], [data-phase="settle"], [data-phase="complete"]) .foil-unveiling-card > .foil-unveiling-art {
   animation: foil-identity-arrive 1s cubic-bezier(0.12, 0.7, 0.2, 1) both;
 }
 .foil-unveiling-burst {
@@ -529,6 +537,19 @@
   inset: -70% -65%;
   z-index: -1;
   pointer-events: none;
+}
+.foil-unveiling-burst:not(.is-playing) {
+  opacity: 0;
+}
+.foil-unveiling-burst:not(.is-playing) * {
+  animation-name: none;
+}
+.foil-unveiling-corona,
+.foil-unveiling-wave,
+.foil-unveiling-rays i,
+.foil-unveiling-fragments i,
+.foil-unveiling-bloom {
+  will-change: transform, opacity;
 }
 .foil-unveiling-corona {
   position: absolute;
@@ -583,7 +604,6 @@
     #fff8de 70%,
     transparent
   );
-  filter: drop-shadow(0 0 4px #e9c26c);
   animation: foil-unseal-ray 1.1s var(--delay) ease-out both;
 }
 .foil-unveiling-rays i:nth-child(3n) {
@@ -688,12 +708,17 @@
     transparent 66%
   );
   pointer-events: none;
+  z-index: 3;
   animation: foil-identity-bloom 0.8s ease-out both;
+}
+.foil-unveiling-bloom:not(.is-playing) {
+  opacity: 0;
+  animation: none;
 }
 .foil-unveiling-name {
   position: relative;
   z-index: 2;
-  min-height: 68px;
+  min-height: 88px;
   max-width: 100%;
   margin-top: 23px;
   text-align: center;
@@ -753,13 +778,11 @@
 @keyframes foil-identity-arrive {
   from {
     opacity: 0;
-    filter: brightness(2.4);
-    clip-path: inset(0 45%);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
-    filter: brightness(1);
-    clip-path: inset(0 0);
+    transform: scale(1);
   }
 }
 @keyframes foil-identity-bloom {
