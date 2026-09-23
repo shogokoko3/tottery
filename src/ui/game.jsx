@@ -90,6 +90,18 @@ import {
   wantRematch,
 } from "../net/firebase.js";
 import { myUid } from "../net/auth.js";
+import { giveGift } from "../game/gifts.js";
+import { earnTickets } from "../net/wallet.js";
+import {
+  WIN_CHANCE_REWARD_TICKETS,
+  chanceDay,
+  chancesLeft,
+  isChanceNext,
+  loadWinChance,
+  rewardEventId,
+  saveWinChance,
+  settleWinChance,
+} from "../game/win-chance.js";
 import { achieveSecret, grantTitle, loadProfile,
   skipTutorials,
 } from "../game/profile.js";
@@ -345,6 +357,66 @@ export function TurnBar({ state, viewer, onLog = null }) {
 }
 
 /**
+ * マッチング後の「対戦相手」の画面(2026-09-23 本人の指示)。
+ * サイコロを振る前に、誰と当たったのかを名前・称号・持ち点で見せる。
+ * 数秒で自動的に進むが、釦でも進める。勝利チャンスの対局ならここで知らせる
+ */
+export function MatchIntro({ me, ratings, chance, onDone, seconds = 6 }) {
+  const { names, icons, titles, frames } = useSeats();
+  const [left, setLeft] = useState(seconds);
+  useEffect(() => {
+    const t = setInterval(() => setLeft((n) => n - 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    if (left <= 0) onDone();
+  }, [left]);
+  const seat = (idx, label) => (
+    <div className={`match-intro-seat ${idx === me ? "match-intro-me" : ""}`}>
+      <small className="match-intro-label">{label}</small>
+      <PlayerIcon
+        name={names?.[idx]}
+        icon={icons?.[idx]}
+        frame={frames?.[idx]}
+        size="md"
+      />
+      {titles?.[idx] ? (
+        <TitleFrame id={titles[idx]} size="compact" className="match-intro-title" />
+      ) : (
+        <span className="match-intro-title match-intro-title-none" aria-hidden="true" />
+      )}
+      <b className="match-intro-name">{nameOf(idx, names)}</b>
+      <span className="match-intro-rating">
+        持ち点 <b>{Number.isFinite(ratings?.[idx]) ? ratings[idx] : "—"}</b>
+      </span>
+    </div>
+  );
+  return (
+    <div className="center-stage match-intro">
+      <h2>対戦相手が決まりました</h2>
+      <div className="match-intro-seats">
+        {seat(me, "あなた")}
+        <span className="match-intro-vs" aria-hidden="true">
+          VS
+        </span>
+        {seat(1 - me, "相手")}
+      </div>
+      {chance > 0 && (
+        <div className="match-intro-chance" role="status">
+          <b>勝利チャンス！</b>
+          <span>
+            この対局に勝つとガチャチケット{WIN_CHANCE_REWARD_TICKETS}枚(今日あと{chance}回)
+          </span>
+        </div>
+      )}
+      <button type="button" className="btn btn-primary" onClick={onDone}>
+        対局へ({Math.max(0, left)})
+      </button>
+    </div>
+  );
+}
+
+/**
  * 対局中に読む記録(2026-09-23 本人の指示)。振り返り(ReviewModal)と同じ行の部品を使うが、
  * 盤面へ飛ぶ操作は付けない(対局中に盤を戻すと紛らわしい)。新しい行が下
  */
@@ -501,6 +573,8 @@ export function GameView({
   mastery = null,
   rematch,
   seasonResult,
+  // 勝利チャンスの結果({ wasChance, rewarded, left })。ランダムマッチ・Bot 戦だけ
+  chance = null,
 }) {
   const names = useNames();
   let [f, o] = (0, useState)(!1),
@@ -980,6 +1054,24 @@ export function GameView({
           </div>
         )}
         <SeasonMatchNotice result={seasonResult} />
+        {/* 勝利チャンス(2026-09-23 本人の指示)。成功なら褒美、しくじれば次の対局に持ち越し */}
+        {chance && chance.wasChance && (
+          <div
+            className={`chance-notice ${chance.rewarded ? "chance-notice-won" : ""}`}
+            role="status"
+          >
+            {chance.rewarded ? (
+              <>
+                <b>勝利チャンス成功！</b> ガチャチケット{WIN_CHANCE_REWARD_TICKETS}枚を受け取りました
+                {chance.left > 0 ? `(今日あと${chance.left}回)` : "(今日はここまで)"}
+              </>
+            ) : (
+              <>
+                <b>勝利チャンス</b> は次の対局に持ち越し。勝てばガチャチケット{WIN_CHANCE_REWARD_TICKETS}枚
+              </>
+            )}
+          </div>
+        )}
         {rating && (
           <div className="rating-change">
             <span className="rating-label">レーティング</span>
@@ -1212,10 +1304,19 @@ export function GameCore({
     [areaPick, setAreaPick] = (0, useState)(false),
     // 対局中に記録を読む幕(2026-09-23 本人の指示)
     [logOpen, setLogOpen] = (0, useState)(false),
+    // マッチング後の「対戦相手」の画面(2026-09-23 本人の指示)。見終わるまでサイコロへ進まない
+    [introDone, setIntroDone] = (0, useState)(false),
+    // 勝利チャンス(src/game/win-chance.js)の清算結果。終局画面で知らせる
+    [chanceResult, setChanceResult] = (0, useState)(null),
     // 駒選びで選んだ駒。「確定」を押すまで発動しない(ワンタップで確定していたのを本人の指摘で改めた)
     [areaChoice, setAreaChoice] = (0, useState)(null),
     // テストプレイ中は、布陣の1分も対局の持ち時間も止める
     testPlay = (0, useRef)(isTestPlay()).current;
+  // 勝利チャンス(2026-09-23 本人の指示)はランダムマッチ(人・Bot)だけ。対局の始めに読んでおき、終局で清算する
+  const chanceEligible = !!((network && network.random) || bot) && !tutorial;
+  const chanceAtStart = (0, useRef)(chanceEligible ? loadWinChance() : null).current;
+  // 対戦相手の画面はオンライン(人・Bot)だけ。CPU 戦・同じ端末・チュートリアルには出さない
+  const showIntro = !!(network || bot) && !tutorial && !introDone;
   // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない
   let noLimit = !!tutorial || testPlay;
   // 自分が取った駒をバトルパスへ。チュートリアルでは進めない
@@ -1470,6 +1571,8 @@ export function GameCore({
         : null;
     a.phase === "intro" &&
       matchRatings.ready &&
+      // 対戦相手の画面を見終わるまで待つ(ホストが始めると相手側の画面も進むため)
+      !showIntro &&
       ((network && p !== 0) ||
         y({
           type: "START_SETUP",
@@ -1519,7 +1622,7 @@ export function GameCore({
               }
             : null),
         }));
-  }, [a.phase, boardSize, matchRatings.ready]);
+  }, [a.phase, boardSize, matchRatings.ready, showIntro]);
   // 盤面エリアの駒選びは、手番が変わったらやめる
   (0, useEffect)(() => {
     setAreaPick(false);
@@ -2121,6 +2224,27 @@ export function GameCore({
     publishPlayer(afterMastery);
     // 引き継ぎの控えも預け直す(本人確認済みのときだけ。失敗しても対局は止めない)
     backupIfDue().catch(() => {});
+    // 勝利チャンスの清算(ランダムマッチ・Bot 戦だけ)。チャンスの対局に勝てばガチャチケット。
+    // 出来事 id は「日・何回目」で決まるので、同じ成功を二度は積まない
+    if (chanceEligible) {
+      const day = chanceDay();
+      const r = settleWinChance(loadWinChance(), won);
+      saveWinChance(r.state);
+      if (r.rewarded) {
+        Promise.resolve(
+          giveGift({ type: "ticket", amount: WIN_CHANCE_REWARD_TICKETS }),
+        ).catch(() => {});
+        earnTickets(rewardEventId(myUid(), day, r.done), WIN_CHANCE_REWARD_TICKETS).catch(
+          () => {},
+        );
+      }
+      setChanceResult({
+        wasChance: r.wasChance,
+        rewarded: r.rewarded,
+        done: r.done,
+        left: chancesLeft(r.state),
+      });
+    }
     // ランダムマッチの結果を控える。人に負けたら、次のランダムマッチは Bot(src/game/bot-match.js)
     if ((network && network.random) || bot) noteRandomResult({ won, vsBot: !!bot });
   }, [a.phase, a.winner, matchRatings.ready]);
@@ -2386,6 +2510,36 @@ export function GameCore({
           onQuit={() => {
             (r(!1), quitGame());
           }}
+        />
+      </GameShell>
+    );
+  // マッチング後の「対戦相手」(2026-09-23 本人の指示)。名前・称号・持ち点を見せてからサイコロへ
+  if (showIntro && matchRatings.ready)
+    return (
+      <GameShell
+        topExtra={skipMenu}
+        sheet={presentationSheet}
+        focusButton={tutButton}
+        showRules={i}
+        setShowRules={f}
+        netInfo={N}
+        onBack={() => {
+          if (!fxBusy) r(!0);
+        }}
+      >
+        <MatchIntro
+          me={P ?? 0}
+          ratings={
+            bot
+              ? [loadProfile().rating, bot.rating]
+              : matchRatings.ratings || [loadProfile().rating, null]
+          }
+          chance={
+            chanceAtStart && isChanceNext(chanceAtStart)
+              ? chancesLeft(chanceAtStart)
+              : 0
+          }
+          onDone={() => setIntroDone(true)}
         />
       </GameShell>
     );
@@ -3565,6 +3719,7 @@ export function GameCore({
             rating={ratingResult}
             mastery={masteryResult}
             seasonResult={seasonResult}
+            chance={chanceResult}
             rematch={
               network && onRematch
                 ? {

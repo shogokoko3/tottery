@@ -101,6 +101,15 @@ export function makeBot(myRating, myName = null, rng = Math.random) {
   return { id: `bot:${name}`, name, icon, rating, tier, blunder, area, king, matchId };
 }
 
+/**
+ * Bot の称号(2026-09-23 本人の指示「相手の名前が出る箇所には称号も」)。人物として自然に見えるよう、
+ * 持ち点に応じた既存の称号を名乗る。持ち点で決まる称号の線(titles.js)と同じ
+ */
+export function botTitle(bot) {
+  const r = Number(bot?.rating) || 0;
+  return r >= 1800 ? "rank-sho" : r >= 1600 ? "rank-shi" : "first";
+}
+
 /** 合法な手からランダムに1つ(A の入れ替えと凍った駒は除く)。無ければ null */
 export function randomMove(state, player, rng = Math.random) {
   const all = [];

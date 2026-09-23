@@ -7318,3 +7318,98 @@ p.hint > span.gem-shop-diag {
   stroke-width: 0.06;
   opacity: 0.9;
 }
+
+/* =========================================================================
+   マッチング後の「対戦相手」の画面と、勝利チャンス(2026-09-23 本人の指示)
+   ========================================================================= */
+.match-intro {
+  gap: 14px;
+}
+.match-intro-seats {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  margin: 6px auto 0;
+}
+.match-intro-seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(9, 20, 38, 0.55);
+}
+.match-intro-me {
+  border-color: rgba(212, 175, 55, 0.45);
+}
+.match-intro-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+/* 額縁は一律の幅。無い人も同じ高さの枠を取って、左右の高さをそろえる */
+.match-intro-seat .match-intro-title {
+  width: 140px;
+  max-width: 100%;
+}
+.match-intro-title-none {
+  display: block;
+  height: 44px;
+}
+.match-intro-name {
+  font-size: 15px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.match-intro-rating {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.match-intro-rating b {
+  font-size: 15px;
+  color: var(--gold-soft);
+  font-variant-numeric: tabular-nums;
+}
+.match-intro-vs {
+  font-family: "Shippori Mincho", serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gold-soft);
+  letter-spacing: 0.1em;
+}
+.match-intro-chance,
+.chance-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  border: 1px solid rgba(240, 217, 165, 0.55);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.18), rgba(212, 175, 55, 0.06));
+  color: var(--gold-soft);
+  font-size: 13px;
+  text-align: center;
+}
+.match-intro-chance b,
+.chance-notice b {
+  font-size: 15px;
+  color: var(--gold);
+}
+.chance-notice {
+  margin: 10px auto 4px;
+}
+.chance-notice-won {
+  border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.3);
+}

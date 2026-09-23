@@ -128,7 +128,9 @@ import TITLE_STYLES from "./title-frame.css";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
 import { onlineGate, onlineGateLabel } from "../game/online-gate.js";
-import { botPlan, makeBot, botSearchDelay, clearBotNow, BOT_WAIT_MS } from "../game/bot-match.js";
+import { botPlan, makeBot, botSearchDelay, clearBotNow, BOT_WAIT_MS,
+  botTitle,
+} from "../game/bot-match.js";
 import {
   homeTutorialNudge,
   markFirstTutorialOffered,
@@ -2073,8 +2075,13 @@ function TotteryScreens() {
         : d
           ? [mine.icon, bot ? bot.icon : null]
           : [null, null],
-      // 称号はマッチした相手と交わすもの。CPU戦・同じ端末では渡さない
-      titles = a ? a.titles || [null, null] : [null, null],
+      // 称号はマッチした相手と交わすもの。CPU戦・同じ端末では渡さない。
+      // Bot(ランダムマッチの練習相手)は人物として見せるので、持ち点に応じた称号を名乗る(2026-09-23)
+      titles = a
+        ? a.titles || [null, null]
+        : bot
+          ? [titleOf(mine).id, botTitle(bot)]
+          : [null, null],
       skins = a
         ? (a.skins || [{}, {}]).map(sanitizeLoadout)
         : tut
