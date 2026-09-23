@@ -49,7 +49,7 @@ assert.equal(rows.filter((m) => m.category === "weekly").length, 3);
 assert.equal(
   rows.filter((m) => m.reward.type === "gems").length,
   5,
-  "gems: login/online daily, tsume/wins/king weekly (2026-09-24: week 380 so a free player reaches the pass in ~4 weeks)",
+  "gems: login/online daily, tsume/wins/king weekly (2026-09-24: week 500 so a free player reaches the pass in ~3 weeks)",
 );
 // 詰めトッタリー: 今週クリアした日数を数える(先週・来週の分は数えない)
 {
@@ -211,8 +211,8 @@ try {
     collection = claimPeriodicMission(collection, profile, row.id, monday);
   assert.equal(
     collection.gems,
-    20,
-    "daily: 10 login + 10 online (free gems)",
+    30,
+    "daily: 10 login + 20 online (free gems)",
   );
   assert.equal(collection.ether, 60, "daily: 30 all + 30 gacha");
   const again = claimPeriodicMission(

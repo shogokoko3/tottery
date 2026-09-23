@@ -428,7 +428,7 @@ export class Wallet {
     if (this.entitlementsOf(uid).includes(BATTLEPASS_ENTITLEMENT))
       return { applied: false, ...this.summary(uid) };
     // バトルパスはジェム(無償→有償の順)で買える(2026-09-24 本人の決め。それまでは有償だけ:2026-09-13)。
-    // 無課金でもミッションのジェムを4週間ためれば届く量にしてある(週380)。
+    // 無課金でもミッションのジェムを3週間ほどためれば届く量にしてある(週500)。
     // 冪等: 同じ id が既にあれば spendGems が applied:false を返し、二重には減らない
     const r = this.spendGems(uid, id, BATTLEPASS_GEMS, "pass", BATTLEPASS_ENTITLEMENT, now);
     if (r.applied)
