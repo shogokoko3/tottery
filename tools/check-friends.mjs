@@ -170,7 +170,10 @@ for (const op of ["friends-state", "friends-request", "friends-accept", "friends
   assert.ok(worker.includes(`"${op}"`), `Durable Object に ${op}`);
 assert.ok(/this\.friends\.forget\(uid\)/.test(worker), "記録を消すときフレンドも消す");
 assert.ok(/w\.credit\(uid, g\.id, 1, "friend-gift", now\)/.test(worker), "受け取った贈り物は id ごとに1枚");
-assert.ok(/args\.uid !== uid && !fr\.isFriend\(uid, args\.uid\)/.test(worker), "他人のプロフィールはフレンドだけ");
+assert.ok(/args\.target !== uid && !fr\.isFriend\(uid, args\.target\)/.test(worker), "他人のプロフィールはフレンドだけ");
+// call() は { op, uid, ...args } なので、相手を uid の名で渡すと本人の uid が上書きされる(承認しても申請が残った。2026-09-24)
+assert.ok(!/call\("friends-[a-z-]+", \{ uid:/.test(worker), "相手は target で渡す(uid の名で渡さない)");
+assert.ok(!/fr\.\w+\(uid, args\.uid/.test(worker), "Durable Object でも args.uid を読まない");
 const net = readFileSync(new URL("../src/net/friends.js", import.meta.url), "utf8").replace(/\s+/g, " ");
 assert.ok(/\/api\/friends\/\$\{op\}/.test(net), "端末は /api/friends/<op> を叩く");
 

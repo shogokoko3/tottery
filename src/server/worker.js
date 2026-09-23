@@ -133,7 +133,9 @@ async function handleApi(request, env, url) {
         ledger.fetch(
           new Request("https://ledger/", {
             method: "POST",
-            body: JSON.stringify({ op, uid, ...args }),
+            // uid は最後に置く。args に uid の名の値が混ざっても本人の uid を上書きできない
+            // (フレンドの相手を uid の名で渡して承認が効かなかった。2026-09-24)
+            body: JSON.stringify({ op, ...args, uid }),
           }),
         );
       if (adminSeason) {
@@ -242,18 +244,20 @@ async function handleApi(request, env, url) {
         if (fop === "state") return call("friends-state");
         if (fop === "request" && typeof body.code === "string" && body.code.length <= 16)
           return call("friends-request", { code: body.code });
-        if (fop === "accept" && who(body.uid)) return call("friends-accept", { uid: body.uid });
-        if (fop === "decline" && who(body.uid)) return call("friends-decline", { uid: body.uid });
-        if (fop === "cancel" && who(body.uid)) return call("friends-cancel", { uid: body.uid });
-        if (fop === "remove" && who(body.uid)) return call("friends-remove", { uid: body.uid });
-        if (fop === "gift" && who(body.uid)) return call("friends-gift", { uid: body.uid });
+        // 相手は target で渡す。call() は { op, uid, ...args } なので、uid の名で渡すと本人の uid を上書きしてしまう
+        // (承認しても申請が残る不具合の原因。2026-09-24 本人の報告)
+        if (fop === "accept" && who(body.uid)) return call("friends-accept", { target: body.uid });
+        if (fop === "decline" && who(body.uid)) return call("friends-decline", { target: body.uid });
+        if (fop === "cancel" && who(body.uid)) return call("friends-cancel", { target: body.uid });
+        if (fop === "remove" && who(body.uid)) return call("friends-remove", { target: body.uid });
+        if (fop === "gift" && who(body.uid)) return call("friends-gift", { target: body.uid });
         if (fop === "claim") return call("friends-claim");
         if (fop === "invite" && who(body.uid) && typeof body.code === "string" && body.code.length <= 16)
-          return call("friends-invite", { uid: body.uid, code: body.code });
-        if (fop === "cancel-invite" && who(body.uid)) return call("friends-cancel-invite", { uid: body.uid });
+          return call("friends-invite", { target: body.uid, code: body.code });
+        if (fop === "cancel-invite" && who(body.uid)) return call("friends-cancel-invite", { target: body.uid });
         if (fop === "profile-set" && body.card && typeof body.card === "object")
           return call("friends-profile-set", { card: body.card });
-        if (fop === "profile-get" && who(body.uid)) return call("friends-profile-get", { uid: body.uid });
+        if (fop === "profile-get" && who(body.uid)) return call("friends-profile-get", { target: body.uid });
         return json({ error: "見つかりません。" }, 404);
       }
       const op = url.pathname.slice("/api/season/".length);
@@ -382,36 +386,36 @@ export class SeasonLedger {
           };
         }
         if (op === "friends-request") return fr.request(uid, args.code, now);
-        if (op === "friends-accept") return fr.accept(uid, args.uid, now);
-        if (op === "friends-decline") return fr.decline(uid, args.uid);
-        if (op === "friends-cancel") return fr.cancel(uid, args.uid);
-        if (op === "friends-remove") return fr.remove(uid, args.uid);
-        if (op === "friends-gift") return fr.gift(uid, args.uid, now);
+        if (op === "friends-accept") return fr.accept(uid, args.target, now);
+        if (op === "friends-decline") return fr.decline(uid, args.target);
+        if (op === "friends-cancel") return fr.cancel(uid, args.target);
+        if (op === "friends-remove") return fr.remove(uid, args.target);
+        if (op === "friends-gift") return fr.gift(uid, args.target, now);
         if (op === "friends-claim") {
           // 受け取った贈り物は id ごとに1枚(同じ id は財布が二度足さない)
           const list = fr.claimGifts(uid, now);
           for (const g of list) w.credit(uid, g.id, 1, "friend-gift", now);
           return { claimed: list.map((g) => ({ ...g, from: fr.tag(g.fromUid) })), wallet: w.summary(uid, now) };
         }
-        if (op === "friends-invite") return fr.invite(uid, args.uid, args.code, now);
-        if (op === "friends-cancel-invite") return fr.cancelInvite(uid, args.uid);
+        if (op === "friends-invite") return fr.invite(uid, args.target, args.code, now);
+        if (op === "friends-cancel-invite") return fr.cancelInvite(uid, args.target);
         if (op === "friends-profile-set") return fr.setProfile(uid, args.card, now);
         if (op === "friends-profile-get") {
           // 他人のプロフィールはフレンドだけ。自分のはいつでも
-          if (args.uid !== uid && !fr.isFriend(uid, args.uid)) throw new Error("フレンドのプロフィールだけ見られます。");
-          const card = fr.profileOf(args.uid);
+          if (args.target !== uid && !fr.isFriend(uid, args.target)) throw new Error("フレンドのプロフィールだけ見られます。");
+          const card = fr.profileOf(args.target);
           const season = l.current(now).id;
-          const row = l.playerRow(args.uid, season);
-          const player = l.list(season).find((p) => p.uid === args.uid) || null;
+          const row = l.playerRow(args.target, season);
+          const player = l.list(season).find((p) => p.uid === args.target) || null;
           return {
-            uid: args.uid,
+            uid: args.target,
             card,
             rating: row.rating,
             place: player?.place || null,
             best: player?.best || null,
             rated: player?.rated || 0,
-            appearance: l.appearance(args.uid),
-            friend: args.uid === uid || fr.isFriend(uid, args.uid),
+            appearance: l.appearance(args.target),
+            friend: args.target === uid || fr.isFriend(uid, args.target),
           };
         }
         const w = this.wallet;
@@ -456,7 +460,7 @@ export class SeasonLedger {
         if (op === "equip") return l.equip(uid, args.back, args.frame, now);
         if (op === "appearance")
           return Object.fromEntries(
-            args.uids.map((id) => [id, l.appearance(id)]),
+            args.targets.map((id) => [id, l.appearance(id)]),
           );
         throw new Error("操作が見つかりません。");
       });
