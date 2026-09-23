@@ -38,6 +38,7 @@ import {
   PULL_COST,
 } from "../skins/collection.js";
 import { recordGachaStats } from "../game/profile.js";
+import { useTitleNoticeHold } from "./title-acquisition.jsx";
 import {
   SHARD_NAME,
   SHARD_VALUE,
@@ -1667,6 +1668,12 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
     craftResult &&
     (craftResult.results || [craftResult]).find((r) => byId(r.id)?.foil);
   const areaRewards = areaRewardsFor(results || []);
+  useTitleNoticeHold(
+    working ||
+      !!((acquisitionMode === "summon" && collection.pending) ||
+        (acquisitionMode === "foil" && craftedFoil) ||
+        (acquisitionMode === "area" && areaRewards.length > 0)),
+  );
   const finishAcquisition = useCallback(() => setAcquisitionMode("area"), []);
   const magicianLocked = isBattlePassLocked(
     byId("genie-magician"),

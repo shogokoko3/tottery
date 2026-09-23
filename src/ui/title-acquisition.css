@@ -1,0 +1,281 @@
+.title-award {
+  position: fixed;
+  z-index: 11000;
+  top: max(22px, calc(env(safe-area-inset-top, 0px) + 12px));
+  left: 50%;
+  width: min(440px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  pointer-events: none;
+  isolation: isolate;
+  color: #fff2d6;
+  font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  text-align: center;
+}
+.title-award-panel {
+  position: relative;
+  padding: 22px 18px 15px;
+  border: 1px solid #ddba7780;
+  border-radius: 5px 5px 22px 22px;
+  background:
+    radial-gradient(ellipse at 50% 0, var(--title-base), transparent 85%),
+    linear-gradient(160deg, #17212af7, #090e19fa);
+  box-shadow:
+    0 12px 36px #0009,
+    inset 0 0 0 4px #ddba7712;
+  animation: title-award-arrive 650ms cubic-bezier(0.15, 0.8, 0.2, 1) both;
+}
+.title-award-panel::before {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: -1px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #fff2c9,
+    var(--title-light),
+    transparent
+  );
+  transform-origin: center;
+  box-shadow: 0 0 15px var(--title-light);
+  animation: title-award-rule 800ms ease-out both;
+}
+.title-award-heading {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: #ffe8b0;
+}
+.title-award-heading span {
+  height: 1px;
+  width: 42px;
+  background: linear-gradient(90deg, transparent, #dcc088);
+}
+.title-award-heading span:last-child {
+  transform: rotate(180deg);
+}
+.title-award-reveal {
+  position: relative;
+  margin: 20px auto 2px;
+  overflow: hidden;
+  animation: title-award-name 900ms 180ms cubic-bezier(0.16, 0.8, 0.22, 1) both;
+}
+.title-award-reveal .title-frame {
+  width: 100%;
+}
+.title-award-reveal .title-frame-name {
+  font-size: clamp(16px, 4.8vw, 22px);
+  letter-spacing: 0.08em;
+}
+.title-award-sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    #fff9d580 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  animation: title-award-sheen 1300ms 650ms ease-in-out both;
+}
+.title-award-panel p {
+  margin: 8px 0 0;
+  font:
+    11px/1.6 system-ui,
+    sans-serif;
+  letter-spacing: 0.08em;
+  color: #cec4ac;
+}
+.title-award-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0 4px 0 10px;
+  background: transparent;
+  color: #ead8b4;
+  font:
+    24px/1 system-ui,
+    sans-serif;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.title-award-close:focus-visible {
+  outline: 2px solid #ffe8b0;
+  outline-offset: -4px;
+}
+.title-award-count {
+  position: absolute;
+  right: 13px;
+  bottom: 12px;
+  color: #dcc088;
+  font:
+    10px/1.5 system-ui,
+    sans-serif;
+}
+.title-award-glow {
+  position: absolute;
+  inset: -25px -12px;
+  z-index: -1;
+  background: radial-gradient(ellipse, var(--title-light), transparent 67%);
+  animation: title-award-glow 1700ms ease-out both;
+}
+.title-award-rays {
+  position: absolute;
+  z-index: -1;
+  inset: -20px 20px;
+  background: repeating-conic-gradient(
+    from 12deg,
+    transparent 0deg 27deg,
+    #ffe6aa50 29deg 30deg,
+    transparent 32deg 45deg
+  );
+  mask-image: radial-gradient(ellipse, #000, transparent 68%);
+  animation: title-award-rays 1700ms ease-out both;
+}
+.title-award-sparks {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.title-award-sparks i {
+  position: absolute;
+  left: calc(6% + var(--spark) * 9.4%);
+  top: 65%;
+  width: 3px;
+  height: 3px;
+  background: var(--title-light);
+  box-shadow: 0 0 7px var(--title-light);
+  border-radius: 50%;
+  animation: title-award-spark 1600ms calc(180ms + var(--spark) * 70ms) ease-out
+    both;
+}
+.title-award-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.title-award.is-leaving {
+  animation: title-award-exit 400ms ease-in both;
+}
+@keyframes title-award-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes title-award-rule {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes title-award-name {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+  65% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes title-award-sheen {
+  to {
+    transform: translateX(120%);
+  }
+}
+@keyframes title-award-glow {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  30% {
+    opacity: 0.65;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+@keyframes title-award-rays {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) rotate(-6deg);
+  }
+  35% {
+    opacity: 0.65;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2) rotate(6deg);
+  }
+}
+@keyframes title-award-spark {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  25% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-95px);
+  }
+}
+@keyframes title-award-exit {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-award,
+  .title-award *,
+  .title-award *::before {
+    animation: none !important;
+  }
+  .title-award-glow,
+  .title-award-rays,
+  .title-award-sparks,
+  .title-award-sheen {
+    display: none;
+  }
+}
+@media (max-height: 500px) {
+  .title-award {
+    top: max(8px, env(safe-area-inset-top, 0px));
+    width: min(400px, calc(100vw - 24px));
+  }
+  .title-award-panel {
+    padding-block: 10px;
+  }
+  .title-award-reveal {
+    margin-top: 8px;
+  }
+}

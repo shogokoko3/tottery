@@ -1,4 +1,5 @@
 import { FormationHonor, formationScene } from "./formation-honor.jsx";
+import { useTitleNoticeHold } from "./title-acquisition.jsx";
 import { FieldBackdrop } from "./fields/backdrop.jsx";
 import {
   boardFieldTheme,
@@ -1275,6 +1276,7 @@ export function GameCore({
   // 布陣ボーナスを読んでいるあいだ、相手の確認を待っているあいだは持ち時間を減らさない
   const pauseClock =
     fxBusy || !!a.captureReveal || !!a.setupEffects || setupWaiting(a);
+  useTitleNoticeHold(pauseClock);
   const captureDisplayed = useCapturePresentation(a);
   const displayed = aceMagic.busy
     ? aceMagic.displayState
@@ -1982,6 +1984,7 @@ export function GameCore({
    * 実際の配り方で およそ2600局に1回しか起きない
    */
   let [secretGot, setSecretGot] = (0, useState)(null);
+  useTitleNoticeHold(!!secretGot);
   (0, useEffect)(() => {
     const mine = network ? p : cpu ? 0 : a.setupIdx;
     if (!a.handRescued || !a.handRescued[mine]) return;

@@ -16,6 +16,7 @@ import { findTitle, hasTitle, newlyEarned } from "./titles.js";
 import { SECRETS } from "./secrets.js";
 import { MAX_LEVEL, XP, levelOfXp, progressOfXp } from "./level.js";
 import { publishXpNotice } from "./xp-notices.js";
+import { clearTitleNotices, publishTitleNotices } from "./title-notices.js";
 import {
   sanitizeMissionProgress,
   recordMissionLogin,
@@ -348,7 +349,8 @@ export function loadProfile() {
 export function restoreProfile(saved, uid) {
   if (!saved || typeof saved !== "object") return loadProfile();
   const id = uid || saved.id || loadProfile().id;
-  saveProfile({ ...saved, id });
+  clearTitleNotices();
+  saveProfile({ ...saved, id }, { notifyTitles: false });
   return loadProfile();
 }
 
@@ -377,6 +379,7 @@ export function normalizeName(raw) {
  * 運営に使用停止にされたときに使う。対局数などの記録も一緒に消える
  */
 export function resetAccount() {
+  clearTitleNotices();
   try {
     localStorage.removeItem(KEY);
     localStorage.removeItem(OLD_KEY);
@@ -437,12 +440,16 @@ function announce() {
   }, 0);
 }
 
-function saveProfile(profile) {
+function saveProfile(profile, { notifyTitles = true } = {}) {
+  const before = notifyTitles ? loadProfile() : null;
   try {
     localStorage.setItem(KEY, JSON.stringify(profile));
   } catch {
-    // 保存できなくても遊べる方を優先する
+    // 保存できなくても遊べる方を優先する。未保存の報酬は獲得表示しない。
+    announce();
+    return;
   }
+  if (notifyTitles) publishTitleNotices(before, profile);
   announce();
 }
 
@@ -454,6 +461,7 @@ function saveProfile(profile) {
  * 消したあとは名前を決める画面からやり直しになる。
  */
 export function forgetMe() {
+  clearTitleNotices();
   try {
     localStorage.removeItem(KEY);
     localStorage.removeItem(OLD_KEY);
@@ -726,6 +734,8 @@ export function grantMissionTitle(missionId, titleId) {
       "保存できませんでした。空き容量や保存設定を確認して、もう一度受け取ってください。",
     );
   }
+  publishTitleNotices(profile, next);
+  announce();
   return next;
 }
 

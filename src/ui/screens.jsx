@@ -100,6 +100,7 @@ import { tsumeReceipt } from "../game/tsume-daily.js";
 import { nextTutorialAfter } from "../game/tutorial.js";
 import { ProfileSyncNotice } from "./profile-sync.jsx";
 import { XpGainToast } from "./xp-gain.jsx";
+import { TitleAcquisition } from "./title-acquisition.jsx";
 import { getXpNotices, subscribeXpNotices } from "../game/xp-notices.js";
 import { GAME_RULE_VERSION } from "../game/rule-version.js";
 import { foilRevealed } from "../skins/collection.js";
@@ -1838,6 +1839,7 @@ export function TotteryApp() {
     <>
       <TotteryScreens />
       <XpGainToast />
+      <TitleAcquisition />
       <ProfileSyncNotice />
     </>
   );
