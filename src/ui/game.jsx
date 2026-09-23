@@ -211,37 +211,32 @@ export function ClockBar({
                   )
                 </span>
               </span>
-              <strong className="clock-time">{fmt(ms)}</strong>
-              {titles && <TitleFrame id={titles[idx]} size="compact" />}
-              {limited && (
-                <div
-                  className={`clock-extension ${warning ? "clock-extension-warning" : ""} ${remaining === 0 ? "clock-extension-empty" : ""}`}
-                >
-                  <div className="clock-extension-count">
-                    <span>
-                      追加 あと<strong>{remaining}</strong>回
-                    </span>
-                    <span className="clock-extension-pips" aria-hidden="true">
-                      {Array.from({ length: CLOCK_EXTENSION_LIMIT }, (_, n) => (
-                        <i
-                          key={n}
-                          className={n < remaining ? "available" : ""}
-                        />
-                      ))}
-                    </span>
-                  </div>
-                  <div
-                    className="clock-extension-alert"
-                    role="status"
-                    aria-atomic="true"
-                  >
-                    {warning &&
-                      (remaining === 0
+              {/* 残り時間の脇に、追加の残り回数を小さな点で(2026-09-23 本人の指示。
+                  「追加 あと6回」の行は場所を取っていた)。残り3回からは点が橙、0回で赤 */}
+              <strong className="clock-time">
+                {fmt(ms)}
+                {limited && (
+                  <span
+                    className={`clock-pips-inline ${warning ? "is-warning" : ""} ${remaining === 0 ? "is-empty" : ""}`}
+                    role="img"
+                    aria-label={
+                      remaining === 0
+                        ? "時間の追加はもうありません"
+                        : `時間の追加はあと${remaining}回`
+                    }
+                    title={
+                      remaining === 0
                         ? "次のターンから追加なし"
-                        : `⚠ 追加は残り${remaining}回`)}
-                  </div>
-                </div>
-              )}
+                        : `残り30秒以下のターン開始時に+10秒。あと${remaining}回`
+                    }
+                  >
+                    {Array.from({ length: CLOCK_EXTENSION_LIMIT }, (_, n) => (
+                      <i key={n} className={n < remaining ? "available" : ""} />
+                    ))}
+                  </span>
+                )}
+              </strong>
+              {titles && <TitleFrame id={titles[idx]} size="compact" />}
             </div>
           );
         })}
@@ -325,6 +320,8 @@ export function TurnBar({ state, viewer, onLog = null }) {
               !line.includes("新しい王"),
           )
       : state.log[state.log.length - 1];
+  // 1行に収める(2026-09-23 本人の指示「盤が一番見やすいように」)。手番と最後の記録を並べ、
+  // 長い記録は切る。全文は盤の下の「記録」で読める。onLog は盤の下へ移したので、ここでは使わない
   return (
     <div className="turn-bar">
       <div className="turn-bar-head">
@@ -343,18 +340,8 @@ export function TurnBar({ state, viewer, onLog = null }) {
         >
           {playerLabel(state.currentTurn, viewer, names)}の番です
         </span>
-        {onLog && (
-          <button
-            type="button"
-            className="turn-log-btn"
-            onClick={onLog}
-            aria-label="対局の記録を見る"
-          >
-            記録
-          </button>
-        )}
+        <span className="turn-log">{withNames(log, names) || " "}</span>
       </div>
-      <span className="turn-log">{withNames(log, names) || " "}</span>
     </div>
   );
 }
@@ -425,19 +412,32 @@ export function MatchIntro({ me, ratings, chance, onDone, seconds = 6 }) {
  */
 export function LiveLogModal({ log, onClose }) {
   const listRef = useRef(null);
+  // 「盤面を見る」で幕を小さくたたみ、盤を確かめてから「記録に戻る」(2026-09-23 本人の指示)
+  const [peek, setPeek] = useState(false);
   useEffect(() => {
     const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [log.length]);
+    if (el && !peek) el.scrollTop = el.scrollHeight;
+  }, [log.length, peek]);
   return (
-    <div className="modal-overlay" role="dialog" aria-label="対局の記録">
-      <div className="modal-panel live-log-panel">
-        <div className="modal-head">
-          <h3>対局の記録</h3>
-          <button className="btn btn-ghost btn-small" onClick={onClose}>
-            閉じる
-          </button>
-        </div>
+    <div
+      className={`live-log-sheet ${peek ? "is-peek" : ""}`}
+      role="dialog"
+      aria-label="対局の記録"
+    >
+      <div className="live-log-head">
+        <h3>対局の記録</h3>
+        <button
+          type="button"
+          className="btn btn-ghost btn-small"
+          onClick={() => setPeek((v) => !v)}
+        >
+          {peek ? "記録に戻る" : "盤面を見る"}
+        </button>
+        <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>
+          閉じる
+        </button>
+      </div>
+      {!peek && (
         <div className="live-log-scroll" ref={listRef}>
           <ol className="log-list">
             {log.length ? (
@@ -447,7 +447,7 @@ export function LiveLogModal({ log, onClose }) {
             )}
           </ol>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -3285,7 +3285,7 @@ export function GameCore({
             viewer={P}
           />
         )}
-        <TurnBar state={displayed} viewer={P} onLog={() => setLogOpen(true)} />
+        <TurnBar state={displayed} viewer={P} />
         {logOpen && (
           <LiveLogModal log={displayed.log} onClose={() => setLogOpen(false)} />
         )}
@@ -3350,14 +3350,12 @@ export function GameCore({
                 !!areaPick ||
                 a.aceFoilUsedTurn?.[P] === (a.turnNo || 0)
               }
+              // 使えない理由は釦の説明(title)に。帯を細くするため、行としては出さない(2026-09-23)
               title={aceFoil.why || "毎ターン1回・通常の行動前に任意発動"}
               onClick={() => y({ type: "USE_ACE_FOIL" })}
             >
               発動
             </button>
-            <small className="area-why">
-              {x && !aceFoil.ok && aceFoil.why ? aceFoil.why : " "}
-            </small>
           </div>
         )}
         {pendingCapture && (
@@ -3827,8 +3825,21 @@ export function GameCore({
             onClose={() => setFormationGot((list) => list.slice(1))}
           />
         )}
-        {!tutorial && (network || cpu) && a.phase === "play" && (
-          <p className="private-note-hint">✎ 相手の伏せ札を長押しで推理メモ</p>
+        {/* 記録は盤の下(2026-09-23 本人の指示)。押すと下から記録の幕。幕は「盤面を見る」でたためる */}
+        {(a.phase === "play" || a.phase === "setup") && (
+          <div className="board-foot">
+            <button
+              type="button"
+              className="btn btn-ghost btn-small board-log-btn"
+              onClick={() => setLogOpen(true)}
+              aria-label="対局の記録を見る"
+            >
+              記録
+            </button>
+            {!tutorial && (network || cpu) && a.phase === "play" && (
+              <span className="private-note-hint">✎ 相手の伏せ札を長押しで推理メモ</span>
+            )}
+          </div>
         )}
         <CapturedRow players={displayed.players} dispatch={y} viewer={P} />
         <div className="resign-row">

@@ -7489,3 +7489,205 @@ p.hint > span.gem-shop-diag {
   font-size: 10px;
   color: var(--text-dim);
 }
+
+/* =========================================================================
+   盤を主役にする(2026-09-23 本人の指示)。盤の上を圧縮し、記録は盤の下へ
+   ========================================================================= */
+/* 時計欄: 名前・時間を1行、称号を1行。追加回数は時間の脇の点 */
+.clock-bar {
+  margin-bottom: 4px;
+}
+.clock-cell {
+  padding: 4px 8px;
+}
+.clock-cell.clock-cell-titled {
+  gap: 0 5px;
+}
+.clock-time {
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.clock-pips-inline {
+  display: inline-flex;
+  gap: 2px;
+  vertical-align: middle;
+}
+.clock-pips-inline i {
+  width: 4px;
+  height: 7px;
+  border-radius: 2px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+.clock-pips-inline i.available {
+  background: var(--gold-soft);
+  border-color: var(--gold-soft);
+}
+.clock-pips-inline.is-warning i.available {
+  background: #ffb547;
+  border-color: #ffb547;
+}
+.clock-pips-inline.is-empty i {
+  border-color: rgba(239, 138, 118, 0.6);
+}
+.clock-cell-titled .title-frame--compact {
+  transform: scale(0.86);
+  transform-origin: center top;
+  margin-bottom: -6px;
+}
+.clock-rule-hint {
+  display: none;
+}
+/* 手番の行: 1行。手番＋最後の記録 */
+.turn-bar {
+  margin-bottom: 4px;
+}
+.turn-bar-head {
+  min-height: 24px;
+}
+.turn-bar .turn-log {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  margin: 0 0 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+  line-height: 1.4;
+  text-align: left;
+}
+/* エリアの帯: 細く */
+.area-bar {
+  min-height: 0;
+  margin: 0 0 4px;
+  gap: 6px;
+  font-size: 11px;
+}
+.area-chip {
+  padding: 3px 10px;
+  gap: 4px;
+  line-height: 1.4;
+  border-radius: 10px;
+}
+.area-chip small {
+  font-size: 10px;
+}
+.area-bar .btn-small {
+  min-height: 32px;
+  padding: 4px 12px;
+}
+.area-help {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+.area-bar .area-why {
+  min-height: 1.2em;
+  font-size: 10px;
+  line-height: 1.2;
+}
+/* A フォイルの帯: 1行 */
+.ace-foil-bar {
+  margin: 0 0 4px;
+  flex-wrap: nowrap;
+}
+.ace-foil-bar .area-chip {
+  flex: 1;
+  justify-content: center;
+}
+.play-status {
+  margin: 0 0 4px;
+  font-size: 12px;
+}
+/* 盤の下: 記録の釦と推理メモの案内 */
+.board-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 6px 0 2px;
+}
+.board-foot .private-note-hint {
+  margin: 0;
+  font-size: 11px;
+}
+.board-log-btn {
+  min-height: 34px;
+  padding: 4px 16px;
+}
+/* 記録の幕: 下から出る。「盤面を見る」で頭だけ残してたたむ */
+.live-log-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  max-height: 56dvh;
+  margin: 0 auto;
+  max-width: 560px;
+  padding: 8px 12px calc(10px + env(safe-area-inset-bottom));
+  border: 1px solid var(--gold);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(170deg, #132844, #0b1729);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55);
+}
+.live-log-sheet.is-peek {
+  max-height: none;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+}
+.live-log-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.live-log-head h3 {
+  margin: 0;
+  flex: 1;
+  font-size: 15px;
+}
+.is-peek .live-log-head {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.live-log-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  text-align: left;
+  padding-top: 6px;
+}
+/* ランキング: 名前の一覧だけを送る(2026-09-23 本人の指示) */
+.rank-list {
+  max-height: max(220px, calc(100dvh - 500px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+/* 時計欄の名前は1行に(点と時間で幅が減り「かくに／ん」と折れていた) */
+.clock-cell .clock-name,
+.clock-cell-titled .clock-name {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  max-width: 100%;
+}
+.clock-cell .clock-who {
+  min-width: 0;
+  flex: 1;
+}
+/* 一覧の上限は画面の空きに合わせる(見出し・タブ・更新の行で約 420px 使う) */
+.rank-list {
+  max-height: max(220px, calc(100dvh - 430px));
+}
