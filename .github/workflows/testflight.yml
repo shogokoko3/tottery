@@ -22,10 +22,6 @@ on:
       - "tools/patch-plugins.mjs"
       - ".github/workflows/testflight.yml"
   workflow_dispatch: {}
-  # 2026-09-23(UTC)は Apple の1日のアップロード上限に達して送れなかった。翌日にもう一度だけ走らせる
-  # (2026-09-25 01:30 JST = 09-24 16:30 UTC)。済んだらこの schedule は消してよい(毎年その日に走ってしまう)
-  schedule:
-    - cron: "30 16 24 9 *"
 
 # 送信が重ならないよう直列化。走行中を止めると中途半端になるので cancel はしない。
 concurrency:
