@@ -1354,7 +1354,7 @@ Bot も人物として見せるので、持ち点に応じた称号を名乗る(
 
 ## フレンドとプロフィール(2026-09-23 本人の指示)
 
-入口はホームの上段(自分の札の右、「お知らせ」の隣の「フレンド」)。自分の札を押すと自分のプロフィール。詳しくは docs/friends.md。
+入口はホームの上段の「お知らせ」(運営の手紙とフレンドを同じ画面のタブにまとめた。src/ui/inbox.jsx。2026-09-24 本人の指示でホームの並びは元の2列に戻した)。自分の札を押すと自分のプロフィール。詳しくは docs/friends.md。
 
 - **正はサーバー**(Worker の Durable Object、src/server/friends.js)。Firebase のルールは触っていない(公開の作業なし)。
   端末は src/net/friends.js で `/api/friends/<op>` を叩く(state / request / accept / decline / cancel / remove / gift / claim / invite / cancel-invite / profile-set / profile-get)

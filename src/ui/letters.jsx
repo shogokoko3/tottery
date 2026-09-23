@@ -54,7 +54,7 @@ const when = (ms) => {
   return d.toLocaleDateString("ja-JP");
 };
 
-export function LettersScreen({ onBack }) {
+export function LettersScreen({ onBack, embedded = false }) {
   const [profile, setProfile] = useState(() => loadProfile());
   const [list, setList] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -126,7 +126,8 @@ export function LettersScreen({ onBack }) {
 
   return (
     <div className="setup-wrap notice-wrap">
-      <h2>運営からのお知らせ</h2>
+      {/* お知らせ・フレンドの画面(InboxScreen)に入っているときは、タブが見出しの代わり */}
+      {!embedded && <h2>運営からのお知らせ</h2>}
       <p className="mission-message" role="status">
         {message}
       </p>

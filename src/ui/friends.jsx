@@ -101,7 +101,7 @@ function FriendTag({ f, onClick }) {
   );
 }
 
-export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, initialNotice = "" }) {
+export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, initialNotice = "", embedded = false }) {
   const [profile] = useMissionProfile();
   const collection = useCollection();
   usePublishProfileCard(profile, collection);
@@ -164,7 +164,7 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, initi
 
   return (
     <div className="setup-wrap friends-screen">
-      <h2>フレンド</h2>
+      {!embedded && <h2>フレンド</h2>}
       <p className="hint">
         フレンド ID を伝え合って登録します。{state?.max || 50}人まで。1日1回、フレンド1人にガチャチケットを贈れます。
       </p>

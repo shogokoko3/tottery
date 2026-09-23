@@ -148,7 +148,8 @@ import AREA_STYLES from "./area-effects.css";
 import SEASON_STYLES from "./season.css";
 import TSUME_STYLES from "./tsume.css";
 import { SkinsScreen } from "./skins.jsx";
-import { FriendsScreen, useFriendAlerts } from "./friends.jsx";
+import { useFriendAlerts } from "./friends.jsx";
+import { InboxScreen } from "./inbox.jsx";
 import { ProfileScreen } from "./profile.jsx";
 import { inviteFriend } from "../net/friends.js";
 import { useMissionProfile } from "./mission-profile.js";
@@ -401,7 +402,6 @@ export function MenuScreen({
   onCards,
   onShop,
   onLetters,
-  onFriends = null,
   onProfile = null,
   now = Date.now,
 }) {
@@ -441,20 +441,21 @@ export function MenuScreen({
       {/* その日のぶんがまだなら、ここに着いたときに札が出る */}
       <LoginBonus />
 
-      <div className={`home-account-row${onFriends ? " has-friends" : ""}`}>
+      {/* 上段は自分の札と「お知らせ」の2列(2026-09-24 本人の指示で元の並びに戻した)。
+          お知らせの釦はフレンドと同じ入口(InboxScreen)。印は未読の手紙とフレンドの届き物の合計 */}
+      <div className="home-account-row">
       <HomeSelf profile={profile} onProfile={onProfile} />
-      <button className="home-news" onClick={onLetters} aria-label={`運営からのお知らせ${unread > 0 ? ` 未読${unread}件` : ""}`}>
+      <button
+        className="home-news"
+        onClick={onLetters}
+        aria-label={`お知らせとフレンド${unread + friendAlerts > 0 ? ` 届いているもの${unread + friendAlerts}件` : ""}`}
+      >
         <Mail size={15} />
         <span>お知らせ</span>
-        {unread > 0 && <span className="home-news-count">{unread > 99 ? "99+" : unread}</span>}
+        {unread + friendAlerts > 0 && (
+          <span className="home-news-count">{unread + friendAlerts > 99 ? "99+" : unread + friendAlerts}</span>
+        )}
       </button>
-      {onFriends && (
-        <button className="home-news home-friends" onClick={onFriends} aria-label={`フレンド${friendAlerts > 0 ? ` 届いているもの${friendAlerts}件` : ""}`}>
-          <Users size={15} />
-          <span>フレンド</span>
-          {friendAlerts > 0 && <span className="home-news-count">{friendAlerts > 99 ? "99+" : friendAlerts}</span>}
-        </button>
-      )}
       </div>
       {/* 残高。左にチケット、右にジェム(2026-09-22 本人の指示で入れ替え)。
           押せるのはジェムから「+」までで、押すとジェムの店が開く。「ジェムを買う」の文言は出さない。
@@ -2256,7 +2257,6 @@ function TotteryScreens() {
               onCards={() => t("cards")}
               onLetters={() => t("letters")}
               onShop={() => t("shop")}
-              onFriends={() => t("friends")}
               onProfile={() => {
                 (setProfileUid(null), setProfileFrom("menu"), t("profile"));
               }}
@@ -2310,8 +2310,11 @@ function TotteryScreens() {
             />
           ),
           cards: <CardMasteryScreen onBack={() => t("menu")} />,
+          // お知らせとフレンドは1つの画面(InboxScreen)のタブ。タブ = 画面 id
           friends: (
-            <FriendsScreen
+            <InboxScreen
+              tab="friends"
+              onTab={(id) => t(id)}
               onBack={() => t("menu")}
               onProfile={(uid) => {
                 (setProfileUid(uid), setProfileFrom("friends"), t("profile"));
@@ -2331,7 +2334,7 @@ function TotteryScreens() {
               onRemoved={() => t("friends")}
             />
           ),
-          letters: <LettersScreen onBack={() => t("menu")} />,
+          letters: <InboxScreen tab="letters" onTab={(id) => t(id)} onBack={() => t("menu")} />,
           tutorial: (
             <TutorialSelect onBack={() => t("menu")} onStart={startTutorial} />
           ),
