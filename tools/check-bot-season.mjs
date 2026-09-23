@@ -34,19 +34,20 @@ assert.equal(row.rated, 3);
 assert.equal(row.wins, 1);
 assert.equal(row.draws, 1);
 assert.equal(row.name, "たろう");
-assert.equal(row.place, null, "10戦までは順位に載らない");
+assert.equal(row.place, 1, "1戦から順位に載る(2026-09-23 本人の指示。以前は10戦)");
+assert.equal(ledger.summary(me, now + 3).list[0]?.uid, me, "1戦でランキングに出る");
 
 // 同じ id は二度数えない
 r = ledger.recordBot(me, { id: "m1", winner: 0, name: "たろう", icon: "spade" }, now + 3);
 assert.equal(r.recorded, false);
 assert.equal(ledger.list("2026-09").find((p) => p.uid === me).rated, 3, "二度目は数えない");
 
-// 10戦で順位に載る
+// 10戦まで積んでも同じ
 for (let i = 4; i <= 10; i++)
   ledger.recordBot(me, { id: `m${i}`, winner: 0, name: "たろう", icon: "spade" }, now + i);
 const listed = ledger.list("2026-09").find((p) => p.uid === me);
 assert.equal(listed.rated, 10);
-assert.equal(listed.place, 1, "10戦で順位が付く");
+assert.equal(listed.place, 1, "10戦でも順位が付く");
 assert.equal(ledger.summary(me, now + 20).list[0].uid, me, "ランキングに出る");
 
 // 1750 以上は数えない(人と組む段階)
@@ -78,4 +79,4 @@ const season = readFileSync(new URL("../src/ui/season.jsx", import.meta.url), "u
 assert.ok(/id: bot\.matchId \|\| `\$\{bot\.id\}:\$\{round\}`/.test(season), "Bot 戦は matchId を送る");
 assert.ok(/const eligible = \(!!network \|\| !!bot\) && state\.boardSize === 9 && !disabled;/.test(season), "9×9 の Bot 戦だけ");
 
-console.log("Bot 戦をシーズンに数える: 同格の ±16・重複なし・10戦で順位・1750 以上は数えない・配線 OK");
+console.log("Bot 戦をシーズンに数える: 同格の ±16・重複なし・1戦から順位・1750 以上は数えない・配線 OK");

@@ -312,7 +312,7 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
               ))}
             </ol>
           ) : (
-            <p className="hint">10戦を達成したプレイヤーから掲載されます。</p>
+            <p className="hint">9×9 のオンライン対戦を1戦すると掲載されます。</p>
           )}
         </>
       )}

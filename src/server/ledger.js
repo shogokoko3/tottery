@@ -12,6 +12,8 @@ import { TEST_PLAYERS_2026_09_08 } from "./test-players-2026-09-08.js";
 
 /** 記録を消した人の目印の代わり。matches に残る */
 export const FORGOTTEN = "forgotten";
+/** 何戦から順位に載せるか。1戦から(2026-09-23 本人の指示)。以前は 10 */
+export const LISTED_AFTER = 1;
 
 // Cloudflare SQLite と検証用 node:sqlite で同じ SQL を実行する。
 export class Ledger {
@@ -108,12 +110,13 @@ export class Ledger {
       index = 0;
     return rows.map((p) => {
       const rating = p.rating ?? displayRating(p.wr);
-      if (p.rated >= 10) {
+      // 1戦から順位を付ける(2026-09-23 本人の指示「目に見えた方がやる気になる」。それまでは10戦)
+      if (p.rated >= LISTED_AFTER) {
         index++;
         if (rating !== previous) place = index;
         previous = rating;
       }
-      return { ...p, rating, place: p.rated >= 10 ? place : null };
+      return { ...p, rating, place: p.rated >= LISTED_AFTER ? place : null };
     });
   }
   result(uid, id) {
