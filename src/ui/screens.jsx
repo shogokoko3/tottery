@@ -448,10 +448,10 @@ export function MenuScreen({
       <button
         className="home-news"
         onClick={onLetters}
-        aria-label={`お知らせとフレンド${unread + friendAlerts > 0 ? ` 届いているもの${unread + friendAlerts}件` : ""}`}
+        aria-label={`お知らせ・フレンド${unread + friendAlerts > 0 ? ` 届いているもの${unread + friendAlerts}件` : ""}`}
       >
         <Mail size={15} />
-        <span>お知らせ</span>
+        <span>お知らせ・<br />フレンド</span>
         {unread + friendAlerts > 0 && (
           <span className="home-news-count">{unread + friendAlerts > 99 ? "99+" : unread + friendAlerts}</span>
         )}
