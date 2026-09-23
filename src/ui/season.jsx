@@ -491,7 +491,7 @@ export function AppearanceSettings() {
         </select>
       </label>
       <label>
-        プロフィール枠
+        アイコンフレーム
         <select
           value={cache.frame || ""}
           disabled={!ready || busy}

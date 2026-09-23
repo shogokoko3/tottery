@@ -56,7 +56,7 @@ export function seasonRewards(id) {
     {
       key: "general",
       label: "将に到達",
-      name: "プロフィール枠「金の月桂冠」",
+      name: "アイコンフレーム「金の月桂冠」",
       frame: SEASON_FRAME,
       tier: 3,
       mark: "❧",
