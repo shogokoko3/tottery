@@ -1325,11 +1325,16 @@ export function GameCore({
     }
     if (a.phase === "dice" && diceFresh)
       prepClockRef.current = { phase: "dice", at: Date.now() };
-    else if (a.phase === "mulligan" && prepClockRef.current?.phase !== "mulligan")
-      prepClockRef.current = { phase: "mulligan", at: Date.now() };
+    else if (
+      a.phase === "mulligan" &&
+      (prepClockRef.current?.phase !== "mulligan" ||
+        prepClockRef.current?.who !== a.mulliganIdx)
+    )
+      // 引き直しは先攻→後攻の順。番が替わるたびに1分を数え直す
+      prepClockRef.current = { phase: "mulligan", who: a.mulliganIdx, at: Date.now() };
     else if (a.phase !== "dice" && a.phase !== "mulligan") prepClockRef.current = null;
     setNowMs(Date.now());
-  }, [simPrep, a.phase, diceFresh]);
+  }, [simPrep, a.phase, diceFresh, a.mulliganIdx]);
   const prepLimit = a.phase === "dice" ? DICE_LIMIT_MS : MULLIGAN_LIMIT_MS;
   const prepRemaining =
     simPrep &&
@@ -1345,9 +1350,10 @@ export function GameCore({
     if (!simPrep || !prepExpired) return;
     if (a.phase === "dice" && a.diceIdx < 2 && a.dice[prepSeat] === null)
       y({ type: "ROLL_DICE_SINGLE", player: prepSeat });
-    if (a.phase === "mulligan" && !(a.mulliganDone && a.mulliganDone[prepSeat]))
-      y({ type: "CONFIRM_MULLIGAN", player: prepSeat });
-  }, [simPrep, prepExpired, a.phase]);
+    // 引き直しは自分の番のときだけ。選んでいる札のまま確定する
+    if (a.phase === "mulligan" && a.mulliganIdx === prepSeat)
+      y({ type: "CONFIRM_MULLIGAN" });
+  }, [simPrep, prepExpired, a.phase, a.mulliganIdx]);
   // 目がそろったあとの進行はホスト(CPU 戦は自分)が自動で。両者が結果を見てから進む
   (0, useEffect)(() => {
     if (!simPrep || a.phase !== "dice") return;
@@ -2934,14 +2940,14 @@ export function GameCore({
     );
   }
   if (a.phase === "mulligan") {
-    // 版18以降(オンライン・CPU 戦): 両者が同時に選ぶ。1分で選んでいる札のまま確定。相手の名前と称号を上に出す
+    // 版18以降(オンライン・CPU 戦): 先攻→後攻の順に引き直す(2026-09-23 本人の指示)。各1分で、
+    // 時間が来たら選んでいる札のまま確定。相手の名前と称号を上に出し、残り時間は待つ側にも同じ帯で見せる
     if (simPrep) {
       const me = prepSeat,
         U = a.players[me],
         be = new Set(U._mulliganSelected || []),
-        done = !!(a.mulliganDone && a.mulliganDone[me]),
-        foeDone = !!(a.mulliganDone && a.mulliganDone[1 - me]),
-        limit = Math.floor(a.reserve.length / 2);
+        // 後攻は先攻の捨て札を見てから選べる(この順番は崩さない。本人の指示)
+        myTurn = a.mulliganIdx === me;
       return (
         <GameShell
           topExtra={skipMenu}
@@ -2968,15 +2974,15 @@ export function GameCore({
             )}
             <SetupTimer
               remainingMs={prepRemaining}
-              label={done ? "相手の残り時間" : "引き直しの残り時間"}
+              label={myTurn ? "引き直しの残り時間" : "相手の残り時間"}
               limitMs={MULLIGAN_LIMIT_MS}
             />
             <p className="hint">
-              {done
-                ? foeDone
-                  ? "そろいました。布陣へ進みます…"
-                  : "確定しました。相手が交換するカードを選んでいます…"
-                : `捨てたい札をタップ(もう一度タップで取り消し)。同じ枚数を予備札から引き直します(${limit}枚まで)。時間が来たら、選んでいる札のまま引き直します。`}
+              {myTurn
+                ? "捨てたい札をタップ(もう一度タップで取り消し)。同じ枚数を予備札から引き直します。捨て札は公開情報になります。時間が来たら、選んでいる札のまま引き直します。"
+                : me === a.firstPlayer
+                  ? "引き直しは済みました。相手(後攻)が交換するカードを選んでいます…"
+                  : "先攻の相手が交換するカードを選んでいます。終わったらあなたの番です…"}
             </p>
             <MulliganHand
               owner={me}
@@ -2984,9 +2990,9 @@ export function GameCore({
               hand={U.hand}
               selected={be}
               onToggle={
-                done
-                  ? () => {}
-                  : (at) => y({ type: "TOGGLE_MULLIGAN_CARD", cardId: at, player: me })
+                myTurn
+                  ? (at) => y({ type: "TOGGLE_MULLIGAN_CARD", cardId: at })
+                  : () => {}
               }
             />
             <DiscardPanel
@@ -2995,17 +3001,15 @@ export function GameCore({
               label={`${shortPlayerLabel(1 - me, P, names)}(${PLAYER_META[1 - me].name})が捨てたカード`}
               color={PLAYER_META[1 - me].color}
             />
-            {!done ? (
+            {myTurn ? (
               <button
                 className="btn btn-primary"
-                onClick={() => y({ type: "CONFIRM_MULLIGAN", player: me })}
+                onClick={() => y({ type: "CONFIRM_MULLIGAN" })}
               >
                 {be.size}枚 引き直して確定 <Check size={16} />
               </button>
             ) : (
-              <p className="hint">
-                {foeDone ? "" : "相手が確定するか、時間が来るまでお待ちください。"}
-              </p>
+              <p className="hint">相手が確定するか、時間が来るまでお待ちください。</p>
             )}
           </div>
         </GameShell>

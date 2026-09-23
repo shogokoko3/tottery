@@ -16,7 +16,6 @@ import {
   replenishReserve,
   reserveSeed,
   recyclesReserve,
-  seededShuffle,
 } from "./reserve.js";
 
 /** 版18以降: サイコロと引き直しを両者同時に(2026-09-23 本人の指示) */
@@ -133,8 +132,8 @@ function expectedActor(state, type) {
     case "CHOOSE_HEIR":
       return state.pendingKingChoice ? state.pendingKingChoice.owner : null;
     case "CONFIRM_MULLIGAN":
-      // 版18以降は両者が同時に選ぶ。どちらの席からも来る(自分の分だけ。reducer が済みを見る)
-      return simPrep(state) ? null : state.mulliganIdx;
+      // 引き直しは先攻→後攻の順(版18でも)。いま引き直す番の席だけ
+      return state.mulliganIdx;
     case "ROLL_DICE_SINGLE":
       // 自分の目は自分で振る。版18以降は順番が無いので席で縛らない(自分の目だけ振れる)
       if (simPrep(state)) return null;
@@ -388,8 +387,7 @@ function seedsPresent(state, action) {
         Number.isInteger(action.value) && action.value >= 1 && action.value <= 6
       );
     case "CONFIRM_MULLIGAN":
-      // 版18以降は予備札を GOTO_MULLIGAN で決定的に並べてあるので、並びを手に載せない
-      return simPrep(state) || Array.isArray(action.reserveOrder);
+      return Array.isArray(action.reserveOrder);
     case "CONFIRM_SHUFFLE":
       return (
         Array.isArray(action.order) &&
@@ -499,8 +497,6 @@ export function initialState() {
     dice: [null, null],
     diceIdx: 0,
     mulliganIdx: 0,
-    // 版18以降: 引き直しを済ませた席 [先手側でなく席0, 席1]
-    mulliganDone: [false, false],
     /** 使っているカードプール(チュートリアル用。null なら全部) */
     pool: null,
     /** 詳細設定(src/game/custom-rules.js)。null ならクラシック */
@@ -1537,20 +1533,7 @@ function coreReducer(state, action) {
       // 先手が決まってから進む。これが無いと、対局開始直後に1件送るだけで
       // サイコロを飛ばして先手を自分にできる
       if (state.diceIdx !== 2) return state;
-      if (simPrep(state)) {
-        // 両者が同時に引くので、乱数を手に載せられない。予備札をここで決定的に並べ、
-        // 先手は前から・後手は後ろから引く(CONFIRM_MULLIGAN)。どちらが先に届いても同じ結果になる
-        const shuffled = seededShuffle(state.reserve, state.reserveShuffleState);
-        return {
-          ...state,
-          phase: "mulligan",
-          mulliganIdx: state.firstPlayer,
-          mulliganDone: [false, false],
-          reserve: shuffled.cards,
-          reserveShuffleState: shuffled.seed,
-          interstitial: { forPlayer: state.firstPlayer, kind: "mulligan" },
-        };
-      }
+      // 引き直しは版18でも先攻→後攻の順(2026-09-23 本人の指示)。同時にはしない
       return {
         ...state,
         phase: "mulligan",
@@ -1559,26 +1542,20 @@ function coreReducer(state, action) {
       };
 
     case "TOGGLE_MULLIGAN_CARD": {
-      const sim = simPrep(state);
-      const idx = sim && fromNetwork(action) ? action.player : state.mulliganIdx;
-      if (sim && state.mulliganDone && state.mulliganDone[idx]) return state;
-      // 版18以降は両者が同じ予備札から同時に引くので、一人が引けるのは半分まで
-      const limit = sim ? Math.floor(state.reserve.length / 2) : state.reserve.length;
+      const idx = state.mulliganIdx;
       const players = state.players.map((p, i) => {
         if (i !== idx) return p;
         const picked = new Set(p._mulliganSelected || []);
         if (picked.has(action.cardId)) picked.delete(action.cardId);
-        else if (picked.size < limit) picked.add(action.cardId);
+        else if (picked.size < state.reserve.length) picked.add(action.cardId);
         return { ...p, _mulliganSelected: [...picked] };
       });
       return { ...state, players };
     }
 
     case "CONFIRM_MULLIGAN": {
-      const sim = simPrep(state);
-      const idx = sim && fromNetwork(action) ? action.player : state.mulliganIdx;
-      if (idx !== 0 && idx !== 1) return state;
-      if (sim && state.mulliganDone && state.mulliganDone[idx]) return state;
+      // 先攻→後攻の順(版18でも同じ。2026-09-23 本人の指示)。席を名乗る手は actorAllowed が順番の席と照らす
+      const idx = state.mulliganIdx;
       const players = [...state.players];
       const me = { ...players[idx] };
       if (action.discardIds !== undefined && !Array.isArray(action.discardIds))
@@ -1591,58 +1568,6 @@ function coreReducer(state, action) {
         .filter((c) => discardIds.has(c.id))
         .map((c) => ({ ...c, owner: idx }));
       const count = discarded.length;
-      if (sim) {
-        // 版18以降: 予備札は GOTO_MULLIGAN で並べてある。席0は前から、席1は後ろから引く。
-        // 相手の確定がどちらの順で届いても、引く札は同じ(半分を超えては引けない)
-        const half = Math.floor(state.reserve.length / 2);
-        if (count > half) return state;
-        const reserve = state.reserve;
-        const drawn =
-          idx === 0 ? reserve.slice(0, count) : reserve.slice(reserve.length - count);
-        const rest =
-          idx === 0 ? reserve.slice(count) : reserve.slice(0, reserve.length - count);
-        me.hand = [...kept, ...drawn];
-        me.discard = [...me.discard, ...discarded];
-        delete me._mulliganSelected;
-        players[idx] = me;
-        const done = replaceAt(state.mulliganDone || [false, false], idx, true);
-        const log = [...state.log, `${PLAYER_META[idx].name}が${count}枚を引き直した`];
-        const discardPile = discardCards(state, discarded).discardPile;
-        if (!done[1 - idx])
-          return {
-            ...state,
-            players,
-            reserve: rest,
-            discardPile,
-            mulliganDone: done,
-            mulliganIdx: 1 - idx,
-            log,
-            interstitial: { forPlayer: 1 - idx, kind: "mulligan" },
-          };
-        let entering = {
-          ...state,
-          players,
-          reserve: rest,
-          discardPile,
-          mulliganDone: done,
-          log,
-          phase: "setup",
-          setupIdx: state.firstPlayer,
-          setupSteps: ["place", "place"],
-          setupPickKings: [null, null],
-          setupPlacements: [{}, {}],
-          setupDone: [false, false],
-          interstitial:
-            state.setupMode === "simultaneous"
-              ? null
-              : { forPlayer: state.firstPlayer, kind: "setup" },
-        };
-        const slots = armySlots(entering);
-        for (const who of [0, 1])
-          if (!canFillBoard(entering.players[who].hand, slots))
-            entering = rescueHand(entering, who);
-        return entering;
-      }
       // 予備札は両者で1つしかない。並べ替えでない列を渡されると、
       // 載らなかった札が黙って消える(空の列なら予備札が0枚になり、
       // 後から引き直す側が1枚も選べなくなる)

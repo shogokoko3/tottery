@@ -56,13 +56,11 @@ export function pickKing(state, player = state.setupIdx) {
 
 /** 引き直すカードを選ぶ。採用上限を超えた余りから最大4枚 */
 /**
- * 引き直せる枚数の上限。版18以降は両者が同じ予備札から同時に引くので半分まで(reducer と同じ線)。
+ * 引き直せる枚数の上限(予備札の数まで。reducer と同じ線)。
  * CPU の各流派(通常・informed・定石)はこれで捨て札を切り詰める。超えると reducer に弾かれて止まる
  */
 export function mulliganCap(state) {
-  return hasSimultaneousPrep(state.ruleVersion)
-    ? Math.floor((state.reserve || []).length / 2)
-    : Infinity;
+  return (state.reserve || []).length;
 }
 export function capDiscards(state, ids) {
   const cap = mulliganCap(state);
@@ -73,10 +71,7 @@ export function pickMulliganDiscards(state, player = null) {
   const who = player === 0 || player === 1 ? player : state.mulliganIdx;
   const me = state.players[who];
   const slots = armySlots(state);
-  // 版18以降は両者が同じ予備札から同時に引くので、一人が引けるのは半分まで
-  const cap = hasSimultaneousPrep(state.ruleVersion)
-    ? Math.min(4, Math.floor(state.reserve.length / 2))
-    : 4;
+  const cap = Math.min(4, mulliganCap(state));
   const counts = {};
   const keep = [];
   const spare = [];
@@ -269,14 +264,7 @@ export function cpuAction(state, player) {
   }
 
   if (state.phase === "mulligan") {
-    if (sim) {
-      if (state.mulliganDone && state.mulliganDone[player]) return null;
-      return {
-        type: "CONFIRM_MULLIGAN",
-        player,
-        discardIds: pickMulliganDiscards(state, player),
-      };
-    }
+    // 引き直しは版18でも先攻→後攻の順(2026-09-23 本人の指示)
     if (state.mulliganIdx !== player) return null;
     return {
       type: "CONFIRM_MULLIGAN",
