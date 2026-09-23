@@ -725,18 +725,32 @@
 }
 /* 引いた札ごとの「このキャラのフォイルを持っているか」。
    所持・未所持・出さない のどれでも同じ高さを取り、4列の釦の位置をそろえる */
+/* このキャラのフォイルの所持。名前の下の1行だと枠を取りすぎるので、絵の右下の小さな印に(2026-09-24 本人の指示) */
 .skins-result-foil {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
   display: block;
   min-height: 15px;
-  margin: 2px 0 5px;
-  font-size: 10px;
-  line-height: 1.5;
+  padding: 2px 5px;
+  border: 1px solid #ffffff2e;
+  border-radius: 3px;
+  background: #050b14cc;
+  font: 700 9px/1.4 sans-serif;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   color: #8a93a6;
+  /* 未所持は薄く、線を引く(NEW の印と並んでも 75px の札に収まる幅) */
+  opacity: 0.6;
+  text-decoration: line-through;
 }
 .skins-result-foil.is-owned {
-  color: #cfe3de;
+  border-color: #a9e4ff80;
+  background: #0b2a3ad9;
+  color: #cdefff;
   font-weight: 700;
+  opacity: 1;
+  text-decoration: none;
 }
 .skins-result.is-dismantled .skins-result-foil {
   color: #6f7986;
@@ -1237,10 +1251,12 @@
     letter-spacing: -0.02em;
   }
   .skins-result-foil {
+    right: 4px;
+    bottom: 4px;
     min-height: 13px;
-    margin: 1px 0 4px;
-    font-size: 9px;
-    letter-spacing: -0.04em;
+    padding: 1px 4px;
+    font-size: 8px;
+    letter-spacing: -0.02em;
   }
   .skins-results-overlay .skins-result-actions {
     margin: 0 -18px;

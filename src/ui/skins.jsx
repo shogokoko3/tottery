@@ -1802,6 +1802,12 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
   const closeResults = async () => {
     setAcquisitionMode(null);
     setDismantled(null);
+    // 「結果を確認」のあとは、ホームの「ガチャ・スキン」を押して開いたときと同じ画面(ガチャの札の上端)へ
+    // (2026-09-24 本人の指示)。他の欄を見ていた・下まで送っていた状態は残さない
+    setTab("gacha");
+    setSelected(null);
+    setOdds(false);
+    if (typeof window !== "undefined") window.scrollTo(0, 0);
     // ガチャ(召喚)でフォイルが出ていたら、閉じたあとに「ほかのフォイルも」を出す(引いた帯は除く)
     const pulledFoils = craftResult
       ? []
@@ -2461,15 +2467,18 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                             ? "NEW"
                             : "重複"}
                       </span>
+                      {/* このキャラのフォイルを持っているか。1行の文で出すと枠を取りすぎるので、
+                          絵の右下に小さな印で(2026-09-24 本人の指示) */}
+                      {foilKnown && foil && (
+                        <small
+                          className={`skins-result-foil${foilHeld ? " is-owned" : ""}`}
+                          title={foilHeld ? "このキャラのフォイルを持っています" : "このキャラのフォイルは未所持"}
+                        >
+                          箔
+                        </small>
+                      )}
                     </div>
                     <strong>{s.name}</strong>
-                    {foilKnown && (
-                      <small
-                        className={`skins-result-foil${foilHeld ? " is-owned" : ""}`}
-                      >
-                        {foil ? (foilHeld ? "フォイル所持" : "フォイル未所持") : ""}
-                      </small>
-                    )}
                     {/* このキャラのフォイルを所持・装備しているときは、通常版の装備釦を出さない。
                         上位のフォイルが付いているのに通常版へ戻す操作は紛らわしい(2026-09-21 本人の指示) */}
                     {!s.foil &&
