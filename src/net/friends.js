@@ -45,8 +45,10 @@ export const acceptFriend = (uid) => friendsRequest("accept", { uid });
 export const declineFriend = (uid) => friendsRequest("decline", { uid });
 export const cancelFriendRequest = (uid) => friendsRequest("cancel", { uid });
 export const removeFriend = (uid) => friendsRequest("remove", { uid });
-/** 1日1回、フレンド1人にガチャチケットを1枚 */
+/** 1日にフレンド1人あたり1枚、ガチャチケットを贈る */
 export const giftFriend = (uid) => friendsRequest("gift", { uid });
+/** まだ今日贈っていないフレンド全員にまとめて贈る({ sent:[uid...] }) */
+export const giftAllFriends = () => friendsRequest("gift-all");
 /** 届いている贈り物を全部受け取る。サーバーが財布に足すので、残高の写しをここで直す */
 export async function claimFriendGifts() {
   const data = await friendsRequest("claim");

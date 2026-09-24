@@ -136,6 +136,14 @@ assert.equal(w.summary("B").tickets, 2);
 for (const g of claimed) w.credit("B", g.id, 1, "friend-gift", next);
 assert.equal(w.summary("B").tickets, 2, "同じ id は二度効かない");
 
+// まとめて贈る(2026-09-25 本人の指示): まだ今日贈っていない相手だけに、一度に
+const gifted0 = new Set(f.state("A", T0).giftedTo); // 今日は B と x0 に贈り済み
+const all = f.giftAll("A", T0);
+assert.equal(all.sent.length, f.count("A") - gifted0.size, "今日まだ贈っていない全員に贈る");
+assert.ok(!all.sent.includes("B") && !all.sent.includes("x0"), "既に贈った相手には二重に贈らない");
+assert.equal(new Set(f.state("A", T0).giftedTo).size, f.count("A"), "贈ったあとは今日の相手が全員");
+assert.equal(f.giftAll("A", T0).sent.length, 0, "もう全員に贈ったので0人");
+
 // 招待: フレンドだけ、3分で古くなる
 assert.throws(() => f.invite("A", "D", "ABCDEF", T0), /フレンドにだけ/);
 assert.throws(() => f.invite("A", "B", "ab", T0), /合言葉/);
@@ -227,7 +235,7 @@ for (const op of ["friends-enter-room", "friends-leave-room", "friends-ping"])
 assert.ok(/fr\.enterRoom\(uid, args\.code, args\.online, args\.opp, now\)/.test(worker), "在席は enterRoom へ");
 assert.ok(/\/\^\\\/api\\\/\(season\|wallet\|iap\|friends\)\\\//.test(worker), "CORS と本文の判定に friends が入っている");
 assert.ok(/call\("friends-request-uid", \{ target: body\.uid, source: body\.source \}\)/.test(worker), "uid で申請する口(対戦相手・ランキング)");
-for (const op of ["friends-state", "friends-request", "friends-request-uid", "friends-accept", "friends-decline", "friends-cancel", "friends-remove", "friends-gift", "friends-claim", "friends-invite", "friends-cancel-invite", "friends-profile-set", "friends-profile-get"])
+for (const op of ["friends-state", "friends-request", "friends-request-uid", "friends-accept", "friends-decline", "friends-cancel", "friends-remove", "friends-gift", "friends-gift-all", "friends-claim", "friends-invite", "friends-cancel-invite", "friends-profile-set", "friends-profile-get"])
   assert.ok(worker.includes(`"${op}"`), `Durable Object に ${op}`);
 assert.ok(/this\.friends\.forget\(uid\)/.test(worker), "記録を消すときフレンドも消す");
 assert.ok(/w\.credit\(uid, g\.id, 1, "friend-gift", now\)/.test(worker), "受け取った贈り物は id ごとに1枚");

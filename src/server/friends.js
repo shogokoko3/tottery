@@ -223,6 +223,19 @@ export class Friends {
     this.sql("INSERT INTO friend_gifts VALUES (?,?,?,?,?,0)", id, uid, fid, day, now);
     return { ok: true, to: fid, day };
   }
+  /** まだ今日贈っていないフレンド全員にまとめて贈る。贈った相手の一覧を返す(2026-09-25 本人の指示) */
+  giftAll(uid, now) {
+    const day = jstDay(now);
+    const fids = this.sql("SELECT fid FROM friends WHERE uid=? ORDER BY at ASC", uid).map((r) => r.fid);
+    const sent = [];
+    for (const fid of fids) {
+      const id = `gift:${uid}:${fid}:${day}`;
+      if (this.sql("SELECT 1 FROM friend_gifts WHERE id=?", id).length) continue; // この相手には今日もう贈った
+      this.sql("INSERT INTO friend_gifts VALUES (?,?,?,?,?,0)", id, uid, fid, day, now);
+      sent.push(fid);
+    }
+    return { ok: true, sent, day };
+  }
   /** 受け取っていない贈り物 */
   pendingGifts(uid) {
     return this.sql("SELECT id, from_uid AS fromUid, day, at FROM friend_gifts WHERE to_uid=? AND claimed=0 ORDER BY at ASC", uid);

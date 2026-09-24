@@ -8593,3 +8593,15 @@ p.hint > span.gem-shop-diag {
 .friend-status.is-offline {
   color: var(--text-dim);
 }
+
+/* フレンド一覧の見出しに「全員に贈る」を並べる(2026-09-25 本人の指示) */
+.friends-list-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.friends-gift-all {
+  flex: none;
+  white-space: nowrap;
+}

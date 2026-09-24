@@ -21,6 +21,7 @@ import {
   cancelFriendRequest,
   removeFriend,
   giftFriend,
+  giftAllFriends,
   claimFriendGifts,
   publishProfileCard,
 } from "../net/friends.js";
@@ -313,9 +314,31 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
       )}
 
       <section className="friends-list" aria-label="フレンドの一覧">
-        <p className="friends-list-head">
-          <Users size={13} /> フレンド <b>{friends.length}</b>/{state?.max || 50}
-        </p>
+        <div className="friends-list-head friends-list-head-row">
+          <span>
+            <Users size={13} /> フレンド <b>{friends.length}</b>/{state?.max || 50}
+          </span>
+          {/* まだ今日贈っていないフレンド全員にまとめて贈る(2026-09-25 本人の指示) */}
+          {(() => {
+            const rest = friends.filter((f) => !giftedSet.has(f.uid)).length;
+            if (rest === 0) return null;
+            return (
+              <button
+                className="btn btn-small btn-primary friends-gift-all"
+                disabled={!!busy}
+                onClick={() =>
+                  run(
+                    "gift-all",
+                    giftAllFriends,
+                    (r) => (r?.sent?.length ? `${r.sent.length}人にチケットを贈りました` : "今日贈れる相手はもういません"),
+                  )
+                }
+              >
+                <Ticket size={14} /> 全員に贈る({rest})
+              </button>
+            );
+          })()}
+        </div>
         {!loading && friends.length === 0 && (
           <p className="hint">まだフレンドがいません。上の ID を伝えるか、相手の ID を入れて申請してください。</p>
         )}

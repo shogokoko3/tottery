@@ -129,6 +129,7 @@ function fakeFriends(req, res, path) {
       if (op === "cancel") return send(200, friends.cancel(uid, body.uid));
       if (op === "remove") return send(200, friends.remove(uid, body.uid));
       if (op === "gift") return send(200, friends.gift(uid, body.uid, now));
+      if (op === "gift-all") return send(200, friends.giftAll(uid, now));
       if (op === "claim") {
         const list = friends.claimGifts(uid, now);
         for (const g of list) fwallet.credit(uid, g.id, 1, "friend-gift", now);

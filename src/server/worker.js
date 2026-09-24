@@ -254,6 +254,7 @@ async function handleApi(request, env, url) {
         if (fop === "cancel" && who(body.uid)) return call("friends-cancel", { target: body.uid });
         if (fop === "remove" && who(body.uid)) return call("friends-remove", { target: body.uid });
         if (fop === "gift" && who(body.uid)) return call("friends-gift", { target: body.uid });
+        if (fop === "gift-all") return call("friends-gift-all");
         if (fop === "claim") return call("friends-claim");
         if (fop === "invite" && who(body.uid) && typeof body.code === "string" && body.code.length <= 16)
           return call("friends-invite", { target: body.uid, code: body.code });
@@ -402,6 +403,7 @@ export class SeasonLedger {
         if (op === "friends-cancel") return fr.cancel(uid, args.target);
         if (op === "friends-remove") return fr.remove(uid, args.target);
         if (op === "friends-gift") return fr.gift(uid, args.target, now);
+        if (op === "friends-gift-all") return fr.giftAll(uid, now);
         if (op === "friends-claim") {
           // 受け取った贈り物は id ごとに1枚(同じ id は財布が二度足さない)
           const list = fr.claimGifts(uid, now);
