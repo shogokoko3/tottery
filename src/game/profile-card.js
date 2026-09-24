@@ -14,7 +14,7 @@ import { HOME_THEMES, unlockedHomeThemes, DEFAULT_HOME_THEME } from "../skins/ho
 import { hasTitle, ownedTitles, titleOf } from "./titles.js";
 import { levelOfXp } from "./level.js";
 import { sanitizeTsumeProgress } from "./tsume-daily.js";
-import { RANKS } from "./constants.js";
+import { MASTERY_SKINS } from "./constants.js";
 
 export const STANDARD_BG = "standard";
 export const SHOWCASE_MAX = 3;
@@ -73,7 +73,7 @@ export const SHOWCASE = Object.freeze([
   { id: "level", label: "レベル", unit: "", value: (c) => c.level },
   { id: "streak", label: "連続ログイン", unit: "日", value: (c) => c.stats.streak },
   { id: "days", label: "遊んだ日数", unit: "日", value: (c) => c.stats.days },
-  { id: "mastery", label: "王として動かした回数", unit: "回", value: (c) => c.stats.mastery },
+  { id: "mastery", label: "熟練度の合計点", unit: "点", value: (c) => c.stats.mastery },
   { id: "tsume", label: "詰めトッタリー", unit: "問", value: (c) => c.stats.tsume },
   { id: "bestPlace", label: "月間の最高順位", unit: "位", value: (c) => c.stats.bestPlace || c.bestPlace || null },
 ]);
@@ -99,10 +99,10 @@ export function tsumeClearedCount(collection) {
   return Object.values(sanitizeTsumeProgress(collection?.tsume).days).filter((d) => d.cleared).length;
 }
 
-/** 王として動かした回数の合計(全札) */
+/** 熟練度の合計点(全スキン)。鍵はスキン id(2026-09-24 でスキンごとに変更 → constants.js の MASTERY_SKINS) */
 export function masteryTotal(profile) {
   const m = (profile && profile.mastery) || {};
-  return RANKS.reduce((s, r) => s + (Number(m[r]) || 0), 0);
+  return MASTERY_SKINS.reduce((s, id) => s + (Number(m[id]) || 0), 0);
 }
 
 /**
