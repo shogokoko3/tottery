@@ -17,7 +17,7 @@ export function InboxScreen({ tab = "letters", onTab, onBack, onProfile, onInvit
   const unread = useUnreadLetters();
   const alerts = useFriendAlerts();
   const current = INBOX_TABS.some((t) => t.id === tab) ? tab : "letters";
-  const count = (id) => (id === "letters" ? unread : alerts);
+  const count = (id) => (id === "letters" ? unread : alerts.total);
   return (
     <div className={`quests-screen inbox-screen is-${current}`}>
       <div className="quests-switch" role="tablist" aria-label="お知らせとフレンド">

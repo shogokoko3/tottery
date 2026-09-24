@@ -402,14 +402,17 @@ export function MenuScreen({
   onCards,
   onShop,
   onLetters,
+  // フレンドのタブを直接開く(届き物の知らせから)
+  onFriends = null,
   onProfile = null,
   now = Date.now,
 }) {
   const [profile] = useMissionProfile();
   // 受け取れるミッションの数と、未読のお知らせ。入り口に印を出す
   const unread = useUnreadLetters();
-  // フレンドの申請・贈り物・招待(2026-09-23)。入り口に印を出す
-  const friendAlerts = useFriendAlerts();
+  // フレンドの申請・贈り物・招待(2026-09-23)。入り口に印を出す(30秒ごとに読み直す)
+  const friendAlertsAll = useFriendAlerts();
+  const friendAlerts = friendAlertsAll.total;
   const passUnlocked = useBattlePassUnlocked();
   const collection = useCollection();
   const themeId = homeThemeOf(collection);
@@ -457,6 +460,35 @@ export function MenuScreen({
         )}
       </button>
       </div>
+      {/* 届いているものを一言で知らせる(2026-09-24 本人の指示)。運営のお知らせとフレンドは別の行にして見分けがつくように。
+          押すとそれぞれのタブが開く */}
+      {(unread > 0 || friendAlerts > 0) && (
+        <div className="home-alerts" role="status">
+          {unread > 0 && (
+            <button className="home-alert home-alert-news" onClick={onLetters}>
+              <Mail size={14} />
+              <span>運営からのお知らせが {unread}件 届いています</span>
+              <ArrowRight size={14} />
+            </button>
+          )}
+          {friendAlerts > 0 && (
+            <button className="home-alert home-alert-friend" onClick={onFriends || onLetters}>
+              <Users size={14} />
+              <span>
+                {[
+                  friendAlertsAll.requests ? `フレンド申請 ${friendAlertsAll.requests}件` : null,
+                  friendAlertsAll.gifts ? `贈り物 ${friendAlertsAll.gifts}件` : null,
+                  friendAlertsAll.invites ? `対戦の招待 ${friendAlertsAll.invites}件` : null,
+                ]
+                  .filter(Boolean)
+                  .join("・")}
+                が届いています
+              </span>
+              <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
+      )}
       {/* 残高。左にチケット、右にジェム(2026-09-22 本人の指示で入れ替え)。
           押せるのはジェムから「+」までで、押すとジェムの店が開く。「ジェムを買う」の文言は出さない。
           店は iOS のアプリだけなので、ほかでは理由を出す(ショップ画面と同じ文言) */}
@@ -2256,6 +2288,7 @@ function TotteryScreens() {
               onMissions={() => t("missions")}
               onCards={() => t("cards")}
               onLetters={() => t("letters")}
+              onFriends={() => t("friends")}
               onShop={() => t("shop")}
               onProfile={() => {
                 (setProfileUid(null), setProfileFrom("menu"), t("profile"));

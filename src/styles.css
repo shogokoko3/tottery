@@ -8356,3 +8356,44 @@ p.hint > span.gem-shop-diag {
   font-size: 11px;
   color: var(--gold-soft);
 }
+/* ホームの届き物の知らせ(運営のお知らせとフレンドは別の行。2026-09-24) */
+.home-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+.home-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(240, 217, 165, 0.5);
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.18), rgba(212, 175, 55, 0.06));
+  color: var(--gold-soft);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.home-alert > span {
+  flex: 1;
+  min-width: 0;
+}
+.home-alert > svg:last-child {
+  opacity: 0.6;
+}
+.home-alert-news {
+  border-color: rgba(143, 188, 232, 0.55);
+  background: linear-gradient(180deg, rgba(143, 188, 232, 0.16), rgba(143, 188, 232, 0.05));
+  color: #cfe3f7;
+}
+.home-alert-news > svg:first-child {
+  color: #8fbce8;
+}
+.home-alert-friend > svg:first-child {
+  color: var(--gold);
+}

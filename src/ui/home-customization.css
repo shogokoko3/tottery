@@ -840,7 +840,7 @@ body:has(.stage > .home-wrap) {
   margin-block: 0;
   padding: 22px 24px max(20px, env(safe-area-inset-bottom));
 }
-.home-wrap > :is(.home-account-row, .home-resource-bar, .home-hero, .mission-message) {
+.home-wrap > :is(.home-account-row, .home-resource-bar, .home-hero, .mission-message, .home-alerts) {
   flex-shrink: 0;
 }
 .home-wrap .home-account-row {

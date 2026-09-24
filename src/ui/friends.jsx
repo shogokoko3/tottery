@@ -66,23 +66,40 @@ export function usePublishProfileCard(profile, collection) {
   }, [profile, collection]);
 }
 
-/** ホームの印。届いている申請・贈り物・招待の数 */
+/**
+ * ホームの印。届いている申請・贈り物・招待の数。
+ * 開いている間は 30 秒ごと、画面に戻ったときにも読み直す(申請が来たら気づけるように。2026-09-24 本人の指示)。
+ * 数(合計)としても、内訳(requests / gifts / invites)としても読める
+ */
+export const FRIEND_ALERT_POLL_MS = 30000;
 export function useFriendAlerts() {
-  const [n, setN] = useState(0);
+  const [alerts, setAlerts] = useState({ total: 0, requests: 0, gifts: 0, invites: 0 });
   useEffect(() => {
     let gone = false;
     if (!myUid()) return undefined;
-    readFriends()
-      .then((s) => {
-        if (gone) return;
-        setN((s.requestsIn?.length || 0) + (s.gifts?.length || 0) + (s.invites?.length || 0));
-      })
-      .catch(() => {});
+    const load = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      readFriends()
+        .then((s) => {
+          if (gone) return;
+          const requests = s.requestsIn?.length || 0;
+          const gifts = s.gifts?.length || 0;
+          const invites = s.invites?.length || 0;
+          setAlerts({ total: requests + gifts + invites, requests, gifts, invites });
+        })
+        .catch(() => {});
+    };
+    load();
+    const timer = setInterval(load, FRIEND_ALERT_POLL_MS);
+    const onShow = () => load();
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", onShow);
     return () => {
       gone = true;
+      clearInterval(timer);
+      if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onShow);
     };
   }, []);
-  return n;
+  return alerts;
 }
 
 /** 名札。brief なら アイコン・称号・名前だけ(申請の行。2026-09-24 本人の指示でレートとレベルは出さない) */
