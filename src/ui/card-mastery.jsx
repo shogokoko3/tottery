@@ -137,12 +137,13 @@ export function CardMasteryScreen({ onBack }) {
                 aria-controls={`card-mastery-detail-${skin}`}
                 onClick={() => setOpen(isOpen ? null : skin)}
               >
+                {/* フォイルが無いスキン(LIMITED の天馬騎士など)は基のスキンの絵にする */}
                 <CardFace
                   rank={rank}
                   suit="spade"
                   size="sm"
                   isKing
-                  skinId={foilId(skin)}
+                  skinId={byId(foilId(skin)) ? foilId(skin) : skin}
                   animated={false}
                 />
                 <span className="card-mastery-body">
