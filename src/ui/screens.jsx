@@ -610,7 +610,7 @@ export function MenuScreen({
           tone="shop"
           icon={<Shop size={26} />}
           label="ショップ"
-          note="ジェム・チケット・フォイル"
+          note="ジェム・チケット"
           onClick={onShop}
         />
         <HomeTile

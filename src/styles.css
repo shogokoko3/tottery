@@ -7987,7 +7987,9 @@ p.hint > span.gem-shop-diag {
   gap: 2px;
   min-width: 0;
 }
+/* 額縁は一律の幅(文字に合わせて縮めない)。ランキングと同じ考え方(2026-09-24 本人の指示) */
 .friend-tag-body .title-frame {
+  width: 168px;
   max-width: 100%;
 }
 .friend-tag-notitle {
