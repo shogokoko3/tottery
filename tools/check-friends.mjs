@@ -186,6 +186,8 @@ for (const op of ["friends-state", "friends-request", "friends-request-uid", "fr
   assert.ok(worker.includes(`"${op}"`), `Durable Object に ${op}`);
 assert.ok(/this\.friends\.forget\(uid\)/.test(worker), "記録を消すときフレンドも消す");
 assert.ok(/w\.credit\(uid, g\.id, 1, "friend-gift", now\)/.test(worker), "受け取った贈り物は id ごとに1枚");
+// 財布 w は friends-claim より前で宣言する(const の初期化前アクセスで受け取りが落ちていた。2026-09-24)
+assert.ok(worker.indexOf("const w = this.wallet;") !== -1 && worker.indexOf("const w = this.wallet;") < worker.indexOf('if (op === "friends-claim")'), "財布 w は friends-claim の処理より前に束ねる");
 assert.ok(/args\.target !== uid && !fr\.isFriend\(uid, args\.target\)/.test(worker), "他人のプロフィールはフレンドだけ");
 // call() は { op, uid, ...args } なので、相手を uid の名で渡すと本人の uid が上書きされる(承認しても申請が残った。2026-09-24)
 assert.ok(!/call\("friends-[a-z-]+", \{ uid:/.test(worker), "相手は target で渡す(uid の名で渡さない)");

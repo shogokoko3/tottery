@@ -348,6 +348,9 @@ export class SeasonLedger {
     try {
       const data = this.ctx.storage.transactionSync(() => {
         const l = this.ledger;
+        // 財布は先に束ねておく。フレンドの贈り物の受け取り(friends-claim)が w を使うので、
+        // ここより後で const 宣言すると初期化前アクセスで落ちていた(受け取れないバグ。2026-09-24 本人の報告)
+        const w = this.wallet;
         if (op === "result") return { match: l.result(uid, args.id) };
         if (op === "record") {
           const match = verifyMatch(args.room, args.request, uid);
@@ -422,7 +425,6 @@ export class SeasonLedger {
             friend: args.target === uid || fr.isFriend(uid, args.target),
           };
         }
-        const w = this.wallet;
         if (op === "wallet-summary") return w.summary(uid, now);
         if (op === "wallet-backup-save") return w.saveBackup(uid, args.blob, now);
         if (op === "wallet-backup-load") return w.loadBackup(uid);
