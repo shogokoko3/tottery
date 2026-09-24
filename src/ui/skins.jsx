@@ -2486,7 +2486,7 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
                     foilHeld &&
                     collection.equipped[s.rank] === foil.id ? (
                       <small className="skins-result-equipped-foil">
-                        フォイルを装備中
+                        フォイル装備中
                       </small>
                     ) : (
                       <button

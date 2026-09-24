@@ -755,14 +755,22 @@
 .skins-result.is-dismantled .skins-result-foil {
   color: #6f7986;
 }
-/* フォイルを装備中のとき、通常版の装備釦の代わりに出す控えめな注記(2026-09-21) */
+/* フォイルを装備中のとき、通常版の装備釦の代わりに出す控えめな注記(2026-09-21)。
+   釦と同じ高さ・1行に収める(2026-09-24 本人の指摘。2行に折り返して結果が縦長になっていた)。
+   下端をそろえるため margin-top: auto(釦と同じ) */
 .skins-result-equipped-foil {
   display: block;
-  margin-top: 4px;
-  padding: 6px 0;
-  font-size: 11px;
+  margin-top: auto;
+  padding: 7px 2px;
+  /* 狭い端末(375px は札の幅 72px)でも「フォイル装備中」7文字が切れずに1行で収まる大きさ */
+  font-size: 9px;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: #e6c877;
 }
 .single-result {
