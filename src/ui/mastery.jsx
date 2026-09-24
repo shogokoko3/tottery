@@ -1,15 +1,16 @@
-import { MASTERY_STEPS } from "../game/constants.js";
+import { MASTERY_STEPS, MASTERY_SKIN_RANK } from "../game/constants.js";
+import { byId } from "../skins/catalog.js";
 import { FRAME_GRADES } from "./title-design.js";
 import { TitleFrame } from "./title-frame.jsx";
 
+/** スキン id → 短い呼び名(絵札の名前)。無ければ id をそのまま */
+const skinLabel = (id) => byId(id)?.name || id;
+
 /**
- * 終局画面に出す、札ごとの熟練度のメーター(2026-09-22 本人の指示)。
+ * 終局画面に出す、スキンごとの熟練度のメーター(2026-09-22 着手。2026-09-24 でスキン制に)。
  *
- * プレイヤーレベルのゲージとは別に置く。あちらは1本で「その人の歩み」を出すが、
- * こちらは**その局で王にした札**を出して「どれだけ上がったか」を見せる。
- * 王に選んだ札しか育たないので、ふつうは1行だけになる(2026-09-22 本人の決め)。
- *
- * 段に届いた行だけ印を強くする。全部を光らせると、どこが変わったのか分からない。
+ * その局で使った所持スキン(王にしたスキン・盤に出したスキン)を出して「どれだけ上がったか」を見せる。
+ * 段に届いた行だけ印を強くする。
  */
 export function MasteryGains({ gains, titles }) {
   // 王を一度も動かさなかった局は、欄ごと出さない
@@ -19,25 +20,25 @@ export function MasteryGains({ gains, titles }) {
     (a, b) => b.added - a.added || b.after - a.after,
   );
   return (
-    <section className="mastery-gains" aria-label="札の熟練度">
+    <section className="mastery-gains" aria-label="スキンの熟練度">
       <h4 className="mastery-gains-head">
-        <span>札の熟練度</span>
-        <small>王に選んだ札にたまる点</small>
+        <span>スキンの熟練度</span>
+        <small>使ったスキンにたまる点</small>
       </h4>
       {rows.map((g) => {
         const p = g.progress;
         const stepUp = p.step > g.stepBefore;
         return (
           <div
-            key={g.rank}
+            key={g.skin}
             className={`mastery-row${stepUp ? " mastery-row-up" : ""}`}
           >
-            <b className="mastery-rank">{g.rank}</b>
+            <b className="mastery-rank">{MASTERY_SKIN_RANK[g.skin] || ""}</b>
             <div className="mastery-meter">
               <div
                 className="mastery-track"
                 role="progressbar"
-                aria-label={`${g.rank} の熟練度`}
+                aria-label={`${skinLabel(g.skin)} の熟練度`}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.round(p.ratio * 100)}
@@ -71,11 +72,13 @@ export function MasteryGains({ gains, titles }) {
               </div>
             </div>
             <span className="mastery-added">+{g.added}</span>
+            <small className="mastery-skin-name">{skinLabel(g.skin)}</small>
             {/* 点の内訳(2026-09-24)。何で稼いだかが分からないと、次に何をすればいいか分からない */}
             {g.points && (
               <small className="mastery-breakdown">
                 {[
                   g.points.king ? `王に選んだ +${g.points.king}` : null,
+                  g.points.pieces ? `駒を出した +${g.points.pieces}` : null,
                   g.points.moves ? `王を動かした +${g.points.moves}` : null,
                   g.points.captures ? `王で取った +${g.points.captures}` : null,
                   g.points.kingCapture ? `王を討った +${g.points.kingCapture}` : null,

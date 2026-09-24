@@ -72,12 +72,12 @@ assert.deepEqual(ids(), [], "名前・装備の変更や再読み込みは獲得
 
 restoreProfile({
   ...loadProfile(),
-  mastery: { J: MASTERY_STEPS[MASTERY_TITLE_STEP - 1] - 1 },
+  mastery: { "elf-male": MASTERY_STEPS[MASTERY_TITLE_STEP - 1] - 1 },
 });
 before = loadProfile();
-recordMastery({ J: 1 });
+recordMastery({ "elf-male": 1 });
 assertEarned(before);
-assert.ok(ids().includes("mastery-J"));
+assert.ok(ids().includes("mastery-elf-male"));
 
 resetAccount();
 const releaseGate = holdTitleNotices();

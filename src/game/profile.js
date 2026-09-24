@@ -38,6 +38,7 @@ import {
   MASTERY_STEPS,
   MASTERY_POINTS,
   MASTERY_PER_GAME,
+  MASTERY_SKINS,
 } from "./constants.js";
 import { findBadWord } from "./badwords.js";
 import { clearBlocked } from "./blocked.js";
@@ -161,9 +162,10 @@ export { MASTERY_STEPS, MASTERY_PER_GAME, MASTERY_POINTS };
 function normalizeMastery(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const out = {};
-  for (const rank of RANKS) {
-    const n = Math.max(0, Math.floor(Number(raw[rank]) || 0));
-    if (n > 0) out[rank] = n;
+  // スキン id を鍵にする(2026-09-24)。旧い札(A/2/…/K)の鍵は知らないので落ちる = 新規に貯め直す
+  for (const skin of MASTERY_SKINS) {
+    const n = Math.max(0, Math.floor(Number(raw[skin]) || 0));
+    if (n > 0) out[skin] = n;
   }
   return Object.keys(out).length ? out : null;
 }
@@ -199,32 +201,42 @@ export function masteryStep(profile, rank) {
     .step;
 }
 
-/** 全部の札が step 段に届いているか(通しの褒美の条件) */
+/** 全てのスキンが step 段に届いているか(通しの褒美の条件。2026-09-24 で 13札→17スキン) */
 export function masteryAll(profile, step) {
-  return RANKS.every((rank) => masteryStep(profile, rank) >= step);
+  return MASTERY_SKINS.every((skin) => masteryStep(profile, skin) >= step);
 }
 
 /**
- * 1局ぶんの記録を点にする(2026-09-24 本人の指示)。
- * t は { king: 王に選んだか, moves: 王として動かした手数, captures: 王で取った相手の駒の数, kingCapture: 王で相手の王を討ったか }。
+ * 1局ぶんの記録を点にする(2026-09-24 本人の指示)。1スキンぶん。
+ * t は { king: 王に選んだか, pieces: 盤に出したそのスキンの駒数, moves: 王として動かした手数,
+ *        captures: 王で取った相手の駒の数, kingCapture: 王で相手の王を討ったか }。
  * 数だけ(旧い呼び方: 動かした回数)でも受ける。
- * 上限: 動かした点は MASTERY_POINTS.moveMax まで、取った点は captureMax まで(相手の軍より多くは取れない)。
- * どれも端末の手の中身ではなく、reducer の結果から数えたものを渡す(画面側)。
+ * 王に選ぶ +5、駒 +1/体(上限なし)、動かす +1/手(moveMax まで)、取る +1/体(captureMax まで)、王討ち +10。
+ * どれも端末の手の中身ではなく、reducer の結果や盤の状態から数えたものを渡す(画面側)。
  */
 export function masteryPoints(t) {
   const clampN = (x, max) => Math.max(0, Math.min(max, Math.floor(Number(x) || 0)));
+  const countN = (x) => Math.max(0, Math.floor(Number(x) || 0));
   const tally = typeof t === "number" ? { moves: t } : t && typeof t === "object" ? t : {};
   const king = tally.king ? MASTERY_POINTS.king : 0;
+  const pieces = countN(tally.pieces) * MASTERY_POINTS.piece;
   const moves = clampN(tally.moves, MASTERY_POINTS.moveMax) * MASTERY_POINTS.move;
   const captures = clampN(tally.captures, MASTERY_POINTS.captureMax) * MASTERY_POINTS.capture;
   const kingCapture = tally.kingCapture ? MASTERY_POINTS.kingCapture : 0;
-  return { king, moves, captures, kingCapture, total: king + moves + captures + kingCapture };
+  return {
+    king,
+    pieces,
+    moves,
+    captures,
+    kingCapture,
+    total: king + pieces + moves + captures + kingCapture,
+  };
 }
 
 /**
  * 1局ぶんの点を熟練度に足す。
  *
- * used は { 札: 記録(masteryPoints に渡す形) }。数えるのは自分が王に選んだ札だけ(1局に1種類)。
+ * used は { スキンid: 記録(masteryPoints に渡す形) }。装備していた所持スキンごとに貯まる。
  * チュートリアルは台本なので呼ばない(画面側で外す)。
  */
 export function recordMastery(used) {
@@ -233,21 +245,22 @@ export function recordMastery(used) {
   if (!used || typeof used !== "object") return none;
   const mastery = { ...(profile.mastery || {}) };
   const gains = [];
-  for (const rank of RANKS) {
-    if (used[rank] == null) continue;
-    const points = masteryPoints(used[rank]);
+  // used はスキン id を鍵にする(2026-09-24)。知らないスキンは無視する
+  for (const skin of MASTERY_SKINS) {
+    if (used[skin] == null) continue;
+    const points = masteryPoints(used[skin]);
     const n = points.total;
     if (n <= 0) continue;
-    const before = mastery[rank] || 0;
-    mastery[rank] = before + n;
+    const before = mastery[skin] || 0;
+    mastery[skin] = before + n;
     gains.push({
-      rank,
+      skin,
       added: n,
       points,
       before,
-      after: mastery[rank],
+      after: mastery[skin],
       stepBefore: masteryProgress(before).step,
-      progress: masteryProgress(mastery[rank]),
+      progress: masteryProgress(mastery[skin]),
     });
   }
   if (!gains.length) return none;

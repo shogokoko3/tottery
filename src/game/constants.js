@@ -32,14 +32,62 @@ export const SUITS = ["spade", "heart", "diamond", "club"];
 export const MASTERY_STEPS = [10, 30, 80, 200, 500];
 export const MASTERY_PER_GAME = 3;
 /**
- * 熟練度の点(2026-09-24 本人の指示で回数から点数へ)。1局で王に選んだ札にだけ入る。
- *   king        王に選んだ: +1(1局に1回)
- *   move        王として動かした: 1手 +1、1局に moveMax 回まで(長引かせる遊びを得にしない)
- *   capture     王で相手の駒を取った: 1体 +1。上限は置かないが、相手の軍(9×9 で 9 体)を超えては数えない。
- *               数えるのは reducer の結果(撃破の記録)からで、端末の手の中身は見ない
- *   kingCapture 王で相手の王を討った: さらに +5
+ * 熟練度は**所持スキンごと**に貯まる(2026-09-24 本人の指示で、札ごと→スキンごとに変更)。
+ * 通常札(スキン無し)では貯まらない。装備しているスキンの駒を盤に出す・王にすると、そのスキンに点が入る。
+ * J/Q/K・10 は複数のスキンがあり、それぞれ別の枠。
+ *
+ * 熟練度の点(2026-09-24 本人の指示):
+ *   king        そのスキンを王に選んだ: +5(1局に1回)
+ *   piece       そのスキンの駒を盤に出した: 1体 +1(何体でも。複数で複数加算)
+ *   move        王として動かした: 1手 +1、1局に moveMax(3)点まで(長引かせる遊びを得にしない)
+ *   capture     王で相手の駒を取った: 1体 +1、captureMax(10)点まで(A の囲い取りは A が倒した判定 = reducer が A に付ける)
+ *   kingCapture 王で相手の王を討った: さらに +10
+ * capture は reducer の結果(撃破の記録)から数え、端末の手の中身は見ない。
  */
-export const MASTERY_POINTS = Object.freeze({ king: 1, move: 1, moveMax: MASTERY_PER_GAME, capture: 1, captureMax: 9, kingCapture: 5 });
+export const MASTERY_POINTS = Object.freeze({ king: 5, piece: 1, move: 1, moveMax: MASTERY_PER_GAME, capture: 1, captureMax: 10, kingCapture: 10 });
+/**
+ * 熟練度の対象スキン(17種)。カード画面の並び順と、通しの称号の条件に使う。
+ * base の id(:foil を除いた側)で持つ。所持していないスキンは鎖(ロック)。
+ */
+export const MASTERY_SKINS = Object.freeze([
+  "genie-magician", // A
+  "zombie-male", // 2
+  "zombie-female", // 3
+  "pirate-male", // 4
+  "pirate-female", // 5
+  "elf-male", // 6
+  "elf-female", // 7
+  "viking-male", // 8
+  "viking-female", // 9
+  "dragon-knight", // 10
+  "pegasus-knight", // 10
+  "angel-j", // J 天使
+  "demon-j", // J 悪魔
+  "angel-q", // Q 天使
+  "demon-q", // Q 悪魔
+  "angel-k", // K 天使
+  "demon-k", // K 悪魔
+]);
+/** スキン id → 表示する札(カード画面のカード絵と並び) */
+export const MASTERY_SKIN_RANK = Object.freeze({
+  "genie-magician": "A",
+  "zombie-male": "2",
+  "zombie-female": "3",
+  "pirate-male": "4",
+  "pirate-female": "5",
+  "elf-male": "6",
+  "elf-female": "7",
+  "viking-male": "8",
+  "viking-female": "9",
+  "dragon-knight": "10",
+  "pegasus-knight": "10",
+  "angel-j": "J",
+  "demon-j": "J",
+  "angel-q": "Q",
+  "demon-q": "Q",
+  "angel-k": "K",
+  "demon-k": "K",
+});
 /** 称号が出る段と、アイコンが出る段 */
 export const MASTERY_TITLE_STEP = 3;
 export const MASTERY_ICON_STEP = 5;

@@ -90,7 +90,7 @@ import {
   normalizeCustom,
   toggleRank,
 } from "../game/custom-rules.js";
-import { RANKS } from "../game/constants.js";
+import { RANKS, MASTERY_SKINS } from "../game/constants.js";
 import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
@@ -165,7 +165,7 @@ import { backupIfDue } from "../net/backup.js";
 import { shopAvailable } from "../net/iap.js";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
-import { baseSkinId, sanitizeLoadout } from "../skins/catalog.js";
+import { baseSkinId, foilId, sanitizeLoadout } from "../skins/catalog.js";
 import { createCpuLoadout, ensureCpuFoil } from "../skins/cpu-loadout.js";
 import {
   JOSEKI_AREAS,
@@ -371,15 +371,20 @@ function HomeSelf({ profile, onProfile = null }) {
 }
 
 /** ホームの四角い入り口。絵柄を上、名前を下に置く */
-function HomeTile({ tone, icon, label, note, badge, onClick, frameTheme }) {
+function HomeTile({ tone, icon, label, note, badge, onClick, frameTheme, locked = false }) {
   return (
-    <button className={`home-tile home-tile-${tone}`} onClick={onClick}>
+    <button className={`home-tile home-tile-${tone}${locked ? " is-locked" : ""}`} onClick={onClick}>
       <HomeFrameCorners theme={frameTheme} small />
       <span className="home-tile-icon">{icon}</span>
       <b>{label}</b>
       <small>{note}</small>
       {badge > 0 && (
         <span className="menu-badge">{badge > 99 ? "99+" : badge}</span>
+      )}
+      {locked && (
+        <span className="home-tile-lock" aria-hidden="true">
+          <Lock size={14} />
+        </span>
       )}
     </button>
   );
@@ -417,6 +422,9 @@ export function MenuScreen({
   const collection = useCollection();
   const themeId = homeThemeOf(collection);
   const theme = findHomeTheme(themeId);
+  // スキンを1つでも持っていれば「カード」(熟練度)を解放。無ければロック(2026-09-24 本人の指示)
+  const skinOwned = (collection && collection.owned) || {};
+  const hasAnySkin = MASTERY_SKINS.some((id) => skinOwned[id] || skinOwned[foilId(id)]);
   // ジェムショップ(iOS だけ)。残高バーから直接開けるようにする
   const [shopOk, setShopOk] = useState(false);
   const [shop, setShop] = useState(false);
@@ -567,7 +575,8 @@ export function MenuScreen({
           tone="cards"
           icon={<Cards size={26} />}
           label="カード"
-          note="札ごとの熟練度"
+          note={hasAnySkin ? "スキンの熟練度" : "スキンを獲得すると解放"}
+          locked={!hasAnySkin}
           onClick={onCards}
         />
         <HomeTile

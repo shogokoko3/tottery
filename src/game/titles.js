@@ -16,6 +16,8 @@ import {
   RANKS,
   MASTERY_STEPS,
   MASTERY_TITLE_STEP,
+  MASTERY_SKINS,
+  MASTERY_SKIN_RANK,
 } from "./constants.js";
 
 // ガチャの結果で自動解放される称号(2026-09-21 本人の指示)。
@@ -172,58 +174,58 @@ export const GACHA_TITLES = [
  * 名前の上で対になるので、規則を覚える助けにもなる。
  */
 /**
- * 熟練度の称号(2026-09-24 本人の指示で、動き方ではなく**札の人物**から付け直した)。
- * 通常札の絵柄(assets/cards/normal)に描かれた人物:
- *   A 黒装束で顔を覆った暗殺者 / 2 鍬を担いだ農村の若者 / 3 鎌を持つ農村の娘 /
- *   4 外套と頭巾の斥候 / 5 弓を携えた狩人の女 / 6 白銀の甲冑の若い騎士 / 7 細剣を構える女剣士 /
- *   8 大棍棒を担ぐ屈強な戦士 / 9 大斧と毛皮の髭の戦士 / 10 槍を掲げた騎馬の騎士 /
- *   J 白い礼装の公子 / Q 冠を戴く女王 / K 王冠と毛皮の王
+ * 熟練度の称号(2026-09-24 本人の指示で、札ごと→**所持スキンごと**に付け直した)。
+ * そのスキンを装備して王にし、点をためると出る。スキンを持っていなければ解放されない(カード画面で鎖)。
+ * 名前はスキンのキャラ(絵柄)に合わせてある。J/Q/K・10 はスキンが複数あり、それぞれ別の称号。
+ * 恩恵は名乗りだけ。盤の有利不利には一切効かせない。
  */
 const MASTERY_NAMES = {
-  A: "夜霧の暗殺者",
-  2: "大地を耕す者",
-  3: "刈り入れの乙女",
-  4: "森影の斥候",
-  5: "風読みの狩人",
-  6: "誓いの若騎士",
-  7: "銀線の剣姫",
-  8: "鉄槌の猛者",
-  9: "凍土の斧戦士",
-  10: "疾駆の槍騎兵",
-  J: "白衣の公子",
-  Q: "戴冠の女王",
-  K: "至高の君主",
+  "genie-magician": "千夜の魔導師", // A ランプのマジシャン
+  "zombie-male": "不滅の墓守", // 2 墓守のレヴナント
+  "zombie-female": "黄昏の亡姫", // 3 黄昏のレヴナント
+  "pirate-male": "黒潮の覇者", // 4 黒潮の船長
+  "pirate-female": "紅帆の女帝", // 5 紅帆の船長
+  "elf-male": "翠風の狙撃手", // 6 翠樹の射手
+  "elf-female": "銀月の狙撃姫", // 7 月影の射手
+  "viking-male": "北海の覇王", // 8 北海の戦斧
+  "viking-female": "氷牙の戦姫", // 9 霜狼の戦斧
+  "dragon-knight": "天翔ける竜王", // 10 焔翼の竜騎士
+  "pegasus-knight": "蒼天の天馬騎士", // 10 白翼の天馬騎士
+  "angel-j": "黎明の告使", // J 告天使 ガブリエル
+  "demon-j": "奸智の魔公", // J 魔公 アスタロト
+  "angel-q": "慈光の癒使", // Q 癒天使 ラファエル
+  "demon-q": "夜を統べる魔后", // Q 夜后 リリス
+  "angel-k": "熾天の大天使", // K 熾天使 ミカエル
+  "demon-k": "奈落の堕天王", // K 堕天王 ルシファー
 };
 
 const masteryNeed = MASTERY_STEPS[MASTERY_TITLE_STEP - 1];
+const masteryTop = MASTERY_STEPS[MASTERY_STEPS.length - 1];
 
 export const MASTERY_TITLES = [
-  ...RANKS.map((rank) => ({
-    id: `mastery-${rank}`,
-    name: MASTERY_NAMES[rank],
-    how: `${rank}を王にして${masteryNeed}点ためる`,
-    mastery: rank,
-    unlocked: (p) => (p?.mastery?.[rank] ?? 0) >= masteryNeed,
+  ...MASTERY_SKINS.map((skin) => ({
+    id: `mastery-${skin}`,
+    name: MASTERY_NAMES[skin],
+    how: `${MASTERY_SKIN_RANK[skin]}のスキンを王にして${masteryNeed}点ためる`,
+    mastery: skin,
+    unlocked: (p) => (p?.mastery?.[skin] ?? 0) >= masteryNeed,
   })),
-  // 通しの褒美。13種すべてを同じ段まで使い込んだ人にだけ出る
+  // 通しの褒美。17スキンすべてを同じ段まで使い込んだ人にだけ出る(2026-09-24 で 13札→17スキン)
   {
     id: "mastery-all",
-    name: "十三英雄の主",
-    how: `すべての札を王にして${masteryNeed}点ためる`,
+    name: "十七英雄の主",
+    how: `すべてのスキンを王にして${masteryNeed}点ためる`,
     mastery: "all",
     unlocked: (p) =>
-      RANKS.every((rank) => (p?.mastery?.[rank] ?? 0) >= masteryNeed),
+      MASTERY_SKINS.every((skin) => (p?.mastery?.[skin] ?? 0) >= masteryNeed),
   },
   {
     id: "mastery-master",
     name: "盤上無双",
-    how: `すべての札を王にして${MASTERY_STEPS[MASTERY_STEPS.length - 1]}点ためる`,
+    how: `すべてのスキンを王にして${masteryTop}点ためる`,
     mastery: "all",
     unlocked: (p) =>
-      RANKS.every(
-        (rank) =>
-          (p?.mastery?.[rank] ?? 0) >= MASTERY_STEPS[MASTERY_STEPS.length - 1],
-      ),
+      MASTERY_SKINS.every((skin) => (p?.mastery?.[skin] ?? 0) >= masteryTop),
   },
 ];
 

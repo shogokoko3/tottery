@@ -45,7 +45,11 @@ import {
   playerLabel,
   shortPlayerLabel,
   SUIT_SYMBOL,
+  MASTERY_SKINS,
+  MASTERY_SKIN_RANK,
 } from "../game/constants.js";
+import { getCollection } from "../skins/store.js";
+import { baseSkinId } from "../skins/catalog.js";
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
 import { noteRandomResult, botAction } from "../game/bot-match.js";
@@ -1565,10 +1569,11 @@ export function GameCore({
     if (E.type === "MOVE_PIECE" && !tutorial && !E.__foe && E.pieceId) {
       const mover = a.pieces[E.pieceId];
       const mySeat = network ? p : cpu ? 0 : a.currentTurn;
-      // 王かどうかは席の kingId で見る(2026-09-24。オンラインでも同じ形で持っている)
-      if (mover && mover.owner === mySeat && a.players?.[mySeat]?.kingId === mover.id && mover.rank) {
-        const t = (masteryRef.current[mover.rank] ||= { king: 0, moves: 0, captures: 0, kingCapture: 0 });
-        t.moves += 1;
+      // 王かどうかは席の kingId で見る(2026-09-24。オンラインでも同じ形で持っている)。
+      // 熟練度は装備している所持スキンごと(通常札では貯まらない)
+      if (mover && mover.owner === mySeat && a.players?.[mySeat]?.kingId === mover.id) {
+        const skin = equippedSkinKey(mover.rank);
+        if (skin) masteryTrack(skin).moves += 1;
       }
     }
     let E0 =
@@ -2269,16 +2274,30 @@ export function GameCore({
     setFormationGot(got);
   }, [a.phase]);
 
-  // 熟練度: 王に選んだ点(+1)。対局が始まった(play に入った)ときに、自分の席の王の札へ(2026-09-24 本人の指示)。
-  // 1台で交互に指す対局は両方の席が自分なので、両方に付ける
+  // 熟練度は装備している所持スキンごとに貯まる(2026-09-24 本人の指示)。通常札では貯まらない。
+  // 装備しているスキン(rank→base id)。所持していないと装備できないので、装備 = 所持
+  const equippedSkinKey = (rank) => {
+    if (!rank) return null;
+    const base = baseSkinId((getCollection().equipped || {})[rank] || "");
+    return MASTERY_SKINS.includes(base) ? base : null;
+  };
+  const masteryTrack = (skin) =>
+    (masteryRef.current[skin] ||= { king: 0, pieces: 0, moves: 0, captures: 0, kingCapture: 0 });
+  // 対局が始まった(play に入った)ときに、王に選んだスキン(+5)と、盤に出した所持スキンの駒(+1/体)を数える。
+  // 1台で交互に指す対局は両方の席が自分なので、両方の席のスキン(=同じ端末の装備)で数える
   (0, useEffect)(() => {
     if (a.phase !== "play" || tutorial) return;
     const seats = network ? [p] : cpu ? [0] : [0, 1];
     for (const seat of seats) {
-      const rank = kingRankOf(a, seat);
-      if (!rank) continue;
-      const t = (masteryRef.current[rank] ||= { king: 0, moves: 0, captures: 0, kingCapture: 0 });
-      t.king = 1;
+      const kingId = a.players?.[seat]?.kingId;
+      const kingSkin = equippedSkinKey(kingRankOf(a, seat));
+      if (kingSkin) masteryTrack(kingSkin).king = 1;
+      // 盤に出した駒(王は上で +5 済みなので除く)。同じスキンの駒が複数なら複数加算
+      for (const piece of Object.values(a.pieces)) {
+        if (piece.owner !== seat || piece.id === kingId) continue;
+        const skin = equippedSkinKey(piece.rank);
+        if (skin) masteryTrack(skin).pieces += 1;
+      }
     }
   }, [a.phase]);
   // 熟練度: 王で相手の駒を取った点(+1/体)と、王で相手の王を討った点(+5)。
@@ -2294,11 +2313,11 @@ export function GameCore({
     if (!mine) return;
     const kingId = a.players?.[by]?.kingId;
     if (!kingId || a.lastMove?.pieceId !== kingId) return;
-    const rank = kingRankOf(a, by);
-    if (!rank) return;
+    const skin = equippedSkinKey(kingRankOf(a, by));
+    if (!skin) return;
     const defeated = (a.captureReveal?.defeated || []).filter((x) => x.owner !== by);
     if (!defeated.length) return;
-    const t = (masteryRef.current[rank] ||= { king: 0, moves: 0, captures: 0, kingCapture: 0 });
+    const t = masteryTrack(skin);
     t.captures += defeated.length;
     if (defeated.some((x) => x.isKing)) t.kingCapture = 1;
   }, [a.lastDefeat]);

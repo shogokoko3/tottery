@@ -57,21 +57,24 @@ const DESIGNS = {
   "foil-demon-j": ["horn", "astral"],
   "foil-demon-q": ["horn", "rose"],
   "foil-demon-k": ["horn", "blood"],
-  // 熟練度の称号。紋章はその札の動きの持ち味から選ぶ。
-  // 縦横の札は硬い金属系、斜めの札は星や翼、跳ぶ札は翼、無限に伸びる札は剣と宝石。
-  "mastery-A": ["portal", "astral"],
-  "mastery-2": ["shield", "steel"],
-  "mastery-3": ["leaf", "forest"],
-  "mastery-4": ["shield", "bronze"],
-  "mastery-5": ["bow", "forest"],
-  "mastery-6": ["anchor", "tide"],
-  "mastery-7": ["wave", "tide"],
-  "mastery-8": ["axe", "earth"],
-  "mastery-9": ["star", "sky"],
-  "mastery-10": ["wing", "sky"],
-  "mastery-J": ["sword", "royal"],
-  "mastery-Q": ["gem", "rose"],
-  "mastery-K": ["crown", "gold"],
+  // 熟練度の称号(2026-09-24 でスキンごとに)。紋章と配色はスキンのキャラに合わせる。
+  "mastery-genie-magician": ["portal", "astral"], // A ランプの魔導師
+  "mastery-zombie-male": ["grave", "shadow"], // 2 墓守
+  "mastery-zombie-female": ["grave", "rose"], // 3 黄昏
+  "mastery-pirate-male": ["anchor", "tide"], // 4 黒潮
+  "mastery-pirate-female": ["anchor", "blood"], // 5 紅帆
+  "mastery-elf-male": ["bow", "forest"], // 6 翠樹の射手
+  "mastery-elf-female": ["bow", "astral"], // 7 月影の射手
+  "mastery-viking-male": ["axe", "tide"], // 8 北海の戦斧
+  "mastery-viking-female": ["axe", "ice"], // 9 霜狼の戦斧
+  "mastery-dragon-knight": ["dragon", "flame"], // 10 焔翼の竜騎士
+  "mastery-pegasus-knight": ["wing", "sky"], // 10 白翼の天馬騎士
+  "mastery-angel-j": ["wing", "sky"], // J 告天使
+  "mastery-demon-j": ["horn", "shadow"], // J 魔公
+  "mastery-angel-q": ["wing", "rose"], // Q 癒天使
+  "mastery-demon-q": ["horn", "blood"], // Q 夜后
+  "mastery-angel-k": ["wing", "gold"], // K 熾天使
+  "mastery-demon-k": ["horn", "flame"], // K 堕天王
   "mastery-all": ["book", "royal"],
   "mastery-master": ["dragon", "gold"],
 };

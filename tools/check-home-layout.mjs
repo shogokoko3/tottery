@@ -1,9 +1,9 @@
 // ホームの入り口の並びと、ランキングの置き場所の検査(本人の指示 2026-09-17)。
 //   1. ホームは2列3段。左上から チュートリアル・カード / 詰めトッタリー・ショップ / ミッション・バトルパス・ガチャ
 //      (2026-09-22 本人の指示: ミッションとバトルパスを1つにまとめてバトルパスの場所へ。
-//       ミッションがあった場所は「カード」＝札ごとの熟練度)
+//       ミッションがあった場所は「カード」＝スキンごとの熟練度)
 //   1a. ミッション・バトルパスは1つの画面(QuestsScreen)で、上の切り替えで行き来する
-//   1b. カードの画面に13種の札の熟練度が並ぶ
+//   1b. カードの画面に17スキンの熟練度が並ぶ
 //   2. ランキングはホームに無く、「対戦する」(MatchingScreen)にある
 //   3. ショップの画面に、ジェム・チケット・フォイル・バトルパスの入り口がある
 import assert from "node:assert/strict";
@@ -102,13 +102,12 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
   assert.ok(!qp.includes("<h2>バトルパス</h2>"), "見出しは切り替えの札が兼ねる(重ねない)");
   for (const h of [qm, qp]) assert.ok(h.includes("ホームに戻る"), "どちらのタブにも「ホームに戻る」");
 
-  // 1b. カードの画面: 13種の札と、その熟練度
+  // 1b. カードの画面: 17スキンの熟練度(2026-09-24 でスキン制に)。既定の描画はスキン未所持=全てロック
   const cd = cards();
   assert.ok(cd.includes("<h2>カード</h2>"), "カードの見出し");
-  for (const rank of ["A","2","3","4","5","6","7","8","9","10","J","Q","K"])
-    assert.ok(cd.includes(`aria-label="${rank} の熟練度"`), `${rank} の熟練度のメーター`);
-  assert.equal((cd.match(/card-mastery-row/g) || []).length, 13, "札は13種");
-  assert.ok(cd.includes("十三英雄の主") && cd.includes("盤上無双"), "通しの称号も出る");
+  assert.equal((cd.match(/card-mastery-row/g) || []).length, 17, "スキンは17種");
+  assert.ok(cd.includes("スキンをまだ持っていません") || cd.includes("スキンを獲得すると解放") || cd.includes("手に入れると解放"), "未所持スキンはロック(鎖)");
+  assert.ok(cd.includes("十七英雄の主") && cd.includes("盤上無双"), "通しの称号も出る");
   assert.ok(cd.includes("盤の有利不利には効きません"), "盤に効かないことを断る");
   assert.ok(cd.includes("ホームに戻る"), "カードにも「ホームに戻る」");
 
