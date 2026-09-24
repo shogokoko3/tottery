@@ -153,7 +153,7 @@ import { InboxScreen } from "./inbox.jsx";
 import { SpectateScreen } from "./spectate.jsx";
 import { OpenSettings, useOpenSettings } from "./open-settings.js";
 import { ProfileScreen } from "./profile.jsx";
-import { inviteFriend } from "../net/friends.js";
+import { inviteFriend, readFriends, pingOnline } from "../net/friends.js";
 import { useMissionProfile } from "./mission-profile.js";
 import { QuestsScreen } from "./quests.jsx";
 import { CardMasteryScreen } from "./card-mastery.jsx";
@@ -1487,6 +1487,74 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
   );
 }
 
+/**
+ * 部屋の中からフレンドを招く(2026-09-25 本人の指示)。いまの合言葉を、選んだフレンドへ届ける。
+ * フレンドの画面に「対戦の招待」として出る(3分で古くなる)。合言葉の共有と同じことをフレンドに直接。
+ */
+function RoomInviteFriends({ code, onClose }) {
+  const [list, setList] = useState(null);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState("");
+  const [sent, setSent] = useState({});
+  useEffect(() => {
+    let gone = false;
+    readFriends()
+      .then((s) => {
+        if (!gone) setList(s.friends || []);
+      })
+      .catch(() => {
+        if (!gone) setErr("フレンドを読み込めませんでした。通信を確認してください。");
+      });
+    return () => {
+      gone = true;
+    };
+  }, []);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-panel room-invite-panel" onClick={(e) => e.stopPropagation()}>
+        <h3>フレンドを招待</h3>
+        <p className="hint">
+          この部屋(合言葉 <b>{formatRoomCode(code)}</b>)に招待します。相手のフレンド画面に「対戦の招待」で届きます。
+        </p>
+        {err && <p className="hint friends-error">{err}</p>}
+        {!list && !err && <p className="hint">読み込み中…</p>}
+        {list && list.length === 0 && <p className="hint">まだフレンドがいません。</p>}
+        <div className="room-invite-list">
+          {(list || []).map((f) => {
+            const state = sent[f.uid];
+            return (
+              <div className="room-invite-row" key={f.uid}>
+                <PlayerIcon icon={f.icon} name={f.name} size="sm" frame={f.frame} />
+                <b className="room-invite-name">{f.name || "名無し"}</b>
+                <button
+                  className={`btn btn-small ${state === "sent" ? "btn-ghost" : "btn-primary"}`}
+                  disabled={busy === f.uid || state === "sent"}
+                  onClick={async () => {
+                    setBusy(f.uid);
+                    try {
+                      await inviteFriend(f.uid, code);
+                      setSent((s) => ({ ...s, [f.uid]: "sent" }));
+                    } catch {
+                      setSent((s) => ({ ...s, [f.uid]: "err" }));
+                    } finally {
+                      setBusy("");
+                    }
+                  }}
+                >
+                  {state === "sent" ? "送信済み" : state === "err" ? "再送" : "招待"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <button className="btn btn-ghost btn-wide" onClick={onClose}>
+          閉じる
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function RoomScreen({
   onOfflineLocal,
   onRoomReady,
@@ -1505,6 +1573,8 @@ export function RoomScreen({
   const loadout = useRef(mySkins()).current;
   // 「コピーしました」などの短い知らせ
   const [notice, setNotice] = useState("");
+  // 部屋の中からフレンドを招く幕(2026-09-25 本人の指示)
+  const [showInvite, setShowInvite] = useState(false);
   let [u, i] = (0, useState)(null),
     [f, o] = (0, useState)(""),
     [r, d] = (0, useState)(""),
@@ -1723,13 +1793,17 @@ export function RoomScreen({
         </p>
       )}
       <div className="share-row">
-        <button className="btn btn-primary" onClick={shareLink}>
+        <button className="btn btn-primary" onClick={() => setShowInvite(true)}>
+          <Users size={16} /> フレンドを招待
+        </button>
+        <button className="btn btn-ghost" onClick={shareLink}>
           <Mail size={16} /> リンクを共有
         </button>
         <button className="btn btn-ghost" onClick={() => copyText(formatRoomCode(f), "合言葉をコピーしました")}>
           合言葉をコピー
         </button>
       </div>
+      {showInvite && <RoomInviteFriends code={f} onClose={() => setShowInvite(false)} />}
       {notice && (
         <p className="hint" role="status">
           {notice}
@@ -1976,6 +2050,24 @@ function TotteryScreens() {
   useEffect(() => {
     if (named && pendingRoom) t("room");
   }, [named, pendingRoom]);
+  // オンラインの印(フレンド一覧の「オンライン/オフライン」表示)。アプリを開いている間、2分ごとに打つ。
+  // どの画面でも打つので、対戦中や着せ替え中でもオンラインのままになる(2026-09-25 本人の指示)
+  useEffect(() => {
+    if (!named) return;
+    let gone = false;
+    const beat = () => {
+      if (!gone && (typeof document === "undefined" || !document.hidden)) pingOnline().catch(() => {});
+    };
+    beat();
+    const timer = setInterval(beat, 120000);
+    const onShow = () => beat();
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", onShow);
+    return () => {
+      gone = true;
+      clearInterval(timer);
+      if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onShow);
+    };
+  }, [named]);
   // 場面に合った曲へ。対局中は GameCore のほうが決めるので、ここは触らない
   useScreenBgm(e);
   // 起動時に、登録した人の台帳へ自分を置き直す。使用停止なら名前を捨てる

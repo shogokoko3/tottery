@@ -17,7 +17,7 @@ import { movePresentationMs } from "../game/capture-presentation.js";
 import { useEffect, useRef, useState } from "react";
 import { useGameBgm, useGameSounds } from "../audio/index.js";
 import { winKingCardImg } from "../assets.js";
-import { requestFriendByUid } from "../net/friends.js";
+import { requestFriendByUid, readFriends } from "../net/friends.js";
 import { enrichAction } from "../game/actions.js";
 import { ACE_FOIL_SKIN_ID, canUseAceFoil } from "../game/ace-foil.js";
 import { ACE_FOIL_RULE_VERSION, hasSimultaneousPrep } from "../game/rule-version.js";
@@ -569,6 +569,25 @@ function FoeFriendRequest({ uid, name }) {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  // すでにフレンドなら申請の釦は出さない(フレンド対戦の相手はフレンドのことが多い。2026-09-25 本人の報告)。
+  // 判定できるまでは出さず、フレンドでないと分かってから出す(誤って申請を勧めない)
+  const [hidden, setHidden] = useState(true);
+  useEffect(() => {
+    let gone = false;
+    (async () => {
+      try {
+        const s = await readFriends();
+        if (!gone) setHidden((s.friends || []).some((f) => f.uid === uid));
+      } catch {
+        // 確かめられないときは、今までどおり出す(申請しても、既にフレンドならサーバーが「フレンドになりました」で無害に返す)
+        if (!gone) setHidden(false);
+      }
+    })();
+    return () => {
+      gone = true;
+    };
+  }, [uid]);
+  if (hidden) return null;
   return (
     <div className="foe-friend">
       <button

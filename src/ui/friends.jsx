@@ -111,10 +111,13 @@ function FriendTag({ f, onClick, brief = false }) {
         {f.title ? <TitleFrame id={f.title} size="compact" /> : <span className="friend-tag-notitle">称号なし</span>}
         <b className="friend-tag-name">{f.name || "名無し"}</b>
         {!brief && (
-          <small>
-            {Number.isFinite(f.rating) ? `レート ${f.rating}` : ""}
+          <small className="friend-tag-meta">
+            <span className={`friend-status ${f.online ? "is-online" : "is-offline"}`}>
+              <i className="friend-status-dot" aria-hidden="true" />
+              {f.online ? "オンライン" : "オフライン"}
+            </span>
+            {Number.isFinite(f.rating) ? ` · レート ${f.rating}` : ""}
             {f.level ? ` · Lv${f.level}` : ""}
-            {f.seen ? ` · ${agoText(f.seen)}` : ""}
           </small>
         )}
       </span>
@@ -352,7 +355,7 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
                       run(`remove:${f.uid}`, () => removeFriend(f.uid), `${f.name || "名無し"} をフレンドから外しました`);
                     }}
                   >
-                    外す
+                    フレンドを外す
                   </button>
                   <button className="icon-btn" aria-label="やめる" onClick={() => setConfirmRemove(null)}>
                     <Close size={14} />

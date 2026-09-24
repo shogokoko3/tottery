@@ -261,6 +261,7 @@ async function handleApi(request, env, url) {
         if (fop === "enter-room" && typeof body.code === "string" && body.code.length <= 16)
           return call("friends-enter-room", { code: body.code, online: body.online === true, opp: typeof body.opp === "string" ? body.opp.slice(0, 20) : "" });
         if (fop === "leave-room") return call("friends-leave-room");
+        if (fop === "ping") return call("friends-ping");
         if (fop === "profile-set" && body.card && typeof body.card === "object")
           return call("friends-profile-set", { card: body.card });
         if (fop === "profile-get" && who(body.uid)) return call("friends-profile-get", { target: body.uid });
@@ -412,6 +413,8 @@ export class SeasonLedger {
         // 対戦中の在席(観戦できる部屋をフレンドに知らせる)。設定でオンにした人だけが打つ
         if (op === "friends-enter-room") return fr.enterRoom(uid, args.code, args.online, args.opp, now);
         if (op === "friends-leave-room") return fr.leaveRoom(uid);
+        // オンラインの印(フレンド一覧の「オンライン/オフライン」表示に使う)
+        if (op === "friends-ping") return fr.seenNow(uid, now);
         if (op === "friends-profile-set") return fr.setProfile(uid, args.card, now);
         if (op === "friends-profile-get") {
           // 他人のプロフィールはフレンドだけ。自分のはいつでも

@@ -876,10 +876,11 @@ body:has(.stage > .home-wrap) {
   padding: 7px 4px;
   font-size: 11px;
 }
+/* 印は釦の中に収める。額縁(ホームの着せ替え)にはみ出して被らないように(2026-09-25 本人の指摘) */
 .home-wrap .home-news-count {
   position: absolute;
-  top: -5px;
-  right: -5px;
+  top: 4px;
+  right: 4px;
   min-width: 19px;
   padding-inline: 3px;
 }

@@ -8532,3 +8532,64 @@ p.hint > span.gem-shop-diag {
 .friend-spectate {
   white-space: nowrap;
 }
+
+/* 部屋の中からフレンドを招く幕(2026-09-25 本人の指示) */
+.room-invite-panel {
+  max-width: 340px;
+  text-align: center;
+}
+.room-invite-panel h3 {
+  margin: 0 0 6px;
+}
+.room-invite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(46vh, 340px);
+  overflow-y: auto;
+  margin: 10px 0;
+}
+.room-invite-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.room-invite-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.room-invite-row .btn {
+  flex: none;
+}
+
+/* フレンド一覧のオンライン/オフライン表示(2026-09-25 本人の指示。前は「◯時間前」) */
+.friend-tag-meta {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.friend-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.friend-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.friend-status.is-online {
+  color: #5cc98a;
+}
+.friend-status.is-offline {
+  color: var(--text-dim);
+}

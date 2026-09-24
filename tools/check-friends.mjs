@@ -17,6 +17,7 @@ import {
   FRIEND_CODE_LEN,
   INVITE_TTL_MS,
   PRESENCE_TTL_MS,
+  ONLINE_TTL_MS,
   SHOWCASE_IDS,
   SHOWCASE_MAX,
   jstDay,
@@ -205,9 +206,23 @@ f.enterRoom("P2", "ROOM77", false, "x", T0);
 f.forget("P2");
 assert.equal(f.presenceOf("P2", T0), null, "記録を消すと在席も消える");
 
+// オンライン/オフライン表示(2026-09-25 本人の指示。前は「◯時間前」)
+f.link("O1", "O2", T0);
+assert.equal(f.state("O2", T0).friends.find((x) => x.uid === "O1").online, false, "何もしていなければオフライン");
+f.seenNow("O1", T0);
+assert.equal(f.isOnline("O1", T0), true, "seen を打つとオンライン");
+assert.equal(f.state("O2", T0).friends.find((x) => x.uid === "O1").online, true, "一覧にもオンラインが出る");
+assert.equal(f.isOnline("O1", T0 + ONLINE_TTL_MS + 1), false, "時間が経つとオフライン");
+// 写しがまだ無い人でも seenNow は行を作る(profileOf が壊れない)
+assert.doesNotThrow(() => f.seenNow("O3", T0));
+assert.equal(f.isOnline("O3", T0), true);
+// 対戦中は seen が古くてもオンライン
+f.enterRoom("O1", "ROOMO", false, "", T0 + ONLINE_TTL_MS + 2000);
+assert.equal(f.isOnline("O1", T0 + ONLINE_TTL_MS + 2000), true, "対戦中はオンライン");
+
 // 配線(Worker と端末)
 const worker = readFileSync(new URL("../src/server/worker.js", import.meta.url), "utf8").replace(/\s+/g, " ");
-for (const op of ["friends-enter-room", "friends-leave-room"])
+for (const op of ["friends-enter-room", "friends-leave-room", "friends-ping"])
   assert.ok(worker.includes(`"${op}"`), `Durable Object に ${op}`);
 assert.ok(/fr\.enterRoom\(uid, args\.code, args\.online, args\.opp, now\)/.test(worker), "在席は enterRoom へ");
 assert.ok(/\/\^\\\/api\\\/\(season\|wallet\|iap\|friends\)\\\//.test(worker), "CORS と本文の判定に friends が入っている");
@@ -225,5 +240,6 @@ assert.ok(!/fr\.\w+\(uid, args\.uid/.test(worker), "Durable Object でも args.u
 const net = readFileSync(new URL("../src/net/friends.js", import.meta.url), "utf8").replace(/\s+/g, " ");
 assert.ok(/\/api\/friends\/\$\{op\}/.test(net), "端末は /api/friends/<op> を叩く");
 assert.ok(/friendsRequest\("enter-room"/.test(net) && /friendsRequest\("leave-room"/.test(net), "端末に在席の口(enter-room / leave-room)");
+assert.ok(/friendsRequest\("ping"\)/.test(net), "端末にオンラインの印(ping)");
 
 console.log("フレンドとプロフィール: ID・申請と承認・50人・フレンド1人1日1枚の贈り物・招待の期限・写しの見張り・在席と観戦・消去・配線 OK");

@@ -18,6 +18,8 @@ export const FRIEND_CODE_LEN = 8;
 export const INVITE_TTL_MS = 3 * 60 * 1000;
 /** 在席(対戦中)の印が生きている時間。端末が2分ごとに打ち直すので、落ちた端末は6分で消える */
 export const PRESENCE_TTL_MS = 6 * 60 * 1000;
+/** オンライン表示の時間。端末は2分ごとに seen を打つので、この時間より新しければ「オンライン」 */
+export const ONLINE_TTL_MS = 5 * 60 * 1000;
 /** 部屋の合言葉として通す形(フレンド戦は6文字、ランダムは8文字。招待と同じ緩さ) */
 const ROOM_CODE_RE = /^[\w-]{4,16}$/;
 /** 紛らわしい文字(0/O、1/I/L)を抜いた字種 */
@@ -289,6 +291,23 @@ export class Friends {
   touch(uid, now) {
     this.sql("UPDATE friend_profiles SET seen=? WHERE uid=?", now, uid);
   }
+  /** オンラインの印(seen)を今にする。写しがまだ無くても行を作る(ping で使う) */
+  seenNow(uid, now) {
+    this.sql(
+      "INSERT INTO friend_profiles VALUES (?,?,?,?) ON CONFLICT(uid) DO UPDATE SET seen=excluded.seen",
+      uid,
+      "{}",
+      now,
+      now,
+    );
+    return { ok: true };
+  }
+  /** その人が今オンラインか(seen が新しい、または対戦中) */
+  isOnline(uid, now) {
+    if (this.presenceOf(uid, now)) return true;
+    const row = this.sql("SELECT seen FROM friend_profiles WHERE uid=?", uid)[0];
+    return !!(row && row.seen && row.seen > now - ONLINE_TTL_MS);
+  }
   profileOf(uid) {
     const row = this.sql("SELECT data, at, seen FROM friend_profiles WHERE uid=?", uid)[0];
     if (!row) return null;
@@ -317,12 +336,13 @@ export class Friends {
   /** フレンド画面に要るものを一度に。rating は呼ぶ側が台帳から足す */
   state(uid, now) {
     this.touch(uid, now);
-    const friends = this.sql("SELECT fid, at FROM friends WHERE uid=? ORDER BY at ASC", uid).map((r) => ({
-      ...this.tag(r.fid),
-      since: r.at,
+    const friends = this.sql("SELECT fid, at FROM friends WHERE uid=? ORDER BY at ASC", uid).map((r) => {
+      const t = this.tag(r.fid);
       // 対戦中なら観戦できる部屋を添える(古い印は presenceOf が落とす)
-      match: this.presenceOf(r.fid, now),
-    }));
+      const match = this.presenceOf(r.fid, now);
+      // オンライン表示は「オンラインかオフラインか」だけ(2026-09-25 本人の指示)。対戦中か、seen が新しければオンライン
+      return { ...t, since: r.at, match, online: !!match || (!!t.seen && t.seen > now - ONLINE_TTL_MS) };
+    });
     const requestsIn = this.sql("SELECT from_uid AS uid, at FROM friend_requests WHERE to_uid=? ORDER BY at DESC", uid).map((r) => ({
       ...this.tag(r.uid),
       at: r.at,

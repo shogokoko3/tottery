@@ -66,6 +66,8 @@ export const enterMatchPresence = (code, online, opp) =>
   friendsRequest("enter-room", { code, online: !!online, opp: opp || "" });
 /** 対戦を離れた印(観戦を締める) */
 export const leaveMatchPresence = () => friendsRequest("leave-room");
+/** オンラインの印(フレンド一覧の「オンライン/オフライン」表示。アプリを開いている間ときどき打つ) */
+export const pingOnline = () => friendsRequest("ping");
 
 /** フレンド対戦の合言葉(部屋の code)を相手に届ける。3分で古くなる */
 export const inviteFriend = (uid, code) => friendsRequest("invite", { uid, code });
