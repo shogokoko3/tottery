@@ -2,7 +2,7 @@
  * フレンドとプロフィール(サーバー側 src/server/friends.js)。2026-09-23 本人の指示。
  *
  * - フレンド ID(8文字)で申請 → 承認で双方向。互いに申請していればその場で結ぶ。50人まで
- * - 贈り物は 1日1回(日本時間)・フレンドだけ。受け取るまで残り、受け取ると印が付く(財布への加算は DO 側)
+ * - 贈り物は 1日にフレンド1人あたり1枚(日本時間・最大50人ぶん)・フレンドだけ。受け取るまで残り、受け取ると印が付く(財布への加算は DO 側)
  * - 招待は 3 分で古くなる。フレンドだけ
  * - プロフィールの写しは桁と長さを見張る。アピールは決まった id から 3 つまで
  * - 記録を消すと全部消える
@@ -106,15 +106,19 @@ f.link("C", "A", T0); // C は A と結び直す(A は 51 人目になるが lin
 assert.equal(f.count("A"), FRIEND_MAX + 1);
 f.remove("A", "C");
 
-// 贈り物: 1日1回、フレンドだけ、受け取るまで残る
-assert.throws(() => f.gift("A", "D", T0), /フレンドにだけ/);
+// 贈り物: 1日にフレンド1人あたり1枚(最大でフレンドの数=50人)、フレンドだけ、受け取るまで残る
+assert.throws(() => f.gift("A", "D", T0), /フレンドにだけ/); // D はフレンドでない
 r = f.gift("A", "B", T0);
 assert.equal(r.day, "2026-09-23");
-assert.throws(() => f.gift("A", "x0", T0 + 1000), /また明日/);
-assert.equal(f.state("A", T0).giftedTo, "B");
+assert.equal(r.to, "B");
+assert.throws(() => f.gift("A", "B", T0 + 1000), /今日もう贈りました/, "同じ相手には1日1枚まで");
+// 別のフレンドには、同じ日でも贈れる(1日にフレンド1人1枚・最大50人ぶん)
+r = f.gift("A", "x0", T0 + 1000);
+assert.equal(r.day, "2026-09-23", "別のフレンドには同じ日でも贈れる");
+assert.deepEqual([...f.state("A", T0).giftedTo].sort(), ["B", "x0"], "今日贈った相手が一覧で並ぶ");
 s = f.state("B", T0 + 1);
 assert.equal(s.gifts.length, 1);
-assert.equal(s.gifts[0].id, "gift:A:2026-09-23");
+assert.equal(s.gifts[0].id, "gift:A:B:2026-09-23");
 assert.equal(s.gifts[0].from.uid, "A");
 const next = Date.parse("2026-09-23T15:00:00Z"); // JST 翌日 0:00
 r = f.gift("A", "B", next);
@@ -222,4 +226,4 @@ const net = readFileSync(new URL("../src/net/friends.js", import.meta.url), "utf
 assert.ok(/\/api\/friends\/\$\{op\}/.test(net), "端末は /api/friends/<op> を叩く");
 assert.ok(/friendsRequest\("enter-room"/.test(net) && /friendsRequest\("leave-room"/.test(net), "端末に在席の口(enter-room / leave-room)");
 
-console.log("フレンドとプロフィール: ID・申請と承認・50人・1日1回の贈り物・招待の期限・写しの見張り・在席と観戦・消去・配線 OK");
+console.log("フレンドとプロフィール: ID・申請と承認・50人・フレンド1人1日1枚の贈り物・招待の期限・写しの見張り・在席と観戦・消去・配線 OK");

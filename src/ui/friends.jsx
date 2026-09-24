@@ -2,7 +2,7 @@
  * フレンド(2026-09-23 本人の指示)。
  *
  * - フレンド ID(8文字)を見せ合って申請 → 承認。50人まで
- * - 1日1回、フレンド1人にガチャチケットを1枚贈る。届いたものは「受け取る」で財布へ
+ * - 1日にフレンド1人あたり1枚(最大50人ぶん)ガチャチケットを贈る。届いたものは「受け取る」で財布へ
  * - フレンド対戦に招待する(合言葉を届ける)。届いた招待は「参加する」でその部屋へ
  * - 行を押すと、そのフレンドのプロフィールを開く
  *
@@ -181,7 +181,11 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
   const requestsIn = (state?.requestsIn || []).filter((f) => !isBlocked(f.uid));
   const gifts = state?.gifts || [];
   const invites = (state?.invites || []).filter((i) => !isBlocked(i.fromUid));
-  const gifted = !!state?.giftedTo;
+  // 今日すでに贈ったフレンド(1日にフレンド1人あたり1枚。最大50人ぶん)。
+  // 旧サーバー(1人だけの scalar)からの応答でも壊れないようにする
+  const giftedSet = new Set(
+    Array.isArray(state?.giftedTo) ? state.giftedTo : state?.giftedTo ? [state.giftedTo] : [],
+  );
 
   return (
     <div className="setup-wrap friends-screen">
@@ -190,7 +194,7 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
       <p className="hint friends-lead">
         <span>フレンド ID を伝え合って登録します。<span className="nowrap">{state?.max || 50}人まで。</span></span>
         <span>
-          <span className="nowrap">1日1回</span>、フレンド1人に<span className="nowrap">ガチャチケットを贈れます。</span>
+          <span className="nowrap">1日1回</span>、フレンド<span className="nowrap">1人ずつ</span>に<span className="nowrap">ガチャチケットを贈れます。</span>
         </span>
       </p>
 
@@ -312,7 +316,9 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
         {!loading && friends.length === 0 && (
           <p className="hint">まだフレンドがいません。上の ID を伝えるか、相手の ID を入れて申請してください。</p>
         )}
-        {friends.map((f) => (
+        {friends.map((f) => {
+          const gifted = giftedSet.has(f.uid);
+          return (
           <div className="friend-row" key={f.uid}>
             <FriendTag f={f} onClick={onProfile ? () => onProfile(f.uid) : null} />
             <div className="friend-row-actions">
@@ -328,10 +334,10 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
               <button
                 className={`btn btn-small ${gifted ? "btn-ghost" : "btn-primary"}`}
                 disabled={!!busy || gifted}
-                title={gifted ? "今日の贈り物はもう送りました" : "ガチャチケットを1枚贈る"}
+                title={gifted ? "この人には今日もう贈りました" : "ガチャチケットを1枚贈る"}
                 onClick={() => run(`gift:${f.uid}`, () => giftFriend(f.uid), `${f.name || "名無し"} にチケットを贈りました`)}
               >
-                <Ticket size={14} /> {state?.giftedTo === f.uid ? "贈り済み" : "贈る"}
+                <Ticket size={14} /> {gifted ? "贈り済み" : "贈る"}
               </button>
               <button className="btn btn-ghost btn-small" onClick={() => onInvite && onInvite(f)} disabled={!onInvite}>
                 <DoorIn size={14} /> 招待
@@ -359,7 +365,8 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </section>
 
       {/* 申請の受付(入口ごとに切れる。2026-09-24 本人の指示)。切った入口からの申請は、相手には「いっぱい」と見える */}

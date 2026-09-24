@@ -3,7 +3,7 @@
  *
  * - フレンド登録: 8文字のフレンド ID(サーバーが uid ごとに1つ作る)で申請し、相手が承認すると双方向に結ぶ。
  *   50人まで(FRIEND_MAX)。互いに申請していれば、その場で結ぶ
- * - 贈り物: 1日1回(日本時間の日付で数える)、フレンド1人にガチャチケットを1枚。送る側は減らない(サーバーが作る)。
+ * - 贈り物: 1日に**フレンド1人あたり1枚**(日本時間の日付で数える。最大でフレンドの数=50人ぶん)ガチャチケットを贈れる。送る側は減らない(サーバーが作る)。
  *   受け取る側は「受け取る」で財布へ(財布への加算は Durable Object 側で行う。ここは印だけ)
  * - 招待: フレンド対戦の合言葉(部屋の code)を相手に届ける。3分で古くなる
  * - プロフィール: 端末が申告する写し(名前・アイコン・称号・レベル・記録・背景・アピール・固定の称号)。
@@ -207,17 +207,18 @@ export class Friends {
     return { ok: true };
   }
 
-  /** 今日もう贈ったか */
+  /** 今日すでに贈ったフレンドの一覧(1日にフレンド1人あたり1枚。最大でフレンドの数=50人) */
   giftedToday(uid, now) {
-    return this.sql("SELECT to_uid FROM friend_gifts WHERE from_uid=? AND day=?", uid, jstDay(now))[0]?.to_uid || null;
+    return this.sql("SELECT to_uid FROM friend_gifts WHERE from_uid=? AND day=?", uid, jstDay(now)).map((r) => r.to_uid);
   }
-  /** フレンドにチケットを1枚贈る。1日1回・フレンドだけ */
+  /** フレンドにチケットを1枚贈る。1日にフレンド1人あたり1枚(最大50人ぶん)・フレンドだけ。送る側は減らない */
   gift(uid, fid, now) {
     if (!this.isFriend(uid, fid)) throw new Error("フレンドにだけ贈れます。");
     const day = jstDay(now);
-    const already = this.giftedToday(uid, now);
-    if (already) throw new Error("今日の贈り物はもう送りました。また明日。");
-    this.sql("INSERT INTO friend_gifts VALUES (?,?,?,?,?,0)", `gift:${uid}:${day}`, uid, fid, day, now);
+    // id は (送り主・相手・日)ごと。同じ相手には1日1枚まで(主キーと重複確認で守る)
+    const id = `gift:${uid}:${fid}:${day}`;
+    if (this.sql("SELECT 1 FROM friend_gifts WHERE id=?", id).length) throw new Error("この人には今日もう贈りました。また明日。");
+    this.sql("INSERT INTO friend_gifts VALUES (?,?,?,?,?,0)", id, uid, fid, day, now);
     return { ok: true, to: fid, day };
   }
   /** 受け取っていない贈り物 */
