@@ -89,6 +89,25 @@ console.log(`  ${okActs} / ${acts.length} 件が通った`);
 for (const [k, v] of shapes) fail.push(`手が弾かれた ${k}  (${v})`);
 pass += okActs;
 
+console.log("■ 観戦(2026-09-24)");
+// 観戦の新しいルールを本番で試す。使い捨ての第三者2人(観戦者 C・野次馬 D)
+const C = await anon(), D = await anon();
+// spectate を立てる前は、名乗ろうとしても弾かれる(root の spectate===true が要る)
+want("許可前は観戦者になれない", await call(C, `rooms/${CODE}/spectators/${C.uid}`, "PUT", true), "弾かれる");
+want("許可前は部屋を読めない", await call(C, `rooms/${CODE}`), "弾かれる");
+// 対局している本人が観戦を許可する
+want("本人が観戦を許可する", await call(A, `rooms/${CODE}`, "PATCH", { spectate: true, spectateReveal: true }));
+// 観戦者は自分の枝にだけ名乗れる
+want("観戦者が名乗る", await call(C, `rooms/${CODE}/spectators/${C.uid}`, "PUT", true));
+want("他人の名で名乗れない", await call(C, `rooms/${CODE}/spectators/${D.uid}`, "PUT", true), "弾かれる");
+// 名乗った観戦者は部屋(手番の列まで)を読める
+want("観戦者が部屋を読める", await call(C, `rooms/${CODE}`));
+want("観戦者が手番の列を読める", await call(C, `rooms/${CODE}/acts`));
+// 名乗っていない人は読めない
+want("名乗らない人は読めない", await call(D, `rooms/${CODE}`), "弾かれる");
+// 観戦者は手を書けない(席の二人だけ)
+want("観戦者は手を書けない", await call(C, `rooms/${CODE}/acts/${pushId(2_000_000)}`, "PUT", { type: "RESIGN", by: C.uid, __id: `${C.uid.slice(0, 6)}-x`, player: 0 }), "弾かれる");
+
 console.log("■ 再戦と片付け");
 want("再戦の意思(ホスト)", await call(A, `rooms/${CODE}/rematch/r0/${A.uid}`, "PUT", true));
 want("再戦の意思(客)", await call(B, `rooms/${CODE}/rematch/r0/${B.uid}`, "PUT", true));
