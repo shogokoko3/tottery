@@ -95,8 +95,12 @@ import {
   readRematch,
   readRoom,
   readRound,
+  setRoomSpectate,
   wantRematch,
 } from "../net/firebase.js";
+import { isNearbyCode } from "../net/nearby.js";
+import { enterMatchPresence, leaveMatchPresence } from "../net/friends.js";
+import { normalizeSpectate } from "../game/profile-card.js";
 import { myUid } from "../net/auth.js";
 import { giveGift } from "../game/gifts.js";
 import { earnTickets } from "../net/wallet.js";
@@ -1889,6 +1893,30 @@ export function GameCore({
       cinematic.enabled,
       aceMagic.enabled,
     ]));
+  // 対戦を観戦できるようにする(2026-09-24 本人の指示)。
+  // 設定で観戦をオンにした対戦だけ、部屋に観戦の印を付け、フレンドに在席(観戦できる部屋)を知らせる。
+  // ここは自分のサーバー(在席)と部屋の印を書くだけ。対局の手番(acts)には一切触れないので、二人の対局を邪魔しない
+  (0, useEffect)(() => {
+    if (!network || !network.code || isNearbyCode(network.code) || tutorial) return;
+    const online = !!network.random;
+    const allow = normalizeSpectate(loadProfile().card?.spectate)[online ? "online" : "friend"];
+    if (!allow) return;
+    // フレンド戦は審判視点(両側が見える)、ランダムマッチは観戦した席の駒だけ見える
+    const reveal = !online;
+    const opp = names && p != null ? names[1 - p] || "" : "";
+    let alive = !0;
+    const beat = () => {
+      if (!alive) return;
+      setRoomSpectate(network.code, !0, reveal);
+      enterMatchPresence(network.code, online, opp).catch(() => {});
+    };
+    beat();
+    // 2分ごとに打ち直す(落ちた端末の在席は6分で消える)
+    const timer = setInterval(beat, 120000);
+    return () => {
+      ((alive = !1), clearInterval(timer), leaveMatchPresence().catch(() => {}));
+    };
+  }, [network, tutorial]);
   // 駒が倒れたら、盤の上で演出を見せてから結果の札を開く
   (0, useEffect)(() => {
     if (!a.lastDefeat || aceMagic.captureHandled) {

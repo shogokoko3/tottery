@@ -96,6 +96,8 @@ const fwallet = new Wallet(fsql);
   friends.request("hana", friends.codeOf("me", t), t - 600e3);
   friends.gift("taro", "me", t - 1800e3);
   friends.invite("taro", "me", "ABCDEF", t - 30e3);
+  // たろうは対戦中(観戦の見本)。フレンド戦なので審判視点
+  friends.enterRoom("taro", "WATCH1", false, "見本の相手", t - 60e3);
 }
 function fakeFriends(req, res, path) {
   const send = (status, data) => {
@@ -134,6 +136,8 @@ function fakeFriends(req, res, path) {
       }
       if (op === "invite") return send(200, friends.invite(uid, body.uid, body.code, now));
       if (op === "cancel-invite") return send(200, friends.cancelInvite(uid, body.uid));
+      if (op === "enter-room") return send(200, friends.enterRoom(uid, body.code, body.online, body.opp, now));
+      if (op === "leave-room") return send(200, friends.leaveRoom(uid));
       if (op === "profile-set") return send(200, friends.setProfile(uid, body.card, now));
       if (op === "profile-get") {
         // 端末の本当の uid は Firebase のもの。見本の2人以外は「自分」とみなす

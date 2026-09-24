@@ -146,12 +146,15 @@ export function Piece({
   frozenTurns = 0,
   skyBonus = false,
   extraReady = false,
+  // 観戦の審判視点(フレンド戦)。両者の伏せ札まで表向きに見せる
+  revealAll = false,
   size = "md",
 }) {
   let u = PLAYER_META[piece.owner],
     // フラッシュで公開された駒と、王を討って名乗りを上げた駒は、
-    // 持ち主でなくても表向きに見える。土・森で見抜いた駒は自分だけに
-    i = piece.owner === viewer || !!piece.revealed || !!known;
+    // 持ち主でなくても表向きに見える。土・森で見抜いた駒は自分だけに。
+    // 審判視点の観戦(revealAll)では全部表向き
+    i = revealAll || piece.owner === viewer || !!piece.revealed || !!known;
   const mark =
     piece.mark === "sky" ? "空" : piece.mark === "palace" ? "宮" : null;
   // 相手の駒が表向き(公開・見抜き)だと自分の駒と見分けにくい(本人の指摘 2026-09-15)。

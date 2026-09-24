@@ -150,6 +150,7 @@ import TSUME_STYLES from "./tsume.css";
 import { SkinsScreen } from "./skins.jsx";
 import { useFriendAlerts } from "./friends.jsx";
 import { InboxScreen } from "./inbox.jsx";
+import { SpectateScreen } from "./spectate.jsx";
 import { OpenSettings, useOpenSettings } from "./open-settings.js";
 import { ProfileScreen } from "./profile.jsx";
 import { inviteFriend } from "../net/friends.js";
@@ -1956,7 +1957,14 @@ function TotteryScreens() {
     // フレンド(2026-09-23)。開いているプロフィールの uid(null なら自分)と戻り先、招待の相手
     [profileUid, setProfileUid] = (0, useState)(null),
     [profileFrom, setProfileFrom] = (0, useState)("menu"),
-    [inviteTo, setInviteTo] = (0, useState)(null);
+    [inviteTo, setInviteTo] = (0, useState)(null),
+    // 観戦(2026-09-24)。観戦するフレンドと部屋({ match, friend })
+    [spectateTarget, setSpectateTarget] = (0, useState)(null);
+  // フレンドの対戦を観戦する: 在席(f.match)の部屋を読むだけの画面へ
+  function spectateFriend(friend) {
+    if (!friend || !friend.match) return;
+    (setSpectateTarget({ match: friend.match, friend }), u(null), m(!1), t("spectate"));
+  }
   // フレンドを対戦に招待する: ルールを決めて部屋を作り、できた合言葉を相手に届ける(RoomScreen の onRoomCreated)
   function inviteToRoom(friend) {
     (setInviteTo(friend), setPendingRoom(""), u(null), m(!1), r("room"), setRulesFrom("room"), t("rules"));
@@ -2057,6 +2065,7 @@ function TotteryScreens() {
       cards: "menu",
       letters: "menu",
       friends: "menu",
+      spectate: "friends",
       profile: profileFrom,
       // ランキングは「対戦する」の中にあるので、そこへ戻す
       ranking: "matching",
@@ -2363,7 +2372,17 @@ function TotteryScreens() {
               }}
               onInvite={inviteToRoom}
               onJoinInvite={joinInvite}
+              onSpectate={spectateFriend}
             />
+          ),
+          spectate: spectateTarget ? (
+            <SpectateScreen
+              match={spectateTarget.match}
+              friend={spectateTarget.friend}
+              onExit={() => t("friends")}
+            />
+          ) : (
+            <InboxScreen tab="friends" onTab={(id) => t(id)} onBack={() => t("menu")} />
           ),
           profile: (
             <ProfileScreen

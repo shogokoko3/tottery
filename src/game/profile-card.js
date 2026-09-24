@@ -29,6 +29,20 @@ export function normalizeAccept(raw) {
   return Object.fromEntries(REQUEST_SOURCES.map((s) => [s.id, a[s.id] !== false]));
 }
 
+/**
+ * 観戦の受付(2026-09-24 本人の指示)。フレンドが自分の対戦を観戦できるか、対戦の種類ごとに決める。
+ * - friend: フレンド対戦。既定オン(呼んだ相手に見せる前提)。審判視点(全部見える)
+ * - online: ランダムマッチ。**既定オフ**。オンにするとフレンドが観戦できる。観戦した席の駒だけ見える
+ */
+export const SPECTATE_MODES = Object.freeze([
+  { id: "friend", label: "フレンド対戦", note: "フレンドが観戦できます(盤の両側が見えます)", def: true },
+  { id: "online", label: "ランダムマッチ", note: "オンにするとフレンドが観戦できます(あなたの駒だけ見えます)", def: false },
+]);
+export function normalizeSpectate(raw) {
+  const s = raw && typeof raw === "object" ? raw : {};
+  return Object.fromEntries(SPECTATE_MODES.map((m) => [m.id, m.id in s ? s[m.id] !== false : m.def]));
+}
+
 /** 背景の候補。標準はいつでも。7エリアはホームの着せ替えと同じ解放条件 */
 export const PROFILE_BACKGROUNDS = Object.freeze([
   { id: STANDARD_BG, label: "標準", condition: "いつでも使えます" },
@@ -76,6 +90,7 @@ export function normalizeCard(raw) {
       : [],
     pinnedTitle: typeof c.pinnedTitle === "string" && c.pinnedTitle ? c.pinnedTitle : null,
     accept: normalizeAccept(c.accept),
+    spectate: normalizeSpectate(c.spectate),
   };
 }
 

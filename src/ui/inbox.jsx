@@ -13,7 +13,7 @@ export const INBOX_TABS = [
   { id: "friends", label: "フレンド" },
 ];
 
-export function InboxScreen({ tab = "letters", onTab, onBack, onProfile, onInvite, onJoinInvite }) {
+export function InboxScreen({ tab = "letters", onTab, onBack, onProfile, onInvite, onJoinInvite, onSpectate }) {
   const unread = useUnreadLetters();
   const alerts = useFriendAlerts();
   const current = INBOX_TABS.some((t) => t.id === tab) ? tab : "letters";
@@ -41,7 +41,7 @@ export function InboxScreen({ tab = "letters", onTab, onBack, onProfile, onInvit
         ))}
       </div>
       {current === "friends" ? (
-        <FriendsScreen embedded onBack={onBack} onProfile={onProfile} onInvite={onInvite} onJoinInvite={onJoinInvite} />
+        <FriendsScreen embedded onBack={onBack} onProfile={onProfile} onInvite={onInvite} onJoinInvite={onJoinInvite} onSpectate={onSpectate} />
       ) : (
         <LettersScreen embedded onBack={onBack} />
       )}

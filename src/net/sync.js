@@ -159,6 +159,37 @@ export function acceptAct(act, me, seat, foeUid) {
 }
 
 /**
+ * 観戦者が届いた手を取り込む形に直す。使えないなら null。
+ *
+ * 観戦者には席が無い。acceptAct のように「相手の席(1-seat)」へ書き換えると、
+ * 二人の対局を第三者が覗くときに指し手が全部ひとつの席に寄ってしまう。
+ * 代わりに **誰が書いたか(by)から席を決める**。ホストの uid なら席0、
+ * ゲストの uid なら席1。どちらでもない by は捨てる(なりすまし・野次馬)。
+ *
+ * 観戦者は手を **一切書き込まない**(pushAct を呼ばない)。ここは読むだけの経路。
+ *
+ * @param act      受け取ったもの
+ * @param hostUid  席0(ホスト)の uid
+ * @param guestUid 席1(ゲスト)の uid（分かっていれば。まだ来ていなければ null）
+ */
+export function spectateAct(act, hostUid, guestUid) {
+  if (!act || typeof act !== "object") return null;
+  if (typeof act.__id !== "string" || !act.__id) return null;
+  if (typeof act.type !== "string" || !NET_ACTIONS.has(act.type)) return null;
+  if (typeof act.by !== "string" || !act.by) return null;
+  const seat = act.by === hostUid ? 0 : act.by === guestUid ? 1 : -1;
+  if (seat === -1) return null;
+  // 始まりの合図はホストしか出さない
+  if (seat !== 0 && HOST_ONLY_ACTIONS.has(act.type)) return null;
+  // 時間切れの申告は「どちらの時計が尽きたか」を運ぶので席を書き換えない
+  if (act.type === "CLOCK_TIMEOUT") {
+    const who = Number(act.player);
+    return who === 0 || who === 1 ? { ...act, player: who } : null;
+  }
+  return { ...act, player: seat };
+}
+
+/**
  * 送信前に、手元の選択状態をアクションへ畳み込む。
  * 受け手には選択途中の状態が無いので、確定操作は自己完結させる必要がある。
  */

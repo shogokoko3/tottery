@@ -16,6 +16,7 @@ import {
   FRIEND_MAX,
   FRIEND_CODE_LEN,
   INVITE_TTL_MS,
+  PRESENCE_TTL_MS,
   SHOWCASE_IDS,
   SHOWCASE_MAX,
   jstDay,
@@ -178,8 +179,33 @@ assert.equal(f.state("B", T0).gifts.length, 0);
 assert.equal(f.profileOf("A"), null);
 assert.notEqual(f.codeOf("A", T0), codeA, "ID も作り直し");
 
+// 在席(対戦中)と観戦(2026-09-24)。フレンドだけが「対戦中」と観戦できる部屋を知る
+f.link("P1", "P2", T0);
+assert.equal(f.presenceOf("P1", T0), null, "対戦していなければ在席は無い");
+f.enterRoom("P1", "WATCH1", false, "相手のなまえ", T0);
+const p2sees = f.state("P2", T0).friends.find((x) => x.uid === "P1");
+assert.deepEqual(p2sees.match, { code: "WATCH1", online: false, opp: "相手のなまえ" }, "フレンドの一覧に対戦中の部屋が出る");
+f.enterRoom("P1", "RANDOM99", true, "対戦相手のとても長い名前だよ", T0 + 1000);
+const p2b = f.state("P2", T0 + 1000).friends.find((x) => x.uid === "P1");
+assert.equal(p2b.match.code, "RANDOM99", "新しい部屋で上書き");
+assert.equal(p2b.match.online, true, "ランダムマッチの印");
+assert.ok(p2b.match.opp.length <= 10, "相手の名前は10文字まで");
+// 期限切れ
+assert.equal(f.presenceOf("P1", T0 + 1000 + PRESENCE_TTL_MS + 1), null, "古い在席は消える");
+// 合言葉の形は見張る
+assert.throws(() => f.enterRoom("P1", "no spaces!", false, "", T0), /合言葉/, "変な合言葉は断る");
+// 締める・記録を消す
+f.leaveRoom("P1");
+assert.equal(f.presenceOf("P1", T0), null, "離れたら在席は消える");
+f.enterRoom("P2", "ROOM77", false, "x", T0);
+f.forget("P2");
+assert.equal(f.presenceOf("P2", T0), null, "記録を消すと在席も消える");
+
 // 配線(Worker と端末)
 const worker = readFileSync(new URL("../src/server/worker.js", import.meta.url), "utf8").replace(/\s+/g, " ");
+for (const op of ["friends-enter-room", "friends-leave-room"])
+  assert.ok(worker.includes(`"${op}"`), `Durable Object に ${op}`);
+assert.ok(/fr\.enterRoom\(uid, args\.code, args\.online, args\.opp, now\)/.test(worker), "在席は enterRoom へ");
 assert.ok(/\/\^\\\/api\\\/\(season\|wallet\|iap\|friends\)\\\//.test(worker), "CORS と本文の判定に friends が入っている");
 assert.ok(/call\("friends-request-uid", \{ target: body\.uid, source: body\.source \}\)/.test(worker), "uid で申請する口(対戦相手・ランキング)");
 for (const op of ["friends-state", "friends-request", "friends-request-uid", "friends-accept", "friends-decline", "friends-cancel", "friends-remove", "friends-gift", "friends-claim", "friends-invite", "friends-cancel-invite", "friends-profile-set", "friends-profile-get"])
@@ -194,5 +220,6 @@ assert.ok(!/call\("friends-[a-z-]+", \{ uid:/.test(worker), "相手は target �
 assert.ok(!/fr\.\w+\(uid, args\.uid/.test(worker), "Durable Object でも args.uid を読まない");
 const net = readFileSync(new URL("../src/net/friends.js", import.meta.url), "utf8").replace(/\s+/g, " ");
 assert.ok(/\/api\/friends\/\$\{op\}/.test(net), "端末は /api/friends/<op> を叩く");
+assert.ok(/friendsRequest\("enter-room"/.test(net) && /friendsRequest\("leave-room"/.test(net), "端末に在席の口(enter-room / leave-room)");
 
-console.log("フレンドとプロフィール: ID・申請と承認・50人・1日1回の贈り物・招待の期限・写しの見張り・消去・配線 OK");
+console.log("フレンドとプロフィール: ID・申請と承認・50人・1日1回の贈り物・招待の期限・写しの見張り・在席と観戦・消去・配線 OK");

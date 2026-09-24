@@ -61,6 +61,12 @@ export async function claimFriendGifts() {
     }));
   return data.claimed || [];
 }
+/** 対戦中と、観戦できる部屋をフレンドに知らせる(設定で観戦をオンにした人だけ)。online=ランダムマッチか */
+export const enterMatchPresence = (code, online, opp) =>
+  friendsRequest("enter-room", { code, online: !!online, opp: opp || "" });
+/** 対戦を離れた印(観戦を締める) */
+export const leaveMatchPresence = () => friendsRequest("leave-room");
+
 /** フレンド対戦の合言葉(部屋の code)を相手に届ける。3分で古くなる */
 export const inviteFriend = (uid, code) => friendsRequest("invite", { uid, code });
 export const cancelFriendInvite = (uid) => friendsRequest("cancel-invite", { uid });

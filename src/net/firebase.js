@@ -252,6 +252,45 @@ export async function readActs(code) {
   }
 }
 
+/* ---------------------------- 観戦 ---------------------------- */
+
+/**
+ * 部屋を観戦できるようにする印。対局している当事者が付ける。
+ * spectate が true の部屋だけ、席についていない人(観戦者)が読める(ルール側で閉じている)。
+ * reveal=true はフレンド戦(審判視点)、false はオンライン戦(観戦した席だけ見える)。
+ * ランダムマッチでも本人が設定でオンにしたときだけ true を書く。
+ */
+export const setRoomSpectate = (code, on, reveal) =>
+  isNearbyCode(code)
+    ? { ok: true }
+    : sendJson(roomUrl(code), "PATCH", { spectate: !!on, spectateReveal: !!reveal });
+
+/**
+ * 観戦者として名乗りを上げる(自分の uid を spectators に置く)。
+ * これを置いた人だけが、その部屋(spectate 済み)を読める。手番は書けない。
+ */
+export async function joinSpectate(code) {
+  if (isNearbyCode(code)) return { ok: false, error: "近くの対戦は観戦できません。" };
+  const uid = await whoAmI();
+  if (!uid) return { ok: false, error: "サインインできていません" };
+  return sendJson(`${DB_URL}/rooms/${code}/spectators/${uid}.json`, "PUT", true);
+}
+
+/** 観戦をやめる(名乗りを下げる)。画面を閉じるときは keepalive で投げっぱなし */
+export async function leaveSpectate(code, keepalive = false) {
+  if (isNearbyCode(code)) return;
+  const uid = await whoAmI();
+  if (!uid) return;
+  const url = `${DB_URL}/rooms/${code}/spectators/${uid}.json`;
+  if (keepalive) {
+    try {
+      await authedFetch(url, { method: "DELETE", keepalive: true });
+    } catch {
+      /* 後始末なので失敗しても進める */
+    }
+  } else await remove(url);
+}
+
 /* ---------------------------- ロビー(ランダムマッチ) ---------------------------- */
 
 export const readLobby = () => getJson(lobbyUrl());

@@ -16,6 +16,10 @@ export const FRIEND_MAX = 50;
 export const FRIEND_CODE_LEN = 8;
 /** 招待が生きている時間。合言葉の部屋は 3 分で片付くので同じにする */
 export const INVITE_TTL_MS = 3 * 60 * 1000;
+/** 在席(対戦中)の印が生きている時間。端末が2分ごとに打ち直すので、落ちた端末は6分で消える */
+export const PRESENCE_TTL_MS = 6 * 60 * 1000;
+/** 部屋の合言葉として通す形(フレンド戦は6文字、ランダムは8文字。招待と同じ緩さ) */
+const ROOM_CODE_RE = /^[\w-]{4,16}$/;
 /** 紛らわしい文字(0/O、1/I/L)を抜いた字種 */
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 /** プロフィールのアピールに選べる記録。ここに無い id は捨てる */
@@ -102,6 +106,8 @@ export class Friends {
     sql("CREATE INDEX IF NOT EXISTS friend_gifts_to ON friend_gifts(to_uid, claimed)");
     sql("CREATE TABLE IF NOT EXISTS friend_invites (from_uid TEXT, to_uid TEXT, code TEXT, at INTEGER, PRIMARY KEY(from_uid, to_uid))");
     sql("CREATE TABLE IF NOT EXISTS friend_profiles (uid TEXT PRIMARY KEY, data TEXT, at INTEGER, seen INTEGER)");
+    // 対戦中の在席。code = 観戦できる部屋、online = ランダムマッチか(1)フレンド戦か(0)、opp = 相手の名前
+    sql("CREATE TABLE IF NOT EXISTS friend_presence (uid TEXT PRIMARY KEY, code TEXT, online INTEGER, opp TEXT, at INTEGER)");
   }
 
   /** フレンド ID。無ければ作る。衝突したら作り直す */
@@ -240,6 +246,34 @@ export class Friends {
     return this.sql("SELECT from_uid AS fromUid, code, at FROM friend_invites WHERE to_uid=? ORDER BY at DESC", uid);
   }
 
+  /**
+   * 対戦中の在席を置く。観戦できる部屋の合言葉つき。
+   * 本人が設定で観戦をオンにしているときだけ端末が呼ぶ(サーバーは形だけ見張る)。
+   */
+  enterRoom(uid, code, online, opp, now) {
+    if (typeof code !== "string" || !ROOM_CODE_RE.test(code)) throw new Error("合言葉が正しくありません。");
+    this.sql(
+      "INSERT INTO friend_presence VALUES (?,?,?,?,?) ON CONFLICT(uid) DO UPDATE SET code=excluded.code, online=excluded.online, opp=excluded.opp, at=excluded.at",
+      uid,
+      code,
+      online ? 1 : 0,
+      str(opp, NAME_MAX),
+      now,
+    );
+    return { ok: true };
+  }
+  /** 対戦を離れた印(観戦を締める) */
+  leaveRoom(uid) {
+    this.sql("DELETE FROM friend_presence WHERE uid=?", uid);
+    return { ok: true };
+  }
+  /** その人が今どの部屋にいるか(古い印は無視)。フレンドにだけ見せる */
+  presenceOf(uid, now) {
+    const row = this.sql("SELECT code, online, opp, at FROM friend_presence WHERE uid=?", uid)[0];
+    if (!row || row.at < now - PRESENCE_TTL_MS) return null;
+    return { code: row.code, online: !!row.online, opp: row.opp || "" };
+  }
+
   setProfile(uid, raw, now) {
     const card = sanitizeProfileCard(raw);
     this.sql(
@@ -285,6 +319,8 @@ export class Friends {
     const friends = this.sql("SELECT fid, at FROM friends WHERE uid=? ORDER BY at ASC", uid).map((r) => ({
       ...this.tag(r.fid),
       since: r.at,
+      // 対戦中なら観戦できる部屋を添える(古い印は presenceOf が落とす)
+      match: this.presenceOf(r.fid, now),
     }));
     const requestsIn = this.sql("SELECT from_uid AS uid, at FROM friend_requests WHERE to_uid=? ORDER BY at DESC", uid).map((r) => ({
       ...this.tag(r.uid),
@@ -309,7 +345,7 @@ export class Friends {
 
   /** 記録を消す人の分を全部消す(フレンドの側からも外れる) */
   forget(uid) {
-    for (const t of ["friend_codes", "friend_profiles"]) this.sql(`DELETE FROM ${t} WHERE uid=?`, uid);
+    for (const t of ["friend_codes", "friend_profiles", "friend_presence"]) this.sql(`DELETE FROM ${t} WHERE uid=?`, uid);
     this.sql("DELETE FROM friends WHERE uid=? OR fid=?", uid, uid);
     this.sql("DELETE FROM friend_requests WHERE from_uid=? OR to_uid=?", uid, uid);
     this.sql("DELETE FROM friend_invites WHERE from_uid=? OR to_uid=?", uid, uid);

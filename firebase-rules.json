@@ -5,7 +5,7 @@
     "rooms": {
       ".read": "auth != null && auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2'",
       "$code": {
-        ".read": "auth != null && (data.child('seats').child('host').val() === auth.uid || data.child('seats').child('guest').val() === auth.uid)",
+        ".read": "auth != null && (data.child('seats').child('host').val() === auth.uid || data.child('seats').child('guest').val() === auth.uid || (data.child('spectate').val() === true && data.child('spectators').child(auth.uid).exists()))",
         ".write": "auth != null && ((!data.exists() && !root.child('bans').hasChild(auth.uid) && newData.hasChildren(['seats','createdAt']) && newData.child('seats').child('host').val() === auth.uid && !newData.child('seats').hasChild('guest') && newData.child('createdAt').isNumber() && newData.child('createdAt').val() <= now + 60000 && newData.child('createdAt').val() >= now - 60000) || (!newData.exists() && (data.child('seats').child('host').val() === auth.uid || data.child('seats').child('guest').val() === auth.uid || auth.uid === '4jAiZRTJdQTtSJI39JrnpRLtSrB2' || (!data.hasChild('createdAt') || data.child('createdAt').val() < now - 86400000 || (!data.child('seats').hasChild('guest') && data.child('createdAt').val() < now - 180000)))))",
         "seats": {
           "host": {
@@ -561,6 +561,47 @@
               }
             },
             ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('seats').child('guest').val() === auth.uid && (!newData.exists() || (newData.isString() && newData.val().length <= 40))"
+          }
+        },
+        "spectate": {
+          ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && (root.child('rooms').child($code).child('seats').child('host').val() === auth.uid || root.child('rooms').child($code).child('seats').child('guest').val() === auth.uid) && (!newData.exists() || newData.isBoolean())",
+          ".validate": "newData.isBoolean()",
+          "$sa": {
+            ".validate": false,
+            "$sb": {
+              ".validate": false,
+              "$sc": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "spectateReveal": {
+          ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && (root.child('rooms').child($code).child('seats').child('host').val() === auth.uid || root.child('rooms').child($code).child('seats').child('guest').val() === auth.uid) && (!newData.exists() || newData.isBoolean())",
+          ".validate": "newData.isBoolean()",
+          "$sa": {
+            ".validate": false,
+            "$sb": {
+              ".validate": false,
+              "$sc": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "spectators": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && !root.child('bans').hasChild(auth.uid) && (!newData.exists() || (newData.isBoolean() && root.child('rooms').child($code).child('spectate').val() === true))",
+            ".validate": "newData.isBoolean()",
+            "$sa": {
+              ".validate": false,
+              "$sb": {
+                ".validate": false,
+                "$sc": {
+                  ".validate": false
+                }
+              }
+            }
           }
         },
         "$other": {

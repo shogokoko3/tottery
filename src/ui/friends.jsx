@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCollection } from "../skins/store.js";
 import { useMissionProfile } from "./mission-profile.js";
-import { buildProfileCard, normalizeAccept, REQUEST_SOURCES } from "../game/profile-card.js";
+import { buildProfileCard, normalizeAccept, normalizeSpectate, REQUEST_SOURCES, SPECTATE_MODES } from "../game/profile-card.js";
 import { saveProfileCard } from "../game/profile.js";
 import {
   readFriends,
@@ -122,7 +122,7 @@ function FriendTag({ f, onClick, brief = false }) {
   );
 }
 
-export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, initialNotice = "", embedded = false }) {
+export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpectate, initialNotice = "", embedded = false }) {
   const [profile] = useMissionProfile();
   const collection = useCollection();
   usePublishProfileCard(profile, collection);
@@ -316,6 +316,15 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, initi
           <div className="friend-row" key={f.uid}>
             <FriendTag f={f} onClick={onProfile ? () => onProfile(f.uid) : null} />
             <div className="friend-row-actions">
+              {f.match && onSpectate && (
+                <button
+                  className="btn btn-primary btn-small friend-spectate"
+                  onClick={() => onSpectate(f)}
+                  title="このフレンドの対戦を観戦する"
+                >
+                  <Users size={14} /> 観戦
+                </button>
+              )}
               <button
                 className={`btn btn-small ${gifted ? "btn-ghost" : "btn-primary"}`}
                 disabled={!!busy || gifted}
@@ -379,6 +388,33 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, initi
           );
         })}
         <p className="hint">切った入口からの申請は届きません。相手には「フレンドがいっぱい」と表示されます。</p>
+      </section>
+
+      {/* 観戦の受付(2026-09-24 本人の指示)。対戦の種類ごとに、フレンドが観戦できるかを決める */}
+      <section className="friends-list friends-accept" aria-label="観戦の受付">
+        <p className="friends-list-head">観戦の受付</p>
+        {SPECTATE_MODES.map((mode) => {
+          const spectate = normalizeSpectate(profile?.card?.spectate);
+          const on = spectate[mode.id];
+          return (
+            <label className="friends-accept-row" key={mode.id}>
+              <span>
+                <b>{mode.label}</b>
+                <small>{mode.note}</small>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                aria-checked={on}
+                checked={on}
+                onChange={(e) => {
+                  saveProfileCard({ ...(profile?.card || {}), spectate: { ...spectate, [mode.id]: e.target.checked } });
+                }}
+              />
+            </label>
+          );
+        })}
+        <p className="hint">対戦中の様子を、あなたのフレンドだけが見られます。ランキング対戦では、あなたの駒だけが観戦者に見えます。</p>
       </section>
 
       {(state?.requestsOut || []).length > 0 && (

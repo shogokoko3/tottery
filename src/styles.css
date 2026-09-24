@@ -8457,3 +8457,76 @@ p.hint > span.gem-shop-diag {
   color: var(--gold-soft);
   opacity: 0.8;
 }
+
+/* 観戦(2026-09-24 本人の指示)。対局を読むだけの画面 */
+.spectate-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
+.spectate-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 2px;
+}
+.spectate-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  color: var(--gold-soft);
+}
+.spectate-turn {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--ink-soft, #cfd6e6);
+}
+.spectate-note {
+  text-align: center;
+  margin: 2px 0;
+}
+.spectate-seats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+.spectate-vs {
+  font-weight: 700;
+  color: var(--gold-soft);
+  opacity: 0.8;
+}
+.spectate-seat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  min-width: 0;
+}
+.spectate-seat-active {
+  border-color: var(--gold-soft);
+  background: rgba(212, 175, 90, 0.12);
+}
+.spectate-seat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.spectate-seat-body b {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.friend-spectate {
+  white-space: nowrap;
+}

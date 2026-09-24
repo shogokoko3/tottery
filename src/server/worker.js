@@ -258,6 +258,9 @@ async function handleApi(request, env, url) {
         if (fop === "invite" && who(body.uid) && typeof body.code === "string" && body.code.length <= 16)
           return call("friends-invite", { target: body.uid, code: body.code });
         if (fop === "cancel-invite" && who(body.uid)) return call("friends-cancel-invite", { target: body.uid });
+        if (fop === "enter-room" && typeof body.code === "string" && body.code.length <= 16)
+          return call("friends-enter-room", { code: body.code, online: body.online === true, opp: typeof body.opp === "string" ? body.opp.slice(0, 20) : "" });
+        if (fop === "leave-room") return call("friends-leave-room");
         if (fop === "profile-set" && body.card && typeof body.card === "object")
           return call("friends-profile-set", { card: body.card });
         if (fop === "profile-get" && who(body.uid)) return call("friends-profile-get", { target: body.uid });
@@ -406,6 +409,9 @@ export class SeasonLedger {
         }
         if (op === "friends-invite") return fr.invite(uid, args.target, args.code, now);
         if (op === "friends-cancel-invite") return fr.cancelInvite(uid, args.target);
+        // 対戦中の在席(観戦できる部屋をフレンドに知らせる)。設定でオンにした人だけが打つ
+        if (op === "friends-enter-room") return fr.enterRoom(uid, args.code, args.online, args.opp, now);
+        if (op === "friends-leave-room") return fr.leaveRoom(uid);
         if (op === "friends-profile-set") return fr.setProfile(uid, args.card, now);
         if (op === "friends-profile-get") {
           // 他人のプロフィールはフレンドだけ。自分のはいつでも
