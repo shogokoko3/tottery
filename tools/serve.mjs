@@ -66,7 +66,8 @@ function fakeSeason(req, res, path) {
     uid: null,
     now,
     season: { id, start, end },
-    player: null,
+    // 見本: 連勝の表示(マッチング画面)を手元で確かめられるように、連勝を持たせておく
+    player: { uid: "me", name: "あなた", icon: "", rating: 1620, rated: 8, wins: 6, draws: 0, place: null, streak: 3 },
     list: [
       row("sample-1", "見本の一", 1680, 1),
       row("sample-2", "見本の二", 1590, 2),

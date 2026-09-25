@@ -7,7 +7,7 @@ import {
   SEASON_BACK,
   SEASON_FRAME,
 } from "../game/season.js";
-import { displayRating, nextRating } from "../game/rating.js";
+import { displayRating, nextRating, normalizeRating, winStreakBonus } from "../game/rating.js";
 import { TEST_PLAYERS_2026_09_08 } from "./test-players-2026-09-08.js";
 import { RATING_RESTORE_2026_09_23 } from "./rating-restore-2026-09-23.js";
 
@@ -24,8 +24,14 @@ export class Ledger {
       "CREATE TABLE IF NOT EXISTS seasons (id TEXT PRIMARY KEY, start INTEGER, end INTEGER)",
     );
     sql(
-      "CREATE TABLE IF NOT EXISTS players (season TEXT, uid TEXT, name TEXT, icon TEXT, wr REAL, rated INTEGER, wins INTEGER, draws INTEGER, highest INTEGER, best INTEGER, PRIMARY KEY(season, uid))",
+      "CREATE TABLE IF NOT EXISTS players (season TEXT, uid TEXT, name TEXT, icon TEXT, wr REAL, rated INTEGER, wins INTEGER, draws INTEGER, highest INTEGER, best INTEGER, streak INTEGER DEFAULT 0, PRIMARY KEY(season, uid))",
     );
+    // 連勝(streak)の列は後から足した(2026-09-25)。既にある古いテーブルには ALTER で足す(既にあれば無視)
+    try {
+      sql("ALTER TABLE players ADD COLUMN streak INTEGER DEFAULT 0");
+    } catch {
+      /* もう列がある(新しいテーブル)。何もしない */
+    }
     sql("CREATE INDEX IF NOT EXISTS player_history ON players(uid, season)");
     // 旧テーブルの列数を変えずに、既存の点数を一度だけEloへ移行する。
     sql(
@@ -140,7 +146,7 @@ export class Ledger {
       seasonId,
       uid,
     )[0];
-    if (row) return { ...row, rating: row.rating ?? displayRating(row.wr) };
+    if (row) return { ...row, rating: row.rating ?? displayRating(row.wr), streak: row.streak || 0 };
     const prev = this.sql(
       "SELECT p.wr, e.rating FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid WHERE p.uid=? AND p.season<>? ORDER BY p.season DESC LIMIT 1",
       uid,
@@ -153,6 +159,7 @@ export class Ledger {
       draws: 0,
       highest: 0,
       best: null,
+      streak: 0,
       rating: prev ? (prev.rating ?? displayRating(prev.wr)) : displayRating(0.5),
     };
   }
@@ -180,11 +187,15 @@ export class Ledger {
     for (const [seat, uid] of [match.host, match.guest].entries()) {
       const p = before[seat];
       const won = match.winner === null ? null : seat === match.winner;
+      // 連勝(勝ったら+1、勝ち以外で0)。連勝ボーナスは勝ったぶんの点に上乗せ(2026-09-25)
+      const streak = won === true ? (p.streak || 0) + 1 : 0;
+      const bonus = winStreakBonus(streak);
       const next = {
         ...p,
         ...nextRating(p.rating, before[1 - seat].rating, won),
         rated: p.rated + 1,
       };
+      next.rating = normalizeRating(next.rating + bonus);
       next.wr =
         (p.wins +
           Number(won === true) +
@@ -198,7 +209,7 @@ export class Ledger {
         next.rating,
       );
       this.sql(
-        "INSERT OR REPLACE INTO players VALUES (?,?,?,?,?,?,?,?,?,?)",
+        "INSERT OR REPLACE INTO players VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         season.id,
         uid,
         match.names[seat],
@@ -209,6 +220,7 @@ export class Ledger {
         p.draws + Number(won === null),
         next.highest,
         p.best,
+        streak,
       );
     }
     this.sql(
@@ -259,18 +271,21 @@ export class Ledger {
     const p = this.playerRow(uid, season.id);
     if (p.rating >= until) return { recorded: false, reason: "human-stage" };
     const won = winner === null ? null : winner === 0;
+    const streak = won === true ? (p.streak || 0) + 1 : 0;
+    const bonus = winStreakBonus(streak);
     const next = {
       ...p,
       ...nextRating(p.rating, p.rating, won),
       rated: p.rated + 1,
     };
+    next.rating = normalizeRating(next.rating + bonus);
     next.wr =
       (p.wins + Number(won === true) + (p.draws + Number(won === null)) * 0.5) /
       next.rated;
     next.highest = Math.max(p.highest, tierOf(next));
     this.sql("INSERT OR REPLACE INTO elo_ratings VALUES (?,?,?)", season.id, uid, next.rating);
     this.sql(
-      "INSERT OR REPLACE INTO players VALUES (?,?,?,?,?,?,?,?,?,?)",
+      "INSERT OR REPLACE INTO players VALUES (?,?,?,?,?,?,?,?,?,?,?)",
       season.id,
       uid,
       name,
@@ -281,6 +296,7 @@ export class Ledger {
       p.draws + Number(won === null),
       next.highest,
       p.best,
+      streak,
     );
     this.sql(
       "INSERT INTO matches (id, season, host, guest, winner, finished, fp) VALUES (?,?,?,?,?,?,?)",
@@ -292,7 +308,7 @@ export class Ledger {
       now,
       null,
     );
-    return { recorded: true, rating: next.rating, delta: next.delta };
+    return { recorded: true, rating: next.rating, delta: next.rating - normalizeRating(p.rating), streak };
   }
   claims(uid) {
     return this.sql(

@@ -40,6 +40,18 @@ export function nextRating(rating, opponentRating, won) {
   return { rating: before + delta, delta: delta || 0, expected };
 }
 
+/**
+ * 連勝ボーナス(オンライン対戦。2026-09-25 本人の指示)。
+ * 勝ったときだけ、連勝が続くほどレートに上乗せする。streak は「この勝ちを含む連勝数」。
+ * 2連勝から効き、上限 +5:
+ *   1勝→+0 / 2連勝→+1 / 3→+2 / 4→+3 / 5→+4 / 6連勝以上→+5
+ */
+export const WIN_STREAK_BONUS_MAX = 5;
+export function winStreakBonus(streak) {
+  const s = Math.max(0, Math.floor(num(streak, 0)));
+  return s >= 2 ? Math.min(s - 1, WIN_STREAK_BONUS_MAX) : 0;
+}
+
 /** 古い表示呼び出しとの互換。全体加点は廃止。 */
 export const worldPart = () => 0;
 export const ratingWithWorld = (rating) => normalizeRating(rating);

@@ -11,6 +11,7 @@ import { useBattlePassUnlocked } from "./battlepass-access.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { GemAmount } from "./gem.jsx";
 import { seasonRequest, retrySeasonMatches } from "../net/season.js";
+import { winStreakBonus } from "../game/rating.js";
 import { AppearanceSeats } from "./season.jsx";
 import {
   createContext,
@@ -742,10 +743,24 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady =
   const planRef = useRef(onBotReady ? botPlan(myRating()) : "none");
   let [l, n] = (0, useState)("searching"),
     [a, u] = (0, useState)(""),
+    // 連勝数(サーバーの台帳から。オンライン対戦の連勝。2026-09-25 本人の指示)
+    [streak, setStreak] = (0, useState)(null),
     f = (0, useRef)(null),
     // 掲示に名乗った合言葉。降りるときに下ろす
     claimed = (0, useRef)(null),
     o = (0, useRef)(!1);
+  // この画面を開いたら、いまの連勝数を台帳から読む(表示だけ。マッチングには使わない)
+  (0, useEffect)(() => {
+    let gone = !1;
+    seasonRequest("summary")
+      .then((r) => {
+        if (!gone) setStreak(Number(r?.player?.streak) || 0);
+      })
+      .catch(() => {});
+    return () => {
+      gone = !0;
+    };
+  }, []);
   return (
     (0, useEffect)(() => {
       if (l !== "waiting") return;
@@ -828,7 +843,7 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady =
       [],
     ),
     (0, useEffect)(() => {
-      // レートが 1750 に届くまでの練習相手(Bot、src/game/bot-match.js)。
+      // レートが 2000 に届くまでの練習相手(Bot、src/game/bot-match.js)。
       //   直前に人に負けていたら、探さずに数秒「探しています」を見せてから Bot。
       //   それ以外はまず人を探し、BOT_WAIT_MS 経っても組めなければ Bot に切り替える
       //   (画面を離れるときの後片付けが掲示と部屋を消す)
@@ -1032,6 +1047,25 @@ export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady =
       </div>
     ) : (
       <div className="center-stage">
+        {streak != null && (
+          <div className={`match-streak ${streak >= 2 ? "is-hot" : ""}`} role="status">
+            {streak >= 1 ? (
+              <>
+                <b className="match-streak-count">{streak}連勝中</b>
+                <small>
+                  {winStreakBonus(streak + 1) > 0
+                    ? `次に勝つと連勝ボーナス +${winStreakBonus(streak + 1)}`
+                    : "勝ち続けると連勝ボーナスが付きます"}
+                </small>
+              </>
+            ) : (
+              <>
+                <b className="match-streak-count">連勝ボーナスに挑戦</b>
+                <small>勝ち続けるとレートにボーナスが付きます</small>
+              </>
+            )}
+          </div>
+        )}
         <Dice size={32} className="dim-icon spin-icon" />
         <h2>
           {l === "searching"

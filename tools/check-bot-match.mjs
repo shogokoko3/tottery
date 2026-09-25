@@ -1,7 +1,7 @@
 // ランダムマッチの練習相手(Bot、src/game/bot-match.js)の検査。
-//   1. 判定: 持ち点 1750 未満だけ Bot。壊れた値は初期値(1500)扱い。強さは3段階(持ち点で決まる)
+//   1. 判定: 持ち点 2000 未満だけ Bot。壊れた値は初期値(1500)扱い。強さは3段階(持ち点で決まる)
 //   2. 人物: 名前は10字以内で自分と違う、アイコンは誰でも持てるもの、持ち点は自分の近く。rng を固定すれば同じ
-//   3. 持ち点が動く: Bot に勝ち続けると 1750 に届き、そこから Bot と組まなくなる(recordGame は人との対局と同じ式)。段階も上がる
+//   3. 持ち点が動く: Bot に勝ち続けると 2000 に届き、そこから Bot と組まなくなる(recordGame は人との対局と同じ式)。段階も上がる
 //   4. 配線: 掲示に行かずに Bot を出す・持ち点に数える・札を絞らない・シーズン台帳には送らない・連戦の釦
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -22,11 +22,11 @@ const { START_RATING, nextRating } = await import("../src/game/rating.js");
 const { loadProfile, recordGame } = await import("../src/game/profile.js");
 
 // 1. 判定
-assert.equal(BOT_UNTIL_RATING, 1750);
+assert.equal(BOT_UNTIL_RATING, 2000);
 assert.equal(matchesBot(1500), true);
-assert.equal(matchesBot(1749), true);
-assert.equal(matchesBot(1750), false, "1750 に届いたら人と組む");
-assert.equal(matchesBot(2000), false);
+assert.equal(matchesBot(1999), true);
+assert.equal(matchesBot(1750), true, "1750 でもまだ Bot と組める(2026-09-25 で 2000 まで)");
+assert.equal(matchesBot(2000), false, "2000 に届いたら人と組む");
 // 強さは3段階。持ち点が上がるほど強い
 assert.equal(BOT_TIERS.length, 3);
 assert.deepEqual(BOT_TIERS.map((t) => t.tier), [1, 2, 3]);
@@ -116,7 +116,7 @@ assert.equal(matchesBot("abc"), true);
   assert.equal(matchesBot(p.rating), true);
   let games = 0;
   const tiersSeen = new Set();
-  while (matchesBot(p.rating) && games < 50) {
+  while (matchesBot(p.rating) && games < 60) {
     const bot = makeBot(p.rating, p.name, () => 0.5); // 同格
     tiersSeen.add(bot.tier);
     const expect = nextRating(p.rating, bot.rating, true);
@@ -124,9 +124,9 @@ assert.equal(matchesBot("abc"), true);
     assert.equal(p.rating, expect.rating, "人との対局と同じ式");
     games++;
   }
-  assert.ok(p.rating >= 1750, `1750 に届く(${p.rating})`);
+  assert.ok(p.rating >= 2000, `2000 に届く(${p.rating})`);
   assert.equal(matchesBot(p.rating), false, "届いたら人と組む");
-  assert.ok(games >= 14 && games <= 18, `同格に勝ち続けて 16 局ほど(${games})`);
+  assert.ok(games >= 32 && games <= 44, `同格に勝ち続けて 37 局ほど(${games})`);
   assert.equal(tiersSeen.has(1) && tiersSeen.has(2) && tiersSeen.has(3), true, `徐々に強い Bot に当たる(${[...tiersSeen]})`);
   assert.equal(p.rated, games, "持ち点つき対局として数える");
   assert.equal(p.battles, games, "対戦の数にも数える");
@@ -141,12 +141,12 @@ assert.equal(matchesBot("abc"), true);
   const mem = () => { const m = {}; return { getItem: (k) => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: (k) => { delete m[k]; } }; };
   const st = mem();
   assert.ok(BOT_WAIT_MS >= 5000 && BOT_WAIT_MS <= 15000, `人を探す時間は数秒(${BOT_WAIT_MS}ms)`);
-  assert.equal(botPlan(1500, st), "fallback", "1750 未満: まず人を探し、時間切れで Bot");
-  assert.equal(botPlan(1750, st), "none", "1750 以上: Bot は出ない");
+  assert.equal(botPlan(1500, st), "fallback", "2000 未満: まず人を探し、時間切れで Bot");
+  assert.equal(botPlan(2000, st), "none", "2000 以上: Bot は出ない");
   noteRandomResult({ won: false, vsBot: false }, st);
   assert.equal(wantsBotNow(st), true, "人に負けたら次は Bot");
   assert.equal(botPlan(1500, st), "now");
-  assert.equal(botPlan(1800, st), "none", "負けていても 1750 以上なら人だけ");
+  assert.equal(botPlan(2100, st), "none", "負けていても 2000 以上なら人だけ");
   noteRandomResult({ won: false, vsBot: true }, st);
   assert.equal(wantsBotNow(st), false, "Bot と1局(負けでも)したら元に戻る");
   noteRandomResult({ won: false, vsBot: false }, st);
@@ -187,7 +187,7 @@ assert.equal(matchesBot("abc"), true);
   assert.ok(/if \(bot\) E = botAction\(a, T, E, bot\);/.test(game), "Bot の強さ(段階)を手に反映する");
   assert.ok(/const CPU_TURN_MS = 5000;/.test(game) && /foeWait\(a, E, CPU_TURN_MS\)/.test(game), "CPU・Bot は対局中の1手に5秒使う(2026-09-17)");
   assert.ok(/\? bot\.rating/.test(game), "相手の点は Bot の人物の点");
-  // 2026-09-24 本人の報告: 1750 未満は必ず Bot と当たるので、数えないと「オンライン対戦をする」が達成できない
+  // 2026-09-24 本人の報告: 2000 未満は必ず Bot と当たるので、数えないと「オンライン対戦をする」が達成できない
   assert.ok(/online: \(\(!!network && !network\.nearby\) \|\| !!bot\) && !tutorial,/.test(game), "ミッションのオンライン回数に Bot 戦も数える(近くの端末は数えない)");
   assert.ok(/: bot\s*\? `bot:\$\{bot\.matchId \|\| bot\.id\}:\$\{round\}`/.test(game), "Bot 戦の matchId(同じ局を二度数えない)");
   // 2026-09-23 本人の指示: Bot 戦もシーズン台帳へ送る(部屋が無いので id と勝敗だけ。tools/check-bot-season.mjs)
@@ -197,4 +197,4 @@ assert.equal(matchesBot("abc"), true);
   assert.ok(!/CPUが考えています/.test(game), "Bot 戦で「CPU」と出さない(案内の行そのものを出さない)");
   assert.ok(/if \(\(network && network\.random\) \|\| bot\) noteRandomResult\(\{ won, vsBot: !!bot \}\);/.test(game), "ランダムマッチの結果を控える(人に負けたら次は Bot)");
 }
-console.log("ランダムマッチの練習相手(Bot): 判定・3段階の強さ・6エリア均等・持ち点が 1750 に届く・配線 OK");
+console.log("ランダムマッチの練習相手(Bot): 判定・3段階の強さ・6エリア均等・持ち点が 2000 に届く・配線 OK");

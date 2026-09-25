@@ -8605,3 +8605,31 @@ p.hint > span.gem-shop-diag {
   flex: none;
   white-space: nowrap;
 }
+
+/* オンライン対戦の連勝表示(マッチング画面。2026-09-25 本人の指示) */
+.match-streak {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 14px;
+  padding: 8px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+}
+.match-streak.is-hot {
+  border-color: rgba(226, 137, 111, 0.7);
+  background: linear-gradient(180deg, rgba(226, 137, 111, 0.18), rgba(226, 137, 111, 0.05));
+}
+.match-streak-count {
+  font-size: 17px;
+  color: var(--text);
+}
+.match-streak.is-hot .match-streak-count {
+  color: #f0a98f;
+}
+.match-streak small {
+  font-size: 11.5px;
+  color: var(--text-dim);
+}

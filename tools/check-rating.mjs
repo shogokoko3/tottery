@@ -9,6 +9,8 @@ import {
   MIN_RATING,
   MAX_RATING,
   rankTitle,
+  winStreakBonus,
+  WIN_STREAK_BONUS_MAX,
 } from "../src/game/rating.js";
 // 段位は対戦数によらずレートのみ。各境界の直前・到達時と新規1500を確認。
 for (const games of [0, 1, 9, 10, 19, 20, 49, 50, 500])
@@ -101,6 +103,18 @@ assert.equal(unranked.delta, null);
 store.clear();
 saveName("新規");
 assert.equal(loadProfile().rating, 1500);
+// 連勝ボーナス(2026-09-25): 2連勝から効き、上限 +5。負け相当(streak 0/1)は 0
+assert.equal(winStreakBonus(0), 0);
+assert.equal(winStreakBonus(1), 0, "1勝ではボーナスなし");
+assert.equal(winStreakBonus(2), 1, "2連勝で +1");
+assert.equal(winStreakBonus(3), 2);
+assert.equal(winStreakBonus(4), 3);
+assert.equal(winStreakBonus(5), 4);
+assert.equal(winStreakBonus(6), 5, "6連勝で上限 +5");
+assert.equal(winStreakBonus(20), WIN_STREAK_BONUS_MAX, "上限は超えない");
+assert.equal(winStreakBonus(-3), 0, "負の値は 0");
+assert.equal(winStreakBonus("x"), 0, "壊れた値は 0");
+
 console.log(
-  `Elo: expected outcomes, symmetric bounds (${pairs} pairs), no global bonus, migration, persistence, snapshot and unranked scope: OK`,
+  `Elo: expected outcomes, symmetric bounds (${pairs} pairs), no global bonus, migration, persistence, snapshot, unranked scope and win-streak bonus: OK`,
 );
