@@ -126,3 +126,75 @@
     display: none;
   }
 }
+
+/* 門にふれて開く(2026-09-28 本人の指示「門をタップするまで門が開かないように」)。
+   画面いっぱいの的にして、どこを押しても開く。「門をスキップ」は上に重なる */
+.summon-gate-touch {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 20px 18%;
+  border: 0;
+  background: transparent;
+  color: #f7eace;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.summon-gate-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid rgba(247, 216, 139, 0.75);
+  box-shadow:
+    0 0 18px rgba(247, 216, 139, 0.45),
+    inset 0 0 18px rgba(247, 216, 139, 0.25);
+  animation: summon-gate-pulse 1600ms ease-in-out infinite;
+}
+.summon-gate-label {
+  font-family: "Shippori Mincho", serif;
+  font-size: 17px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+  text-align: center;
+}
+.summon-gate-label small {
+  display: block;
+  margin-top: 4px;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #cbbfa6;
+}
+/* 押しているあいだ。輪が締まって、門が応えているように見せる */
+.summon-gate-touch.is-pressing .summon-gate-ring {
+  animation: none;
+  transform: scale(0.82);
+  border-color: #ffe9a8;
+  box-shadow:
+    0 0 34px rgba(255, 233, 168, 0.85),
+    inset 0 0 26px rgba(255, 233, 168, 0.5);
+  transition: transform 140ms ease-out;
+}
+@keyframes summon-gate-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .summon-gate-ring {
+    animation: none;
+  }
+}

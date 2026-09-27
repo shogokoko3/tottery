@@ -33,6 +33,11 @@ import {
 import { forgetMe, loadProfile } from "../game/profile.js";
 import { loadBlocked, unblock } from "../game/blocked.js";
 import { loadPlaySettings, savePlaySettings } from "../game/play-settings.js";
+// 取ったときの手ごたえ(バイブ)と、まとめ取りの音階(2026-09-28 本人の指示)
+import { vibrateCapture } from "../game/haptics.js";
+import { captureRate, fanfareTier, flipDelay } from "../game/capture-fanfare.js";
+import { duckMusic } from "../audio/player.js";
+import { CAPTURE_DUCK_MS } from "../audio/sounds.js";
 import { deleteRank } from "../net/ranking.js";
 import { clearProfileSync } from "../net/profile-sync.js";
 import { forgetSeason, clearSeasonQueue } from "../net/season.js";
@@ -282,15 +287,45 @@ export function CaptureRevealModal({ reveal, onClose, viewer, final }) {
   const hasKing = defeated.some((c) => c.isKing);
   const [flipped, setFlipped] = useState(0);
   const allShown = flipped >= defeated.length;
+  // 何枚取ったかで見せ方を変える(single / multi / grand)
+  const tier = fanfareTier(defeated.length);
 
   useEffect(() => {
     if (flipped >= defeated.length) return;
     const id = setTimeout(
       () => setFlipped((n) => n + 1),
-      flipped === 0 ? 450 : 420,
+      flipDelay({ index: flipped, total: defeated.length }),
     );
     return () => clearTimeout(id);
   }, [flipped, defeated.length]);
+
+  // めくれた1枚ごとに、音を1段上げて鳴らす。王だけは低く重く。
+  // まとめ取り(A の入れ替えや 6〜9 の王)ほど音が伸びていく(2026-09-28 本人の指示)。
+  //
+  // **1枚だけの取りでは鳴らさない。** 盤の上で倒れた瞬間に
+  // useGameSounds がもう撃破音を鳴らしているので、同じ音が二度続いて聞こえる。
+  // 枚数が増えたときと、王が出たときだけ、ここで足す
+  useEffect(() => {
+    if (flipped < 1 || flipped > defeated.length) return;
+    const card = defeated[flipped - 1];
+    const king = !!card?.isKing;
+    if (defeated.length <= 1 && !king) return;
+    // BGM を一瞬下げて、音階が埋もれないようにする
+    duckMusic(CAPTURE_DUCK_MS);
+    playSound("capture", {
+      rate: captureRate({ index: flipped - 1, total: defeated.length, king }),
+    });
+  }, [flipped, defeated]);
+
+  // 手ごたえ。開いた瞬間に1度だけ。王が混ざっていれば別の震え方
+  useEffect(() => {
+    vibrateCapture({
+      mine,
+      king: hasKing,
+      count: defeated.length,
+    });
+    // 開いたときだけ。めくるたびには震わせない(うるさくなる)
+  }, []);
 
   // すべてめくり終えてから、王がいたことを告げる
   const told = allShown && hasKing;
@@ -317,7 +352,7 @@ export function CaptureRevealModal({ reveal, onClose, viewer, final }) {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-panel gameover-panel">
+      <div className={`modal-panel gameover-panel capture-panel capture-${tier}`}>
         <div
           className={`capture-eyebrow ${told ? "capture-eyebrow-king" : ""}`}
           style={mine ? void 0 : { color: "#e08b7a" }}
@@ -331,7 +366,14 @@ export function CaptureRevealModal({ reveal, onClose, viewer, final }) {
               : "取られたのはあなたの王でした"
             : plain}
         </h3>
-        <div className="capture-cards">
+        {defeated.length > 1 && (
+          /* まとめ取りは、めくれた枚数を数えて見せる(2026-09-28 本人の指示) */
+          <div className="capture-count" aria-hidden="true">
+            <b>{Math.min(flipped, defeated.length)}</b>
+            <span>/ {defeated.length} 枚</span>
+          </div>
+        )}
+        <div className={`capture-cards capture-cards-${tier}`}>
           {defeated.map((card, i) => {
             const open = i < flipped;
             return (

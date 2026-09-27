@@ -12,6 +12,7 @@ import {
   SUMMON_TIMING,
   SUMMON_WORLDS,
   smooth,
+  SUMMON_HOLD_AT,
 } from "../src/skins/summon-plan.js";
 import { byId } from "../src/skins/catalog.js";
 const draw = (...ids) => ids.map((id) => ({ id, isNew: true }));
@@ -243,7 +244,8 @@ function openingHarness() {
   const refs = [];
   const changed = (before, after) => !before || after.some((value, i) => value !== before[i]);
   let finished = 0, played = 0, prepared = 0, stopped = 0, disposed = 0, shown = 0;
-  const frames = new Map(), deadlines = new Map(), renders = [], sizes = [], loading = [];
+  const frames = new Map(), deadlines = new Map(), renders = [], sizes = [], loading = [], states = [];
+  let stateIndex = 0;
   root.getBoundingClientRect = () => ({ width: 390, height });
   const scene = {
     ready: new Promise(resolve => { resolveReady = resolve; }),
@@ -253,12 +255,19 @@ function openingHarness() {
   };
   const sandbox = {
     module: { exports: {} }, jsx: () => ({}), STYLES: "", cardBackImg: "back.png",
-    SUMMON_TIMING, SUMMON_WORLDS, summonPlan, smooth,
+    SUMMON_TIMING, SUMMON_HOLD_AT, SUMMON_WORLDS, summonPlan, smooth,
     useRef(value) {
       const i = refIndex++;
       return refs[i] ||= { current: i === 0 ? root : i === 1 ? canvas : value };
     },
-    useState() { return [true, value => loading.push(value)]; },
+    // 呼ばれた順で見分ける。0=loading / 1=waiting(門の前で待つ) / 2=pressing(押している)
+    useState(initial) {
+      const i = stateIndex++;
+      return [
+        i === 0 ? true : typeof initial === "function" ? initial() : initial,
+        value => (i === 0 ? loading.push(value) : states.push([i, value])),
+      ];
+    },
     useMemo(fn, deps) {
       if (changed(memoDeps, deps)) { memo = fn(); memoDeps = deps; }
       return memo;
@@ -279,13 +288,15 @@ function openingHarness() {
   const targetRef = { current: root };
   const refresh = () => {
     refIndex = 0;
+    stateIndex = 0;
     effect = undefined;
     sandbox.mountIntro({ results: draw("angel-k:foil"), targetRef, onFinish: () => { finished++; }, onReady: () => { shown++; } });
     if (effect) { cleanup?.(); cleanup = effect(); }
   };
   refresh();
   return {
-    root, sizes, renders, loading, frames, deadlines, refresh, cleanup: () => cleanup(),
+    root, sizes, renders, loading, states, frames, deadlines, refresh, cleanup: () => cleanup(),
+    refs: () => refs,
     state: () => ({ finished, played, prepared, stopped, disposed, shown }),
     ready: () => { height = 800; resolveReady(); },
     tick(time) {
@@ -321,7 +332,34 @@ assert.equal(opening.state().played, 1, "更新で効果音を再スタートし
 assert.equal(opening.renders.at(-1), 160, "同じ結果の更新でカメラを0秒へ巻き戻さない");
 opening.tick(2820);
 assert.equal(opening.root.style["--entrance-opacity"], "1");
+// 門の前で止まる(2026-09-28 本人の指示「門をタップするまで門が開かない」)
 opening.tick(11500);
+assert.equal(opening.state().finished, 0, "触れるまで終わらない");
+assert.equal(
+  opening.renders.at(-1),
+  SUMMON_HOLD_AT,
+  "時計は門の前(4秒)で止まる",
+);
+assert.ok(
+  opening.states.some(([i, v]) => i === 1 && v === true),
+  "待っている印が立つ",
+);
+opening.tick(20000);
+assert.equal(opening.renders.at(-1), SUMMON_HOLD_AT, "待つあいだは進まない");
+assert.equal(opening.state().finished, 0);
+// 触れた。止めていたぶんを引いて、続きが元の速さで流れる
+opening.root.listeners.get("summon-open")();
+opening.tick(21000);
+assert.equal(
+  opening.renders.at(-1),
+  SUMMON_HOLD_AT + 1000,
+  "触れたところから続きが進む",
+);
+assert.ok(
+  opening.states.some(([i, v]) => i === 1 && v === false),
+  "待っている印が下りる",
+);
+opening.tick(26000);
 assert.equal(opening.state().finished, 1);
 assert.equal(opening.state().stopped, 1);
 opening.cleanup();
@@ -429,5 +467,5 @@ const cancelled = await createPreparedSummonScene(host, {world: "earth", gold: f
 assert.equal(cancelled, null);
 assert.equal(host.children.length, 2, "キャンセルした演出は後から表示しない");
 console.log(
-  "召喚導入: 7世界・銅/金・1/10枚・2+2+3+2秒・読込待機/切替/失敗・初回描画/フェード/開始前スキップ・同一結果更新で巻戻しなし・扉/枠の位置一致: OK",
+  "召喚導入: 7世界・銅/金・1/10枚・2+2+3+2秒・読込待機/切替/失敗・初回描画/フェード/開始前スキップ・門は触れるまで開かない・同一結果更新で巻戻しなし・扉/枠の位置一致: OK",
 );

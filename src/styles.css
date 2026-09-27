@@ -8656,3 +8656,97 @@ p.hint > span.gem-shop-diag {
 .move-confirm .setup-actions .btn {
   white-space: nowrap;
 }
+
+/* まとめ取りの見せ方(2026-09-28 本人の指示「複数枚取った演出をつける」)。
+   枚数が増えるほど強くする。single=いつも通り / multi=2〜3枚 / grand=4枚以上 */
+.capture-count {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  margin: -4px 0 10px;
+  color: var(--gold-soft);
+  font-family: "Shippori Mincho", serif;
+  letter-spacing: 0.04em;
+}
+.capture-count b {
+  font-size: 30px;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  /* 数が増えるたびに、軽く弾ませる */
+  animation: capture-count-pop 260ms ease-out;
+}
+.capture-count span {
+  font-size: 13px;
+  color: #9aa7b4;
+}
+@keyframes capture-count-pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.4;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+/* 4枚以上は札の枠も金に灯す */
+.capture-grand .capture-count b {
+  text-shadow: 0 0 14px rgba(212, 175, 55, 0.75);
+}
+.capture-panel.capture-grand {
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.5),
+    0 0 40px rgba(212, 175, 55, 0.28);
+}
+/* 枚数が多いと札が横に溢れるので、折り返して詰める */
+.capture-cards-grand {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .capture-count b {
+    animation: none;
+  }
+}
+
+/* 動きから絞った候補(2026-09-28 本人の指示)。
+   金の数字は「王でないとできない動き」。相手の王を読む手がかりになる */
+.private-notes-deduced {
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 8px;
+  padding: 8px 12px 12px;
+  margin-bottom: 12px;
+}
+.private-notes-deduced legend {
+  padding: 0 6px;
+  color: var(--gold-soft);
+  font-size: 12px;
+}
+.private-notes-deduced-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 8px;
+}
+.deduced-rank {
+  min-width: 34px;
+  padding: 4px 8px;
+  border: 1px solid rgba(154, 167, 180, 0.5);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #dfe6ee;
+  font-size: 14px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* その数字なら王で確定、という動き */
+.deduced-rank-king {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.16);
+  color: var(--gold);
+  font-weight: 700;
+}

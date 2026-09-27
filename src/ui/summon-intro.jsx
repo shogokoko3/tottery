@@ -3,6 +3,7 @@ import { cardBackImg } from "../assets.js";
 import {
   summonPlan,
   SUMMON_TIMING,
+  SUMMON_HOLD_AT,
   SUMMON_WORLDS,
   smooth,
 } from "../skins/summon-plan.js";
@@ -22,15 +23,27 @@ export function SummonIntro({ results, targetRef, onFinish, onReady }) {
   const { world, gold, count } = summonPlan(results);
   const plan = useMemo(() => ({ world, gold, count }), [world, gold, count]);
   const [loading, setLoading] = useState(true);
+  // 門の前で待っているか。触れるまで開かない(2026-09-28 本人の指示)
+  const [waiting, setWaiting] = useState(false);
+  // 触れている最中か(押しているあいだ門が光る)
+  const [pressing, setPressing] = useState(false);
+  // 触れた合図。frame から読むので ref に持つ
+  const opened = useRef(false);
   useEffect(() => {
     setLoading(true);
+    setWaiting(false);
+    setPressing(false);
+    opened.current = false;
     root.current.style.setProperty("--entrance-opacity", "0");
     let scene,
       raf,
       disposed = false,
       finished = false,
       start,
-      deadline;
+      deadline,
+      // 門の前で止めているあいだの合計(ミリ秒)と、止め始めた時刻
+      held = 0,
+      holdFrom = 0;
     let releaseSound = () => {};
     const finish = () => {
       if (!disposed && !finished) {
@@ -51,12 +64,17 @@ export function SummonIntro({ results, targetRef, onFinish, onReady }) {
       finish();
     };
     const cancel = () => finish();
+    // 門に触れた合図。釦が投げる(2026-09-28 本人の指示「触れるまで開かない」)
+    const open = () => {
+      opened.current = true;
+    };
     // Loading/GPU failure must never hide already-owned cards or ask for another draw.
     deadline = setTimeout(finish, 15000);
     document.addEventListener("visibilitychange", visibility);
     canvas.current.addEventListener("webglcontextlost", lost, true);
     window.addEventListener("resize", resize);
     root.current.addEventListener("summon-finish", cancel);
+    root.current.addEventListener("summon-open", open);
     const element = root.current,
       cv = canvas.current;
     (async () => {
@@ -90,13 +108,36 @@ export function SummonIntro({ results, targetRef, onFinish, onReady }) {
               clearTimeout(deadline);
               deadline = setTimeout(finish, SUMMON_TIMING.total + 600);
             }
-            const ms = Math.max(0, Math.min(now - start, SUMMON_TIMING.total)),
+            // 門の前まで来たら、触れるまで時計を進めない。
+            // 待っているあいだに経った時間(held)を引いて、続きを元の速さで流す
+            const raw = now - start - held;
+            if (!opened.current && raw >= SUMMON_HOLD_AT) {
+              if (!holdFrom) {
+                holdFrom = now;
+                setWaiting(true);
+                // 待っているあいだに打ち切られないよう、締め切りを外す
+                clearTimeout(deadline);
+              }
+              // 時計を門の前にぴたりと止める。ここを「経った時間との差」で
+              // 書かないと、待ち始めた最初のフレームで先へ飛んでしまう
+              held = now - start - SUMMON_HOLD_AT;
+            } else if (holdFrom) {
+              // 触れた。止めていたぶん(held)はそのままにして、続きを元の速さで流す
+              holdFrom = 0;
+              setWaiting(false);
+              deadline = setTimeout(
+                finish,
+                SUMMON_TIMING.total - SUMMON_HOLD_AT + 600,
+              );
+            }
+            const ms = Math.max(0, Math.min(now - start - held, SUMMON_TIMING.total)),
               f = scene.render(ms),
               bounds = element.getBoundingClientRect();
             const targets =
               targetRef.current?.querySelectorAll(".reveal-card") || [];
             const cards = element.querySelectorAll(".summon-flight-card");
             element.dataset.stage = f.stage;
+            element.dataset.waiting = holdFrom ? "1" : "0";
             element.style.setProperty(
               "--entrance-opacity",
               String(smooth(ms / 320)),
@@ -155,6 +196,7 @@ export function SummonIntro({ results, targetRef, onFinish, onReady }) {
       cv.removeEventListener("webglcontextlost", lost, true);
       window.removeEventListener("resize", resize);
       element.removeEventListener("summon-finish", cancel);
+      element.removeEventListener("summon-open", open);
       scene?.dispose();
     };
   }, [plan, results.length, targetRef]);
@@ -186,6 +228,32 @@ export function SummonIntro({ results, targetRef, onFinish, onReady }) {
           ))}
         </div>
       </div>
+      {waiting && (
+        /* 門の前で待っている。触れるまで開かない(2026-09-28 本人の指示)。
+           押しているあいだは門が光り、離しても開いたまま進む(タップでもホールドでも同じ) */
+        <button
+          type="button"
+          className={`summon-gate-touch ${pressing ? "is-pressing" : ""}`}
+          aria-label="門に触れて開く"
+          onPointerDown={() => setPressing(true)}
+          onPointerUp={() => {
+            setPressing(false);
+            root.current?.dispatchEvent(new Event("summon-open"));
+          }}
+          onPointerCancel={() => setPressing(false)}
+          onPointerLeave={() => setPressing(false)}
+          /* 指が滑って pointerup が来なかったときや、キーボードのときの逃げ道 */
+          onClick={() => {
+            root.current?.dispatchEvent(new Event("summon-open"));
+          }}
+        >
+          <span className="summon-gate-ring" aria-hidden="true" />
+          <span className="summon-gate-label">
+            門にふれて開く
+            <small>押しているあいだ、門が応えます</small>
+          </span>
+        </button>
+      )}
       <button
         type="button"
         className="summon-intro-skip"

@@ -79,18 +79,22 @@ export function TicketBuy({
         ))}
       </div>
       {onToggleConfirm && (
-        <label className="ticket-confirm-toggle">
-          <input
-            type="checkbox"
-            checked={confirm}
-            disabled={working}
-            onChange={onToggleConfirm}
-          />
-          買う前に確認する
-          <small>
+        /* 説明は label の外。中に入れていると、読もうとして触れただけで
+           切り替わっていた(2026-09-28 本人の報告) */
+        <div className="toggle-row">
+          <label className="ticket-confirm-toggle toggle-hit">
+            <input
+              type="checkbox"
+              checked={confirm}
+              disabled={working}
+              onChange={onToggleConfirm}
+            />
+            買う前に確認する
+          </label>
+          <p className="toggle-note">
             切ると、押した瞬間にジェムで買います。フォイルとバトルパスの確認は外せません
-          </small>
-        </label>
+          </p>
+        </div>
       )}
       {layout !== "grid" && (
         <p className="hint">

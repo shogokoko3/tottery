@@ -1995,19 +1995,25 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
               </button>
             </div>
             {/* 召喚の釦を先に、演出の設定はその下へ(開いてすぐ引けるように。2026-09-18 本人の指示) */}
-            <label className="skins-summon-motion">
-              <input
-                type="checkbox"
-                checked={collection.summonMotion === "skip"}
-                disabled={working}
-                onChange={(e) => {
-                  const summonMotion = e.target.checked ? "skip" : "full";
-                  run((s) => ({ ...s, summonMotion }));
-                }}
-              />
-              召喚の演出を飛ばす
-              <small>門とカードの演出を省き、結果をすぐ出します</small>
-            </label>
+            {/* 説明の文は label の外に出す。中に入れていると、説明を読もうとして
+                触れただけで設定が切り替わっていた(2026-09-28 本人の報告
+                「判定が広過ぎて押したという意図がない部分にも反応している」)。
+                押せるのは印と短い見出しだけ */}
+            <div className="toggle-row">
+              <label className="skins-summon-motion toggle-hit">
+                <input
+                  type="checkbox"
+                  checked={collection.summonMotion === "skip"}
+                  disabled={working}
+                  onChange={(e) => {
+                    const summonMotion = e.target.checked ? "skip" : "full";
+                    run((s) => ({ ...s, summonMotion }));
+                  }}
+                />
+                召喚の演出を飛ばす
+              </label>
+              <p className="toggle-note">門とカードの演出を省き、結果をすぐ出します</p>
+            </div>
             {WALLET_SERVER && !FREE_GACHA && (
               /* ショップと同じ部品。買う前に確認し、確認は切れる(本人の指示 2026-09-17) */
               <TicketBuy

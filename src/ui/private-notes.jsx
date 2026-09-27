@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { RANKS } from "../game/constants.js";
-import { squareName } from "../game/board.js";
+import { sanitizeHistory, squareName } from "../game/board.js";
+import { candidatesFromHistory } from "../game/rank-candidates.js";
 import { movePresentationMs } from "../game/capture-presentation.js";
 import {
   advanceNotes,
@@ -134,6 +135,9 @@ export function usePrivateNotes(state, viewer, blocked) {
           key={square}
           square={square}
           size={state.boardSize}
+          /* その駒の、**相手に見せてよい**行動記録だけを渡す。
+             正体(rank・isKing)は渡さない(2026-09-28 本人の指示の仕組み) */
+          history={visibleHistoryAt(state, square, viewer)}
           initial={notes[square]}
           onClose={() => setSquare(null)}
           onSave={(value) => {
@@ -150,9 +154,26 @@ export function usePrivateNotes(state, viewer, blocked) {
       ) : null,
   };
 }
-function NoteEditor({ square, size, initial, onSave, onClose }) {
+/**
+ * そのマスの駒の行動記録のうち、**この viewer に見せてよい行だけ**を返す。
+ * sanitizeHistory を通すので、王位の継承など伏せる行は落ちる。
+ * 駒の rank・isKing はここから先へ渡さない
+ */
+function visibleHistoryAt(state, square, viewer) {
+  const [row, col] = square.split(",").map(Number);
+  const piece = state.board?.[row]?.[col];
+  if (!piece) return [];
+  return sanitizeHistory(piece, viewer, false);
+}
+
+function NoteEditor({ square, size, history = [], initial, onSave, onClose }) {
   const [value, setValue] = useState(() => cleanNote(initial));
   const [row, col] = square.split(",").map(Number);
+  // 見えている動きだけから、ありうる数字を機械的に絞る
+  const deduced = useMemo(
+    () => candidatesFromHistory(history, size),
+    [history, size],
+  );
   return (
     <div className="modal-overlay private-notes-overlay" onClick={onClose}>
       <section
@@ -172,6 +193,50 @@ function NoteEditor({ square, size, initial, onSave, onClose }) {
         </div>
         <div className="private-notes-scroll">
           <p className="hint">自分だけに見える予想です。</p>
+          {/* 見えている動きから、ありうる数字を機械的に絞る(2026-09-28 本人の指示)。
+              使うのは行動記録に出ている「どこからどこへ動いたか」だけで、
+              伏せ札の正体は読んでいない */}
+          <fieldset className="private-notes-deduced">
+            <legend>動きから絞った候補</legend>
+            {deduced.unmoved ? (
+              <p className="hint">
+                まだ動いていないので絞れません。動いたら、その動き方でここが狭まります。
+              </p>
+            ) : (
+              <>
+                <p className="private-notes-deduced-list">
+                  {deduced.ranks.map((rank) => (
+                    <span
+                      key={rank}
+                      className={
+                        deduced.kingOnly.includes(rank)
+                          ? "deduced-rank deduced-rank-king"
+                          : "deduced-rank"
+                      }
+                    >
+                      {rank}
+                    </span>
+                  ))}
+                </p>
+                <p className="hint">
+                  {deduced.moves}手ぶんの動きから、{deduced.ranks.length}通りまで
+                  絞れました。
+                  {deduced.certain && " これで確定です。"}
+                  {deduced.kingOnly.length > 0 &&
+                    ` 金の数字(${deduced.kingOnly.join("・")})は、王でないとできない動きです。`}
+                  {deduced.mustBeKing && " つまり、この駒は王です。"}
+                </p>
+                <button
+                  className="btn btn-ghost btn-small"
+                  onClick={() =>
+                    setValue((v) => ({ ...v, ranks: deduced.ranks }))
+                  }
+                >
+                  この候補を下に写す
+                </button>
+              </>
+            )}
+          </fieldset>
           <fieldset>
             <legend>数字の候補</legend>
             <div className="private-notes-ranks">

@@ -8,6 +8,18 @@ export const SUMMON_TIMING = Object.freeze({
   total: 9000,
 });
 
+/**
+ * 門の前で止まる時刻(ミリ秒)。
+ *
+ * ここまで上って門の前に着いたら、**触れるまで開かない**(2026-09-28 本人の指示
+ * 「門をタップするまで門が開かないようにする」)。それまでは勝手に開いていたので、
+ * 見ているだけの演出だった。触れて開けることで、引く手ごたえが出る。
+ *
+ * 時計はここで止め、触れたところから続きを進める。
+ * 「門をスキップ」は止まっているあいだも押せる
+ */
+export const SUMMON_HOLD_AT = SUMMON_TIMING.ascent + SUMMON_TIMING.gate;
+
 export const SUMMON_WORLDS = Object.freeze({
   earth: {
     name: "忘却の墓廟",
