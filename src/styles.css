@@ -8633,3 +8633,26 @@ p.hint > span.gem-shop-diag {
   font-size: 11.5px;
   color: var(--text-dim);
 }
+
+/* 近くの端末と対戦。見つからないときに、確かめる順を並べる(2026-09-28 本人の報告) */
+.nearby-empty {
+  text-align: left;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.nearby-steps {
+  margin: 0;
+  padding-left: 1.2em;
+  line-height: 1.8;
+}
+.nearby-steps li {
+  margin-bottom: 6px;
+}
+.nearby-steps b {
+  color: var(--gold-soft);
+}
+
+/* 移動の確認。釦の字が2行に折れないように(2026-09-28) */
+.move-confirm .setup-actions .btn {
+  white-space: nowrap;
+}

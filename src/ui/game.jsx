@@ -152,7 +152,9 @@ import {
   territoryOwnerOf,
   SetupTimer,
 } from "./setup.jsx";
-import { CaptureConfirm } from "./overlays.jsx";
+import { CaptureConfirm, MoveConfirm } from "./overlays.jsx";
+// 駒を動かす前に確認を挟むか(設定で切れる。既定は on。2026-09-28 本人の指示)
+import { loadPlaySettings } from "../game/play-settings.js";
 import { TutorialSheet, TutorialSkipMenu } from "./tutorial.jsx";
 import { openingState } from "../game/tutorial.js";
 import {
@@ -1368,6 +1370,11 @@ export function GameCore({
     mountedRef = (0, useRef)(false),
     [ratingResult, setRatingResult] = (0, useState)(null),
     // 盤面エリア: 空・宮殿で「どの駒か」を選んでいる最中
+    // 駒を取らない移動の確認({ row, col, captures, fromSquare })。設定が off なら使わない
+    [pendingMove, setPendingMove] = (0, useState)(null),
+    [confirmMove, setConfirmMove] = (0, useState)(
+      () => loadPlaySettings().confirmMove,
+    ),
     [areaPick, setAreaPick] = (0, useState)(false),
     // 対局中に記録を読む幕(2026-09-23 本人の指示)
     [logOpen, setLogOpen] = (0, useState)(false),
@@ -2163,6 +2170,13 @@ export function GameCore({
   /**
    * 再戦は両者の合意で始める。
    *
+  // 設定画面で切り替えたら、対局を抜けずにその場で効かせる
+  (0, useEffect)(() => {
+    const onChange = (e) => setConfirmMove(!!e?.detail?.confirmMove);
+    window.addEventListener("tottery:play-settings", onChange);
+    return () => window.removeEventListener("tottery:play-settings", onChange);
+  }, []);
+
    * 片方が押しただけで盤を作り直すと、相手は準備ができていないまま
    * 新しい対局に入る。部屋の手番の列も積まれる一方で、1000件で頭打ちになる。
    * 両方そろったらホストが列を片付け、何局目かを1つ進める。
@@ -2173,6 +2187,18 @@ export function GameCore({
     // 相手が部屋を出た(ゲストの席が空いた)か、部屋が消えた(ホストが抜けた)
     [foeLeft, setFoeLeft] = (0, useState)(!1);
   (0, useEffect)(() => {
+    // 取らない移動も、設定が on なら一度確認する(2026-09-28 本人の指示)。
+    // チュートリアルは台本どおりに動かすので挟まない(指示と食い違う札が出る)
+    if (confirmMove && !tutorial) {
+      const from = a.pieces[a.selectedId];
+      setPendingMove({
+        row,
+        col,
+        captures: mv.captures,
+        fromSquare: from ? squareName(from.row, from.col, R) : null,
+      });
+      return;
+    }
     if (!network || a.phase !== "gameover" || !onRematch) return;
     let stop = !1;
     const me = myUid();
@@ -3580,6 +3606,22 @@ export function GameCore({
             <div
               className={`board-grid area-board ${fieldTheme ? "area-illustrated" : ""}`}
               ref={boardRef}
+        {pendingMove && (
+          <MoveConfirm
+            from={pendingMove.fromSquare}
+            to={squareName(pendingMove.row, pendingMove.col, R)}
+            onCancel={() => setPendingMove(null)}
+            onConfirm={() => {
+              y({
+                type: "MOVE_PIECE",
+                row: pendingMove.row,
+                col: pendingMove.col,
+                captures: pendingMove.captures,
+              });
+              setPendingMove(null);
+            }}
+          />
+        )}
               style={{
                 gridTemplateColumns: `repeat(${R},1fr)`,
               }}
@@ -3819,10 +3861,14 @@ export function GameCore({
                               return;
                             }
                             if (ze.owner === P && x) {
-                              y({
-                                type: "SELECT_PIECE",
-                                id: ze.id,
-                              });
+                              // 選んでいる駒をもう一度タップしたら選択を解く。
+                              // 盤が込んでいると「選び直したいのに動かす先が出たまま」に
+                              // なっていた(2026-09-28 本人の指示)
+                              y(
+                                a.selectedId === ze.id
+                                  ? { type: "CANCEL_SELECTION" }
+                                  : { type: "SELECT_PIECE", id: ze.id },
+                              );
                               return;
                             }
                             y({

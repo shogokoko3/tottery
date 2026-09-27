@@ -15,7 +15,7 @@ globalThis.localStorage = {
     delete store[k];
   },
 };
-const { BOT_UNTIL_RATING, BOT_TIERS, BOT_WAIT_MS, BOT_NAMES, matchesBot, makeBot, botTierFor, botAction, randomMove, botSearchDelay, botPlan, noteRandomResult, wantsBotNow, clearBotNow } = await import("../src/game/bot-match.js");
+const { BOT_RATING_MAX: _BRM, BOT_UNTIL_RATING, BOT_TIERS, BOT_WAIT_MS, BOT_NAMES, matchesBot, makeBot, botTierFor, botAction, randomMove, botSearchDelay, botPlan, noteRandomResult, wantsBotNow, clearBotNow } = await import("../src/game/bot-match.js");
 const { JOSEKI_AREAS, JOSEKI_KINGS } = await import("../src/game/cpu-joseki.js");
 const { ICONS } = await import("../src/game/icons.js");
 const { START_RATING, nextRating } = await import("../src/game/rating.js");
@@ -23,10 +23,11 @@ const { loadProfile, recordGame } = await import("../src/game/profile.js");
 
 // 1. 判定
 assert.equal(BOT_UNTIL_RATING, 2000);
+// 2026-09-28: 持ち点の上限を外した。どの持ち点でも Bot と組む(本人の指示)
 assert.equal(matchesBot(1500), true);
 assert.equal(matchesBot(1999), true);
-assert.equal(matchesBot(1750), true, "1750 でもまだ Bot と組める(2026-09-25 で 2000 まで)");
-assert.equal(matchesBot(2000), false, "2000 に届いたら人と組む");
+assert.equal(matchesBot(2000), true, "2000 でも Bot と組む");
+assert.equal(matchesBot(2600), true, "上の帯でも Bot と組む");
 // 強さは3段階。持ち点が上がるほど強い
 assert.equal(BOT_TIERS.length, 3);
 assert.deepEqual(BOT_TIERS.map((t) => t.tier), [1, 2, 3]);
@@ -39,7 +40,8 @@ assert.equal(botTierFor(1749).tier, 3);
 assert.equal(botTierFor(undefined).tier, 1, "持ち点が無ければ初期値(1500)で見習い");
 assert.ok(BOT_TIERS[0].blunder > BOT_TIERS[1].blunder && BOT_TIERS[1].blunder > BOT_TIERS[2].blunder, "上の段階ほどでたらめが減る");
 assert.equal(BOT_TIERS[2].blunder, 0, "熟練は通常の CPU そのまま");
-assert.equal(BOT_TIERS[2].until, BOT_UNTIL_RATING);
+assert.equal(BOT_TIERS[2].until, Infinity, "一番上の段階に上限は無い(2000 以上も熟練)");
+assert.equal(botTierFor(2600).tier, 3, "上の帯でも熟練");
 assert.equal(matchesBot(undefined), true, "持ち点が無ければ初期値(1500)で Bot");
 assert.equal(matchesBot("abc"), true);
 
@@ -71,12 +73,16 @@ assert.equal(matchesBot("abc"), true);
   assert.equal(new Set(BOT_NAMES).size, BOT_NAMES.length, "名前は重複しない");
   // 自分と同じ名前は避ける
   for (let k = 0; k < 200; k++) assert.notEqual(makeBot(1500, "ゆきの").name, "ゆきの");
-  // 持ち点の枠
+  // 持ち点の枠。下は 1200、上は **2000 未満**(2026-09-28 本人の指示)
   for (let k = 0; k < 200; k++) {
     const r = makeBot(100).rating;
-    assert.ok(r >= 1200 && r <= 1800, `枠の中(${r})`);
+    assert.ok(r >= 1200 && r < _BRM, `枠の中(${r})`);
     const hi = makeBot(1749).rating;
-    assert.ok(hi >= 1200 && hi <= 1800, `枠の中(${hi})`);
+    assert.ok(hi >= 1200 && hi < _BRM, `枠の中(${hi})`);
+    // 上の帯の人にも、2000 未満の相手が当たる
+    const top = makeBot(2600).rating;
+    assert.ok(top >= 1200 && top < _BRM, `2000 未満(${top})`);
+    assert.equal(top, _BRM - 1, "2000 以上の人には上限(1999)が当たる");
   }
   for (let k = 0; k < 50; k++) {
     const d = botSearchDelay();
@@ -116,7 +122,8 @@ assert.equal(matchesBot("abc"), true);
   assert.equal(matchesBot(p.rating), true);
   let games = 0;
   const tiersSeen = new Set();
-  while (matchesBot(p.rating) && games < 60) {
+  // 2026-09-28 以降 matchesBot は常に真。ここでは「2000 に届くまで」を数える
+  while (p.rating < _BRM && games < 60) {
     const bot = makeBot(p.rating, p.name, () => 0.5); // 同格
     tiersSeen.add(bot.tier);
     const expect = nextRating(p.rating, bot.rating, true);
@@ -125,7 +132,11 @@ assert.equal(matchesBot("abc"), true);
     games++;
   }
   assert.ok(p.rating >= 2000, `2000 に届く(${p.rating})`);
-  assert.equal(matchesBot(p.rating), false, "届いたら人と組む");
+  assert.equal(matchesBot(p.rating), true, "2000 に届いても Bot と組める(2026-09-28)");
+  assert.ok(
+    makeBot(p.rating, null, () => 0.5).rating < _BRM,
+    "そのとき当たる Bot の持ち点は 2000 未満",
+  );
   assert.ok(games >= 32 && games <= 44, `同格に勝ち続けて 37 局ほど(${games})`);
   assert.equal(tiersSeen.has(1) && tiersSeen.has(2) && tiersSeen.has(3), true, `徐々に強い Bot に当たる(${[...tiersSeen]})`);
   assert.equal(p.rated, games, "持ち点つき対局として数える");
@@ -141,12 +152,13 @@ assert.equal(matchesBot("abc"), true);
   const mem = () => { const m = {}; return { getItem: (k) => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: (k) => { delete m[k]; } }; };
   const st = mem();
   assert.ok(BOT_WAIT_MS >= 5000 && BOT_WAIT_MS <= 15000, `人を探す時間は数秒(${BOT_WAIT_MS}ms)`);
-  assert.equal(botPlan(1500, st), "fallback", "2000 未満: まず人を探し、時間切れで Bot");
-  assert.equal(botPlan(2000, st), "none", "2000 以上: Bot は出ない");
+  assert.equal(botPlan(1500, st), "fallback", "まず人を探し、時間切れで Bot");
+  assert.equal(botPlan(2600, st), "fallback", "上の帯でも Bot は出る(2026-09-28)");
+  assert.equal(botPlan(2000, st), "fallback", "2000 ちょうどでも Bot は出る");
   noteRandomResult({ won: false, vsBot: false }, st);
   assert.equal(wantsBotNow(st), true, "人に負けたら次は Bot");
   assert.equal(botPlan(1500, st), "now");
-  assert.equal(botPlan(2100, st), "none", "負けていても 2000 以上なら人だけ");
+  assert.equal(botPlan(2100, st), "now", "上の帯でも、人に負けた次はすぐ Bot");
   noteRandomResult({ won: false, vsBot: true }, st);
   assert.equal(wantsBotNow(st), false, "Bot と1局(負けでも)したら元に戻る");
   noteRandomResult({ won: false, vsBot: false }, st);

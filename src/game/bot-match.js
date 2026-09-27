@@ -1,18 +1,21 @@
 /**
  * ランダムマッチの練習相手(Bot)。
  *
- * 持ち点が BOT_UNTIL_RATING(2000)に届くまでは、ランダムマッチで人と組まず、
- * 名前と持ち点を持った Bot(中身は通常の CPU)と対局する。始めたばかりの人が
+ * ランダムマッチで人と組めないとき、名前と持ち点を持った Bot(中身は通常の CPU)と対局する。
  * 待ち時間なしに対局でき、実力が近い相手と当たるようにするため。
  * (2026-09-14、本人の指示「1600ポイント到達するまではその Bot とマッチング」。
- *  2026-09-16 に 1750 へ。強さを3段階にし、持ち点が上がるほど強い Bot が当たる)
+ *  2026-09-16 に 1750 へ、2026-09-25 に 2000 へ。
+ *  2026-09-28 に**持ち点の上限を外した**。本人の指示「レートが2000を超えた人でも Bot と
+ *  マッチングする。ただし Bot のレートは 2000 未満」。上の帯は人が少なく、待つだけになるため)
  *
  * 決まり:
- *  - 2000 未満でも、まず掲示(人)で探す。人が見つからないまま BOT_WAIT_MS 経ったら Bot に切り替える
+ *  - **持ち点に関わらず**、まず掲示(人)で探す。人が見つからないまま BOT_WAIT_MS 経ったら Bot に切り替える
  *  - 直前のランダムマッチで人に負けていたら、次は探さずにすぐ Bot(1敗したら Bot)。Bot 戦を1局すると元に戻る
- *  - 2000 以上になった瞬間から、Bot は出ない(人だけ)
- *  - Bot との 9×9 は持ち点に数える(人との対局と同じ Elo)。だから勝てば 2000 に届く
- *  - Bot の持ち点は自分の近く(±80)。同格として +16/-16 を基本にする
+ *  - Bot との 9×9 は持ち点に数える(人との対局と同じ Elo)
+ *  - **Bot が名乗る持ち点は 2000 未満**(BOT_RATING_MAX)。自分の近く(±80)に寄せるが、
+ *    2000 以上の人にはその手前で頭打ちになる。なお**持ち点の増減はこの値を使わない** —
+ *    サーバー(src/server/ledger.js)は Bot を「自分と同格」として ±16 で計算する。
+ *    言い値を式に入れないため(端末から送られる数を信じない)
  *  - **強さは3段階**(BOT_TIERS)。自分の持ち点で決まり、上がるほど強い相手になる:
  *      1 見習い(〜1549): 手の 45% をでたらめに指す
  *      2 修行中(1550〜1649): 手の 20% をでたらめに指す
@@ -30,14 +33,24 @@ import { JOSEKI_AREAS, pickJosekiKing } from "./cpu-joseki.js";
 import { getLegalMoves, kingRankOf } from "./board.js";
 import { isFrozen } from "./areas.js";
 
-/** この持ち点に届くまで Bot と組む(2026-09-25 本人の指示で 1750→2000) */
-export const BOT_UNTIL_RATING = 2000;
+/**
+ * Bot が名乗る持ち点の上限(この値未満)。2026-09-28 本人の指示。
+ * 強さの段階(BOT_TIERS)の区切りにも使う
+ */
+export const BOT_RATING_MAX = 2000;
+
+/**
+ * かつて「ここに届いたら Bot は出ない」だった線。いまは**強さの段階の区切り**と、
+ * サーバーが Bot 戦を数えるかの目印として残っている。
+ * @deprecated 入口の判定には使わない(matchesBot は持ち点を見ない)
+ */
+export const BOT_UNTIL_RATING = BOT_RATING_MAX;
 
 /** 強さの段階。until 未満の持ち点ならその段階。blunder は「でたらめに指す割合」 */
 export const BOT_TIERS = Object.freeze([
   Object.freeze({ tier: 1, name: "見習い", until: 1550, blunder: 0.45 }),
   Object.freeze({ tier: 2, name: "修行中", until: 1650, blunder: 0.2 }),
-  Object.freeze({ tier: 3, name: "熟練", until: BOT_UNTIL_RATING, blunder: 0 }),
+  Object.freeze({ tier: 3, name: "熟練", until: Infinity, blunder: 0 }),
 ]);
 
 /** その持ち点で当たる Bot の段階 */
@@ -73,9 +86,12 @@ export const BOT_NAMES = Object.freeze([
 /** Bot が使うアイコン。誰でも持てるものだけ */
 const BOT_ICONS = ICONS.filter((i) => i.free).map((i) => i.id);
 
-/** その持ち点なら Bot と組むか */
-export function matchesBot(rating) {
-  return normalizeRating(rating ?? START_RATING) < BOT_UNTIL_RATING;
+/**
+ * Bot と組む段階か。2026-09-28 から**持ち点に関わらず組む**(本人の指示)。
+ * 引数は呼ぶ側の都合で残してある
+ */
+export function matchesBot() {
+  return true;
 }
 
 /**
@@ -87,9 +103,11 @@ export function makeBot(myRating, myName = null, rng = Math.random) {
   const name = names[Math.floor(rng() * names.length)];
   const icon = BOT_ICONS[Math.floor(rng() * BOT_ICONS.length)];
   const base = normalizeRating(myRating ?? START_RATING);
+  // 自分の近く(±80)。ただし **2000 未満**(本人の指示)。
+  // 2000 以上の人には 1999 が上限になる
   const rating = Math.max(
     1200,
-    Math.min(1800, base + Math.round(rng() * 160 - 80)),
+    Math.min(BOT_RATING_MAX - 1, base + Math.round(rng() * 160 - 80)),
   );
   const { tier, blunder } = botTierFor(base);
   // エリアは6種を均等に。王はそのエリアの帯からランダム
@@ -196,9 +214,9 @@ export function clearBotNow(storage = null) {
 
 /**
  * ランダムマッチを開いたときの Bot の扱い。
- *   "none"     … Bot は出ない(持ち点 1750 以上)
  *   "now"      … 探さずにすぐ Bot(直前に人に負けた)
  *   "fallback" … まず人を探し、BOT_WAIT_MS 経っても組めなければ Bot
+ * "none"(Bot を出さない)は 2026-09-28 に無くなった。持ち点の上限を外したため
  */
 export function botPlan(rating, storage = null) {
   if (!matchesBot(rating)) return "none";

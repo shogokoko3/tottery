@@ -259,17 +259,22 @@ export class Ledger {
    * 始めたばかりの人がランキングに一度も載れない)。
    *
    * Bot の対局は部屋(Firebase)が無く、手順を再生して確かめられない。だから
-   *   - 相手の点は端末の言い値を使わず、**本人のサーバー上の点と同じ**とみなす(同格 = ±16)
-   *   - 本人の点が BOT_UNTIL_RATING(1750)以上なら数えない(人と組む段階。Bot で稼げない)
+   *   - 相手の点は端末の言い値を使わず、**本人のサーバー上の点と同じ**とみなす(同格 = ±16)。
+   *     Bot が画面で名乗る持ち点(2000 未満)は見た目だけで、式には入れない
    *   - 同じ id は二度記録しない(matches に host=本人・guest="bot" で残す)
+   *
+   * 2026-09-28: **持ち点の上限で断るのをやめた**(本人の指示「2000 を超えた人でも Bot と
+   * マッチングする」「いつでも数える」)。until に正の数を渡せば今まで通り断る
    */
-  recordBot(uid, { id, winner, name, icon }, now, until = 1750) {
+  recordBot(uid, { id, winner, name, icon }, now, until = 0) {
     const matchId = `bot:${uid}:${id}`;
     if (this.sql("SELECT id FROM matches WHERE id=?", matchId)[0])
       return { recorded: false, reason: "duplicate" };
     const season = this.current(now);
     const p = this.playerRow(uid, season.id);
-    if (p.rating >= until) return { recorded: false, reason: "human-stage" };
+    // until が 0 なら上限なし(いまの既定)
+    if (until > 0 && p.rating >= until)
+      return { recorded: false, reason: "human-stage" };
     const won = winner === null ? null : winner === 0;
     const streak = won === true ? (p.streak || 0) + 1 : 0;
     const bonus = winStreakBonus(streak);

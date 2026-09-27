@@ -11,7 +11,6 @@ import { Wallet, BACKUP_MAX } from "./wallet.js";
 import { verifyAppleTransaction } from "./applejws.js";
 import { minAppBuild, updateUrl } from "./app-version.js";
 import { seasonAt, seasonRewards } from "../game/season.js";
-import { BOT_UNTIL_RATING } from "../game/bot-match.js";
 import { Friends } from "./friends.js";
 
 const json = (data, status = 200) =>
@@ -364,7 +363,8 @@ export class SeasonLedger {
         }
         if (op === "summary") return l.summary(uid, now);
         if (op === "record-bot") {
-          l.recordBot(uid, args, now, BOT_UNTIL_RATING);
+          // 上限は渡さない。2026-09-28 から持ち点に関わらず数える(本人の指示)
+          l.recordBot(uid, args, now);
           return l.summary(uid, now);
         }
         if (op === "admin-summary" && uid === OPERATOR_UID)

@@ -25,6 +25,8 @@ import {
   missionPeriods,
   sanitizeMissionClaims,
 } from "../game/periodic-missions.js";
+// 引いた札の自動装備(2026-09-28 本人の指示)
+import { autoEquip } from "./auto-equip.js";
 
 const count = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : 0);
 const addCount = (a, b) => Math.min(Number.MAX_SAFE_INTEGER, a + b);
@@ -312,17 +314,22 @@ export function applyPull(state, skinIds, { free = FREE_GACHA } = {}) {
     allR: count(g.allR) + allRThis,
     bestTenSsr: Math.max(count(g.bestTenSsr), ids.length === 10 ? ssrThis : 0),
   };
-  return withHomePortraits({
-    ...state,
-    owned,
-    acquired,
-    gacha,
-    tickets: tickets - cost,
-    draws: state.draws + ids.length,
-    missionDrawDay: missionPeriods().day,
-    pending: { results, freeze },
-    ...(receipt ? { pendingPull: null, lastPullId: receipt } : {}),
-  });
+  // 引いた札は手で装備しなくてよい(2026-09-28 本人の指示)。
+  // 装備していない段にだけ着せ、J・Q・K のように2種類あるキャラは触らない
+  return autoEquip(
+    withHomePortraits({
+      ...state,
+      owned,
+      acquired,
+      gacha,
+      tickets: tickets - cost,
+      draws: state.draws + ids.length,
+      missionDrawDay: missionPeriods().day,
+      pending: { results, freeze },
+      ...(receipt ? { pendingPull: null, lastPullId: receipt } : {}),
+    }),
+    { prefer: ids },
+  );
 }
 
 export function pull(

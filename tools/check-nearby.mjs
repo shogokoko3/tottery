@@ -184,4 +184,22 @@ assert.equal(pkg.dependencies["tottery-nearby"], "file:plugins/tottery-nearby", 
 const cfg = JSON.parse(fs.readFileSync("ios/App/App/capacitor.config.json", "utf8"));
 assert.ok(cfg.packageClassList.includes("NearbyPlugin"), "cap sync がプラグインを登録している");
 assert.ok(fs.readFileSync("ios/App/CapApp-SPM/Package.swift", "utf8").includes("TotteryNearby"), "SPM にプラグインが入っている");
+
+// ネイティブの error を拾っているか(2026-09-28。拾っていなかったので、名乗り・探索を
+// 始められなくても画面は「まだ見つかりません」のままだった)
+{
+  const near = fs.readFileSync(new URL("../src/net/nearby.js", import.meta.url), "utf8");
+  assert.ok(/plugin\.addListener\("error"/.test(near), "ネイティブの error を拾う");
+  assert.ok(/state: "error"/.test(near), "error を画面へ伝える");
+  const swift = fs.readFileSync(new URL("../plugins/tottery-nearby/ios/Sources/TotteryNearbyPlugin/NearbyPlugin.swift", import.meta.url), "utf8");
+  assert.ok(/notifyListeners\("error"/.test(swift), "ネイティブ側が error を出す");
+  const screens = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
+  assert.ok(/e\.state === "error"/.test(screens), "画面が error を出す");
+  // 入口は2か所(対戦相手を選ぶ画面と、フレンド対戦の画面)
+  assert.ok(
+    (screens.match(/onNearby && nearbyAvailable\(\)/g) || []).length >= 2,
+    "近くの端末の入口が、対戦を選ぶ画面とフレンド対戦の両方にある",
+  );
+}
+
 console.log("近くの端末との対戦: 6文字の合言葉・リンク/貼り付け・部屋と手番の写し・再戦・切断・配線・iOS の宣言: OK");

@@ -671,6 +671,10 @@ export function MatchingScreen({
   onTutorial,
   // 今シーズンの順位。ホームから移した(2026-09-17、本人の指示)
   onRanking = null,
+  // 近くの端末と対戦(Bluetooth / 近距離 Wi‑Fi)。ここに直に置く。
+  // フレンド対戦の画面の奥にあったので、部屋を建てる導線と混ざって見つからなかった
+  // (2026-09-28 本人の報告「部屋を建てるのみしかできなかった」)
+  onNearby = null,
 }) {
   const gate = onlineGate(loadProfile());
   return (
@@ -702,6 +706,15 @@ export function MatchingScreen({
             CPUと対戦する<small>ひとりで練習・腕試し</small>
           </span>
         </button>
+        {onNearby && nearbyAvailable() && (
+          <button className="btn btn-teal btn-choice" onClick={onNearby}>
+            <Nearby size={30} />
+            <span className="choice-label">
+              近くの端末と対戦する
+              <small>Bluetooth で直接つなぐ・機内モードでも遊べる</small>
+            </span>
+          </button>
+        )}
       </div>
       {onRanking && (
         <button className="home-quiet" onClick={onRanking} aria-label="ランキングを見る">
@@ -1408,7 +1421,14 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
   const [peers, setPeers] = useState([]);
   const [status, setStatus] = useState("searching");
   const [error, setError] = useState("");
+  // 探し始めてからの秒数。何も起きないときに「動いてはいる」と分かるように
+  const [waited, setWaited] = useState(0);
   const readyRef = useRef(!1);
+  useEffect(() => {
+    if (status !== "searching") return;
+    const id = setInterval(() => setWaited((v) => v + 1), 1000);
+    return () => clearInterval(id);
+  }, [status]);
   useEffect(() => {
     const n = nearby();
     let gone = !1;
@@ -1417,7 +1437,12 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
       if (gone) return;
       if (e.state === "connected") setStatus("connecting");
       else if (e.state === "ready") setStatus("ready");
-      else if (e.state === "disconnected" && !readyRef.current) {
+      else if (e.state === "error") {
+        // ネイティブが名乗り・探索を始められなかった(許可が下りていない等)。
+        // 2026-09-28 まで拾っていなかったので、ずっと「まだ見つかりません」に見えていた
+        setStatus("searching");
+        setError(e.message || "近くの端末との通信を始められませんでした");
+      } else if (e.state === "disconnected" && !readyRef.current) {
         setStatus("searching");
         setError("つながりませんでした。もう一度相手をタップしてください");
         // 探索をやり直す
@@ -1478,11 +1503,26 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
       </div>
       <div className="nearby-list" role="list" aria-label="近くの端末">
         {peers.length === 0 ? (
-          <p className="hint">
-            まだ見つかりません。相手の端末でも同じ画面を開いてください。
-            <br />
-            Bluetooth と Wi‑Fi をオンに(機内モード中でも、コントロールセンターから両方をオンにできます)。
-          </p>
+          <div className="hint nearby-empty">
+            <p style={{ margin: "0 0 8px" }}>
+              まだ見つかりません({waited}秒)。次の順に確かめてください。
+            </p>
+            <ol className="nearby-steps">
+              <li>
+                <b>相手の端末でも、この同じ画面を開く</b>
+                (ホーム → 対戦する → 近くの端末と対戦)
+              </li>
+              <li>
+                <b>両方の端末で Bluetooth と Wi‑Fi をオンにする</b>。
+                機内モード中でも、コントロールセンターから2つとも個別にオンにできます
+              </li>
+              <li>
+                初回は「<b>ローカルネットワーク上のデバイスの検索</b>」の許可を聞かれます。
+                断ってしまったときは、iPhone の設定 → トッタリー から許可してください
+              </li>
+              <li>端末どうしを 10m 以内に近づける</li>
+            </ol>
+          </div>
         ) : (
           peers.map((p) => (
             <button
@@ -2444,6 +2484,10 @@ function TotteryScreens() {
               onBack={() => t("menu")}
               onTutorial={showTutorials}
               onRanking={() => t("ranking")}
+              onNearby={() => {
+                // フレンド対戦の画面と同じ行き先。ここからも直に入れる(2026-09-28)
+                (setPendingRoom(""), r("nearby"), setRulesFrom("room"), t("rules"));
+              }}
               onOnline={() => {
                 (u(null),
                   m(!1),

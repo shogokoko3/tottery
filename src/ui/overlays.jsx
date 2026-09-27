@@ -32,6 +32,7 @@ import {
 } from "./account.jsx";
 import { forgetMe, loadProfile } from "../game/profile.js";
 import { loadBlocked, unblock } from "../game/blocked.js";
+import { loadPlaySettings, savePlaySettings } from "../game/play-settings.js";
 import { deleteRank } from "../net/ranking.js";
 import { clearProfileSync } from "../net/profile-sync.js";
 import { forgetSeason, clearSeasonQueue } from "../net/season.js";
@@ -185,6 +186,47 @@ export function KingChoiceInterstitial({ state, size, dispatch }) {
 /**
  * 取る手の確認。相手の駒は伏せたままなので、何が取れるかは出さず数だけ伝える。
  */
+/**
+ * 駒を取らない移動の確認(2026-09-28 本人の指示)。
+ *
+ * 取る手は CaptureConfirm が前から確認していた。指の滑りで意図しないマスへ動くのを
+ * 防ぐため、取らない手にも同じ二段(選ぶ→確認→確定)を入れる。
+ * 設定「駒を動かす前に確認する」で切れる(既定は on。src/game/play-settings.js)
+ */
+export function MoveConfirm({ from, to, onCancel, onConfirm }) {
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div
+        className="modal-panel capture-confirm move-confirm"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3>ここに動かしますか</h3>
+        <p className="hint">
+          {from ? (
+            <>
+              <strong>{from}</strong> から <strong>{to}</strong> へ動かします。
+            </>
+          ) : (
+            <>
+              <strong>{to}</strong> へ動かします。
+            </>
+          )}
+          <br />
+          やめれば、別のマスや別の駒を選び直せます。
+        </p>
+        <div className="setup-actions">
+          <button className="btn btn-ghost" onClick={onCancel}>
+            やめる
+          </button>
+          <button className="btn btn-primary" onClick={onConfirm}>
+            動かす
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CaptureConfirm({ count, squares, onCancel, onConfirm }) {
   return (
     <div className="modal-overlay" onClick={onCancel}>
@@ -635,6 +677,36 @@ export function BattleMotionSettings() {
   );
 }
 
+/**
+ * 対局中の操作の設定(2026-09-28 本人の指示)。
+ * いまは「駒を動かす前に確認する」の1つだけ。既定は on
+ */
+export function PlaySettings() {
+  const [settings, setSettings] = useState(() => loadPlaySettings());
+  const on = settings.confirmMove;
+  return (
+    <div className="settings-list">
+      <div className="settings-row">
+        <span>駒を動かす前に確認する</span>
+        <button
+          className="btn btn-ghost btn-small"
+          aria-pressed={on}
+          onClick={() => setSettings(savePlaySettings({ confirmMove: !on }))}
+        >
+          {on ? "しない" : "する"}
+        </button>
+      </div>
+      <p className="settings-note">
+        いまは
+        {on
+          ? "行き先のマスを押したあと「動かす」で確定します。押し間違いで動いてしまうのを防げます。"
+          : "行き先のマスを押すとすぐ動きます。"}
+        相手の駒を取る手は、この設定に関わらず必ず確認します。
+      </p>
+    </div>
+  );
+}
+
 export function SettingsModal({ onClose }) {
   const [profile, setProfile] = useState(() => loadProfile());
   // "name" は名前を変える画面、"icon" はアイコンを選ぶ画面
@@ -720,6 +792,8 @@ export function SettingsModal({ onClose }) {
             <>
               <p className="settings-head">音</p>
               <SoundSettings />
+              <p className="settings-head">対局中の操作</p>
+              <PlaySettings />
               <p className="settings-head">対局中の演出</p>
               <BattleMotionSettings />
             </>

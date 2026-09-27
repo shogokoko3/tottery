@@ -84,6 +84,8 @@ export function createNearby({ plugin, myId, now = () => Date.now() } = {}) {
   let connected = false;
   let readyCb = null;
   let handles = [];
+  // ネイティブから届いた最後のエラー。画面が後から開いても読めるように持っておく
+  let lastError = null;
 
   const emit = (kind, v) => {
     for (const fn of listeners[kind]) fn(v);
@@ -210,6 +212,15 @@ export function createNearby({ plugin, myId, now = () => Date.now() } = {}) {
         if (seat === 1) send({ t: "hello", me });
       }),
       plugin.addListener("message", (e) => onMessage(e && e.data)),
+      // ネイティブ側は名乗り・探索を始められないと "error" を出す(位置情報や
+      // ローカルネットワークの許可が下りていない、Bluetooth が切れている等)。
+      // 2026-09-28 まで**誰も拾っていなかった**ので、画面は「まだ見つかりません」の
+      // ままで、何が起きているか分からなかった(本人の報告「Bluetooth の対戦ができなかった」)
+      plugin.addListener("error", (e) => {
+        const message = (e && e.message) || "近くの端末との通信を始められませんでした";
+        lastError = message;
+        emit("state", { state: "error", message });
+      }),
       plugin.addListener("disconnected", () => {
         connected = false;
         // 相手が居なくなった。部屋も無いものとして、対局後の画面が「相手が出た」と分かるように
@@ -231,6 +242,7 @@ export function createNearby({ plugin, myId, now = () => Date.now() } = {}) {
       acts.clear();
       counter = 0;
       connected = false;
+      lastError = null;
       await attach();
       await plugin.start({ name: profile.name || "名無し" });
     },
@@ -266,6 +278,10 @@ export function createNearby({ plugin, myId, now = () => Date.now() } = {}) {
     },
     get peers() {
       return peers;
+    },
+    /** ネイティブから届いた最後のエラー(無ければ null) */
+    get lastError() {
+      return lastError;
     },
     get connected() {
       return connected;

@@ -50,16 +50,19 @@ assert.equal(listed.rated, 10);
 assert.equal(listed.place, 1, "10戦でも順位が付く");
 assert.equal(ledger.summary(me, now + 20).list[0].uid, me, "ランキングに出る");
 
-// 2000 以上は数えない(人と組む段階)
-sql("INSERT OR REPLACE INTO elo_ratings VALUES ('2026-09', ?, ?)", me, BOT_UNTIL_RATING);
-r = ledger.recordBot(me, { id: "m11", winner: 0, name: "たろう", icon: "spade" }, now + 11, BOT_UNTIL_RATING);
+// 2026-09-28: 持ち点の上限では断らない(本人の指示「2000 を超えた人でも Bot と組む」「いつでも数える」)
+sql("INSERT OR REPLACE INTO elo_ratings VALUES ('2026-09', ?, ?)", me, 2600);
+r = ledger.recordBot(me, { id: "m11", winner: 0, name: "たろう", icon: "spade" }, now + 11);
+assert.equal(r.recorded, true, "2000 以上でも数える");
+assert.equal(ledger.list("2026-09").find((p) => p.uid === me).rated, 11, "2000 以上でも増える");
+// until を渡せば今まで通り断れる(必要になったときの逃げ道を残してある)
+r = ledger.recordBot(me, { id: "m12", winner: 0, name: "たろう", icon: "spade" }, now + 12, BOT_UNTIL_RATING);
 assert.equal(r.recorded, false);
 assert.equal(r.reason, "human-stage");
-assert.equal(ledger.list("2026-09").find((p) => p.uid === me).rated, 10, "2000 以上では増えない");
 
 // 人との対局の記録は変わらない(Bot の記録と混ざらない)
-assert.equal(sql("SELECT COUNT(*) AS n FROM matches WHERE guest='bot'")[0].n, 10);
-assert.equal(sql("SELECT COUNT(*) AS n FROM matches WHERE host=? AND guest='bot' AND id LIKE 'bot:player-a:%'", me)[0].n, 10, "id は本人の uid を含む(他人の局と衝突しない)");
+assert.equal(sql("SELECT COUNT(*) AS n FROM matches WHERE guest='bot'")[0].n, 11);
+assert.equal(sql("SELECT COUNT(*) AS n FROM matches WHERE host=? AND guest='bot' AND id LIKE 'bot:player-a:%'", me)[0].n, 11, "id は本人の uid を含む(他人の局と衝突しない)");
 
 // makeBot は局ごとに違う matchId を持つ(同じ局を二度数えない鍵)
 const b1 = makeBot(1500, null, () => 0.5), b2 = makeBot(1500, null, () => 0.25);
@@ -106,10 +109,10 @@ assert.equal(seasonMatchKey({ code: "ABCD", createdAt: 1, round: 0, uid: "u" }),
 const worker = readFileSync(new URL("../src/server/worker.js", import.meta.url), "utf8").replace(/\s+/g, " ");
 assert.ok(/if \(op === "finish" && body\.bot === true\)/.test(worker), "finish に Bot の枝がある");
 assert.ok(/!\[0, 1, null\]\.includes\(body\.winner\)/.test(worker), "勝者は 0・1・null だけ");
-assert.ok(/l\.recordBot\(uid, args, now, BOT_UNTIL_RATING\)/.test(worker), "台帳は 2000 の線を守る");
+assert.ok(/l\.recordBot\(uid, args, now\)/.test(worker), "上限は渡さない(2026-09-28 から持ち点に関わらず数える)");
 assert.ok(!/body\.rating|args\.rating|body\.foeRating/.test(worker), "端末の言い値の点は読まない");
 const season = readFileSync(new URL("../src/ui/season.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
 assert.ok(/id: bot\.matchId \|\| `\$\{bot\.id\}:\$\{round\}`/.test(season), "Bot 戦は matchId を送る");
 assert.ok(/const eligible = \(!!network \|\| !!bot\) && state\.boardSize === 9 && !disabled;/.test(season), "9×9 の Bot 戦だけ");
 
-console.log("Bot 戦をシーズンに数える: 同格の ±16・重複なし・1戦から順位・2000 以上は数えない・配線 OK");
+console.log("Bot 戦をシーズンに数える: 同格の ±16・重複なし・1戦から順位・持ち点の上限なし・配線 OK");
