@@ -10,6 +10,7 @@ import {
 import { displayRating, nextRating, normalizeRating, winStreakBonus } from "../game/rating.js";
 import { TEST_PLAYERS_2026_09_08 } from "./test-players-2026-09-08.js";
 import { RATING_RESTORE_2026_09_23 } from "./rating-restore-2026-09-23.js";
+import { clampBotRating } from "../game/bot-match.js";
 
 /** 記録を消した人の目印の代わり。matches に残る */
 export const FORGOTTEN = "forgotten";
@@ -259,14 +260,16 @@ export class Ledger {
    * 始めたばかりの人がランキングに一度も載れない)。
    *
    * Bot の対局は部屋(Firebase)が無く、手順を再生して確かめられない。だから
-   *   - 相手の点は端末の言い値を使わず、**本人のサーバー上の点と同じ**とみなす(同格 = ±16)。
-   *     Bot が画面で名乗る持ち点(2000 未満)は見た目だけで、式には入れない
+   *   - **相手の点は Bot の持ち点を踏まえて計算する**(2026-09-28 本人の指示)。ただし
+   *     端末の言い値をそのまま式に入れず、clampBotRating で「正しく作られたなら
+   *     取り得る値」(本人のサーバー上の点の ±80、かつ 1200〜1999)に丸めてから使う。
+   *     大きな数を名乗って稼ぐことはできない。送られて来なければ同格(±16)
    *   - 同じ id は二度記録しない(matches に host=本人・guest="bot" で残す)
    *
    * 2026-09-28: **持ち点の上限で断るのをやめた**(本人の指示「2000 を超えた人でも Bot と
    * マッチングする」「いつでも数える」)。until に正の数を渡せば今まで通り断る
    */
-  recordBot(uid, { id, winner, name, icon }, now, until = 0) {
+  recordBot(uid, { id, winner, name, icon, foeRating }, now, until = 0) {
     const matchId = `bot:${uid}:${id}`;
     if (this.sql("SELECT id FROM matches WHERE id=?", matchId)[0])
       return { recorded: false, reason: "duplicate" };
@@ -278,9 +281,11 @@ export class Ledger {
     const won = winner === null ? null : winner === 0;
     const streak = won === true ? (p.streak || 0) + 1 : 0;
     const bonus = winStreakBonus(streak);
+    // Bot の持ち点。端末の言い値は、取り得る値に丸めてから式へ
+    const foe = clampBotRating(foeRating, p.rating);
     const next = {
       ...p,
-      ...nextRating(p.rating, p.rating, won),
+      ...nextRating(p.rating, foe, won),
       rated: p.rated + 1,
     };
     next.rating = normalizeRating(next.rating + bonus);

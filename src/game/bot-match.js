@@ -13,9 +13,11 @@
  *  - 直前のランダムマッチで人に負けていたら、次は探さずにすぐ Bot(1敗したら Bot)。Bot 戦を1局すると元に戻る
  *  - Bot との 9×9 は持ち点に数える(人との対局と同じ Elo)
  *  - **Bot が名乗る持ち点は 2000 未満**(BOT_RATING_MAX)。自分の近く(±80)に寄せるが、
- *    2000 以上の人にはその手前で頭打ちになる。なお**持ち点の増減はこの値を使わない** —
- *    サーバー(src/server/ledger.js)は Bot を「自分と同格」として ±16 で計算する。
- *    言い値を式に入れないため(端末から送られる数を信じない)
+ *    2000 以上の人にはその手前で頭打ちになる
+ *  - **持ち点の増減は Bot の持ち点を踏まえて計算する**(2026-09-28 本人の指示)。
+ *    ただしサーバーは端末の言い値をそのまま使わない。clampBotRating で
+ *    「正しく作られたなら取り得る値」(自分の点の ±BOT_RATING_SPREAD、かつ 1200〜1999)に
+ *    丸めてから式に入れる。大きな数を名乗って稼ぐことはできない
  *  - **強さは3段階**(BOT_TIERS)。自分の持ち点で決まり、上がるほど強い相手になる:
  *      1 見習い(〜1549): 手の 45% をでたらめに指す
  *      2 修行中(1550〜1649): 手の 20% をでたらめに指す
@@ -38,6 +40,33 @@ import { isFrozen } from "./areas.js";
  * 強さの段階(BOT_TIERS)の区切りにも使う
  */
 export const BOT_RATING_MAX = 2000;
+
+/**
+ * Bot の持ち点が自分から離れてよい幅(±)。makeBot はこの幅で振り、
+ * サーバーはこの幅に丸めてから式に入れる(端末の言い値をそのまま信じない)
+ */
+export const BOT_RATING_SPREAD = 80;
+
+/**
+ * 端末が名乗った Bot の持ち点を、**正しく作られたなら取り得る値**に丸める。
+ * サーバー(src/server/ledger.js)が持ち点を計算する前に必ず通す。
+ *   1. 自分の点の ±BOT_RATING_SPREAD に収める
+ *   2. さらに 1200〜(BOT_RATING_MAX-1) に収める
+ * 数でなければ「自分と同じ」(＝同格)にする。
+ * 丸めるので、大きな数を名乗って稼ぐことはできない(2026-09-28 本人の指示)
+ */
+export function clampBotRating(claimed, myRating) {
+  const me = normalizeRating(myRating ?? START_RATING);
+  // null・undefined・空文字は Number() が 0 になってしまうので先に外す
+  if (typeof claimed !== "number" && typeof claimed !== "string") return me;
+  const n = Number(claimed);
+  if (!Number.isFinite(n) || n <= 0) return me;
+  const near = Math.min(
+    Math.max(Math.round(n), me - BOT_RATING_SPREAD),
+    me + BOT_RATING_SPREAD,
+  );
+  return Math.min(Math.max(near, 1200), BOT_RATING_MAX - 1);
+}
 
 /**
  * かつて「ここに届いたら Bot は出ない」だった線。いまは**強さの段階の区切り**と、
@@ -107,7 +136,10 @@ export function makeBot(myRating, myName = null, rng = Math.random) {
   // 2000 以上の人には 1999 が上限になる
   const rating = Math.max(
     1200,
-    Math.min(BOT_RATING_MAX - 1, base + Math.round(rng() * 160 - 80)),
+    Math.min(
+      BOT_RATING_MAX - 1,
+      base + Math.round(rng() * BOT_RATING_SPREAD * 2 - BOT_RATING_SPREAD),
+    ),
   );
   const { tier, blunder } = botTierFor(base);
   // エリアは6種を均等に。王はそのエリアの帯からランダム

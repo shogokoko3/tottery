@@ -110,9 +110,45 @@ const worker = readFileSync(new URL("../src/server/worker.js", import.meta.url),
 assert.ok(/if \(op === "finish" && body\.bot === true\)/.test(worker), "finish に Bot の枝がある");
 assert.ok(/!\[0, 1, null\]\.includes\(body\.winner\)/.test(worker), "勝者は 0・1・null だけ");
 assert.ok(/l\.recordBot\(uid, args, now\)/.test(worker), "上限は渡さない(2026-09-28 から持ち点に関わらず数える)");
-assert.ok(!/body\.rating|args\.rating|body\.foeRating/.test(worker), "端末の言い値の点は読まない");
+assert.ok(!/body\.rating|args\.rating/.test(worker), "自分の点は端末から読まない");
+// 2026-09-28: Bot の点だけは受け取る。ただし**台帳が丸めてから**式に入れる
+assert.ok(/foeRating/.test(worker), "Bot の点は受け取る");
+const ledgerSrc = readFileSync(new URL("../src/server/ledger.js", import.meta.url), "utf8");
+assert.ok(/clampBotRating\(foeRating, p\.rating\)/.test(ledgerSrc), "言い値は丸めてから式に入れる");
+assert.ok(/nextRating\(p\.rating, foe, won\)/.test(ledgerSrc), "丸めた点で計算する");
+const seasonUi = readFileSync(new URL("../src/ui/season.jsx", import.meta.url), "utf8");
+assert.ok(/foeRating: bot\.rating/.test(seasonUi), "端末は Bot の点を送る");
 const season = readFileSync(new URL("../src/ui/season.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
 assert.ok(/id: bot\.matchId \|\| `\$\{bot\.id\}:\$\{round\}`/.test(season), "Bot 戦は matchId を送る");
 assert.ok(/const eligible = \(!!network \|\| !!bot\) && state\.boardSize === 9 && !disabled;/.test(season), "9×9 の Bot 戦だけ");
 
-console.log("Bot 戦をシーズンに数える: 同格の ±16・重複なし・1戦から順位・持ち点の上限なし・配線 OK");
+// Bot の点を踏まえて計算されるか(丸めも含めて)
+{
+  const db4 = new DatabaseSync(":memory:");
+  const sql4 = (q, ...args) => db4.prepare(q).all(...args);
+  const l4 = new Ledger(sql4);
+  const t = Date.parse("2026-09-20T03:00:00Z");
+  const u = "player-r";
+  // 1500 の人が 1580 の Bot に勝つ → 同格(1500)より多く増える
+  l4.recordBot(u, { id: "a1", winner: 0, name: "ぼ", icon: null, foeRating: 1580 }, t);
+  const strong = l4.list("2026-09").find((r) => r.uid === u).rating;
+  const db5 = new DatabaseSync(":memory:");
+  const l5 = new Ledger((q, ...args) => db5.prepare(q).all(...args));
+  l5.recordBot(u, { id: "a1", winner: 0, name: "ぼ", icon: null, foeRating: 1420 }, t);
+  const weak = l5.list("2026-09").find((r) => r.uid === u).rating;
+  assert.ok(strong > weak, `強い Bot に勝つほうが増える(${strong} > ${weak})`);
+  // 言い値が大きすぎても丸められる。3000 と名乗っても 1580(=1500+80)止まり
+  const db6 = new DatabaseSync(":memory:");
+  const l6 = new Ledger((q, ...args) => db6.prepare(q).all(...args));
+  l6.recordBot(u, { id: "a1", winner: 0, name: "ぼ", icon: null, foeRating: 3000 }, t);
+  const lied = l6.list("2026-09").find((r) => r.uid === u).rating;
+  assert.equal(lied, strong, "3000 と名乗っても 1580 と同じ扱い(丸められる)");
+  // 送って来なければ同格
+  const db7 = new DatabaseSync(":memory:");
+  const l7 = new Ledger((q, ...args) => db7.prepare(q).all(...args));
+  l7.recordBot(u, { id: "a1", winner: 0, name: "ぼ", icon: null }, t);
+  const even = l7.list("2026-09").find((r) => r.uid === u).rating;
+  assert.ok(even < strong && even > weak, `無指定は同格(${even})`);
+}
+
+console.log("Bot 戦をシーズンに数える: Bot の点を踏まえた計算(丸めあり)・重複なし・1戦から順位・持ち点の上限なし・配線 OK");

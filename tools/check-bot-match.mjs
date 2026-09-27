@@ -15,7 +15,7 @@ globalThis.localStorage = {
     delete store[k];
   },
 };
-const { BOT_RATING_MAX: _BRM, BOT_UNTIL_RATING, BOT_TIERS, BOT_WAIT_MS, BOT_NAMES, matchesBot, makeBot, botTierFor, botAction, randomMove, botSearchDelay, botPlan, noteRandomResult, wantsBotNow, clearBotNow } = await import("../src/game/bot-match.js");
+const { BOT_RATING_MAX: _BRM, BOT_RATING_SPREAD, clampBotRating, BOT_UNTIL_RATING, BOT_TIERS, BOT_WAIT_MS, BOT_NAMES, matchesBot, makeBot, botTierFor, botAction, randomMove, botSearchDelay, botPlan, noteRandomResult, wantsBotNow, clearBotNow } = await import("../src/game/bot-match.js");
 const { JOSEKI_AREAS, JOSEKI_KINGS } = await import("../src/game/cpu-joseki.js");
 const { ICONS } = await import("../src/game/icons.js");
 const { START_RATING, nextRating } = await import("../src/game/rating.js");
@@ -209,4 +209,24 @@ assert.equal(matchesBot("abc"), true);
   assert.ok(!/CPUが考えています/.test(game), "Bot 戦で「CPU」と出さない(案内の行そのものを出さない)");
   assert.ok(/if \(\(network && network\.random\) \|\| bot\) noteRandomResult\(\{ won, vsBot: !!bot \}\);/.test(game), "ランダムマッチの結果を控える(人に負けたら次は Bot)");
 }
+// Bot の点の丸め(2026-09-28 本人の指示「Bot のレートを踏まえた計算に」)。
+// サーバーは端末の言い値をそのまま式に入れない
+{
+  assert.equal(BOT_RATING_SPREAD, 80);
+  assert.equal(clampBotRating(1560, 1500), 1560, "取り得る値はそのまま");
+  assert.equal(clampBotRating(9999, 1500), 1580, "上は自分+80 まで");
+  assert.equal(clampBotRating(100, 1500), 1420, "下は自分-80 まで");
+  assert.equal(clampBotRating(3000, 2600), _BRM - 1, "2000 未満の頭打ちが効く");
+  assert.equal(clampBotRating(1999, 2600), _BRM - 1);
+  for (const bad of [null, undefined, "", 0, -5, NaN, {}, []])
+    assert.equal(clampBotRating(bad, 1700), 1700, `変な値は同格(${String(bad)})`);
+  // makeBot が作る値は、必ず丸めても変わらない(＝正しく作られた値は素通り)
+  for (let k = 0; k < 300; k++) {
+    for (const me of [1200, 1500, 1750, 1999, 2000, 2600]) {
+      const r = makeBot(me).rating;
+      assert.equal(clampBotRating(r, me), r, `makeBot の値は素通り(自分${me} / ${r})`);
+    }
+  }
+}
+
 console.log("ランダムマッチの練習相手(Bot): 判定・3段階の強さ・6エリア均等・持ち点が 2000 に届く・配線 OK");

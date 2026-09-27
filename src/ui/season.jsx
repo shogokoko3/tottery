@@ -602,6 +602,8 @@ export function useSeasonMatch(state, network, round, disabled, bot = null) {
               winner: state.winner,
               name: me.name || "名無し",
               icon: me.icon || null,
+              // Bot の持ち点。サーバーは丸めてから式に入れる(2026-09-28 本人の指示)
+              foeRating: bot.rating,
               uid: myUid(),
             };
           })()

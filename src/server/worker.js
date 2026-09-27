@@ -283,7 +283,15 @@ async function handleApi(request, env, url) {
             : "名無し";
         const icon =
           typeof body.icon === "string" && /^[\w-]{1,32}$/.test(body.icon) ? body.icon : null;
-        return call("record-bot", { id: body.id, winner: body.winner, name, icon });
+        // Bot の持ち点。**そのまま式には入れない** — 台帳が clampBotRating で
+        // 取り得る値に丸める(2026-09-28 本人の指示「Bot のレートを踏まえた計算に」)
+        const foeRating =
+          Number.isSafeInteger(body.foeRating) &&
+          body.foeRating > 0 &&
+          body.foeRating < 4000
+            ? body.foeRating
+            : null;
+        return call("record-bot", { id: body.id, winner: body.winner, name, icon, foeRating });
       }
       if (op === "finish") {
         if (
