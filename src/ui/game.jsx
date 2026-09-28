@@ -2632,6 +2632,7 @@ export function GameCore({
           onSkip={() => {
             const after = skipTutorials([tutorial]);
             publishPlayer(after);
+            grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
             if (nextTutorial && onNextTutorial) onNextTutorial();
             else if (onTutorialList) onTutorialList();
             else onExit();
@@ -2655,6 +2656,7 @@ export function GameCore({
       onSkipThis={() => {
         const after = skipTutorials([tutorial]);
         publishPlayer(after);
+        grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
         if (nextTutorial && onNextTutorial) onNextTutorial();
         else if (onTutorialList) onTutorialList();
         else onExit();
@@ -2662,6 +2664,7 @@ export function GameCore({
       onSkipAll={(left) => {
         const after = skipTutorials(left);
         publishPlayer(after);
+        grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
         if (onTutorialList) onTutorialList();
         else onExit();
       }}
@@ -2679,7 +2682,6 @@ export function GameCore({
   );
   let R = a.boardSize,
     P = network
-            grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
       ? p
       : cpu
         ? 0
@@ -2704,7 +2706,6 @@ export function GameCore({
     self: network ? p : cpu ? 0 : null,
     tutorial,
   });
-        grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
 
   // 効果音。知らせるのは自分に関わる残り時間だけ。
   // 布陣のあいだは置ける残り、対局中は自分の持ち時間を見る
@@ -2712,7 +2713,6 @@ export function GameCore({
     state: a,
     self: network ? p : cpu ? 0 : null,
     captureHandled: aceMagic.captureHandled,
-        grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
     warnMs:
       noLimit || pauseClock
         ? null
@@ -3570,6 +3570,22 @@ export function GameCore({
             </button>
           </div>
         )}
+        {pendingMove && (
+          <MoveConfirm
+            from={pendingMove.fromSquare}
+            to={squareName(pendingMove.row, pendingMove.col, R)}
+            onCancel={() => setPendingMove(null)}
+            onConfirm={() => {
+              y({
+                type: "MOVE_PIECE",
+                row: pendingMove.row,
+                col: pendingMove.col,
+                captures: pendingMove.captures,
+              });
+              setPendingMove(null);
+            }}
+          />
+        )}
         {pendingCapture && (
           <CaptureConfirm
             count={pendingCapture.count}
@@ -3618,22 +3634,6 @@ export function GameCore({
             <div
               className={`board-grid area-board ${fieldTheme ? "area-illustrated" : ""}`}
               ref={boardRef}
-        {pendingMove && (
-          <MoveConfirm
-            from={pendingMove.fromSquare}
-            to={squareName(pendingMove.row, pendingMove.col, R)}
-            onCancel={() => setPendingMove(null)}
-            onConfirm={() => {
-              y({
-                type: "MOVE_PIECE",
-                row: pendingMove.row,
-                col: pendingMove.col,
-                captures: pendingMove.captures,
-              });
-              setPendingMove(null);
-            }}
-          />
-        )}
               style={{
                 gridTemplateColumns: `repeat(${R},1fr)`,
               }}

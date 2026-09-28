@@ -547,6 +547,8 @@ export function TutorialSelect({ onStart, onBack }) {
             const after = skipTutorials(left);
             setProfile(after);
             publishPlayer(after);
+            // 飛ばすのも終えたのと同じ扱い。1話ごとのチケットも同じだけ配る
+            grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
           }}
         />
       )}
@@ -566,5 +568,3 @@ export function LevelUpNote({ from, to }) {
     </div>
   );
 }
-            // 飛ばすのも終えたのと同じ扱い。1話ごとのチケットも同じだけ配る
-            grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
