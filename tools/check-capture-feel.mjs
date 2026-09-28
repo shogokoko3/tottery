@@ -43,29 +43,26 @@ is("取ったときと取られたときでも違う", capturePattern({ king: tr
 is("1枚は短く1回", capturePattern({ count: 1 }), PATTERNS.capture);
 is("まとめ取りは刻む", capturePattern({ count: 3 }), PATTERNS.captureMany);
 is("王が混ざれば枚数より王を優先", capturePattern({ count: 3, king: true }), PATTERNS.king);
-// 震わせられない端末(iOS の WebView など)でも落ちない
-is("navigator が無くても落ちない", canVibrate(), false);
-is("鳴らせなければ false を返すだけ", vibrate("capture"), false);
+// プラグイン(@capacitor/haptics)を使うので、iPhone でも鳴る。
+// Web と Android ではプラグインの中で navigator.vibrate に落ちる
+is("プラグインがあれば鳴らせる扱い", canVibrate(), true);
 is("知らない型は何もしない", vibrate("そんな型は無い"), false);
+is("中身が空でも落ちない", vibrate({}), false);
+// iPhone は長さではなく**強さと種類**で指定する
+is("ふつうの取りは軽いぶつかり", PATTERNS.capture.kind, "impact");
+is("王は**知らせ**の型にして、ぶつかりと明確に変える", PATTERNS.king.kind, "notification");
+is("取られたときも知らせだが別の型", PATTERNS.kingLost.type !== PATTERNS.king.type, true);
+is("まとめ取りは刻む回数を持つ", PATTERNS.captureMany.repeat > 1, true);
+is(
+  "navigator.vibrate しか無いところ向けの並びも持つ",
+  Object.values(PATTERNS).every((p) => p.web !== undefined),
+  true,
+);
 {
-  // Node の navigator は読み取り専用なので、定義し直して差し替える
-  const called = [];
-  const put = (v) =>
-    Object.defineProperty(globalThis, "navigator", {
-      value: v,
-      configurable: true,
-      writable: true,
-    });
-  put({ vibrate: (pat) => (called.push(pat), true) });
-  is("ある端末では呼ぶ", vibrate("king"), true);
-  is("渡す型", called[0], PATTERNS.king);
-  put({
-    vibrate: () => {
-      throw new Error("止められた");
-    },
-  });
-  is("端末が断っても落ちない", vibrate("capture"), false);
-  put(undefined);
+  // Capacitor の Proxy を await しないこと(2026-09-15 に店で踏んだ)
+  const src = fs.readFileSync(new URL("../src/game/haptics.js", import.meta.url), "utf8");
+  is("プラグインは包んでから使う", /const tap = \{/.test(src), true);
+  is("async から Proxy をそのまま返さない", /await Haptics\./.test(src), false);
 }
 
 console.log("\nまとめ取りの音階");

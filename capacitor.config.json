@@ -3,6 +3,8 @@
   "appName": "Tottery",
   "webDir": "dist",
   "android": {
-    "includePlugins": []
+    "includePlugins": [
+      "@capacitor/haptics"
+    ]
   }
 }

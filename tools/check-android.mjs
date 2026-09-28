@@ -154,16 +154,22 @@ if (HAS_ANDROID) {
     true,
   );
   const cfg = JSON.parse(read("capacitor.config.json"));
+// 2026-09-28: 震え(@capacitor/haptics)だけ入れる。ほかは使わないので入れない
   is(
-    "Android にはネイティブのプラグインを入れない",
-    Array.isArray(cfg.android?.includePlugins) &&
-      cfg.android.includePlugins.length === 0,
+    "Android に入れるプラグインは絞ってある",
+    cfg.android?.includePlugins,
+    ["@capacitor/haptics"],
+  );
+  const wiring = read("android/app/capacitor.build.gradle");
+  is(
+    "震えのプラグインが配線されている",
+    /implementation project\(':capacitor-haptics'\)/.test(wiring),
     true,
   );
   is(
-    "その結果、プラグインの配線が空になっている",
-    !/implementation project\(':capacitor-/.test(read("android/app/capacitor.build.gradle")),
-    true,
+    "使わないプラグイン(広告・課金・Apple)は入っていない",
+    /capacitor-community-admob|capgo-native-purchases|apple-sign-in/.test(wiring),
+    false,
   );
   is("理由を書き残してある", fs.existsSync("capacitor-config.md"), true);
   const manifest = read("android/app/src/main/AndroidManifest.xml");

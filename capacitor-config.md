@@ -2,9 +2,14 @@
 
 JSON にはコメントを書けないので、決めた理由をここに置く。
 
-## `android.includePlugins: []`
+## `android.includePlugins: ["@capacitor/haptics"]`
 
-Android では**ネイティブのプラグインを1つも入れない**。
+Android に入れるのは **@capacitor/haptics だけ**(2026-09-28)。
+駒を取ったときに震わせるために要る。ほかのプラグインは Android では使わない。
+
+**書くのはパッケージ名**(`@capacitor/haptics`)で、JS のプラグイン名(`Haptics`)ではない。
+名前を間違えても `cap update` は黙って0件にするので、`android/app/capacitor.build.gradle` に
+`implementation project(...)` が出ているかで確かめること。
 
 いま入っているプラグインは、どれも Android では使わない:
 
@@ -19,5 +24,5 @@ Android では**ネイティブのプラグインを1つも入れない**。
 入ってしまう**。Google Play の「データ セーフティ」では権限に合わせた申告が要るので、
 「広告は出さないのに広告 ID を使う」という食い違った申告になる。
 
-あとで Google Play Billing を入れるときは、ここに `"NativePurchases"` を足す。
+あとで Google Play Billing を入れるときは、ここに `"@capgo/native-purchases"` を足す。
 iOS 側は今まで通り全部入る(`ios` には書いていないので、全体の既定＝全部)。

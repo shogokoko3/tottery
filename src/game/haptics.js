@@ -5,48 +5,100 @@
  * 画面を見る前に「大きいことが起きた」と分かるようにする(2026-09-28 本人の指示)。
  *
  * 作り:
- * - 使うのは `navigator.vibrate` だけ。Capacitor の Haptics プラグインは入れていない
- *   (プラグインを1つ増やすと iOS の SPM と審査の申告が増える)。
- * - **iOS の WebView は navigator.vibrate を持たない。** そこでは何も起きない。
- *   鳴らない端末でも対局は同じに進むよう、失敗しても黙って通す。
- *   iOS で震わせたくなったら、ここだけを Haptics プラグインに差し替えればよい。
- * - 音と同じで、設定の「音を鳴らさない」とは別。震えは音ではないので連動させない。
+ * - **@capacitor/haptics** を使う(2026-09-28 に追加)。
+ *   はじめは navigator.vibrate だけで書いたが、**iPhone の WebView はこれを持たない**ので
+ *   iOS で何も起きなかった。プラグインなら iPhone の Taptic Engine が鳴り、
+ *   Android と Web では中でその navigator.vibrate に落ちる。
+ * - iPhone では「長さ(ミリ秒)」ではなく **強さと種類**で指定する。
+ *   Taptic Engine は時間で震えるものではないので、長さを渡しても同じ叩き方になる。
+ *     impact(Light/Medium/Heavy) … 物がぶつかった手ごたえ
+ *     notification(Success/Warning/Error) … 出来事の知らせ。**3連打で、impact と明確に違う**
+ * - Capacitor のプラグインは Proxy なので、**async からそのまま return / await しない**
+ *   (then() がネイティブ呼び出しになって永遠に戻らない。2026-09-15 に店で踏んだ)。
+ *   使うメソッドだけを包んだ then を持たない入れ物にしてから触る。
+ * - 鳴らない端末(許可が無い・対応していない)でも対局は同じに進むよう、失敗しても黙って通す。
  */
+import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 
-/** 震え方の型(ミリ秒の並び。数値1つなら、その長さで1回) */
+/**
+ * 使うメソッドだけの薄い包み。then を持たないので、返しても await されない
+ * (iap.js と同じ作り)
+ */
+const tap = {
+  impact: (options) => Haptics.impact(options),
+  notification: (options) => Haptics.notification(options),
+};
+
+/**
+ * 震え方の型。
+ *   kind … "impact"(ぶつかった手ごたえ)か "notification"(出来事の知らせ)
+ *   arg  … その強さ・種類
+ *   web  … navigator.vibrate しか無いところ向けのミリ秒の並び(検査でも読む)
+ */
 export const PATTERNS = Object.freeze({
-  /** ふつうの駒を取った。短く1回 */
-  capture: 35,
-  /** まとめて取った。枚数ぶん、軽く刻む */
-  captureMany: [30, 60, 30, 60, 30],
-  /** 王を取った。長め→間→長めで、ふつうの取りと聞き分けられる */
-  king: [90, 70, 160],
-  /** 自分の王が取られた。王と同じ重さだが、間を詰めて慌ただしくする */
-  kingLost: [140, 60, 60, 60, 140],
+  /** ふつうの駒を取った。軽く1回 */
+  capture: Object.freeze({ kind: "impact", style: ImpactStyle.Light, web: 20 }),
+  /** まとめて取った。中くらいの手ごたえを枚数ぶん */
+  captureMany: Object.freeze({
+    kind: "impact",
+    style: ImpactStyle.Medium,
+    repeat: 3,
+    web: [30, 60, 30, 60, 30],
+  }),
+  /** 王を取った。**知らせ**の型にして、ふつうの取りとはっきり変える */
+  king: Object.freeze({
+    kind: "notification",
+    type: NotificationType.Success,
+    web: [35, 65, 21],
+  }),
+  /** 自分の王が取られた。同じ知らせでも違う型(iPhone では叩き方が変わる) */
+  kingLost: Object.freeze({
+    kind: "notification",
+    type: NotificationType.Error,
+    web: [27, 45, 50],
+  }),
 });
 
-/** この端末で震やせるか */
+/** まとめ取りで刻むときの間隔(ミリ秒) */
+const REPEAT_MS = 90;
+
+/** この端末で震わせられるか(プラグインが載っていれば、その先はプラグインが決める) */
 export function canVibrate() {
   try {
-    return typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function")
+      return true;
+    // iOS のアプリ。navigator.vibrate は無いが、プラグインが鳴らす
+    return !!Haptics;
+  } catch {
+    return false;
+  }
+}
+
+/** 1回鳴らす。失敗しても黙って通す */
+function fire(pattern) {
+  try {
+    if (pattern.kind === "notification")
+      tap.notification({ type: pattern.type })?.catch?.(() => {});
+    else tap.impact({ style: pattern.style })?.catch?.(() => {});
+    return true;
   } catch {
     return false;
   }
 }
 
 /**
- * 震わせる。pattern は PATTERNS の名前か、ミリ秒の並び。
+ * 震わせる。pattern は PATTERNS の名前か、その中身。
  * 鳴らせない端末では何もしない(例外も投げない)
  */
 export function vibrate(pattern) {
   const p = typeof pattern === "string" ? PATTERNS[pattern] : pattern;
-  if (p === undefined || p === null) return false;
-  if (!canVibrate()) return false;
-  try {
-    return navigator.vibrate(p) !== false;
-  } catch {
-    return false;
-  }
+  if (!p || !p.kind) return false;
+  const ok = fire(p);
+  // まとめ取りは間を置いて刻む。1回目は上で鳴らしたぶん
+  if (ok && p.repeat > 1)
+    for (let i = 1; i < p.repeat; i++)
+      setTimeout(() => fire(p), REPEAT_MS * i);
+  return ok;
 }
 
 /**
