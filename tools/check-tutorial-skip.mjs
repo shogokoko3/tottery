@@ -79,6 +79,7 @@ const reset = () => {
   assert.ok(/const left = TUTORIALS\.filter\(\(t\) => !profile\.cleared\.includes\(t\.id\)\)/.test(ui), "一覧が飛ばすのは本編の未了の話だけ(番外を含めない)");
   assert.ok(/onClick=\{\(\) => setConfirmSkip\(true\)\}/.test(ui), "一覧の「飛ばす」は確認を挟む");
   assert.ok(/const after = skipTutorials\(left\);\s*setProfile\(after\);\s*publishPlayer\(after\);/.test(ui), "確認のあとに飛ばし、画面と台帳を更新");
+  assert.ok(/grantTutorialTickets\(after\.skipped/.test(ui), "飛ばしたぶんもガチャチケットを配る(2026-09-28)");
   assert.ok(/onClick=\{\(\) => setConfirm\(true\)\}/.test(ui), "案内の札の「この話を飛ばす」も確認を挟む");
   assert.ok(/\(onSkip \|\| onInterrupt\) && !step\.end && \(/.test(ui), "終わりの札には出さない");
   // 中断してやめる(クリアにせずホームへ)を、常に見える説明パネル下部に出す(2026-09-21)
@@ -86,7 +87,7 @@ const reset = () => {
   const game0 = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
   assert.ok(/onInterrupt=\{onHome \? goHome : onExit\}/.test(game0), "中断はホーム(なければタイトル)へ");
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
-  assert.ok(/const after = skipTutorials\(\[tutorial\]\);\s*publishPlayer\(after\);\s*if \(nextTutorial && onNextTutorial\) onNextTutorial\(\);/.test(game), "対局中に飛ばすと、その話を終えた扱いで次の話へ");
+  assert.ok(/const after = skipTutorials\(\[tutorial\]\);\s*publishPlayer\(after\);\s*grantTutorialTickets\(after\.skipped[^;]*;\s*if \(nextTutorial && onNextTutorial\) onNextTutorial\(\);/.test(game), "対局中に飛ばすと、その話を終えた扱いで次の話へ(褒美も同じだけ配る)");
   assert.ok(/skipXp=\{tutorial\.xp \|\| 0\}/.test(game));
   // 途中でも飛ばせる: 上の釦(TutorialSkipMenu)を対局画面の全ての GameShell に渡す
   assert.ok(/export function TutorialSkipMenu\(/.test(ui), "上の「飛ばす」がある");

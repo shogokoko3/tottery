@@ -86,7 +86,8 @@ assert.ok(/export async function noteCollection\(\)[\s\S]*?catch \{[\s\S]*?retur
 const screens = fs.readFileSync("src/ui/screens.jsx", "utf8");
 assert.match(screens, /noteCollection\(\);/, "起動時に送る");
 const skins = fs.readFileSync("src/ui/skins.jsx", "utf8");
-assert.equal((skins.match(/noteCollection\(\);/g) || []).length, 2, "ガチャを引いた2つの道のどちらでも送る");
+// 2026-09-28: はじめての10連が3つ目の道として増えた
+assert.equal((skins.match(/noteCollection\(\);/g) || []).length, 3, "ガチャを引いた3つの道(サーバー・端末・初回の10連)のどれでも送る");
 // この段階では、まだ何も拒まない
 const areas = fs.readFileSync("src/game/areas.js", "utf8");
 assert.ok(!/first_seen|ownership|所持を確かめ/.test(areas), "ルール層は台帳を見ない(設計どおり)");

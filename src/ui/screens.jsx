@@ -167,6 +167,8 @@ import { backupIfDue } from "../net/backup.js";
 import { shopAvailable } from "../net/iap.js";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
+// はじめての10連を引いたかの控え(2026-09-28 本人の指示)
+import { firstPullDone } from "../skins/first-pull.js";
 import { baseSkinId, foilId, sanitizeLoadout } from "../skins/catalog.js";
 import { createCpuLoadout, ensureCpuFoil } from "../skins/cpu-loadout.js";
 import {
@@ -2098,6 +2100,8 @@ function TotteryScreens() {
     [banned, setBanned] = (0, useState)(!1),
     // 名前を決めた直後に一度だけ出す、第1話への案内
     [offerTutorial, setOfferTutorial] = (0, useState)(!1),
+    // はじめての10連(2026-09-28 本人の指示)。名前を決めた直後、チュートリアルより先に引く
+    [firstPullMode, setFirstPullMode] = (0, useState)(!1),
     // 詳細設定(src/game/custom-rules.js)。端末に覚える。null ならクラシック
     [customRules, setCustomRules] = (0, useState)(() => loadCustomRules()),
     // リンク(?room=ABCDEF)から開いたときの合言葉。名前を決めたらフレンド対戦の画面へ
@@ -2301,7 +2305,16 @@ function TotteryScreens() {
         <NameSetupScreen
           onDone={() => {
             setNamed(!0);
-            // 初めての人にだけ、一度きり。第1話を終えていれば出さない
+            // **まず10連**(2026-09-28 本人の指示。最初にワクワクさせ、引き直しもしやすく)。
+            // 引き終わってホームへ戻るときに、第1話の案内を出す
+            if (!firstPullDone(getCollection())) {
+              setFirstPullMode(!0);
+              setSkinsTab("gacha");
+              setSkinsFrom("home");
+              t("skins");
+              return;
+            }
+            // すでに引いている人(入れ直しなど)は、これまで通り第1話の案内
             if (shouldOfferFirstTutorial(loadProfile())) {
               markFirstTutorialOffered();
               setOfferTutorial(!0);
@@ -2445,7 +2458,20 @@ function TotteryScreens() {
           ),
           skins: (
             <SkinsScreen
-              onBack={() => t(skinsFrom)}
+              firstPull={firstPullMode}
+              onBack={() => {
+                if (firstPullMode) {
+                  // はじめての10連が終わった。ここで第1話へ誘う
+                  setFirstPullMode(!1);
+                  if (shouldOfferFirstTutorial(loadProfile())) {
+                    markFirstTutorialOffered();
+                    setOfferTutorial(!0);
+                  }
+                  t("home");
+                  return;
+                }
+                t(skinsFrom);
+              }}
               onBattlePass={() => t("battlepass")}
               initialTab={skinsTab}
             />

@@ -112,6 +112,12 @@ import { FoilSeal, FoilUnveiling } from "./foil-unveiling.jsx";
 import { createFoilUnveilingAssets } from "../skins/foil-unveiling-assets.js";
 import { SummonIntro } from "./summon-intro.jsx";
 import { warmSummonIntro } from "../skins/summon-preload.js";
+// はじめての10連(2026-09-28 本人の指示)
+import {
+  firstPullDone,
+  firstPullResult,
+  markFirstPull,
+} from "../skins/first-pull.js";
 
 const foilPct = FOIL_CHANCE * 100;
 /**
@@ -1525,7 +1531,13 @@ function ResultDismantle({
   );
 }
 
-export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
+export function SkinsScreen({
+  onBack,
+  onBattlePass,
+  initialTab = "gacha",
+  // はじめての10連(2026-09-28 本人の指示)。名前を決めた直後に一度だけ真で入る
+  firstPull = false,
+}) {
   const collection = useCollection(),
     reduce = useReducedMotion();
   // 最初に出すタブ。ショップの「フォイルを買う」から来たときは「加工」を開く
@@ -1763,6 +1775,27 @@ export function SkinsScreen({ onBack, onBattlePass, initialTab = "gacha" }) {
     // 引いた札をサーバーの記録にも残す(所持の検証の土台。best-effort)
     noteCollection();
   };
+
+  /**
+   * はじめての10連(2026-09-28 本人の指示)。名前を決めた直後に一度だけ。
+   * チケットは使わず、SSR が1枚以上確定、フォイルは出ない(src/skins/first-pull.js)。
+   * 門もフリーズもふつう通り
+   */
+  const rollFirst = async () => {
+    if (busy.current || collection.pending || collection.lastCraft) return;
+    const next = await acquire(
+      (s) => markFirstPull(applyPull(s, firstPullResult(), { free: true })),
+      "summon",
+    );
+    if (next?.pending?.results) logPull(next.pending.results);
+    noteCollection();
+  };
+  // 初回の合図が来ていて、まだ引いていなければ、開いた時点で引く
+  useEffect(() => {
+    if (!firstPull || firstPullDone(collection) || collection.pending) return;
+    rollFirst();
+    // 一度だけ。結果を見ているあいだに二度目を始めない
+  }, [firstPull]);
   const equipSkin = async (skin) => {
     if (await run((s) => equip(s, skin.id)))
       setMessage(`${skin.rank}のカードに「${skin.name}」を装備しました。`);

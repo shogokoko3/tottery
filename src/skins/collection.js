@@ -225,6 +225,9 @@ export function normalize(raw) {
     pendingPull: value.pendingPull && typeof value.pendingPull.id === "string" && /^pull:[\w:-]{1,150}$/.test(value.pendingPull.id) && [1, 10].includes(value.pendingPull.amount)
       ? { id: value.pendingPull.id, amount: value.pendingPull.amount } : null,
     lastPullId: typeof value.lastPullId === "string" ? value.lastPullId.slice(0, 160) : null,
+    // はじめての10連を引いたか(2026-09-28 本人の指示)。
+    // ここに並べないと normalize が落としてしまい、開き直すたびに初回の10連が出る
+    firstPullDone: value.firstPullDone === true,
     pending: results.length ? { results, freeze: normalizeSummonFreeze(value.pending?.freeze, results.map(r => r.id)) } : null,
     lastCraft:
       byId(value.lastCraft?.id) && owned[value.lastCraft.id]

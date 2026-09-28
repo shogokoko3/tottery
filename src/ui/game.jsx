@@ -103,6 +103,8 @@ import { enterMatchPresence, leaveMatchPresence } from "../net/friends.js";
 import { normalizeSpectate } from "../game/profile-card.js";
 import { myUid } from "../net/auth.js";
 import { giveGift } from "../game/gifts.js";
+// チュートリアルを1話終えるごとのガチャチケット(2026-09-28 本人の指示)
+import { grantTutorialTickets } from "../game/tutorial-reward.js";
 import { earnTickets } from "../net/wallet.js";
 import {
   WIN_CHANCE_REWARD_TICKETS,
@@ -2452,6 +2454,10 @@ export function GameCore({
           }
         : null),
     });
+    // この1局で**はじめて**終える話か。終えたあとに profile を見ると
+    // もう入っているので、先に覚えておく(褒美を二度配らないため)
+    const freshTutorial =
+      !!tutorial && won && !loadProfile().cleared.includes(tutorial.id);
     xpNoticeRef.current = after.xpNoticeId;
     // 札ごとの熟練度。1局の上限は recordMastery 側で掛ける。
     // 称号が新しく届いていれば、その中で profile.titles に焼き付く
@@ -2474,6 +2480,9 @@ export function GameCore({
         Promise.resolve(
           giveGift({ type: "ticket", amount: WIN_CHANCE_REWARD_TICKETS }),
         ).catch(() => {});
+    // 1話終えるごとにガチャチケット(2026-09-28 本人の指示)。失敗しても対局は止めない
+    if (freshTutorial)
+      grantTutorialTickets([tutorial.id], { uid: myUid() }).catch(() => {});
         earnTickets(rewardEventId(myUid(), day, r.done), WIN_CHANCE_REWARD_TICKETS).catch(
           () => {},
         );
@@ -2670,6 +2679,7 @@ export function GameCore({
   );
   let R = a.boardSize,
     P = network
+            grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
       ? p
       : cpu
         ? 0
@@ -2694,6 +2704,7 @@ export function GameCore({
     self: network ? p : cpu ? 0 : null,
     tutorial,
   });
+        grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
 
   // 効果音。知らせるのは自分に関わる残り時間だけ。
   // 布陣のあいだは置ける残り、対局中は自分の持ち時間を見る
@@ -2701,6 +2712,7 @@ export function GameCore({
     state: a,
     self: network ? p : cpu ? 0 : null,
     captureHandled: aceMagic.captureHandled,
+        grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
     warnMs:
       noLimit || pauseClock
         ? null

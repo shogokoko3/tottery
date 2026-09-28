@@ -19,15 +19,21 @@ function unit(random) {
   return n;
 }
 
-/** Final grants and presentation provenance are saved together by the caller. */
-export function resolveSummonFreeze(initial, random = Math.random) {
+/**
+ * Final grants and presentation provenance are saved together by the caller.
+ *
+ * allowFoil を false にすると、**フリーズの演出はそのままで、フォイルにだけ昇格させない**
+ * (レアリティの昇格 R→SR・SR→SSR はそのまま)。初回の10連で使う
+ * (2026-09-28 本人の指示「フリーズ演出などはありのまま、フォイルは必ず当たらない」)
+ */
+export function resolveSummonFreeze(initial, random = Math.random, { allowFoil = true } = {}) {
   if (!qualifiesForFreeze(initial))
     return { skins: [...initial], freeze: null };
   const skins = initial.map((id) => {
     const skin = byId(id);
     if (skin.foil) return id;
     if (skin.rarity === "SSR")
-      return unit(random) < FREEZE_FOIL_CHANCE ? foilId(id) : id;
+      return allowFoil && unit(random) < FREEZE_FOIL_CHANCE ? foilId(id) : id;
     const pool = POOL.filter(
       (s) => s.rarity === (skin.rarity === "R" ? "SR" : "SSR"),
     );

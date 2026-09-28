@@ -21,6 +21,9 @@ import {
 import { publishPlayer } from "../net/players.js";
 import { ArrowLeft, ArrowRight, Check, Crown, Hand, Lock } from "../icons.jsx";
 
+import { myUid } from "../net/auth.js";
+// 1話終えるごとのガチャチケット(2026-09-28 本人の指示)
+import { grantTutorialTickets } from "../game/tutorial-reward.js";
 /**
  * 台本の1枚。盤を隠さないよう、下から出る帯にしてある。
  */
@@ -563,3 +566,5 @@ export function LevelUpNote({ from, to }) {
     </div>
   );
 }
+            // 飛ばすのも終えたのと同じ扱い。1話ごとのチケットも同じだけ配る
+            grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
