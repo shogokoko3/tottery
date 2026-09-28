@@ -118,6 +118,8 @@ import {
   firstPullResult,
   markFirstPull,
 } from "../skins/first-pull.js";
+// 長押しの受け口(2026-09-28 本人の指示)
+import { useLongPress } from "./long-press.js";
 
 const foilPct = FOIL_CHANCE * 100;
 /**
@@ -702,6 +704,22 @@ function ForgePanel({
 }) {
   const [pick, setPick] = useState("SSR");
   const foilView = view === "foil";
+  // 絵は押しても長押ししても、スキン画面と同じ詳細(大きな絵と「もどる」)へ。
+  // 長押しは「じっくり見たい」ときに自然に出る指の動きなので、そこも拾う
+  // (2026-09-28 本人の指示)。閉じると、この加工の画面に戻る
+  const longPressTarget = useRef(null);
+  const basePress = useLongPress(() => onPick(longPressTarget.current));
+  const longPress = (skin) => ({
+    ...basePress,
+    onPointerDown: (e) => {
+      longPressTarget.current = skin;
+      basePress.onPointerDown?.(e);
+    },
+    onContextMenu: (e) => {
+      longPressTarget.current = skin;
+      basePress.onContextMenu?.(e);
+    },
+  });
   // 加工の画面は、まず「フォイル加工」か「フォイルの交換」を選ぶ。
   // 両方の一覧を一度に出すと長すぎて探せない(2026-09-18 本人の指示)
   const [foilWork, setFoilWork] = useState("milestone");
@@ -899,6 +917,7 @@ function ForgePanel({
                 <button
                   className="forge-milestone-thumb"
                   onClick={() => onPick(byId(foilId(skin.id)))}
+                  {...longPress(byId(foilId(skin.id)))}
                   aria-label={`${skin.name}のフォイル詳細`}
                 >
                   <FoilArtwork
@@ -1000,6 +1019,7 @@ function ForgePanel({
                   <button
                     className="forge-thumb"
                     onClick={() => onPick(skin)}
+                    {...longPress(skin)}
                     aria-label={`${skin.name}の詳細`}
                   >
                     <FoilArtwork
@@ -1044,6 +1064,7 @@ function ForgePanel({
                   <button
                     className="forge-card-art"
                     onClick={() => onPick(skin)}
+                    {...longPress(skin)}
                     aria-label={`${skin.name}の詳細`}
                   >
                     <FoilArtwork
@@ -1104,6 +1125,7 @@ function ForgePanel({
                     <button
                       className="forge-thumb"
                       onClick={() => onPick(skin)}
+                      {...longPress(skin)}
                       aria-label={`${skin.name}の詳細`}
                     >
                       <img src={skin.card} alt="" loading="lazy" />
@@ -1184,6 +1206,7 @@ function ForgePanel({
                   <button
                     className="forge-card-art"
                     onClick={() => onPick(skin)}
+                    {...longPress(skin)}
                     aria-label={`${skin.name}の詳細`}
                   >
                     <img src={skin.card} alt="" loading="lazy" />
