@@ -3089,56 +3089,54 @@
 
 /* 自動で装備された札の印(2026-09-28 本人の指示
    「自動で装着したとわかるエフェクトがあると良さそう」)。
-   めくり終えてから、金の帯が一度だけ走る */
-.reveal-equipped {
+   出す場所は「新たな出会い」の結果の並び(同 指示)。
+   すでに着ているので釦は押せない。その釦のかわりに、この印を置く。
+   幅は札1枚ぶん(375px の端末で 72px)しかないので、
+   「フォイル装備中」と同じ大きさ・同じ詰め方にして1行に収める */
+.skins-result-equipped {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 4px;
-  padding: 2px 9px;
-  border: 1px solid var(--gold);
+  display: block;
+  margin-top: auto;
+  /* 「フォイル装備中」の行と高さをそろえる(同じ行に並ぶので) */
+  padding: 6px 2px;
+  border: 1px solid rgba(212, 175, 55, 0.5);
   border-radius: 999px;
-  background: rgba(212, 175, 55, 0.16);
-  color: var(--gold);
-  font-size: 10px;
+  background: rgba(212, 175, 55, 0.14);
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
-  animation: reveal-equipped-in 420ms ease-out both;
-}
-/* 王冠の粒。装備＝王に着せる、という意味を小さく持たせる */
-.reveal-equipped::before {
-  content: "\265B";
-  font-size: 11px;
-  line-height: 1;
+  color: var(--gold);
+  animation: skins-result-equipped-in 420ms ease-out both;
 }
 /* 帯。一度だけ左から右へ抜ける */
-.reveal-equipped i {
+.skins-result-equipped i {
   position: absolute;
   inset: 0 auto 0 -40%;
   width: 40%;
   background: linear-gradient(
     100deg,
     transparent,
-    rgba(255, 244, 214, 0.85),
+    rgba(255, 244, 214, 0.75),
     transparent
   );
-  animation: reveal-equipped-sweep 900ms 260ms ease-out 1 both;
+  animation: skins-result-equipped-sweep 900ms 260ms ease-out 1 both;
   pointer-events: none;
 }
-@keyframes reveal-equipped-in {
+@keyframes skins-result-equipped-in {
   from {
     opacity: 0;
-    transform: translateY(4px) scale(0.9);
+    transform: translateY(3px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-@keyframes reveal-equipped-sweep {
+@keyframes skins-result-equipped-sweep {
   from {
     left: -40%;
   }
@@ -3147,11 +3145,10 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .reveal-equipped,
-  .reveal-equipped i {
+  .skins-result-equipped {
     animation: none;
   }
-  .reveal-equipped i {
+  .skins-result-equipped i {
     display: none;
   }
 }

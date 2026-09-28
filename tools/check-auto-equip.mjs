@@ -160,12 +160,21 @@ console.log("\n着せた札の控え");
   is("二度目は着せ替えないので控えは空", again.pending?.equipped ?? [], []);
 
   const skins = fs.readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
-  is("札に「装備しました」を出す", /reveal-equipped/.test(skins), true);
-  is("控えを演出に渡す", /equipped=\{collection\.pending\.equipped\}/.test(skins), true);
+  // 印を出すのは**「新たな出会い」の結果の並び**(2026-09-28 本人の指示)。
+  // めくっている最中には出さない
+  is("結果の並びに「装備しました」を出す", /skins-result-equipped"/.test(skins), true);
+  is("めくりの札には出さない", /reveal-equipped/.test(skins), false);
+  is("控えを読んでいる", /collection\.pending\?\.equipped/.test(skins), true);
   // 同じ札を2枚引いても、着せたのは1枚。両方に印が出ないこと
-  is("印は id ではなく枚数で数える", /equippedAt\.has\(i\)/.test(skins), true);
+  is("印は id ではなく枚数で数える", /autoEquippedAt\.has\(index\)/.test(skins), true);
+  // あとから着せ替えたら、ふつうの釦に戻る
+  is(
+    "いま着ている札にだけ出す",
+    /autoEquippedAt\.has\(index\) &&\s*collection\.equipped\[s\.rank\] === s\.id/.test(skins),
+    true,
+  );
   const css = fs.readFileSync(new URL("../src/skins/styles.css", import.meta.url), "utf8");
-  is("控え目の演出が用意されている", /\.reveal-equipped\b/.test(css), true);
+  is("控え目の演出が用意されている", /\.skins-result-equipped\b/.test(css), true);
 }
 console.log(`\n${ok} ok / ${fail.length} NG`);
 if (fail.length) {

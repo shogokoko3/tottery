@@ -222,9 +222,6 @@ function RevealCard({
   // そのキャラの所持数 { base, foil }。引いた札が通常・フォイルのどちらを埋めたかが分かる
   // (2026-09-18 本人の指示)
   owned = null,
-  // この抽選で自動装備されたか(2026-09-28 本人の指示
-  // 「自動で装着したとわかるエフェクトがあると良さそう」)
-  autoEquipped = false,
 }) {
   const skin = byId(result.id);
   // 素で出るか、昇格を経るかは束と位置で決まる(再読み込みしても同じ)
@@ -430,14 +427,6 @@ function RevealCard({
           {final && !identityHidden && !(foilUpgrade && !foilRevealed && !reduce) && result.isNew && (
             <span className="reveal-new">NEW</span>
           )}
-          {/* 自動で装備された札。めくり終えてから、一度だけ金の帯が走る
-              (2026-09-28 本人の指示。手で着せなくてよいと分かるように) */}
-          {final && !identityHidden && !(foilUpgrade && !foilRevealed && !reduce) && autoEquipped && (
-            <span className="reveal-equipped" aria-label="この札を装備しました">
-              <i aria-hidden="true" />
-              装備しました
-            </span>
-          )}
           {/* 通常とフォイルを持っているか。引いた側は光らせる */}
           {final && !identityHidden && !(foilUpgrade && !foilRevealed && !reduce) && owned && (
             <span className="reveal-owned" aria-label="このキャラの所持">
@@ -466,24 +455,10 @@ function SummonReveal({
   reduce,
   drawNumber = 0,
   freeze: freezeInput = null,
-  // この抽選で自動装備された札の id(2026-09-28 本人の指示)
-  equipped = [],
 }) {
   const freeze = useMemo(() => normalizeSummonFreeze(freezeInput, results.map(r => r.id)), [freezeInput, results]);
   // 引いた札ごとに、そのキャラの通常とフォイルを何枚持っているか(結果に出す)
   const ownedNow = useCollection().owned;
-  // 同じ札を2枚引いたときに、どちらにも「装備しました」が出ないように、
-  // **id ではなく何枚目か**で覚える(着せたのは1枚だけ)
-  const equippedAt = useMemo(() => {
-    const left = new Set(Array.isArray(equipped) ? equipped : []);
-    const at = new Set();
-    results.forEach((r, i) => {
-      if (!left.has(r.id)) return;
-      left.delete(r.id);
-      at.add(i);
-    });
-    return at;
-  }, [equipped, results]);
   const ownedOf = (id) => {
     const base = baseSkinId(id);
     return {
@@ -625,7 +600,6 @@ function SummonReveal({
               reduce={reduce}
               seed={seed}
               owned={ownedOf(r.id)}
-              autoEquipped={equippedAt.has(i)}
             />
           ))}
         </div>
@@ -1855,6 +1829,18 @@ export function SkinsScreen({
     if (await run((s) => equip(s, skin.id)))
       setMessage(`${skin.rank}のカードに「${skin.name}」を装備しました。`);
   };
+  // この抽選で自動装備した札(2026-09-28 本人の指示。印は「新たな出会い」に出す)。
+  // 同じ札を2枚引いたときは着せた1枚だけなので、**id ではなく何枚目か**で覚える
+  const autoEquippedAt = useMemo(() => {
+    const left = new Set(collection.pending?.equipped || []);
+    const at = new Set();
+    (results || []).forEach((r, i) => {
+      if (!left.has(r.id)) return;
+      left.delete(r.id);
+      at.add(i);
+    });
+    return at;
+  }, [collection.pending, results]);
   // 崩した結果(どの札を何枚崩したか)。結果の並びに印を出すために画面が持つ
   const [dismantled, setDismantled] = useState(null);
   const dismantledAt = useMemo(
@@ -2453,7 +2439,6 @@ export function SkinsScreen({
             results={collection.pending.results}
             drawNumber={collection.draws}
             freeze={collection.pending.freeze}
-            equipped={collection.pending.equipped}
             onFinish={finishAcquisition}
             reduce={reduce || collection.summonMotion === "skip"}
           />
@@ -2576,7 +2561,19 @@ export function SkinsScreen({
                     <strong>{s.name}</strong>
                     {/* このキャラのフォイルを所持・装備しているときは、通常版の装備釦を出さない。
                         上位のフォイルが付いているのに通常版へ戻す操作は紛らわしい(2026-09-21 本人の指示) */}
-                    {!s.foil &&
+                    {/* 手で着せなくてよかったことが分かるように、この抽選で
+                        自動装備した札には金の印を出す(2026-09-28 本人の指示)。
+                        あとから別の札に着せ替えたら、ふつうの釦に戻る */}
+                    {autoEquippedAt.has(index) &&
+                    collection.equipped[s.rank] === s.id ? (
+                      <small
+                        className="skins-result-equipped"
+                        aria-label={`${s.rank}に「${s.name}」を装備しました`}
+                      >
+                        <i aria-hidden="true" />
+                        装備しました
+                      </small>
+                    ) : !s.foil &&
                     foil &&
                     foilHeld &&
                     collection.equipped[s.rank] === foil.id ? (
