@@ -169,6 +169,8 @@ import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 // はじめての10連を引いたかの控え(2026-09-28 本人の指示)
 import { firstPullDone } from "../skins/first-pull.js";
+// はじまりの語り(2026-09-28 本人の指示)
+import { Prologue } from "./prologue.jsx";
 // 相手が見つかったときの手ごたえ(2026-09-28 本人の指示)
 import { vibrateMatchFound } from "../game/haptics.js";
 import { baseSkinId, foilId, sanitizeLoadout } from "../skins/catalog.js";
@@ -2122,6 +2124,9 @@ function TotteryScreens() {
     [offerTutorial, setOfferTutorial] = (0, useState)(!1),
     // はじめての10連(2026-09-28 本人の指示)。名前を決めた直後、チュートリアルより先に引く
     [firstPullMode, setFirstPullMode] = (0, useState)(!1),
+    // その手前に出す、はじまりの語り(2026-09-28 本人の指示。
+    // いきなり門が開くのではなく、なぜ召喚するのかを一言渡してから入る)
+    [prologue, setPrologue] = (0, useState)(!1),
     // 詳細設定(src/game/custom-rules.js)。端末に覚える。null ならクラシック
     [customRules, setCustomRules] = (0, useState)(() => loadCustomRules()),
     // リンク(?room=ABCDEF)から開いたときの合言葉。名前を決めたらフレンド対戦の画面へ
@@ -2325,13 +2330,10 @@ function TotteryScreens() {
         <NameSetupScreen
           onDone={() => {
             setNamed(!0);
-            // **まず10連**(2026-09-28 本人の指示。最初にワクワクさせ、引き直しもしやすく)。
+            // **語り → 10連**(2026-09-28 本人の指示)。最初にワクワクさせ、引き直しもしやすく。
             // 引き終わってホームへ戻るときに、第1話の案内を出す
             if (!firstPullDone(getCollection())) {
-              setFirstPullMode(!0);
-              setSkinsTab("gacha");
-              setSkinsFrom("home");
-              t("skins");
+              setPrologue(!0);
               return;
             }
             // すでに引いている人(入れ直しなど)は、これまで通り第1話の案内
@@ -2339,6 +2341,21 @@ function TotteryScreens() {
               markFirstTutorialOffered();
               setOfferTutorial(!0);
             }
+          }}
+        />
+      </GameShell>
+    );
+  // はじまりの語り。読み終える(または読み飛ばす)と、そのまま召喚の門へ
+  if (prologue)
+    return (
+      <GameShell showRules={l} setShowRules={n}>
+        <Prologue
+          onDone={() => {
+            setPrologue(!1);
+            setFirstPullMode(!0);
+            setSkinsTab("gacha");
+            setSkinsFrom("home");
+            t("skins");
           }}
         />
       </GameShell>

@@ -136,9 +136,15 @@ is("0枚なら出さない", ticketRewardLabel(0), null);
 console.log("\n配線");
 {
   const screens = read("src/ui/screens.jsx");
+  // 名前 → **語り** → 10連(2026-09-28 本人の指示で、あいだに語りが入った)
   is(
-    "名前を決めたら、チュートリアルより先に10連へ",
-    /if \(!firstPullDone\(getCollection\(\)\)\) \{[\s\S]{0,200}t\("skins"\);/.test(screens),
+    "名前を決めたら、チュートリアルより先に語りへ",
+    /if \(!firstPullDone\(getCollection\(\)\)\) \{[\s\S]{0,120}setPrologue\(!0\);/.test(screens),
+    true,
+  );
+  is(
+    "語りを終えたら、そのまま10連へ",
+    /if \(prologue\)[\s\S]{0,400}setFirstPullMode\(!0\);[\s\S]{0,200}t\("skins"\);/.test(screens),
     true,
   );
   is("10連から戻るときに第1話へ誘う", /if \(firstPullMode\) \{/.test(screens), true);
