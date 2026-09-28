@@ -8750,3 +8750,16 @@ p.hint > span.gem-shop-diag {
   color: var(--gold);
   font-weight: 700;
 }
+
+/* 記録を消すときの、消えるものの一覧(2026-09-28 本人の報告で足りない項目が分かった) */
+.delete-me-list {
+  margin: 6px 0 10px;
+  padding-left: 1.3em;
+  color: #c8d2dd;
+  font-size: 13px;
+  line-height: 1.9;
+  text-align: left;
+}
+.delete-me-list b {
+  color: var(--gold-soft);
+}

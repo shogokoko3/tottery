@@ -31,6 +31,8 @@ import {
   TitlePickModal,
 } from "./account.jsx";
 import { forgetMe, loadProfile } from "../game/profile.js";
+// 端末に残ったものを全部消す(2026-09-28 本人の報告)
+import { forgetEverything } from "../game/forget.js";
 import { loadBlocked, unblock } from "../game/blocked.js";
 import { loadPlaySettings, savePlaySettings } from "../game/play-settings.js";
 // 取ったときの手ごたえ(バイブ)と、まとめ取りの音階(2026-09-28 本人の指示)
@@ -612,6 +614,10 @@ export function DeleteMeModal({ onClose, onDeleted }) {
       return;
     }
     forgetMe();
+    // **端末に残ったものを全部**消す(2026-09-28 本人の報告
+    // 「アカウントを消しても、以前に引いたガチャ結果が残ったまま」)。
+    // forgetMe は名前と戦績だけなので、スキン・財布・バトルパスなどが残っていた
+    forgetEverything();
     setStep("done");
   }
 
@@ -635,12 +641,24 @@ export function DeleteMeModal({ onClose, onDeleted }) {
 
         {step === "ask" && (
           <>
+            {/* 2026-09-28 本人の報告。以前は名前と戦績だけを消しており、
+                引いた札や財布が残ったまま次の人に見えていた。いまは全部消す */}
             <p className="hint">
-              名前・アイコン・称号・戦績・レートと、公開ランキングに載っているあなたの行を消します。見えなくした人の一覧も消えます。
-              <b>元には戻せません。</b>
+              この端末に残っている<b>すべて</b>を消します。
             </p>
+            <ul className="delete-me-list">
+              <li>名前・アイコン・称号・戦績・レート</li>
+              <li>
+                <b>引いたスキン・ガチャチケット・ジェム・バトルパス</b>
+              </li>
+              <li>チュートリアルの進み・詰めトッタリーの記録・ミッション</li>
+              <li>設定(音・演出・操作)と、見えなくした人の一覧</li>
+              <li>公開ランキングに載っているあなたの行</li>
+            </ul>
             <p className="hint">
-              消したあとは、名前を決めるところからやり直しになります。
+              <b>元には戻せません。</b>
+              買ったジェムやチケットも戻りません。消したあとは、名前を決めるところから
+              まっさらでやり直しになります。
             </p>
             <div className="settings-actions">
               <button className="btn btn-primary btn-wide" onClick={onClose}>

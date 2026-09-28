@@ -169,6 +169,8 @@ import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 // はじめての10連を引いたかの控え(2026-09-28 本人の指示)
 import { firstPullDone } from "../skins/first-pull.js";
+// 相手が見つかったときの手ごたえ(2026-09-28 本人の指示)
+import { vibrateMatchFound } from "../game/haptics.js";
 import { baseSkinId, foilId, sanitizeLoadout } from "../skins/catalog.js";
 import { createCpuLoadout, ensureCpuFoil } from "../skins/cpu-loadout.js";
 import {
@@ -752,10 +754,28 @@ function safeRating(v) {
   return Number.isFinite(n) ? Math.max(0, Math.min(4000, Math.round(n))) : null;
 }
 
-export function RandomMatchScreen({ onBack, onRoomReady, boardSize, onBotReady = null }) {
+export function RandomMatchScreen({
+  onBack,
+  onRoomReady: roomReady,
+  boardSize,
+  onBotReady: botReady = null,
+}) {
   const loadout = useRef(mySkins()).current;
+  // 相手が見つかったら震わせる(2026-09-28 本人の指示)。
+  // 待っているあいだは画面から目を離していることが多いので、ここで知らせる。
+  // 人でも練習相手でも同じ(待っている側には見分けが付かないため)
+  const onRoomReady = (...args) => {
+    vibrateMatchFound();
+    return roomReady?.(...args);
+  };
+  const onBotReady = botReady
+    ? (...args) => {
+        vibrateMatchFound();
+        return botReady(...args);
+      }
+    : null;
   // Bot の扱い(src/game/bot-match.js)。開いた時点で決めて、この画面のあいだ変えない
-  const planRef = useRef(onBotReady ? botPlan(myRating()) : "none");
+  const planRef = useRef(botReady ? botPlan(myRating()) : "none");
   let [l, n] = (0, useState)("searching"),
     [a, u] = (0, useState)(""),
     // 連勝数(サーバーの台帳から。オンライン対戦の連勝。2026-09-25 本人の指示)

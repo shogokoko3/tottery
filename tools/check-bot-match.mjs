@@ -178,7 +178,8 @@ assert.equal(matchesBot("abc"), true);
 // 4. 配線
 {
   const screens = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
-  assert.ok(/const planRef = useRef\(onBotReady \? botPlan\(myRating\(\)\) : "none"\);/.test(screens), "Bot の扱いは開いた時点で botPlan で決める");
+  // 2026-09-28: 相手が見つかったら震わせるため、prop を包んだ。判定は**元の prop** で決める
+assert.ok(/const planRef = useRef\(botReady \? botPlan\(myRating\(\)\) : "none"\);/.test(screens), "Bot の扱いは開いた時点で botPlan で決める");
   assert.ok(/const plan = planRef\.current;/.test(screens), "探す効果はその決めを使う");
   assert.ok(/if \(plan === "now"\) \{\s*const bot = makeBot\(myRating\(\), myName\(\)\);/.test(screens), "直前に人に負けていたら、探さずに Bot");
   assert.ok(/botSearchDelay\(\)/.test(screens), "そのときも数秒「探しています」を見せる");

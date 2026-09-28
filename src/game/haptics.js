@@ -57,6 +57,17 @@ export const PATTERNS = Object.freeze({
     type: NotificationType.Error,
     web: [27, 45, 50],
   }),
+  /**
+   * 相手が見つかった(2026-09-28 本人の指示
+   * 「オンラインでマッチングした時にもバイブ通知があるように」)。
+   * 待っているあいだは画面を見ていないことが多いので、**取ったときより強く**する。
+   * 取りの手ごたえ(impact)ではなく知らせ(notification)の型なので、対局中の震えとも混ざらない
+   */
+  matchFound: Object.freeze({
+    kind: "notification",
+    type: NotificationType.Warning,
+    web: [30, 40, 30, 50, 60],
+  }),
 });
 
 /** まとめ取りで刻むときの間隔(ミリ秒) */
@@ -115,4 +126,12 @@ export function capturePattern({ mine = true, king = false, count = 1 } = {}) {
 /** 駒を取った(取られた)ときに震わせる */
 export function vibrateCapture(info) {
   return vibrate(capturePattern(info));
+}
+
+/**
+ * 相手が見つかったときに震わせる(ランダムマッチ・練習相手の両方)。
+ * 待っているあいだは画面から目を離していることが多いので、ここで知らせる
+ */
+export function vibrateMatchFound() {
+  return vibrate("matchFound");
 }
