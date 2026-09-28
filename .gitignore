@@ -22,3 +22,6 @@ ios/build/
 # Versioned formation award export
 /honors/
 .webp-cache/
+
+# 署名のキーチェーンの合言葉(置くなら)。git には入れない
+ios/.signing.env
