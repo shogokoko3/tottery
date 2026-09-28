@@ -247,11 +247,11 @@ export function SummonIntro({ results, targetRef, onFinish, onReady }) {
             root.current?.dispatchEvent(new Event("summon-open"));
           }}
         >
+          {/* 添え書きは輪の**上**へ。下に置くと「門をスキップ」と重なっていた
+              (2026-09-28 本人の報告)。下端はいちばん短い「門にふれて開く」だけにする */}
+          <span className="summon-gate-hint">押しているあいだ、門が応えます</span>
           <span className="summon-gate-ring" aria-hidden="true" />
-          <span className="summon-gate-label">
-            門にふれて開く
-            <small>押しているあいだ、門が応えます</small>
-          </span>
+          <span className="summon-gate-label">門にふれて開く</span>
         </button>
       )}
       <button

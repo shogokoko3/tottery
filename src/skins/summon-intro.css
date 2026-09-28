@@ -138,7 +138,9 @@
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  padding: 0 20px 18%;
+  /* 下端は「門をスキップ」(高さ 48px・下から 20px)より上で止める。
+     18% だと端末によって重なっていた(2026-09-28 本人の報告) */
+  padding: 0 20px calc(92px + env(safe-area-inset-bottom));
   border: 0;
   background: transparent;
   color: #f7eace;
@@ -164,13 +166,14 @@
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
   text-align: center;
 }
-.summon-gate-label small {
-  display: block;
-  margin-top: 4px;
-  font-family: inherit;
-  font-size: 11px;
-  letter-spacing: 0.04em;
+/* 添え書き。輪の上に置く(下は「門をスキップ」と重なるため) */
+.summon-gate-hint {
+  font-family: "Shippori Mincho", serif;
+  font-size: 12px;
+  letter-spacing: 0.06em;
   color: #cbbfa6;
+  text-align: center;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
 }
 /* 押しているあいだ。輪が締まって、門が応えているように見せる */
 .summon-gate-touch.is-pressing .summon-gate-ring {

@@ -116,6 +116,24 @@ console.log("\n門は触れるまで開かない");
     true,
   );
   is("門をスキップは残す", /summon-intro-skip/.test(intro), true);
+  // 添え書きは輪の**上**。下に置くと「門をスキップ」と重なっていた(2026-09-28 本人の報告)
+  is(
+    "添え書きが輪より前に出る",
+    intro.indexOf("summon-gate-hint") < intro.indexOf("summon-gate-ring"),
+    true,
+  );
+  is(
+    "いちばん下は短い見出しだけ",
+    intro.indexOf("summon-gate-ring") < intro.indexOf("summon-gate-label"),
+    true,
+  );
+  const gateCss = read("src/skins/summon-intro.css");
+  is(
+    "下端はスキップの釦(48px＋下20px)より上で止める",
+    /padding: 0 20px calc\(92px \+ env\(safe-area-inset-bottom\)\)/.test(gateCss),
+    true,
+  );
+  is("添え書きに専用の見た目がある", /\.summon-gate-hint \{/.test(gateCss), true);
 }
 
 console.log("\n入り切りの印の当たり");
