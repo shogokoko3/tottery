@@ -222,6 +222,9 @@ function RevealCard({
   // そのキャラの所持数 { base, foil }。引いた札が通常・フォイルのどちらを埋めたかが分かる
   // (2026-09-18 本人の指示)
   owned = null,
+  // この抽選で自動装備されたか(2026-09-28 本人の指示
+  // 「自動で装着したとわかるエフェクトがあると良さそう」)
+  autoEquipped = false,
 }) {
   const skin = byId(result.id);
   // 素で出るか、昇格を経るかは束と位置で決まる(再読み込みしても同じ)
@@ -427,6 +430,14 @@ function RevealCard({
           {final && !identityHidden && !(foilUpgrade && !foilRevealed && !reduce) && result.isNew && (
             <span className="reveal-new">NEW</span>
           )}
+          {/* 自動で装備された札。めくり終えてから、一度だけ金の帯が走る
+              (2026-09-28 本人の指示。手で着せなくてよいと分かるように) */}
+          {final && !identityHidden && !(foilUpgrade && !foilRevealed && !reduce) && autoEquipped && (
+            <span className="reveal-equipped" aria-label="この札を装備しました">
+              <i aria-hidden="true" />
+              装備しました
+            </span>
+          )}
           {/* 通常とフォイルを持っているか。引いた側は光らせる */}
           {final && !identityHidden && !(foilUpgrade && !foilRevealed && !reduce) && owned && (
             <span className="reveal-owned" aria-label="このキャラの所持">
@@ -449,10 +460,30 @@ function RevealCard({
  * 束に SSR がいれば伏せた時点で前兆を出す。めくると R→SR→SSR と昇格して見せる。
  * 結果は先に保存してあるので、途中で閉じても失わない。
  */
-function SummonReveal({ results, onFinish, reduce, drawNumber = 0, freeze: freezeInput = null }) {
+function SummonReveal({
+  results,
+  onFinish,
+  reduce,
+  drawNumber = 0,
+  freeze: freezeInput = null,
+  // この抽選で自動装備された札の id(2026-09-28 本人の指示)
+  equipped = [],
+}) {
   const freeze = useMemo(() => normalizeSummonFreeze(freezeInput, results.map(r => r.id)), [freezeInput, results]);
   // 引いた札ごとに、そのキャラの通常とフォイルを何枚持っているか(結果に出す)
   const ownedNow = useCollection().owned;
+  // 同じ札を2枚引いたときに、どちらにも「装備しました」が出ないように、
+  // **id ではなく何枚目か**で覚える(着せたのは1枚だけ)
+  const equippedAt = useMemo(() => {
+    const left = new Set(Array.isArray(equipped) ? equipped : []);
+    const at = new Set();
+    results.forEach((r, i) => {
+      if (!left.has(r.id)) return;
+      left.delete(r.id);
+      at.add(i);
+    });
+    return at;
+  }, [equipped, results]);
   const ownedOf = (id) => {
     const base = baseSkinId(id);
     return {
@@ -594,6 +625,7 @@ function SummonReveal({ results, onFinish, reduce, drawNumber = 0, freeze: freez
               reduce={reduce}
               seed={seed}
               owned={ownedOf(r.id)}
+              autoEquipped={equippedAt.has(i)}
             />
           ))}
         </div>
@@ -2421,6 +2453,7 @@ export function SkinsScreen({
             results={collection.pending.results}
             drawNumber={collection.draws}
             freeze={collection.pending.freeze}
+            equipped={collection.pending.equipped}
             onFinish={finishAcquisition}
             reduce={reduce || collection.summonMotion === "skip"}
           />

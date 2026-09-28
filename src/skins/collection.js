@@ -26,7 +26,7 @@ import {
   sanitizeMissionClaims,
 } from "../game/periodic-missions.js";
 // 引いた札の自動装備(2026-09-28 本人の指示)
-import { autoEquip } from "./auto-equip.js";
+import { autoEquip, autoEquipChanges } from "./auto-equip.js";
 
 const count = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : 0);
 const addCount = (a, b) => Math.min(Number.MAX_SAFE_INTEGER, a + b);
@@ -228,7 +228,21 @@ export function normalize(raw) {
     // はじめての10連を引いたか(2026-09-28 本人の指示)。
     // ここに並べないと normalize が落としてしまい、開き直すたびに初回の10連が出る
     firstPullDone: value.firstPullDone === true,
-    pending: results.length ? { results, freeze: normalizeSummonFreeze(value.pending?.freeze, results.map(r => r.id)) } : null,
+    pending: results.length
+      ? {
+          results,
+          freeze: normalizeSummonFreeze(value.pending?.freeze, results.map((r) => r.id)),
+          // この抽選で自動装備した札(2026-09-28)。結果の画面が印を出すのに使う。
+          // 引いた札の中のものだけを通す
+          ...(Array.isArray(value.pending?.equipped)
+            ? {
+                equipped: value.pending.equipped.filter(
+                  (id) => byId(id) && results.some((r) => r.id === id),
+                ),
+              }
+            : {}),
+        }
+      : null,
     lastCraft:
       byId(value.lastCraft?.id) && owned[value.lastCraft.id]
         ? {
@@ -319,7 +333,8 @@ export function applyPull(state, skinIds, { free = FREE_GACHA } = {}) {
   };
   // 引いた札は手で装備しなくてよい(2026-09-28 本人の指示)。
   // 装備していない段にだけ着せ、J・Q・K のように2種類あるキャラは触らない
-  return autoEquip(
+  const before = state;
+  const equipped = autoEquip(
     withHomePortraits({
       ...state,
       owned,
@@ -333,6 +348,16 @@ export function applyPull(state, skinIds, { free = FREE_GACHA } = {}) {
     }),
     { prefer: ids },
   );
+  // **どの段に何を着せたか**を結果と一緒に残す。結果の画面が
+  // 「装備しました」を出すために使う(2026-09-28 本人の指示
+  // 「自動で装着したとわかるエフェクトがあると良さそう」)。
+  // 引いた札のうち、この抽選で新しく着いたものだけを数える
+  const changes = autoEquipChanges(before, equipped)
+    .map((c) => c.id)
+    .filter((id) => ids.includes(id));
+  return changes.length
+    ? { ...equipped, pending: { ...equipped.pending, equipped: changes } }
+    : equipped;
 }
 
 export function pull(

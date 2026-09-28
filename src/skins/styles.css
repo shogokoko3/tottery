@@ -3086,3 +3086,72 @@
   /* 押せない。指が触れても設定は変わらない */
   cursor: default;
 }
+
+/* 自動で装備された札の印(2026-09-28 本人の指示
+   「自動で装着したとわかるエフェクトがあると良さそう」)。
+   めくり終えてから、金の帯が一度だけ走る */
+.reveal-equipped {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 2px 9px;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.16);
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  overflow: hidden;
+  animation: reveal-equipped-in 420ms ease-out both;
+}
+/* 王冠の粒。装備＝王に着せる、という意味を小さく持たせる */
+.reveal-equipped::before {
+  content: "\265B";
+  font-size: 11px;
+  line-height: 1;
+}
+/* 帯。一度だけ左から右へ抜ける */
+.reveal-equipped i {
+  position: absolute;
+  inset: 0 auto 0 -40%;
+  width: 40%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 244, 214, 0.85),
+    transparent
+  );
+  animation: reveal-equipped-sweep 900ms 260ms ease-out 1 both;
+  pointer-events: none;
+}
+@keyframes reveal-equipped-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes reveal-equipped-sweep {
+  from {
+    left: -40%;
+  }
+  to {
+    left: 140%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-equipped,
+  .reveal-equipped i {
+    animation: none;
+  }
+  .reveal-equipped i {
+    display: none;
+  }
+}

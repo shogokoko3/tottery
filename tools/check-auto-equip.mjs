@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { autoEquip, autoEquipChanges, rankHasChoice } from "../src/skins/auto-equip.js";
 import { ALL_SKINS, baseSkinId } from "../src/skins/catalog.js";
+import { applyPull, normalize } from "../src/skins/collection.js";
 
 let ok = 0;
 const fail = [];
@@ -126,6 +127,46 @@ console.log("\n配線");
   is("引いた札を優先に渡す", /\{ prefer: ids \}/.test(col), true);
 }
 
+// 自動で着せたことが見て分かるように、その回に着せた札を控えておく
+// (2026-09-28 本人の指示「自動で装着したとわかるエフェクトがあると良さそう」)
+console.log("\n着せた札の控え");
+{
+  // 10連を1回。空っぽの所持なので、引いた札はどれも自動で着る
+  const pulled = [
+    "zombie-male",
+    "zombie-female",
+    "pirate-male",
+    "pirate-female",
+    "elf-male",
+    "elf-female",
+    "viking-male",
+    "viking-female",
+    "genie-magician",
+    "angel-j",
+  ];
+  const base = normalize({ tickets: 999 });
+  const after = applyPull(base, pulled, { free: true });
+  const kept = [...(after.pending?.equipped ?? [])].sort();
+  is("着せた札が控えに残る", kept.length > 0, true);
+  is("控えるのは、その回に引いた札だけ", kept.every((id) => pulled.includes(id)), true);
+  is(
+    "開き直しても控えは消えない",
+    [...(normalize(JSON.parse(JSON.stringify(after))).pending?.equipped ?? [])].sort(),
+    kept,
+  );
+  // すでに着ている段は触らないので、二度目は控えが立たない
+  const seen = { ...after, pending: null, lastCraft: null };
+  const again = applyPull(seen, pulled, { free: true });
+  is("二度目は着せ替えないので控えは空", again.pending?.equipped ?? [], []);
+
+  const skins = fs.readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
+  is("札に「装備しました」を出す", /reveal-equipped/.test(skins), true);
+  is("控えを演出に渡す", /equipped=\{collection\.pending\.equipped\}/.test(skins), true);
+  // 同じ札を2枚引いても、着せたのは1枚。両方に印が出ないこと
+  is("印は id ではなく枚数で数える", /equippedAt\.has\(i\)/.test(skins), true);
+  const css = fs.readFileSync(new URL("../src/skins/styles.css", import.meta.url), "utf8");
+  is("控え目の演出が用意されている", /\.reveal-equipped\b/.test(css), true);
+}
 console.log(`\n${ok} ok / ${fail.length} NG`);
 if (fail.length) {
   console.error("NG: " + fail.join(", "));
