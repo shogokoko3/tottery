@@ -2673,6 +2673,42 @@ body:has(.skin-overlay) {
 .tutorial-progress span.on {
   background: var(--gold);
 }
+/* 進み具合の線と「あと N 手」。終わりが見えるように並べる(2026-09-25) */
+.tutorial-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tutorial-meter .tutorial-progress {
+  flex: 1;
+}
+.tutorial-left {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--gold-soft);
+  white-space: nowrap;
+}
+/* 自分で考える1手。いつもの操作の札と見分けがつくように */
+.tutorial-choose-badge {
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+}
+.tutorial-hint-text {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--gold-soft);
+  text-align: center;
+}
+/* 一覧と完了画面の「あと N 話でランダムマッチ」 */
+.tutorial-gate-left {
+  margin: 6px 0;
+  font-size: 13px;
+  color: var(--gold-soft);
+  text-align: center;
+}
 @media (prefers-reduced-motion: reduce) {
   .tutorial-sheet-inner {
     animation: none;
@@ -8762,4 +8798,29 @@ p.hint > span.gem-shop-diag {
 }
 .delete-me-list b {
   color: var(--gold-soft);
+}
+
+/* 絵を長押ししたときに、iOS の「共有…／写真に保存／コピー」が出ないようにする
+   (2026-09-28 本人の報告)。アプリの中の絵は保存させるものではないし、
+   長押しは対局では「駒をつかむ」「推理メモ」に使うので、この札が出ると操作の邪魔になる。
+
+   **根(.tottery-root)にまとめて効かせる。** 絵ごとに書くと、新しい絵を足したときに
+   また出てしまう。callout は受け継ぐので、根で切れば中の絵すべてに効く。
+   文字が選べるかどうか(user-select)はここでは触らない —
+   合言葉などを写せなくなるため。
+
+   pointer-events は触らない。切ると絵を押して選ぶところ(ガチャの結果・スキンの一覧)が
+   反応しなくなる。callout を切るだけで、長押しの札は出なくなる */
+.tottery-root {
+  -webkit-touch-callout: none;
+}
+/* 絵は、指でつまんで持ち上げる(ドラッグ&ドロップ)のも止める。
+   盤の駒は自前のドラッグで動かすので、ブラウザ側の持ち上げと二重になる */
+img,
+video,
+canvas,
+svg {
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
