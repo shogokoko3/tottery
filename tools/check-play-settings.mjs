@@ -7,6 +7,7 @@
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import vm from "node:vm";
 
 const store = {};
 globalThis.localStorage = {
@@ -92,6 +93,29 @@ is(
   /addEventListener\("tottery:play-settings"/.test(game),
   true,
 );
+
+// 実際の操作関数を実行する。文言の存在だけでは、確認処理が別の
+// effect に紛れ込み、画面を開くだけで row 未定義になる不具合を見逃す。
+const moveFunction = game.match(/function tryMove\(row, col, mv\) \{[\s\S]*?\n  \}/)?.[0];
+assert.ok(moveFunction, "取る・移動する操作関数がある");
+for (const confirmMove of [true, false]) for (const tutorial of [null, {}]) {
+  for (const capture of [true, false]) {
+    const calls = [];
+    const move = { capture, captures: capture ? [{ row: 1, col: 2 }] : undefined };
+    vm.runInNewContext(`(${moveFunction})(1, 2, move)`, {
+      confirmMove, tutorial, move, R: 5,
+      a: { selectedId: "piece", pieces: { piece: { row: 2, col: 2 } } },
+      squareName: () => "c3",
+      setPendingCapture: value => calls.push(["capture", value]),
+      setPendingMove: value => calls.push(["confirm", value]),
+      y: value => calls.push(["move", value]),
+    });
+    const type = capture ? "capture" : confirmMove && !tutorial ? "confirm" : "move";
+    is(`操作 ${confirmMove ? "確認on" : "確認off"}/${tutorial ? "チュートリアル" : "対局"}/${capture ? "撃破" : "移動"}`, calls.map(([kind]) => kind), [type]);
+    is("行き先は操作で選んだマス", [calls[0][1].row, calls[0][1].col], [1, 2]);
+    if (type === "confirm") is("確認画面へ出発地点も渡す", calls[0][1].fromSquare, "c3");
+  }
+}
 
 console.log(`\n${ok} ok / ${fail.length} NG`);
 if (fail.length) {
