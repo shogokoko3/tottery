@@ -120,11 +120,10 @@ createRoot(document.getElementById('root')).render(<StrictMode><App/></StrictMod
             "network ? p : cpu ? 0 : null",
             "fixture.viewer",
           );
-          source = replaceRequired(
-            source,
-            "P = network ? p : cpu ? 0 : (aceMagic.viewer ?? displayed.currentTurn)",
-            "P = fixture.viewer",
-          );
+          const viewerPattern = /P = network\s*\? p\s*: cpu\s*\? 0\s*: \(aceMagic\.viewer \?\? areaFx\.viewer \?\? displayed\.currentTurn\)/;
+          if (!viewerPattern.test(source)) throw new Error("GameCore fixture viewer anchor missing");
+          source = source.replace(viewerPattern, "P = fixture.viewer");
+          source = source.replace("viewer={network ? p : cpu ? 0 : captureDisplayed.currentTurn}", "viewer={fixture.viewer}");
           source +=
             '\nimport {capturePosition,captureMove} from "../../tools/fixtures/capture-position.mjs";';
           return {
@@ -208,4 +207,4 @@ http
       res.writeHead(404).end();
     }
   })
-  .listen(4213, "127.0.0.1", () => console.log("http://127.0.0.1:4213"));
+  .listen(Number(process.env.PORT) || 4213, "127.0.0.1", () => console.log(`http://127.0.0.1:${Number(process.env.PORT) || 4213}`));

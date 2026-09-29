@@ -1,5 +1,7 @@
+import { captureMoveMs } from "./capture-sequence.js";
 // 札を開く前に、盤面の移動が終わるまで待てるよう同じ時間を使う。
 export function movePresentationMs(move) {
+  if (move?.captured) return captureMoveMs(move);
   if (!move?.from || !move?.to) return 0;
   const dr = Math.abs(move.from.row - move.to.row);
   const dc = Math.abs(move.from.col - move.to.col);

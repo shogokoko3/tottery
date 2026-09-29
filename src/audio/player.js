@@ -19,6 +19,7 @@
  * 解錠できた時点で流す。
  */
 
+import { captureSoundOnBus } from "./capture-sounds.js";
 import { SOUNDS } from "./sounds.js";
 import { areaSoundSamples } from "./area-sounds.js";
 import { TRACKS, audioUrl } from "./tracks.js";
@@ -267,6 +268,12 @@ export function playSound(id, { rate = 1 } = {}) {
       src.stop();
     } catch {}
   };
+}
+
+export function createCaptureSound() {
+  if (!unlocked || !ensureGraph() || !seBus || ctx.state !== "running")
+    return { play() {}, stop() {} };
+  return captureSoundOnBus(ctx, seBus, () => playSound("capture"));
 }
 
 export function playAreaSound(type, { hit = true } = {}) {

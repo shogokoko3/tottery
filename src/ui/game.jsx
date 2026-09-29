@@ -12,6 +12,7 @@ import { usePrivateNotes } from "./private-notes.jsx";
 import { useAceMagic } from "./ace-magic.jsx";
 import { useBattleFilm } from "./skin-film.jsx";
 import { useBattlePass } from "./battlepass-track.jsx";
+import { CaptureEffect } from "./capture-effect.jsx";
 import { useCapturePresentation } from "./capture-presentation.jsx";
 import { movePresentationMs } from "../game/capture-presentation.js";
 import { useEffect, useRef, useState } from "react";
@@ -133,7 +134,6 @@ import { useNames, useSeats } from "./names.jsx";
 import { PlayerIcon } from "./playericon.jsx";
 import { DIE_SETTLE_MS, DiceDuo, DiceStage, DiceStep, Die, MatchupBar } from "./dice.jsx";
 import {
-  CaptureRevealModal,
   Interstitial,
   KingChoiceInterstitial,
   LogViewer,
@@ -708,7 +708,7 @@ export function GameView({
           sx: d ? -dc : dc,
           sy: d ? -dr : dr,
           stops: n + 1,
-          // 立ち寄る場所ごとに 190ms 留まる
+          // 撃破演出の衝撃と、到着時刻を揃える
           ms: (n + 1) * 190,
         };
       },
@@ -1355,7 +1355,6 @@ export function GameCore({
     setupStartRef = (0, useRef)(null),
     setupPhaseStartRef = (0, useRef)(null),
     [pendingCapture, setPendingCapture] = (0, useState)(null),
-    [finishedDefeat, setFinishedDefeat] = (0, useState)(null),
     [tutStep, setTutStep] = (0, useState)(0),
     // 台本にない手を指したときに、帯へ返す一言。
     // 黙って握りつぶすと「押しても何も起きない=壊れている」と読まれる
@@ -1537,11 +1536,6 @@ export function GameCore({
     tutorial ? null : network ? p : cpu ? 0 : null,
     fxBusy || !!a.captureReveal,
   );
-  const holdFx =
-    !!a.captureReveal &&
-    !aceMagic.captureHandled &&
-    !!a.lastDefeat &&
-    finishedDefeat !== a.lastDefeat;
   // 案内の位置は、押した回数ではなく盤面から引き直す。
   // どんな触り方をされても画面とずれない
   let tutIdx = tutorial ? currentStepIndex(tutorial, a, tutStep) : -1;
@@ -1945,19 +1939,6 @@ export function GameCore({
       ((alive = !1), clearInterval(timer), leaveMatchPresence().catch(() => {}));
     };
   }, [network, tutorial]);
-  // 駒が倒れたら、盤の上で演出を見せてから結果の札を開く
-  (0, useEffect)(() => {
-    if (!a.lastDefeat || aceMagic.captureHandled) {
-      return;
-    }
-    let n = a.lastDefeat.cells.length;
-    let id = setTimeout(
-      () => setFinishedDefeat(a.lastDefeat),
-      Math.max(1500 + (n - 1) * 440, movePresentationMs(a.lastMove)),
-    );
-    return () => clearTimeout(id);
-  }, [a.lastDefeat, aceMagic.captureHandled]);
-
   // 1秒未満の刻みで残り時間を描き替える
   ((0, useEffect)(() => {
     if (
@@ -2678,6 +2659,18 @@ export function GameCore({
       {tutSheet}
       {cinematic.overlay}
       {aceMagic.overlay}
+      {!!a.captureReveal && !fxBusy && (
+        <CaptureEffect
+          reveal={a.captureReveal}
+          defeat={a.lastDefeat}
+          move={a.lastMove?.captured && !aceMagic.captureHandled ? a.lastMove : null}
+          boardRef={boardRef}
+          boardSize={a.boardSize}
+          viewer={network ? p : cpu ? 0 : captureDisplayed.currentTurn}
+          final={a.phase === "gameover" || a.winner != null}
+          onClose={() => y({ type: "DISMISS_CAPTURE" })}
+        />
+      )}
     </>
   );
   let R = a.boardSize,
@@ -2712,7 +2705,7 @@ export function GameCore({
   useGameSounds({
     state: a,
     self: network ? p : cpu ? 0 : null,
-    captureHandled: aceMagic.captureHandled,
+    captureHandled: !!a.captureReveal || aceMagic.captureHandled,
     warnMs:
       noLimit || pauseClock
         ? null
@@ -2818,34 +2811,6 @@ export function GameCore({
               : network && p !== 0
                 ? "相手の準備を待っています…"
                 : "対局の準備をしています…"
-          }
-        />
-      </GameShell>
-    );
-  if (a.captureReveal && !holdFx && !fxBusy)return (
-      <GameShell
-        topExtra={skipMenu}
-        sheet={presentationSheet}
-        band={!!tutSheet}
-        focusButton={tutButton}
-        showRules={i}
-        setShowRules={f}
-        netInfo={N}
-        onBack={() => {
-          if (!fxBusy) r(!0);
-        }}
-      >
-        <CaptureRevealModal
-          reveal={a.captureReveal}
-          viewer={P}
-          final={
-            a.phase === "gameover" ||
-            (a.winner !== null && a.winner !== undefined)
-          }
-          onClose={() =>
-            y({
-              type: "DISMISS_CAPTURE",
-            })
           }
         />
       </GameShell>
@@ -3725,17 +3690,7 @@ export function GameCore({
                     Lo =
                       Oi &&
                       Oi.cells.some((wl) => wl.row === ne && wl.col === Me),
-                    fxIdx =
-                      a.captureReveal &&
-                      !aceMagic.captureHandled &&
-                      !aceMagic.busy &&
-                      a.lastDefeat
-                        ? a.lastDefeat.cells.findIndex(
-                            (wl) => wl.row === ne && wl.col === Me,
-                          )
-                        : -1,
-                    fx = fxIdx >= 0 ? a.lastDefeat.cells[fxIdx] : null,
-                    // 直前に動いた駒。1マスずつ進んで見えるようにする
+                    // 通常移動はマスごとに、撃破する移動は溜めに繋がる滑らかな踏み込み。
                     stepIn =
                       Go &&
                       Vt &&
@@ -3756,9 +3711,11 @@ export function GameCore({
                               sx: Jl ? -dc : dc,
                               sy: Jl ? -dr : dr,
                               stops: n + 1,
-                              // 立ち寄る場所ごとに 190ms 留まる
+                              // 撃破演出の衝撃と、到着時刻を揃える
                               ms: movePresentationMs(Vt),
                               seq: Vt.seq || 0,
+                              capture: !!Vt.captured && !!a.captureReveal,
+                              jump: knight ? 18 : 0,
                             };
                           })()
                         : null,
@@ -3824,23 +3781,10 @@ export function GameCore({
                       }}
                       key={`${ne}-${Me}`}
                     >
-                      {fx && (
-                        <span
-                          key={`fx${a.lastDefeat.seq}`}
-                          style={{ "--i": fxIdx }}
-                          className={`fx-defeat ${
-                            fx.owner === P ? "fx-defeat-mine" : "fx-defeat-foe"
-                          } ${
-                            a.lastDefeat.via === "surround"
-                              ? "fx-defeat-surround"
-                              : ""
-                          }`}
-                        />
-                      )}
                       {ze && (
                         <div
                           {...privateNotes.handlers(ze)}
-                          className={`piece-slot ${anyStep ? "piece-stepping" : ""} ${seaStep ? "piece-sea" : ""}${areaTransformClass(areaFx, ze)}`}
+                          className={`piece-slot ${anyStep ? "piece-stepping" : ""} ${stepIn?.capture ? `piece-capturing ${fxBusy ? "capture-waiting" : ""}` : ""} ${seaStep ? "piece-sea" : ""}${areaTransformClass(areaFx, ze)}`}
                           key={anyStep ? `mv${anyStep.seq}` : "piece"}
                           style={
                             anyStep
@@ -3849,6 +3793,7 @@ export function GameCore({
                                   "--sy": anyStep.sy,
                                   "--stops": anyStep.stops,
                                   "--ms": `${anyStep.ms}ms`,
+                                  "--jump": `${anyStep.jump || 0}px`,
                                 }
                               : void 0
                           }

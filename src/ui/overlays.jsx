@@ -20,8 +20,8 @@ import {
   nameOf,
   playerLabel,
 } from "../game/constants.js";
-import { ArrowLeft, Check, Close, Crown, Flag, Sparkle } from "../icons.jsx";
-import { CardBack, CardFace, Piece } from "./cards.jsx";
+import { ArrowLeft, Check, Close, Flag, Sparkle } from "../icons.jsx";
+import { CardFace, Piece } from "./cards.jsx";
 import { CardGuide } from "./guides.jsx";
 import { useNames } from "./names.jsx";
 import {
@@ -35,11 +35,6 @@ import { forgetMe, loadProfile } from "../game/profile.js";
 import { forgetEverything } from "../game/forget.js";
 import { loadBlocked, unblock } from "../game/blocked.js";
 import { loadPlaySettings, savePlaySettings } from "../game/play-settings.js";
-// 取ったときの手ごたえ(バイブ)と、まとめ取りの音階(2026-09-28 本人の指示)
-import { vibrateCapture } from "../game/haptics.js";
-import { captureRate, fanfareTier, flipDelay } from "../game/capture-fanfare.js";
-import { duckMusic } from "../audio/player.js";
-import { CAPTURE_DUCK_MS } from "../audio/sounds.js";
 import { deleteRank } from "../net/ranking.js";
 import { clearProfileSync } from "../net/profile-sync.js";
 import { forgetSeason, clearSeasonQueue } from "../net/season.js";
@@ -280,148 +275,6 @@ export function CaptureConfirm({ count, squares, onCancel, onConfirm }) {
  * 最後の1枚をめくった瞬間に、王だったかどうかが分かる。
  * 取るまで正体が分からない、という遊び方をそのまま演出にしている。
  */
-export function CaptureRevealModal({ reveal, onClose, viewer, final }) {
-  const defeated = reveal.defeated || [];
-  const mine =
-    reveal.capturedBy === void 0 ||
-    viewer === void 0 ||
-    reveal.capturedBy === viewer;
-  const hasKing = defeated.some((c) => c.isKing);
-  const [flipped, setFlipped] = useState(0);
-  const allShown = flipped >= defeated.length;
-  // 何枚取ったかで見せ方を変える(single / multi / grand)
-  const tier = fanfareTier(defeated.length);
-
-  useEffect(() => {
-    if (flipped >= defeated.length) return;
-    const id = setTimeout(
-      () => setFlipped((n) => n + 1),
-      flipDelay({ index: flipped, total: defeated.length }),
-    );
-    return () => clearTimeout(id);
-  }, [flipped, defeated.length]);
-
-  // めくれた1枚ごとに、音を1段上げて鳴らす。王だけは低く重く。
-  // まとめ取り(A の入れ替えや 6〜9 の王)ほど音が伸びていく(2026-09-28 本人の指示)。
-  //
-  // **1枚だけの取りでは鳴らさない。** 盤の上で倒れた瞬間に
-  // useGameSounds がもう撃破音を鳴らしているので、同じ音が二度続いて聞こえる。
-  // 枚数が増えたときと、王が出たときだけ、ここで足す
-  useEffect(() => {
-    if (flipped < 1 || flipped > defeated.length) return;
-    const card = defeated[flipped - 1];
-    const king = !!card?.isKing;
-    if (defeated.length <= 1 && !king) return;
-    // BGM を一瞬下げて、音階が埋もれないようにする
-    duckMusic(CAPTURE_DUCK_MS);
-    playSound("capture", {
-      rate: captureRate({ index: flipped - 1, total: defeated.length, king }),
-    });
-  }, [flipped, defeated]);
-
-  // 手ごたえ。開いた瞬間に1度だけ。王が混ざっていれば別の震え方
-  useEffect(() => {
-    vibrateCapture({
-      mine,
-      king: hasKing,
-      count: defeated.length,
-    });
-    // 開いたときだけ。めくるたびには震わせない(うるさくなる)
-  }, []);
-
-  // すべてめくり終えてから、王がいたことを告げる
-  const told = allShown && hasKing;
-
-  const eyebrow = mine
-    ? reveal.surround
-      ? "包囲成功!"
-      : "撃破!"
-    : reveal.surround
-      ? "包囲された!"
-      : "駒を取られた!";
-
-  const plain = mine
-    ? reveal.surround
-      ? defeated.length > 1
-        ? `包囲して${defeated.length}枚を取りました`
-        : "包囲して相手の駒を取りました"
-      : defeated.length > 1
-        ? `${defeated.length}枚の駒を取りました`
-        : "相手の駒を取りました"
-    : defeated.length > 1
-      ? `あなたの駒が${defeated.length}枚取られました`
-      : "あなたの駒が取られました";
-
-  return (
-    <div className="modal-overlay">
-      <div className={`modal-panel gameover-panel capture-panel capture-${tier}`}>
-        <div
-          className={`capture-eyebrow ${told ? "capture-eyebrow-king" : ""}`}
-          style={mine ? void 0 : { color: "#e08b7a" }}
-        >
-          {told ? (mine ? "王を討った!" : "王が討たれた…") : eyebrow}
-        </div>
-        <h3 style={{ margin: "0 0 14px" }}>
-          {told
-            ? mine
-              ? "取ったのは相手の王でした"
-              : "取られたのはあなたの王でした"
-            : plain}
-        </h3>
-        {defeated.length > 1 && (
-          /* まとめ取りは、めくれた枚数を数えて見せる(2026-09-28 本人の指示) */
-          <div className="capture-count" aria-hidden="true">
-            <b>{Math.min(flipped, defeated.length)}</b>
-            <span>/ {defeated.length} 枚</span>
-          </div>
-        )}
-        <div className={`capture-cards capture-cards-${tier}`}>
-          {defeated.map((card, i) => {
-            const open = i < flipped;
-            return (
-              <div
-                className={`capture-card ${open ? "capture-card-open" : ""} ${
-                  open && card.isKing ? "capture-card-king" : ""
-                }`}
-                key={i}
-              >
-                {open ? (
-                  <>
-                    <CardFace
-                      owner={card.owner}
-                      rank={card.rank}
-                      suit={card.suit}
-                      isKing={card.isKing}
-                    />
-                    {card.isKing && (
-                      <Crown size={18} className="capture-crown" />
-                    )}
-                  </>
-                ) : (
-                  <CardBack colorHex={PLAYER_META[card.owner].color} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <button
-          className="btn btn-primary"
-          style={{ marginTop: 18 }}
-          disabled={!allShown}
-          onClick={onClose}
-        >
-          {/* 王を取っても、継ぐ駒がいれば対局は続く */}
-          {told && final
-            ? mine
-              ? "勝利を見る"
-              : "結果を見る"
-            : "確認した"}{" "}
-          <Check size={16} />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export function LogViewer({ piece, viewer, onClose, revealAll, onMemo }) {
   let a = PLAYER_META[piece.owner],

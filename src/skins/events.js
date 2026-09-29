@@ -148,7 +148,7 @@ export function filmPlanFor(before, after, loadouts, viewer = null) {
 
 /**
  * 公開待ちだけの列は画面を占有しない。busy にすると、その解除に必要な
- * CaptureRevealModal 自体が開けなくなる。別の演出(paused)の待機はbusyを保つ。
+ * CaptureEffect 自体が開けなくなる。別の演出(paused)の待機はbusyを保つ。
  */
 export function filmQueueState(
   entries,
