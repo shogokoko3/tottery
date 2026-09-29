@@ -15,6 +15,7 @@ import { DatabaseSync } from "node:sqlite";
 import { X509CertificateGenerator, X509Certificate } from "@peculiar/x509";
 import { CompactSign } from "jose";
 import { Wallet, MIGRATE_TICKETS_MAX, MIGRATE_ENABLED, EARN_DAILY_MAX } from "../src/server/wallet.js";
+import { TUTORIAL_TICKETS, TUTORIAL_REWARD_MAX_ID } from "../src/game/tutorial-reward.js";
 import { ticketsPrice, etherFor } from "../src/iap/catalog.js";
 import { verifyAppleTransaction } from "../src/server/applejws.js";
 import { APPLE_ROOT_G3_PEM } from "../src/server/apple-root-g3.js";
@@ -50,6 +51,60 @@ for (let i = 0; i < 3; i++) w.credit("A", `earn${i}`, 10, "earn", T);
 await throws("遊んで貯める分は1日の上限を超えない", () => w.credit("A", "earn9", 1, "earn", T), /これ以上/);
 is("翌日はまた受け取れる", w.credit("A", "earn10", 1, "earn", T + 86_400_000).applied, true);
 is("1日の上限は定数どおり", EARN_DAILY_MAX, 30);
+
+console.log("\nチュートリアルの褒美(kind=tutorial。earn の1日上限とは別の道)");
+{
+  const D = new DatabaseSync(":memory:");
+  const tw = new Wallet((q, ...a) => D.prepare(q).all(...a));
+  const day = T + 10 * 86_400_000;
+  // まず earn を1日ぶん使い切る
+  for (let i = 0; i < 3; i++) tw.credit("TU", `d${i}`, 10, "earn", day);
+  await throws("earn は上限どおり止まる", () => tw.credit("TU", "d9", 1, "earn", day), /これ以上/);
+  is("earn が尽きた日でもチュートリアルの褒美は受け取れる", tw.tutorialReward("TU", 1, day).applied, true);
+  is("枚数はサーバーが決める(TUTORIAL_TICKETS)", tw.summary("TU").tickets, 30 + TUTORIAL_TICKETS);
+  is("同じ話は二度効かない", tw.tutorialReward("TU", 1, day).applied, false);
+  is("二度目で残高は増えない", tw.summary("TU").tickets, 30 + TUTORIAL_TICKETS);
+  for (let c = 2; c <= TUTORIAL_REWARD_MAX_ID; c++) tw.tutorialReward("TU", c, day);
+  is("全話ぶんを同じ日に受け取れる", tw.summary("TU").tickets, 30 + TUTORIAL_REWARD_MAX_ID * TUTORIAL_TICKETS);
+  await throws("話の番号の上限を超えると断る", () => tw.tutorialReward("TU", TUTORIAL_REWARD_MAX_ID + 1, day), /正しくありません/);
+  await throws("0 話は無い", () => tw.tutorialReward("TU", 0, day), /正しくありません/);
+  await throws("負の話は無い", () => tw.tutorialReward("TU", -3, day), /正しくありません/);
+  await throws("小数は断る", () => tw.tutorialReward("TU", 1.5, day), /正しくありません/);
+  await throws("文字列は断る", () => tw.tutorialReward("TU", "3", day), /正しくありません/);
+  await throws("巨大な番号も断る", () => tw.tutorialReward("TU", 1e9, day), /正しくありません/);
+  // 別の人は自分の分を受け取れる(id が uid で分かれる)
+  is("別の人も同じ話の褒美を受け取れる", tw.tutorialReward("TV", 1, day).applied, true);
+  is("チュートリアルの褒美は earn の1日上限に数えない(翌日の earn も満額)", tw.credit("TU", "e-next", 10, "earn", day + 86_400_000).applied, true);
+  // 台帳の行の形
+  const rows = D.prepare("SELECT kind, ref, tickets FROM wallet_ledger WHERE uid='TU' AND kind='tutorial' ORDER BY CAST(ref AS INTEGER)").all();
+  is("台帳には話ごとに1行", rows.length, TUTORIAL_REWARD_MAX_ID);
+  is("ref に話の番号が入る", rows.map((r) => r.ref), Array.from({ length: TUTORIAL_REWARD_MAX_ID }, (_, i) => String(i + 1)));
+  is("どの行も同じ枚数", rows.every((r) => r.tickets === TUTORIAL_TICKETS), true);
+
+  // **同じ日**の earn の枠を食わない(全話ぶん受け取ったあとでも 30 枚まで入る)
+  const fresh = new Wallet((q, ...a) => D.prepare(q).all(...a));
+  for (let c = 1; c <= TUTORIAL_REWARD_MAX_ID; c++) fresh.tutorialReward("TW", c, day);
+  for (let i = 0; i < 3; i++) fresh.credit("TW", `tw-e${i}`, 10, "earn", day);
+  is("全話ぶんの直後でも、同じ日の earn は 30 枚まで入る", fresh.summary("TW").tickets, TUTORIAL_REWARD_MAX_ID * TUTORIAL_TICKETS + 30);
+  await throws("31 枚目の earn は止まる(枠は別々)", () => fresh.credit("TW", "tw-e9", 1, "earn", day), /これ以上/);
+
+  // 予約した接頭辞の植え付け: ほかの道から tutorial:<相手>:<話> を書けない
+  await throws("earn の道から tutorial: の id は積めない", () => fresh.credit("TX", "tutorial:TW:5", 1, "earn", day), /正しくありません/);
+  await throws("無償ジェムの道からも積めない", () => fresh.earnGems("TX", "tutorial:TW:5", 1, day), /正しくありません/);
+  await throws("引き継ぎの道からも積めない", () => fresh.credit("TX", "tutorial:TW:5", 1, "migrate", day), /正しくありません/);
+  is("植え付けを試みられた人も、自分の褒美は受け取れる", fresh.tutorialReward("TW", 5, day).applied, false /* 上で受け取り済み */);
+  is("(その人の 5 話の行は tutorial の道のもの)", D.prepare("SELECT kind FROM wallet_ledger WHERE id='tutorial:TW:5'").all()[0].kind, "tutorial");
+
+  // 旧版で tutorial:local:N として earn に積まれた人は、同じ話を二度受け取らない
+  fresh.credit("TL", "login:x", 1, "earn", day); // 台帳に行を作るためのふつうの earn
+  D.prepare("INSERT INTO wallet_ledger (id, uid, tickets, gems, kind, ref, at, gems_free) VALUES (?,?,?,?,?,?,?,?)").run("tutorial:local:2", "TL", 10, 0, "earn", "2026-09-28", day, 0);
+  D.prepare("UPDATE wallets SET tickets = tickets + 10 WHERE uid='TL'").run();
+  const before = fresh.summary("TL").tickets;
+  is("旧 tutorial:local:2 が自分の行なら、2 話は applied:false", fresh.tutorialReward("TL", 2, day).applied, false);
+  is("残高は増えない", fresh.summary("TL").tickets, before);
+  is("同じ tutorial:local:2 でも他人には効かない(その人は 2 話を受け取れる)", fresh.tutorialReward("TM", 2, day).applied, true);
+  is("第13話(番外)も受け取れる", fresh.tutorialReward("TM", 13, day).applied, true);
+}
 
 console.log("記念配布(campaigns.js)");
 {

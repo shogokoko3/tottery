@@ -57,6 +57,12 @@ export const MIGRATE_TICKETS_MAX = 500;
  * 引き継げていない人が出たら、true に戻すか `adminGrant` で手で配る。
  */
 export const MIGRATE_ENABLED = false;
+import {
+  TUTORIAL_TICKETS,
+  isRewardChapter,
+  rewardEventId,
+} from "../game/tutorial-reward.js";
+
 /** 遊んで貯める分(kind=earn)は端末の申告なので、1回と1日(UTC)の上限で抑える */
 export const EARN_EVENT_MAX = 10;
 export const EARN_DAILY_MAX = 30;
@@ -281,6 +287,29 @@ export class Wallet {
     const r = this.apply(uid, id, { tickets: 1 }, "pass", weekOf(now), now);
     return { ...r, ...this.summary(uid, now) };
   }
+  /**
+   * チュートリアルを1話終えた褒美(TUTORIAL_TICKETS 枚)。
+   * **earn の1日上限とは別の道**(2026-09-30 本人の指示)。話の数が有限なので、
+   * 上限は「話ごとに一度」で足りる(1人あたり最大 TUTORIAL_REWARD_MAX_ID×TUTORIAL_TICKETS 枚)。
+   * 出来事 id は認証済みの uid から**ここで**組む。端末の言い分は「何話」だけ。
+   * 枚数も端末からは受け取らない
+   */
+  tutorialReward(uid, chapter, now) {
+    if (!isRewardChapter(chapter)) throw new Error("話の番号が正しくありません。");
+    const id = rewardEventId(uid, chapter);
+    const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
+    if (seen) {
+      if (seen.uid !== uid) throw new Error("他の人の出来事です。");
+      return { applied: false, ...this.summary(uid, now) };
+    }
+    // 別枠にする前の版は、圏外で uid が取れないと tutorial:local:<話> の id で earn に積んでいた。
+    // その行がこの人のものなら、同じ話をもう一度は配らない(二重計上を防ぐ)
+    const legacy = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", `tutorial:local:${chapter}`)[0];
+    if (legacy && legacy.uid === uid) return { applied: false, ...this.summary(uid, now) };
+    // ref=話の番号。あとから「何話ぶん配ったか」を数えられる
+    const r = this.apply(uid, id, { tickets: TUTORIAL_TICKETS }, "tutorial", String(chapter), now);
+    return { ...r, ...this.summary(uid, now) };
+  }
   /** 出来事 id で冪等に増減する。減らす場合は残高を超えない */
   apply(uid, id, { tickets = 0, gemsPaid = 0, gemsFree = 0 }, kind, ref, now) {
     if (typeof id !== "string" || !/^[\w:.+-]{1,128}$/.test(id))
@@ -289,6 +318,9 @@ export class Wallet {
       if (!Number.isSafeInteger(d) || Math.abs(d) > 1000000)
         throw new Error("枚数が正しくありません。");
     if (tickets === 0 && gemsPaid === 0 && gemsFree === 0) throw new Error("枚数が正しくありません。");
+    // tutorial: は台帳が自分で組む id。ほかの道(earn-gems など)から同じ形の id を先に
+    // 植えられると、その人の褒美が「他の人の出来事」になって永久に受け取れなくなる(2026-09-30)
+    if (kind !== "tutorial" && /^tutorial:/.test(id)) throw new Error("出来事の id が正しくありません。");
     const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) {
       if (seen.uid !== uid) throw new Error("他の人の出来事です。");

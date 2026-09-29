@@ -23,8 +23,11 @@ import {
   rewardEventId,
   ticketRewardLabel,
   ticketsForCleared,
+  TUTORIAL_REWARD_MAX_ID,
+  isRewardChapter,
+  chapterFromLegacyId,
 } from "../src/game/tutorial-reward.js";
-import { TUTORIALS } from "../src/game/tutorial.js";
+import { ALL_TUTORIALS, TUTORIALS } from "../src/game/tutorial.js";
 
 let ok = 0;
 const fail = [];
@@ -129,7 +132,14 @@ is("終えていなければ0", ticketsForCleared([]), 0);
 is("壊れた値は数えない", ticketsForCleared(["a", null, 2]), 10);
 is("全12話ぶん", ticketsForCleared(TUTORIALS.map((t) => t.id)), TUTORIALS.length * 10);
 is("目印は話ごとに分かれる", rewardEventId("u", 3) !== rewardEventId("u", 4), true);
-is("目印に人が入る", rewardEventId("u", 3).includes("u"), true);
+is("目印に人が入る", rewardEventId("zz9", 3), "tutorial:zz9:3");
+is("褒美のある話の上限は、番外を含めたいちばん大きい話の id", TUTORIAL_REWARD_MAX_ID, Math.max(...ALL_TUTORIALS.map((t) => t.id)));
+is("話の番号の判定", [1, TUTORIAL_REWARD_MAX_ID, 0, TUTORIAL_REWARD_MAX_ID + 1, 1.5, "3", null].map(isRewardChapter), [true, true, false, false, false, false, false]);
+is(
+  "古い端末の id から話の番号を取り出す",
+  ["tutorial:abc:3", "tutorial:local:12", "tutorial:abc:13", "tutorial:abc:14", "tutorial:abc:0", "tutorial:3", "login:2026-09-30", "tutorial:abc:3:extra", null].map(chapterFromLegacyId),
+  [3, 12, 13, null, null, null, null, null, null],
+);
 is("一言", ticketRewardLabel(30), "ガチャチケット 30枚");
 is("0枚なら出さない", ticketRewardLabel(0), null);
 

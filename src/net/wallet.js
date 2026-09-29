@@ -99,13 +99,16 @@ export async function flushPending() {
   let list = readPending();
   for (const ev of [...list]) {
     try {
-      // チケットは earn、無償ジェムは earn-gems、バトルパスのマス報酬は pass-reward
+      // チケットは earn、無償ジェムは earn-gems、バトルパスのマス報酬は pass-reward、
+      // チュートリアルの話は tutorial-reward(何話かだけ送る。id はサーバーが組む)
       await mirror(
         ev.pass
           ? await walletRequest("pass-reward", { id: ev.id })
-          : ev.gems
-            ? await walletRequest("earn-gems", { id: ev.id, gems: ev.gems })
-            : await walletRequest("earn", { id: ev.id, n: ev.n }),
+          : ev.tutorial
+            ? await walletRequest("tutorial-reward", { chapter: ev.tutorial })
+            : ev.gems
+              ? await walletRequest("earn-gems", { id: ev.id, gems: ev.gems })
+              : await walletRequest("earn", { id: ev.id, n: ev.n }),
       );
       list = list.filter((x) => x.id !== ev.id);
       writePending(list);
@@ -119,6 +122,20 @@ export async function flushPending() {
       } else break;
     }
   }
+}
+
+/**
+ * チュートリアルを1話終えた褒美(2026-09-30)。**何話かだけ**を送り、枚数と出来事 id はサーバーが決める。
+ * earn の1日上限とは別の道なので、一気に何話飛ばしても消えない。同じ話は二度効かない。
+ * 保留列の id は端末の中の重複よけ(uid は要らない)
+ */
+export async function earnTutorialTicket(chapter) {
+  if (!WALLET_SERVER || !Number.isInteger(chapter) || chapter < 1) return;
+  const id = `tutorial:${chapter}`;
+  const list = readPending();
+  if (!list.some((x) => x.id === id))
+    writePending([...list, { id, tutorial: chapter, at: Date.now() }]);
+  await flushPending().catch(() => {});
 }
 
 /** 残高を取り直す(溜めていた加算も先に送る) */
