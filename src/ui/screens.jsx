@@ -171,6 +171,8 @@ import { getCollection, useCollection } from "../skins/store.js";
 import { firstPullDone } from "../skins/first-pull.js";
 // はじまりの語り(2026-09-28 本人の指示)
 import { Prologue } from "./prologue.jsx";
+// はじめての手引き(2026-09-29 本人の指示)
+import { Primer } from "./primer.jsx";
 // 相手が見つかったときの手ごたえ(2026-09-28 本人の指示)
 import { vibrateMatchFound } from "../game/haptics.js";
 import { baseSkinId, foilId, sanitizeLoadout } from "../skins/catalog.js";
@@ -2463,33 +2465,19 @@ function TotteryScreens() {
           home: (
             <>
               <HomeScreen onStart={() => t("menu")} />
+              {/* はじめての人には、いきなり第1話ではなく**手引き**を出す
+                  (2026-09-29 本人の指示。「寿司将棋」の導入が分かりやすかった)。
+                  どんなゲームか → 勝ち方 → 王は伏せたまま → 陣 → 2〜5の動き、を
+                  1ページずつ。最後の札の釦がそのまま第1話につながる */}
               {offerTutorial && (
-                <div className="modal-overlay">
-                  <div className="modal-panel tutorial-offer">
-                    <h3>はじめまして</h3>
-                    <p className="hint">
-                      第1話は1分。相手の王を討つところまで、まず一度やってみますか？
-                    </p>
-                    <p className="hint">ホームの「チュートリアル」からいつでも始められます。</p>
-                    <div className="setup-actions">
-                      <button
-                        className="btn btn-ghost"
-                        onClick={() => setOfferTutorial(!1)}
-                      >
-                        あとで
-                      </button>
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => {
-                          setOfferTutorial(!1);
-                          startTutorial(TUTORIALS[0]);
-                        }}
-                      >
-                        第1話を始める
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <Primer
+                  doneLabel="第1話を始める"
+                  onSkip={() => setOfferTutorial(!1)}
+                  onDone={() => {
+                    setOfferTutorial(!1);
+                    startTutorial(TUTORIALS[0]);
+                  }}
+                />
               )}
             </>
           ),

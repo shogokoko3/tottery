@@ -8958,3 +8958,154 @@ svg {
     animation: none;
   }
 }
+
+/* はじめての手引き(2026-09-29 本人の指示。「寿司将棋」の導入の形を借りる)。
+   1ページ=1つのこと。絵1枚と1〜2行だけを、順に渡す。
+   早見表(.rule-grid)が13段を1枚に並べる**調べる用の表**なのに対して、
+   こちらは**覚える順に1枚ずつ**。両方を残す */
+.primer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 420px;
+}
+.primer-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.primer-head h3 {
+  margin: 0;
+}
+/* 「あとで」は釦らしく見せすぎない。進む方を押してほしい */
+.primer-skip {
+  flex: none;
+  padding: 6px 8px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.primer-skip:hover {
+  color: var(--text);
+}
+/* 絵と文。高さを決めておかないと、札を送るたびに釦の位置が動く */
+.primer-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 190px;
+  padding: 16px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  animation: primer-in 260ms ease-out both;
+}
+@keyframes primer-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.primer-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+.primer-text p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+/* 駒の札: 絵札と動きの図を並べる。図は早見表の 70px だと小さいので大きく */
+.primer-rank-art,
+.primer-figs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.primer-figs figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.primer-figs figcaption {
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--gold-soft);
+  text-align: center;
+}
+.primer .move-diagram {
+  width: 108px;
+}
+.primer-figs .move-diagram {
+  width: 92px;
+}
+/* 盤の駒をそのまま並べる札(ようこそ・勝ち方・伏せ札・陣) */
+.primer-chips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.primer-chips-setup {
+  gap: 4px;
+}
+.primer-arrow {
+  color: var(--gold);
+  font-size: 13px;
+}
+.primer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+/* 釦は中身のぶんだけ。狭いときは縮む(はみ出させない) */
+.primer-foot .btn {
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 42px;
+  white-space: nowrap;
+}
+.primer-back:disabled {
+  opacity: 0.35;
+}
+.primer-dots {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+.primer-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.primer-dots i.is-at {
+  background: var(--gold);
+}
+/* この先に何があるかを見せる最後の札。札は少し重ねて幅を詰める */
+.primer-chips-more {
+  gap: 0;
+}
+.primer-chips-more > * + * {
+  margin-left: -10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .primer-body {
+    animation: none;
+  }
+}

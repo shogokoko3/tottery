@@ -9,6 +9,8 @@ import {
 import { Close } from "../icons.jsx";
 import { CardFace } from "./cards.jsx";
 import { AreaGuide } from "./area-guide.jsx";
+// はじめての手引き(2026-09-29 本人の指示)。早見表からも読み返せるようにする
+import { Primer } from "./primer.jsx";
 import { getCollection } from "../skins/store.js";
 import { foilRevealed } from "../skins/collection.js";
 
@@ -131,7 +133,7 @@ export function CardGuide({
 export function RulesPanel({ onClose, initialTab = "moves" }) {
   // "moves" 通常の動き / "king" 王にした時 / "areas" 盤面エリア
   let [tab, setTab] = (0, useState)(
-    ["moves", "king", "areas"].includes(initialTab) ? initialTab : "moves",
+    ["moves", "king", "areas", "primer"].includes(initialTab) ? initialTab : "moves",
   );
   let t = tab === "king",
     l = (king) => setTab(king ? "king" : "moves");
@@ -142,6 +144,9 @@ export function RulesPanel({ onClose, initialTab = "moves" }) {
   } catch {
     /* 読めなければ隠したまま */
   }
+  // はじめての手引き。**覚える順に1枚ずつ**なので、調べる用の表とは分けて置く
+  if (tab === "primer")
+    return <Primer doneLabel="とじる" onDone={onClose} />;
   if (tab === "areas")
     return (
       <div className="modal-overlay" onClick={onClose}>
@@ -153,6 +158,9 @@ export function RulesPanel({ onClose, initialTab = "moves" }) {
             </button>
           </div>
           <div className="rule-toggle">
+            <button className="btn btn-ghost" onClick={() => setTab("primer")}>
+              はじめに
+            </button>
             <button className="btn btn-ghost" onClick={() => setTab("moves")}>
               通常の動き
             </button>
@@ -177,6 +185,9 @@ export function RulesPanel({ onClose, initialTab = "moves" }) {
           </button>
         </div>
         <div className="rule-toggle">
+          <button className="btn btn-ghost" onClick={() => setTab("primer")}>
+            はじめに
+          </button>
           <button
             className={`btn ${t ? "btn-ghost" : "btn-primary"}`}
             onClick={() => l(!1)}
