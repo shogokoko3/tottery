@@ -61,7 +61,10 @@ const dist = (dr, dc) => Math.max(Math.abs(dr), Math.abs(dc));
  * その数字で、この動きがありうるか。
  * どれも「いちばん広く見た場合」で判断する(ありえる数字を消しすぎない)
  */
-export function rankCouldMove(rank, dr, dc, { asKing = true } = {}) {
+export function rankCouldMove(rank, dr, dc, { asKing = true, powers = true } = {}) {
+  // powers … その対局に王の力があるか(フェーズ1「駒の動きだけ」では無い)。
+  //           無ければ、王でも仲間でも一切伸びず、J/Q の+1マスも無い
+  const king = asKing && powers;
   if (!dr && !dc) return false;
   const d = dist(dr, dc);
   switch (rank) {
@@ -70,14 +73,14 @@ export function rankCouldMove(rank, dr, dc, { asKing = true } = {}) {
       return false;
     // 2・3 は1マス。**王のときだけ**同じ数字の枚数ぶん伸びる
     case "2":
-      return isOrth(dr, dc) && d <= (asKing ? 1 + MAX_BONUS : 1);
+      return isOrth(dr, dc) && d <= (king ? 1 + MAX_BONUS : 1);
     case "3":
-      return isDiag(dr, dc) && d <= (asKing ? 1 + MAX_BONUS : 1);
+      return isDiag(dr, dc) && d <= (king ? 1 + MAX_BONUS : 1);
     // 4・5 は2マス。王が同じ数字なら伸びる
     case "4":
-      return isOrth(dr, dc) && d <= 2 + MAX_BONUS;
+      return isOrth(dr, dc) && d <= (powers ? 2 + MAX_BONUS : 2);
     case "5":
-      return isDiag(dr, dc) && d <= 2 + MAX_BONUS;
+      return isDiag(dr, dc) && d <= (powers ? 2 + MAX_BONUS : 2);
     // 6〜9 は偶数マス・奇数マスだけ。王でも届く距離は変わらない
     case "6":
       return isOrth(dr, dc) && d % 2 === 0;
@@ -92,10 +95,10 @@ export function rankCouldMove(rank, dr, dc, { asKing = true } = {}) {
       return isKnight(dr, dc);
     // J は縦横に果てまで。**王のときだけ**斜め1マスも
     case "J":
-      return isOrth(dr, dc) || (asKing && isDiag(dr, dc) && d === 1);
+      return isOrth(dr, dc) || (king && isDiag(dr, dc) && d === 1);
     // Q は斜めに果てまで。**王のときだけ**縦横1マスも
     case "Q":
-      return isDiag(dr, dc) || (asKing && isOrth(dr, dc) && d === 1);
+      return isDiag(dr, dc) || (king && isOrth(dr, dc) && d === 1);
     // K は全部できる
     case "K":
       return isOrth(dr, dc) || isDiag(dr, dc) || isKnight(dr, dc);
@@ -108,11 +111,11 @@ export function rankCouldMove(rank, dr, dc, { asKing = true } = {}) {
  * 見えた動きの並びから、ありうる数字を返す。
  * 動きが1つも無ければ、絞れないので**全部**を返す
  */
-export function rankCandidates(moves, { pool = RANKS, asKing = true } = {}) {
+export function rankCandidates(moves, { pool = RANKS, asKing = true, powers = true } = {}) {
   const list = Array.isArray(moves) ? moves : [];
   return pool.filter((rank) =>
     list.every(({ from, to }) =>
-      rankCouldMove(rank, to.row - from.row, to.col - from.col, { asKing }),
+      rankCouldMove(rank, to.row - from.row, to.col - from.col, { asKing, powers }),
     ),
   );
 }
@@ -123,12 +126,13 @@ export function rankCandidates(moves, { pool = RANKS, asKing = true } = {}) {
  *   size  … 盤の大きさ
  *   pool  … その対局で使っている数字(レベル制限で絞られることがある)
  */
-export function candidatesFromHistory(lines, size, { pool = RANKS } = {}) {
+export function candidatesFromHistory(lines, size, { pool = RANKS, powers = true } = {}) {
   const moves = movesFromHistory(lines, size);
-  const ranks = rankCandidates(moves, { pool });
+  // 王の力なし(フェーズ1)の対局では、王でも仲間でも一切伸びないので、その前提で絞る
+  const plain = rankCandidates(moves, { pool, asKing: false, powers });
+  const ranks = powers ? rankCandidates(moves, { pool }) : plain;
   // 王でなくてもできる動きか。**王のときだけできる動きなら、その駒は王**。
   // J の斜め・Q の縦横・2/3 の長い動きがそれ。相手の王を読む手がかりになる
-  const plain = rankCandidates(moves, { pool, asKing: false });
   const kingOnly = ranks.filter((r) => !plain.includes(r));
   return {
     moves: moves.length,

@@ -451,7 +451,8 @@ export function LogViewer({ piece, viewer, onClose, revealAll, onMemo }) {
           <CardGuide
             rank={piece.rank}
             suit={piece.suit}
-            isKing={piece.isKing}
+            /* 王の力なしの対局(駒に powers:false)では「王の効果」を出さない */
+            isKing={!!piece.isKing && piece.powers !== false}
             compact={!0}
           />
         )}

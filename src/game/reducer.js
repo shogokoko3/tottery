@@ -73,6 +73,7 @@ import {
   placedRankCounts,
   makePlayer,
   moveArrow,
+  kingPowersOn,
 } from "./board.js";
 
 /**
@@ -534,6 +535,8 @@ export function initialState() {
     setupAck: null,
     /** 台本どおりに進める場面(チュートリアル)かどうか */
     scripted: false,
+    // 王の力が働くか。フェーズ1「駒の動きだけ」では false(2026-09-30 本人の指示)
+    kingPowers: true,
     board: [],
     pieces: {},
     currentTurn: 0,
@@ -599,8 +602,8 @@ export function removePiece(state, pieceId, opts) {
 
   let pendingKingChoice = state.pendingKingChoice || null;
 
-  // 王の2・3が倒れたら、軍内の同ランクが王位を継ぐ
-  if ((dead.rank === "2" || dead.rank === "3") && dead.isKing) {
+  // 王の2・3が倒れたら、軍内の同ランクが王位を継ぐ(王の力。フェーズ1では起きない)
+  if ((dead.rank === "2" || dead.rank === "3") && dead.isKing && kingPowersOn(state)) {
     const heirs = Object.values(pieces).filter(
       (p) =>
         p.alive &&
@@ -701,7 +704,8 @@ export function removePiece(state, pieceId, opts) {
     (dead.rank === "4" || dead.rank === "5") &&
     !dead.isKing &&
     !opts.viaCounter &&
-    opts.by
+    opts.by &&
+    kingPowersOn(state)
   ) {
     const kingId = next.players[dead.owner].kingId;
     const king = kingId ? next.pieces[kingId] : null;
@@ -736,7 +740,7 @@ export function removePiece(state, pieceId, opts) {
   // (本人の指示 2026-09-16。海のエリアの道連れに K の見返りまで付くのをやめる)
   const byRevenge =
     !!opts.viaRevenge && state.ruleVersion >= REVENGE_NO_RESERVE_RULE_VERSION;
-  if ((dead.rank === "J" || dead.rank === "Q") && !byRevenge) {
+  if ((dead.rank === "J" || dead.rank === "Q") && !byRevenge && kingPowersOn(state)) {
     const owner = next.players[dead.owner];
     const king = owner.kingId ? next.pieces[owner.kingId] : null;
     // まとめ取りで J と Q が同時に倒れると、2枚めくれることがある。
@@ -771,12 +775,14 @@ export function endAction(state, pieceId) {
     return { ...state, phase: "gameover" };
   const piece = pieceId ? state.pieces[pieceId] : null;
   // 空のエリアを使った軍は、10が全て2回動ける(src/game/areas.js)
+  // 王の10・A の2回目は王の力(フェーズ1では無い)。空のエリアの2回目は別の力なのでそのまま
+  const kingTwice = !!piece?.isKing && kingPowersOn(state);
   const extraMove =
     piece &&
     piece.alive &&
     piece.rank === "10" &&
-    (piece.isKing || !!piece.skyTwice || !!state.players[piece.owner].skyTwice);
-  const extraSwap = piece && piece.alive && piece.isKing && piece.rank === "A";
+    (kingTwice || !!piece.skyTwice || !!state.players[piece.owner].skyTwice);
+  const extraSwap = piece && piece.alive && kingTwice && piece.rank === "A";
   if ((extraMove || extraSwap) && !state.extraUsed) {
     return {
       ...state,
@@ -1478,6 +1484,8 @@ function coreReducer(state, action) {
         // 台本どおりに進めるチュートリアルでは布陣ボーナスを出さない。
         // 先手が入れ替わったり駒が公開されたりすると、案内と噛み合わなくなる
         scripted: !!action.scripted,
+        // 王の力。旗が無ければ働く(古い記録・古い端末との互換)
+        kingPowers: action.kingPowers !== false,
         phase: "dice",
         interstitial: { forPlayer: 0, kind: "dice" },
       };
@@ -1787,6 +1795,9 @@ function coreReducer(state, action) {
           alive: true,
           history: [],
           everRevived: false,
+          // 王の力なしの対局では、駒そのものに印を付ける。
+          // 合法手(board.js)は駒だけを見るので、CPU も画面も同じ手を見る
+          ...(state.kingPowers === false ? { powers: false } : {}),
         };
         pieces[piece.id] = piece;
         board[at.row][at.col] = piece;
