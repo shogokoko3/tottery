@@ -2151,6 +2151,13 @@ export function GameCore({
   }
 
   // 取る手は必ず一度確認する
+  // 設定画面で切り替えたら、対局を抜けずにその場で効かせる
+  (0, useEffect)(() => {
+    const onChange = (e) => setConfirmMove(!!e?.detail?.confirmMove);
+    window.addEventListener("tottery:play-settings", onChange);
+    return () => window.removeEventListener("tottery:play-settings", onChange);
+  }, []);
+
   function tryMove(row, col, mv) {
     if (mv.capture) {
       setPendingCapture({
@@ -2158,6 +2165,18 @@ export function GameCore({
         col,
         captures: mv.captures,
         count: mv.captures ? mv.captures.length : 1,
+      });
+      return;
+    }
+    // 取らない移動も、設定が on なら一度確認する(2026-09-28 本人の指示)。
+    // チュートリアルは台本どおりに動かすので挟まない(指示と食い違う札が出る)
+    if (confirmMove && !tutorial) {
+      const from = a.pieces[a.selectedId];
+      setPendingMove({
+        row,
+        col,
+        captures: mv.captures,
+        fromSquare: from ? squareName(from.row, from.col, R) : null,
       });
       return;
     }
@@ -2172,13 +2191,6 @@ export function GameCore({
   /**
    * 再戦は両者の合意で始める。
    *
-  // 設定画面で切り替えたら、対局を抜けずにその場で効かせる
-  (0, useEffect)(() => {
-    const onChange = (e) => setConfirmMove(!!e?.detail?.confirmMove);
-    window.addEventListener("tottery:play-settings", onChange);
-    return () => window.removeEventListener("tottery:play-settings", onChange);
-  }, []);
-
    * 片方が押しただけで盤を作り直すと、相手は準備ができていないまま
    * 新しい対局に入る。部屋の手番の列も積まれる一方で、1000件で頭打ちになる。
    * 両方そろったらホストが列を片付け、何局目かを1つ進める。
@@ -2189,18 +2201,6 @@ export function GameCore({
     // 相手が部屋を出た(ゲストの席が空いた)か、部屋が消えた(ホストが抜けた)
     [foeLeft, setFoeLeft] = (0, useState)(!1);
   (0, useEffect)(() => {
-    // 取らない移動も、設定が on なら一度確認する(2026-09-28 本人の指示)。
-    // チュートリアルは台本どおりに動かすので挟まない(指示と食い違う札が出る)
-    if (confirmMove && !tutorial) {
-      const from = a.pieces[a.selectedId];
-      setPendingMove({
-        row,
-        col,
-        captures: mv.captures,
-        fromSquare: from ? squareName(from.row, from.col, R) : null,
-      });
-      return;
-    }
     if (!network || a.phase !== "gameover" || !onRematch) return;
     let stop = !1;
     const me = myUid();
@@ -2433,6 +2433,10 @@ export function GameCore({
     // Bot(ランダムマッチの練習相手)もオンライン対戦として数える(2026-09-24 本人の報告)。
     // レート 1750 未満はランダムマッチで必ず Bot と当たるので、数えないと
     // 「オンライン対戦をする」のミッションが誰にも達成できなかった。近くの端末は数えない
+    // この1局で**はじめて**終える話か。終えたあとに profile を見ると
+    // もう入っているので、先に覚えておく(褒美を二度配らないため)
+    const freshTutorial =
+      !!tutorial && won && !loadProfile().cleared.includes(tutorial.id);
     const after = recordGame(won, {
       online: ((!!network && !network.nearby) || !!bot) && !tutorial,
       matchId: network
@@ -2454,11 +2458,10 @@ export function GameCore({
           }
         : null),
     });
-    // この1局で**はじめて**終える話か。終えたあとに profile を見ると
-    // もう入っているので、先に覚えておく(褒美を二度配らないため)
-    const freshTutorial =
-      !!tutorial && won && !loadProfile().cleared.includes(tutorial.id);
     xpNoticeRef.current = after.xpNoticeId;
+    // 1話終えるごとにガチャチケット(2026-09-28 本人の指示)。失敗しても対局は止めない
+    if (freshTutorial)
+      grantTutorialTickets([tutorial.id], { uid: myUid() }).catch(() => {});
     // 札ごとの熟練度。1局の上限は recordMastery 側で掛ける。
     // 称号が新しく届いていれば、その中で profile.titles に焼き付く
     const mastery = recordMastery(masteryRef.current);
@@ -2480,9 +2483,6 @@ export function GameCore({
         Promise.resolve(
           giveGift({ type: "ticket", amount: WIN_CHANCE_REWARD_TICKETS }),
         ).catch(() => {});
-    // 1話終えるごとにガチャチケット(2026-09-28 本人の指示)。失敗しても対局は止めない
-    if (freshTutorial)
-      grantTutorialTickets([tutorial.id], { uid: myUid() }).catch(() => {});
         earnTickets(rewardEventId(myUid(), day, r.done), WIN_CHANCE_REWARD_TICKETS).catch(
           () => {},
         );
