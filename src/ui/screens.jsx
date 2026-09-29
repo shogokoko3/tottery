@@ -1517,8 +1517,12 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
         // 切らないと「対局へ進みます」のまま止まり、相手は来ない開始の合図を待ち続ける
         setError("相手のアプリが古いため、このフェーズでは対戦できません");
         setStatus("searching");
-        n.stop();
-        n.start(profile(), ready).catch((err) => setError(err.message));
+        // **止め終わってから**探索を始め直す。stop() は listener を外し終える前に
+        // 戻らないので、同時に start() すると attach() が「もう付いている」と見て
+        // 何も付けず、直後に全部外されて以後の知らせが来なくなる
+        n.stop()
+          .then(() => n.start(profile(), ready))
+          .catch((err) => setError(err && err.message ? err.message : "探索を始め直せませんでした"));
         return;
       }
       readyRef.current = !0;

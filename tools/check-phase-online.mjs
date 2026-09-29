@@ -101,6 +101,10 @@ console.log("\nFirebase のルールを評価器で確かめる(tools/check-rule
   is("phase の無い部屋(旧端末のホスト)では guestPhase は 3 だけ", [canWrite(p3, ["rooms", "P1", "guestPhase"], B, 3), canWrite(p3, ["rooms", "P1", "guestPhase"], B, 1)], [true, false]);
   is("席の申告(まとめ書き)に guestPhase を含めて書ける", canPatch(p1, ["rooms", "P1"], B, { guestPresent: true, guestMatchSize: 5, guestPhase: 1, guestName: "い" }), true);
   is("席の申告に部屋と違う guestPhase を混ぜると全部弾かれる", canPatch(p1, ["rooms", "P1"], B, { guestPresent: true, guestMatchSize: 5, guestPhase: 3 }), false);
+  is("旧端末のゲスト(guestPhase なし)の名乗りは今までどおり通る", canPatch(p1, ["rooms", "P1"], B, { guestPresent: true, guestMatchSize: 5, guestName: "い" }), true);
+  is("作った後はホストも phase を書き換えられない", [canWrite(p1, ["rooms", "P1", "phase"], A, 2), canPatch(p1, ["rooms", "P1"], A, { phase: 2 })], [false, false]);
+  is("phase の無い部屋に後から足せない", canPatch(p3, ["rooms", "P1"], A, { phase: 1 }), false);
+  is("guestPhase は数だけ", [canWrite(p1, ["rooms", "P1", "guestPhase"], B, "1"), canWrite(p1, ["rooms", "P1", "guestPhase"], B, true)], [false, false]);
   // 掲示
   const lobbyDb = (roomExtra) => ({ rooms: { L1: { seats: { host: "uidA" }, createdAt: NOW - 1000, matchSize: 5, ...roomExtra } } });
   const post = (db, entry) => canWrite(db, ["lobby", "L1"], A, { host: "uidA", createdAt: NOW, ...entry });
@@ -112,12 +116,30 @@ console.log("\nFirebase のルールを評価器で確かめる(tools/check-rule
   is("phase の無い部屋に phase の掲示は出せない", post(lobbyDb({}), { phase: 1, size: 5 }), false);
   // size だけ(phase なし)の掲示はルール上は書けるが、旧端末(matchSize 必須)も新端末(phase 必須)も拾わない
   is("size だけの掲示は誰も拾わない", [matchesOnlineSize({ size: 5, host: "h" }, 5), matchesOnlineEntry({ size: 5, host: "h" }, 5, 1), matchesOnlineEntry({ size: 5, host: "h" }, 5, 3)], [false, false, false]);
+  const posted = { rooms: { L3: { seats: { host: "uidA" }, createdAt: NOW - 1000, matchSize: 5 } }, lobby: { L3: { matchSize: 5, host: "uidA", createdAt: NOW - 1000 } } };
+  is("出した掲示に後から phase を足せない(本人でも)", canPatch(posted, ["lobby", "L3"], A, { phase: 1 }), false);
+  is("他人の掲示に phase を書けない", canWrite(posted, ["lobby", "L3", "phase"], X, 1), false);
   // 開始の合図
   const actDb = { rooms: { P1: { seats: { host: "uidA", guest: "uidB" }, createdAt: NOW - 60_000, matchSize: 5, phase: 1, acts: {} } } };
   const act = (extra) => canWrite(actDb, ["rooms", "P1", "acts", "-Nzzzzzzzzzzzzzzzzz1"], A, { type: "START_SETUP", by: "uidA", __id: "s-1", size: 5, ...extra });
   is("開始の合図はそのまま積める(照らし合わせ)", act({}), true);
   is("開始の合図に kingPowers:false を載せられる", act({ kingPowers: false }), true);
   is("kingPowers は真偽だけ", [act({ kingPowers: "no" }), act({ kingPowers: 1 })], [false, false]);
+  is("kingPowers の下に子は書けない", act({ kingPowers: { x: true } }), false);
+}
+
+console.log("\nサーバー再生(verify-match)は、フェーズ<3 の部屋と力なしの開始を持ち点に数えない");
+{
+  const { verifyMatch } = await import("../src/server/verify-match.js");
+  const finish = { code: "T", createdAt: 1, round: 0, winner: 0 };
+  const start = (extra) => ({ "-N0000000000000000001": { type: "START_SETUP", by: "h", __id: "s-1", size: 9, ruleVersion: GAME_RULE_VERSION, ...extra } });
+  const room = (extra, acts) => ({ seats: { host: "h", guest: "g" }, createdAt: 1, round: 0, acts, ...extra });
+  const thrown = (fn) => { try { fn(); return null; } catch (e) { return e.message; } };
+  is("フェーズ1の部屋は断る", /フェーズ3/.test(thrown(() => verifyMatch(room({ phase: 1 }, start({})), finish, "h")) || ""), true);
+  is("フェーズ2の部屋も断る", /フェーズ3/.test(thrown(() => verifyMatch(room({ phase: 2 }, start({})), finish, "h")) || ""), true);
+  is("phase の無い部屋で kingPowers:false の開始は断る", /9×9/.test(thrown(() => verifyMatch(room({}, start({ kingPowers: false })), finish, "h")) || ""), true);
+  const plain = thrown(() => verifyMatch(room({}, start({})), finish, "h")) || "";
+  is("phase の無い部屋の普通の開始は、フェーズの理由では断らない", /フェーズ3/.test(plain), false);
 }
 
 console.log("\nホスト側の旗(setupFlagsForPhase)とゲスト側の決め直し(setupFromRoom)が一致する");
