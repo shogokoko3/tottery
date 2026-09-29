@@ -42,6 +42,13 @@ import {
 } from "./constants.js";
 import { findBadWord } from "./badwords.js";
 import { clearBlocked } from "./blocked.js";
+import {
+  DEFAULT_PHASE,
+  addPhaseWin,
+  normalizePhase,
+  normalizePhaseWins,
+  normalizeStory,
+} from "./phase.js";
 
 const KEY = "tottery.account.v1";
 /** 名前を持たなかった頃の保存先。1度だけ読み込んで引き継ぐ */
@@ -129,6 +136,12 @@ const EMPTY = {
   missionProgress: null,
   // 一度クリアしたチュートリアル。2回目からは経験値を配らない
   cleared: [],
+  // フェーズ(ストーリーとフェーズ.md)。既定はストーリーが載るまで 3
+  phase: DEFAULT_PHASE,
+  // そのフェーズでのオンライン勝利数(昇格の条件)
+  phaseWins: { 1: 0, 2: 0, 3: 0 },
+  // フェーズごとにクリアしたストーリーの軸
+  story: { 1: [], 2: [], 3: [] },
   // 受け取り済みの手紙。二重取りを防ぐ
   letters: [],
   // レーティングと、その対象になった対局数(オンラインだけ)
@@ -364,6 +377,9 @@ export function loadProfile() {
     cleared: Array.isArray(saved.cleared)
       ? saved.cleared.filter((x) => Number.isInteger(x))
       : [],
+    phase: normalizePhase(saved.phase),
+    phaseWins: normalizePhaseWins(saved.phaseWins),
+    story: normalizeStory(saved.story),
     letters: Array.isArray(saved.letters)
       ? saved.letters.filter((x) => typeof x === "string")
       : [],
@@ -687,6 +703,11 @@ export function recordGame(won, opts) {
       opts && opts.tutorialId != null && !again && !draw
         ? [...profile.cleared, opts.tutorialId]
         : profile.cleared,
+    // 昇格の条件「そのフェーズでオンライン5勝」。ランダムマッチ(Bot 含む)・フレンドの勝ちを数える
+    phaseWins:
+      opts && opts.online && won === true && !isTutorial
+        ? addPhaseWin(profile).phaseWins
+        : profile.phaseWins,
     rating: after,
     ratingVersion: RATING_VERSION,
     wr: profile.wr,
