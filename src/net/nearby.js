@@ -20,6 +20,7 @@
  */
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { myUid } from "./auth.js";
+import { onlinePhase } from "./match-settings.js";
 
 export const NEARBY_PREFIX = "NEAR-";
 export const isNearbyCode = (code) =>
@@ -129,6 +130,9 @@ export function createNearby({ plugin, myId, now = () => Date.now() } = {}) {
       guestSkins: guestHello.skins,
       guestRuleVersion: guestHello.ruleVersion,
       boardSize: hostHello.boardSize,
+      // フェーズ(ストーリーとフェーズ.md)。名乗りに無ければ(古い版)・読めなければ 3
+      phase: onlinePhase(hostHello.phase),
+      ...(Number.isInteger(guestHello.phase) ? { guestPhase: onlinePhase(guestHello.phase) } : {}),
       round: 0,
     };
   }
@@ -151,6 +155,8 @@ export function createNearby({ plugin, myId, now = () => Date.now() } = {}) {
       boardSize: hostHello.boardSize,
       hostRuleVersion: hostHello.ruleVersion,
       guestRuleVersion: guestHello.ruleVersion,
+      phase: onlinePhase(hostHello.phase),
+      ...(Number.isInteger(guestHello.phase) ? { guestPhase: onlinePhase(guestHello.phase) } : {}),
     };
     emit("state", { state: "ready" });
     if (readyCb) readyCb(network);

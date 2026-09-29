@@ -123,9 +123,3 @@ export function addPhaseWin(profile) {
   return { ...profile, phaseWins: { ...wins, [phase]: wins[phase] + 1 } };
 }
 
-/** 掲示(lobby)の1件がこの盤・このフェーズの相手か。旧端末の掲示(phase なし)はフェーズ3扱い */
-export function lobbyMatchesPhase(entry, phase) {
-  const p = normalizePhase(phase);
-  const theirs = entry && Number.isInteger(entry.phase) ? entry.phase : PHASE_MAX;
-  return theirs === p;
-}

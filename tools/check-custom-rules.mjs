@@ -232,7 +232,7 @@ assert.match(screens, /const customUnlocked = !!onCustom && foilRevealed\(getCol
 assert.match(screens, /フォイルを手に入れてエリアを解放すると使えます/, "持つ前は鍵つき");
 assert.doesNotMatch(screens, /詳細設定\(開発中\)/);
 assert.match(screens, /custom=\{o === "online" \? null : customRules\}/, "ランダムマッチには出さない");
-assert.match(screens, /custom=\{!tut && !bot && !\(a && a\.random\) \? customRules : null\}/, "対局へ渡すのも CPU・同じ端末・フレンドだけ");
+assert.match(screens, /custom=\{\s*!tut &&\s*!bot &&\s*!\(a && a\.random\) &&\s*(\/\/[^\n]*\n\s*)*rulesForPhase\(a \? roomPhaseOf\(a\) : phaseOf\(loadProfile\(\)\)\)\.areas\s*\? customRules\s*: null\s*\}/, "対局へ渡すのも CPU・同じ端末・フレンドだけ");
 assert.match(game, /\(!network \|\| hasCustomRules\(network\.ruleVersion\)\)/, "通信は版17から");
 assert.match(game, /loadouts: loadoutsForCustom\(customRules, skins\)/, "エリアの側は装備で伝える");
 assert.match(game, /!\(customRules && customRules\.areas === "none"\)/);

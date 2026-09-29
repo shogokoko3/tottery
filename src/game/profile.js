@@ -703,9 +703,15 @@ export function recordGame(won, opts) {
       opts && opts.tutorialId != null && !again && !draw
         ? [...profile.cleared, opts.tutorialId]
         : profile.cleared,
-    // 昇格の条件「そのフェーズでオンライン5勝」。ランダムマッチ(Bot 含む)・フレンドの勝ちを数える
+    // 昇格の条件「そのフェーズでオンライン5勝」。ランダムマッチ(Bot 含む)・フレンドの勝ちを数える。
+    // 対局のフェーズ(opts.phase。合言葉の部屋では始める側のもの)が自分のフェーズと違えば数えない
+    // (上のフェーズの決まりで勝っても、自分のフェーズの昇格にはならない)
     phaseWins:
-      opts && opts.online && won === true && !isTutorial
+      opts &&
+      opts.online &&
+      won === true &&
+      !isTutorial &&
+      (opts.phase == null || opts.phase === normalizePhase(profile.phase))
         ? addPhaseWin(profile).phaseWins
         : profile.phaseWins,
     rating: after,

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import {
   PHASES, PHASE_MAX, DEFAULT_PHASE, STORY_AXES, PROMOTION_WINS,
   normalizePhase, phaseOf, rulesForPhase, setupFlagsForPhase, normalizePhaseWins, normalizeStory,
-  promotionStatus, canPromote, promote, clearAxis, addPhaseWin, lobbyMatchesPhase,
+  promotionStatus, canPromote, promote, clearAxis, addPhaseWin,
 } from "../src/game/phase.js";
 
 let ok = 0;
@@ -57,9 +57,6 @@ console.log("\n形をそろえる");
 is("phaseWins の形", normalizePhaseWins({ 1: 2, 2: -1, 3: "x", 9: 5 }), { 1: 2, 2: 0, 3: 0 });
 is("story の形(知らない軸・重複を落とす)", normalizeStory({ 1: ["23", "23", "zz"], 2: "x" }), { 1: ["23"], 2: [], 3: [] });
 
-console.log("\n掲示の突き合わせ");
-is("phase の無い掲示(旧端末)はフェーズ 3", [lobbyMatchesPhase({}, 3), lobbyMatchesPhase({}, 1)], [true, false]);
-is("同じフェーズだけ", [lobbyMatchesPhase({ phase: 1 }, 1), lobbyMatchesPhase({ phase: 1 }, 2), lobbyMatchesPhase({ phase: 2 }, 2)], [true, false, true]);
 
 console.log("\nprofile との結びつき(recordGame)");
 {
@@ -86,6 +83,10 @@ console.log("\nprofile との結びつき(recordGame)");
   saveProfile({ ...loadProfile(), phase: 2 });
   recordGame(true, { online: true });
   is("フェーズ 2 の勝ちはフェーズ 2 の欄に", loadProfile().phaseWins, { 1: 1, 2: 1, 3: 0 });
+  recordGame(true, { online: true, phase: 3 });
+  is("上のフェーズの決まりで勝っても、自分のフェーズには数えない", loadProfile().phaseWins, { 1: 1, 2: 1, 3: 0 });
+  recordGame(true, { online: true, phase: 2 });
+  is("対局のフェーズが自分と同じなら数える", loadProfile().phaseWins, { 1: 1, 2: 2, 3: 0 });
   saveProfile({ ...loadProfile(), phase: 7, phaseWins: { 1: "x" }, story: { 2: ["23", "zz"] } });
   const back = loadProfile();
   is("壊れた値は読み直しでそろう", [back.phase, back.phaseWins, back.story], [3, { 1: 0, 2: 0, 3: 0 }, { 1: [], 2: ["23"], 3: [] }]);

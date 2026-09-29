@@ -77,6 +77,9 @@ import {
   loadOnlineSize,
   saveOnlineSize,
   matchesOnlineSize,
+  matchesOnlineEntry,
+  roomPhaseOf,
+  guestPhaseOf,
   loadCustomRules,
   saveCustomRules,
 } from "../net/match-settings.js";
@@ -169,6 +172,8 @@ import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 // はじめての10連を引いたかの控え(2026-09-28 本人の指示)
 import { firstPullDone } from "../skins/first-pull.js";
+// フェーズ(ストーリーとフェーズ.md)。オンラインはフェーズごとに相手を分ける
+import { phaseOf, rulesForPhase } from "../game/phase.js";
 // はじまりの語り(2026-09-28 本人の指示)
 import { Prologue } from "./prologue.jsx";
 // はじめての手引き(2026-09-29 本人の指示)
@@ -761,10 +766,14 @@ function safeRating(v) {
 export function RandomMatchScreen({
   onBack,
   onRoomReady: roomReady,
-  boardSize,
+  boardSize: wantedSize,
   onBotReady: botReady = null,
 }) {
   const loadout = useRef(mySkins()).current;
+  // 自分のフェーズ。相手はフェーズごとに分ける。フェーズ1・2 は 5×5 だけ
+  // (持ち点の対象「ランダムマッチかつ 9×9」に掛からないようにする)
+  const myPhase = useRef(phaseOf(loadProfile())).current;
+  const boardSize = rulesForPhase(myPhase).sizes.includes(wantedSize) ? wantedSize : 5;
   // 相手が見つかったら震わせる(2026-09-28 本人の指示)。
   // 待っているあいだは画面から目を離していることが多いので、ここで知らせる。
   // 人でも練習相手でも同じ(待っている側には見分けが付かないため)
@@ -838,7 +847,9 @@ export function RandomMatchScreen({
           }
           if (
             !matchesOnlineSize(g.data, boardSize) ||
-            g.data.guestMatchSize !== boardSize
+            g.data.guestMatchSize !== boardSize ||
+            // 相手のフェーズが違う(書けない旧端末はフェーズ3扱い)
+            guestPhaseOf(g.data) !== myPhase
           ) {
             clearInterval(r);
             deleteLobbyPath(`/${d}`);
@@ -853,6 +864,7 @@ export function RandomMatchScreen({
           (deleteLobbyPath(`/${d}`),
             onRoomReady({
               random: !0,
+              phase: myPhase,
               code: s,
               createdAt: g.data.createdAt,
               myPlayerIndex: 0,
@@ -944,7 +956,7 @@ export function RandomMatchScreen({
           .filter(
             ([z, g]) =>
               g &&
-              matchesOnlineSize(g, boardSize) &&
+              matchesOnlineEntry(g, boardSize, myPhase) &&
               !g.guest &&
               g.host !== r &&
               // 見えなくした相手の掲示は拾わない(ランキングの「⋯」)
@@ -987,7 +999,7 @@ export function RandomMatchScreen({
                 n("error"));
               return;
             }
-            if (!matchesOnlineSize(b.data, boardSize)) {
+            if (!matchesOnlineSize(b.data, boardSize) || roomPhaseOf(b.data) !== myPhase) {
               await leaveRoom(z);
               await deleteLobbyPath(`/${z}/guest`);
               claimed.current = null;
@@ -1002,6 +1014,8 @@ export function RandomMatchScreen({
               guestSkins: loadout,
               guestRuleVersion: GAME_RULE_VERSION,
               guestMatchSize: boardSize,
+              // 部屋がフェーズ<3 のときだけ書く(ホストは「書けない相手 = 旧端末」を断る)
+              ...(roomPhaseOf(b.data) < 3 ? { guestPhase: myPhase } : {}),
             });
             if (o.current) return;
             if (!ready.ok) {
@@ -1015,6 +1029,7 @@ export function RandomMatchScreen({
             claimed.current = null;
             onRoomReady({
               random: !0,
+              phase: myPhase,
               code: z,
               createdAt: b.data?.createdAt,
               myPlayerIndex: 1,
@@ -1035,6 +1050,9 @@ export function RandomMatchScreen({
         let v = generateRoomCode() + generateRoomCode(),
           p = await createRoom(v, {
             matchSize: boardSize,
+            // フェーズ<3 のときだけ書く。フェーズ3の部屋は今までどおりの形
+            // (Firebase のルール公開前でも、フェーズ3の対戦は止まらない)
+            ...(myPhase < 3 ? { phase: myPhase } : {}),
             guestPresent: !1,
             gameState: null,
             hostName: myName(),
@@ -1049,8 +1067,10 @@ export function RandomMatchScreen({
           (u(p.error), n("error"));
           return;
         }
+        // フェーズ3は今までどおり matchSize だけ(旧端末もそのまま拾える)。
+        // フェーズ1・2は matchSize を書かず phase と size を書く → 旧端末は拾わない(盤がずれない)
         let w = await writeLobby(`/${v}`, {
-          matchSize: boardSize,
+          ...(myPhase >= 3 ? { matchSize: boardSize } : { phase: myPhase, size: boardSize }),
           host: r,
           guest: null,
           createdAt: Date.now(),
@@ -1261,11 +1281,13 @@ export function RulesSelectScreen({
   onCpuArea = null,
   // 手元の対局のときの自分のレベル。札と 9×9 をレベルで絞る。null なら絞らない(オンライン)
   level = null,
+  // フェーズ1・2 のオンラインは 9×9 を選べない(ストーリーとフェーズ.md)
+  lockedByPhase = false,
   // 詳細設定(src/game/custom-rules.js)。onCustom が無い画面(ランダムマッチ)では出さない
   custom = null,
   onCustom = null,
 }) {
-  const locked9 = level !== null && !boardOpen(9, level);
+  const locked9 = (level !== null && !boardOpen(9, level)) || lockedByPhase;
   let [a, u] = (0, useState)(locked9 && initialSize === 9 ? 5 : initialSize);
   // 詳細設定はフォイルを持ってエリアを解放した人だけ(本人の指示 2026-09-17)
   const customUnlocked = !!onCustom && foilRevealed(getCollection());
@@ -1361,7 +1383,9 @@ export function RulesSelectScreen({
                 {i === 9 && locked9 && (
                   <>
                     <br />
-                    <b className="board-choice-lock">Lv{BOARD9_LEVEL} で開きます</b>
+                    <b className="board-choice-lock">
+                      {lockedByPhase ? "フェーズ3で開きます" : `Lv${BOARD9_LEVEL} で開きます`}
+                    </b>
                   </>
                 )}
               </small>
@@ -1482,11 +1506,25 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
       skins: loadout,
       ruleVersion: GAME_RULE_VERSION,
       boardSize,
+      phase: phaseOf(loadProfile()),
     });
     const ready = (network) => {
+      // 始める側(ホスト)のフェーズが両者に効く。相手の端末がフェーズを知らない(古い版)なら
+      // 力なしの盤がずれるので、3未満では始めない
+      const phase = Number.isInteger(network.phase) ? network.phase : 3;
+      if (phase < 3 && !Number.isInteger(network.guestPhase)) {
+        // つながりを切って探索に戻る(相手の端末には「つながらなかった」が出る)。
+        // 切らないと「対局へ進みます」のまま止まり、相手は来ない開始の合図を待ち続ける
+        setError("相手のアプリが古いため、このフェーズでは対戦できません");
+        setStatus("searching");
+        n.stop();
+        n.start(profile(), ready).catch((err) => setError(err.message));
+        return;
+      }
       readyRef.current = !0;
       onReady({
         ...network,
+        phase,
         names: network.names.map(safeName),
         icons: network.icons.map(safeTag),
         titles: network.titles.map(safeTag),
@@ -1730,10 +1768,25 @@ export function RoomScreen({
               s(N.error);
               return;
             }
+            if (
+              N.data &&
+              N.data.guestPresent &&
+              roomPhaseOf(N.data) < 3 &&
+              !Number.isInteger(N.data.guestPhase)
+            ) {
+              // 相手の端末がフェーズを知らない(古い版)。力なしの盤がずれるので始めない。
+              // 部屋も消して、相手の画面に「相手が退出した」が出るようにする
+              clearInterval(x);
+              deleteRoom(f);
+              s("相手のアプリが古いため、このフェーズでは対戦できません。相手に更新してもらってください");
+              return;
+            }
             N.data &&
               N.data.guestPresent &&
               (clearInterval(x),
               onRoomReady({
+                // 部屋に書いたフェーズで(待っている間に profile が変わっても、ゲストと同じ値)
+                phase: roomPhaseOf(N.data),
                 code: f,
                 createdAt: N.data.createdAt,
                 myPlayerIndex: 0,
@@ -1766,6 +1819,8 @@ export function RoomScreen({
         hostRating: myRating(),
         hostSkins: loadout,
         hostRuleVersion: GAME_RULE_VERSION,
+        // 合言葉の部屋は始める側のフェーズが両者に効く。フェーズ<3 のときだけ書く
+        ...(phaseOf(loadProfile()) < 3 ? { phase: phaseOf(loadProfile()) } : {}),
       });
     if ((p(!1), !x.ok)) {
       s(x.error);
@@ -1814,12 +1869,16 @@ export function RoomScreen({
       guestRating: myRating(),
       guestSkins: loadout,
       guestRuleVersion: GAME_RULE_VERSION,
+      // 部屋のフェーズ(始める側のもの)で遊ぶ。旧端末のホストの部屋はフェーズ3。
+      // フェーズ<3 の部屋にだけ書く(ホストは「書けない相手 = 旧端末」を断る)
+      ...(roomPhaseOf(x.data) < 3 ? { guestPhase: roomPhaseOf(x.data) } : {}),
     });
     if ((p(!1), !N.ok)) {
       (await leaveRoom(P), s(N.error));
       return;
     }
     onRoomReady({
+      phase: roomPhaseOf(x.data),
       code: P,
       createdAt: x.data.createdAt,
       foeUid: foeOf(x.data.seats, myUid()),
@@ -2307,7 +2366,10 @@ function TotteryScreens() {
   const localPool = poolForLevel(localLevel);
   function z(b) {
     if (o === "online") saveOnlineSize(b);
-    (f(b), o === "room" && w(!0), t(o));
+    // フェーズ1・2 のオンライン(ランダム・合言葉・近くの端末)は 5×5 だけ(ストーリーとフェーズ.md)。
+    // ここで丸めないと、対局(GameCore)には選んだ盤がそのまま届く
+    const size = (o === "online" || o === "room" || o === "nearby") && phaseOf(loadProfile()) < 3 ? 5 : b;
+    (f(size), o === "room" && w(!0), t(o));
   }
   // 画面の枠(背景や上のバー)は GameShell が出すので、その中に入れる
   //
@@ -2430,7 +2492,15 @@ function TotteryScreens() {
             // ランダムマッチの練習相手。人との対局と同じ扱い(レートが動く、札は絞らない)
             bot={d && !tut ? bot : null}
             // 詳細設定は CPU戦・同じ端末・フレンド対戦(合言葉・近くの端末)だけ。ランダムマッチ・Bot・チュートリアルでは使わない
-            custom={!tut && !bot && !(a && a.random) ? customRules : null}
+            custom={
+              !tut &&
+              !bot &&
+              !(a && a.random) &&
+              // 詳細設定はフェーズ3だけ(相手の端末の決め直し sync.js と同じ)
+              rulesForPhase(a ? roomPhaseOf(a) : phaseOf(loadProfile())).areas
+                ? customRules
+                : null
+            }
             // 手元の対局は、レベルで開いている札だけを配る。オンライン・チュートリアル・Bot は絞らない
             pool={!a && !tut && !bot ? localPool : null}
             handSize={!a && !tut && !bot ? handSizeForLevel(localLevel) : null}
@@ -2682,7 +2752,13 @@ function TotteryScreens() {
               // ランキングに載るのはランダムマッチの 9×9 だけ。フレンド対戦は載らない(2026-09-17)
               ranked={o === "online"}
               // 近くの端末との対戦はフレンド対戦と同じく、レベルで札を絞らない
-              initialSize={o === "online" ? loadOnlineSize() : 5}
+              initialSize={
+                o === "online" && phaseOf(loadProfile()) >= 3 ? loadOnlineSize() : 5
+              }
+              // フェーズ1・2 のオンラインは 9×9 を選べない
+              lockedByPhase={
+                (o === "online" || o === "room" || o === "nearby") && phaseOf(loadProfile()) < 3
+              }
               // 手元の対局は、レベルで札と 9×9 を絞る(src/game/card-unlock.js)
               level={o === "online" || o === "room" || o === "nearby" ? null : localLevel}
               onStart={z}

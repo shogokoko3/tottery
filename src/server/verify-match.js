@@ -58,6 +58,10 @@ export function verifyMatch(room, request, uid) {
     )
       continue;
     if (act.type === "START_SETUP") {
+      // フェーズ<3 の部屋(王の力なし/エリアなし)は持ち点の対象ではない。
+      // ゲストは部屋の phase で決め直すので、ここで受けると再生だけがずれる
+      if (Number.isInteger(room.phase) && room.phase < 3)
+        throw new Error("持ち点の対象はフェーズ3の対局です。");
       const expected = buildDeck()
         .map((c) => `${c.rank}:${c.suit}`)
         .sort();
@@ -66,6 +70,8 @@ export function verifyMatch(room, request, uid) {
         : [];
       if (
         act.size !== 9 ||
+        // 王の力なし(フェーズ1)は持ち点に数えない(5×5 だけの決めなのでここには来ないはず)
+        act.kingPowers === false ||
         act.scripted ||
         act.pool ||
         (act.handSize && act.handSize !== 13) ||
@@ -79,7 +85,7 @@ export function verifyMatch(room, request, uid) {
     const applied = setupFromRoom(
       act,
       [sanitizeLoadout(room.hostSkins), sanitizeLoadout(room.guestSkins)],
-      { ranked: true, ruleVersion: roomRuleVersion(room), boardSize: 9 },
+      { ranked: true, ruleVersion: roomRuleVersion(room), boardSize: 9, phase: 3 },
     );
     state = reducer(
       { ...state, captureReveal: null, interstitial: null, setupEffects: null },
