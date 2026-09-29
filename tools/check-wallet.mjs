@@ -92,6 +92,14 @@ console.log("\nチュートリアルの褒美(kind=tutorial。earn の1日上限
   await throws("earn の道から tutorial: の id は積めない", () => fresh.credit("TX", "tutorial:TW:5", 1, "earn", day), /正しくありません/);
   await throws("無償ジェムの道からも積めない", () => fresh.earnGems("TX", "tutorial:TW:5", 1, day), /正しくありません/);
   await throws("引き継ぎの道からも積めない", () => fresh.credit("TX", "tutorial:TW:5", 1, "migrate", day), /正しくありません/);
+  // まだ受け取っていない相手(TY)に対して、先回りして植える試み。どの道からも入らない
+  await throws("広告の道からも積めない", () => fresh.adReward("TX", "tutorial:TY:6", day), /正しくありません/);
+  fresh.credit("TX", "tx-seed", 10, "migrate", day);
+  await throws("召喚(pull)の道からも積めない", () => fresh.pull("TX", "tutorial:TY:7", 1, day), /正しくありません/);
+  await throws("記念配布の id(campaign:)も同じく植えられない", () => fresh.credit("TX", "campaign:release-2026-09:TY", 1, "earn", day), /正しくありません/);
+  is("植え付けが弾かれたので、相手は 6 話を受け取れる", fresh.tutorialReward("TY", 6, day).applied, true);
+  is("7 話も受け取れる", fresh.tutorialReward("TY", 7, day).applied, true);
+  is("(その行は tutorial の道のもの)", { ...D.prepare("SELECT kind, uid FROM wallet_ledger WHERE id='tutorial:TY:6'").all()[0] }, { kind: "tutorial", uid: "TY" });
   is("植え付けを試みられた人も、自分の褒美は受け取れる", fresh.tutorialReward("TW", 5, day).applied, false /* 上で受け取り済み */);
   is("(その人の 5 話の行は tutorial の道のもの)", D.prepare("SELECT kind FROM wallet_ledger WHERE id='tutorial:TW:5'").all()[0].kind, "tutorial");
 

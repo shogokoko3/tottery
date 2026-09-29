@@ -63,6 +63,9 @@ import {
   rewardEventId,
 } from "../game/tutorial-reward.js";
 
+/** サーバーが組む出来事 id の接頭辞と、それを書いてよい道(kind)。apply() が守る */
+const RESERVED_PREFIX = Object.freeze({ tutorial: "tutorial", campaign: "campaign" });
+
 /** 遊んで貯める分(kind=earn)は端末の申告なので、1回と1日(UTC)の上限で抑える */
 export const EARN_EVENT_MAX = 10;
 export const EARN_DAILY_MAX = 30;
@@ -318,9 +321,11 @@ export class Wallet {
       if (!Number.isSafeInteger(d) || Math.abs(d) > 1000000)
         throw new Error("枚数が正しくありません。");
     if (tickets === 0 && gemsPaid === 0 && gemsFree === 0) throw new Error("枚数が正しくありません。");
-    // tutorial: は台帳が自分で組む id。ほかの道(earn-gems など)から同じ形の id を先に
-    // 植えられると、その人の褒美が「他の人の出来事」になって永久に受け取れなくなる(2026-09-30)
-    if (kind !== "tutorial" && /^tutorial:/.test(id)) throw new Error("出来事の id が正しくありません。");
+    // サーバーが自分で組む id の接頭辞は、その道(kind)からしか書けない(2026-09-30)。
+    // ほかの道(earn-gems・ad-reward・pull など、端末が id を決める op)から同じ形の id を
+    // 先に植えられると、その人の褒美が「他の人の出来事」になって永久に受け取れなくなる
+    const reserved = RESERVED_PREFIX[id.split(":")[0]];
+    if (reserved && reserved !== kind) throw new Error("出来事の id が正しくありません。");
     const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) {
       if (seen.uid !== uid) throw new Error("他の人の出来事です。");

@@ -161,7 +161,19 @@ console.log("\n端末の送り方");
   calls.length = 0;
   mode = "bad";
   await earnTutorialTicket(2);
+  is("形の誤りは、送ったうえで断られている", calls.map((c) => c.op), ["tutorial-reward"]);
   is("形の誤りで断られたものは捨てる(残しても二度と通らない)", pending(), []);
+
+  // 同時に走った flush が、互いの保留を消さない
+  calls.length = 0;
+  mode = "offline";
+  await earnTutorialTicket(6);
+  await earnTutorialTicket(7);
+  is("圏外で 2 話が溜まる", pending().map((e) => e.tutorial), [6, 7]);
+  mode = "ok";
+  await Promise.all([flushPending(), flushPending()]);
+  is("同時に流しても両方送られる", [...new Set(calls.map((c) => c.body.chapter))].sort(), [6, 7]);
+  is("同時に流しても取り残しがない", pending(), []);
 
   calls.length = 0;
   mode = "ok";

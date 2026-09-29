@@ -96,8 +96,10 @@ function writePending(list) {
 
 /** 溜めていた加算を送る。送れた分だけ消す */
 export async function flushPending() {
-  let list = readPending();
-  for (const ev of [...list]) {
+  // 消すときは**そのつど読み直す**。最初に読んだ一覧を書き戻すと、同時に走った別の
+  // flush(取りこぼしの回収と新しいクリアなど)が積んだ分を上書きで消してしまう(2026-09-30)
+  const drop = (id) => writePending(readPending().filter((x) => x.id !== id));
+  for (const ev of readPending()) {
     try {
       // チケットは earn、無償ジェムは earn-gems、バトルパスのマス報酬は pass-reward、
       // チュートリアルの話は tutorial-reward(何話かだけ送る。id はサーバーが組む)
@@ -110,16 +112,11 @@ export async function flushPending() {
               ? await walletRequest("earn-gems", { id: ev.id, gems: ev.gems })
               : await walletRequest("earn", { id: ev.id, n: ev.n }),
       );
-      list = list.filter((x) => x.id !== ev.id);
-      writePending(list);
+      drop(ev.id);
     } catch (e) {
       // 上限・形の誤り・パスの週上限や未所持で拒まれたものは捨てる(残しても二度と通らない)。通信の失敗は残す
-      if (
-        /これ以上|正しくありません|他の人|上限|持っていません/.test(e.message)
-      ) {
-        list = list.filter((x) => x.id !== ev.id);
-        writePending(list);
-      } else break;
+      if (/これ以上|正しくありません|他の人|上限|持っていません/.test(e.message)) drop(ev.id);
+      else break;
     }
   }
 }
