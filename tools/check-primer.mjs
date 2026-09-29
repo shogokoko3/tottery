@@ -70,6 +70,8 @@ globalThis.__MOVE_TEXT = MOVE_TEXT;
 // data: の中からは相対の取り込みが解けないので、外から渡す
 const src = read("src/ui/primer.jsx")
   .replace(/import \{[^}]*\} from "react";/, "const { useEffect, useRef, useState } = globalThis.__react;")
+  // キーの宛先の判定は別の小さな部品。ここでは「自分宛て」で固定する
+  .replace(/import \{[^}]*\} from "\.\/key-target\.js";/, "const typing = () => false;")
   .replace(/import \{[^}]*\} from "\.\.\/game\/constants\.js";/, "const MOVE_TEXT = globalThis.__MOVE_TEXT;")
   .replace(/import \{[^}]*\} from "\.\/guides\.jsx";/, "const MoveDiagram = globalThis.__stub('MoveDiagram');")
   .replace(/import \{[^}]*\} from "\.\/cards\.jsx";/, "const CardFace = globalThis.__stub('CardFace'), Piece = globalThis.__stub('Piece');");

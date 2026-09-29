@@ -21,6 +21,7 @@
  *     いま使う分だけを渡す。6 から先は早見表へ
  */
 import { useEffect, useRef, useState } from "react";
+import { typing } from "./key-target.js";
 import { MOVE_TEXT } from "../game/constants.js";
 import { MoveDiagram } from "./guides.jsx";
 import { CardFace, Piece } from "./cards.jsx";
@@ -204,10 +205,11 @@ function PrimerArt({ page }) {
  * 手引き。
  *
  * onDone   読み終えた(最後の札の釦)。導入では第1話へ
- * onSkip   読み飛ばす。渡さなければ「読み飛ばす」を出さない(早見表から開いたとき)
+ * onSkip   途中でやめる。渡さなければその釦を出さない
  * doneLabel 最後の札の釦の一言
+ * skipLabel 途中でやめる釦の一言(導入は「あとで」、早見表からは「とじる」)
  */
-export function Primer({ onDone, onSkip = null, doneLabel = "はじめる" }) {
+export function Primer({ onDone, onSkip = null, doneLabel = "はじめる", skipLabel = "あとで" }) {
   const [at, setAt] = useState(0);
   const done = useRef(false);
   const last = at >= PRIMER_PAGES.length - 1;
@@ -221,6 +223,9 @@ export function Primer({ onDone, onSkip = null, doneLabel = "はじめる" }) {
   // 左右のキーでも送れる(パソコンで読むとき)
   useEffect(() => {
     const onKey = (e) => {
+      // 入力欄・釦・上に重なった別の画面に向いたキーは取らない
+      // (釦に乗ったまま Enter/Space を押すと click と二重に進むのも防ぐ)
+      if (typing(e)) return;
       if (e.key === "ArrowRight") next();
       else if (e.key === "ArrowLeft") back();
     };
@@ -237,10 +242,10 @@ export function Primer({ onDone, onSkip = null, doneLabel = "はじめる" }) {
             <button
               type="button"
               className="primer-skip"
-              aria-label="手引きを読み飛ばす"
+              aria-label={`手引きを${skipLabel === "とじる" ? "とじる" : "読み飛ばす"}`}
               onClick={onSkip}
             >
-              あとで
+              {skipLabel}
             </button>
           )}
         </div>

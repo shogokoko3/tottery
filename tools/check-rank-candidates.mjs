@@ -118,7 +118,8 @@ console.log("\n伏せ札の正体を読んでいないか");
 {
   const src = fs.readFileSync(new URL("../src/game/rank-candidates.js", import.meta.url), "utf8");
   // 引数は行動記録の文字列と盤の大きさだけ。駒そのものを受け取らない
-  is("piece.rank を読まない", /\.rank\b/.test(src.replace(/rank(?![.\w])/g, "")), false);
+  is("piece.rank を読まない", /\.(rank|isKing|revealed|kingId)\b/.test(src), false);
+  is("駒そのものを受け取らない", /\bpiece\b/.test(src), false);
   is("isKing を読まない", /\.isKing/.test(src), false);
   is("state を受け取らない", /\bstate\b/.test(src), false);
   const ui = fs.readFileSync(new URL("../src/ui/private-notes.jsx", import.meta.url), "utf8");

@@ -8984,7 +8984,7 @@ svg {
   padding: 6px 8px;
   border: 0;
   background: none;
-  color: var(--muted);
+  color: var(--text-dim);
   font-size: 12px;
   cursor: pointer;
 }

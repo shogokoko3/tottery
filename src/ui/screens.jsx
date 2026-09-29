@@ -2492,7 +2492,9 @@ function TotteryScreens() {
                     markFirstTutorialOffered();
                     setOfferTutorial(!0);
                   }
-                  t("home");
+                  // 合言葉つき(?room=)で開いた人は、語りと10連のあいだ部屋を待たせている。
+                  // ホームではなく部屋へ(2026-09-30 見直し。着かないままだった)
+                  t(pendingRoom ? "room" : "home");
                   return;
                 }
                 t(skinsFrom);

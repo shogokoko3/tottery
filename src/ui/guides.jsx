@@ -146,7 +146,11 @@ export function RulesPanel({ onClose, initialTab = "moves" }) {
   }
   // はじめての手引き。**覚える順に1枚ずつ**なので、調べる用の表とは分けて置く
   if (tab === "primer")
-    return <Primer doneLabel="とじる" onDone={onClose} />;
+    return (
+      /* 1枚目からでも閉じられるように、途中でやめる釦も「とじる」にする
+         (2026-09-30 見直し。10枚送らないと閉じられなかった) */
+      <Primer doneLabel="とじる" onDone={onClose} onSkip={onClose} skipLabel="とじる" />
+    );
   if (tab === "areas")
     return (
       <div className="modal-overlay" onClick={onClose}>

@@ -14,6 +14,7 @@
  *  - 一度きり。出すかどうかは呼ぶ側(まだ10連を引いていない人)が決める
  */
 import { useEffect, useRef, useState } from "react";
+import { typing } from "./key-target.js";
 import { titleBgImg } from "../assets.js";
 
 /** 語りの札。1枚1〜2行。増やすならここだけ */
@@ -45,6 +46,9 @@ export function Prologue({ onDone }) {
   // 画面を開いたら、下の画面は動かさない
   useEffect(() => {
     const onKey = (e) => {
+      // 上に開いた設定・早見表の入力欄や釦に向いたキーは取らない
+      // (2026-09-30 見直し。名前の変更で空白を打つと語りが進んでいた)
+      if (typing(e)) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         next();
