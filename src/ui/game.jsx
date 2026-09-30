@@ -164,8 +164,11 @@ import {
   currentStepIndex,
   foeAction,
   matchesNeed,
+  movesLeft,
+  tutorialMinutes,
   upcomingNeedStep,
 } from "../game/tutorial.js";
+import { gateRemainingAfter, ONLINE_GATE_EPISODES } from "../game/online-gate.js";
 import { isTestPlay, recordGame, recordMastery } from "../game/profile.js";
 import { releaseXpNotice } from "../game/xp-notices.js";
 import { GAME_RULE_VERSION, hasAreaRules, hasCustomRules } from "../game/rule-version.js";
@@ -1157,9 +1160,23 @@ export function GameView({
         )}
         {tutorial && won && (
           <div className="tutorial-complete">
+            {/* 終わりを見せる。ランダムマッチまでの残りの話数(2026-09-25 本人の指示) */}
+            {tutorial.id <= ONLINE_GATE_EPISODES &&
+              (() => {
+                const left = gateRemainingAfter(loadProfile(), tutorial.id);
+                return (
+                  <p className="tutorial-gate-left">
+                    {left
+                      ? `あと ${left} 話でランダムマッチが開きます`
+                      : "ランダムマッチが開きました"}
+                  </p>
+                );
+              })()}
             {nextTutorial && onNextTutorial ? (
               <>
-                <p className="hint">次は「{nextTutorial.title}」</p>
+                <p className="hint">
+                  次は「{nextTutorial.title}」(約{tutorialMinutes(nextTutorial)}分)
+                </p>
                 <button
                   className="btn btn-primary btn-wide"
                   onClick={onNextTutorial}
@@ -1360,6 +1377,8 @@ export function GameCore({
     // 台本にない手を指したときに、帯へ返す一言。
     // 黙って握りつぶすと「押しても何も起きない=壊れている」と読まれる
     [tutNudge, setTutNudge] = (0, useState)(null),
+    // 自分で考える1手で「ヒント」を開いたか。開くと見本の駒と道筋を光らせる
+    [tutHint, setTutHint] = (0, useState)(!1),
     foeIdxRef = (0, useRef)(0),
     // その局の熟練度の記録 { 札: { king, moves, captures, kingCapture } }。終局時に点にして足す(src/game/profile.js masteryPoints)
     masteryRef = (0, useRef)({}),
@@ -1581,7 +1600,9 @@ export function GameCore({
         // 出しっぱなしにすると「取るを押したのに何も起きない」になる
         setPendingCapture(null);
         setTutNudge(
-          "その手はいまは指せません。▼ の付いたところを操作してください。",
+          step.need.choose
+            ? `その手では ${step.need.choose.cell} の駒を取れません。届く駒を探してください。`
+            : "その手はいまは指せません。▼ の付いたところを操作してください。",
         );
         return;
       }
@@ -2519,9 +2540,10 @@ export function GameCore({
     if (tutorial && tutIdx > tutStep) setTutStep(tutIdx);
   }, [tutIdx, tutStep, tutorial]);
 
-  // 案内が次へ進んだら、指せない手への一言は用済み
+  // 案内が次へ進んだら、指せない手への一言とヒントは用済み
   (0, useEffect)(() => {
     setTutNudge(null);
+    setTutHint(!1);
   }, [tutIdx]);
 
   // 次に触る場所が説明の帯に隠れないよう、画面をそこまで送る
@@ -2550,7 +2572,17 @@ export function GameCore({
         : null,
     tutActive =
       tutStepObj && (!tutStepObj.at || tutStepObj.at(a)) ? tutStepObj : null,
-    tutFocus = tutActive ? tutActive.focus : null,
+    // 自分で考える1手。ヒントを開くまでは的のマスだけを光らせ、答えの駒は伏せておく
+    tutChoose =
+      tutActive && tutActive.need && tutActive.need.choose ? tutActive.need : null,
+    tutFocus = tutActive
+      ? tutChoose && tutHint
+        ? {
+            ...tutActive.focus,
+            pieces: [...((tutActive.focus && tutActive.focus.pieces) || []), tutChoose.pieceId],
+          }
+        : tutActive.focus
+      : null,
     // 次にやってほしい操作が「駒を動かす」なら、その道筋(どこからどこへ)
     tutMoveHint = (() => {
       // x(自分が指せるか)はこの下で作るので使わない。台本の対局で、盤が動く場面だけ
@@ -2561,6 +2593,8 @@ export function GameCore({
       // need が「駒を動かす」のときだけ、その道筋を見せる。
       const need = step && step.need ? step.need : null;
       if (!need || need.type !== "MOVE_PIECE") return null;
+      // 自分で考える1手は、道筋を見せると答えになる。ヒントを開いたときだけ
+      if (need.choose && !tutHint) return null;
       const piece = a.pieces[need.pieceId];
       if (!piece || !piece.alive) return null;
       if (piece.row === need.row && piece.col === need.col) return null;
@@ -2614,7 +2648,20 @@ export function GameCore({
           step={tutActive}
           index={tutIdx}
           total={tutorial.steps.length}
+          // 残りの操作の数。「あと N 手」で終わりが見えるように(2026-09-25 本人の指示)
+          left={movesLeft(tutorial, tutIdx)}
           nudge={tutNudge}
+          // 自分で考える1手のヒント。開くと見本の駒と道筋が光る
+          hint={tutChoose && tutHint ? tutChoose.choose.hint : null}
+          onHint={
+            tutChoose && !tutHint
+              ? () => {
+                  setTutHint(!0);
+                  // 外した手への赤い一言は、ヒントを開いたら用済み
+                  setTutNudge(null);
+                }
+              : null
+          }
           // 「次へ」で進む説明の札は、盤の上に前面で出して気づかせる。
           // 撃破の札などのモーダルが出ている間は下の帯に戻す(覆うと閉じられない)。
           front={!tutActive.need && !a.captureReveal && !a.pendingKingChoice}
@@ -2646,6 +2693,7 @@ export function GameCore({
           step={tutHold}
           index={tutIdx - 1}
           total={tutorial.steps.length}
+          left={movesLeft(tutorial, tutIdx)}
         />
       ) : null;
 
