@@ -5,7 +5,9 @@ import {
   TUTORIALS,
   EXTRA_TUTORIALS,
   moveHintCandidates,
+  tutorialMinutes,
 } from "../game/tutorial.js";
+import { onlineGate } from "../game/online-gate.js";
 import { MOVE_TEXT, SUIT_SYMBOL } from "../game/constants.js";
 import { squareName } from "../game/board.js";
 import { MoveDiagram, KingMoveFigure } from "./guides.jsx";
@@ -19,11 +21,11 @@ import {
   toNextLevel,
 } from "../game/profile.js";
 import { publishPlayer } from "../net/players.js";
-import { ArrowLeft, ArrowRight, Check, Crown, Hand, Lock } from "../icons.jsx";
-
 import { myUid } from "../net/auth.js";
 // 1話終えるごとのガチャチケット(2026-09-28 本人の指示)
 import { grantTutorialTickets } from "../game/tutorial-reward.js";
+import { ArrowLeft, ArrowRight, Check, Crown, Hand, Lock } from "../icons.jsx";
+
 /**
  * 台本の1枚。盤を隠さないよう、下から出る帯にしてある。
  */
@@ -303,6 +305,11 @@ export function TutorialSheet({
   onInterrupt = null,
   // 盤の上に重ねて出す(一覧のような読ませたい札)。盤の下は読まれにくい
   overlay = false,
+  // この札から最後までに残っている操作の数。「あと N 手」で終わりを見せる
+  left = null,
+  // 自分で考える1手のヒント。hint は開いた後の文、onHint は開く釦(開く前だけ渡る)
+  hint = null,
+  onHint = null,
 }) {
   const [confirm, setConfirm] = useState(false);
   // 前面の札は盤を隠さない場所(右か下)に置く。盤の駒の動きを見ながら読めるように。
@@ -389,19 +396,38 @@ export function TutorialSheet({
         ref={bandRef}
         style={front && dock ? dock.style : undefined}
       >
-        <div className="tutorial-progress">
-          {Array.from({ length: total }).map((_, i) => (
-            <span className={i <= index ? "on" : ""} key={i} />
-          ))}
+        <div className="tutorial-meter">
+          <div className="tutorial-progress">
+            {Array.from({ length: total }).map((_, i) => (
+              <span className={i <= index ? "on" : ""} key={i} />
+            ))}
+          </div>
+          {left > 0 && <small className="tutorial-left">あと {left} 手</small>}
         </div>
+        {step.need && step.need.choose && (
+          <p className="tutorial-choose-badge">自分で考える1手</p>
+        )}
         <p className="tutorial-line">{step.text}</p>
         {step.moveGuide && <MoveGuidePanel guide={step.moveGuide} />}
         {step.moveHint && <MoveHintPanel hint={step.moveHint} />}
         {step.hold ? null : step.need ? (
           <div className="tutorial-wait-row">
             <p className={`tutorial-wait ${nudge ? "tutorial-nudge" : ""}`}>
-              <Hand size={15} /> {nudge || "▼ の付いたところを操作してください"}
+              <Hand size={15} />{" "}
+              {nudge ||
+                (step.need.choose
+                  ? "どの駒で取るかは自由です"
+                  : "▼ の付いたところを操作してください")}
             </p>
+            {hint && <p className="tutorial-hint-text">ヒント: {hint}</p>}
+            {onHint && (
+              <button
+                className="btn btn-ghost tutorial-back tutorial-back-wait"
+                onClick={onHint}
+              >
+                ヒントを見る
+              </button>
+            )}
             {/* 操作の札でも、一つ前の説明に戻って読み直せるように(2026-09-21 本人の指示) */}
             {onBack && (
               <button
@@ -464,6 +490,8 @@ export function TutorialSelect({ onStart, onBack }) {
   // まだ終えていない話(本編の12話)。飛ばすのはこれだけ。番外は含めない
   const left = TUTORIALS.filter((t) => !profile.cleared.includes(t.id));
   const leftXp = left.reduce((n, t) => n + t.xp, 0);
+  // ランダムマッチまでの残り。終わりを見せる(2026-09-25 本人の指示)
+  const gate = onlineGate(profile);
   const [confirmSkip, setConfirmSkip] = useState(false);
   // 番外の話は、フォイルのスキンを1枚でも持っていると開く(効果盤面が使える条件と同じ。
   // 入手の経路は見ず、いま持っているかだけで決める)
@@ -491,12 +519,18 @@ export function TutorialSelect({ onStart, onBack }) {
           ? "話を終えるか対局すると経験値が入り、続きの話が開きます。"
           : "全12話。ここまでで、52枚すべての動きと王の力がそろいます。"}
       </p>
+      {!gate.ok && (
+        <p className="tutorial-gate-left">
+          あと {gate.remaining} 話でランダムマッチが開きます
+        </p>
+      )}
       <div className="menu-list">
         {[
           ...TUTORIALS,
           ...EXTRA_TUTORIALS.filter((t) => !t.needsFoil || hasFoil),
         ].map((t) => {
           const locked = level < t.level;
+          const cleared = profile.cleared.includes(t.id);
           return (
             <button
               className={`menu-item ${locked ? "menu-item-locked" : ""}`}
@@ -506,7 +540,9 @@ export function TutorialSelect({ onStart, onBack }) {
             >
               <span className="menu-item-main">
                 {t.title}
-                <small>{t.subtitle}</small>
+                <small>
+                  {t.subtitle}・約{tutorialMinutes(t)}分
+                </small>
               </span>
               <span className="menu-item-side">
                 {locked ? (
@@ -514,7 +550,10 @@ export function TutorialSelect({ onStart, onBack }) {
                     <Lock size={14} /> Lv.{t.level}
                   </>
                 ) : (
-                  <>カード {t.poolLabel}</>
+                  <>
+                    {cleared && <Check size={14} aria-label="クリア済み" />}
+                    カード {t.poolLabel}
+                  </>
                 )}
               </span>
             </button>

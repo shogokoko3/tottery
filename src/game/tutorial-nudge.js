@@ -5,7 +5,7 @@
  * ランダムマッチの入口の「第8話まで」は online-gate.js のまま。
  * (2026-09-11、本人の依頼「チュートリアルを促すようにしたい。くどくなりすぎない程度に」)
  */
-import { TUTORIALS } from "./tutorial.js";
+import { TUTORIALS, tutorialMinutes } from "./tutorial.js";
 import { hasCleared } from "./profile.js";
 import { ONLINE_GATE_EPISODES } from "./online-gate.js";
 
@@ -27,7 +27,8 @@ export function homeTutorialNudge(profile) {
   if (!next || next.id > ONLINE_GATE_EPISODES) return null;
   if (next.id === 1)
     return { kind: "start", text: "まずはここから。第1話は1分ほど", next };
-  return { kind: "next", text: `次は ${next.title}`, next };
+  // 中身と時間が分かる形に(2026-09-25 本人の指示。「次は第N話」だけでは重さが読めない)
+  return { kind: "next", text: `次は ${next.title}(約${tutorialMinutes(next)}分)`, next };
 }
 
 /** 名前を決めた直後の案内を出すか。第1話が未了で、まだ出していないときだけ */
