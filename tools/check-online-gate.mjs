@@ -1,29 +1,33 @@
-/** ランダムマッチの入口の条件(第8話まで)を検査する */
+/** ランダムマッチの入口の条件(ストーリーのフェーズ1をクリアで開く。2026-09-30 本人の指示)を検査する */
 const store = {};
 globalThis.localStorage = {
   getItem: (k) => (k in store ? store[k] : null),
   setItem: (k, v) => { store[k] = String(v); },
   removeItem: (k) => { delete store[k]; },
 };
-const { ONLINE_GATE_EPISODES, onlineGate, onlineGateLabel } = await import("../src/game/online-gate.js");
-const { TUTORIALS } = await import("../src/game/tutorial.js");
+const { ONLINE_GATE_PHASE, onlineGate, onlineGateLabel } = await import("../src/game/online-gate.js");
+const { STORY_AXES } = await import("../src/game/phase.js");
 const { loadProfile } = await import("../src/game/profile.js");
 let ok = 0; const fails = [];
 const is = (label, got, want) => { if (JSON.stringify(got) === JSON.stringify(want)) { ok++; console.log(`  ok   ${label}`); } else { fails.push(label); console.log(`  NG   ${label}  ${JSON.stringify(got)} ≠ ${JSON.stringify(want)}`); } };
 const fresh = loadProfile();
-is("第8話まで", ONLINE_GATE_EPISODES, 8);
-is("最初は閉じている", onlineGate(fresh).ok, false);
-is("残りは8話", onlineGate(fresh).remaining, 8);
-is("次は第1話", onlineGate(fresh).next?.id, 1);
-is("一言", onlineGateLabel(onlineGate(fresh)), "チュートリアル 第8話まで（あと8話）");
-const seven = { ...fresh, cleared: TUTORIALS.slice(0, 7).map((t) => t.id) };
-is("7話では閉じている(あと1話)", onlineGate(seven).remaining, 1);
-is("次は第8話", onlineGate(seven).next?.id, 8);
-const eight = { ...fresh, cleared: TUTORIALS.slice(0, 8).map((t) => t.id) };
-is("8話で開く", onlineGate(eight).ok, true);
-is("開いたら一言は無い", onlineGateLabel(onlineGate(eight)), null);
-const gaps = { ...fresh, cleared: [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12] };
-is("順不同でも8話までが全部要る(第4話が無ければ閉じる)", onlineGate(gaps).ok, false);
-is("第9話以降は条件にしない", onlineGate({ ...fresh, cleared: [1, 2, 3, 4, 5, 6, 7, 8] }).ok, true);
+const withStory = (p1, extra = {}) => ({ ...fresh, phase: 1, story: { 1: p1, 2: [], 3: [] }, ...extra });
+is("条件はフェーズ1のストーリー", ONLINE_GATE_PHASE, 1);
+is("新しい人はフェーズ1で閉じている", [fresh.phase, onlineGate(fresh).ok], [1, false]);
+is("残りは6ステージ", onlineGate(fresh).remaining, 6);
+is("次は 2・3", onlineGate(fresh).next, "23");
+is("一言", onlineGateLabel(onlineGate(fresh)), "ストーリー フェーズ1のクリアで開きます（あと6ステージ）");
+const five = withStory(STORY_AXES.slice(0, 5));
+is("5ステージでは閉じている(あと1)", [onlineGate(five).ok, onlineGate(five).remaining], [false, 1]);
+is("次は J・Q・K", onlineGate(five).next, "jqk");
+const gaps = withStory(["23", "45", "89", "10", "jqk"]);
+is("順不同でも6ステージ全部が要る(6・7 が無ければ閉じる)", [onlineGate(gaps).ok, onlineGate(gaps).next], [false, "67"]);
+const all = withStory([...STORY_AXES]);
+is("6ステージで開く(昇格の前でも)", onlineGate(all).ok, true);
+is("開いたら一言は無い", onlineGateLabel(onlineGate(all)), null);
+is("フェーズ2 以上は開いている", [onlineGate({ ...fresh, phase: 2 }).ok, onlineGate({ ...fresh, phase: 3 }).ok], [true, true]);
+is("フェーズ2・3 のクリアは条件にしない", onlineGate(withStory([], { story: { 1: [], 2: [...STORY_AXES], 3: [...STORY_AXES] } })).ok, false);
+is("チュートリアルを全部終えても開かない(ストーリーで開く)", onlineGate({ ...fresh, cleared: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }).ok, false);
+is("壊れた記録でも落ちない", onlineGate({ phase: 1, story: { 1: ["zz", 3] } }).ok, false);
 console.log(`\n${ok} ok / ${fails.length} fail`);
 if (fails.length) process.exit(1);

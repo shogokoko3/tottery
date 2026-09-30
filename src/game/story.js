@@ -17,7 +17,8 @@
 import { MOVE_TEXT, KING_TEXT } from "./constants.js";
 import { AREA_BY_RANK, AREA_INFO } from "./areas.js";
 import { buildDeck, shuffle } from "./board.js";
-import { STORY_AXES, STORY_TICKETS, normalizePhase, normalizeStory, phaseOf, rulesForPhase, setupFlagsForPhase } from "./phase.js";
+import { josekiDeck } from "./cpu-joseki.js";
+import { STORY_AXES, STORY_TICKETS, normalizePhase, normalizeStory, phaseOf, rulesForPhase, setupFlagsForPhase, stageSize } from "./phase.js";
 
 /** ステージ。並びは STORY_AXES と同じ */
 export const STORY_STAGES = Object.freeze([
@@ -87,8 +88,8 @@ export function stageIntro(axis, phase) {
     title: `${stage.name}の王と${area.name}`,
     lead,
     items: [Object.freeze({ rank: stage.ranks.join("・"), text: `${area.name}: ${area.text}` })],
-    // エリアは 9×9 だけ。5×5 のステージでは立たない(フェーズ3のステージの盤は未定。ストーリーとフェーズ.md)
-    note: "エリアは 9×9 で王のフォイルを装備したときに立つ。このステージ(5×5)では立たない。",
+    // フェーズ3のステージは 9×9。相手(CPU)の王にはフォイルが付くので、相手のエリアは必ず立つ
+    note: "相手の王のエリアが立つ。あなたの王も、その数字のフォイルを装備していればエリアが立つ。",
   });
 }
 
@@ -101,7 +102,7 @@ export function stageSetup(axis, phase) {
   if (!stage) return null;
   const p = normalizePhase(phase);
   return Object.freeze({
-    size: 5,
+    size: stageSize(p),
     cpuAxis: [...stage.ranks],
     ...setupFlagsForPhase(p),
     areas: rulesForPhase(p).areas,
@@ -154,6 +155,16 @@ export function storyDeck(axis, king, handSize = 13) {
   const cpuRest = rest.slice(handSize, handSize + handSize - stacked.length);
   const tail = rest.slice(handSize + handSize - stacked.length);
   return [...human, ...stacked, ...cpuRest, ...tail];
+}
+
+/**
+ * ステージの山札。5×5 は storyDeck(軸の札を 3〜4 枚積む)、9×9 は定石の山札 josekiDeck
+ * (9×9 の「CPUのエリア」練習と同じ。王の数字を先頭に 9 枚積む。9×9 は軍が 9 体なので、それで読まれすぎない)
+ */
+export function storyDeckFor(axis, king, size) {
+  const stage = stageOf(axis);
+  if (!stage || !stage.ranks.includes(king)) return null;
+  return size === 9 ? josekiDeck(AREA_BY_RANK[king], king) : storyDeck(axis, king);
 }
 
 /** 画面に出す一覧。いまのフェーズで、どの軸をクリアしたか */

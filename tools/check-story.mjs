@@ -2,7 +2,7 @@
  * ストーリー(src/game/story.js)の決まりを確かめる。設計は ストーリーとフェーズ.md
  */
 import assert from "node:assert/strict";
-import { STORY_STAGES, STORY_XP, stageOf, stageIntro, stageSetup, storyList, nextStage, ranksLabel, storyFreshClear, pickStoryKing, storyCpuArea, storyDeck, stageAfter, nextStageAfter } from "../src/game/story.js";
+import { STORY_STAGES, STORY_XP, stageOf, stageIntro, stageSetup, storyList, nextStage, ranksLabel, storyFreshClear, pickStoryKing, storyCpuArea, storyDeck, storyDeckFor, stageAfter, nextStageAfter } from "../src/game/story.js";
 import { reducer } from "../src/game/reducer.js";
 import { enrichAction } from "../src/game/actions.js";
 import { kingRankOf } from "../src/game/board.js";
@@ -52,8 +52,10 @@ is("変なフェーズは既定(1)の説明", stageIntro("23", 9).title, stageIn
 
 console.log("\n対局の設定");
 is("フェーズ1: 5×5・CPU の軸・力なし・エリアなし", stageSetup("23", 1), { size: 5, cpuAxis: ["2", "3"], kingPowers: false, areas: false });
-is("フェーズ2: 力あり(旗なし)・エリアなし", stageSetup("45", 2), { size: 5, cpuAxis: ["4", "5"], areas: false });
-is("フェーズ3: エリアあり", stageSetup("jqk", 3), { size: 5, cpuAxis: ["J", "Q", "K"], areas: true });
+is("フェーズ2: 9×9・力あり(旗なし)・エリアなし", stageSetup("45", 2), { size: 9, cpuAxis: ["4", "5"], areas: false });
+is("フェーズ3: 9×9・エリアあり", stageSetup("jqk", 3), { size: 9, cpuAxis: ["J", "Q", "K"], areas: true });
+is("山札: 5×5 は storyDeck、9×9 は定石の山札(CPU の手札に王の数字が 4 枚=土・海)", [storyDeckFor("23", "2", 9).slice(13, 26).filter((c) => c.rank === "2").length >= 4, storyDeckFor("23", "2", 5).slice(13, 15).map((c) => c.rank)], [true, ["2", "2"]]);
+is("山札: 軸に無い王は null", storyDeckFor("23", "K", 9), null);
 is("知らない軸は null", stageSetup("xx", 1), null);
 
 console.log("\n一覧と次のステージ");
@@ -129,7 +131,9 @@ console.log("\n5×5 のステージを回す(CPU の王は必ず軸の数字。�
     Math.random = seeded(seed);
     const area = storyCpuArea(axis, k).type;
     const setup = stageSetup(axis, phase);
-    let s = reducer({ phase: "intro" }, { type: "START_SETUP", size: setup.size, setupMode: "simultaneous", deck: storyDeck(axis, k), ...(setup.kingPowers === false ? { kingPowers: false } : null), ruleVersion: GAME_RULE_VERSION });
+    // 本番(game.jsx)と同じ形: 山札は storyDeckFor、フェーズ3 の 9×9 はエリアあり(CPU の王にはフォイル。screens.jsx の ensureCpuFoil)
+    const areas = setup.areas && setup.size === 9 ? { areas: true, loadouts: [{}, { [k]: "fixture-skin:foil" }] } : null;
+    let s = reducer({ phase: "intro" }, { type: "START_SETUP", size: setup.size, setupMode: "simultaneous", deck: storyDeckFor(axis, k, setup.size), ...(setup.kingPowers === false ? { kingPowers: false } : null), ...areas, ruleVersion: GAME_RULE_VERSION });
     if (s.phase !== "dice") throw new Error(`${axis}/${k}: START_SETUP が通らない`);
     const act = (st, p) => (p === 1 ? josekiCpuAction(st, 1, area, k) : cpuInformedAction(st, 0));
     let stalls = 0;
@@ -196,8 +200,9 @@ console.log("\n5×5 のステージを回す(CPU の王は必ず軸の数字。�
     }
     return mineExp > min;
   };
-  const N = 4;
+  // 9×9 は 1 局が長いので局数を減らす(フェーズ2・3)
   for (const phase of [1, 2, 3]) {
+    const N = phase === 1 ? 4 : 2;
     let wins = 0, games = 0, ended = 0, exposed = 0;
     for (const st of STORY_STAGES)
       for (const k of st.ranks) {
@@ -205,15 +210,18 @@ console.log("\n5×5 のステージを回す(CPU の王は必ず軸の数字。�
         for (let i = 0; i < N; i++) {
           const s = play(st.axis, k, phase, 1000 * phase + i * 17 + st.axis.length + i);
           kings.push(kingRankOf(s, 1));
-          if (s.setupSnapshot && exposedAtStart(s.setupSnapshot)) exposed++;
+          // 王の升を守る shieldKing は 5×5 だけ(9×9 は定石の布陣のまま)
+          if (s.boardSize === 5 && s.setupSnapshot && exposedAtStart(s.setupSnapshot)) exposed++;
           games++;
           if (s.phase === "gameover") { ended++; if (s.winner === 1) wins++; }
           if (phase === 1) is(`${st.axis}/${k} #${i}: 力なしの対局では置いた駒に powers:false`, Object.values(s.pieces).every((q) => q.powers === false), true);
-          if (phase === 3) is(`${st.axis}/${k} #${i}: フェーズ3は力あり・5×5 なのでエリアなし`, [s.kingPowers !== false, !!s.areasEnabled], [true, false]);
+          if (phase >= 2) is(`${st.axis}/${k} #${i}: フェーズ${phase}は 9×9・力あり`, [s.boardSize, s.kingPowers !== false], [9, true]);
+          if (phase === 2) is(`${st.axis}/${k} #${i}: フェーズ2はエリアなし`, !!s.areasEnabled, false);
+          if (phase === 3) is(`${st.axis}/${k} #${i}: フェーズ3は相手の王のエリアが立つ(${storyCpuArea(st.axis, k).type})`, [!!s.areasEnabled, s.areas && s.areas[1] && s.areas[1].type], [true, storyCpuArea(st.axis, k).type]);
         }
         is(`フェーズ${phase} ${st.axis}/${k}: CPU の王は必ず ${k}(${N}局)`, kings, Array(N).fill(k));
       }
-    is(`フェーズ${phase}: 布陣直後の CPU の王は、5 つの升のうち晒され度がいちばん小さい升にいる(${games}局)`, exposed, 0);
+    if (phase === 1) is(`フェーズ${phase}: 布陣直後の CPU の王は、5 つの升のうち晒され度がいちばん小さい升にいる(${games}局)`, exposed, 0);
     console.log(`  (参考) フェーズ${phase}: ${games}局中 ${ended}局が決着、CPU(定石)の勝ち ${wins}`);
   }
 }
@@ -319,7 +327,10 @@ console.log("\n配線(game.jsx / screens.jsx)");
   is("START_SETUP にフェーズの旗(フェーズ1は王の力なし)", game.includes("...setupFlagsForPhase(phase),"), true);
   is("フェーズは チュートリアル=全部の決まり / 通信=部屋 / ストーリー=ステージ / 手元=profile", game.includes("const phase = tutorial ? PHASE_MAX : network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile());"), true);
   is("フェーズ<3 では手元の 9×9 でもエリアと定石の山札を載せない", (game.match(/rulesForPhase\(phase\)\.areas &&/g) || []).length >= 2, true);
-  is("ストーリーは軸の札を積んだ山札", /\.\.\.\(story && cpu && !network && !tutorial\s*\? \{ deck: storyDeck\(story\.axis, story\.king\) \}/.test(game), true);
+  is("ストーリーは軸の札を積んだ山札(盤で選ぶ)", /\.\.\.\(story && cpu && !network && !tutorial\s*\? \{ deck: storyDeckFor\(story\.axis, story\.king, boardSize \|\| 5\) \}/.test(game), true);
+  is("フェーズ3 のストーリーは相手の王にフォイル(エリアが立つ)", screens.includes("story && story.size === 9 && rulesForPhase(story.phase).areas\n                  ? ensureCpuFoil(cpuSkins, story.king)"), true);
+  is("持ち点(ranked・読み出し・シーズン)はフェーズ3だけ", game.includes("a.boardSize === 9 && rankedPhase(matchPhase);") && game.includes("boardSize === 9 && !tutorial && rankedPhase(matchPhase),") && game.includes("|| !rankedPhase(matchPhase),"), true);
+  is("対戦画面: ランダムマッチが閉じていればストーリーへ", screens.includes("onClick={gate.ok ? onOnline : onStory || onTutorial}") && screens.includes("onStory={showStory}"), true);
   is("ゲストは部屋のフェーズで決め直す", game.includes("phase: onlinePhase(network.phase),"), true);
   is("勝てばクリアの記録(profile.story)。xp ははじめてのクリアだけ", /\.\.\.\(story\s*\? \{ \.\.\.\(won && freshStory \? \{ xp: STORY_XP \} : null\), story: \{ axis: story\.axis, phase: story\.phase \} \}/.test(game), true);
   is("fresh は recordGame より先に取る(あとだと一度も配られない)", game.indexOf("const freshStory =") > 0 && game.indexOf("const freshStory =") < game.indexOf("const after = recordGame("), true);
@@ -335,7 +346,7 @@ console.log("\n配線(game.jsx / screens.jsx)");
   is("対局後の見出しは「ステージクリア!」", game.includes('"ステージクリア!"') && game.includes("次のステージへ") && game.includes("ストーリーへ"), true);
   is("ホームのタイルはストーリー(チュートリアルの場所)", /tone="story"[\s\S]*?label="ストーリー"[\s\S]*?note=\{storyTileNote\(profile\)\}[\s\S]*?onClick=\{onStory\}/.test(screens) && !/tone="tutorial"/.test(screens), true);
   is("ストーリーの画面とステージ前の1枚", screens.includes("<StoryScreen onBack={() => t(\"menu\")} onStart={(axis) => setStoryIntro(axis)} />") && screens.includes("<StoryIntro"), true);
-  is("ステージは 5×5・札を絞らない・王は軸から", screens.includes("boardSize={tut ? tut.boardSize : story ? 5 : i}") && screens.includes("pool={!a && !tut && !bot && !story ? localPool : null}") && screens.includes("king: pickStoryKing(axis)"), true);
+  is("ステージは 5×5・札を絞らない・王は軸から", screens.includes("boardSize={tut ? tut.boardSize : story ? story.size : i}") && screens.includes("size: stageSize(phaseOf(loadProfile()))") && screens.includes("pool={!a && !tut && !bot && !story ? localPool : null}") && screens.includes("king: pickStoryKing(axis)"), true);
   is("GameCore に story を渡す", screens.includes("story={story}"), true);
   is("対局を離れるときは story を消す", (screens.match(/setStory\(null\)/g) || []).length >= 7, true);
   is("チュートリアルの配線は残す(検査の正規表現がそのまま)", screens.includes("tutorial={tut}") && screens.includes("onTutorial={showTutorials}") && screens.includes("<TutorialSelect"), true);

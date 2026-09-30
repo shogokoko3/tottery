@@ -7,7 +7,8 @@
  */
 import { TUTORIALS, tutorialMinutes } from "./tutorial.js";
 import { hasCleared } from "./profile.js";
-import { ONLINE_GATE_EPISODES } from "./online-gate.js";
+// ホームの誘いは第8話まで(ランダムマッチの条件はストーリーに移った。2026-09-30)
+const NUDGE_EPISODES = 8;
 
 const SEEN_KEY = "tottery.tutorial-nudge.v1";
 
@@ -24,7 +25,7 @@ export function nextTutorial(profile) {
  */
 export function homeTutorialNudge(profile) {
   const next = nextTutorial(profile);
-  if (!next || next.id > ONLINE_GATE_EPISODES) return null;
+  if (!next || next.id > NUDGE_EPISODES) return null;
   if (next.id === 1)
     return { kind: "start", text: "まずはここから。第1話は1分ほど", next };
   // 中身と時間が分かる形に(2026-09-25 本人の指示。「次は第N話」だけでは重さが読めない)

@@ -772,7 +772,7 @@
           }
         },
         "size": {
-          ".validate": "newData.val() === 5 && newData.val() === root.child('rooms').child($code).child('matchSize').val()",
+          ".validate": "((root.child('rooms').child($code).child('phase').val() === 1 && newData.val() === 5) || (root.child('rooms').child($code).child('phase').val() === 2 && newData.val() === 9)) && newData.val() === root.child('rooms').child($code).child('matchSize').val()",
           "$sa": {
             ".validate": false,
             "$sb": {

@@ -52,8 +52,8 @@ import { getCollection } from "../skins/store.js";
 import { baseSkinId } from "../skins/catalog.js";
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
-import { STORY_XP, grantStoryReward, nextStage, nextStageAfter, storyCpuArea, storyDeck, storyFreshClear } from "../game/story.js";
-import { PHASE_MAX, STORY_TICKETS, phaseOf, rulesForPhase, setupFlagsForPhase } from "../game/phase.js";
+import { STORY_XP, grantStoryReward, nextStage, nextStageAfter, storyCpuArea, storyDeckFor, storyFreshClear } from "../game/story.js";
+import { PHASE_MAX, STORY_TICKETS, phaseOf, rankedPhase, rulesForPhase, setupFlagsForPhase } from "../game/phase.js";
 import { onlinePhase } from "../net/match-settings.js";
 import { noteRandomResult, botAction } from "../game/bot-match.js";
 import { backupIfDue } from "../net/backup.js";
@@ -171,7 +171,6 @@ import {
   tutorialMinutes,
   upcomingNeedStep,
 } from "../game/tutorial.js";
-import { gateRemainingAfter, ONLINE_GATE_EPISODES } from "../game/online-gate.js";
 import { isTestPlay, recordGame, recordMastery } from "../game/profile.js";
 import { releaseXpNotice } from "../game/xp-notices.js";
 import { GAME_RULE_VERSION, hasAreaRules, hasCustomRules } from "../game/rule-version.js";
@@ -1170,18 +1169,6 @@ export function GameView({
         )}
         {tutorial && won && (
           <div className="tutorial-complete">
-            {/* 終わりを見せる。ランダムマッチまでの残りの話数(2026-09-25 本人の指示) */}
-            {tutorial.id <= ONLINE_GATE_EPISODES &&
-              (() => {
-                const left = gateRemainingAfter(loadProfile(), tutorial.id);
-                return (
-                  <p className="tutorial-gate-left">
-                    {left
-                      ? `あと ${left} 話でランダムマッチが開きます`
-                      : "ランダムマッチが開きました"}
-                  </p>
-                );
-              })()}
             {nextTutorial && onNextTutorial ? (
               <>
                 <p className="hint">
@@ -1225,6 +1212,10 @@ export function GameView({
               // 一覧へは右上の「ストーリーへ」で(釦を二つ並べない)
               <p className="hint">このフェーズの全ステージをクリアしました!</p>
             ) : null}
+            {/* フェーズ1を全部クリアしたら、ランダムマッチが開く(2026-09-30 本人の指示) */}
+            {story.allCleared && story.phase === 1 && (
+              <p className="hint story-gate-open">ランダムマッチが開きました</p>
+            )}
           </div>
         )}
         {/* 札ごとの熟練度。プレイヤーレベルのゲージ(XpGainToast)とは別に、
@@ -1398,12 +1389,18 @@ export function GameCore({
   const foeArea = story ? storyCpuArea(story.axis, story.king) : cpuArea;
   // ストーリーの結果(この局ではじめてクリアしたか)。対局後の画面に出す
   const [storyResult, setStoryResult] = useState(null);
+  // この対局のフェーズ。通信は部屋のフェーズ(無ければ 3)、手元はストーリーのステージか自分の profile。
+  // チュートリアルはフェーズを見ない(いつも全部の決まり)。対局のあいだ変えない
+  const matchPhase = useRef(
+    tutorial ? PHASE_MAX : network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile()),
+  ).current;
   // レート・シーズンに数えるのはランダムマッチ(network.random)の 9×9 だけ。
-  // フレンド対戦(合言葉・近くの端末)はランキングに載らない(本人の指示 2026-09-17)
+  // フレンド対戦(合言葉・近くの端末)はランキングに載らない(本人の指示 2026-09-17)。
+  // フェーズ2 の 9×9 は数えない(持ち点はフェーズ3だけ。2026-09-30)
   const matchRatings = useMatchRatings(
     network,
     round,
-    !!network && !!network.random && boardSize === 9 && !tutorial,
+    !!network && !!network.random && boardSize === 9 && !tutorial && rankedPhase(matchPhase),
   );
   const pausedAt = useRef(null);
   let [a, u] = (0, useState)(initialState),
@@ -1531,7 +1528,7 @@ export function GameCore({
     a,
     network,
     round,
-    !!tutorial || (!network?.random && !bot),
+    !!tutorial || (!network?.random && !bot) || !rankedPhase(matchPhase),
     bot,
   );
   // サーバーのレートが届いたら、対局後の表示(仮の値)をそれに合わせる(2026-09-23 本人の指示)
@@ -1827,7 +1824,7 @@ export function GameCore({
             : null),
           // ストーリーのステージ: 軸の札を積んだ山札(src/game/story.js)。5×5 なので上の 9×9 の門は通らない
           ...(story && cpu && !network && !tutorial
-            ? { deck: storyDeck(story.axis, story.king) }
+            ? { deck: storyDeckFor(story.axis, story.king, boardSize || 5) }
             : null),
           // レベルで開いている札だけを配る(手元の対局。オンラインは相手と同じ山札なので絞らない)
           ...(pool && !network && !tutorial && !customRules
@@ -2510,7 +2507,7 @@ export function GameCore({
     // 実力を表さなくなる。CPU戦とチュートリアルは相手の強さが決まらない。
     // フレンド対戦(合言葉・近くの端末)も数えない(本人の指示 2026-09-17。知り合い同士で点を回せてしまう)
     // Bot(ランダムマッチの練習相手)は 9×9 ならレートに数える。相手の点は Bot の人物の点
-    const ranked = (!!(network && network.random) || !!bot) && a.boardSize === 9;
+    const ranked = (!!(network && network.random) || !!bot) && a.boardSize === 9 && rankedPhase(matchPhase);
     const foeRating = !ranked
       ? null
       : bot

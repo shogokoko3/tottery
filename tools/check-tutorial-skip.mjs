@@ -41,7 +41,7 @@ const reset = () => {
   assert.ok(levelOf(p) >= 10, `全部飛ばせばレベル10以上(${levelOf(p)})`);
   assert.equal(r.leveledUp, true);
   assert.ok(r.xpNoticeId, "経験値の帯を出す");
-  assert.equal(onlineGate(p).ok, true, "ランダムマッチが開く");
+  assert.equal(onlineGate(p).ok, false, "チュートリアルを飛ばしてもランダムマッチは開かない(ストーリーのフェーズ1で開く。2026-09-30)");
   assert.equal(homeTutorialNudge(p), null, "ホームの誘いが消える");
   assert.equal(nextTutorial(p), null);
   assert.equal(p.plays, 0, "対局の数には数えない");

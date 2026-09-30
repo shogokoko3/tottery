@@ -7,7 +7,6 @@ import {
   moveHintCandidates,
   tutorialMinutes,
 } from "../game/tutorial.js";
-import { onlineGate } from "../game/online-gate.js";
 import { MOVE_TEXT, SUIT_SYMBOL } from "../game/constants.js";
 import { squareName } from "../game/board.js";
 import { MoveDiagram, KingMoveFigure } from "./guides.jsx";
@@ -490,8 +489,6 @@ export function TutorialSelect({ onStart, onBack }) {
   // まだ終えていない話(本編の12話)。飛ばすのはこれだけ。番外は含めない
   const left = TUTORIALS.filter((t) => !profile.cleared.includes(t.id));
   const leftXp = left.reduce((n, t) => n + t.xp, 0);
-  // ランダムマッチまでの残り。終わりを見せる(2026-09-25 本人の指示)
-  const gate = onlineGate(profile);
   const [confirmSkip, setConfirmSkip] = useState(false);
   // 番外の話は、フォイルのスキンを1枚でも持っていると開く(効果盤面が使える条件と同じ。
   // 入手の経路は見ず、いま持っているかだけで決める)
@@ -519,11 +516,6 @@ export function TutorialSelect({ onStart, onBack }) {
           ? "話を終えるか対局すると経験値が入り、続きの話が開きます。"
           : "全12話。ここまでで、52枚すべての動きと王の力がそろいます。"}
       </p>
-      {!gate.ok && (
-        <p className="tutorial-gate-left">
-          あと {gate.remaining} 話でランダムマッチが開きます
-        </p>
-      )}
       <div className="menu-list">
         {[
           ...TUTORIALS,

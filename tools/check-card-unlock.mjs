@@ -119,7 +119,7 @@ import {
   assert.ok(/handSize=\{!a && !tut && !bot && !story \? handSizeForLevel\(localLevel\) : null\}/.test(screens), "手札の枚数も");
   // 近くの端末との対戦(nearby)もフレンド対戦と同じく絞らない(2026-09-17)
   assert.ok(/level=\{o === "online" \|\| o === "room" \|\| o === "nearby" \? null : localLevel\}/.test(screens), "ルール設定はオンラインでは絞らない");
-  assert.ok(/disabled=\{i === 9 && locked9\}/.test(screens), "閉じている 9×9 は押せない");
+  assert.ok(/disabled=\{\(i === 9 && locked9\) \|\| \(i === 5 && locked5ByPhase\)\}/.test(screens), "閉じている 9×9 は押せない(フェーズ2 のオンラインは 5×5 も)");
   assert.ok(/foilRevealed\(collection\) && !localPool/.test(screens), "定石CPUは絞るレベルでは出さない");
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
   // 詳細設定で札を絞っているときは、レベルの絞りより詳細設定を優先する(2026-09-17)

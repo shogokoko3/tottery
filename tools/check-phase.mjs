@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import {
   PHASES, PHASE_MAX, DEFAULT_PHASE, PHASE_EPOCH, STORY_AXES, PROMOTION_WINS,
   normalizePhase, phaseOf, rulesForPhase, setupFlagsForPhase, normalizePhaseWins, normalizeStory,
-  promotionStatus, canPromote, promote, clearAxis, addPhaseWin,
+  promotionStatus, canPromote, promote, clearAxis, addPhaseWin, stageSize, rankedPhase,
 } from "../src/game/phase.js";
 
 let ok = 0;
@@ -26,8 +26,10 @@ is("profile から読む", [phaseOf({ phase: 2 }), phaseOf({}), phaseOf(null)], 
 
 console.log("\nフェーズごとの対局の決まり");
 is("1: 力なし・エリアなし・5×5 だけ", rulesForPhase(1), { kingPowers: false, areas: false, sizes: [5] });
-is("2: 力あり・エリアなし・5×5 だけ", rulesForPhase(2), { kingPowers: true, areas: false, sizes: [5] });
+is("2: 力あり・エリアなし・9×9 だけ(2026-09-30)", rulesForPhase(2), { kingPowers: true, areas: false, sizes: [9] });
 is("3: 力あり・エリアあり・5×5/9×9", rulesForPhase(3), { kingPowers: true, areas: true, sizes: [5, 9] });
+is("ストーリーのステージの盤: フェーズ1 は 5×5、2 からは 9×9", [stageSize(1), stageSize(2), stageSize(3), stageSize(null)], [5, 9, 9, 5]);
+is("持ち点はフェーズ3だけ", [rankedPhase(1), rankedPhase(2), rankedPhase(3), rankedPhase(undefined)], [false, false, true, false]);
 is("START_SETUP の旗: 1 だけ kingPowers:false、ほかは旗なし(古い記録と揃える)", [setupFlagsForPhase(1), setupFlagsForPhase(2), setupFlagsForPhase(3)], [{ kingPowers: false }, {}, {}]);
 
 console.log("\n昇格");

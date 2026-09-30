@@ -66,9 +66,20 @@ export function rulesForPhase(phase) {
     kingPowers: p >= 2,
     // 王のエリア効果(フォイルの能力)。9×9 で王のフォイルがあるときだけ立つのは今までどおり
     areas: p >= 3,
-    // オンラインで選べる盤。持ち点の対象(9×9)はフェーズ3だけ
-    sizes: p >= 3 ? [5, 9] : [5],
+    // オンラインで選べる盤(2026-09-30 本人の指示): フェーズ1 は 5×5、フェーズ2 は 9×9、フェーズ3 は両方。
+    // 持ち点(レート)はフェーズ3だけ(game.jsx の ranked と verify-match がフェーズを見る)
+    sizes: p >= 3 ? [5, 9] : p === 2 ? [9] : [5],
   });
+}
+
+/** ストーリーのステージの盤。フェーズ1 は 5×5、フェーズ2 からは 9×9(2026-09-30 本人の指示) */
+export function stageSize(phase) {
+  return normalizePhase(phase) >= 2 ? 9 : 5;
+}
+
+/** 持ち点(レート)に数えるフェーズか。フェーズ3だけ。通信の部屋のフェーズは onlinePhase で読んでから渡す */
+export function rankedPhase(phase) {
+  return phase === 3;
 }
 
 /** START_SETUP に載せる旗。フェーズ3(旗なし)は今までどおりの形にして、古い記録・端末と揃える */

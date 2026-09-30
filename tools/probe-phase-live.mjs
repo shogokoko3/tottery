@@ -16,7 +16,7 @@
 const KEY = "AIzaSyDcV6cXMZyzOYrhpUO2Pd4wvP9oXe9vTdY";
 const DB = "https://tottery-66e0f-default-rtdb.asia-southeast1.firebasedatabase.app";
 const tag = Math.random().toString(36).slice(2, 4).toUpperCase();
-const P1 = "PHASE1" + tag, P3 = "PHASE3" + tag;
+const P1 = "PHASE1" + tag, P2 = "PHASE2" + tag, P3 = "PHASE3" + tag;
 const anon = async () => {
   const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${KEY}`, {
     method: "POST", headers: { "Content-Type": "application/json" },
@@ -65,6 +65,13 @@ try {
   want("kingPowers は真偽だけ", await call(A, `rooms/${P1}/acts/${pushId(2)}`, "PUT", act({ __id: `${A.uid.slice(0, 6)}-2`, kingPowers: "no" })), "弾かれる");
   want("kingPowers の下に子は書けない", await call(A, `rooms/${P1}/acts/${pushId(3)}`, "PUT", act({ __id: `${A.uid.slice(0, 6)}-3`, kingPowers: { x: true } })), "弾かれる");
 
+  console.log("■ フェーズ2の部屋(9×9。2026-09-30)");
+  want("部屋を作れる(phase:2・9×9)", await call(A, `rooms/${P2}`, "PUT", room({ phase: 2, matchSize: 9 })));
+  want("掲示は phase:2 + size:9 で出せる", await call(A, `lobby/${P2}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 2, size: 9 }));
+  want("掲示を下ろす", await call(A, `lobby/${P2}`, "DELETE"));
+  want("フェーズ2の掲示に 5×5 は出せない", await call(A, `lobby/${P2}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 2, size: 5 }), "弾かれる");
+  want("フェーズ1の部屋に 9×9 の掲示は出せない", await call(A, `lobby/${P1}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 1, size: 9 }), "弾かれる");
+
   console.log("■ phase の無い部屋(今までどおり)");
   want("部屋を作れる(phase なし)", await call(A, `rooms/${P3}`, "PUT", room({})));
   want("掲示は今までどおり matchSize で出せる", await call(A, `lobby/${P3}`, "PUT", { host: A.uid, createdAt: Date.now(), matchSize: 5 }));
@@ -78,7 +85,7 @@ try {
   want("今までどおりの開始の合図は通る", await call(A, `rooms/${P3}/acts/${pushId(4)}`, "PUT", act({ __id: `${A.uid.slice(0, 6)}-4` })));
 } finally {
   console.log("■ 片付け");
-  for (const code of [P1, P3]) {
+  for (const code of [P1, P2, P3]) {
     await call(A, `lobby/${code}`, "DELETE");
     await call(A, `rooms/${code}/acts`, "DELETE");
     await call(B, `rooms/${code}/seats/guest`, "DELETE");

@@ -142,6 +142,7 @@ import {
 } from "../game/tutorial-nudge.js";
 import { TUTORIALS } from "../game/tutorial.js";
 import { pickStoryKing, stageOf } from "../game/story.js";
+import { rankedPhase, stageSize } from "../game/phase.js";
 import { isBlocked } from "../game/blocked.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
 import { ensureAuth, myUid } from "../net/auth.js";
@@ -676,6 +677,8 @@ export function MatchingScreen({
   onCpu,
   onBack,
   onTutorial,
+  // ランダムマッチが閉じているときの行き先(ストーリー。2026-09-30 本人の指示)
+  onStory = null,
   // 今シーズンの順位。ホームから移した(2026-09-17、本人の指示)
   onRanking = null,
   // 近くの端末と対戦(Bluetooth / 近距離 Wi‑Fi)。ここに直に置く。
@@ -691,7 +694,7 @@ export function MatchingScreen({
         <button
           className={`btn btn-primary btn-choice ${gate.ok ? "" : "btn-choice-locked"}`}
           aria-disabled={!gate.ok}
-          onClick={gate.ok ? onOnline : onTutorial}
+          onClick={gate.ok ? onOnline : onStory || onTutorial}
         >
           <Globe size={30} />
           <span className="choice-label">
@@ -764,10 +767,11 @@ export function RandomMatchScreen({
   onBotReady: botReady = null,
 }) {
   const loadout = useRef(mySkins()).current;
-  // 自分のフェーズ。相手はフェーズごとに分ける。フェーズ1・2 は 5×5 だけ
-  // (持ち点の対象「ランダムマッチかつ 9×9」に掛からないようにする)
+  // 自分のフェーズ。相手はフェーズごとに分ける。フェーズ1 は 5×5、フェーズ2 は 9×9、フェーズ3 は選んだ盤
+  // (2026-09-30 本人の指示。持ち点はフェーズ3だけ = game.jsx の ranked がフェーズを見る)
   const myPhase = useRef(phaseOf(loadProfile())).current;
-  const boardSize = rulesForPhase(myPhase).sizes.includes(wantedSize) ? wantedSize : 5;
+  const phaseSizes = rulesForPhase(myPhase).sizes;
+  const boardSize = phaseSizes.includes(wantedSize) ? wantedSize : phaseSizes[0];
   // 相手が見つかったら震わせる(2026-09-28 本人の指示)。
   // 待っているあいだは画面から目を離していることが多いので、ここで知らせる。
   // 人でも練習相手でも同じ(待っている側には見分けが付かないため)
@@ -1277,16 +1281,20 @@ export function RulesSelectScreen({
   onCpuArea = null,
   // 手元の対局のときの自分のレベル。札と 9×9 をレベルで絞る。null なら絞らない(オンライン)
   level = null,
-  // フェーズ1・2 のオンラインは 9×9 を選べない(ストーリーとフェーズ.md)
-  lockedByPhase = false,
+  // オンラインで選べる盤(フェーズで決まる。phase.js rulesForPhase().sizes)。null なら絞らない(手元の対局)
+  phaseSizes = null,
   // 詳細設定(src/game/custom-rules.js)。onCustom が無い画面(ランダムマッチ)では出さない
   custom = null,
   onCustom = null,
   // 詳細設定はエリアを使うのでフェーズ3から(ストーリーとフェーズ.md)。true なら鍵をかけて理由を出す
   customLockedByPhase = false,
 }) {
-  const locked9 = (level !== null && !boardOpen(9, level)) || lockedByPhase;
-  let [a, u] = (0, useState)(locked9 && initialSize === 9 ? 5 : initialSize);
+  const locked9ByPhase = !!phaseSizes && !phaseSizes.includes(9);
+  const locked5ByPhase = !!phaseSizes && !phaseSizes.includes(5);
+  const locked9 = (level !== null && !boardOpen(9, level)) || locked9ByPhase;
+  let [a, u] = (0, useState)(
+    locked9 && initialSize === 9 ? 5 : locked5ByPhase && initialSize === 5 ? 9 : initialSize,
+  );
   // 詳細設定はフォイルを持ってエリアを解放した人だけ(本人の指示 2026-09-17)
   const customUnlocked = !!onCustom && foilRevealed(getCollection());
   const [customOpen, setCustomOpen] = useState(!!custom && !isDefaultCustom(custom));
@@ -1354,7 +1362,7 @@ export function RulesSelectScreen({
               className={`board-choice ${a === i ? "active" : ""}`}
               onClick={() => u(i)}
               aria-pressed={a === i}
-              disabled={i === 9 && locked9}
+              disabled={(i === 9 && locked9) || (i === 5 && locked5ByPhase)}
               key={i}
             >
               <div
@@ -1385,8 +1393,14 @@ export function RulesSelectScreen({
                   <>
                     <br />
                     <b className="board-choice-lock">
-                      {lockedByPhase ? "フェーズ3で開きます" : `Lv${BOARD9_LEVEL} で開きます`}
+                      {locked9ByPhase ? "フェーズ2で開きます" : `Lv${BOARD9_LEVEL} で開きます`}
                     </b>
+                  </>
+                )}
+                {i === 5 && locked5ByPhase && (
+                  <>
+                    <br />
+                    <b className="board-choice-lock">フェーズ3で開きます</b>
                   </>
                 )}
               </small>
@@ -2375,7 +2389,7 @@ function TotteryScreens() {
     if (!stage) return;
     // 相手の装備と選んだエリアは前の CPU 戦のものを引きずらない(Bot 戦と同じ)
     (u(null), setTut(null), setBot(null), setStoryIntro(null), setCpuSkins(createCpuLoadout()), setCpuArea(null), setRound(0),
-      setStory({ axis, phase: phaseOf(loadProfile()), king: pickStoryKing(axis), title: `${stage.name}の王` }),
+      setStory({ axis, phase: phaseOf(loadProfile()), size: stageSize(phaseOf(loadProfile())), king: pickStoryKing(axis), title: `${stage.name}の王` }),
       m(!0), r("game"), t("game"));
     window.scrollTo(0, 0);
   }
@@ -2393,9 +2407,10 @@ function TotteryScreens() {
   const localPool = poolForLevel(localLevel);
   function z(b) {
     if (o === "online") saveOnlineSize(b);
-    // フェーズ1・2 のオンライン(ランダム・合言葉・近くの端末)は 5×5 だけ(ストーリーとフェーズ.md)。
+    // オンライン(ランダム・合言葉・近くの端末)はフェーズで選べる盤が決まる(フェーズ1 は 5×5、2 は 9×9)。
     // ここで丸めないと、対局(GameCore)には選んだ盤がそのまま届く
-    const size = (o === "online" || o === "room" || o === "nearby") && phaseOf(loadProfile()) < 3 ? 5 : b;
+    const phaseSizes = rulesForPhase(phaseOf(loadProfile())).sizes;
+    const size = (o === "online" || o === "room" || o === "nearby") && !phaseSizes.includes(b) ? phaseSizes[0] : b;
     (f(size), o === "room" && w(!0), t(o));
   }
   // 画面の枠(背景や上のバー)は GameShell が出すので、その中に入れる
@@ -2494,7 +2509,10 @@ function TotteryScreens() {
                 collection.equipped,
                 // エリアを選んだCPU戦は、王の数字にフォイルを必ず持たせる(でないとエリアが立たない)。
                 // 「エリアなし」は CPU の装備からフォイルを外し、CPU のエリアだけ立てない(自分のエリアは装備どおり)
-                cpuArea && cpuArea.type === "none" && i === 9 && d && !tut
+                // フェーズ3 のストーリーは 9×9 でエリアあり。相手の王の数字にフォイルを持たせる(相手のエリアが必ず立つ)
+                story && story.size === 9 && rulesForPhase(story.phase).areas
+                  ? ensureCpuFoil(cpuSkins, story.king)
+                  : cpuArea && cpuArea.type === "none" && i === 9 && d && !tut
                   ? stripFoils(cpuSkins)
                   : cpuArea && cpuArea.king && i === 9 && foilRevealed(collection) && (!localPool || bot)
                     ? ensureCpuFoil(cpuSkins, cpuArea.king)
@@ -2512,8 +2530,8 @@ function TotteryScreens() {
             round={round}
             onRematch={a ? () => setRound((n) => n + 1) : null}
             network={a}
-            // ストーリーのステージは 5×5(ストーリーとフェーズ.md)
-            boardSize={tut ? tut.boardSize : story ? 5 : i}
+            // ストーリーのステージの盤はフェーズで決まる(フェーズ1 は 5×5、2 からは 9×9)
+            boardSize={tut ? tut.boardSize : story ? story.size : i}
             cpu={d}
             // フォイルを初めて手に入れるまでは、エリアを選ぶ欄そのものを出さない(選べても渡さない)
             // フェーズ<3 では渡さない(エリアの定石は 9×9 のエリアありが前提。引き継ぎでフェーズが下がった場合の守り)
@@ -2642,6 +2660,7 @@ function TotteryScreens() {
             <MatchingScreen
               onBack={() => t("menu")}
               onTutorial={showTutorials}
+              onStory={showStory}
               onRanking={() => t("ranking")}
               onNearby={() => {
                 // フレンド対戦の画面と同じ行き先。ここからも直に入れる(2026-09-28)
@@ -2800,14 +2819,20 @@ function TotteryScreens() {
           rules: (
             <RulesSelectScreen
               // ランキングに載るのはランダムマッチの 9×9 だけ。フレンド対戦は載らない(2026-09-17)
-              ranked={o === "online"}
+              ranked={o === "online" && rankedPhase(phaseOf(loadProfile()))}
               // 近くの端末との対戦はフレンド対戦と同じく、レベルで札を絞らない
               initialSize={
-                o === "online" && phaseOf(loadProfile()) >= 3 ? loadOnlineSize() : 5
+                o === "online" && phaseOf(loadProfile()) >= 3
+                  ? loadOnlineSize()
+                  : o === "online" || o === "room" || o === "nearby"
+                    ? rulesForPhase(phaseOf(loadProfile())).sizes[0]
+                    : 5
               }
-              // フェーズ1・2 のオンラインは 9×9 を選べない
-              lockedByPhase={
-                (o === "online" || o === "room" || o === "nearby") && phaseOf(loadProfile()) < 3
+              // オンラインで選べる盤はフェーズで決まる(フェーズ1 は 5×5、2 は 9×9、3 は両方)
+              phaseSizes={
+                o === "online" || o === "room" || o === "nearby"
+                  ? rulesForPhase(phaseOf(loadProfile())).sizes
+                  : null
               }
               // 手元の対局は、レベルで札と 9×9 を絞る(src/game/card-unlock.js)
               level={o === "online" || o === "room" || o === "nearby" ? null : localLevel}

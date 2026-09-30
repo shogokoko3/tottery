@@ -11,7 +11,8 @@ import { useEffect, useState } from "react";
 import { typing } from "./key-target.js";
 import { ArrowLeft, Check } from "../icons.jsx";
 import { loadProfile, promotePhase } from "../game/profile.js";
-import { canPromote, promotionStatus } from "../game/phase.js";
+import { canPromote, promotionStatus, stageSize } from "../game/phase.js";
+import { onlineGate } from "../game/online-gate.js";
 import { stageIntro, storyList, nextStage, ranksLabel } from "../game/story.js";
 import { CardFace } from "./cards.jsx";
 
@@ -28,13 +29,16 @@ export function StoryScreen({ onBack, onStart }) {
   const status = promotionStatus(profile);
   const next = nextStage(profile);
   const promotable = canPromote(profile);
+  const gate = onlineGate(profile);
   return (
     <div className="setup-wrap story-wrap">
       <div className="story-head">
         <h2>ストーリー</h2>
         <p className="story-phase">
           フェーズ {status.phase}
-          <small>{PHASE_LABEL[status.phase]}</small>
+          <small>
+            {PHASE_LABEL[status.phase]}・{stageSize(status.phase)}×{stageSize(status.phase)}
+          </small>
         </p>
       </div>
       <ol className="story-list" aria-label="ステージ">
@@ -94,6 +98,12 @@ export function StoryScreen({ onBack, onStart }) {
       {status.last && (
         <p className="hint">最後のフェーズです。ステージは何度でも遊べます。</p>
       )}
+      {/* ランダムマッチはフェーズ1の6ステージをクリアすると開く(2026-09-30 本人の指示) */}
+      {!gate.ok && (
+        <p className="hint story-gate">
+          フェーズ1の6ステージをクリアすると、ランダムマッチが開きます。
+        </p>
+      )}
       <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る
       </button>
@@ -127,7 +137,9 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
     <div className="modal-overlay">
       <div className="modal-panel story-intro" role="group" aria-label="相手の王">
         <div className="story-intro-head">
-          <span className="skins-eyebrow">フェーズ {phase}・{PHASE_LABEL[phase]}</span>
+          <span className="skins-eyebrow">
+            フェーズ {phase}・{PHASE_LABEL[phase]}・{stageSize(phase)}×{stageSize(phase)}
+          </span>
           <h3>{intro.title}</h3>
           <p className="story-intro-lead">{intro.lead}</p>
         </div>
