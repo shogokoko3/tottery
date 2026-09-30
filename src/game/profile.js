@@ -45,9 +45,12 @@ import { clearBlocked } from "./blocked.js";
 import {
   DEFAULT_PHASE,
   addPhaseWin,
+  canPromote,
+  clearAxis,
   normalizePhase,
   normalizePhaseWins,
   normalizeStory,
+  promote,
 } from "./phase.js";
 
 const KEY = "tottery.account.v1";
@@ -304,6 +307,18 @@ function read(key) {
     // プライベートブラウズなどで読めないことがある
     return null;
   }
+}
+
+/**
+ * フェーズを1つ上げる(ストーリーとフェーズ.md)。条件(そのフェーズの6軸クリア + オンライン5勝)を
+ * 満たしていなければ何もしない。返り値は保存後の profile
+ */
+export function promotePhase() {
+  const profile = loadProfile();
+  if (!canPromote(profile)) return profile;
+  const next = promote(profile);
+  saveProfile(next);
+  return next;
 }
 
 export function loadProfile() {
@@ -714,6 +729,15 @@ export function recordGame(won, opts) {
       (opts.phase == null || opts.phase === normalizePhase(profile.phase))
         ? addPhaseWin(profile).phaseWins
         : profile.phaseWins,
+    // ストーリーのステージ(opts.story = { axis, phase })。勝ったときだけ、その軸をクリアに。
+    // 対局のフェーズが自分のフェーズと違えば数えない(古い端末との対局など)
+    story:
+      opts &&
+      opts.story &&
+      won === true &&
+      normalizePhase(opts.story.phase) === normalizePhase(profile.phase)
+        ? clearAxis(profile, opts.story.axis).story
+        : profile.story,
     rating: after,
     ratingVersion: RATING_VERSION,
     wr: profile.wr,

@@ -9109,3 +9109,157 @@ svg {
     animation: none;
   }
 }
+
+/* ==================== ストーリー(src/ui/story.jsx) ==================== */
+/* ホームのタイル。チュートリアルの紫をそのまま引き継ぐ(同じ場所に置くので同じ色) */
+.home-tile-story .home-tile-icon {
+  color: #cbb6ff;
+  background: rgba(143, 111, 214, 0.2);
+}
+.story-wrap {
+  gap: 14px;
+}
+.story-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.story-phase {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--gold-soft);
+  font-size: 13px;
+}
+.story-phase small {
+  color: var(--text-dim);
+}
+.story-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* 1ステージ = 1段。左に王の札、中に名前と一言、右にクリアの印か褒美 */
+.story-stage {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.story-stage:active {
+  transform: translateY(1px);
+}
+.story-stage.is-next {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(245, 194, 107, 0.25) inset;
+}
+.story-stage.is-cleared {
+  opacity: 0.8;
+}
+.story-stage-ranks {
+  flex: none;
+  display: flex;
+  gap: 2px;
+}
+.story-stage-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.story-stage-body b {
+  font-size: 15px;
+}
+.story-stage-body small {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.story-stage-tail {
+  flex: none;
+  display: flex;
+  align-items: center;
+  color: var(--gold);
+}
+.story-stage-reward {
+  color: var(--text-dim);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.story-promotion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.story-promote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 52px;
+}
+.story-promote small {
+  font-size: 11px;
+  opacity: 0.85;
+}
+/* ステージの前の1枚。相手の王の特徴。手引き(primer)と同じ骨組み */
+.story-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 420px;
+}
+.story-intro-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.story-intro-head h3 {
+  margin: 0;
+}
+.story-intro-lead {
+  margin: 0;
+  color: var(--gold-soft);
+  font-size: 14px;
+}
+.story-intro-items {
+  list-style: none;
+  margin: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.story-intro-items li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.story-intro-items li b {
+  flex: none;
+  min-width: 2.2em;
+  color: var(--gold);
+  font-size: 15px;
+}
+.story-intro .hint {
+  margin: 0;
+}

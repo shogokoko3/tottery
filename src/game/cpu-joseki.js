@@ -184,8 +184,11 @@ export function fortressArrange(state, player, plan, col0 = 0) {
     [lo, hi] = territoryRows(size, player);
   const back = player === 0 ? hi : lo,
     dir = player === 0 ? -1 : 1;
+  // 3×3 の要塞。5×5 は自陣が2行しかないので、自陣に収まる行だけ使う
+  // (2026-09-30 ストーリーで 5×5 にも使うようになった。前は 9×9 だけだった)
+  const rows = Math.min(3, hi - lo + 1);
   const cells = [];
-  for (let i = 0; i < 3; i++)
+  for (let i = 0; i < rows; i++)
     for (let j = 0; j < 3; j++) cells.push({ row: back + dir * i, col: col0 + j });
   const corner = cells[0];
   const others = plan.cards.filter((c) => c.id !== plan.kingId);
@@ -270,7 +273,8 @@ function arrangeMidKing(state, player, plan) {
   const [lo, hi] = territoryRows(state.boardSize, player);
   return arrangeKingAt(state, player, plan, {
     row: player === 0 ? lo + 1 : hi - 1,
-    col: 4,
+    // 盤の中央の列(9×9 なら 4、5×5 なら 2)
+    col: Math.floor(state.boardSize / 2),
   });
 }
 
