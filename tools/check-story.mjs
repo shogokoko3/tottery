@@ -269,10 +269,14 @@ console.log("\n画面(src/ui/story.jsx)");
         resolveDir: process.cwd(),
         loader: "jsx",
         contents: `import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';
-import {StoryScreen, StoryIntro, storyTileNote, introKeyCloses} from './src/ui/story.jsx';
+import {StoryScreen, StoryIntro, storyTileNote, introKeyCloses, StoryInterruptConfirm, StoryInterruptMenu} from './src/ui/story.jsx';
+import {QuitConfirm} from './src/ui/overlays.jsx';
 const noop=()=>{};
 export const screen=()=>renderToStaticMarkup(<StoryScreen onBack={noop} onStart={noop} />);
 export const intro=(axis, phase)=>renderToStaticMarkup(<StoryIntro axis={axis} phase={phase} onStart={noop} onBack={noop} />);
+export const interruptConfirm=()=>renderToStaticMarkup(<StoryInterruptConfirm onCancel={noop} onInterrupt={noop} />);
+export const interruptMenu=()=>renderToStaticMarkup(<StoryInterruptMenu onInterrupt={noop} />);
+export const quit=(props)=>renderToStaticMarkup(<QuitConfirm onCancel={noop} onQuit={noop} {...props} />);
 export { storyTileNote, introKeyCloses };`,
       },
       bundle: true, platform: "node", format: "cjs", jsx: "automatic", outfile, logLevel: "silent",
@@ -301,7 +305,7 @@ export { storyTileNote, introKeyCloses };`,
     globalThis.window = globalThis;
     if (typeof globalThis.Image === "undefined") globalThis.Image = class { set src(_) {} };
     if (typeof globalThis.Audio === "undefined") globalThis.Audio = class { play() {} pause() {} };
-    const { screen, intro, storyTileNote, introKeyCloses } = createRequire(import.meta.url)(outfile);
+    const { screen, intro, storyTileNote, introKeyCloses, interruptConfirm, interruptMenu, quit } = createRequire(import.meta.url)(outfile);
     const base = { name: "t", phase: 1, phaseEpoch: PHASE_EPOCH, phaseWins: { 1: 0, 2: 0, 3: 0 }, story: { 1: [], 2: [], 3: [] } };
     const save = (p) => mem.set("tottery.account.v1", JSON.stringify(p));
     save(base);
@@ -343,6 +347,11 @@ export { storyTileNote, introKeyCloses };`,
     is("図は 9×9 で描く", /<MoveDiagram rank=\{it\.rank\} gridSize=\{9\} \/>/.test(fs.readFileSync(new URL("../src/ui/story.jsx", import.meta.url), "utf8")), true);
     save(base);
     is("一覧にランダムマッチの条件(7ステージ)", /フェーズ1の(<!-- -->)?7(<!-- -->)?ステージをクリアすると、ランダムマッチが開きます/.test(screen()), true);
+    // ステージの中断(2026-10-01 本人の指示)
+    is("上のバーに「中断」の釦(開く前は確認を出さない)", interruptMenu().includes(">中断</button>") && !interruptMenu().includes("ステージを中断しますか"), true);
+    const ic = interruptConfirm();
+    is("中断の確認: クリアにも負けにもならない・一覧へ戻る", ic.includes("ステージを中断しますか?") && ic.includes("クリアにも負けにもなりません") && ic.includes("中断してストーリーへ") && ic.includes("対局を続ける"), true);
+    is("上の「トッタリー」からのやめる確認もストーリーの言葉", quit({ story: true }).includes("中断してストーリーへ") && !quit({ story: true }).includes("タイトルに戻る") && quit({}).includes("やめてタイトルに戻る"), true);
     is("ホームのタイルの一言(次のステージ)", storyTileNote(base).includes("二と三の王"), true);
     is("ホームのタイルの一言(昇格できる)", storyTileNote({ ...base, story: { 1: [...STORY_AXES], 2: [], 3: [] }, phaseWins: { 1: 5, 2: 0, 3: 0 } }), "フェーズ 2 へ進めます");
     is("ホームのタイルの一言(全クリア・最後)", storyTileNote({ ...base, phase: 3, story: { 1: [], 2: [], 3: [...STORY_AXES] } }), "全ステージクリア");
@@ -389,6 +398,8 @@ console.log("\n配線(game.jsx / screens.jsx)");
   is("オンラインの勝ちは部屋のフェーズを添えて数える", game.includes("...(network ? { phase: onlinePhase(network.phase) } : null),"), true);
   is("ストーリーの欄は記録が済んでから(ready)", game.includes("{story && won && story.ready && (") && game.includes("ready: !!storyResult"), true);
   is("手元のエリア(詳細設定・CPUのエリア・席名・定石)はフェーズ3だけ", screens.includes("const localAreas = rulesForPhase(phaseOf(loadProfile())).areas;") && /onCpuArea=\{\s*d && !tut && foilRevealed\(collection\) && !localPool && localAreas/.test(screens) && screens.includes("localAreas && cpuArea && cpuArea.king && i === 9"), true);
+  is("中断の釦はストーリーの対局の上のバーに(決着したあとは出さない)", /\) : story && a\.phase !== "gameover" \? \(\s*(\/\/[^\n]*\n\s*)*<StoryInterruptMenu onInterrupt=\{\(\) => \(onTutorialList \|\| onExit\)\(\)\} \/>/.test(game), true);
+  is("やめる確認にストーリーを渡す", /story=\{!!story\}\s*onCancel=\{\(\) => r\(!1\)\}/.test(game), true);
   is("対局後の見出しは「ステージクリア!」", game.includes('"ステージクリア!"') && game.includes("次のステージへ") && game.includes("ストーリーへ"), true);
   is("ホームのタイルはストーリー(チュートリアルの場所)", /tone="story"[\s\S]*?label="ストーリー"[\s\S]*?note=\{storyTileNote\(profile\)\}[\s\S]*?onClick=\{onStory\}/.test(screens) && !/tone="tutorial"/.test(screens), true);
   is("ストーリーの画面とステージ前の1枚", /<StoryScreen\s+onBack=\{\(\) => t\("menu"\)\}\s+onStart=\{\(axis\) => setStoryIntro\(axis\)\}\s+onGuide=\{\(\) => setStoryPrimer\("guide"\)\}\s*\/>/.test(screens) && screens.includes("<StoryIntro"), true);

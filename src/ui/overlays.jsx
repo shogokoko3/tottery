@@ -1001,7 +1001,7 @@ export function ResignConfirm({ onCancel, onResign, viewer }) {
   );
 }
 /** counts: レートに数える対局か(ランダムマッチの 9×9)。フレンド対戦・近くの端末・5×5 は数えない */
-export function QuitConfirm({ onCancel, onQuit, network, counts = !!network }) {
+export function QuitConfirm({ onCancel, onQuit, network, counts = !!network, story = false }) {
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div
@@ -1026,6 +1026,9 @@ export function QuitConfirm({ onCancel, onQuit, network, counts = !!network }) {
               <br />
               相手の勝ちとして勝敗がつき、レート(月間シーズンの成績)を清算します。相手には「降参」と伝わります。
             </>
+          ) : story ? (
+            // ストーリーのステージ: 中断(クリアにも負けにもしない)。一覧へ戻る(2026-10-01)
+            "ステージを中断して、ストーリーの一覧に戻ります。クリアにも負けにもなりません。"
           ) : (
             "今の対局は最初からやり直しになります。"
           )}
@@ -1042,7 +1045,7 @@ export function QuitConfirm({ onCancel, onQuit, network, counts = !!network }) {
           </button>
           <button className="btn btn-ghost" onClick={onQuit}>
             <ArrowLeft size={16} />{" "}
-            {network ? "降参してホームに戻る" : "やめてタイトルに戻る"}
+            {network ? "降参してホームに戻る" : story ? "中断してストーリーへ" : "やめてタイトルに戻る"}
           </button>
         </div>
       </div>

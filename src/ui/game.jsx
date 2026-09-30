@@ -53,6 +53,7 @@ import { baseSkinId } from "../skins/catalog.js";
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
 import { STORY_XP, grantStoryReward, nextStage, nextStageAfter, storyCpuArea, storyDeckFor, storyFreshClear } from "../game/story.js";
+import { StoryInterruptMenu } from "./story.jsx";
 import { PHASE_MAX, STORY_TICKETS, phaseOf, rankedPhase, rulesForPhase, setupFlagsForPhase } from "../game/phase.js";
 import { onlinePhase } from "../net/match-settings.js";
 import { noteRandomResult, botAction } from "../game/bot-match.js";
@@ -2811,6 +2812,10 @@ export function GameCore({
       // 中断: クリア扱いにせず、その場でホームへ戻る(あとで最初から遊べる)
       onInterrupt={onHome ? goHome : onExit}
     />
+  ) : story && a.phase !== "gameover" ? (
+    // ストーリーのステージの「中断」(2026-10-01 本人の指示)。準備の場面から対局中まで、上のバーにいつも出す。
+    // クリアにも負けにもしない(記録は対局の終わりにしか付けない)。ストーリーの一覧へ戻る。決着したあとは出さない
+    <StoryInterruptMenu onInterrupt={() => (onTutorialList || onExit)()} />
   ) : null;
 
   const presentationSheet = (
@@ -2901,6 +2906,8 @@ export function GameCore({
           network={network || bot}
           // 「レートを清算します」は持ち点に数える対局だけ(フェーズ3の 9×9 のランダムマッチ・Bot)
           counts={(!!(network && network.random) || !!bot) && a.boardSize === 9 && rankedPhase(matchPhase)}
+          // ストーリーは「中断してストーリーへ」(上の「トッタリー」から開いたとき。一覧へ戻る)
+          story={!!story}
           onCancel={() => r(!1)}
           onQuit={() => {
             (r(!1), quitGame());

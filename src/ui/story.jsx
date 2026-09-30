@@ -9,6 +9,7 @@
  * チュートリアルの一覧(tutorial.jsx)に代わる導線。チュートリアルのコードは残す(本人の指示)
  */
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { typing } from "./key-target.js";
 import { ArrowLeft, Check } from "../icons.jsx";
 import { loadProfile, promotePhase } from "../game/profile.js";
@@ -195,6 +196,82 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * ステージの中断の確認(2026-10-01 本人の指示「ストーリー中に中断できるようなボタン」)。
+ * 中断はクリアにも負けにもしない(記録は対局の終わりにしか付けないので、途中で抜ければ何も残らない)。
+ * ストーリーの一覧へ戻り、あとで最初から遊べる。チュートリアルの「中断してやめる」と同じ考え方
+ */
+export function StoryInterruptConfirm({ onCancel, onInterrupt }) {
+  // 開いたら「対局を続ける」に focus。Escape でも続ける(閉じる)
+  const keepRef = useRef(null);
+  useEffect(() => {
+    try {
+      if (keepRef.current && keepRef.current.focus) keepRef.current.focus({ preventScroll: true });
+    } catch {
+      /* focus できなくても押せる */
+    }
+    const onKey = (e) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return (
+    <div className="modal-overlay tutorial-skip-confirm" onClick={onCancel}>
+      <div
+        className="modal-panel tutorial-offer story-interrupt"
+        role="dialog"
+        aria-modal="true"
+        aria-label="ステージを中断する"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3>ステージを中断しますか?</h3>
+        <p className="hint">
+          クリアにも負けにもなりません。ストーリーの一覧に戻り、このステージはあとで最初から遊べます。
+        </p>
+        <div className="tutorial-skip-options">
+          <button type="button" className="btn btn-primary btn-wide" onClick={onCancel} ref={keepRef}>
+            対局を続ける
+          </button>
+          <button type="button" className="btn btn-ghost btn-wide" onClick={onInterrupt}>
+            中断してストーリーへ
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 札の外に出す先(色の変数を持つ画面の根)。無ければ body */
+const portalRoot = () => document.querySelector(".tottery-root") || document.body;
+
+/** 対局の上のバーに置く「中断」。押すと確認を出す(StoryInterruptConfirm) */
+export function StoryInterruptMenu({ onInterrupt }) {
+  const [open, setOpen] = useState(false);
+  const confirm = open ? (
+    <StoryInterruptConfirm
+      onCancel={() => setOpen(false)}
+      onInterrupt={() => {
+        setOpen(false);
+        onInterrupt();
+      }}
+    />
+  ) : null;
+  return (
+    <>
+      <button
+        type="button"
+        className="icon-btn plain tutorial-skip-top story-interrupt-top"
+        onClick={() => setOpen(true)}
+        aria-label="ステージを中断する"
+      >
+        中断
+      </button>
+      {confirm && (typeof document === "undefined" ? confirm : createPortal(confirm, portalRoot()))}
+    </>
   );
 }
 

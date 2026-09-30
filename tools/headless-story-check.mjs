@@ -129,6 +129,22 @@ is("ステージの前に相手の王の説明", /相手の王は 2 か 3/.test(
 is("フェーズ1は駒の動き方だけ(王の力の文は無い)", /マス/.test(intro) && !/伸びる/.test(intro), intro.slice(0, 200));
 is("フェーズ1・駒の動きだけ の見出し", /フェーズ 1/.test(intro) && /駒の動きだけ/.test(intro), intro.slice(0, 80));
 await clickText("はじめる"); await sleep(1500);
+// ステージの中断(2026-10-01): 上のバーの「中断」→ 確認 →「対局を続ける」で戻れる →「中断してストーリーへ」で一覧、記録は残らない
+is("対局の上のバーに「中断」", await ev(`[...document.querySelectorAll(".top-right button")].some(b=>b.textContent.trim()==="中断")`));
+await ev(`[...document.querySelectorAll(".top-right button")].find(b=>b.textContent.trim()==="中断").click()`); await sleep(400);
+await shot("03a-interrupt");
+is("中断の確認が出る", /ステージを中断しますか/.test(await ev(`document.body.innerText`)));
+await clickText("対局を続ける"); await sleep(300);
+is("「対局を続ける」で対局に戻る", !(await ev(`!!document.querySelector(".story-interrupt")`)) && (await state()) !== null);
+await ev(`[...document.querySelectorAll(".top-right button")].find(b=>b.textContent.trim()==="中断").click()`); await sleep(400);
+await clickText("中断してストーリーへ"); await sleep(800);
+is("中断するとストーリーの一覧に戻る", (await ev(`document.querySelectorAll(".story-stage").length`)) === 7 && (await state()) === null);
+{
+  const pr = await ev(`JSON.parse(localStorage.getItem("tottery.account.v1")||"{}")`);
+  is("中断はクリアにも負けにもならない(記録なし)", (pr.story?.[1] || []).length === 0 && (pr.battles || 0) === (prof0.battles || 0), JSON.stringify({ story: pr.story, battles: pr.battles }));
+}
+await clickSel(".story-stage"); await sleep(600);
+await clickText("はじめる"); await sleep(1500);
 
 async function prep(tag) {
   for (let i = 0; i < 90; i++) {
