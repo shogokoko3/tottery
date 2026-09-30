@@ -1190,7 +1190,8 @@ export function GameView({
             )}
           </div>
         )}
-        {story && won && (
+        {/* 記録が済むまで(storyResult が入るまで)は出さない。次の釦が一瞬欠けて見えるのを防ぐ */}
+        {story && won && story.ready && (
           <div className="tutorial-complete story-complete">
             <p className="hint">{story.title}をクリア</p>
             {story.fresh && (
@@ -4195,7 +4196,7 @@ export function GameCore({
             // Bot(ランダムマッチの練習相手)は network を持たないが、連戦はできる
             onNextMatch={(network || bot) && onNextMatch ? nextMatch : null}
             tutorial={tutorial}
-            story={story ? { ...story, fresh: false, next: null, allCleared: false, ...(storyResult || null) } : null}
+            story={story ? { ...story, fresh: false, next: null, allCleared: false, ...(storyResult || null), ready: !!storyResult } : null}
             onNextStory={onNextStory}
             onRetryStory={onRetryStory}
             nextTutorial={nextTutorial}

@@ -192,8 +192,8 @@ assert.ok(/const planRef = useRef\(botReady \? botPlan\(myRating\(\)\) : "none"\
   assert.ok(/onNextMatch=\{\(a && a\.random\) \|\| bot \? nextRandomMatch : null\}/.test(screens), "Bot 戦のあとも「次の相手と対戦する」");
   assert.ok(/setCpuArea\(b\.area && b\.king && foilRevealed\(collection\) \? \{ type: b\.area, king: b\.king \} : null\);\s*setBot\(b\);/.test(screens), "Bot のエリア(6種を均等)を CPU 戦の作りで立てる。フォイルを持たない人には立てない");
   assert.ok(/foilRevealed\(collection\) && \(!localPool \|\| bot\)\s*\? ensureCpuFoil\(cpuSkins, cpuArea\.king\)/.test(screens), "Bot の王の数字にフォイルを必ず持たせる(レベルの札の絞りに関係なく)");
-  assert.ok(/foilRevealed\(collection\) && \(!localPool \|\| bot\) \? cpuArea : null/.test(screens), "GameCore にも Bot のエリアを渡す");
-  assert.ok(/\? bot\.name\s*: cpuArea && cpuArea\.king/.test(screens), "相手の名前は Bot の名前");
+  assert.ok(/foilRevealed\(collection\) && \(!localPool \|\| bot\) && localAreas \? cpuArea : null/.test(screens), "GameCore にも Bot のエリアを渡す(フェーズ3。フェーズ<3 の Bot は 5×5)");
+  assert.ok(/\? bot\.name\s*: localAreas && cpuArea && cpuArea\.king/.test(screens), "相手の名前は Bot の名前(CPU のエリア名はフェーズ3だけ)");
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
   // 近くの端末との対戦(network.nearby)だけは数えない(2026-09-17)
   assert.ok(/const ranked = \(!!\(network && network\.random\) \|\| !!bot\) && a\.boardSize === 9;/.test(game), "Bot の 9×9 は持ち点に数える(フレンド対戦は数えない)");

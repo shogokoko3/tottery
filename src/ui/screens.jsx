@@ -1282,6 +1282,8 @@ export function RulesSelectScreen({
   // 詳細設定(src/game/custom-rules.js)。onCustom が無い画面(ランダムマッチ)では出さない
   custom = null,
   onCustom = null,
+  // 詳細設定はエリアを使うのでフェーズ3から(ストーリーとフェーズ.md)。true なら鍵をかけて理由を出す
+  customLockedByPhase = false,
 }) {
   const locked9 = (level !== null && !boardOpen(9, level)) || lockedByPhase;
   let [a, u] = (0, useState)(locked9 && initialSize === 9 ? 5 : initialSize);
@@ -1308,7 +1310,7 @@ export function RulesSelectScreen({
             </span>
           </button>
           {onCustom &&
-            (customUnlocked ? (
+            (customUnlocked && !customLockedByPhase ? (
               <button
                 className={`btn btn-choice ${custom && !isDefaultCustom(custom) ? "btn-primary" : "btn-ghost"}`}
                 aria-pressed={!!custom && !isDefaultCustom(custom)}
@@ -1328,12 +1330,15 @@ export function RulesSelectScreen({
               <button className="btn btn-ghost btn-choice" disabled>
                 <Lock size={18} />
                 <span className="choice-label">
-                  詳細設定<small>フォイルを手に入れてエリアを解放すると使えます</small>
+                  詳細設定
+                  <small>
+                    {customLockedByPhase ? "フェーズ3で開きます" : "フォイルを手に入れてエリアを解放すると使えます"}
+                  </small>
                 </span>
               </button>
             ))}
         </div>
-        {onCustom && customUnlocked && customOpen && (
+        {onCustom && customUnlocked && !customLockedByPhase && customOpen && (
           <CustomRulesPanel
             custom={normalizeCustom(custom || DEFAULT_CUSTOM, a)}
             size={a}
@@ -1436,6 +1441,7 @@ export function RulesSelectScreen({
       )}
       {/* フォイルは持っているが札を絞っているレベル: エリア練習は定石の札がそろってから */}
       {!onCpuArea &&
+        !customLockedByPhase &&
         a === 9 &&
         level !== null &&
         poolForLevel(level) &&
@@ -2159,6 +2165,9 @@ function TotteryScreens() {
   const [skinsTab, setSkinsTab] = useState("gacha");
   // CPU戦で選んだ相手のエリア({ type, king })。null なら相手が手札から王を選ぶ
   const [cpuArea, setCpuArea] = useState(null);
+  // 手元の対局でエリア(詳細設定・CPUのエリア)を使えるか。フェーズ3だけ(ストーリーとフェーズ.md)。
+  // game.jsx もフェーズ<3 ではエリアと定石の山札を載せないので、画面でも選ばせない
+  const localAreas = rulesForPhase(phaseOf(loadProfile())).areas;
   // CPU の装備からフォイルを外す(「エリアなし」用。フォイルの王でしかエリアは立たない)
   const stripFoils = (loadout) =>
     Object.fromEntries(Object.entries(loadout || {}).map(([rank, id]) => [rank, baseSkinId(id)]));
@@ -2458,7 +2467,7 @@ function TotteryScreens() {
                   ? story.title
                   : bot
                   ? bot.name
-                  : cpuArea && cpuArea.king && i === 9
+                  : localAreas && cpuArea && cpuArea.king && i === 9
                     ? `CPU(${JOSEKI_INFO[cpuArea.type].label})`
                     : "CPU",
             ]
@@ -2507,8 +2516,9 @@ function TotteryScreens() {
             boardSize={tut ? tut.boardSize : story ? 5 : i}
             cpu={d}
             // フォイルを初めて手に入れるまでは、エリアを選ぶ欄そのものを出さない(選べても渡さない)
+            // フェーズ<3 では渡さない(エリアの定石は 9×9 のエリアありが前提。引き継ぎでフェーズが下がった場合の守り)
             cpuArea={
-              d && !tut && i === 9 && foilRevealed(collection) && (!localPool || bot) ? cpuArea : null
+              d && !tut && i === 9 && foilRevealed(collection) && (!localPool || bot) && localAreas ? cpuArea : null
             }
             // ランダムマッチの練習相手。人との対局と同じ扱い(レートが動く、札は絞らない)
             bot={d && !tut ? bot : null}
@@ -2802,8 +2812,9 @@ function TotteryScreens() {
               // 手元の対局は、レベルで札と 9×9 を絞る(src/game/card-unlock.js)
               level={o === "online" || o === "room" || o === "nearby" ? null : localLevel}
               onStart={z}
-              // 詳細設定はランダムマッチ以外
-              custom={o === "online" ? null : customRules}
+              // 詳細設定はランダムマッチ以外。フェーズ<3 は鍵(エリアを使うので)
+              custom={o === "online" || !localAreas ? null : customRules}
+              customLockedByPhase={o !== "online" && !localAreas}
               onCustom={
                 o === "online"
                   ? null
@@ -2828,7 +2839,7 @@ function TotteryScreens() {
               // 相手のエリアを選べるのは CPU戦で、フォイルを持っている(エリアを知っている)人だけ
               cpuArea={cpuArea ? cpuArea.type : null}
               onCpuArea={
-                d && !tut && foilRevealed(collection) && !localPool
+                d && !tut && foilRevealed(collection) && !localPool && localAreas
                   ? (type) =>
                       setCpuArea(
                         // "none" は CPU のエリアだけ立てない(装備からフォイルを外す)。王は決めない

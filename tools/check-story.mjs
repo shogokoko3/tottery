@@ -233,11 +233,11 @@ console.log("\n画面(src/ui/story.jsx)");
         resolveDir: process.cwd(),
         loader: "jsx",
         contents: `import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';
-import {StoryScreen, StoryIntro, storyTileNote} from './src/ui/story.jsx';
+import {StoryScreen, StoryIntro, storyTileNote, introKeyCloses} from './src/ui/story.jsx';
 const noop=()=>{};
 export const screen=()=>renderToStaticMarkup(<StoryScreen onBack={noop} onStart={noop} />);
 export const intro=(axis, phase)=>renderToStaticMarkup(<StoryIntro axis={axis} phase={phase} onStart={noop} onBack={noop} />);
-export { storyTileNote };`,
+export { storyTileNote, introKeyCloses };`,
       },
       bundle: true, platform: "node", format: "cjs", jsx: "automatic", outfile, logLevel: "silent",
       define: { __FIELD_FILES__: "{}", __BUILD_VERSION__: '"check"' },
@@ -265,7 +265,7 @@ export { storyTileNote };`,
     globalThis.window = globalThis;
     if (typeof globalThis.Image === "undefined") globalThis.Image = class { set src(_) {} };
     if (typeof globalThis.Audio === "undefined") globalThis.Audio = class { play() {} pause() {} };
-    const { screen, intro, storyTileNote } = createRequire(import.meta.url)(outfile);
+    const { screen, intro, storyTileNote, introKeyCloses } = createRequire(import.meta.url)(outfile);
     const base = { name: "t", phase: 1, phaseEpoch: PHASE_EPOCH, phaseWins: { 1: 0, 2: 0, 3: 0 }, story: { 1: [], 2: [], 3: [] } };
     const save = (p) => mem.set("tottery.account.v1", JSON.stringify(p));
     save(base);
@@ -297,6 +297,12 @@ export { storyTileNote };`,
     is("ホームのタイルの一言(次のステージ)", storyTileNote(base).includes("二と三の王"), true);
     is("ホームのタイルの一言(昇格できる)", storyTileNote({ ...base, story: { 1: [...STORY_AXES], 2: [], 3: [] }, phaseWins: { 1: 5, 2: 0, 3: 0 } }), "フェーズ 2 へ進めます");
     is("ホームのタイルの一言(全クリア・最後)", storyTileNote({ ...base, phase: 3, story: { 1: [], 2: [], 3: [...STORY_AXES] } }), "全ステージクリア");
+    // Escape: 自分の中の釦(はじめる に最初から focus)に向いたものは受ける。上に重なった入力欄のものは取らない
+    const el = (inside) => ({ closest: (sel) => (sel === ".story-intro" ? (inside ? {} : null) : {}) });
+    is("Escape: 説明の中の釦に向いたものは閉じる", introKeyCloses({ key: "Escape", target: el(true) }), true);
+    is("Escape: 何も focus が無ければ閉じる", introKeyCloses({ key: "Escape", target: globalThis.document.body }), true);
+    is("Escape: 上に重なった入力欄に向いたものは取らない", introKeyCloses({ key: "Escape", target: el(false) }), false);
+    is("Escape 以外のキーは取らない", introKeyCloses({ key: "Enter", target: el(true) }), false);
     is("ホームのタイルの一言(全クリア・勝利待ち)", storyTileNote({ ...base, story: { 1: [...STORY_AXES], 2: [], 3: [] }, phaseWins: { 1: 2, 2: 0, 3: 0 } }), "昇格まで オンラインの勝利あと 3");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -324,6 +330,8 @@ console.log("\n配線(game.jsx / screens.jsx)");
   is("ストーリーを始めるとき相手の装備とエリアを引きずらない", screens.includes("setCpuSkins(createCpuLoadout()), setCpuArea(null), setRound(0),"), true);
   is("ランダムのホストは相手を断るとき部屋も消す", /guestPhaseOf\(g\.data\) !== myPhase[\s\S]{0,300}deleteRoom\(d\);/.test(screens), true);
   is("オンラインの勝ちは部屋のフェーズを添えて数える", game.includes("...(network ? { phase: onlinePhase(network.phase) } : null),"), true);
+  is("ストーリーの欄は記録が済んでから(ready)", game.includes("{story && won && story.ready && (") && game.includes("ready: !!storyResult"), true);
+  is("手元のエリア(詳細設定・CPUのエリア・席名・定石)はフェーズ3だけ", screens.includes("const localAreas = rulesForPhase(phaseOf(loadProfile())).areas;") && /onCpuArea=\{\s*d && !tut && foilRevealed\(collection\) && !localPool && localAreas/.test(screens) && screens.includes("localAreas && cpuArea && cpuArea.king && i === 9"), true);
   is("対局後の見出しは「ステージクリア!」", game.includes('"ステージクリア!"') && game.includes("次のステージへ") && game.includes("ストーリーへ"), true);
   is("ホームのタイルはストーリー(チュートリアルの場所)", /tone="story"[\s\S]*?label="ストーリー"[\s\S]*?note=\{storyTileNote\(profile\)\}[\s\S]*?onClick=\{onStory\}/.test(screens) && !/tone="tutorial"/.test(screens), true);
   is("ストーリーの画面とステージ前の1枚", screens.includes("<StoryScreen onBack={() => t(\"menu\")} onStart={(axis) => setStoryIntro(axis)} />") && screens.includes("<StoryIntro"), true);

@@ -84,6 +84,12 @@ await shot("02-story");
 is("ストーリーの画面: 6ステージ", (await ev(`document.querySelectorAll(".story-stage").length`)) === 6);
 is("最初は 2・3 が次", await ev(`!!document.querySelector(".story-stage.is-next") && document.querySelector(".story-stage.is-next").textContent.includes("二と三")`));
 await clickSel(".story-stage"); await sleep(600);
+// Escape で閉じる(「はじめる」に最初から focus があっても効く)
+await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+await sleep(400);
+is("説明は Escape で閉じる", !(await ev(`!!document.querySelector(".story-intro")`)));
+await clickSel(".story-stage"); await sleep(600);
 await shot("03-intro");
 const intro = await ev(`document.querySelector(".story-intro") ? document.querySelector(".story-intro").innerText : ""`);
 is("ステージの前に相手の王の説明", /相手の王は 2 か 3/.test(intro), intro.slice(0, 80));

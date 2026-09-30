@@ -101,14 +101,23 @@ export function StoryScreen({ onBack, onStart }) {
   );
 }
 
+/**
+ * ステージの前の1枚を Escape で閉じるか。自分の中(「はじめる」に最初から focus がある)に向いた Escape は受け、
+ * 上に重なった別の画面(設定の入力欄など)に向いたものは取らない
+ */
+export function introKeyCloses(e) {
+  if (!e || e.key !== "Escape") return false;
+  const t = e.target;
+  const mine = !!(t && typeof t.closest === "function" && t.closest(".story-intro"));
+  return mine || !typing(e);
+}
+
 /** ステージの前の1枚。相手の王の特徴を、そのフェーズの中身で */
 export function StoryIntro({ axis, phase, onStart, onBack }) {
   const intro = stageIntro(axis, phase);
-  // Escape で閉じる(入力欄や釦に向いたキーは取らない。Primer と同じ)
   useEffect(() => {
     const onKey = (e) => {
-      if (typing(e)) return;
-      if (e.key === "Escape") onBack();
+      if (introKeyCloses(e)) onBack();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
