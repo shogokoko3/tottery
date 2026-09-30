@@ -113,6 +113,8 @@ export const SCREEN_TRACK = {
   matching: "title",
   ranking: "title",
   tutorial: "title",
+  // ストーリー(一覧とステージ前の説明)。チュートリアルの場所に置いたので同じ曲
+  story: "title",
   rules: "title",
   // 対局の外の画面(メニュー・スキン・ミッション・バトルパス・手紙)は
   // タイトルと同じ曲のまま続ける。画面を行き来しても曲が切れない

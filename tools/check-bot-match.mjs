@@ -188,7 +188,7 @@ assert.ok(/const planRef = useRef\(botReady \? botPlan\(myRating\(\)\) : "none"\
   assert.ok(/l === "error" && planRef\.current !== "fallback" \? \(/.test(screens), "通信の誤りでも、Bot に切り替える予約があれば「探しています」のまま");
   assert.ok(/onBotReady=\{\(b\) => \{\s*clearBotNow\(\);/.test(screens), "Bot 戦を始めたら「次は Bot」の印を消す");
   assert.ok(/bot=\{d && !tut \? bot : null\}/.test(screens), "GameCore に Bot を渡す");
-  assert.ok(/pool=\{!a && !tut && !bot \? localPool : null\}/.test(screens), "Bot 戦は札を絞らない(人との対局と同じ)");
+  assert.ok(/pool=\{!a && !tut && !bot && !story \? localPool : null\}/.test(screens), "Bot 戦は札を絞らない(人との対局と同じ)");
   assert.ok(/onNextMatch=\{\(a && a\.random\) \|\| bot \? nextRandomMatch : null\}/.test(screens), "Bot 戦のあとも「次の相手と対戦する」");
   assert.ok(/setCpuArea\(b\.area && b\.king && foilRevealed\(collection\) \? \{ type: b\.area, king: b\.king \} : null\);\s*setBot\(b\);/.test(screens), "Bot のエリア(6種を均等)を CPU 戦の作りで立てる。フォイルを持たない人には立てない");
   assert.ok(/foilRevealed\(collection\) && \(!localPool \|\| bot\)\s*\? ensureCpuFoil\(cpuSkins, cpuArea\.king\)/.test(screens), "Bot の王の数字にフォイルを必ず持たせる(レベルの札の絞りに関係なく)");

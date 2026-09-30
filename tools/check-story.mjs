@@ -265,5 +265,28 @@ export { storyTileNote };`,
   }
 }
 
+console.log("\n配線(game.jsx / screens.jsx)");
+{
+  const fs = await import("node:fs");
+  const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
+  const screens = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
+  is("GameCore に story プロップ", /\n  story = null,\n  round = 0,/.test(game), true);
+  is("CPU はストーリーなら軸の王の定石CPU", game.includes("const foeArea = story ? storyCpuArea(story.axis, story.king) : cpuArea;") && game.includes("josekiCpuAction(a, T, foeArea.type, foeArea.king)"), true);
+  is("START_SETUP にフェーズの旗(フェーズ1は王の力なし)", game.includes("...setupFlagsForPhase(phase),"), true);
+  is("フェーズは 通信=部屋 / ストーリー=ステージ / 手元=profile", game.includes("const phase = network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile());"), true);
+  is("ストーリーは軸の札を積んだ山札", /\.\.\.\(story && cpu && !network && !tutorial\s*\? \{ deck: storyDeck\(story\.axis, story\.king\) \}/.test(game), true);
+  is("ゲストは部屋のフェーズで決め直す", game.includes("phase: onlinePhase(network.phase),"), true);
+  is("勝てばクリアの記録(profile.story)と xp", /\.\.\.\(story\s*\? \{ \.\.\.\(won \? \{ xp: STORY_XP \} : null\), story: \{ axis: story\.axis, phase: story\.phase \} \}/.test(game), true);
+  is("はじめてのクリアだけ褒美(先に fresh を取る)", game.includes("const freshStory = !!story && won === true && storyFreshClear(loadProfile(), story.axis);") && game.includes("if (freshStory) grantStoryReward(story.phase, story.axis).catch(() => {});"), true);
+  is("オンラインの勝ちは部屋のフェーズを添えて数える", game.includes("...(network ? { phase: onlinePhase(network.phase) } : null),"), true);
+  is("対局後の見出しは「ステージクリア!」", game.includes('"ステージクリア!"') && game.includes("次のステージへ") && game.includes("ストーリーへ"), true);
+  is("ホームのタイルはストーリー(チュートリアルの場所)", /tone="story"[\s\S]*?label="ストーリー"[\s\S]*?note=\{storyTileNote\(profile\)\}[\s\S]*?onClick=\{onStory\}/.test(screens) && !/tone="tutorial"/.test(screens), true);
+  is("ストーリーの画面とステージ前の1枚", screens.includes("<StoryScreen onBack={() => t(\"menu\")} onStart={(axis) => setStoryIntro(axis)} />") && screens.includes("<StoryIntro"), true);
+  is("ステージは 5×5・札を絞らない・王は軸から", screens.includes("boardSize={tut ? tut.boardSize : story ? 5 : i}") && screens.includes("pool={!a && !tut && !bot && !story ? localPool : null}") && screens.includes("king: pickStoryKing(axis)"), true);
+  is("GameCore に story を渡す", screens.includes("story={story}"), true);
+  is("対局を離れるときは story を消す", (screens.match(/setStory\(null\)/g) || []).length >= 7, true);
+  is("チュートリアルの配線は残す(検査の正規表現がそのまま)", screens.includes("tutorial={tut}") && screens.includes("onTutorial={showTutorials}") && screens.includes("<TutorialSelect"), true);
+}
+
 console.log(`\n${ok} ok / ${fail.length} NG`);
 if (fail.length) { console.error("NG: " + fail.join(", ")); process.exit(1); }

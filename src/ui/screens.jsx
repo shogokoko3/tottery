@@ -99,6 +99,7 @@ import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
+import { StoryScreen, StoryIntro, storyTileNote } from "./story.jsx";
 import { TsumeScreen, useTsumeDay } from "./tsume.jsx";
 import { tsumeReceipt } from "../game/tsume-daily.js";
 import { nextTutorialAfter } from "../game/tutorial.js";
@@ -136,11 +137,11 @@ import { botPlan, makeBot, botSearchDelay, clearBotNow, BOT_WAIT_MS,
   botTitle,
 } from "../game/bot-match.js";
 import {
-  homeTutorialNudge,
   markFirstTutorialOffered,
   shouldOfferFirstTutorial,
 } from "../game/tutorial-nudge.js";
 import { TUTORIALS } from "../game/tutorial.js";
+import { pickStoryKing, stageAfter, stageOf } from "../game/story.js";
 import { isBlocked } from "../game/blocked.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
 import { ensureAuth, myUid } from "../net/auth.js";
@@ -415,6 +416,7 @@ function HomeTile({ tone, icon, label, note, badge, onClick, frameTheme, locked 
 export function MenuScreen({
   onPlay,
   onTutorial,
+  onStory,
   onTsume,
   onSkins,
   onBattlePass,
@@ -454,8 +456,6 @@ export function MenuScreen({
   const ready = claimableCount(profile, collection);
   const today = useTsumeDay(now);
   const receipt = tsumeReceipt(collection, today.day);
-  // チュートリアルの釦の一言。第8話まで終えるまでは次の話を添える
-  const nudge = homeTutorialNudge(profile);
   const tsumeStatus = receipt?.cleared
     ? "cleared"
     : receipt?.joined
@@ -570,20 +570,14 @@ export function MenuScreen({
           ミッションとバトルパスは1つの画面(quests.jsx)にまとめ、バトルパスがあった左下へ。
           ミッションがあった右上は「カード」(札ごとの熟練度)。ランキングは「対戦する」の中 */}
       <div className="home-grid">
+        {/* チュートリアルがあった場所にストーリー(2026-09-30 本人の指示)。チュートリアルは導線から外す(コードは残す) */}
         <HomeTile
           frameTheme={theme}
-          tone="tutorial"
+          tone="story"
           icon={<Book size={26} />}
-          label={
-            <>
-              チュートリアル
-              {nudge && nudge.kind === "start" && (
-                <span className="home-wide-pill">おすすめ</span>
-              )}
-            </>
-          }
-          note={nudge ? nudge.text : "ルールと駒の効果"}
-          onClick={onTutorial}
+          label="ストーリー"
+          note={storyTileNote(profile)}
+          onClick={onStory}
         />
         <HomeTile
           frameTheme={theme}
@@ -2177,6 +2171,9 @@ function TotteryScreens() {
     [o, r] = (0, useState)("game"),
     [d, m] = (0, useState)(!1),
     [tut, setTut] = (0, useState)(null),
+    // ストーリーのステージ({ axis, phase, king, title })と、その前に出す相手の王の説明(軸 id)
+    [story, setStory] = (0, useState)(null),
+    [storyIntro, setStoryIntro] = (0, useState)(null),
     // ルール設定を開いた元の画面。「戻る」はここへ帰る。
     // 対戦の種類(o)から推測すると、CPU対戦とルームの「オフラインで対戦」が
     // どちらも "game" なので見分けられず、CPUの戻り先がフレンド対戦になる
@@ -2294,13 +2291,13 @@ function TotteryScreens() {
     window.scrollTo(0, 0);
   }, [e]);
   function s() {
-    (u(null), m(!1), setTut(null), t("home"));
+    (u(null), m(!1), setTut(null), setStory(null), t("home"));
   }
   // ハブ(対戦する等の menu)へ戻す。「ホームへ」はタイトル(home)ではなくここが正しい
   // (2026-09-21 本人の指示。他画面の「ホームに戻る」と同じ行き先にそろえる)。
   // 対局からも使うので goHome と同じ後片付け(近くの端末・部屋)をしてから menu へ。
   function goMenu() {
-    (dropNearby(), w(!1), u(null), m(!1), setTut(null), t("menu"));
+    (dropNearby(), w(!1), u(null), m(!1), setTut(null), setStory(null), t("menu"));
   }
   // 対局後の「戻る」。オンラインとCPU戦は、初期画面まで戻さず「対戦相手を選ぶ」へ
   // 近くの端末との対戦を抜けるときは、部屋の片付けの知らせが届いてから接続を切る
@@ -2319,6 +2316,7 @@ function TotteryScreens() {
       shop: "menu",
       matching: "menu",
       tutorial: "menu",
+      story: "menu",
       tsume: "menu",
       missions: "menu",
       battlepass: "menu",
@@ -2343,18 +2341,31 @@ function TotteryScreens() {
     return () => t(to);
   }
   function backToMatching() {
-    (dropNearby(), u(null), m(!1), setTut(null), setBot(null), t("matching"));
+    (dropNearby(), u(null), m(!1), setTut(null), setStory(null), setBot(null), t("matching"));
   }
   // 連戦。同じ盤の大きさのまま、次の相手を探しに行く(RandomMatchScreen は開くと同時に探し始める)
   function nextRandomMatch() {
-    (dropNearby(), u(null), m(!1), setTut(null), setBot(null), setRound(0), t("online"));
+    (dropNearby(), u(null), m(!1), setTut(null), setStory(null), setBot(null), setRound(0), t("online"));
   }
   function startTutorial(chosen) {
-    (u(null), setTut(chosen), m(!0), r("game"), t("game"));
+    (u(null), setTut(chosen), setStory(null), m(!0), r("game"), t("game"));
     window.scrollTo(0, 0);
   }
   function showTutorials() {
-    (u(null), m(!1), setTut(null), t("tutorial"));
+    (u(null), m(!1), setTut(null), setStory(null), t("tutorial"));
+  }
+  // ストーリー(src/ui/story.jsx)。一覧 → ステージの前の1枚(相手の王の説明)→ 対局
+  function showStory() {
+    (u(null), m(!1), setTut(null), setStory(null), setStoryIntro(null), t("story"));
+  }
+  // ステージを始める。相手(CPU)の王の数字は軸からその回ごとに決める(2・3 の回なら 2 か 3)
+  function startStory(axis) {
+    const stage = stageOf(axis);
+    if (!stage) return;
+    (u(null), setTut(null), setBot(null), setStoryIntro(null),
+      setStory({ axis, phase: phaseOf(loadProfile()), king: pickStoryKing(axis), title: `${stage.name}の王` }),
+      m(!0), r("game"), t("game"));
+    window.scrollTo(0, 0);
   }
   // 上の「トッタリー」から。ルーム作成の予約(p)も引きずらないように
   function goHome() {
@@ -2430,6 +2441,8 @@ function TotteryScreens() {
     );
   if (e === "game") {
     const nextTutorial = tut ? nextTutorialAfter(tut.id) : null;
+    // ストーリーの次のステージ(並びの次。対局後の「次のステージへ」)
+    const storyNext = story ? stageAfter(story.axis) : null;
     // 対局中に出す名前。相手の名前が分からない席は色名のまま
     let mine = loadProfile(),
       me = mine.name || null,
@@ -2440,7 +2453,9 @@ function TotteryScreens() {
               me,
               tut
                 ? null
-                : bot
+                : story
+                  ? story.title
+                  : bot
                   ? bot.name
                   : cpuArea && cpuArea.king && i === 9
                     ? `CPU(${JOSEKI_INFO[cpuArea.type].label})`
@@ -2483,11 +2498,12 @@ function TotteryScreens() {
             // 再戦のたびに作り直す。見た手の控えも記録済みの印も、
             // 前の対局のものを引きずらせない。
             // チュートリアルは話ごとに作り直す
-            key={tut ? tut.id : `battle-${round}`}
+            key={tut ? tut.id : story ? `story-${story.axis}-${round}` : `battle-${round}`}
             round={round}
             onRematch={a ? () => setRound((n) => n + 1) : null}
             network={a}
-            boardSize={tut ? tut.boardSize : i}
+            // ストーリーのステージは 5×5(ストーリーとフェーズ.md)
+            boardSize={tut ? tut.boardSize : story ? 5 : i}
             cpu={d}
             // フォイルを初めて手に入れるまでは、エリアを選ぶ欄そのものを出さない(選べても渡さない)
             cpuArea={
@@ -2506,16 +2522,25 @@ function TotteryScreens() {
                 : null
             }
             // 手元の対局は、レベルで開いている札だけを配る。オンライン・チュートリアル・Bot は絞らない
-            pool={!a && !tut && !bot ? localPool : null}
-            handSize={!a && !tut && !bot ? handSizeForLevel(localLevel) : null}
+            pool={!a && !tut && !bot && !story ? localPool : null}
+            handSize={!a && !tut && !bot && !story ? handSizeForLevel(localLevel) : null}
             tutorial={tut}
-            nextTutorial={nextTutorial}
+            story={story}
+            // ストーリーは「次のステージ」と「一覧」をチュートリアルと同じ受け口で渡す
+            nextTutorial={story ? (storyNext ? { title: `${storyNext.name}の王`, axis: storyNext.axis } : null) : nextTutorial}
+            // ストーリーの「次のステージへ」も、いきなり対局ではなく相手の王の説明から(毎回出す)
             onNextTutorial={
-              nextTutorial ? () => startTutorial(nextTutorial) : null
+              story
+                ? storyNext
+                  ? () => (showStory(), setStoryIntro(storyNext.axis))
+                  : null
+                : nextTutorial
+                  ? () => startTutorial(nextTutorial)
+                  : null
             }
-            onTutorialList={showTutorials}
-            onExit={tut ? s : backToMatching}
-            exitLabel={tut ? "タイトルに戻る" : "対戦相手を選ぶに戻る"}
+            onTutorialList={story ? showStory : showTutorials}
+            onExit={tut ? s : story ? showStory : backToMatching}
+            exitLabel={tut ? "タイトルに戻る" : story ? "ストーリーに戻る" : "対戦相手を選ぶに戻る"}
             // チュートリアルの「ホームへ」はハブ(menu)へ。タイトルに戻る(onExit=s)とは
             // 別の行き先にする(2026-09-21 本人の指示)。それ以外の対局は従来どおり
             onHome={goMenu}
@@ -2593,6 +2618,7 @@ function TotteryScreens() {
             <MenuScreen
               onPlay={() => t("matching")}
               onTutorial={showTutorials}
+              onStory={showStory}
               onTsume={() => t("tsume")}
               onSkins={() => t("skins")}
               onBattlePass={() => t("battlepass")}
@@ -2631,7 +2657,7 @@ function TotteryScreens() {
                 setBot(null);
                 (u(null),
                   m(!0),
-                  setTut(null),
+                  setTut(null), setStory(null),
                   r("game"),
                   setRulesFrom("matching"),
                   t("rules"));
@@ -2692,6 +2718,20 @@ function TotteryScreens() {
             />
           ),
           letters: <InboxScreen tab="letters" onTab={(id) => t(id)} onBack={() => t("menu")} />,
+          story: (
+            <>
+              <StoryScreen onBack={() => t("menu")} onStart={(axis) => setStoryIntro(axis)} />
+              {/* ステージの前に、相手の王の特徴を毎回説明する(2026-09-30 本人の指示) */}
+              {storyIntro && (
+                <StoryIntro
+                  axis={storyIntro}
+                  phase={phaseOf(loadProfile())}
+                  onBack={() => setStoryIntro(null)}
+                  onStart={() => startStory(storyIntro)}
+                />
+              )}
+            </>
+          ),
           tutorial: (
             <TutorialSelect onBack={() => t("menu")} onStart={startTutorial} />
           ),
@@ -2707,7 +2747,7 @@ function TotteryScreens() {
                 // Bot のエリアは6種を均等に(人物が持つ)。エリアを知らない(フォイルを持たない)人には立てない
                 setCpuArea(b.area && b.king && foilRevealed(collection) ? { type: b.area, king: b.king } : null);
                 setBot(b);
-                (u(null), m(!0), setTut(null), setRound(0), r("game"), t("game"));
+                (u(null), m(!0), setTut(null), setStory(null), setRound(0), r("game"), t("game"));
               }}
             />
           ),

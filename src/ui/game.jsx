@@ -52,6 +52,9 @@ import { getCollection } from "../skins/store.js";
 import { baseSkinId } from "../skins/catalog.js";
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
+import { STORY_XP, grantStoryReward, storyCpuArea, storyDeck, storyFreshClear } from "../game/story.js";
+import { STORY_TICKETS, phaseOf, setupFlagsForPhase } from "../game/phase.js";
+import { onlinePhase } from "../net/match-settings.js";
 import { noteRandomResult, botAction } from "../game/bot-match.js";
 import { backupIfDue } from "../net/backup.js";
 import {
@@ -630,6 +633,8 @@ export function GameView({
   onHome = null,
   onNextMatch,
   tutorial,
+  // ストーリーのステージ(+ fresh: この局ではじめてクリアした)。次のステージは nextTutorial / onNextTutorial で受ける
+  story = null,
   nextTutorial,
   onNextTutorial,
   onTutorialList,
@@ -1052,11 +1057,13 @@ export function GameView({
             ? "引き分け"
             : tutorial && won
               ? "チュートリアルクリア!"
-              : won
-                ? "あなたの勝ち!"
-                : lost
-                  ? "敗北"
-                  : `${r.name}の勝利!`}
+              : story && won
+                ? "ステージクリア!"
+                : won
+                  ? "あなたの勝ち!"
+                  : lost
+                    ? "敗北"
+                    : `${r.name}の勝利!`}
         </h2>
         {tutorial && won && (
           <>
@@ -1180,6 +1187,29 @@ export function GameView({
             )}
           </div>
         )}
+        {story && won && (
+          <div className="tutorial-complete story-complete">
+            <p className="hint">{story.title}をクリア</p>
+            {story.fresh && (
+              <p className="hint story-reward">ガチャチケット {STORY_TICKETS}枚を受け取りました</p>
+            )}
+            {nextTutorial && onNextTutorial ? (
+              <>
+                <p className="hint">次は「{nextTutorial.title}」</p>
+                <button className="btn btn-primary btn-wide" onClick={onNextTutorial}>
+                  次のステージへ <ArrowRight size={16} />
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="hint">このフェーズの全ステージをクリアしました!</p>
+                <button className="btn btn-primary btn-wide" onClick={onTutorialList || onExit}>
+                  ストーリーへ
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {/* 札ごとの熟練度。プレイヤーレベルのゲージ(XpGainToast)とは別に、
             この局で使った札だけを並べる(2026-09-22 本人の指示) */}
         {mastery && <MasteryGains gains={mastery.gains} titles={mastery.titles} />}
@@ -1196,7 +1226,14 @@ export function GameView({
           >
             <Info size={16} /> 対戦の振り返り
           </button>
-          {tutorial ? (
+          {story ? (
+            // ストーリーは右上を一覧(ストーリー)へ
+            onTutorialList && (
+              <button className="btn btn-ghost go-match" onClick={onTutorialList}>
+                ストーリーへ
+              </button>
+            )
+          ) : tutorial ? (
             // チュートリアルは同じ台本をなぞるだけなので、もう一度は出さない
             onTutorialList &&
             (!won || nextTutorial) && (
@@ -1322,6 +1359,9 @@ export function GameCore({
   // レートは人との対局と同じに動かす。シーズン台帳(2026-09-23)とミッションのオンライン回数(2026-09-24)にも数える
   bot = null,
   tutorial,
+  // ストーリーのステージ({ axis, phase, king, title }。src/game/story.js)。cpu と一緒に立つ。
+  // 対局は通常の CPU 戦(相手は軸の王の定石CPU、山札は軸の札を積んだもの)。終わりにクリアの記録と褒美
+  story = null,
   round = 0,
   onRematch,
   nextTutorial,
@@ -1330,6 +1370,10 @@ export function GameCore({
 }) {
   const names = useNames();
   const { skins } = useSeats();
+  // CPU の相手の型。ストーリーは軸の王(storyCpuArea)、それ以外は選んだエリア(cpuArea)
+  const foeArea = story ? storyCpuArea(story.axis, story.king) : cpuArea;
+  // ストーリーの結果(この局ではじめてクリアしたか)。対局後の画面に出す
+  const [storyResult, setStoryResult] = useState(null);
   // レート・シーズンに数えるのはランダムマッチ(network.random)の 9×9 だけ。
   // フレンド対戦(合言葉・近くの端末)はランキングに載らない(本人の指示 2026-09-17)
   const matchRatings = useMatchRatings(
@@ -1705,10 +1749,13 @@ export function GameCore({
     }
     // 詳細設定が効くか(クラシックと同じ設定なら載せない)
     const customRules =
-      custom && !tutorial && !isDefaultCustom(normalizeCustom(custom, boardSize || 5)) &&
+      custom && !tutorial && !story && !isDefaultCustom(normalizeCustom(custom, boardSize || 5)) &&
       (!network || hasCustomRules(network.ruleVersion))
         ? normalizeCustom(custom, boardSize || 5)
         : null;
+    // 対局のフェーズ(ストーリーとフェーズ.md)。通信は部屋から届く phase(無ければ 3 = 今までどおり)、
+    // 手元はストーリーのステージのフェーズか、自分の profile のフェーズ
+    const phase = network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile());
     a.phase === "intro" &&
       matchRatings.ready &&
       // 対戦相手の画面を見終わるまで待つ(ホストが始めると相手側の画面も進むため)
@@ -1719,6 +1766,8 @@ export function GameCore({
           ruleVersion: network ? network.ruleVersion : GAME_RULE_VERSION,
           size: boardSize || 5,
           setupMode: network || cpu ? "simultaneous" : "sequential",
+          // フェーズ1は王の力なし(kingPowers:false)。それ以外は旗を載せない(今までどおり)
+          ...setupFlagsForPhase(phase),
           // 盤面エリア(試験ルール、src/game/areas.js)。9×9 だけ。
           // 手元の対局(CPU・同じ端末)は常に。オンラインは部屋の版が
           // AREA_RULE_VERSION 以上(両者が新しい端末)のときだけ
@@ -1743,6 +1792,10 @@ export function GameCore({
           cpuArea.king &&
           (boardSize || 5) === 9
             ? { deck: josekiDeck(cpuArea.type, cpuArea.king) }
+            : null),
+          // ストーリーのステージ: 軸の札を積んだ山札(src/game/story.js)。5×5 なので上の 9×9 の門は通らない
+          ...(story && cpu && !network && !tutorial
+            ? { deck: storyDeck(story.axis, story.king) }
             : null),
           // レベルで開いている札だけを配る(手元の対局。オンラインは相手と同じ山札なので絞らない)
           ...(pool && !network && !tutorial && !customRules
@@ -1810,8 +1863,8 @@ export function GameCore({
     if (!cpu || network || tutorial || fxBusy || autoArea || a.setupEffects)
       return;
     let E =
-      cpuArea && cpuArea.king
-        ? josekiCpuAction(a, T, cpuArea.type, cpuArea.king)
+      foeArea && foeArea.king
+        ? josekiCpuAction(a, T, foeArea.type, foeArea.king)
         : cpuAction(a, T);
     // Bot の強さ(3段階)。弱い段階は移動の一部をでたらめな合法手に差し替える
     if (bot) E = botAction(a, T, E, bot);
@@ -1883,6 +1936,8 @@ export function GameCore({
                 ranked: !!network.random,
                 ruleVersion: network.ruleVersion,
                 boardSize: boardSize || 5,
+                // 部屋のフェーズで王の力・エリアを決め直す(フェーズ1・2 の部屋。無ければ 3)
+                phase: onlinePhase(network.phase),
               }),
             )
             .filter((ne) => ne && timeoutOk(ne) && !g.current.has(ne.__id));
@@ -2437,6 +2492,8 @@ export function GameCore({
     // もう入っているので、先に覚えておく(褒美を二度配らないため)
     const freshTutorial =
       !!tutorial && won && !loadProfile().cleared.includes(tutorial.id);
+    // ストーリーのステージを、この1局で**はじめて**クリアするか(褒美を二度配らない)
+    const freshStory = !!story && won === true && storyFreshClear(loadProfile(), story.axis);
     const after = recordGame(won, {
       online: ((!!network && !network.nearby) || !!bot) && !tutorial,
       matchId: network
@@ -2457,11 +2514,20 @@ export function GameCore({
             ...(won ? { tutorialId: tutorial.id } : {}),
           }
         : null),
+      // ストーリー: 勝てばステージの xp と、その軸のクリア(profile.story)。負けは普段の対局と同じ
+      ...(story
+        ? { ...(won ? { xp: STORY_XP } : null), story: { axis: story.axis, phase: story.phase } }
+        : null),
+      // オンラインの勝ちは、いまの自分のフェーズの部屋の分だけ数える(昇格の 5 勝)
+      ...(network ? { phase: onlinePhase(network.phase) } : null),
     });
     xpNoticeRef.current = after.xpNoticeId;
     // 1話終えるごとにガチャチケット(2026-09-28 本人の指示)。失敗しても対局は止めない
     if (freshTutorial)
       grantTutorialTickets([tutorial.id], { uid: myUid() }).catch(() => {});
+    // ステージをはじめてクリア: ガチャチケット(端末の財布とサーバーの台帳)。失敗しても対局は止めない
+    if (story) setStoryResult({ fresh: freshStory });
+    if (freshStory) grantStoryReward(story.phase, story.axis).catch(() => {});
     // 札ごとの熟練度。1局の上限は recordMastery 側で掛ける。
     // 称号が新しく届いていれば、その中で profile.titles に焼き付く
     const mastery = recordMastery(masteryRef.current);
@@ -4106,6 +4172,7 @@ export function GameCore({
             // Bot(ランダムマッチの練習相手)は network を持たないが、連戦はできる
             onNextMatch={(network || bot) && onNextMatch ? nextMatch : null}
             tutorial={tutorial}
+            story={story ? { ...story, fresh: !!(storyResult && storyResult.fresh) } : null}
             nextTutorial={nextTutorial}
             onNextTutorial={onNextTutorial}
             onTutorialList={onTutorialList}
