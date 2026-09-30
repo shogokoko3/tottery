@@ -1212,8 +1212,8 @@ export function GameView({
               // 一覧へは右上の「ストーリーへ」で(釦を二つ並べない)
               <p className="hint">このフェーズの全ステージをクリアしました!</p>
             ) : null}
-            {/* フェーズ1を全部クリアしたら、ランダムマッチが開く(2026-09-30 本人の指示) */}
-            {story.allCleared && story.phase === 1 && (
+            {/* フェーズ1を全部クリアしたら、ランダムマッチが開く(2026-09-30 本人の指示)。開いたその1局だけ知らせる */}
+            {story.fresh && story.allCleared && story.phase === 1 && (
               <p className="hint story-gate-open">ランダムマッチが開きました</p>
             )}
           </div>
@@ -2894,7 +2894,8 @@ export function GameCore({
       >
         <QuitConfirm
           network={network || bot}
-          counts={(!!(network && network.random) || !!bot) && a.boardSize === 9}
+          // 「レートを清算します」は持ち点に数える対局だけ(フェーズ3の 9×9 のランダムマッチ・Bot)
+          counts={(!!(network && network.random) || !!bot) && a.boardSize === 9 && rankedPhase(matchPhase)}
           onCancel={() => r(!1)}
           onQuit={() => {
             (r(!1), quitGame());

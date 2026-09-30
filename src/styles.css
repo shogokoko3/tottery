@@ -401,7 +401,7 @@ h3 {
   gap: 14px;
   text-align: left;
 }
-/* ランダムマッチが開くまでの見た目。押せる(チュートリアル一覧へ)が、金の釦としては沈める */
+/* ランダムマッチが開くまでの見た目。押せる(ストーリーへ)が、金の釦としては沈める */
 .btn-choice-locked {
   opacity: 0.55;
   filter: saturate(0.6);
@@ -2699,13 +2699,6 @@ body:has(.skin-overlay) {
 .tutorial-hint-text {
   margin: 0;
   font-size: 12.5px;
-  color: var(--gold-soft);
-  text-align: center;
-}
-/* 一覧と完了画面の「あと N 話でランダムマッチ」 */
-.tutorial-gate-left {
-  margin: 6px 0;
-  font-size: 13px;
   color: var(--gold-soft);
   text-align: center;
 }

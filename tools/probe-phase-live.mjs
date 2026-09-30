@@ -16,7 +16,7 @@
 const KEY = "AIzaSyDcV6cXMZyzOYrhpUO2Pd4wvP9oXe9vTdY";
 const DB = "https://tottery-66e0f-default-rtdb.asia-southeast1.firebasedatabase.app";
 const tag = Math.random().toString(36).slice(2, 4).toUpperCase();
-const P1 = "PHASE1" + tag, P2 = "PHASE2" + tag, P3 = "PHASE3" + tag;
+const P1 = "PHASE1" + tag, P2 = "PHASE2" + tag, P3 = "PHASE3" + tag, P2S = "PHASE2S" + tag, P1L = "PHASE1L" + tag;
 const anon = async () => {
   const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${KEY}`, {
     method: "POST", headers: { "Content-Type": "application/json" },
@@ -69,8 +69,11 @@ try {
   want("部屋を作れる(phase:2・9×9)", await call(A, `rooms/${P2}`, "PUT", room({ phase: 2, matchSize: 9 })));
   want("掲示は phase:2 + size:9 で出せる", await call(A, `lobby/${P2}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 2, size: 9 }));
   want("掲示を下ろす", await call(A, `lobby/${P2}`, "DELETE"));
-  want("フェーズ2の掲示に 5×5 は出せない", await call(A, `lobby/${P2}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 2, size: 5 }), "弾かれる");
-  want("フェーズ1の部屋に 9×9 の掲示は出せない", await call(A, `lobby/${P1}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 1, size: 9 }), "弾かれる");
+  // 部屋の matchSize と同じ盤でも、フェーズの盤でなければ弾く(フェーズの縛りそのものを見る)
+  want("部屋を作れる(phase:2・5×5。部屋の盤は縛らない)", await call(A, `rooms/${P2S}`, "PUT", room({ phase: 2, matchSize: 5 })));
+  want("フェーズ2の掲示に 5×5 は出せない(部屋も 5×5 でも)", await call(A, `lobby/${P2S}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 2, size: 5 }), "弾かれる");
+  want("部屋を作れる(phase:1・9×9)", await call(A, `rooms/${P1L}`, "PUT", room({ phase: 1, matchSize: 9 })));
+  want("フェーズ1の掲示に 9×9 は出せない(部屋も 9×9 でも)", await call(A, `lobby/${P1L}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 1, size: 9 }), "弾かれる");
 
   console.log("■ phase の無い部屋(今までどおり)");
   want("部屋を作れる(phase なし)", await call(A, `rooms/${P3}`, "PUT", room({})));
@@ -85,7 +88,7 @@ try {
   want("今までどおりの開始の合図は通る", await call(A, `rooms/${P3}/acts/${pushId(4)}`, "PUT", act({ __id: `${A.uid.slice(0, 6)}-4` })));
 } finally {
   console.log("■ 片付け");
-  for (const code of [P1, P2, P3]) {
+  for (const code of [P1, P2, P3, P2S, P1L]) {
     await call(A, `lobby/${code}`, "DELETE");
     await call(A, `rooms/${code}/acts`, "DELETE");
     await call(B, `rooms/${code}/seats/guest`, "DELETE");

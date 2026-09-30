@@ -668,8 +668,8 @@ export function MenuScreen({
 
 /**
  * 対戦の相手を選ぶ。ホームの「対戦する」から来る。
- * ランダムマッチだけは、チュートリアルを第8話まで終えるまで開かない(src/game/online-gate.js)。
- * 閉じている間は薄くして理由と残りの話数を添え、押すとチュートリアル一覧へ
+ * ランダムマッチだけは、ストーリーのフェーズ1(6ステージ)をクリアするまで開かない(src/game/online-gate.js)。
+ * 閉じている間は薄くして理由と残りのステージ数を添え、押すとストーリーへ
  */
 export function MatchingScreen({
   onOnline,
@@ -1106,7 +1106,8 @@ export function RandomMatchScreen({
       </div>
     ) : (
       <div className="center-stage">
-        {streak != null && (
+        {/* 連勝ボーナスはレートに付くので、持ち点に数えるフェーズ3だけ */}
+        {streak != null && rankedPhase(myPhase) && (
           <div className={`match-streak ${streak >= 2 ? "is-hot" : ""}`} role="status">
             {streak >= 1 ? (
               <>
@@ -1283,6 +1284,8 @@ export function RulesSelectScreen({
   level = null,
   // オンラインで選べる盤(フェーズで決まる。phase.js rulesForPhase().sizes)。null なら絞らない(手元の対局)
   phaseSizes = null,
+  // エリアが立つフェーズか(フェーズ3だけ)。9×9 の説明の「盤面エリアが立つ」をこれで出し分ける
+  areasOn = true,
   // 詳細設定(src/game/custom-rules.js)。onCustom が無い画面(ランダムマッチ)では出さない
   custom = null,
   onCustom = null,
@@ -1381,7 +1384,7 @@ export function RulesSelectScreen({
                 {i}×{i}
               </span>
               <small>
-                {i === 5 ? "5枚で戦う短期戦" : foilRevealed(getCollection()) ? "9枚で戦う本格戦。王のフォイルで盤面エリアが立つ" : "9枚で戦う本格戦"}
+                {i === 5 ? "5枚で戦う短期戦" : areasOn && foilRevealed(getCollection()) ? "9枚で戦う本格戦。王のフォイルで盤面エリアが立つ" : "9枚で戦う本格戦"}
                 {/* レートが動くのは9×9だけ。選ぶ前に分かるようにしておく */}
                 {ranked && i === 9 && (
                   <>
@@ -2834,6 +2837,7 @@ function TotteryScreens() {
                   ? rulesForPhase(phaseOf(loadProfile())).sizes
                   : null
               }
+              areasOn={localAreas}
               // 手元の対局は、レベルで札と 9×9 を絞る(src/game/card-unlock.js)
               level={o === "online" || o === "room" || o === "nearby" ? null : localLevel}
               onStart={z}
