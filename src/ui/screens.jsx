@@ -133,8 +133,14 @@ import TITLE_STYLES from "./title-frame.css";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
 import { onlineGate, onlineGateLabel } from "../game/online-gate.js";
-import { botPlan, makeBot, botSearchDelay, clearBotNow, BOT_WAIT_MS,
+import {
+  botPlan,
+  makeBot,
+  botSearchDelay,
+  clearBotNow,
+  BOT_WAIT_MS,
   botTitle,
+  rematchBot,
 } from "../game/bot-match.js";
 import {
   markFirstTutorialOffered,
@@ -2532,6 +2538,9 @@ function TotteryScreens() {
             key={tut ? tut.id : story ? `story-${story.axis}-${round}` : `battle-${round}`}
             round={round}
             onRematch={a ? () => setRound((n) => n + 1) : null}
+            // Bot と「もう一度遊ぶ」: 1局の目印を新しくして、対局を作り直す(round を進める)。
+            // 同じ目印のままだと、2局目がミッションとシーズン台帳に数わらなかった
+            onReplayBot={bot ? () => (setBot((b) => rematchBot(b)), setRound((n) => n + 1)) : null}
             network={a}
             // ストーリーのステージの盤はフェーズで決まる(フェーズ1 は 5×5、2 からは 9×9)
             boardSize={tut ? tut.boardSize : story ? story.size : i}

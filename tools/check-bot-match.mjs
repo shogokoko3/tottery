@@ -195,6 +195,9 @@ assert.ok(/const planRef = useRef\(botReady \? botPlan\(myRating\(\)\) : "none"\
   assert.ok(/foilRevealed\(collection\) && \(!localPool \|\| bot\) && localAreas \? cpuArea : null/.test(screens), "GameCore にも Bot のエリアを渡す(フェーズ3。フェーズ<3 の Bot は 5×5)");
   assert.ok(/\? bot\.name\s*: localAreas && cpuArea && cpuArea\.king/.test(screens), "相手の名前は Bot の名前(CPU のエリア名はフェーズ3だけ)");
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
+  // 「もう一度遊ぶ」は1局の目印を新しくして作り直す(同じ目印だと2局目がミッションとシーズン台帳に数わらなかった。2026-09-30)
+  assert.ok(/onReplayBot=\{bot \? \(\) => \(setBot\(\(b\) => rematchBot\(b\)\), setRound\(\(n\) => n \+ 1\)\) : null\}/.test(screens), "Bot の「もう一度遊ぶ」は目印を新しくして round を進める");
+  assert.ok(game.includes("onReplay={bot && onReplayBot ? onReplayBot : null}") && game.includes("onClick={() => (onReplay ? onReplay() : dispatch({ type: \"NEW_GAME\" }))}"), "対局後の「もう一度遊ぶ」は Bot なら呼ぶ側へ");
   // 近くの端末との対戦(network.nearby)だけは数えない(2026-09-17)
   assert.ok(/const ranked = \(!!\(network && network\.random\) \|\| !!bot\) && a\.boardSize === 9 && rankedPhase\(matchPhase\);/.test(game), "Bot の 9×9 は持ち点に数える(フレンド対戦は数えない)");
   assert.ok(/if \(bot\) E = botAction\(a, T, E, bot\);/.test(game), "Bot の強さ(段階)を手に反映する");

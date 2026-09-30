@@ -640,6 +640,8 @@ export function GameView({
   // ストーリー: 次のステージへ(axis を受ける)/ 同じステージをもう一度(相手の王の説明から)
   onNextStory = null,
   onRetryStory = null,
+  // 「もう一度遊ぶ」を盤の作り直し(NEW_GAME)でなく、呼ぶ側に任せる(Bot 戦。1局の目印を新しくするため)
+  onReplay = null,
   nextTutorial,
   onNextTutorial,
   onTutorialList,
@@ -1317,7 +1319,7 @@ export function GameView({
           ) : (
             <button
               className="btn btn-ghost go-again"
-              onClick={() => dispatch({ type: "NEW_GAME" })}
+              onClick={() => (onReplay ? onReplay() : dispatch({ type: "NEW_GAME" }))}
             >
               <RotateCcw size={16} /> もう一度遊ぶ
             </button>
@@ -1379,6 +1381,8 @@ export function GameCore({
   onRetryStory = null,
   round = 0,
   onRematch,
+  // Bot と「もう一度遊ぶ」(screens.jsx が1局の目印を新しくして作り直す)
+  onReplayBot = null,
   nextTutorial,
   onNextTutorial,
   onTutorialList,
@@ -4246,6 +4250,7 @@ export function GameCore({
             story={story ? { ...story, fresh: false, next: null, allCleared: false, ...(storyResult || null), ready: !!storyResult } : null}
             onNextStory={onNextStory}
             onRetryStory={onRetryStory}
+            onReplay={bot && onReplayBot ? onReplayBot : null}
             nextTutorial={nextTutorial}
             onNextTutorial={onNextTutorial}
             onTutorialList={onTutorialList}
