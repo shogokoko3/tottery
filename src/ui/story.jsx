@@ -8,7 +8,7 @@
  *
  * チュートリアルの一覧(tutorial.jsx)に代わる導線。チュートリアルのコードは残す(本人の指示)
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { typing } from "./key-target.js";
 import { ArrowLeft, Check } from "../icons.jsx";
 import { loadProfile, promotePhase } from "../game/profile.js";
@@ -133,6 +133,15 @@ export function introKeyCloses(e) {
 /** ステージの前の1枚。相手の王の特徴を、そのフェーズの中身で */
 export function StoryIntro({ axis, phase, onStart, onBack }) {
   const intro = stageIntro(axis, phase);
+  // 開いたら「はじめる」に focus(画面は送らない。autoFocus だと札がスクロールして題が隠れていた)
+  const startRef = useRef(null);
+  useEffect(() => {
+    try {
+      if (startRef.current && startRef.current.focus) startRef.current.focus({ preventScroll: true });
+    } catch {
+      /* focus できなくても押せる */
+    }
+  }, [axis]);
   useEffect(() => {
     const onKey = (e) => {
       if (introKeyCloses(e)) onBack();
@@ -143,7 +152,7 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
   if (!intro) return null;
   return (
     <div className="modal-overlay">
-      <div className="modal-panel story-intro" role="group" aria-label="相手の王">
+      <div className="modal-panel story-intro" role="dialog" aria-modal="true" aria-label="相手の王">
         <div className="story-intro-head">
           <span className="skins-eyebrow">
             フェーズ {phase}・{PHASE_LABEL[phase]}・{stageSize(phase)}×{stageSize(phase)}
@@ -152,13 +161,14 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
           <p className="story-intro-lead">{intro.lead}</p>
         </div>
         {phase === 1 ? (
-          // フェーズ1 は駒の動き方を盤の図で。図はルール(getLegalMoves)から描く MoveDiagram、文は MOVE_TEXT のまま
+          // フェーズ1 は駒の動き方を盤の図で。図はルール(getLegalMoves)から描く MoveDiagram、文は MOVE_TEXT のまま。
+          // 図は 9×9 の中央から描く(5×5 だと 2マス先までしか描けず、8 と 2・J と 4 などが同じ絵になっていた)
           <ul className="story-intro-moves">
             {intro.items.map((it) => (
               <li key={it.rank}>
                 <div className="story-move-art">
                   <CardFace rank={it.rank} suit="spade" size="sm" />
-                  <MoveDiagram rank={it.rank} gridSize={5} />
+                  <MoveDiagram rank={it.rank} gridSize={9} />
                 </div>
                 <p>{it.text}</p>
               </li>
@@ -179,7 +189,7 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
           <button type="button" className="btn btn-ghost" onClick={onBack}>
             戻る
           </button>
-          <button type="button" className="btn btn-primary" onClick={onStart} autoFocus>
+          <button type="button" className="btn btn-primary" onClick={onStart} ref={startRef}>
             はじめる
           </button>
         </div>

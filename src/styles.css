@@ -9019,33 +9019,6 @@ svg {
   font-size: 14px;
   line-height: 1.7;
 }
-/* 駒の札: 絵札と動きの図を並べる。図は早見表の 70px だと小さいので大きく */
-.primer-rank-art,
-.primer-figs {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-}
-.primer-figs figure {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-}
-.primer-figs figcaption {
-  font-size: 10px;
-  line-height: 1.3;
-  color: var(--gold-soft);
-  text-align: center;
-}
-.primer .move-diagram {
-  width: 108px;
-}
-.primer-figs .move-diagram {
-  width: 92px;
-}
 /* 盤の駒をそのまま並べる札(ようこそ・勝ち方・伏せ札・陣) */
 .primer-chips {
   display: flex;
@@ -9292,7 +9265,7 @@ svg {
   gap: 8px;
 }
 .story-intro-moves .move-diagram {
-  width: 92px;
+  width: 108px;
 }
 .story-intro-moves p {
   margin: 0;
@@ -9310,4 +9283,46 @@ svg {
   min-height: 34px;
   padding: 4px 12px;
   font-size: 12px;
+}
+
+/* 導入の「討てなくなったら」: 札の組を2つ並べ、合計の小さいほうを光らせる */
+.primer-judge {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 18px;
+}
+.primer-judge-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.6;
+}
+.primer-judge-side.is-win {
+  opacity: 1;
+}
+.primer-judge-cards {
+  display: flex;
+  gap: 2px;
+}
+.primer-judge-side small {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.primer-judge-side.is-win small {
+  color: var(--gold);
+}
+/* 狭い幅(320 など)では、横並びのまま図を小さくして文の列を空ける(縦に積むと「はじめる」が画面の外に出た) */
+@media (max-width: 360px) {
+  .story-intro-moves li {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .story-move-art {
+    gap: 6px;
+  }
+  .story-intro-moves .move-diagram {
+    width: 76px;
+  }
 }

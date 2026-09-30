@@ -317,7 +317,7 @@ export class Wallet {
   /**
    * ストーリーのステージを1つクリアした褒美(STORY_TICKETS 枚。2026-09-30 本人の指示)。
    * チュートリアルの道と同じく **earn の1日上限とは別**。フェーズ×軸ごとに一度きり
-   * (1人あたり最大 3×6×STORY_TICKETS 枚)。id はここで組む。枚数も端末からは受け取らない
+   * (1人あたり最大 3×STORY_AXES.length×STORY_TICKETS 枚。軸は 7 つ)。id はここで組む。枚数も端末からは受け取らない
    */
   storyReward(uid, phase, axis, now) {
     if (!PHASES.includes(phase) || !isStoryAxis(axis))

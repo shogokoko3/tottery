@@ -12,7 +12,7 @@
 // 対局の状態は React の fiber から読む(useState の値)。検査だけの手段で、製品のコードには手を入れない。
 // ストーリーの通し(ヘッドレス Chrome)。題名 → ホーム → ストーリー → 説明 → 対局(5×5、CPU の王が軸)→ 勝ち → 褒美 → 次のステージ
 import fs from "node:fs";
-const PORT = 9333, APP = "http://localhost:4300/?test=1", OUT = process.env.SHOT_DIR;
+const PORT = Number(process.env.CDP_PORT || 9333), APP = process.env.APP_URL || "http://localhost:4300/?test=1", OUT = process.env.SHOT_DIR;
 const targets = await (await fetch(`http://localhost:${PORT}/json`)).json();
 const page = targets.find((t) => t.type === "page");
 const ws = new WebSocket(page.webSocketDebuggerUrl);
@@ -46,7 +46,8 @@ const setWinner = (winner) => ev(`(()=>{
 const fails = []; let okN = 0;
 const is = (label, cond, extra = "") => { if (cond) { okN++; console.log("  ok   " + label); } else { fails.push(label); console.log("  NG   " + label + "  " + extra); } };
 
-await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+// 画面の大きさ(VIEW_W / VIEW_H。既定は 390×844)。背の低い 375×667 や狭い 320×568 でも回せる
+await send("Emulation.setDeviceMetricsOverride", { width: Number(process.env.VIEW_W || 390), height: Number(process.env.VIEW_H || 844), deviceScaleFactor: 1, mobile: true });
 await send("Page.navigate", { url: APP }); await sleep(2500);
 // 前回の実行の保存(profile・財布)を引きずらない。まっさらな端末として始める
 await ev(`(()=>{ try { localStorage.clear(); sessionStorage.clear(); } catch {} return 1; })()`);
@@ -91,15 +92,27 @@ for (let i = 0; i < 8; i++) {
   seen.push(await ev(`document.querySelector(".primer h3").innerText`));
 }
 await shot("02a-primer-last");
-is("導入の並び(どんなゲームか → 1手ずつ → 勝ち方 → 伏せた王 → 陣 → ストーリーへ)", JSON.stringify(seen) === JSON.stringify(["トッタリーへようこそ", "1手ずつ", "勝ち方", "王は名乗らない", "陣を組む", "あとはストーリーで"]), JSON.stringify(seen));
+is("導入の並び(どんなゲームか → 1手ずつ → 勝ち方 → 討てなくなったら → 伏せた王 → 陣 → ストーリーへ)", JSON.stringify(seen) === JSON.stringify(["トッタリーへようこそ", "1手ずつ", "勝ち方", "討てなくなったら", "王は名乗らない", "陣を組む", "あとはストーリーで"]), JSON.stringify(seen));
+is("導入の最後の文は「まずは 2 と 3 から。」", /まずは 2 と 3 から/.test(await ev(`document.querySelector(".primer").innerText`)));
 is("導入の最後の釦は「ステージへ」", await clickText("ステージへ")); await sleep(700);
 await shot("02b-first-intro");
 const firstIntro = await ev(`document.querySelector(".story-intro") ? document.querySelector(".story-intro").innerText : ""`);
 is("読み終えると 2・3 のステージの説明", /相手の王は 2 か 3/.test(firstIntro), firstIntro.slice(0, 60));
 is("フェーズ1 の説明は駒ごとに盤の図(2 と 3 で2つ)", (await ev(`document.querySelectorAll(".story-intro .move-diagram").length`)) === 2);
+{
+  const r = await ev(`(()=>{const p=document.querySelector(".story-intro"); const b=p.querySelector(".btn-primary").getBoundingClientRect(); return { bottom: Math.round(b.bottom), h: innerHeight };})()`);
+  is(`説明の「はじめる」が画面に収まる(${r.bottom} / ${r.h})`, r.bottom <= r.h, JSON.stringify(r));
+}
 await clickSel(".story-intro .btn-ghost"); await sleep(400);
 is("説明の「戻る」で一覧に戻る", !(await ev(`!!document.querySelector(".story-intro")`)) && (await ev(`document.querySelectorAll(".story-stage").length`)) === 7);
 is("ストーリー画面に「遊び方」", await ev(`[...document.querySelectorAll("button")].some(b=>b.textContent.trim()==="遊び方")`));
+// 「遊び方」から開いて、Escape で閉じる → 一覧のまま(説明は開かない)
+await clickText("遊び方"); await sleep(500);
+is("「遊び方」で導入が開く", await ev(`!!document.querySelector(".primer")`));
+await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+await sleep(400);
+is("導入は Escape で閉じ、一覧のまま", !(await ev(`!!document.querySelector(".primer")`)) && !(await ev(`!!document.querySelector(".story-intro")`)));
 await shot("02-story");
 is("ストーリーの画面: 7ステージ", (await ev(`document.querySelectorAll(".story-stage").length`)) === 7);
 is("最初は 2・3 が次", await ev(`!!document.querySelector(".story-stage.is-next") && document.querySelector(".story-stage.is-next").textContent.includes("二と三")`));

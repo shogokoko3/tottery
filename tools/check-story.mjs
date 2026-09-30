@@ -2,7 +2,7 @@
  * ストーリー(src/game/story.js)の決まりを確かめる。設計は ストーリーとフェーズ.md
  */
 import assert from "node:assert/strict";
-import { STORY_STAGES, STORY_XP, stageOf, stageIntro, stageSetup, storyList, nextStage, ranksLabel, storyFreshClear, pickStoryKing, storyCpuArea, storyDeck, storyDeckFor, stageAfter, nextStageAfter, storyPrimerSeen, markStoryPrimerSeen } from "../src/game/story.js";
+import { STORY_STAGES, STORY_XP, stageOf, stageIntro, stageSetup, storyList, nextStage, ranksLabel, storyFreshClear, pickStoryKing, storyCpuArea, storyDeck, storyDeckFor, stageAfter, nextStageAfter, storyPrimerSeen, markStoryPrimerSeen, primerOutroLines } from "../src/game/story.js";
 import { reducer } from "../src/game/reducer.js";
 import { enrichAction } from "../src/game/actions.js";
 import { kingRankOf } from "../src/game/board.js";
@@ -23,6 +23,7 @@ const is = (label, got, want) => {
 
 console.log("ステージの並び");
 is("軸は phase.js の STORY_AXES と同じ順", STORY_STAGES.map((s) => s.axis), [...STORY_AXES]);
+is("ステージは 7 つ", STORY_STAGES.length, 7);
 is("7 ステージで A 以外の全部の数字を一度ずつ", STORY_STAGES.flatMap((s) => s.ranks).sort(), RANKS.filter((r) => r !== "A").sort());
 is("どの軸も同じエリアに属する(軸=エリア)", STORY_STAGES.every((s) => new Set(s.ranks.map((r) => AREA_BY_RANK[r])).size === 1), true);
 is("名前と一言がある", STORY_STAGES.every((s) => s.name && s.tagline), true);
@@ -69,6 +70,20 @@ console.log("\n導入(はじめての手引き)を見たかの印");
   is("見たら印が付く", storyPrimerSeen(st), true);
   const broken = { getItem: () => { throw new Error("x"); }, setItem: () => { throw new Error("x"); } };
   is("保存が使えなければ出さない(毎回出てしまうのを防ぐ)", storyPrimerSeen(broken), true);
+  // 保存(setItem)だけが失敗する端末: 読めるのに書けない。この起動のあいだは印を覚えておく
+  const full = { getItem: () => null, setItem: () => { throw new Error("full"); } };
+  markStoryPrimerSeen(full);
+  is("書き込めない端末でも、見たあとは同じ起動のあいだ出さない", storyPrimerSeen(full), true);
+}
+
+console.log("\n導入の最後の文(次に遊ぶステージに合わせる)");
+{
+  const first = { phase: 1, story: { 1: [], 2: [], 3: [] } };
+  is("はじめは「まずは 2 と 3 から。」", primerOutroLines(first), ["ステージごとに、相手の王になる駒の動きを覚えます。", "まずは 2 と 3 から。"]);
+  is("進めた人には次のステージ", primerOutroLines({ phase: 1, story: { 1: ["23", "45"], 2: [], 3: [] } })[1], "次は 六と七の王から。");
+  is("フェーズ2 は王の力", primerOutroLines({ phase: 2, story: { 1: [], 2: [], 3: [] } })[0], "ステージごとに、相手の王の力を覚えます。");
+  is("フェーズ3 はエリア", primerOutroLines({ phase: 3, story: { 1: [], 2: [], 3: [] } })[0], "ステージごとに、相手の王のエリアを覚えます。");
+  is("全部クリアしたら", primerOutroLines({ phase: 3, story: { 1: [], 2: [], 3: [...STORY_AXES] } })[1], "ステージは何度でも遊べます。");
 }
 
 console.log("\n一覧と次のステージ");
@@ -307,17 +322,27 @@ export { storyTileNote, introKeyCloses };`,
     save({ ...base, phase: 3, story: { 1: [], 2: [], 3: [...STORY_AXES] } });
     h = screen();
     is("最後のフェーズでは昇格の欄が無い", !h.includes("昇格の条件") && h.includes("最後のフェーズ"), true);
+    const diagrams = {};
     for (const st of STORY_STAGES) {
       const i1 = intro(st.axis, 1), i2 = intro(st.axis, 2), i3 = intro(st.axis, 3);
       is(`${st.axis}: 前口上に相手の王の数字`, [i1, i2, i3].every((x) => x.includes(`相手の王は ${ranksLabel(st.ranks)}`) || x.includes(`相手の王は <!-- -->${ranksLabel(st.ranks)}`)), true);
       // フェーズ1 は駒の動きを盤の図で(寿司将棋の導入のように。2026-09-30 本人の指示)。図は1つの駒に1つ
       is(`${st.axis}: フェーズ1は駒ごとに盤の図(${st.ranks.length}つ)`, (i1.match(/class="move-diagram"/g) || []).length, st.ranks.length);
+      is(`${st.axis}: フェーズ1は駒ごとに札の絵も`, (i1.match(/class="card-face /g) || []).length, st.ranks.length);
+      // 図の動ける先の並び(md-reach の位置)を取っておき、あとで駒どうしで比べる
+      for (const [j, d] of (i1.match(/<div class="move-diagram"[\s\S]*?<\/div>/g) || []).entries())
+        diagrams[st.ranks[j]] = [...d.matchAll(/<span class="md-cell([^"]*)"/g)].map((m, k) => (m[1].includes("md-reach") ? k : -1)).filter((k) => k >= 0).join(",");
       is(`${st.axis}: フェーズ2・3は図ではなく文`, [(i2.match(/class="move-diagram"/g) || []).length, (i3.match(/class="move-diagram"/g) || []).length], [0, 0]);
       is(`${st.axis}: フェーズ1は動き方(王の力の文は出ない)`, st.ranks.every((r) => i1.includes(MOVE_TEXT[r].slice(0, 12))) && !st.ranks.some((r) => i1.includes(KING_TEXT[r].slice(0, 12))), true);
       is(`${st.axis}: フェーズ2は王の力`, st.ranks.every((r) => i2.includes(KING_TEXT[r].slice(0, 12))), true);
       is(`${st.axis}: フェーズ3はエリア`, i3.includes(AREA_INFO[AREA_BY_RANK[st.ranks[0]]].name), true);
       is(`${st.axis}: 「はじめる」と「戻る」`, i1.includes("はじめる") && i1.includes("戻る"), true);
     }
+    // 5×5 の図だと 8 と 2・9 と 3・J と 4・Q と 5 が同じ絵になっていた(2026-09-30 レビュー)。12 段とも違う絵
+    is("フェーズ1 の図は駒ごとに違う(12 段)", [Object.keys(diagrams).length, new Set(Object.values(diagrams)).size], [12, 12]);
+    is("図は 9×9 で描く", /<MoveDiagram rank=\{it\.rank\} gridSize=\{9\} \/>/.test(fs.readFileSync(new URL("../src/ui/story.jsx", import.meta.url), "utf8")), true);
+    save(base);
+    is("一覧にランダムマッチの条件(7ステージ)", /フェーズ1の(<!-- -->)?7(<!-- -->)?ステージをクリアすると、ランダムマッチが開きます/.test(screen()), true);
     is("ホームのタイルの一言(次のステージ)", storyTileNote(base).includes("二と三の王"), true);
     is("ホームのタイルの一言(昇格できる)", storyTileNote({ ...base, story: { 1: [...STORY_AXES], 2: [], 3: [] }, phaseWins: { 1: 5, 2: 0, 3: 0 } }), "フェーズ 2 へ進めます");
     is("ホームのタイルの一言(全クリア・最後)", storyTileNote({ ...base, phase: 3, story: { 1: [], 2: [], 3: [...STORY_AXES] } }), "全ステージクリア");

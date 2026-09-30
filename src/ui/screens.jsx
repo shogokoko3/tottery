@@ -146,7 +146,7 @@ import {
   markFirstTutorialOffered,
   shouldOfferFirstTutorial,
 } from "../game/tutorial-nudge.js";
-import { markStoryPrimerSeen, nextStage, pickStoryKing, stageOf, storyPrimerSeen } from "../game/story.js";
+import { markStoryPrimerSeen, nextStage, pickStoryKing, primerOutroLines, stageOf, storyPrimerSeen } from "../game/story.js";
 import { rankedPhase, stageSize } from "../game/phase.js";
 import { isBlocked } from "../game/blocked.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
@@ -2217,7 +2217,7 @@ function TotteryScreens() {
     [round, setRound] = (0, useState)(0),
     // 運営に使用停止にされたかどうか
     [banned, setBanned] = (0, useState)(!1),
-    // 名前を決めた直後に一度だけ出す、第1話への案内
+    // 名前を決めた直後(10連のあと)に一度だけ出す、導入(はじめての手引き)の案内。読み終えるとストーリーへ
     [offerTutorial, setOfferTutorial] = (0, useState)(!1),
     // はじめての10連(2026-09-28 本人の指示)。名前を決めた直後、チュートリアルより先に引く
     [firstPullMode, setFirstPullMode] = (0, useState)(!1),
@@ -2392,7 +2392,9 @@ function TotteryScreens() {
   // ストーリー(src/ui/story.jsx)。一覧 → ステージの前の1枚(相手の王の説明)→ 対局
   function showStory() {
     (u(null), m(!1), setTut(null), setStory(null), setStoryIntro(null), t("story"));
-    // はじめて開いたときは、どんなゲームか・勝ち方(導入)を一度だけ出す(2026-09-30 本人の指示)
+    // はじめて開いたときは、どんなゲームか・勝ち方(導入)を一度だけ出す(2026-09-30 本人の指示)。
+    // ホームの導入の案内(10連のあと)はここで下ろす。合言葉つきで始めた人に二度出ていた
+    setOfferTutorial(!1);
     if (!storyPrimerSeen()) setStoryPrimer("first");
   }
   // 導入を読み終えたら、次のステージ(はじめはフェーズ1 の 2・3)の説明へ
@@ -2456,12 +2458,12 @@ function TotteryScreens() {
           onDone={() => {
             setNamed(!0);
             // **語り → 10連**(2026-09-28 本人の指示)。最初にワクワクさせ、引き直しもしやすく。
-            // 引き終わってホームへ戻るときに、第1話の案内を出す
+            // 引き終わってホームへ戻るときに、導入(手引き)の案内を出す
             if (!firstPullDone(getCollection())) {
               setPrologue(!0);
               return;
             }
-            // すでに引いている人(入れ直しなど)は、これまで通り第1話の案内
+            // すでに引いている人(入れ直しなど)は、ここで導入の案内
             if (shouldOfferFirstTutorial(loadProfile())) {
               markFirstTutorialOffered();
               setOfferTutorial(!0);
@@ -2613,8 +2615,9 @@ function TotteryScreens() {
               {/* はじめての人には**手引き**を出す(2026-09-29 本人の指示。「寿司将棋」の導入が分かりやすかった)。
                   どんなゲームか → 1手ずつ → 勝ち方 → 王は伏せたまま → 陣、を1ページずつ。
                   最後の札の釦はストーリーの最初のステージ(2・3 の動きを盤の図で)につながる(2026-09-30。前は第1話) */}
-              {offerTutorial && (
+              {offerTutorial && !storyPrimerSeen() && (
                 <Primer
+                  outro={primerOutroLines(loadProfile())}
                   doneLabel="ストーリーを始める"
                   onSkip={() => setOfferTutorial(!1)}
                   onDone={() => {
@@ -2633,7 +2636,7 @@ function TotteryScreens() {
               firstPull={firstPullMode}
               onBack={() => {
                 if (firstPullMode) {
-                  // はじめての10連が終わった。ここで第1話へ誘う
+                  // はじめての10連が終わった。ここで導入(手引き → ストーリー)へ誘う
                   setFirstPullMode(!1);
                   if (shouldOfferFirstTutorial(loadProfile())) {
                     markFirstTutorialOffered();
@@ -2778,14 +2781,15 @@ function TotteryScreens() {
                   はじめて開いたときは読み終えると次のステージの説明へ。「遊び方」からはとじるだけ */}
               {storyPrimer && (
                 <Primer
+                  outro={primerOutroLines(loadProfile())}
                   doneLabel={storyPrimer === "first" ? "ステージへ" : "とじる"}
                   skipLabel={storyPrimer === "first" ? "あとで" : "とじる"}
                   onSkip={() => (markStoryPrimerSeen(), setStoryPrimer(null))}
                   onDone={() => (storyPrimer === "first" ? storyAfterPrimer() : setStoryPrimer(null))}
                 />
               )}
-              {/* ステージの前に、相手の王の特徴を毎回説明する(2026-09-30 本人の指示) */}
-              {storyIntro && (
+              {/* ステージの前に、相手の王の特徴を毎回説明する(2026-09-30 本人の指示)。導入と重ねない */}
+              {storyIntro && !storyPrimer && (
                 <StoryIntro
                   axis={storyIntro}
                   phase={phaseOf(loadProfile())}

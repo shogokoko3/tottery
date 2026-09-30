@@ -47,7 +47,7 @@ export function stageAfter(axis) {
 /**
  * 対局後の「次のステージへ」。いまの軸の**次から順に**、まだクリアしていないステージを探す
  * (末尾まで無ければ先頭から)。全部クリア済みなら null。
- * 並びの最後(J・Q・K)を先に勝っても「全ステージクリア」にならないように、クリアの有無を見る
+ * 並びの最後(K)を先に勝っても「全ステージクリア」にならないように、クリアの有無を見る
  */
 export function nextStageAfter(profile, axis) {
   const list = storyList(profile);
@@ -119,8 +119,8 @@ export function pickStoryKing(axis, random = Math.random) {
 
 /**
  * CPU に渡す「相手のエリア」({ type, king })。定石CPU(cpu-joseki.js josekiCpuAction)は
- * この王の数字を軸に、引き直し・王選び・布陣・指し方を決める。軸とエリアは1対1
- * (2・3=土 / 4・5=海 / 6・7=森 / 8・9=氷 / 10=空 / J・Q・K=宮殿)。
+ * この王の数字を軸に、引き直し・王選び・布陣・指し方を決める。軸は 7 つ、エリアは 6 つ
+ * (2・3=土 / 4・5=海 / 6・7=森 / 8・9=氷 / 10=空 / J・Q と K はどちらも宮殿)。
  * フェーズ<3 ではエリアそのものは立たない(定石の指し方だけが残る)。フェーズ3 の 9×9 では相手のエリアが立つ
  */
 export function storyCpuArea(axis, king) {
@@ -159,7 +159,7 @@ export function storyDeck(axis, king, handSize = 13) {
 }
 
 /**
- * ステージの山札。5×5 は storyDeck(軸の札を 3〜4 枚積む)、9×9 は定石の山札 josekiDeck
+ * ステージの山札。5×5 は storyDeck(軸の札を 2〜3 枚積む。10 と K は王の数字 2 枚)、9×9 は定石の山札 josekiDeck
  * (9×9 の「CPUのエリア」練習と同じ。王の数字を先頭に 9 枚積む。9×9 は軍が 9 体なので、それで読まれすぎない)
  */
 export function storyDeckFor(axis, king, size) {
@@ -204,7 +204,10 @@ export async function grantStoryReward(phase, axis) {
  * 端末ごとの印(localStorage)。消えても導入がもう一度出るだけ
  */
 const PRIMER_SEEN_KEY = "tottery.storyPrimer.v1";
+// 保存(setItem)だけが失敗する端末(容量いっぱいなど)でも、この起動のあいだは二度と出さない
+let primerSeenThisRun = false;
 export function storyPrimerSeen(storage = globalThis.localStorage) {
+  if (primerSeenThisRun) return true;
   try {
     return storage.getItem(PRIMER_SEEN_KEY) === "1";
   } catch {
@@ -212,9 +215,27 @@ export function storyPrimerSeen(storage = globalThis.localStorage) {
   }
 }
 export function markStoryPrimerSeen(storage = globalThis.localStorage) {
+  primerSeenThisRun = true;
   try {
     storage.setItem(PRIMER_SEEN_KEY, "1");
   } catch {
     /* 保存できなくても進める */
   }
+}
+
+/**
+ * 導入の最後の札(「あとはストーリーで」)の文。次に遊ぶステージとフェーズに合わせる
+ * (「まずは 2 と 3 から。」を固定にすると、進めた人や上のフェーズの人には合わない。2026-09-30 レビュー)
+ */
+export function primerOutroLines(profile) {
+  const phase = phaseOf(profile);
+  const first =
+    phase >= 3
+      ? "ステージごとに、相手の王のエリアを覚えます。"
+      : phase === 2
+        ? "ステージごとに、相手の王の力を覚えます。"
+        : "ステージごとに、相手の王になる駒の動きを覚えます。";
+  const next = nextStage(profile);
+  if (!next) return [first, "ステージは何度でも遊べます。"];
+  return [first, next.axis === STORY_AXES[0] ? `まずは ${next.ranks.join(" と ")} から。` : `次は ${next.name}の王から。`];
 }

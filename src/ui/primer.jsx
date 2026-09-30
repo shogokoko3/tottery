@@ -18,7 +18,10 @@ import { useEffect, useRef, useState } from "react";
 import { typing } from "./key-target.js";
 import { CardFace, Piece } from "./cards.jsx";
 
-/** 導入の札。どんなゲームか → 1手ずつ → 勝ち方 → 王は伏せたまま → 陣 → あとはストーリーで */
+/**
+ * 導入の札。どんなゲームか → 1手ずつ → 勝ち方 → 討てなくなったら → 王は伏せたまま → 陣 → あとはストーリーで。
+ * 最後の札(story)の文は、呼ぶ側が次に遊ぶステージに合わせて差し替えられる(Primer の outro。story.js primerOutroLines)
+ */
 export const PRIMER_PAGES = Object.freeze([
   Object.freeze({
     key: "welcome",
@@ -37,6 +40,16 @@ export const PRIMER_PAGES = Object.freeze([
     title: "勝ち方",
     lines: ["相手の王を討てば勝ちです。"],
     art: "win",
+  }),
+  // 勝ち方のもう1つ(adjudication.js)。5×5 の 2・3 の王どうしでも起こりうる(2026-09-30 レビュー)
+  Object.freeze({
+    key: "judge",
+    title: "討てなくなったら",
+    lines: [
+      "どちらの王も討てなくなったら、",
+      "はじめに並べた札の数字の合計が小さいほうの勝ちです。",
+    ],
+    art: "judge",
   }),
   Object.freeze({
     key: "hidden",
@@ -146,6 +159,27 @@ function PrimerArt({ page }) {
         ))}
       </div>
     );
+  if (page.art === "judge")
+    return (
+      <div className="primer-judge">
+        {[
+          [["2", "3", "4"], 9, true],
+          [["5", "6", "7"], 18, false],
+        ].map(([ranks, total, win], i) => (
+          <div key={i} className={`primer-judge-side ${win ? "is-win" : ""}`}>
+            <div className="primer-judge-cards">
+              {ranks.map((rank) => (
+                <CardFace key={rank} rank={rank} suit={i ? "heart" : "spade"} size="xs" />
+              ))}
+            </div>
+            <small>
+              合計 {total}
+              {win ? " の勝ち" : ""}
+            </small>
+          </div>
+        ))}
+      </div>
+    );
   if (page.art === "story")
     return (
       <div className="primer-chips primer-chips-more">
@@ -165,9 +199,18 @@ function PrimerArt({ page }) {
  * doneLabel 最後の札の釦の一言
  * skipLabel 途中でやめる釦の一言(導入は「あとで」、早見表からは「とじる」)
  */
-export function Primer({ onDone, onSkip = null, doneLabel = "はじめる", skipLabel = "あとで" }) {
+export function Primer({ onDone, onSkip = null, doneLabel = "はじめる", skipLabel = "あとで", outro = null }) {
   const [at, setAt] = useState(0);
   const done = useRef(false);
+  // 開いたら「つづき」に focus を置く(キーで送れるように。画面は送らない)
+  const nextRef = useRef(null);
+  useEffect(() => {
+    try {
+      if (nextRef.current && nextRef.current.focus) nextRef.current.focus({ preventScroll: true });
+    } catch {
+      /* focus できなくても読める */
+    }
+  }, []);
   const last = at >= PRIMER_PAGES.length - 1;
   const finish = () => {
     if (done.current) return;
@@ -179,19 +222,23 @@ export function Primer({ onDone, onSkip = null, doneLabel = "はじめる", skip
   // 左右のキーでも送れる(パソコンで読むとき)
   useEffect(() => {
     const onKey = (e) => {
-      // 入力欄・釦・上に重なった別の画面に向いたキーは取らない
-      // (釦に乗ったまま Enter/Space を押すと click と二重に進むのも防ぐ)
-      if (typing(e)) return;
+      // 入力欄・上に重なった別の画面に向いたキーは取らない。自分(.primer)の中の釦に向いた矢印・Escape は受ける
+      // (矢印は click を起こさないので二重に進まない。Enter/Space は釦の click に任せる)
+      const t = e && e.target;
+      const mine = !!(t && typeof t.closest === "function" && t.closest(".primer"));
+      if (typing(e) && !mine) return;
       if (e.key === "ArrowRight") next();
       else if (e.key === "ArrowLeft") back();
+      else if (e.key === "Escape" && onSkip) onSkip();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
-  const page = PRIMER_PAGES[at];
+  const base = PRIMER_PAGES[at];
+  const page = base.key === "story" && Array.isArray(outro) && outro.length ? { ...base, lines: outro } : base;
   return (
     <div className="modal-overlay">
-      <div className="modal-panel primer" role="group" aria-label="はじめての手引き">
+      <div className="modal-panel primer" role="dialog" aria-modal="true" aria-label="はじめての手引き">
         <div className="primer-head">
           <h3>{page.title}</h3>
           {onSkip && (
@@ -206,7 +253,7 @@ export function Primer({ onDone, onSkip = null, doneLabel = "はじめる", skip
           )}
         </div>
         {/* 札を送るたびに入り直す(key で作り直す) */}
-        <div className="primer-body" key={page.key}>
+        <div className="primer-body" key={page.key} aria-live="polite">
           <PrimerArt page={page} />
           <div className="primer-text">
             {page.lines.map((line) => (
@@ -230,7 +277,7 @@ export function Primer({ onDone, onSkip = null, doneLabel = "はじめる", skip
           >
             ‹ 戻る
           </button>
-          <button type="button" className="btn btn-primary primer-next" onClick={next}>
+          <button type="button" className="btn btn-primary primer-next" onClick={next} ref={nextRef}>
             {last ? doneLabel : "つづき ›"}
           </button>
         </div>
