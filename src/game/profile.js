@@ -42,6 +42,17 @@ import {
 } from "./constants.js";
 import { findBadWord } from "./badwords.js";
 import { clearBlocked } from "./blocked.js";
+import {
+  DEFAULT_PHASE,
+  PHASE_EPOCH,
+  addPhaseWin,
+  canPromote,
+  clearAxis,
+  normalizePhase,
+  normalizePhaseWins,
+  normalizeStory,
+  promote,
+} from "./phase.js";
 
 const KEY = "tottery.account.v1";
 /** 名前を持たなかった頃の保存先。1度だけ読み込んで引き継ぐ */
@@ -129,6 +140,14 @@ const EMPTY = {
   missionProgress: null,
   // 一度クリアしたチュートリアル。2回目からは経験値を配らない
   cleared: [],
+  // フェーズ(ストーリーとフェーズ.md)。既定は 1(ストーリー公開 2026-09-30)
+  phase: DEFAULT_PHASE,
+  // フェーズの世代(phase.js PHASE_EPOCH)。違えばフェーズを最初からやり直す
+  phaseEpoch: PHASE_EPOCH,
+  // そのフェーズでのオンライン勝利数(昇格の条件)
+  phaseWins: { 1: 0, 2: 0, 3: 0 },
+  // フェーズごとにクリアしたストーリーの軸
+  story: { 1: [], 2: [], 3: [] },
   // 受け取り済みの手紙。二重取りを防ぐ
   letters: [],
   // レーティングと、その対象になった対局数(オンラインだけ)
@@ -293,6 +312,18 @@ function read(key) {
   }
 }
 
+/**
+ * フェーズを1つ上げる(ストーリーとフェーズ.md)。条件(そのフェーズの全部の軸のクリア + オンライン5勝)を
+ * 満たしていなければ何もしない。返り値は保存後の profile
+ */
+export function promotePhase() {
+  const profile = loadProfile();
+  if (!canPromote(profile)) return profile;
+  const next = promote(profile);
+  saveProfile(next);
+  return next;
+}
+
 export function loadProfile() {
   const saved = read(KEY) || read(OLD_KEY);
   if (!saved) return { ...EMPTY };
@@ -364,6 +395,11 @@ export function loadProfile() {
     cleared: Array.isArray(saved.cleared)
       ? saved.cleared.filter((x) => Number.isInteger(x))
       : [],
+    // 世代が違う保存(公開前の端末が保存した phase:3 など)は、フェーズを既定からやり直す
+    phase: saved.phaseEpoch === PHASE_EPOCH ? normalizePhase(saved.phase) : DEFAULT_PHASE,
+    phaseEpoch: PHASE_EPOCH,
+    phaseWins: normalizePhaseWins(saved.phaseWins),
+    story: normalizeStory(saved.story),
     letters: Array.isArray(saved.letters)
       ? saved.letters.filter((x) => typeof x === "string")
       : [],
@@ -687,6 +723,26 @@ export function recordGame(won, opts) {
       opts && opts.tutorialId != null && !again && !draw
         ? [...profile.cleared, opts.tutorialId]
         : profile.cleared,
+    // 昇格の条件「そのフェーズでオンライン5勝」。ランダムマッチ(Bot 含む)・フレンドの勝ちを数える。
+    // 対局のフェーズ(opts.phase。合言葉の部屋では始める側のもの)が自分のフェーズと違えば数えない
+    // (上のフェーズの決まりで勝っても、自分のフェーズの昇格にはならない)
+    phaseWins:
+      opts &&
+      opts.online &&
+      won === true &&
+      !isTutorial &&
+      (opts.phase == null || opts.phase === normalizePhase(profile.phase))
+        ? addPhaseWin(profile).phaseWins
+        : profile.phaseWins,
+    // ストーリーのステージ(opts.story = { axis, phase })。勝ったときだけ、その軸をクリアに。
+    // 対局のフェーズが自分のフェーズと違えば数えない(古い端末との対局など)
+    story:
+      opts &&
+      opts.story &&
+      won === true &&
+      normalizePhase(opts.story.phase) === normalizePhase(profile.phase)
+        ? clearAxis(profile, opts.story.axis).story
+        : profile.story,
     rating: after,
     ratingVersion: RATING_VERSION,
     wr: profile.wr,

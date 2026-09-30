@@ -147,8 +147,21 @@ export function makeBot(myRating, myName = null, rng = Math.random) {
   const king = pickJosekiKing(area, rng);
   // matchId はこの1局の目印。シーズン台帳に送るとき、同じ局を二度数えないための鍵(2026-09-23)
   // rng だけから作る(rng を固定すれば同じ人物、の検査を保つ)。62 ビットあれば同じ局が重なることはない
-  const matchId = `${Math.floor(rng() * 2 ** 31).toString(36)}${Math.floor(rng() * 2 ** 31).toString(36)}`;
+  const matchId = newBotMatchId(rng);
   return { id: `bot:${name}`, name, icon, rating, tier, blunder, area, king, matchId };
+}
+
+/** 1局の目印(matchId)を新しく作る。62 ビット */
+export function newBotMatchId(rng = Math.random) {
+  return `${Math.floor(rng() * 2 ** 31).toString(36)}${Math.floor(rng() * 2 ** 31).toString(36)}`;
+}
+
+/**
+ * 同じ相手ともう一度(対局後の「もう一度遊ぶ」)。人物・強さ・エリアはそのままで、1局の目印だけ新しくする。
+ * 目印が同じだと、2局目がミッションとシーズン台帳で「1局目と同じ局」として捨てられていた(2026-09-30 レビュー)
+ */
+export function rematchBot(bot, rng = Math.random) {
+  return bot ? { ...bot, matchId: newBotMatchId(rng) } : bot;
 }
 
 /**

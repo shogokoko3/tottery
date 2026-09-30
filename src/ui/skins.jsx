@@ -120,6 +120,7 @@ import {
 } from "../skins/first-pull.js";
 // 長押しの受け口(2026-09-28 本人の指示)
 import { useLongPress } from "./long-press.js";
+import { backfillTutorialRewards } from "../game/tutorial-reward.js";
 
 const foilPct = FOIL_CHANCE * 100;
 /**
@@ -1616,6 +1617,8 @@ export function SkinsScreen({
         /* サーバー側で一度きり */
       }
       try {
+        // 別枠にする前に取りこぼしたチュートリアルの褒美を一度だけ送り直す(サーバーは話ごとに冪等)
+        await backfillTutorialRewards().catch(() => {});
         await syncWallet();
       } catch {
         /* 圏外なら写しのまま */

@@ -96,29 +96,58 @@ function writePending(list) {
 
 /** 溜めていた加算を送る。送れた分だけ消す */
 export async function flushPending() {
-  let list = readPending();
-  for (const ev of [...list]) {
+  // 消すときは**そのつど読み直す**。最初に読んだ一覧を書き戻すと、同時に走った別の
+  // flush(取りこぼしの回収と新しいクリアなど)が積んだ分を上書きで消してしまう(2026-09-30)
+  const drop = (id) => writePending(readPending().filter((x) => x.id !== id));
+  for (const ev of readPending()) {
     try {
-      // チケットは earn、無償ジェムは earn-gems、バトルパスのマス報酬は pass-reward
+      // チケットは earn、無償ジェムは earn-gems、バトルパスのマス報酬は pass-reward、
+      // チュートリアルの話は tutorial-reward(何話かだけ送る。id はサーバーが組む)
       await mirror(
         ev.pass
           ? await walletRequest("pass-reward", { id: ev.id })
-          : ev.gems
-            ? await walletRequest("earn-gems", { id: ev.id, gems: ev.gems })
-            : await walletRequest("earn", { id: ev.id, n: ev.n }),
+          : ev.tutorial
+            ? await walletRequest("tutorial-reward", { chapter: ev.tutorial })
+            : ev.story
+              ? await walletRequest("story-reward", { phase: ev.story.phase, axis: ev.story.axis })
+            : ev.gems
+              ? await walletRequest("earn-gems", { id: ev.id, gems: ev.gems })
+              : await walletRequest("earn", { id: ev.id, n: ev.n }),
       );
-      list = list.filter((x) => x.id !== ev.id);
-      writePending(list);
+      drop(ev.id);
     } catch (e) {
       // 上限・形の誤り・パスの週上限や未所持で拒まれたものは捨てる(残しても二度と通らない)。通信の失敗は残す
-      if (
-        /これ以上|正しくありません|他の人|上限|持っていません/.test(e.message)
-      ) {
-        list = list.filter((x) => x.id !== ev.id);
-        writePending(list);
-      } else break;
+      if (/これ以上|正しくありません|他の人|上限|持っていません/.test(e.message)) drop(ev.id);
+      else break;
     }
   }
+}
+
+/**
+ * チュートリアルを1話終えた褒美(2026-09-30)。**何話かだけ**を送り、枚数と出来事 id はサーバーが決める。
+ * earn の1日上限とは別の道なので、一気に何話飛ばしても消えない。同じ話は二度効かない。
+ * 保留列の id は端末の中の重複よけ(uid は要らない)
+ */
+export async function earnTutorialTicket(chapter) {
+  if (!WALLET_SERVER || !Number.isInteger(chapter) || chapter < 1) return;
+  const id = `tutorial:${chapter}`;
+  const list = readPending();
+  if (!list.some((x) => x.id === id))
+    writePending([...list, { id, tutorial: chapter, at: Date.now() }]);
+  await flushPending().catch(() => {});
+}
+
+/**
+ * ストーリーのステージを1つクリアした褒美(2026-09-30)。「どのフェーズの何の軸」だけを送り、
+ * 枚数と出来事 id はサーバーが決める。earn の1日上限とは別の道。同じステージは二度効かない
+ */
+export async function earnStoryTicket(phase, axis) {
+  if (!WALLET_SERVER || ![1, 2, 3].includes(phase) || typeof axis !== "string" || !axis) return;
+  const id = `story:${phase}:${axis}`;
+  const list = readPending();
+  if (!list.some((x) => x.id === id))
+    writePending([...list, { id, story: { phase, axis }, at: Date.now() }]);
+  await flushPending().catch(() => {});
 }
 
 /** 残高を取り直す(溜めていた加算も先に送る) */

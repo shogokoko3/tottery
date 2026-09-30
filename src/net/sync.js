@@ -5,6 +5,7 @@
  */
 import { hasAdjudicationRules, hasAreaRules } from "../game/rule-version.js";
 import { loadoutsForCustom, normalizeCustom } from "../game/custom-rules.js";
+import { rulesForPhase } from "../game/phase.js";
 
 /** 古い画面が混ざる対局は、両者が理解できる従来ルールで開始する。 */
 export function roomRuleVersion(room) {
@@ -34,24 +35,35 @@ export function roomRuleVersion(room) {
  *
  * @param act       届いた手
  * @param roomSkins 部屋から来た両者の装備 [先手, 後手]。sanitizeLoadout 済みのもの
- * @param opts      ranked(持ち点に数えるか) / ruleVersion(部屋の版) / boardSize
+ * @param opts      ranked(持ち点に数えるか) / ruleVersion(部屋の版) / boardSize /
+ *                  phase(部屋のフェーズ。無ければ 3 = 今までどおり)
+ *
+ * フェーズ(ストーリーとフェーズ.md)も同じく**部屋から決め直す**。ホストの START_SETUP の
+ * `kingPowers` は信じない。フェーズ1なら力なし、3未満ならエリアも詳細設定も無し
  */
 export function setupFromRoom(act, roomSkins, opts = {}) {
   if (!act || act.type !== "START_SETUP") return act;
-  const { ranked = false, ruleVersion = null, boardSize = 5 } = opts;
+  const { ranked = false, ruleVersion = null, boardSize = 5, phase = 3 } = opts;
+  const rules = rulesForPhase(phase);
   const pair =
     Array.isArray(roomSkins) && roomSkins.length === 2
       ? roomSkins.map((l) => (l && typeof l === "object" ? l : {}))
       : [{}, {}];
   const size = act.size === 9 ? 9 : act.size === 5 ? 5 : boardSize;
-  // 詳細設定は、始める側のものが効く(ランダムマッチでは使わない)
-  const custom = ranked ? null : normalizeCustom(act.custom, size);
+  // 詳細設定は、始める側のものが効く(ランダムマッチでは使わない。フェーズ3未満でも使わない)
+  const custom = ranked || !rules.areas ? null : normalizeCustom(act.custom, size);
   const next = { ...act };
-  if (ranked) delete next.custom;
+  if (ranked || !rules.areas) delete next.custom;
   else if (custom) next.custom = custom;
   else delete next.custom;
+  // 王の力。フェーズ1だけ旗を立てる。ほかは旗を消して、今までどおりの形にする
+  if (rules.kingPowers) delete next.kingPowers;
+  else next.kingPowers = false;
   const areas =
-    size === 9 && hasAreaRules(ruleVersion) && !(custom && custom.areas === "none");
+    rules.areas &&
+    size === 9 &&
+    hasAreaRules(ruleVersion) &&
+    !(custom && custom.areas === "none");
   if (areas) {
     next.areas = true;
     next.loadouts = loadoutsForCustom(custom, pair);

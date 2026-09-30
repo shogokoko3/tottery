@@ -54,6 +54,8 @@ globalThis.__h = (type, props, ...children) => ({
 
 const src = read("src/ui/prologue.jsx")
   .replace(/import \{[^}]*\} from "react";/, "const { useEffect, useRef, useState } = globalThis.__react;")
+  // キーの宛先の判定は別の小さな部品。ここでは「自分宛て」で固定する
+  .replace(/import \{[^}]*\} from "\.\/key-target\.js";/, "const typing = () => false;")
   .replace(/import \{[^}]*\} from "\.\.\/assets\.js";/, 'const titleBgImg = "bg";');
 const js = transformSync(src, {
   loader: "jsx",
@@ -148,6 +150,7 @@ console.log("\n配線");
   const screens = read("src/ui/screens.jsx");
   is("名前のあとに語りを出す", /setPrologue\(!0\);/.test(screens), true);
   is("語りは10連の前だけ", /if \(!firstPullDone\(getCollection\(\)\)\)/.test(screens), true);
+  is("合言葉つきで開いた人は10連のあと部屋へ", /t\(pendingRoom \? "room" : "home"\)/.test(screens), true);
   const css = read("src/styles.css");
   is("見た目が用意されている", /\.prologue\b/.test(css), true);
 }

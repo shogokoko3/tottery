@@ -1,35 +1,28 @@
 /**
- * はじめての手引き(2026-09-29 本人の指示)。
+ * はじめての手引き(2026-09-29 本人の指示。2026-09-30 に導入だけに絞った)。
  *
  * 「寿司将棋」の導入が分かりやすかったので、その形を借りる:
  *   - **1ページ = 1つのこと**。絵1枚と1〜2行だけ
- *   - 先に「どんなゲームか」「どうすれば勝ちか」、**あとから駒の動き**
- *   - 駒は**1ページに1つ**。まとめて並べない
+ *   - 先に「どんなゲームか」「どうすれば勝ちか」
  *   - いつでも読み飛ばせる。あとから何度でも開ける
  *
- * トッタリーの早見表(RulesPanel)は13段を1枚に並べた**調べる用の表**で、
- * 初めての人が読む形ではなかった。手引きはその逆で、覚える順に1枚ずつ渡す。
+ * **駒の動きはここでは見せない**(2026-09-30 本人の指示)。ストーリーのフェーズ1 で、ステージごとに
+ * 相手の王になる駒の動きを盤の図で見せる(story.jsx StoryIntro)。王の力もフェーズ1 には無いので載せない。
  *
- * 出すのは2か所:
- *   - 10連のあと、第1話に誘うところ(screens.jsx)。最後の札が「第1話を始める」
- *   - 早見表の「はじめに」(guides.jsx)。読み返しはこちら
- *
- * 決まりごと:
- *   - **数字は書かない。** 動ける先は MoveDiagram が実際の getLegalMoves から描く。
- *     文も MOVE_TEXT をそのまま使う。ここに書き写すと、ルールを直したとき嘘になる
- *   - 導入で見せる段は 2〜5 だけ。第1話の札束(CARD_POOLS.basic)と同じにして、
- *     いま使う分だけを渡す。6 から先は早見表へ
+ * 出すのは3か所:
+ *   - 10連のあと、はじめての人に(screens.jsx)。最後の札が「ストーリーを始める」
+ *   - ストーリーをはじめて開いたとき(まだ見ていない人に一度だけ)。ストーリー画面の「遊び方」からも
+ *   - 早見表の「はじめに」(guides.jsx)
  */
 import { useEffect, useRef, useState } from "react";
-import { MOVE_TEXT } from "../game/constants.js";
-import { MoveDiagram } from "./guides.jsx";
+import { typing } from "./key-target.js";
 import { CardFace, Piece } from "./cards.jsx";
 
-/** 導入で見せる段。第1話の札束とそろえる(2〜5) */
-export const PRIMER_RANKS = Object.freeze(["2", "3", "4", "5"]);
-
-/** ルールの札。駒の札はこのあと PRIMER_RANKS から作る */
-const RULE_PAGES = Object.freeze([
+/**
+ * 導入の札。どんなゲームか → 1手ずつ → 勝ち方 → 討てなくなったら → 王は伏せたまま → 陣 → あとはストーリーで。
+ * 最後の札(story)の文は、呼ぶ側が次に遊ぶステージに合わせて差し替えられる(Primer の outro。story.js primerOutroLines)
+ */
+export const PRIMER_PAGES = Object.freeze([
   Object.freeze({
     key: "welcome",
     title: "トッタリーへようこそ",
@@ -37,10 +30,26 @@ const RULE_PAGES = Object.freeze([
     art: "cards",
   }),
   Object.freeze({
+    key: "turn",
+    title: "1手ずつ",
+    lines: ["自分の番に、駒を1つ動かします。", "相手の駒のマスへ進むと、その駒を取れます。"],
+    art: "capture",
+  }),
+  Object.freeze({
     key: "win",
     title: "勝ち方",
     lines: ["相手の王を討てば勝ちです。"],
     art: "win",
+  }),
+  // 勝ち方のもう1つ(adjudication.js)。5×5 の 2・3 の王どうしでも起こりうる(2026-09-30 レビュー)
+  Object.freeze({
+    key: "judge",
+    title: "討てなくなったら",
+    lines: [
+      "どちらの王も討てなくなったら、",
+      "はじめに並べた札の数字の合計が小さいほうの勝ちです。",
+    ],
+    art: "judge",
   }),
   Object.freeze({
     key: "hidden",
@@ -60,44 +69,15 @@ const RULE_PAGES = Object.freeze([
     ],
     art: "setup",
   }),
-]);
-
-/** 最後の札。ここから先は早見表へ渡す */
-const OUTRO = Object.freeze({
-  key: "more",
-  title: "つづきは早見表で",
-  lines: [
-    "6 から K、A の動きと、王の力は",
-    "右上の ? からいつでも見られます。",
-  ],
-  art: "more",
-});
-
-/** 王の力。2・3 と 4・5 で向きが違うので、ここで一言だけ渡しておく */
-const KING_PAGE = Object.freeze({
-  key: "king-power",
-  title: "王にすると",
-  lines: [
-    "王にした駒には力がつきます。",
-    "2 と 3 の王は自分が遠くへ、4 と 5 の王は仲間を伸ばします。",
-  ],
-  art: "king-power",
-});
-
-/** 全部の札。ルール4枚 → 駒4枚 → 王 → 締め */
-export const PRIMER_PAGES = Object.freeze([
-  ...RULE_PAGES,
-  ...PRIMER_RANKS.map((rank) =>
-    Object.freeze({
-      key: `rank-${rank}`,
-      title: `${rank} の動き`,
-      // 文はルールの持ちもの(MOVE_TEXT)をそのまま。ここで書き直さない
-      lines: [MOVE_TEXT[rank]],
-      rank,
-    }),
-  ),
-  KING_PAGE,
-  OUTRO,
+  Object.freeze({
+    key: "story",
+    title: "あとはストーリーで",
+    lines: [
+      "ステージごとに、相手の王になる駒の動きを覚えます。",
+      "まずは 2 と 3 から。",
+    ],
+    art: "story",
+  }),
 ]);
 
 /** 見せ札を1枚作る。盤の駒とまったく同じ描き方にする(別に絵を用意しない) */
@@ -121,24 +101,14 @@ const chip = (rank, suit, owner, isKing = false) => ({
  * 手引きで見たものがそのまま対局に出てくるので、説明と盤がずれない
  */
 function PrimerArt({ page }) {
-  if (page.rank)
+  if (page.art === "capture")
     return (
-      <div className="primer-rank-art">
-        <CardFace rank={page.rank} suit="spade" />
-        <MoveDiagram rank={page.rank} gridSize={5} />
-      </div>
-    );
-  if (page.art === "king-power")
-    return (
-      <div className="primer-figs">
-        <figure>
-          <MoveDiagram rank="2" gridSize={7} />
-          <figcaption>ふつうの 2</figcaption>
-        </figure>
-        <figure>
-          <MoveDiagram rank="2" isKing gridSize={7} />
-          <figcaption>2 の王</figcaption>
-        </figure>
+      <div className="primer-chips">
+        <Piece piece={chip("4", "spade", 0)} viewer={0} size="sm" />
+        <span className="primer-arrow" aria-hidden="true">
+          ▶
+        </span>
+        <Piece piece={chip("3", "diamond", 1)} viewer={0} size="sm" />
       </div>
     );
   if (page.art === "cards")
@@ -189,10 +159,31 @@ function PrimerArt({ page }) {
         ))}
       </div>
     );
-  if (page.art === "more")
+  if (page.art === "judge")
+    return (
+      <div className="primer-judge">
+        {[
+          [["2", "3", "4"], 9, true],
+          [["5", "6", "7"], 18, false],
+        ].map(([ranks, total, win], i) => (
+          <div key={i} className={`primer-judge-side ${win ? "is-win" : ""}`}>
+            <div className="primer-judge-cards">
+              {ranks.map((rank) => (
+                <CardFace key={rank} rank={rank} suit={i ? "heart" : "spade"} size="xs" />
+              ))}
+            </div>
+            <small>
+              合計 {total}
+              {win ? " の勝ち" : ""}
+            </small>
+          </div>
+        ))}
+      </div>
+    );
+  if (page.art === "story")
     return (
       <div className="primer-chips primer-chips-more">
-        {["6", "8", "10", "Q", "A"].map((rank) => (
+        {["2", "4", "6", "8", "10", "J", "K"].map((rank) => (
           <CardFace key={rank} rank={rank} suit="spade" size="sm" />
         ))}
       </div>
@@ -203,13 +194,23 @@ function PrimerArt({ page }) {
 /**
  * 手引き。
  *
- * onDone   読み終えた(最後の札の釦)。導入では第1話へ
- * onSkip   読み飛ばす。渡さなければ「読み飛ばす」を出さない(早見表から開いたとき)
+ * onDone   読み終えた(最後の札の釦)。導入ではストーリーへ
+ * onSkip   途中でやめる。渡さなければその釦を出さない
  * doneLabel 最後の札の釦の一言
+ * skipLabel 途中でやめる釦の一言(導入は「あとで」、早見表からは「とじる」)
  */
-export function Primer({ onDone, onSkip = null, doneLabel = "はじめる" }) {
+export function Primer({ onDone, onSkip = null, doneLabel = "はじめる", skipLabel = "あとで", outro = null }) {
   const [at, setAt] = useState(0);
   const done = useRef(false);
+  // 開いたら「つづき」に focus を置く(キーで送れるように。画面は送らない)
+  const nextRef = useRef(null);
+  useEffect(() => {
+    try {
+      if (nextRef.current && nextRef.current.focus) nextRef.current.focus({ preventScroll: true });
+    } catch {
+      /* focus できなくても読める */
+    }
+  }, []);
   const last = at >= PRIMER_PAGES.length - 1;
   const finish = () => {
     if (done.current) return;
@@ -221,31 +222,38 @@ export function Primer({ onDone, onSkip = null, doneLabel = "はじめる" }) {
   // 左右のキーでも送れる(パソコンで読むとき)
   useEffect(() => {
     const onKey = (e) => {
+      // 入力欄・上に重なった別の画面に向いたキーは取らない。自分(.primer)の中の釦に向いた矢印・Escape は受ける
+      // (矢印は click を起こさないので二重に進まない。Enter/Space は釦の click に任せる)
+      const t = e && e.target;
+      const mine = !!(t && typeof t.closest === "function" && t.closest(".primer"));
+      if (typing(e) && !mine) return;
       if (e.key === "ArrowRight") next();
       else if (e.key === "ArrowLeft") back();
+      else if (e.key === "Escape" && onSkip) onSkip();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
-  const page = PRIMER_PAGES[at];
+  const base = PRIMER_PAGES[at];
+  const page = base.key === "story" && Array.isArray(outro) && outro.length ? { ...base, lines: outro } : base;
   return (
     <div className="modal-overlay">
-      <div className="modal-panel primer" role="group" aria-label="はじめての手引き">
+      <div className="modal-panel primer" role="dialog" aria-modal="true" aria-label="はじめての手引き">
         <div className="primer-head">
           <h3>{page.title}</h3>
           {onSkip && (
             <button
               type="button"
               className="primer-skip"
-              aria-label="手引きを読み飛ばす"
+              aria-label={`手引きを${skipLabel === "とじる" ? "とじる" : "読み飛ばす"}`}
               onClick={onSkip}
             >
-              あとで
+              {skipLabel}
             </button>
           )}
         </div>
         {/* 札を送るたびに入り直す(key で作り直す) */}
-        <div className="primer-body" key={page.key}>
+        <div className="primer-body" key={page.key} aria-live="polite">
           <PrimerArt page={page} />
           <div className="primer-text">
             {page.lines.map((line) => (
@@ -253,7 +261,7 @@ export function Primer({ onDone, onSkip = null, doneLabel = "はじめる" }) {
             ))}
           </div>
         </div>
-        {/* 点は上の段へ。下に釦2つと並べると、長い一言(「第1話を始める」)で
+        {/* 点は上の段へ。下に釦2つと並べると、長い一言(「ストーリーを始める」)で
             枠からはみ出していた(2026-09-29 実機幅375で確認) */}
         <div className="primer-dots" aria-hidden="true">
           {PRIMER_PAGES.map((p, i) => (
@@ -269,7 +277,7 @@ export function Primer({ onDone, onSkip = null, doneLabel = "はじめる" }) {
           >
             ‹ 戻る
           </button>
-          <button type="button" className="btn btn-primary primer-next" onClick={next}>
+          <button type="button" className="btn btn-primary primer-next" onClick={next} ref={nextRef}>
             {last ? doneLabel : "つづき ›"}
           </button>
         </div>

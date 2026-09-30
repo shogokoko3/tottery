@@ -12,6 +12,8 @@ import { verifyAppleTransaction } from "./applejws.js";
 import { minAppBuild, updateUrl } from "./app-version.js";
 import { seasonAt, seasonRewards } from "../game/season.js";
 import { Friends } from "./friends.js";
+import { chapterFromLegacyId, isRewardChapter } from "../game/tutorial-reward.js";
+import { PHASES, isStoryAxis } from "../game/phase.js";
 
 const json = (data, status = 200) =>
   Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -177,8 +179,29 @@ async function handleApi(request, env, url) {
         // サーバーが引く(2026-09-18)。debit は配布済みのビルドが使うので残す
         if (wop === "pull" && eventId(body.id) && (body.n === 1 || body.n === 10))
           return call("wallet-pull", { id: body.id, n: body.n });
-        if (wop === "earn" && eventId(body.id) && Number.isSafeInteger(body.n) && body.n > 0)
+        // ストーリーのステージの褒美。端末は「どのフェーズの何の軸」だけ送る
+        if (wop === "story-reward")
+          return PHASES.includes(body.phase) && isStoryAxis(body.axis)
+            ? call("wallet-story-reward", { phase: body.phase, axis: body.axis })
+            : json({ error: "ステージの指定が正しくありません。" }, 400);
+        // チュートリアル1話の褒美。earn の1日上限とは別の道。端末は「何話」だけ送る。
+        // 話の番号として変なものは、台帳まで行かせずここで断る
+        if (wop === "tutorial-reward")
+          return isRewardChapter(body.chapter)
+            ? call("wallet-tutorial-reward", { chapter: body.chapter })
+            : json({ error: "話の番号が正しくありません。" }, 400);
+        if (wop === "earn" && eventId(body.id) && Number.isSafeInteger(body.n) && body.n > 0) {
+          // 配布済みの古い端末は tutorial:<uid>:<話> を earn に流してくる。同じ道へ寄せる
+          // (圏外で uid が取れず tutorial:local:N になった id も、ここで正しい uid に組み直る)。
+          // tutorial: で始まるのに話として読めない id は、earn の道にも落とさない
+          if (/^tutorial:/.test(body.id)) {
+            const chapter = chapterFromLegacyId(body.id);
+            return chapter != null
+              ? call("wallet-tutorial-reward", { chapter })
+              : json({ error: "話の番号が正しくありません。" }, 400);
+          }
           return call("wallet-credit", { id: body.id, n: body.n, kind: "earn" });
+        }
         // 記念配布(src/game/campaigns.js)。枚数はサーバーが台帳から読む。uid ごとに一度きり
         if (wop === "campaign" && typeof body.campaign === "string" && /^[\w.-]{1,64}$/.test(body.campaign))
           return call("wallet-campaign", { campaign: body.campaign });
@@ -450,6 +473,8 @@ export class SeasonLedger {
         if (op === "wallet-debit") return w.debit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-pull") return w.pull(uid, args.id, args.n, now);
         if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
+        if (op === "wallet-tutorial-reward") return w.tutorialReward(uid, args.chapter, now);
+        if (op === "wallet-story-reward") return w.storyReward(uid, args.phase, args.axis, now);
         if (op === "wallet-campaign") return w.campaign(uid, args.campaign, now);
         if (op === "wallet-purchase") return w.purchase(uid, args.tx, now);
         if (op === "wallet-migrate") return w.migrate(uid, args.tickets, now);

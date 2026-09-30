@@ -18,6 +18,7 @@ import {
   SEASON_FRAME,
 } from "../game/season.js";
 import { loadProfile, adoptServerRating } from "../game/profile.js";
+import { phaseOf, rankedPhase } from "../game/phase.js";
 import { publishPlayer } from "../net/players.js";
 import { readRanks } from "../net/ranking.js";
 import { PlayerIcon } from "./playericon.jsx";
@@ -251,7 +252,14 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
               </>
             )}
             {/* 1戦から載る(2026-09-23 本人の指示。以前は10戦) */}
-            {p.rated < 1 && <small>1戦するとランキングに掲載されます。</small>}
+            {/* 持ち点に数えるのはフェーズ3だけ(2026-09-30)。フェーズ1・2 の人には、上がれば数えると伝える */}
+            {p.rated < 1 && (
+              <small>
+                {rankedPhase(phaseOf(loadProfile()))
+                  ? "1戦するとランキングに掲載されます。"
+                  : "フェーズ3に上がると、9×9のランダムマッチがランキングに数えられます。"}
+              </small>
+            )}
           </div>
           <h4>到達報酬</h4>
           {rewards(data.season.id, p, false)}
@@ -335,7 +343,7 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
               ))}
             </ol>
           ) : (
-            <p className="hint">9×9 のオンライン対戦を1戦すると掲載されます。</p>
+            <p className="hint">フェーズ3 の 9×9 のオンライン対戦を1戦すると掲載されます。</p>
           )}
         </>
       )}

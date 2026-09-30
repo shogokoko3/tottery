@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { RANKS } from "../game/constants.js";
-import { sanitizeHistory, squareName } from "../game/board.js";
+import { sanitizeHistory, squareName, kingPowersOn } from "../game/board.js";
 import { candidatesFromHistory } from "../game/rank-candidates.js";
 import { movePresentationMs } from "../game/capture-presentation.js";
 import {
@@ -135,6 +135,8 @@ export function usePrivateNotes(state, viewer, blocked) {
           key={square}
           square={square}
           size={state.boardSize}
+          /* 王の力なしの対局では、伸びも「王だけの動き」も無い前提で絞る */
+          powers={kingPowersOn(state)}
           /* その駒の、**相手に見せてよい**行動記録だけを渡す。
              正体(rank・isKing)は渡さない(2026-09-28 本人の指示の仕組み) */
           history={visibleHistoryAt(state, square, viewer)}
@@ -166,13 +168,13 @@ function visibleHistoryAt(state, square, viewer) {
   return sanitizeHistory(piece, viewer, false);
 }
 
-function NoteEditor({ square, size, history = [], initial, onSave, onClose }) {
+function NoteEditor({ square, size, history = [], powers = true, initial, onSave, onClose }) {
   const [value, setValue] = useState(() => cleanNote(initial));
   const [row, col] = square.split(",").map(Number);
   // 見えている動きだけから、ありうる数字を機械的に絞る
   const deduced = useMemo(
-    () => candidatesFromHistory(history, size),
-    [history, size],
+    () => candidatesFromHistory(history, size, { powers }),
+    [history, size, powers],
   );
   return (
     <div className="modal-overlay private-notes-overlay" onClick={onClose}>

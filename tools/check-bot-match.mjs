@@ -188,15 +188,18 @@ assert.ok(/const planRef = useRef\(botReady \? botPlan\(myRating\(\)\) : "none"\
   assert.ok(/l === "error" && planRef\.current !== "fallback" \? \(/.test(screens), "通信の誤りでも、Bot に切り替える予約があれば「探しています」のまま");
   assert.ok(/onBotReady=\{\(b\) => \{\s*clearBotNow\(\);/.test(screens), "Bot 戦を始めたら「次は Bot」の印を消す");
   assert.ok(/bot=\{d && !tut \? bot : null\}/.test(screens), "GameCore に Bot を渡す");
-  assert.ok(/pool=\{!a && !tut && !bot \? localPool : null\}/.test(screens), "Bot 戦は札を絞らない(人との対局と同じ)");
+  assert.ok(/pool=\{!a && !tut && !bot && !story \? localPool : null\}/.test(screens), "Bot 戦は札を絞らない(人との対局と同じ)");
   assert.ok(/onNextMatch=\{\(a && a\.random\) \|\| bot \? nextRandomMatch : null\}/.test(screens), "Bot 戦のあとも「次の相手と対戦する」");
   assert.ok(/setCpuArea\(b\.area && b\.king && foilRevealed\(collection\) \? \{ type: b\.area, king: b\.king \} : null\);\s*setBot\(b\);/.test(screens), "Bot のエリア(6種を均等)を CPU 戦の作りで立てる。フォイルを持たない人には立てない");
   assert.ok(/foilRevealed\(collection\) && \(!localPool \|\| bot\)\s*\? ensureCpuFoil\(cpuSkins, cpuArea\.king\)/.test(screens), "Bot の王の数字にフォイルを必ず持たせる(レベルの札の絞りに関係なく)");
-  assert.ok(/foilRevealed\(collection\) && \(!localPool \|\| bot\) \? cpuArea : null/.test(screens), "GameCore にも Bot のエリアを渡す");
-  assert.ok(/\? bot\.name\s*: cpuArea && cpuArea\.king/.test(screens), "相手の名前は Bot の名前");
+  assert.ok(/foilRevealed\(collection\) && \(!localPool \|\| bot\) && localAreas \? cpuArea : null/.test(screens), "GameCore にも Bot のエリアを渡す(フェーズ3。フェーズ<3 の Bot は 5×5)");
+  assert.ok(/\? bot\.name\s*: localAreas && cpuArea && cpuArea\.king/.test(screens), "相手の名前は Bot の名前(CPU のエリア名はフェーズ3だけ)");
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
+  // 「もう一度遊ぶ」は1局の目印を新しくして作り直す(同じ目印だと2局目がミッションとシーズン台帳に数わらなかった。2026-09-30)
+  assert.ok(/onReplayBot=\{bot \? \(\) => \(setBot\(\(b\) => rematchBot\(b\)\), setRound\(\(n\) => n \+ 1\)\) : null\}/.test(screens), "Bot の「もう一度遊ぶ」は目印を新しくして round を進める");
+  assert.ok(game.includes("onReplay={bot && onReplayBot ? onReplayBot : null}") && game.includes("onClick={() => (onReplay ? onReplay() : dispatch({ type: \"NEW_GAME\" }))}"), "対局後の「もう一度遊ぶ」は Bot なら呼ぶ側へ");
   // 近くの端末との対戦(network.nearby)だけは数えない(2026-09-17)
-  assert.ok(/const ranked = \(!!\(network && network\.random\) \|\| !!bot\) && a\.boardSize === 9;/.test(game), "Bot の 9×9 は持ち点に数える(フレンド対戦は数えない)");
+  assert.ok(/const ranked = \(!!\(network && network\.random\) \|\| !!bot\) && a\.boardSize === 9 && rankedPhase\(matchPhase\);/.test(game), "Bot の 9×9 は持ち点に数える(フレンド対戦は数えない)");
   assert.ok(/if \(bot\) E = botAction\(a, T, E, bot\);/.test(game), "Bot の強さ(段階)を手に反映する");
   assert.ok(/const CPU_TURN_MS = 5000;/.test(game) && /foeWait\(a, E, CPU_TURN_MS\)/.test(game), "CPU・Bot は対局中の1手に5秒使う(2026-09-17)");
   assert.ok(/\? bot\.rating/.test(game), "相手の点は Bot の人物の点");
@@ -204,7 +207,7 @@ assert.ok(/const planRef = useRef\(botReady \? botPlan\(myRating\(\)\) : "none"\
   assert.ok(/online: \(\(!!network && !network\.nearby\) \|\| !!bot\) && !tutorial,/.test(game), "ミッションのオンライン回数に Bot 戦も数える(近くの端末は数えない)");
   assert.ok(/: bot\s*\? `bot:\$\{bot\.matchId \|\| bot\.id\}:\$\{round\}`/.test(game), "Bot 戦の matchId(同じ局を二度数えない)");
   // 2026-09-23 本人の指示: Bot 戦もシーズン台帳へ送る(部屋が無いので id と勝敗だけ。tools/check-bot-season.mjs)
-  assert.ok(/useSeasonMatch\(\s*a,\s*network,\s*round,\s*!!tutorial \|\| \(!network\?\.random && !bot\),\s*bot,\s*\)/.test(game), "シーズン台帳はランダムマッチ(人)と Bot 戦のときだけ(フレンド・近くの端末は送らない)");
+  assert.ok(/useSeasonMatch\(\s*a,\s*network,\s*round,\s*!!tutorial \|\| \(!network\?\.random && !bot\) \|\| !rankedPhase\(matchPhase\),\s*bot,\s*\)/.test(game), "シーズン台帳はランダムマッチ(人)と Bot 戦のときだけ(フレンド・近くの端末は送らない)");
   // 2026-09-24 本人の指示で「相手の番です」「CPUが考えています…」の案内の行ごと廃止(持ち時間の減りで分かる)。
   // Bot 戦で「CPU」と出す文が戻らないことだけ見る
   assert.ok(!/CPUが考えています/.test(game), "Bot 戦で「CPU」と出さない(案内の行そのものを出さない)");

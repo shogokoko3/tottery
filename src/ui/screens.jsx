@@ -77,6 +77,9 @@ import {
   loadOnlineSize,
   saveOnlineSize,
   matchesOnlineSize,
+  matchesOnlineEntry,
+  roomPhaseOf,
+  guestPhaseOf,
   loadCustomRules,
   saveCustomRules,
 } from "../net/match-settings.js";
@@ -96,6 +99,7 @@ import { GameCore } from "./game.jsx";
 import { RulesPanel } from "./guides.jsx";
 import { SettingsModal } from "./overlays.jsx";
 import { TutorialSelect } from "./tutorial.jsx";
+import { StoryScreen, StoryIntro, storyTileNote } from "./story.jsx";
 import { TsumeScreen, useTsumeDay } from "./tsume.jsx";
 import { tsumeReceipt } from "../game/tsume-daily.js";
 import { nextTutorialAfter } from "../game/tutorial.js";
@@ -129,15 +133,21 @@ import TITLE_STYLES from "./title-frame.css";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
 import { onlineGate, onlineGateLabel } from "../game/online-gate.js";
-import { botPlan, makeBot, botSearchDelay, clearBotNow, BOT_WAIT_MS,
+import {
+  botPlan,
+  makeBot,
+  botSearchDelay,
+  clearBotNow,
+  BOT_WAIT_MS,
   botTitle,
+  rematchBot,
 } from "../game/bot-match.js";
 import {
-  homeTutorialNudge,
   markFirstTutorialOffered,
   shouldOfferFirstTutorial,
 } from "../game/tutorial-nudge.js";
-import { TUTORIALS } from "../game/tutorial.js";
+import { markStoryPrimerSeen, nextStage, pickStoryKing, primerOutroLines, stageOf, storyPrimerSeen } from "../game/story.js";
+import { rankedPhase, stageSize } from "../game/phase.js";
 import { isBlocked } from "../game/blocked.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
 import { ensureAuth, myUid } from "../net/auth.js";
@@ -170,6 +180,8 @@ import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
 // はじめての10連を引いたかの控え(2026-09-28 本人の指示)
 import { firstPullDone } from "../skins/first-pull.js";
+// フェーズ(ストーリーとフェーズ.md)。オンラインはフェーズごとに相手を分ける
+import { phaseOf, rulesForPhase } from "../game/phase.js";
 // はじまりの語り(2026-09-28 本人の指示)
 import { Prologue } from "./prologue.jsx";
 // はじめての手引き(2026-09-29 本人の指示)
@@ -411,6 +423,7 @@ function HomeTile({ tone, icon, label, note, badge, onClick, frameTheme, locked 
 export function MenuScreen({
   onPlay,
   onTutorial,
+  onStory,
   onTsume,
   onSkins,
   onBattlePass,
@@ -450,8 +463,6 @@ export function MenuScreen({
   const ready = claimableCount(profile, collection);
   const today = useTsumeDay(now);
   const receipt = tsumeReceipt(collection, today.day);
-  // チュートリアルの釦の一言。第8話まで終えるまでは次の話を添える
-  const nudge = homeTutorialNudge(profile);
   const tsumeStatus = receipt?.cleared
     ? "cleared"
     : receipt?.joined
@@ -566,20 +577,14 @@ export function MenuScreen({
           ミッションとバトルパスは1つの画面(quests.jsx)にまとめ、バトルパスがあった左下へ。
           ミッションがあった右上は「カード」(札ごとの熟練度)。ランキングは「対戦する」の中 */}
       <div className="home-grid">
+        {/* チュートリアルがあった場所にストーリー(2026-09-30 本人の指示)。チュートリアルは導線から外す(コードは残す) */}
         <HomeTile
           frameTheme={theme}
-          tone="tutorial"
+          tone="story"
           icon={<Book size={26} />}
-          label={
-            <>
-              チュートリアル
-              {nudge && nudge.kind === "start" && (
-                <span className="home-wide-pill">おすすめ</span>
-              )}
-            </>
-          }
-          note={nudge ? nudge.text : "ルールと駒の効果"}
-          onClick={onTutorial}
+          label="ストーリー"
+          note={storyTileNote(profile)}
+          onClick={onStory}
         />
         <HomeTile
           frameTheme={theme}
@@ -669,8 +674,8 @@ export function MenuScreen({
 
 /**
  * 対戦の相手を選ぶ。ホームの「対戦する」から来る。
- * ランダムマッチだけは、チュートリアルを第8話まで終えるまで開かない(src/game/online-gate.js)。
- * 閉じている間は薄くして理由と残りの話数を添え、押すとチュートリアル一覧へ
+ * ランダムマッチだけは、ストーリーのフェーズ1(7ステージ)をクリアするまで開かない(src/game/online-gate.js)。
+ * 閉じている間は薄くして理由と残りのステージ数を添え、押すとストーリーへ
  */
 export function MatchingScreen({
   onOnline,
@@ -678,6 +683,8 @@ export function MatchingScreen({
   onCpu,
   onBack,
   onTutorial,
+  // ランダムマッチが閉じているときの行き先(ストーリー。2026-09-30 本人の指示)
+  onStory = null,
   // 今シーズンの順位。ホームから移した(2026-09-17、本人の指示)
   onRanking = null,
   // 近くの端末と対戦(Bluetooth / 近距離 Wi‑Fi)。ここに直に置く。
@@ -693,7 +700,7 @@ export function MatchingScreen({
         <button
           className={`btn btn-primary btn-choice ${gate.ok ? "" : "btn-choice-locked"}`}
           aria-disabled={!gate.ok}
-          onClick={gate.ok ? onOnline : onTutorial}
+          onClick={gate.ok ? onOnline : onStory || onTutorial}
         >
           <Globe size={30} />
           <span className="choice-label">
@@ -762,10 +769,15 @@ function safeRating(v) {
 export function RandomMatchScreen({
   onBack,
   onRoomReady: roomReady,
-  boardSize,
+  boardSize: wantedSize,
   onBotReady: botReady = null,
 }) {
   const loadout = useRef(mySkins()).current;
+  // 自分のフェーズ。相手はフェーズごとに分ける。フェーズ1 は 5×5、フェーズ2 は 9×9、フェーズ3 は選んだ盤
+  // (2026-09-30 本人の指示。持ち点はフェーズ3だけ = game.jsx の ranked がフェーズを見る)
+  const myPhase = useRef(phaseOf(loadProfile())).current;
+  const phaseSizes = rulesForPhase(myPhase).sizes;
+  const boardSize = phaseSizes.includes(wantedSize) ? wantedSize : phaseSizes[0];
   // 相手が見つかったら震わせる(2026-09-28 本人の指示)。
   // 待っているあいだは画面から目を離していることが多いので、ここで知らせる。
   // 人でも練習相手でも同じ(待っている側には見分けが付かないため)
@@ -839,10 +851,14 @@ export function RandomMatchScreen({
           }
           if (
             !matchesOnlineSize(g.data, boardSize) ||
-            g.data.guestMatchSize !== boardSize
+            g.data.guestMatchSize !== boardSize ||
+            // 相手のフェーズが違う(書けない旧端末はフェーズ3扱い)
+            guestPhaseOf(g.data) !== myPhase
           ) {
             clearInterval(r);
             deleteLobbyPath(`/${d}`);
+            // 部屋も消す(相手の画面に「相手が退出」が出る。合言葉の部屋・近くの端末と同じ)
+            deleteRoom(d);
             u(
               "対戦相手のルール設定を確認できませんでした。もう一度お探しください。",
             );
@@ -854,6 +870,7 @@ export function RandomMatchScreen({
           (deleteLobbyPath(`/${d}`),
             onRoomReady({
               random: !0,
+              phase: myPhase,
               code: s,
               createdAt: g.data.createdAt,
               myPlayerIndex: 0,
@@ -945,7 +962,7 @@ export function RandomMatchScreen({
           .filter(
             ([z, g]) =>
               g &&
-              matchesOnlineSize(g, boardSize) &&
+              matchesOnlineEntry(g, boardSize, myPhase) &&
               !g.guest &&
               g.host !== r &&
               // 見えなくした相手の掲示は拾わない(ランキングの「⋯」)
@@ -988,7 +1005,7 @@ export function RandomMatchScreen({
                 n("error"));
               return;
             }
-            if (!matchesOnlineSize(b.data, boardSize)) {
+            if (!matchesOnlineSize(b.data, boardSize) || roomPhaseOf(b.data) !== myPhase) {
               await leaveRoom(z);
               await deleteLobbyPath(`/${z}/guest`);
               claimed.current = null;
@@ -1003,6 +1020,8 @@ export function RandomMatchScreen({
               guestSkins: loadout,
               guestRuleVersion: GAME_RULE_VERSION,
               guestMatchSize: boardSize,
+              // 部屋がフェーズ<3 のときだけ書く(ホストは「書けない相手 = 旧端末」を断る)
+              ...(roomPhaseOf(b.data) < 3 ? { guestPhase: myPhase } : {}),
             });
             if (o.current) return;
             if (!ready.ok) {
@@ -1016,6 +1035,7 @@ export function RandomMatchScreen({
             claimed.current = null;
             onRoomReady({
               random: !0,
+              phase: myPhase,
               code: z,
               createdAt: b.data?.createdAt,
               myPlayerIndex: 1,
@@ -1036,6 +1056,9 @@ export function RandomMatchScreen({
         let v = generateRoomCode() + generateRoomCode(),
           p = await createRoom(v, {
             matchSize: boardSize,
+            // フェーズ<3 のときだけ書く。フェーズ3の部屋は今までどおりの形
+            // (Firebase のルール公開前でも、フェーズ3の対戦は止まらない)
+            ...(myPhase < 3 ? { phase: myPhase } : {}),
             guestPresent: !1,
             gameState: null,
             hostName: myName(),
@@ -1050,8 +1073,10 @@ export function RandomMatchScreen({
           (u(p.error), n("error"));
           return;
         }
+        // フェーズ3は今までどおり matchSize だけ(旧端末もそのまま拾える)。
+        // フェーズ1・2は matchSize を書かず phase と size を書く → 旧端末は拾わない(盤がずれない)
         let w = await writeLobby(`/${v}`, {
-          matchSize: boardSize,
+          ...(myPhase >= 3 ? { matchSize: boardSize } : { phase: myPhase, size: boardSize }),
           host: r,
           guest: null,
           createdAt: Date.now(),
@@ -1087,7 +1112,8 @@ export function RandomMatchScreen({
       </div>
     ) : (
       <div className="center-stage">
-        {streak != null && (
+        {/* 連勝ボーナスはレートに付くので、持ち点に数えるフェーズ3だけ */}
+        {streak != null && rankedPhase(myPhase) && (
           <div className={`match-streak ${streak >= 2 ? "is-hot" : ""}`} role="status">
             {streak >= 1 ? (
               <>
@@ -1262,12 +1288,22 @@ export function RulesSelectScreen({
   onCpuArea = null,
   // 手元の対局のときの自分のレベル。札と 9×9 をレベルで絞る。null なら絞らない(オンライン)
   level = null,
+  // オンラインで選べる盤(フェーズで決まる。phase.js rulesForPhase().sizes)。null なら絞らない(手元の対局)
+  phaseSizes = null,
+  // エリアが立つフェーズか(フェーズ3だけ)。9×9 の説明の「盤面エリアが立つ」をこれで出し分ける
+  areasOn = true,
   // 詳細設定(src/game/custom-rules.js)。onCustom が無い画面(ランダムマッチ)では出さない
   custom = null,
   onCustom = null,
+  // 詳細設定はエリアを使うのでフェーズ3から(ストーリーとフェーズ.md)。true なら鍵をかけて理由を出す
+  customLockedByPhase = false,
 }) {
-  const locked9 = level !== null && !boardOpen(9, level);
-  let [a, u] = (0, useState)(locked9 && initialSize === 9 ? 5 : initialSize);
+  const locked9ByPhase = !!phaseSizes && !phaseSizes.includes(9);
+  const locked5ByPhase = !!phaseSizes && !phaseSizes.includes(5);
+  const locked9 = (level !== null && !boardOpen(9, level)) || locked9ByPhase;
+  let [a, u] = (0, useState)(
+    locked9 && initialSize === 9 ? 5 : locked5ByPhase && initialSize === 5 ? 9 : initialSize,
+  );
   // 詳細設定はフォイルを持ってエリアを解放した人だけ(本人の指示 2026-09-17)
   const customUnlocked = !!onCustom && foilRevealed(getCollection());
   const [customOpen, setCustomOpen] = useState(!!custom && !isDefaultCustom(custom));
@@ -1291,7 +1327,7 @@ export function RulesSelectScreen({
             </span>
           </button>
           {onCustom &&
-            (customUnlocked ? (
+            (customUnlocked && !customLockedByPhase ? (
               <button
                 className={`btn btn-choice ${custom && !isDefaultCustom(custom) ? "btn-primary" : "btn-ghost"}`}
                 aria-pressed={!!custom && !isDefaultCustom(custom)}
@@ -1311,12 +1347,15 @@ export function RulesSelectScreen({
               <button className="btn btn-ghost btn-choice" disabled>
                 <Lock size={18} />
                 <span className="choice-label">
-                  詳細設定<small>フォイルを手に入れてエリアを解放すると使えます</small>
+                  詳細設定
+                  <small>
+                    {customLockedByPhase ? "フェーズ3で開きます" : "フォイルを手に入れてエリアを解放すると使えます"}
+                  </small>
                 </span>
               </button>
             ))}
         </div>
-        {onCustom && customUnlocked && customOpen && (
+        {onCustom && customUnlocked && !customLockedByPhase && customOpen && (
           <CustomRulesPanel
             custom={normalizeCustom(custom || DEFAULT_CUSTOM, a)}
             size={a}
@@ -1332,7 +1371,7 @@ export function RulesSelectScreen({
               className={`board-choice ${a === i ? "active" : ""}`}
               onClick={() => u(i)}
               aria-pressed={a === i}
-              disabled={i === 9 && locked9}
+              disabled={(i === 9 && locked9) || (i === 5 && locked5ByPhase)}
               key={i}
             >
               <div
@@ -1351,7 +1390,7 @@ export function RulesSelectScreen({
                 {i}×{i}
               </span>
               <small>
-                {i === 5 ? "5枚で戦う短期戦" : foilRevealed(getCollection()) ? "9枚で戦う本格戦。王のフォイルで盤面エリアが立つ" : "9枚で戦う本格戦"}
+                {i === 5 ? "5枚で戦う短期戦" : areasOn && foilRevealed(getCollection()) ? "9枚で戦う本格戦。王のフォイルで盤面エリアが立つ" : "9枚で戦う本格戦"}
                 {/* レートが動くのは9×9だけ。選ぶ前に分かるようにしておく */}
                 {ranked && i === 9 && (
                   <>
@@ -1362,7 +1401,15 @@ export function RulesSelectScreen({
                 {i === 9 && locked9 && (
                   <>
                     <br />
-                    <b className="board-choice-lock">Lv{BOARD9_LEVEL} で開きます</b>
+                    <b className="board-choice-lock">
+                      {locked9ByPhase ? "フェーズ2で開きます" : `Lv${BOARD9_LEVEL} で開きます`}
+                    </b>
+                  </>
+                )}
+                {i === 5 && locked5ByPhase && (
+                  <>
+                    <br />
+                    <b className="board-choice-lock">フェーズ3で開きます</b>
                   </>
                 )}
               </small>
@@ -1417,6 +1464,7 @@ export function RulesSelectScreen({
       )}
       {/* フォイルは持っているが札を絞っているレベル: エリア練習は定石の札がそろってから */}
       {!onCpuArea &&
+        !customLockedByPhase &&
         a === 9 &&
         level !== null &&
         poolForLevel(level) &&
@@ -1483,11 +1531,29 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
       skins: loadout,
       ruleVersion: GAME_RULE_VERSION,
       boardSize,
+      phase: phaseOf(loadProfile()),
     });
     const ready = (network) => {
+      // 始める側(ホスト)のフェーズが両者に効く。相手の端末がフェーズを知らない(古い版)なら
+      // 力なしの盤がずれるので、3未満では始めない
+      const phase = Number.isInteger(network.phase) ? network.phase : 3;
+      if (phase < 3 && !Number.isInteger(network.guestPhase)) {
+        // つながりを切って探索に戻る(相手の端末には「つながらなかった」が出る)。
+        // 切らないと「対局へ進みます」のまま止まり、相手は来ない開始の合図を待ち続ける
+        setError("相手のアプリが古いため、このフェーズでは対戦できません");
+        setStatus("searching");
+        // **止め終わってから**探索を始め直す。stop() は listener を外し終える前に
+        // 戻らないので、同時に start() すると attach() が「もう付いている」と見て
+        // 何も付けず、直後に全部外されて以後の知らせが来なくなる
+        n.stop()
+          .then(() => n.start(profile(), ready))
+          .catch((err) => setError(err && err.message ? err.message : "探索を始め直せませんでした"));
+        return;
+      }
       readyRef.current = !0;
       onReady({
         ...network,
+        phase,
         names: network.names.map(safeName),
         icons: network.icons.map(safeTag),
         titles: network.titles.map(safeTag),
@@ -1731,10 +1797,25 @@ export function RoomScreen({
               s(N.error);
               return;
             }
+            if (
+              N.data &&
+              N.data.guestPresent &&
+              roomPhaseOf(N.data) < 3 &&
+              !Number.isInteger(N.data.guestPhase)
+            ) {
+              // 相手の端末がフェーズを知らない(古い版)。力なしの盤がずれるので始めない。
+              // 部屋も消して、相手の画面に「相手が退出した」が出るようにする
+              clearInterval(x);
+              deleteRoom(f);
+              s("相手のアプリが古いため、このフェーズでは対戦できません。相手に更新してもらってください");
+              return;
+            }
             N.data &&
               N.data.guestPresent &&
               (clearInterval(x),
               onRoomReady({
+                // 部屋に書いたフェーズで(待っている間に profile が変わっても、ゲストと同じ値)
+                phase: roomPhaseOf(N.data),
                 code: f,
                 createdAt: N.data.createdAt,
                 myPlayerIndex: 0,
@@ -1767,6 +1848,8 @@ export function RoomScreen({
         hostRating: myRating(),
         hostSkins: loadout,
         hostRuleVersion: GAME_RULE_VERSION,
+        // 合言葉の部屋は始める側のフェーズが両者に効く。フェーズ<3 のときだけ書く
+        ...(phaseOf(loadProfile()) < 3 ? { phase: phaseOf(loadProfile()) } : {}),
       });
     if ((p(!1), !x.ok)) {
       s(x.error);
@@ -1815,12 +1898,16 @@ export function RoomScreen({
       guestRating: myRating(),
       guestSkins: loadout,
       guestRuleVersion: GAME_RULE_VERSION,
+      // 部屋のフェーズ(始める側のもの)で遊ぶ。旧端末のホストの部屋はフェーズ3。
+      // フェーズ<3 の部屋にだけ書く(ホストは「書けない相手 = 旧端末」を断る)
+      ...(roomPhaseOf(x.data) < 3 ? { guestPhase: roomPhaseOf(x.data) } : {}),
     });
     if ((p(!1), !N.ok)) {
       (await leaveRoom(P), s(N.error));
       return;
     }
     onRoomReady({
+      phase: roomPhaseOf(x.data),
       code: P,
       createdAt: x.data.createdAt,
       foeUid: foeOf(x.data.seats, myUid()),
@@ -2101,6 +2188,9 @@ function TotteryScreens() {
   const [skinsTab, setSkinsTab] = useState("gacha");
   // CPU戦で選んだ相手のエリア({ type, king })。null なら相手が手札から王を選ぶ
   const [cpuArea, setCpuArea] = useState(null);
+  // 手元の対局でエリア(詳細設定・CPUのエリア)を使えるか。フェーズ3だけ(ストーリーとフェーズ.md)。
+  // game.jsx もフェーズ<3 ではエリアと定石の山札を載せないので、画面でも選ばせない
+  const localAreas = rulesForPhase(phaseOf(loadProfile())).areas;
   // CPU の装備からフォイルを外す(「エリアなし」用。フォイルの王でしかエリアは立たない)
   const stripFoils = (loadout) =>
     Object.fromEntries(Object.entries(loadout || {}).map(([rank, id]) => [rank, baseSkinId(id)]));
@@ -2115,6 +2205,11 @@ function TotteryScreens() {
     [o, r] = (0, useState)("game"),
     [d, m] = (0, useState)(!1),
     [tut, setTut] = (0, useState)(null),
+    // ストーリーのステージ({ axis, phase, king, title })と、その前に出す相手の王の説明(軸 id)
+    [story, setStory] = (0, useState)(null),
+    [storyIntro, setStoryIntro] = (0, useState)(null),
+    // ストーリーの導入(はじめての手引き)。"first" = はじめて開いた(読み終えたら次のステージの説明へ)/ "guide" = 「遊び方」から
+    [storyPrimer, setStoryPrimer] = (0, useState)(null),
     // ルール設定を開いた元の画面。「戻る」はここへ帰る。
     // 対戦の種類(o)から推測すると、CPU対戦とルームの「オフラインで対戦」が
     // どちらも "game" なので見分けられず、CPUの戻り先がフレンド対戦になる
@@ -2123,7 +2218,7 @@ function TotteryScreens() {
     [round, setRound] = (0, useState)(0),
     // 運営に使用停止にされたかどうか
     [banned, setBanned] = (0, useState)(!1),
-    // 名前を決めた直後に一度だけ出す、第1話への案内
+    // 名前を決めた直後(10連のあと)に一度だけ出す、導入(はじめての手引き)の案内。読み終えるとストーリーへ
     [offerTutorial, setOfferTutorial] = (0, useState)(!1),
     // はじめての10連(2026-09-28 本人の指示)。名前を決めた直後、チュートリアルより先に引く
     [firstPullMode, setFirstPullMode] = (0, useState)(!1),
@@ -2232,13 +2327,13 @@ function TotteryScreens() {
     window.scrollTo(0, 0);
   }, [e]);
   function s() {
-    (u(null), m(!1), setTut(null), t("home"));
+    (u(null), m(!1), setTut(null), setStory(null), t("home"));
   }
   // ハブ(対戦する等の menu)へ戻す。「ホームへ」はタイトル(home)ではなくここが正しい
   // (2026-09-21 本人の指示。他画面の「ホームに戻る」と同じ行き先にそろえる)。
   // 対局からも使うので goHome と同じ後片付け(近くの端末・部屋)をしてから menu へ。
   function goMenu() {
-    (dropNearby(), w(!1), u(null), m(!1), setTut(null), t("menu"));
+    (dropNearby(), w(!1), u(null), m(!1), setTut(null), setStory(null), t("menu"));
   }
   // 対局後の「戻る」。オンラインとCPU戦は、初期画面まで戻さず「対戦相手を選ぶ」へ
   // 近くの端末との対戦を抜けるときは、部屋の片付けの知らせが届いてから接続を切る
@@ -2257,6 +2352,7 @@ function TotteryScreens() {
       shop: "menu",
       matching: "menu",
       tutorial: "menu",
+      story: "menu",
       tsume: "menu",
       missions: "menu",
       battlepass: "menu",
@@ -2281,18 +2377,43 @@ function TotteryScreens() {
     return () => t(to);
   }
   function backToMatching() {
-    (dropNearby(), u(null), m(!1), setTut(null), setBot(null), t("matching"));
+    (dropNearby(), u(null), m(!1), setTut(null), setStory(null), setBot(null), t("matching"));
   }
   // 連戦。同じ盤の大きさのまま、次の相手を探しに行く(RandomMatchScreen は開くと同時に探し始める)
   function nextRandomMatch() {
-    (dropNearby(), u(null), m(!1), setTut(null), setBot(null), setRound(0), t("online"));
+    (dropNearby(), u(null), m(!1), setTut(null), setStory(null), setBot(null), setRound(0), t("online"));
   }
   function startTutorial(chosen) {
-    (u(null), setTut(chosen), m(!0), r("game"), t("game"));
+    (u(null), setTut(chosen), setStory(null), m(!0), r("game"), t("game"));
     window.scrollTo(0, 0);
   }
   function showTutorials() {
-    (u(null), m(!1), setTut(null), t("tutorial"));
+    (u(null), m(!1), setTut(null), setStory(null), t("tutorial"));
+  }
+  // ストーリー(src/ui/story.jsx)。一覧 → ステージの前の1枚(相手の王の説明)→ 対局
+  function showStory() {
+    (u(null), m(!1), setTut(null), setStory(null), setStoryIntro(null), t("story"));
+    // はじめて開いたときは、どんなゲームか・勝ち方(導入)を一度だけ出す(2026-09-30 本人の指示)。
+    // ホームの導入の案内(10連のあと)はここで下ろす。合言葉つきで始めた人に二度出ていた
+    setOfferTutorial(!1);
+    if (!storyPrimerSeen()) setStoryPrimer("first");
+  }
+  // 導入を読み終えたら、次のステージ(はじめはフェーズ1 の 2・3)の説明へ
+  function storyAfterPrimer() {
+    markStoryPrimerSeen();
+    setStoryPrimer(null);
+    const next = nextStage(loadProfile());
+    if (next) setStoryIntro(next.axis);
+  }
+  // ステージを始める。相手(CPU)の王の数字は軸からその回ごとに決める(2・3 の回なら 2 か 3)
+  function startStory(axis) {
+    const stage = stageOf(axis);
+    if (!stage) return;
+    // 相手の装備と選んだエリアは前の CPU 戦のものを引きずらない(Bot 戦と同じ)
+    (u(null), setTut(null), setBot(null), setStoryIntro(null), setCpuSkins(createCpuLoadout()), setCpuArea(null), setRound(0),
+      setStory({ axis, phase: phaseOf(loadProfile()), size: stageSize(phaseOf(loadProfile())), king: pickStoryKing(axis), title: `${stage.name}の王` }),
+      m(!0), r("game"), t("game"));
+    window.scrollTo(0, 0);
   }
   // 上の「トッタリー」から。ルーム作成の予約(p)も引きずらないように
   function goHome() {
@@ -2308,7 +2429,11 @@ function TotteryScreens() {
   const localPool = poolForLevel(localLevel);
   function z(b) {
     if (o === "online") saveOnlineSize(b);
-    (f(b), o === "room" && w(!0), t(o));
+    // オンライン(ランダム・合言葉・近くの端末)はフェーズで選べる盤が決まる(フェーズ1 は 5×5、2 は 9×9)。
+    // ここで丸めないと、対局(GameCore)には選んだ盤がそのまま届く
+    const phaseSizes = rulesForPhase(phaseOf(loadProfile())).sizes;
+    const size = (o === "online" || o === "room" || o === "nearby") && !phaseSizes.includes(b) ? phaseSizes[0] : b;
+    (f(size), o === "room" && w(!0), t(o));
   }
   // 画面の枠(背景や上のバー)は GameShell が出すので、その中に入れる
   //
@@ -2334,12 +2459,12 @@ function TotteryScreens() {
           onDone={() => {
             setNamed(!0);
             // **語り → 10連**(2026-09-28 本人の指示)。最初にワクワクさせ、引き直しもしやすく。
-            // 引き終わってホームへ戻るときに、第1話の案内を出す
+            // 引き終わってホームへ戻るときに、導入(手引き)の案内を出す
             if (!firstPullDone(getCollection())) {
               setPrologue(!0);
               return;
             }
-            // すでに引いている人(入れ直しなど)は、これまで通り第1話の案内
+            // すでに引いている人(入れ直しなど)は、ここで導入の案内
             if (shouldOfferFirstTutorial(loadProfile())) {
               markFirstTutorialOffered();
               setOfferTutorial(!0);
@@ -2375,9 +2500,11 @@ function TotteryScreens() {
               me,
               tut
                 ? null
-                : bot
+                : story
+                  ? story.title
+                  : bot
                   ? bot.name
-                  : cpuArea && cpuArea.king && i === 9
+                  : localAreas && cpuArea && cpuArea.king && i === 9
                     ? `CPU(${JOSEKI_INFO[cpuArea.type].label})`
                     : "CPU",
             ]
@@ -2404,7 +2531,10 @@ function TotteryScreens() {
                 collection.equipped,
                 // エリアを選んだCPU戦は、王の数字にフォイルを必ず持たせる(でないとエリアが立たない)。
                 // 「エリアなし」は CPU の装備からフォイルを外し、CPU のエリアだけ立てない(自分のエリアは装備どおり)
-                cpuArea && cpuArea.type === "none" && i === 9 && d && !tut
+                // フェーズ3 のストーリーは 9×9 でエリアあり。相手の王の数字にフォイルを持たせる(相手のエリアが必ず立つ)
+                story && story.size === 9 && rulesForPhase(story.phase).areas
+                  ? ensureCpuFoil(cpuSkins, story.king)
+                  : cpuArea && cpuArea.type === "none" && i === 9 && d && !tut
                   ? stripFoils(cpuSkins)
                   : cpuArea && cpuArea.king && i === 9 && foilRevealed(collection) && (!localPool || bot)
                     ? ensureCpuFoil(cpuSkins, cpuArea.king)
@@ -2418,31 +2548,48 @@ function TotteryScreens() {
             // 再戦のたびに作り直す。見た手の控えも記録済みの印も、
             // 前の対局のものを引きずらせない。
             // チュートリアルは話ごとに作り直す
-            key={tut ? tut.id : `battle-${round}`}
+            key={tut ? tut.id : story ? `story-${story.axis}-${round}` : `battle-${round}`}
             round={round}
             onRematch={a ? () => setRound((n) => n + 1) : null}
+            // Bot と「もう一度遊ぶ」: 1局の目印を新しくして、対局を作り直す(round を進める)。
+            // 同じ目印のままだと、2局目がミッションとシーズン台帳に数わらなかった
+            onReplayBot={bot ? () => (setBot((b) => rematchBot(b)), setRound((n) => n + 1)) : null}
             network={a}
-            boardSize={tut ? tut.boardSize : i}
+            // ストーリーのステージの盤はフェーズで決まる(フェーズ1 は 5×5、2 からは 9×9)
+            boardSize={tut ? tut.boardSize : story ? story.size : i}
             cpu={d}
             // フォイルを初めて手に入れるまでは、エリアを選ぶ欄そのものを出さない(選べても渡さない)
+            // フェーズ<3 では渡さない(エリアの定石は 9×9 のエリアありが前提。引き継ぎでフェーズが下がった場合の守り)
             cpuArea={
-              d && !tut && i === 9 && foilRevealed(collection) && (!localPool || bot) ? cpuArea : null
+              d && !tut && i === 9 && foilRevealed(collection) && (!localPool || bot) && localAreas ? cpuArea : null
             }
             // ランダムマッチの練習相手。人との対局と同じ扱い(レートが動く、札は絞らない)
             bot={d && !tut ? bot : null}
             // 詳細設定は CPU戦・同じ端末・フレンド対戦(合言葉・近くの端末)だけ。ランダムマッチ・Bot・チュートリアルでは使わない
-            custom={!tut && !bot && !(a && a.random) ? customRules : null}
+            custom={
+              !tut &&
+              !bot &&
+              !(a && a.random) &&
+              // 詳細設定はフェーズ3だけ(相手の端末の決め直し sync.js と同じ)
+              rulesForPhase(a ? roomPhaseOf(a) : phaseOf(loadProfile())).areas
+                ? customRules
+                : null
+            }
             // 手元の対局は、レベルで開いている札だけを配る。オンライン・チュートリアル・Bot は絞らない
-            pool={!a && !tut && !bot ? localPool : null}
-            handSize={!a && !tut && !bot ? handSizeForLevel(localLevel) : null}
+            pool={!a && !tut && !bot && !story ? localPool : null}
+            handSize={!a && !tut && !bot && !story ? handSizeForLevel(localLevel) : null}
             tutorial={tut}
+            story={story}
             nextTutorial={nextTutorial}
             onNextTutorial={
               nextTutorial ? () => startTutorial(nextTutorial) : null
             }
-            onTutorialList={showTutorials}
-            onExit={tut ? s : backToMatching}
-            exitLabel={tut ? "タイトルに戻る" : "対戦相手を選ぶに戻る"}
+            // ストーリーの「次のステージへ」「もう一度遊ぶ」は、いきなり対局ではなく相手の王の説明から(毎回出す。王も引き直す)
+            onNextStory={(axis) => (showStory(), setStoryIntro(axis))}
+            onRetryStory={story ? () => (showStory(), setStoryIntro(story.axis)) : null}
+            onTutorialList={story ? showStory : showTutorials}
+            onExit={tut ? s : story ? showStory : backToMatching}
+            exitLabel={tut ? "タイトルに戻る" : story ? "ストーリーに戻る" : "対戦相手を選ぶに戻る"}
             // チュートリアルの「ホームへ」はハブ(menu)へ。タイトルに戻る(onExit=s)とは
             // 別の行き先にする(2026-09-21 本人の指示)。それ以外の対局は従来どおり
             onHome={goMenu}
@@ -2466,17 +2613,20 @@ function TotteryScreens() {
           home: (
             <>
               <HomeScreen onStart={() => t("menu")} />
-              {/* はじめての人には、いきなり第1話ではなく**手引き**を出す
-                  (2026-09-29 本人の指示。「寿司将棋」の導入が分かりやすかった)。
-                  どんなゲームか → 勝ち方 → 王は伏せたまま → 陣 → 2〜5の動き、を
-                  1ページずつ。最後の札の釦がそのまま第1話につながる */}
-              {offerTutorial && (
+              {/* はじめての人には**手引き**を出す(2026-09-29 本人の指示。「寿司将棋」の導入が分かりやすかった)。
+                  どんなゲームか → 1手ずつ → 勝ち方 → 王は伏せたまま → 陣、を1ページずつ。
+                  最後の札の釦はストーリーの最初のステージ(2・3 の動きを盤の図で)につながる(2026-09-30。前は第1話) */}
+              {offerTutorial && !storyPrimerSeen() && (
                 <Primer
-                  doneLabel="第1話を始める"
+                  outro={primerOutroLines(loadProfile())}
+                  doneLabel="ストーリーを始める"
                   onSkip={() => setOfferTutorial(!1)}
                   onDone={() => {
                     setOfferTutorial(!1);
-                    startTutorial(TUTORIALS[0]);
+                    markStoryPrimerSeen();
+                    showStory();
+                    const next = nextStage(loadProfile());
+                    if (next) setStoryIntro(next.axis);
                   }}
                 />
               )}
@@ -2487,13 +2637,15 @@ function TotteryScreens() {
               firstPull={firstPullMode}
               onBack={() => {
                 if (firstPullMode) {
-                  // はじめての10連が終わった。ここで第1話へ誘う
+                  // はじめての10連が終わった。ここで導入(手引き → ストーリー)へ誘う
                   setFirstPullMode(!1);
                   if (shouldOfferFirstTutorial(loadProfile())) {
                     markFirstTutorialOffered();
                     setOfferTutorial(!0);
                   }
-                  t("home");
+                  // 合言葉つき(?room=)で開いた人は、語りと10連のあいだ部屋を待たせている。
+                  // ホームではなく部屋へ(2026-09-30 見直し。着かないままだった)
+                  t(pendingRoom ? "room" : "home");
                   return;
                 }
                 t(skinsFrom);
@@ -2518,6 +2670,7 @@ function TotteryScreens() {
             <MenuScreen
               onPlay={() => t("matching")}
               onTutorial={showTutorials}
+              onStory={showStory}
               onTsume={() => t("tsume")}
               onSkins={() => t("skins")}
               onBattlePass={() => t("battlepass")}
@@ -2535,6 +2688,7 @@ function TotteryScreens() {
             <MatchingScreen
               onBack={() => t("menu")}
               onTutorial={showTutorials}
+              onStory={showStory}
               onRanking={() => t("ranking")}
               onNearby={() => {
                 // フレンド対戦の画面と同じ行き先。ここからも直に入れる(2026-09-28)
@@ -2556,7 +2710,7 @@ function TotteryScreens() {
                 setBot(null);
                 (u(null),
                   m(!0),
-                  setTut(null),
+                  setTut(null), setStory(null),
                   r("game"),
                   setRulesFrom("matching"),
                   t("rules"));
@@ -2617,6 +2771,35 @@ function TotteryScreens() {
             />
           ),
           letters: <InboxScreen tab="letters" onTab={(id) => t(id)} onBack={() => t("menu")} />,
+          story: (
+            <>
+              <StoryScreen
+                onBack={() => t("menu")}
+                onStart={(axis) => setStoryIntro(axis)}
+                onGuide={() => setStoryPrimer("guide")}
+              />
+              {/* どんなゲームか・勝ち方(寿司将棋のような導入。2026-09-30 本人の指示)。
+                  はじめて開いたときは読み終えると次のステージの説明へ。「遊び方」からはとじるだけ */}
+              {storyPrimer && (
+                <Primer
+                  outro={primerOutroLines(loadProfile())}
+                  doneLabel={storyPrimer === "first" ? "ステージへ" : "とじる"}
+                  skipLabel={storyPrimer === "first" ? "あとで" : "とじる"}
+                  onSkip={() => (markStoryPrimerSeen(), setStoryPrimer(null))}
+                  onDone={() => (storyPrimer === "first" ? storyAfterPrimer() : setStoryPrimer(null))}
+                />
+              )}
+              {/* ステージの前に、相手の王の特徴を毎回説明する(2026-09-30 本人の指示)。導入と重ねない */}
+              {storyIntro && !storyPrimer && (
+                <StoryIntro
+                  axis={storyIntro}
+                  phase={phaseOf(loadProfile())}
+                  onBack={() => setStoryIntro(null)}
+                  onStart={() => startStory(storyIntro)}
+                />
+              )}
+            </>
+          ),
           tutorial: (
             <TutorialSelect onBack={() => t("menu")} onStart={startTutorial} />
           ),
@@ -2632,7 +2815,7 @@ function TotteryScreens() {
                 // Bot のエリアは6種を均等に(人物が持つ)。エリアを知らない(フォイルを持たない)人には立てない
                 setCpuArea(b.area && b.king && foilRevealed(collection) ? { type: b.area, king: b.king } : null);
                 setBot(b);
-                (u(null), m(!0), setTut(null), setRound(0), r("game"), t("game"));
+                (u(null), m(!0), setTut(null), setStory(null), setRound(0), r("game"), t("game"));
               }}
             />
           ),
@@ -2679,14 +2862,28 @@ function TotteryScreens() {
           rules: (
             <RulesSelectScreen
               // ランキングに載るのはランダムマッチの 9×9 だけ。フレンド対戦は載らない(2026-09-17)
-              ranked={o === "online"}
+              ranked={o === "online" && rankedPhase(phaseOf(loadProfile()))}
               // 近くの端末との対戦はフレンド対戦と同じく、レベルで札を絞らない
-              initialSize={o === "online" ? loadOnlineSize() : 5}
+              initialSize={
+                o === "online" && phaseOf(loadProfile()) >= 3
+                  ? loadOnlineSize()
+                  : o === "online" || o === "room" || o === "nearby"
+                    ? rulesForPhase(phaseOf(loadProfile())).sizes[0]
+                    : 5
+              }
+              // オンラインで選べる盤はフェーズで決まる(フェーズ1 は 5×5、2 は 9×9、3 は両方)
+              phaseSizes={
+                o === "online" || o === "room" || o === "nearby"
+                  ? rulesForPhase(phaseOf(loadProfile())).sizes
+                  : null
+              }
+              areasOn={localAreas}
               // 手元の対局は、レベルで札と 9×9 を絞る(src/game/card-unlock.js)
               level={o === "online" || o === "room" || o === "nearby" ? null : localLevel}
               onStart={z}
-              // 詳細設定はランダムマッチ以外
-              custom={o === "online" ? null : customRules}
+              // 詳細設定はランダムマッチ以外。フェーズ<3 は鍵(エリアを使うので)
+              custom={o === "online" || !localAreas ? null : customRules}
+              customLockedByPhase={o !== "online" && !localAreas}
               onCustom={
                 o === "online"
                   ? null
@@ -2711,7 +2908,7 @@ function TotteryScreens() {
               // 相手のエリアを選べるのは CPU戦で、フォイルを持っている(エリアを知っている)人だけ
               cpuArea={cpuArea ? cpuArea.type : null}
               onCpuArea={
-                d && !tut && foilRevealed(collection) && !localPool
+                d && !tut && foilRevealed(collection) && !localPool && localAreas
                   ? (type) =>
                       setCpuArea(
                         // "none" は CPU のエリアだけ立てない(装備からフォイルを外す)。王は決めない

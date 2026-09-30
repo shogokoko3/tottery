@@ -11,6 +11,8 @@ import { CardFace } from "./cards.jsx";
 import { AreaGuide } from "./area-guide.jsx";
 // はじめての手引き(2026-09-29 本人の指示)。早見表からも読み返せるようにする
 import { Primer } from "./primer.jsx";
+import { primerOutroLines } from "../game/story.js";
+import { loadProfile } from "../game/profile.js";
 import { getCollection } from "../skins/store.js";
 import { foilRevealed } from "../skins/collection.js";
 
@@ -146,7 +148,11 @@ export function RulesPanel({ onClose, initialTab = "moves" }) {
   }
   // はじめての手引き。**覚える順に1枚ずつ**なので、調べる用の表とは分けて置く
   if (tab === "primer")
-    return <Primer doneLabel="とじる" onDone={onClose} />;
+    return (
+      /* 1枚目からでも閉じられるように、途中でやめる釦も「とじる」にする
+         (2026-09-30 見直し。10枚送らないと閉じられなかった) */
+      <Primer doneLabel="とじる" onDone={onClose} onSkip={onClose} skipLabel="とじる" outro={primerOutroLines(loadProfile())} />
+    );
   if (tab === "areas")
     return (
       <div className="modal-overlay" onClick={onClose}>

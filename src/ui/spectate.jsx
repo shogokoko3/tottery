@@ -23,6 +23,7 @@ import { territoryOwnerOf } from "./setup.jsx";
 import { PlayerIcon } from "./playericon.jsx";
 import { TitleFrame } from "./title-frame.jsx";
 import { ArrowLeft, Users } from "../icons.jsx";
+import { roomPhaseOf } from "../net/match-settings.js";
 
 const clip = (s, n) => (typeof s === "string" ? s.slice(0, n) : "");
 
@@ -132,6 +133,8 @@ export function SpectateScreen({ match, friend, onExit }) {
         skins: [sanitizeLoadout(d.hostSkins), sanitizeLoadout(d.guestSkins)],
         ruleVersion: d.hostRuleVersion,
         boardSize: d.matchSize || 5,
+        // 部屋のフェーズ(無ければ 3)。対局している二人と同じ決め直しをするため
+        ...(Number.isInteger(d.phase) ? { phase: d.phase } : {}),
         names: [clip(d.hostName, 10), clip(d.guestName, 10)],
         icons: [clip(d.hostIcon, 40), clip(d.guestIcon, 40)],
         titles: [clip(d.hostTitle, 40), clip(d.guestTitle, 40)],
@@ -157,6 +160,8 @@ export function SpectateScreen({ match, friend, onExit }) {
           ranked: !!match.online,
           ruleVersion: metaLocal.ruleVersion,
           boardSize: metaLocal.boardSize,
+          // 部屋のフェーズ(無ければ 3)。対局している二人と同じ決め直し
+          phase: roomPhaseOf(metaLocal),
         });
         seen.current.add(act.__id);
         try {

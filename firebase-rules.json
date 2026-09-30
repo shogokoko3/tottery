@@ -321,6 +321,18 @@
                 }
               }
             },
+            "kingPowers": {
+              ".validate": "newData.isBoolean()",
+              "$sa": {
+                ".validate": false,
+                "$sb": {
+                  ".validate": false,
+                  "$sc": {
+                    ".validate": false
+                  }
+                }
+              }
+            },
             "hit": {
               ".validate": "newData.isBoolean()",
               "$sa": {
@@ -675,6 +687,31 @@
         "matchSize": {
           ".validate": "newData.val() === 5 || newData.val() === 9"
         },
+        "phase": {
+          ".validate": "newData.val() === 1 || newData.val() === 2 || newData.val() === 3",
+          "$sa": {
+            ".validate": false,
+            "$sb": {
+              ".validate": false,
+              "$sc": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "guestPhase": {
+          ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('seats').child('guest').val() === auth.uid",
+          ".validate": "(newData.val() === 1 || newData.val() === 2 || newData.val() === 3) && ((root.child('rooms').child($code).child('phase').exists() && newData.val() === root.child('rooms').child($code).child('phase').val()) || (!root.child('rooms').child($code).child('phase').exists() && newData.val() === 3))",
+          "$sa": {
+            ".validate": false,
+            "$sb": {
+              ".validate": false,
+              "$sc": {
+                ".validate": false
+              }
+            }
+          }
+        },
         "guestMatchSize": {
           ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && root.child('rooms').child($code).child('seats').child('guest').val() === auth.uid && newData.val() === root.child('rooms').child($code).child('matchSize').val() && (newData.val() === 5 || newData.val() === 9)",
           ".validate": "newData.val() === 5 || newData.val() === 9"
@@ -722,6 +759,30 @@
             }
           }
         },
+        "phase": {
+          ".validate": "(newData.val() === 1 || newData.val() === 2) && newData.val() === root.child('rooms').child($code).child('phase').val()",
+          "$sa": {
+            ".validate": false,
+            "$sb": {
+              ".validate": false,
+              "$sc": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "size": {
+          ".validate": "((root.child('rooms').child($code).child('phase').val() === 1 && newData.val() === 5) || (root.child('rooms').child($code).child('phase').val() === 2 && newData.val() === 9)) && newData.val() === root.child('rooms').child($code).child('matchSize').val()",
+          "$sa": {
+            ".validate": false,
+            "$sb": {
+              ".validate": false,
+              "$sc": {
+                ".validate": false
+              }
+            }
+          }
+        },
         "$other": {
           ".validate": false,
           "$sa": {
@@ -735,7 +796,7 @@
           }
         },
         "matchSize": {
-          ".validate": "(newData.val() === 5 || newData.val() === 9) && newData.val() === root.child('rooms').child($code).child('matchSize').val()"
+          ".validate": "(newData.val() === 5 || newData.val() === 9) && newData.val() === root.child('rooms').child($code).child('matchSize').val() && !root.child('rooms').child($code).child('phase').exists()"
         }
       }
     },

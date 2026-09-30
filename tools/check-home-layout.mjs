@@ -80,11 +80,11 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
     .filter(Boolean);
   assert.deepEqual(
     order.slice(0, 6),
-    ["チュートリアル", "カード", "詰めトッタリー", "ショップ", "ミッション・バトルパス", "ガチャ・スキン"],
-    "2列3段: 左上から チュートリアル・カード / 詰めトッタリー・ショップ / ミッション・バトルパス・ガチャ",
+    ["ストーリー", "カード", "詰めトッタリー", "ショップ", "ミッション・バトルパス", "ガチャ・スキン"],
+    "2列3段: 左上から ストーリー・カード / 詰めトッタリー・ショップ / ミッション・バトルパス・ガチャ(2026-09-30 チュートリアルの場所にストーリー)",
   );
   assert.equal((grid.match(/home-tile home-tile-/g) || []).length, 6, "四角い入り口は6つ");
-  for (const tone of ["tutorial", "cards", "tsume", "shop", "quests", "skins"])
+  for (const tone of ["story", "cards", "tsume", "shop", "quests", "skins"])
     assert.ok(grid.includes(`home-tile-${tone}`), `${tone} の欄がある`);
   assert.ok(!grid.includes("home-tile-missions") && !grid.includes("home-tile-pass"), "ミッションとバトルパスの単独の入り口は無い");
 
@@ -135,7 +135,7 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
   const table = flat.slice(flat.indexOf("function backFor(screen)"), flat.indexOf("function backToMatching"));
   assert.ok(/if \(screen === "home" \|\| screen === "game"\) return undefined;/.test(table), "タイトルと対局中だけは出さない");
   for (const [screen, to] of [
-    ["menu", "home"], ["shop", "menu"], ["matching", "menu"], ["tutorial", "menu"],
+    ["menu", "home"], ["shop", "menu"], ["matching", "menu"], ["tutorial", "menu"], ["story", "menu"],
     ["tsume", "menu"], ["missions", "menu"], ["battlepass", "menu"], ["cards", "menu"], ["letters", "menu"],
     ["ranking", "matching"], ["online", "matching"], ["room", "matching"], ["nearby", "matching"],
   ])

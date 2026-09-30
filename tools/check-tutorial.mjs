@@ -205,7 +205,13 @@ for (const tut of ALL_TUTORIALS) {
   // 盤が並んだところから始める話は、画面と同じ下ごしらえを通す
   if (tut.opening) {
     s = openingState(tut, ADJUDICATION_RULE_VERSION);
-    ok("下ごしらえで対局が始まる", s.phase === "play" && s.currentTurn === 0);
+    // 先手はサイコロの目どおり(第3話は後手から始まる)
+    ok(
+      "下ごしらえで対局が始まる",
+      s.phase === "play" &&
+        s.currentTurn === (tut.dice[0] > tut.dice[1] ? 0 : 1),
+      `phase=${s.phase} turn=${s.currentTurn}`,
+    );
     ok(
       "下ごしらえの王が指定どおり",
       s.players[0].kingId === tut.opening.kingId,
@@ -651,6 +657,78 @@ ok(
   `Lv.${levelOfXp(earned)}`,
 );
 if (unlockable) console.log("  チュートリアルだけで最後まで開きます");
+
+/**
+ * 自分で考える1手(choose)。決着の手だけは、どの駒で取るかを任せる。
+ *   - 通す手(的のマスを取る手)は、どれを選んでも勝ちで終わる
+ *   - 見本の答え(pieceId)も通す手のひとつ
+ *   - 的を取らない手は通さない(本当に選ぶ場面になっている)
+ *   - 文にマスの名前を出し、的の駒が本当にそのマスにいる
+ */
+console.log("\n自分で考える1手");
+{
+  const { beforeFinale, flow: finaleFlow } = await import("./tutorial-finale-lab.mjs");
+  const { squareName } = await import("../src/game/board.js");
+  for (const tut of TUTORIALS) {
+    const chooser = tut.steps.find((x) => x.need && x.need.choose);
+    if (!chooser) {
+      console.log(`  ${tut.title}: なし`);
+      continue;
+    }
+    const at = beforeFinale(tut);
+    if (!at || at.step !== chooser) {
+      ok(`${tut.title}: 決着の手が自分で考える1手になっている`, false);
+      continue;
+    }
+    const { s } = at;
+    const need = chooser.need;
+    const target = s.pieces[need.choose.target];
+    ok(
+      `${tut.title}: 的の駒が ${need.choose.cell} にいる`,
+      !!target &&
+        target.alive &&
+        target.owner === 1 &&
+        target.row === need.row &&
+        target.col === need.col &&
+        squareName(need.row, need.col, s.boardSize) === need.choose.cell,
+    );
+    ok(
+      `${tut.title}: 文に的のマスの名前がある(第1話は ▼ で指す)`,
+      chooser.text.includes(need.choose.cell) || tut.id === 1,
+      chooser.text,
+    );
+    const accepted = [];
+    let rejected = 0;
+    const losers = [];
+    for (const p of Object.values(s.pieces)) {
+      if (p.owner !== 0 || !p.alive) continue;
+      for (const m of legalOf(s, 0)(p)) {
+        const act = { type: "MOVE_PIECE", pieceId: p.id, row: m.row, col: m.col, captures: m.captures };
+        if (!matchesNeed(need, act)) {
+          rejected++;
+          continue;
+        }
+        let t = reducer(s, act);
+        for (let g = 0; g < 10 && finaleFlow(t); g++) t = reducer(t, finaleFlow(t));
+        accepted.push(`${p.rank}${SUIT_SYMBOL[p.suit]}`);
+        if (!(t.phase === "gameover" && t.winner === 0)) losers.push(`${p.rank}${SUIT_SYMBOL[p.suit]}→(${m.row},${m.col})`);
+      }
+    }
+    ok(`${tut.title}: 通す手はどれも勝ちで終わる(正解 ${accepted.length} 通り: ${accepted.join("・")})`, accepted.length > 0 && losers.length === 0, losers.join(" / "));
+    const model = s.pieces[need.pieceId];
+    const modelMove = model && legalOf(s, 0)(model).find((m) => m.row === need.row && m.col === need.col);
+    ok(
+      `${tut.title}: 見本の答えが通る`,
+      !!modelMove && matchesNeed(need, { type: "MOVE_PIECE", pieceId: model.id, row: modelMove.row, col: modelMove.col, captures: modelMove.captures }),
+    );
+    ok(`${tut.title}: 的を取らない手は通さない(${rejected} 通り)`, rejected > 0);
+    ok(`${tut.title}: ヒントの文がある`, typeof need.choose.hint === "string" && need.choose.hint.length > 0);
+    ok(
+      `${tut.title}: 答えの駒を初めから光らせない`,
+      !((chooser.focus && chooser.focus.pieces) || []).includes(need.pieceId),
+    );
+  }
+}
 
 console.log(fail ? `\n${fail} 件の失敗` : "\nすべて通りました");
 process.exit(fail ? 1 : 0);

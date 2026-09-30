@@ -203,6 +203,8 @@ export const KING_RANGE_PER_CARD = 2;
  * 上限が無いので関わらない。
  */
 export function rangeBonus(piece, armyRankCounts, kingRank) {
+  // 王の力なし(フェーズ1)。駒に powers:false が付いていれば伸びない
+  if (piece.powers === false) return 0;
   const rank = piece.rank;
   const cards = (armyRankCounts && armyRankCounts[rank]) || 1;
   const grows =
@@ -210,6 +212,16 @@ export function rangeBonus(piece, armyRankCounts, kingRank) {
       ? piece.isKing
       : (rank === "4" || rank === "5") && !piece.isKing && kingRank === rank;
   return grows ? KING_RANGE_PER_CARD * cards : 0;
+}
+
+/**
+ * その対局で王の力が働くか(2026-09-30 本人の指示。フェーズ1「駒の動きだけ」)。
+ * 旗が無い古い記録・古い端末の対局は「働く」と読む。
+ * 王そのものはいて、伏せたままで、討てば勝ち。力(伸び・継承・道連れ・まとめ取り・
+ * 2回行動・J/Q の+1・K の予備札)だけを切る。採用枚数の決まり(maxAdopt)は札の規則なので残す
+ */
+export function kingPowersOn(state) {
+  return !state || state.kingPowers !== false;
 }
 
 /** その軍の王の数字。まだ王が決まっていなければ null */
@@ -226,6 +238,9 @@ export function kingRankOf(state, owner) {
  */
 export function getLegalMoves(piece, board, size, armyRankCounts, kingRank) {
   const bonus = rangeBonus(piece, armyRankCounts, kingRank);
+  // 王としての動き(6〜9 のまとめ取り・J/Q の+1マス)。
+  // **王の力なし**(フェーズ1)の対局では、駒に powers:false が付いていて王でも素の動き
+  const asKing = !!piece.isKing && piece.powers !== false;
   switch (piece.rank) {
     case "A":
       return [];
@@ -238,24 +253,24 @@ export function getLegalMoves(piece, board, size, armyRankCounts, kingRank) {
     case "5":
       return slideMoves(piece, DIAG, board, size, 1, 2 + bonus, null);
     case "6":
-      return parityMoves(piece, ORTH, board, size, "even", piece.isKing);
+      return parityMoves(piece, ORTH, board, size, "even", asKing);
     case "7":
-      return parityMoves(piece, DIAG, board, size, "even", piece.isKing);
+      return parityMoves(piece, DIAG, board, size, "even", asKing);
     case "8":
-      return parityMoves(piece, ORTH, board, size, "odd", piece.isKing);
+      return parityMoves(piece, ORTH, board, size, "odd", asKing);
     case "9":
-      return parityMoves(piece, DIAG, board, size, "odd", piece.isKing);
+      return parityMoves(piece, DIAG, board, size, "odd", asKing);
     case "10":
       return knightMoves(piece, board, size);
     case "J": {
       let moves = slideMoves(piece, ORTH, board, size, 1, size, null);
-      if (piece.isKing)
+      if (asKing)
         moves = moves.concat(slideMoves(piece, DIAG, board, size, 1, 1, null));
       return moves;
     }
     case "Q": {
       let moves = slideMoves(piece, DIAG, board, size, 1, size, null);
-      if (piece.isKing)
+      if (asKing)
         moves = moves.concat(slideMoves(piece, ORTH, board, size, 1, 1, null));
       return moves;
     }
