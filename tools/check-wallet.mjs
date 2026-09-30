@@ -16,6 +16,7 @@ import { X509CertificateGenerator, X509Certificate } from "@peculiar/x509";
 import { CompactSign } from "jose";
 import { Wallet, MIGRATE_TICKETS_MAX, MIGRATE_ENABLED, EARN_DAILY_MAX } from "../src/server/wallet.js";
 import { TUTORIAL_TICKETS, TUTORIAL_REWARD_MAX_ID } from "../src/game/tutorial-reward.js";
+import { STORY_TICKETS, STORY_AXES } from "../src/game/phase.js";
 import { ticketsPrice, etherFor } from "../src/iap/catalog.js";
 import { verifyAppleTransaction } from "../src/server/applejws.js";
 import { APPLE_ROOT_G3_PEM } from "../src/server/apple-root-g3.js";
@@ -112,6 +113,28 @@ console.log("\nチュートリアルの褒美(kind=tutorial。earn の1日上限
   is("残高は増えない", fresh.summary("TL").tickets, before);
   is("同じ tutorial:local:2 でも他人には効かない(その人は 2 話を受け取れる)", fresh.tutorialReward("TM", 2, day).applied, true);
   is("第13話(番外)も受け取れる", fresh.tutorialReward("TM", 13, day).applied, true);
+}
+
+console.log("\nストーリーの褒美(kind=story。earn の1日上限とは別の道)");
+{
+  const D = new DatabaseSync(":memory:");
+  const sw = new Wallet((q, ...a) => D.prepare(q).all(...a));
+  const day = T + 20 * 86_400_000;
+  for (let i = 0; i < 3; i++) sw.credit("ST", `sd${i}`, 10, "earn", day);
+  await throws("earn は上限どおり止まる", () => sw.credit("ST", "sd9", 1, "earn", day), /これ以上/);
+  is("earn が尽きた日でもステージの褒美は受け取れる", sw.storyReward("ST", 1, "23", day).applied, true);
+  is("枚数はサーバーが決める(STORY_TICKETS = 10連ぶん)", [STORY_TICKETS, sw.summary("ST").tickets], [10, 30 + STORY_TICKETS]);
+  is("同じステージは二度効かない", sw.storyReward("ST", 1, "23", day).applied, false);
+  is("同じ軸でもフェーズが違えば別のステージ", sw.storyReward("ST", 2, "23", day).applied, true);
+  for (const p of [1, 2, 3]) for (const a of STORY_AXES) sw.storyReward("ST", p, a, day);
+  is("全ステージで打ち止め(3 フェーズ × 6 軸)", sw.summary("ST").tickets, 30 + 3 * STORY_AXES.length * STORY_TICKETS);
+  await throws("知らない軸は断る", () => sw.storyReward("ST", 1, "xx", day), /正しくありません/);
+  await throws("フェーズ 4 は断る", () => sw.storyReward("ST", 4, "23", day), /正しくありません/);
+  await throws("文字のフェーズは断る", () => sw.storyReward("ST", "1", "23", day), /正しくありません/);
+  await throws("story: の id はほかの道から植えられない", () => sw.credit("SX", "story:ST:3:jqk", 1, "earn", day), /正しくありません/);
+  is("別の人も自分のぶんを受け取れる", sw.storyReward("SU", 1, "23", day).applied, true);
+  const rows = D.prepare("SELECT ref FROM wallet_ledger WHERE uid='ST' AND kind='story' ORDER BY ref").all();
+  is("台帳には「フェーズ:軸」で残る", rows.length === 18 && rows.some((r) => r.ref === "1:23") && rows.some((r) => r.ref === "3:jqk"), true);
 }
 
 console.log("記念配布(campaigns.js)");

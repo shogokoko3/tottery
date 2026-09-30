@@ -62,9 +62,10 @@ import {
   isRewardChapter,
   rewardEventId,
 } from "../game/tutorial-reward.js";
+import { STORY_TICKETS, isStoryAxis, normalizePhase, PHASES, storyEventId } from "../game/phase.js";
 
 /** サーバーが組む出来事 id の接頭辞と、それを書いてよい道(kind)。apply() が守る */
-const RESERVED_PREFIX = Object.freeze({ tutorial: "tutorial", campaign: "campaign" });
+const RESERVED_PREFIX = Object.freeze({ tutorial: "tutorial", campaign: "campaign", story: "story" });
 
 /** 遊んで貯める分(kind=earn)は端末の申告なので、1回と1日(UTC)の上限で抑える */
 export const EARN_EVENT_MAX = 10;
@@ -311,6 +312,24 @@ export class Wallet {
     if (legacy && legacy.uid === uid) return { applied: false, ...this.summary(uid, now) };
     // ref=話の番号。あとから「何話ぶん配ったか」を数えられる
     const r = this.apply(uid, id, { tickets: TUTORIAL_TICKETS }, "tutorial", String(chapter), now);
+    return { ...r, ...this.summary(uid, now) };
+  }
+  /**
+   * ストーリーのステージを1つクリアした褒美(STORY_TICKETS 枚。2026-09-30 本人の指示)。
+   * チュートリアルの道と同じく **earn の1日上限とは別**。フェーズ×軸ごとに一度きり
+   * (1人あたり最大 3×6×STORY_TICKETS 枚)。id はここで組む。枚数も端末からは受け取らない
+   */
+  storyReward(uid, phase, axis, now) {
+    if (!PHASES.includes(phase) || !isStoryAxis(axis))
+      throw new Error("ステージの指定が正しくありません。");
+    const id = storyEventId(uid, normalizePhase(phase), axis);
+    const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
+    if (seen) {
+      if (seen.uid !== uid) throw new Error("他の人の出来事です。");
+      return { applied: false, ...this.summary(uid, now) };
+    }
+    // ref=「フェーズ:軸」。あとから何を配ったか数えられる
+    const r = this.apply(uid, id, { tickets: STORY_TICKETS }, "story", `${phase}:${axis}`, now);
     return { ...r, ...this.summary(uid, now) };
   }
   /** 出来事 id で冪等に増減する。減らす場合は残高を超えない */

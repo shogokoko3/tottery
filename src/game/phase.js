@@ -28,6 +28,18 @@ export const STORY_AXES = Object.freeze(["23", "45", "67", "89", "10", "jqk"]);
 /** 昇格に要るオンライン勝利数(そのフェーズで) */
 export const PROMOTION_WINS = 5;
 
+/**
+ * ストーリーのステージを1つクリアしたときの褒美(ガチャチケット 10 枚 = 10連ぶん。2026-09-30 本人の指示)。
+ * フェーズ×軸ごとに一度きり。**サーバーもこれを見る**(台帳の道 kind=story)
+ */
+export const STORY_TICKETS = 10;
+
+/** ストーリーの軸として正しいか */
+export const isStoryAxis = (axis) => STORY_AXES.includes(axis);
+
+/** 台帳の出来事 id。組むのはサーバー(認証済みの uid から) */
+export const storyEventId = (uid, phase, axis) => `story:${uid}:${phase}:${axis}`;
+
 /** フェーズとして正しい値なら返し、そうでなければ既定 */
 export function normalizePhase(value) {
   return PHASES.includes(value) ? value : DEFAULT_PHASE;

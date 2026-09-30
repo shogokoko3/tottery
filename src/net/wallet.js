@@ -108,6 +108,8 @@ export async function flushPending() {
           ? await walletRequest("pass-reward", { id: ev.id })
           : ev.tutorial
             ? await walletRequest("tutorial-reward", { chapter: ev.tutorial })
+            : ev.story
+              ? await walletRequest("story-reward", { phase: ev.story.phase, axis: ev.story.axis })
             : ev.gems
               ? await walletRequest("earn-gems", { id: ev.id, gems: ev.gems })
               : await walletRequest("earn", { id: ev.id, n: ev.n }),
@@ -132,6 +134,19 @@ export async function earnTutorialTicket(chapter) {
   const list = readPending();
   if (!list.some((x) => x.id === id))
     writePending([...list, { id, tutorial: chapter, at: Date.now() }]);
+  await flushPending().catch(() => {});
+}
+
+/**
+ * ストーリーのステージを1つクリアした褒美(2026-09-30)。「どのフェーズの何の軸」だけを送り、
+ * 枚数と出来事 id はサーバーが決める。earn の1日上限とは別の道。同じステージは二度効かない
+ */
+export async function earnStoryTicket(phase, axis) {
+  if (!WALLET_SERVER || ![1, 2, 3].includes(phase) || typeof axis !== "string" || !axis) return;
+  const id = `story:${phase}:${axis}`;
+  const list = readPending();
+  if (!list.some((x) => x.id === id))
+    writePending([...list, { id, story: { phase, axis }, at: Date.now() }]);
   await flushPending().catch(() => {});
 }
 

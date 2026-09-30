@@ -80,6 +80,14 @@ console.log("入口(worker)");
   res = await post("/api/wallet/earn", { id: "tutorial:local:13", n: 10 });
   is("古い端末の第13話(番外)は受け付ける", last, { op: "wallet-tutorial-reward", uid: "player-1", chapter: 13 });
   last = null;
+  res = await post("/api/wallet/story-reward", { phase: 2, axis: "67", n: 999 });
+  is("story-reward は DO にフェーズと軸だけ渡す", [res.status, last], [200, { op: "wallet-story-reward", uid: "player-1", phase: 2, axis: "67" }]);
+  for (const bad of [{ phase: 4, axis: "67" }, { phase: 1, axis: "zz" }, { phase: "1", axis: "67" }, {}]) {
+    last = null;
+    res = await post("/api/wallet/story-reward", bad);
+    is(`変な指定(${JSON.stringify(bad)})は DO へ届かず 400`, [last, res.status], [null, 400]);
+  }
+  last = null;
   res = await post("/api/wallet/earn", { id: "login:2026-09-30", n: 1 });
   is("ふつうの earn は今まで通り", last, { op: "wallet-credit", uid: "player-1", id: "login:2026-09-30", n: 1, kind: "earn" });
   last = null;
@@ -188,6 +196,27 @@ console.log("\n端末の送り方");
   const amount = await grantTutorialTickets([0, 14, 2, 2]);
   is("褒美の入口は正しい話だけを数える", amount, 10);
   is("正しい話だけ送る", calls.map((c) => [c.op, c.body.chapter]), [["tutorial-reward", 2]]);
+
+  // ストーリーの褒美(2026-09-30): 「どのフェーズの何の軸」だけ送る
+  const { earnStoryTicket } = await import("../src/net/wallet.js");
+  calls.length = 0;
+  mode = "ok";
+  await earnStoryTicket(2, "45");
+  is("story-reward へ フェーズと軸だけ送る", calls.map((c) => [c.op, c.body]), [["story-reward", { phase: 2, axis: "45" }]]);
+  is("送れたら保留列から消える", pending(), []);
+  calls.length = 0;
+  await earnStoryTicket(4, "45");
+  await earnStoryTicket(1, "");
+  await earnStoryTicket("1", "23");
+  is("変なフェーズ・軸は送らない", calls.length, 0);
+  mode = "offline";
+  await earnStoryTicket(1, "23");
+  await earnStoryTicket(1, "23");
+  is("圏外なら残り、同じステージは二度積まない", pending().map((e) => e.id), ["story:1:23"]);
+  mode = "ok";
+  calls.length = 0;
+  await flushPending();
+  is("戻ったら送る", calls.map((c) => c.body), [{ phase: 1, axis: "23" }]);
 
   // 取りこぼしの回収: profile.cleared にある話を一度だけ全部送り直す
   const { backfillTutorialRewards, BACKFILL_KEY } = await import("../src/game/tutorial-reward.js");

@@ -13,6 +13,7 @@ import { minAppBuild, updateUrl } from "./app-version.js";
 import { seasonAt, seasonRewards } from "../game/season.js";
 import { Friends } from "./friends.js";
 import { chapterFromLegacyId, isRewardChapter } from "../game/tutorial-reward.js";
+import { PHASES, isStoryAxis } from "../game/phase.js";
 
 const json = (data, status = 200) =>
   Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -178,6 +179,11 @@ async function handleApi(request, env, url) {
         // サーバーが引く(2026-09-18)。debit は配布済みのビルドが使うので残す
         if (wop === "pull" && eventId(body.id) && (body.n === 1 || body.n === 10))
           return call("wallet-pull", { id: body.id, n: body.n });
+        // ストーリーのステージの褒美。端末は「どのフェーズの何の軸」だけ送る
+        if (wop === "story-reward")
+          return PHASES.includes(body.phase) && isStoryAxis(body.axis)
+            ? call("wallet-story-reward", { phase: body.phase, axis: body.axis })
+            : json({ error: "ステージの指定が正しくありません。" }, 400);
         // チュートリアル1話の褒美。earn の1日上限とは別の道。端末は「何話」だけ送る。
         // 話の番号として変なものは、台帳まで行かせずここで断る
         if (wop === "tutorial-reward")
@@ -468,6 +474,7 @@ export class SeasonLedger {
         if (op === "wallet-pull") return w.pull(uid, args.id, args.n, now);
         if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-tutorial-reward") return w.tutorialReward(uid, args.chapter, now);
+        if (op === "wallet-story-reward") return w.storyReward(uid, args.phase, args.axis, now);
         if (op === "wallet-campaign") return w.campaign(uid, args.campaign, now);
         if (op === "wallet-purchase") return w.purchase(uid, args.tx, now);
         if (op === "wallet-migrate") return w.migrate(uid, args.tickets, now);
