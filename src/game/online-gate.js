@@ -24,6 +24,17 @@ export function onlineGate(profile) {
   };
 }
 
+/**
+ * 話を終えた直後の「あと N 話でランダムマッチ」。いま終えた話(clearedId)は
+ * 保存の前後に関わらず終えたものとして数える。終わりが見えると続けやすい
+ * (2026-09-25 本人の指示)。0 なら、この話でちょうど開いた
+ */
+export function gateRemainingAfter(profile, clearedId) {
+  return TUTORIALS.slice(0, ONLINE_GATE_EPISODES).filter(
+    (t) => t.id !== clearedId && !hasCleared(t.id, profile),
+  ).length;
+}
+
 /** 入口に添える一言 */
 export function onlineGateLabel(gate) {
   if (gate.ok) return null;
