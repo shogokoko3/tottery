@@ -135,8 +135,10 @@ console.log("\nサーバー再生(verify-match)は、フェーズ<3 の部屋と
   const start = (extra) => ({ "-N0000000000000000001": { type: "START_SETUP", by: "h", __id: "s-1", size: 9, ruleVersion: GAME_RULE_VERSION, ...extra } });
   const room = (extra, acts) => ({ seats: { host: "h", guest: "g" }, createdAt: 1, round: 0, acts, ...extra });
   const thrown = (fn) => { try { fn(); return null; } catch (e) { return e.message; } };
-  is("フェーズ1の部屋は断る", /フェーズ3/.test(thrown(() => verifyMatch(room({ phase: 1 }, start({})), finish, "h")) || ""), true);
-  is("フェーズ2の部屋も断る", /フェーズ3/.test(thrown(() => verifyMatch(room({ phase: 2 }, start({})), finish, "h")) || ""), true);
+  // 断り文は worker.js の known(/^(この対局|対局|通常の9×9)/)に合う形。合わないと端末には汎用の通信エラーとして届く
+  const known = /^(この対局|対局|通常の9×9)/;
+  is("フェーズ1の部屋は断る(端末に届く断り文で)", known.test(thrown(() => verifyMatch(room({ phase: 1 }, start({})), finish, "h")) || ""), true);
+  is("フェーズ2の部屋も断る", known.test(thrown(() => verifyMatch(room({ phase: 2 }, start({})), finish, "h")) || ""), true);
   is("phase の無い部屋で kingPowers:false の開始は断る", /9×9/.test(thrown(() => verifyMatch(room({}, start({ kingPowers: false })), finish, "h")) || ""), true);
   const plain = thrown(() => verifyMatch(room({}, start({})), finish, "h")) || "";
   is("phase の無い部屋の普通の開始は、フェーズの理由では断らない", /フェーズ3/.test(plain), false);

@@ -141,7 +141,7 @@ import {
   shouldOfferFirstTutorial,
 } from "../game/tutorial-nudge.js";
 import { TUTORIALS } from "../game/tutorial.js";
-import { pickStoryKing, stageAfter, stageOf } from "../game/story.js";
+import { pickStoryKing, stageOf } from "../game/story.js";
 import { isBlocked } from "../game/blocked.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
 import { ensureAuth, myUid } from "../net/auth.js";
@@ -847,6 +847,8 @@ export function RandomMatchScreen({
           ) {
             clearInterval(r);
             deleteLobbyPath(`/${d}`);
+            // 部屋も消す(相手の画面に「相手が退出」が出る。合言葉の部屋・近くの端末と同じ)
+            deleteRoom(d);
             u(
               "対戦相手のルール設定を確認できませんでした。もう一度お探しください。",
             );
@@ -2362,7 +2364,8 @@ function TotteryScreens() {
   function startStory(axis) {
     const stage = stageOf(axis);
     if (!stage) return;
-    (u(null), setTut(null), setBot(null), setStoryIntro(null),
+    // 相手の装備と選んだエリアは前の CPU 戦のものを引きずらない(Bot 戦と同じ)
+    (u(null), setTut(null), setBot(null), setStoryIntro(null), setCpuSkins(createCpuLoadout()), setCpuArea(null), setRound(0),
       setStory({ axis, phase: phaseOf(loadProfile()), king: pickStoryKing(axis), title: `${stage.name}の王` }),
       m(!0), r("game"), t("game"));
     window.scrollTo(0, 0);
@@ -2441,8 +2444,6 @@ function TotteryScreens() {
     );
   if (e === "game") {
     const nextTutorial = tut ? nextTutorialAfter(tut.id) : null;
-    // ストーリーの次のステージ(並びの次。対局後の「次のステージへ」)
-    const storyNext = story ? stageAfter(story.axis) : null;
     // 対局中に出す名前。相手の名前が分からない席は色名のまま
     let mine = loadProfile(),
       me = mine.name || null,
@@ -2526,18 +2527,13 @@ function TotteryScreens() {
             handSize={!a && !tut && !bot && !story ? handSizeForLevel(localLevel) : null}
             tutorial={tut}
             story={story}
-            // ストーリーは「次のステージ」と「一覧」をチュートリアルと同じ受け口で渡す
-            nextTutorial={story ? (storyNext ? { title: `${storyNext.name}の王`, axis: storyNext.axis } : null) : nextTutorial}
-            // ストーリーの「次のステージへ」も、いきなり対局ではなく相手の王の説明から(毎回出す)
+            nextTutorial={nextTutorial}
             onNextTutorial={
-              story
-                ? storyNext
-                  ? () => (showStory(), setStoryIntro(storyNext.axis))
-                  : null
-                : nextTutorial
-                  ? () => startTutorial(nextTutorial)
-                  : null
+              nextTutorial ? () => startTutorial(nextTutorial) : null
             }
+            // ストーリーの「次のステージへ」「もう一度遊ぶ」は、いきなり対局ではなく相手の王の説明から(毎回出す。王も引き直す)
+            onNextStory={(axis) => (showStory(), setStoryIntro(axis))}
+            onRetryStory={story ? () => (showStory(), setStoryIntro(story.axis)) : null}
             onTutorialList={story ? showStory : showTutorials}
             onExit={tut ? s : story ? showStory : backToMatching}
             exitLabel={tut ? "タイトルに戻る" : story ? "ストーリーに戻る" : "対戦相手を選ぶに戻る"}

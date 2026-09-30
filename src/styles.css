@@ -9263,3 +9263,13 @@ svg {
 .story-intro .hint {
   margin: 0;
 }
+
+/* 読み上げにだけ渡す文字(見た目には出さない) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -47,6 +47,9 @@ const fails = []; let okN = 0;
 const is = (label, cond, extra = "") => { if (cond) { okN++; console.log("  ok   " + label); } else { fails.push(label); console.log("  NG   " + label + "  " + extra); } };
 
 await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+await send("Page.navigate", { url: APP }); await sleep(2500);
+// 前回の実行の保存(profile・財布)を引きずらない。まっさらな端末として始める
+await ev(`(()=>{ try { localStorage.clear(); sessionStorage.clear(); } catch {} return 1; })()`);
 await send("Page.navigate", { url: APP }); await sleep(3000);
 async function toHome(tag) {
   for (let i = 0; i < 40; i++) {

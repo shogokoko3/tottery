@@ -2,7 +2,7 @@
  * ストーリー(src/game/story.js)の決まりを確かめる。設計は ストーリーとフェーズ.md
  */
 import assert from "node:assert/strict";
-import { STORY_STAGES, STORY_XP, stageOf, stageIntro, stageSetup, storyList, nextStage, ranksLabel, storyFreshClear, pickStoryKing, storyCpuArea, storyDeck, stageAfter } from "../src/game/story.js";
+import { STORY_STAGES, STORY_XP, stageOf, stageIntro, stageSetup, storyList, nextStage, ranksLabel, storyFreshClear, pickStoryKing, storyCpuArea, storyDeck, stageAfter, nextStageAfter } from "../src/game/story.js";
 import { reducer } from "../src/game/reducer.js";
 import { enrichAction } from "../src/game/actions.js";
 import { kingRankOf } from "../src/game/board.js";
@@ -28,6 +28,13 @@ is("どの軸も同じエリアに属する(軸=エリア)", STORY_STAGES.every(
 is("名前と一言がある", STORY_STAGES.every((s) => s.name && s.tagline), true);
 is("知らない軸は null", stageOf("xx"), null);
 is("並びで次のステージ", [stageAfter("23").axis, stageAfter("10").axis, stageAfter("jqk"), stageAfter("xx")], ["45", "jqk", null, null]);
+{
+  const p = { phase: 1, story: { 1: ["jqk"], 2: [], 3: [] } };
+  is("対局後の次のステージは未クリアの中から(J・Q・K を先に勝っても 2・3 へ)", nextStageAfter(p, "jqk").axis, "23");
+  is("いまの軸の次から探す(4・5 の後は 6・7)", nextStageAfter({ phase: 1, story: { 1: ["45"], 2: [], 3: [] } }, "45").axis, "67");
+  is("末尾まで無ければ先頭へ戻る", nextStageAfter({ phase: 1, story: { 1: ["10", "jqk"], 2: [], 3: [] } }, "10").axis, "23");
+  is("全部クリア済みなら null", nextStageAfter({ phase: 1, story: { 1: [...STORY_AXES], 2: [], 3: [] } }, "23"), null);
+}
 is("数字の読み", [ranksLabel(["2", "3"]), ranksLabel(["10"])], ["2 か 3", "10"]);
 
 console.log("\n始める前の説明(フェーズで中身が変わる)");
@@ -270,14 +277,20 @@ console.log("\n配線(game.jsx / screens.jsx)");
   const fs = await import("node:fs");
   const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
   const screens = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
-  is("GameCore に story プロップ", /\n  story = null,\n  round = 0,/.test(game), true);
+  is("GameCore に story プロップ(と次へ・やり直しの受け口)", /\n  story = null,\n  onNextStory = null,\n  onRetryStory = null,\n  round = 0,/.test(game), true);
   is("CPU はストーリーなら軸の王の定石CPU", game.includes("const foeArea = story ? storyCpuArea(story.axis, story.king) : cpuArea;") && game.includes("josekiCpuAction(a, T, foeArea.type, foeArea.king)"), true);
   is("START_SETUP にフェーズの旗(フェーズ1は王の力なし)", game.includes("...setupFlagsForPhase(phase),"), true);
-  is("フェーズは 通信=部屋 / ストーリー=ステージ / 手元=profile", game.includes("const phase = network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile());"), true);
+  is("フェーズは チュートリアル=全部の決まり / 通信=部屋 / ストーリー=ステージ / 手元=profile", game.includes("const phase = tutorial ? PHASE_MAX : network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile());"), true);
+  is("フェーズ<3 では手元の 9×9 でもエリアと定石の山札を載せない", (game.match(/rulesForPhase\(phase\)\.areas &&/g) || []).length >= 2, true);
   is("ストーリーは軸の札を積んだ山札", /\.\.\.\(story && cpu && !network && !tutorial\s*\? \{ deck: storyDeck\(story\.axis, story\.king\) \}/.test(game), true);
   is("ゲストは部屋のフェーズで決め直す", game.includes("phase: onlinePhase(network.phase),"), true);
-  is("勝てばクリアの記録(profile.story)と xp", /\.\.\.\(story\s*\? \{ \.\.\.\(won \? \{ xp: STORY_XP \} : null\), story: \{ axis: story\.axis, phase: story\.phase \} \}/.test(game), true);
-  is("はじめてのクリアだけ褒美(先に fresh を取る)", game.includes("const freshStory = !!story && won === true && storyFreshClear(loadProfile(), story.axis);") && game.includes("if (freshStory) grantStoryReward(story.phase, story.axis).catch(() => {});"), true);
+  is("勝てばクリアの記録(profile.story)。xp ははじめてのクリアだけ", /\.\.\.\(story\s*\? \{ \.\.\.\(won && freshStory \? \{ xp: STORY_XP \} : null\), story: \{ axis: story\.axis, phase: story\.phase \} \}/.test(game), true);
+  is("はじめてのクリアだけ褒美(先に fresh を取る。基準は recordGame と同じ)", /const freshStory =\s*!!story && won === true && phaseOf\(loadProfile\(\)\) === story\.phase && storyFreshClear\(loadProfile\(\), story\.axis\);/.test(game) && game.includes("if (freshStory) grantStoryReward(story.phase, story.axis).catch(() => {});"), true);
+  is("次のステージは未クリアの中から、全部済みなら allCleared", game.includes("const next = nextStageAfter(afterProfile, story.axis);") && game.includes("allCleared: !nextStage(afterProfile),"), true);
+  is("前の局の結果を持ち越さない", /if \(a\.phase !== "gameover"\) \{\s*recordedRef\.current = false;\s*\/\/[^\n]*\n\s*setStoryResult\(null\);/.test(game), true);
+  is("もう一度遊ぶ・次のステージへ は説明から(onRetryStory / onNextStory)", game.includes("onClick={onRetryStory}") && game.includes("onClick={() => onNextStory(story.next.axis)}") && screens.includes("onRetryStory={story ? () => (showStory(), setStoryIntro(story.axis)) : null}") && screens.includes("onNextStory={(axis) => (showStory(), setStoryIntro(axis))}"), true);
+  is("ストーリーを始めるとき相手の装備とエリアを引きずらない", screens.includes("setCpuSkins(createCpuLoadout()), setCpuArea(null), setRound(0),"), true);
+  is("ランダムのホストは相手を断るとき部屋も消す", /guestPhaseOf\(g\.data\) !== myPhase[\s\S]{0,300}deleteRoom\(d\);/.test(screens), true);
   is("オンラインの勝ちは部屋のフェーズを添えて数える", game.includes("...(network ? { phase: onlinePhase(network.phase) } : null),"), true);
   is("対局後の見出しは「ステージクリア!」", game.includes('"ステージクリア!"') && game.includes("次のステージへ") && game.includes("ストーリーへ"), true);
   is("ホームのタイルはストーリー(チュートリアルの場所)", /tone="story"[\s\S]*?label="ストーリー"[\s\S]*?note=\{storyTileNote\(profile\)\}[\s\S]*?onClick=\{onStory\}/.test(screens) && !/tone="tutorial"/.test(screens), true);

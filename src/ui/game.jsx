@@ -52,8 +52,8 @@ import { getCollection } from "../skins/store.js";
 import { baseSkinId } from "../skins/catalog.js";
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
-import { STORY_XP, grantStoryReward, storyCpuArea, storyDeck, storyFreshClear } from "../game/story.js";
-import { STORY_TICKETS, phaseOf, setupFlagsForPhase } from "../game/phase.js";
+import { STORY_XP, grantStoryReward, nextStage, nextStageAfter, storyCpuArea, storyDeck, storyFreshClear } from "../game/story.js";
+import { PHASE_MAX, STORY_TICKETS, phaseOf, rulesForPhase, setupFlagsForPhase } from "../game/phase.js";
 import { onlinePhase } from "../net/match-settings.js";
 import { noteRandomResult, botAction } from "../game/bot-match.js";
 import { backupIfDue } from "../net/backup.js";
@@ -633,8 +633,11 @@ export function GameView({
   onHome = null,
   onNextMatch,
   tutorial,
-  // ストーリーのステージ(+ fresh: この局ではじめてクリアした)。次のステージは nextTutorial / onNextTutorial で受ける
+  // ストーリーのステージ(+ fresh: この局ではじめてクリアした / next: 次に遊ぶ未クリアのステージ / allCleared)
   story = null,
+  // ストーリー: 次のステージへ(axis を受ける)/ 同じステージをもう一度(相手の王の説明から)
+  onNextStory = null,
+  onRetryStory = null,
   nextTutorial,
   onNextTutorial,
   onTutorialList,
@@ -1193,21 +1196,17 @@ export function GameView({
             {story.fresh && (
               <p className="hint story-reward">ガチャチケット {STORY_TICKETS}枚を受け取りました</p>
             )}
-            {nextTutorial && onNextTutorial ? (
+            {story.next && onNextStory ? (
               <>
-                <p className="hint">次は「{nextTutorial.title}」</p>
-                <button className="btn btn-primary btn-wide" onClick={onNextTutorial}>
+                <p className="hint">次は「{story.next.title}」</p>
+                <button className="btn btn-primary btn-wide" onClick={() => onNextStory(story.next.axis)}>
                   次のステージへ <ArrowRight size={16} />
                 </button>
               </>
-            ) : (
-              <>
-                <p className="hint">このフェーズの全ステージをクリアしました!</p>
-                <button className="btn btn-primary btn-wide" onClick={onTutorialList || onExit}>
-                  ストーリーへ
-                </button>
-              </>
-            )}
+            ) : story.allCleared ? (
+              // 一覧へは右上の「ストーリーへ」で(釦を二つ並べない)
+              <p className="hint">このフェーズの全ステージをクリアしました!</p>
+            ) : null}
           </div>
         )}
         {/* 札ごとの熟練度。プレイヤーレベルのゲージ(XpGainToast)とは別に、
@@ -1221,7 +1220,7 @@ export function GameView({
         */}
         <div className="gameover-grid" role="group" aria-label="対局後の操作">
           <button
-            className={`btn ${tutorial && won ? "btn-ghost" : "btn-primary"} go-review`}
+            className={`btn ${(tutorial || story) && won ? "btn-ghost" : "btn-primary"} go-review`}
             onClick={() => o(!0)}
           >
             <Info size={16} /> 対戦の振り返り
@@ -1301,7 +1300,12 @@ export function GameView({
                   <p className="hint">相手はもう一度遊びたいようです</p>
                 )}
               </>
-            )) : (
+            )) : story && onRetryStory ? (
+            // ストーリーのやり直しは相手の王の説明から(王の数字も引き直す)
+            <button className="btn btn-ghost go-again" onClick={onRetryStory}>
+              <RotateCcw size={16} /> もう一度遊ぶ
+            </button>
+          ) : (
             <button
               className="btn btn-ghost go-again"
               onClick={() => dispatch({ type: "NEW_GAME" })}
@@ -1362,6 +1366,8 @@ export function GameCore({
   // ストーリーのステージ({ axis, phase, king, title }。src/game/story.js)。cpu と一緒に立つ。
   // 対局は通常の CPU 戦(相手は軸の王の定石CPU、山札は軸の札を積んだもの)。終わりにクリアの記録と褒美
   story = null,
+  onNextStory = null,
+  onRetryStory = null,
   round = 0,
   onRematch,
   nextTutorial,
@@ -1755,7 +1761,8 @@ export function GameCore({
         : null;
     // 対局のフェーズ(ストーリーとフェーズ.md)。通信は部屋から届く phase(無ければ 3 = 今までどおり)、
     // 手元はストーリーのステージのフェーズか、自分の profile のフェーズ
-    const phase = network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile());
+    // チュートリアルは台本が王の力を教えるので、フェーズを見ない(いつも全部の決まり)
+    const phase = tutorial ? PHASE_MAX : network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile());
     a.phase === "intro" &&
       matchRatings.ready &&
       // 対戦相手の画面を見終わるまで待つ(ホストが始めると相手側の画面も進むため)
@@ -1775,6 +1782,8 @@ export function GameCore({
           // (screens.jsx)。自分のエリアは装備どおり立つ(2026-09-17 本人の指示)
           // 詳細設定のエリアの側(両方/自分だけ/相手だけ/なし)は、立てない側の装備からフォイルを外して伝える
           ...(!tutorial &&
+          // フェーズ<3 ではエリアを立てない(手元の 9×9 も。通信は sync.js が同じ決め直しをする)
+          rulesForPhase(phase).areas &&
           (boardSize || 5) === 9 &&
           (!network || hasAreaRules(network.ruleVersion)) &&
           !(customRules && customRules.areas === "none")
@@ -1784,6 +1793,7 @@ export function GameCore({
           // エリアを選んだCPU戦は、CPU(後手の席)に定石の札を積んだ山札で始める。
           // 札を絞っているレベルでは定石の札がそろわないので積まない
           ...(cpu &&
+          rulesForPhase(phase).areas &&
           !network &&
           !tutorial &&
           !pool &&
@@ -2466,6 +2476,8 @@ export function GameCore({
   (0, useEffect)(() => {
     if (a.phase !== "gameover") {
       recordedRef.current = false;
+      // 前の局の結果(ストーリー)を次の局に持ち越さない
+      setStoryResult(null);
       return;
     }
     if (recordedRef.current || !matchRatings.ready) return;
@@ -2493,7 +2505,9 @@ export function GameCore({
     const freshTutorial =
       !!tutorial && won && !loadProfile().cleared.includes(tutorial.id);
     // ストーリーのステージを、この1局で**はじめて**クリアするか(褒美を二度配らない)
-    const freshStory = !!story && won === true && storyFreshClear(loadProfile(), story.axis);
+    // recordGame と同じ基準(profile のフェーズがステージのフェーズと同じときだけ記録される)
+    const freshStory =
+      !!story && won === true && phaseOf(loadProfile()) === story.phase && storyFreshClear(loadProfile(), story.axis);
     const after = recordGame(won, {
       online: ((!!network && !network.nearby) || !!bot) && !tutorial,
       matchId: network
@@ -2514,9 +2528,9 @@ export function GameCore({
             ...(won ? { tutorialId: tutorial.id } : {}),
           }
         : null),
-      // ストーリー: 勝てばステージの xp と、その軸のクリア(profile.story)。負けは普段の対局と同じ
+      // ストーリー: はじめてのクリアだけステージの xp。再挑戦と負けは普段の対局と同じ(xp 50)。軸のクリアは profile.story
       ...(story
-        ? { ...(won ? { xp: STORY_XP } : null), story: { axis: story.axis, phase: story.phase } }
+        ? { ...(won && freshStory ? { xp: STORY_XP } : null), story: { axis: story.axis, phase: story.phase } }
         : null),
       // オンラインの勝ちは、いまの自分のフェーズの部屋の分だけ数える(昇格の 5 勝)
       ...(network ? { phase: onlinePhase(network.phase) } : null),
@@ -2526,7 +2540,16 @@ export function GameCore({
     if (freshTutorial)
       grantTutorialTickets([tutorial.id], { uid: myUid() }).catch(() => {});
     // ステージをはじめてクリア: ガチャチケット(端末の財布とサーバーの台帳)。失敗しても対局は止めない
-    if (story) setStoryResult({ fresh: freshStory });
+    if (story) {
+      // 次のステージは「いまの軸の次から順に、まだクリアしていないもの」。全部済みなら allCleared
+      const afterProfile = loadProfile();
+      const next = nextStageAfter(afterProfile, story.axis);
+      setStoryResult({
+        fresh: freshStory,
+        next: next ? { axis: next.axis, title: `${next.name}の王` } : null,
+        allCleared: !nextStage(afterProfile),
+      });
+    }
     if (freshStory) grantStoryReward(story.phase, story.axis).catch(() => {});
     // 札ごとの熟練度。1局の上限は recordMastery 側で掛ける。
     // 称号が新しく届いていれば、その中で profile.titles に焼き付く
@@ -4172,7 +4195,9 @@ export function GameCore({
             // Bot(ランダムマッチの練習相手)は network を持たないが、連戦はできる
             onNextMatch={(network || bot) && onNextMatch ? nextMatch : null}
             tutorial={tutorial}
-            story={story ? { ...story, fresh: !!(storyResult && storyResult.fresh) } : null}
+            story={story ? { ...story, fresh: false, next: null, allCleared: false, ...(storyResult || null) } : null}
+            onNextStory={onNextStory}
+            onRetryStory={onRetryStory}
             nextTutorial={nextTutorial}
             onNextTutorial={onNextTutorial}
             onTutorialList={onTutorialList}

@@ -61,7 +61,8 @@ export function verifyMatch(room, request, uid) {
       // フェーズ<3 の部屋(王の力なし/エリアなし)は持ち点の対象ではない。
       // ゲストは部屋の phase で決め直すので、ここで受けると再生だけがずれる
       if (Number.isInteger(room.phase) && room.phase < 3)
-        throw new Error("持ち点の対象はフェーズ3の対局です。");
+        // 断り文は worker.js の known(「対局」で始まる)に合わせる。合わないと汎用の通信エラーに置き換わる
+        throw new Error("対局のフェーズが持ち点の対象ではありません。");
       const expected = buildDeck()
         .map((c) => `${c.rank}:${c.suit}`)
         .sort();

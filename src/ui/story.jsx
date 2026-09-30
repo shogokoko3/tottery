@@ -7,7 +7,8 @@
  *
  * チュートリアルの一覧(tutorial.jsx)に代わる導線。チュートリアルのコードは残す(本人の指示)
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { typing } from "./key-target.js";
 import { ArrowLeft, Check } from "../icons.jsx";
 import { loadProfile, promotePhase } from "../game/profile.js";
 import { canPromote, promotionStatus } from "../game/phase.js";
@@ -55,7 +56,11 @@ export function StoryScreen({ onBack, onStart }) {
               </span>
               <span className="story-stage-tail">
                 {s.cleared ? (
-                  <Check size={16} aria-label="クリア済み" />
+                  <>
+                    {/* アイコンは aria-label を落とすので、読み上げ用の文字を添える */}
+                    <Check size={16} aria-hidden="true" />
+                    <span className="sr-only">クリア済み</span>
+                  </>
                 ) : (
                   <small className="story-stage-reward">チケット {s.tickets}枚</small>
                 )}
@@ -78,9 +83,10 @@ export function StoryScreen({ onBack, onStart }) {
             </button>
           ) : (
             <p className="hint">
-              昇格の条件: 6ステージ全部のクリアと、このフェーズでオンライン対戦に {status.winsNeeded} 勝。
-              {status.axesLeft.length > 0 && ` ステージはあと ${status.axesLeft.length}。`}
-              {status.winsLeft > 0 && ` 勝利はあと ${status.winsLeft}。`}
+              {/* 数字の前後に空白を置かない(375px で「5」と「勝」の間で折れる) */}
+              昇格の条件: 6ステージ全部のクリアと、このフェーズでオンライン対戦に{status.winsNeeded}勝。
+              {status.axesLeft.length > 0 && `ステージはあと${status.axesLeft.length}。`}
+              {status.winsLeft > 0 && `勝利はあと${status.winsLeft}。`}
             </p>
           )}
         </section>
@@ -98,6 +104,15 @@ export function StoryScreen({ onBack, onStart }) {
 /** ステージの前の1枚。相手の王の特徴を、そのフェーズの中身で */
 export function StoryIntro({ axis, phase, onStart, onBack }) {
   const intro = stageIntro(axis, phase);
+  // Escape で閉じる(入力欄や釦に向いたキーは取らない。Primer と同じ)
+  useEffect(() => {
+    const onKey = (e) => {
+      if (typing(e)) return;
+      if (e.key === "Escape") onBack();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onBack]);
   if (!intro) return null;
   return (
     <div className="modal-overlay">
@@ -120,7 +135,7 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
           <button type="button" className="btn btn-ghost" onClick={onBack}>
             戻る
           </button>
-          <button type="button" className="btn btn-primary" onClick={onStart}>
+          <button type="button" className="btn btn-primary" onClick={onStart} autoFocus>
             はじめる
           </button>
         </div>

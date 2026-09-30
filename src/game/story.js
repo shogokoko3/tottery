@@ -36,10 +36,22 @@ export function stageOf(axis) {
   return STORY_STAGES.find((s) => s.axis === axis) || null;
 }
 
-/** 並びで次のステージ(クリアの有無は見ない。対局後の「次のステージへ」用)。最後なら null */
+/** 並びで次のステージ(クリアの有無は見ない)。最後なら null */
 export function stageAfter(axis) {
   const i = STORY_STAGES.findIndex((s) => s.axis === axis);
   return i < 0 ? null : STORY_STAGES[i + 1] || null;
+}
+
+/**
+ * 対局後の「次のステージへ」。いまの軸の**次から順に**、まだクリアしていないステージを探す
+ * (末尾まで無ければ先頭から)。全部クリア済みなら null。
+ * 並びの最後(J・Q・K)を先に勝っても「全ステージクリア」にならないように、クリアの有無を見る
+ */
+export function nextStageAfter(profile, axis) {
+  const list = storyList(profile);
+  const i = list.findIndex((s) => s.axis === axis);
+  const order = i < 0 ? list : [...list.slice(i + 1), ...list.slice(0, i + 1)];
+  return order.find((s) => !s.cleared) || null;
 }
 
 /** 数字の並びを「2 か 3」のように読める形に */
@@ -75,7 +87,8 @@ export function stageIntro(axis, phase) {
     title: `${stage.name}の王と${area.name}`,
     lead,
     items: [Object.freeze({ rank: stage.ranks.join("・"), text: `${area.name}: ${area.text}` })],
-    note: "9×9 で王のフォイルを装備すると、この盤面エリアが立つ。",
+    // エリアは 9×9 だけ。5×5 のステージでは立たない(フェーズ3のステージの盤は未定。ストーリーとフェーズ.md)
+    note: "エリアは 9×9 で王のフォイルを装備したときに立つ。このステージ(5×5)では立たない。",
   });
 }
 
