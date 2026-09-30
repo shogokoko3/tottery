@@ -152,6 +152,7 @@ import { isBlocked } from "../game/blocked.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
 import { ensureAuth, myUid } from "../net/auth.js";
 import { SeatsProvider } from "./names.jsx";
+import CAPTURE_STYLES from "./capture-effect.css";
 import STYLES from "../styles.css";
 import ROYAL_STYLES from "./royal-theme.css";
 import SKIN_STYLES from "../skins/styles.css";
@@ -264,7 +265,7 @@ export function GameShell({
   }, []);
   return (
     <div className={`tottery-root ${focusButton ? "focus-button" : ""}`}>
-      <style>{STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES + AREA_STYLES + ROYAL_STYLES + HOME_STYLES + TITLE_STYLES}</style>
+      <style>{STYLES + CAPTURE_STYLES + SKIN_STYLES + TSUME_STYLES + SEASON_STYLES + AREA_STYLES + ROYAL_STYLES + HOME_STYLES + TITLE_STYLES}</style>
       <header className="top-bar" ref={barRef}>
         {/* 左上の戻る釦は外した。各画面に「ホームに戻る」があり、真ん中の「トッタリー」も
             ホームへ戻るので重複していた(2026-09-21 本人の指示)。

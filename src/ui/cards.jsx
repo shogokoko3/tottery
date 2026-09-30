@@ -25,7 +25,8 @@ export function CardFace({
   animated = true,
 }) {
   const seats = useSeats();
-  const selected = byId(skinId || seats.skins?.[owner]?.[rank]);
+  // false selects the embedded normal art while a remote skin is unavailable.
+  const selected = skinId === false ? null : byId(skinId || seats.skins?.[owner]?.[rank]);
   const skin = selected?.rank === String(rank) ? selected : null;
   // J/Q/K have no separate captain artwork. Give their normal illustration an
   // explicit king treatment too, including in views that render CardFace alone.

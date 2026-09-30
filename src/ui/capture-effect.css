@@ -1,0 +1,162 @@
+.skin-overlay.capture-scene {
+  background: transparent;
+  z-index: 10080;
+  padding: 0;
+  overflow: hidden;
+}
+.capture-scene .skin-dialog {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+.capture-scene-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.capture-scene-face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  transform-origin: center;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 8px 15px #000a);
+}
+.capture-scene-face .card-face {
+  border-color: #f3d89d;
+}
+.capture-scene-title {
+  position: absolute;
+  top: max(46px, env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  text-align: center;
+  color: #fce7ac;
+  font:
+    600 clamp(28px, 6vw, 42px)/1.4 "Hiragino Mincho ProN",
+    "Yu Mincho",
+    serif;
+  letter-spacing: 0.14em;
+  text-shadow:
+    0 2px 8px #000,
+    0 0 24px #a87520;
+  pointer-events: none;
+}
+.capture-scene-title.is-royal {
+  color: #ffe1a0;
+  text-shadow:
+    0 2px 8px #000,
+    0 0 30px #bd872d;
+}
+.capture-scene-footer {
+  position: absolute;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  left: max(12px, calc((100% - 530px) / 2));
+  right: max(12px, calc((100% - 530px) / 2));
+  min-height: 122px;
+  padding: 10px 14px;
+  border: 1px solid #b79a5c66;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #101c2bf5, #0a1421f5);
+  box-shadow: 0 4px 20px #0005;
+  text-align: center;
+}
+.capture-scene-count {
+  height: 18px;
+  margin: 0 0 7px;
+  color: #d4c39f;
+  font-size: 12px;
+}
+.capture-scene-records {
+  position: relative;
+  touch-action: pan-x;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  justify-content: safe center;
+  overflow-x: auto;
+  min-height: 57px;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+.capture-scene-record {
+  position: relative;
+  flex: 0 0 40px;
+  height: 54px;
+}
+.capture-scene-record > .card-face {
+  transform: scale(0.51282);
+  transform-origin: top left;
+}
+.capture-scene-footer .btn {
+  margin: 10px auto 0;
+  min-height: 44px;
+  min-width: 170px;
+}
+.capture-scene-footer .btn:disabled {
+  visibility: hidden;
+}
+/* A smooth accelerating strike for captures only. Normal moves keep their stops. */
+.piece-slot.piece-capturing {
+  animation: capture-strike var(--ms) linear both;
+  z-index: 5;
+}
+.piece-slot.piece-capturing.capture-waiting {
+  animation-play-state: paused;
+}
+@keyframes capture-strike {
+  0% {
+    transform: translate(calc(var(--sx) * 100%), calc(var(--sy) * 100%));
+  }
+  17% {
+    transform: translate(calc(var(--sx) * 102%), calc(var(--sy) * 102%));
+  }
+  45% {
+    transform: translate(
+      calc(var(--sx) * 82%),
+      calc(var(--sy) * 82% - var(--jump, 0px))
+    );
+  }
+  72% {
+    transform: translate(
+      calc(var(--sx) * 45%),
+      calc(var(--sy) * 45% - var(--jump, 0px) * 0.8)
+    );
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@media (max-height: 500px) {
+  .capture-scene-title {
+    top: 12px;
+    font-size: 24px;
+  }
+  .capture-scene-footer {
+    min-height: 96px;
+    padding: 6px 10px;
+  }
+  .capture-scene-footer .btn {
+    margin-top: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .piece-slot.piece-capturing {
+    animation-timing-function: steps(1, end);
+  }
+  .capture-scene-face {
+    will-change: auto;
+  }
+}

@@ -85,16 +85,14 @@ is("枚数が多いほど間隔を詰める", flipDelay({ index: 1, total: 6 }) 
 
 console.log("\n配線");
 {
-  const ov = read("src/ui/overlays.jsx");
-  is("撃破の札でバイブ", /vibrateCapture\(/.test(ov), true);
-  is("めくりに合わせて音階", /captureRate\(\{ index: flipped - 1/.test(ov), true);
-  is(
-    "1枚だけのときは鳴らさない(盤の撃破音と二度重ならないように)",
-    /if \(defeated\.length <= 1 && !king\) return;/.test(ov),
-    true,
-  );
-  is("枚数を数えて見せる", /capture-count/.test(ov), true);
-  is("枚数で見せ方を変える", /capture-\$\{tier\}/.test(ov), true);
+  const scene = read("src/ui/capture-effect.jsx");
+  const game = read("src/ui/game.jsx");
+  is("新しい撃破演出でバイブ", /vibrateCapture\(/.test(scene), true);
+  is("正体を公開した段で音階", /captureRate\(\{/.test(scene) && /index: frame.index/.test(scene), true);
+  is("王専用音・振動は公開後", /if \(frame.royal && !royalPlayed\)/.test(scene), true);
+  is("盤側で同じ撃破音を二重に鳴らさない", /captureHandled: !!a.captureReveal \|\| aceMagic.captureHandled/.test(game), true);
+  is("未公開カードを履歴へ載せない", /index < view.collected/.test(scene), true);
+  is("別のモーダルへの画面切り替えは不要", !game.includes("<CaptureRevealModal"), true);
 }
 
 console.log("\n門は触れるまで開かない");

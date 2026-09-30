@@ -1886,3 +1886,14 @@ CPU・オンライン9×9で布陣称号を獲得した本人に、土・海・�
 本人の端末が次にバトルパスを開くと、財布の写し(`passComplete`)を見て `completeCycle` で全マスをクリア・めくり・
 チケット配り済みにし、1周目ならスキンも受取済みにする。盤は端末にしかないので、この二段になっている。
 `/api/admin/pass-complete`(運営だけ)。検査は check-wallet・check-battlepass。
+
+
+### 撃破演出：ひび・溜め・破砕から最後に正体公開 (2026-09-29)
+
+実盤面を保ったまま、滑らかな踏み込み → 裏面にひび → 85ms の溜め → 裏面の破片が飛散 → 最後に正体公開へつなぐ。承認済みプレビュー v4 の描画と音を `src/ui/capture-renderer.js` / `src/audio/capture-sounds.js` に移した。王専用の光・音・振動は公開の220ms後。捕獲履歴にも、大きなカードで見せる前に正体を載せない。
+
+- `src/game/capture-sequence.js` が移動・描画・音の時刻を共有する。通常／王で公開前の演出を分けない。
+- `src/ui/capture-effect.jsx` を GameCore の演出層へ接続。5×5・9×9・反転視点・複数撃破・Aの包囲に対応する。まとめ取りは破砕後に順に公開し、王を最後にする既存の並びを使う。
+- 対局のルールや通信アクションは変更しない。演出中・確認待ちは従来どおり時計と入力を止め、確認後に `DISMISS_CAPTURE` で継承・道連れ・次の手番へ続く。王を倒しても継承があれば勝利とは表示しない。
+- SE音量／ミュートは既存のバスを使用。画面全体は揺らさない。OSの「動きを減らす」では飛散・光線を省略。アプリを背景へ移した場合は復帰時に確認できる状態へ進める。
+- 検証: `node tools/check-capture-sequence.mjs`、`node tools/check-capture-presentation.mjs`、`node tools/check-capture-feel.mjs`。実際のゲーム画面は `node tools/serve-capture-check.mjs` (ローカル4213番) で確認できる。
