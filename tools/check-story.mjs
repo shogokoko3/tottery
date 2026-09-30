@@ -10,7 +10,7 @@ import { GAME_RULE_VERSION } from "../src/game/rule-version.js";
 import { cpuInformedAction } from "../src/game/cpu-informed.js";
 import { automaticAreaAction } from "../src/game/area-presentation.js";
 import { josekiCpuAction } from "../src/game/cpu-joseki.js";
-import { STORY_AXES, STORY_TICKETS, clearAxis } from "../src/game/phase.js";
+import { STORY_AXES, STORY_TICKETS, PHASE_EPOCH, clearAxis } from "../src/game/phase.js";
 import { MOVE_TEXT, KING_TEXT, RANKS } from "../src/game/constants.js";
 import { AREA_BY_RANK, AREA_INFO } from "../src/game/areas.js";
 
@@ -41,7 +41,7 @@ for (const s of STORY_STAGES) {
   is(`${s.axis}: どのフェーズも相手の王の数字を先に言う`, [i1.lead, i2.lead, i3.lead].every((l) => l.includes(ranksLabel(s.ranks))), true);
 }
 is("知らない軸の説明は null", stageIntro("xx", 1), null);
-is("変なフェーズは 3 の説明", stageIntro("23", 9).title, stageIntro("23", 3).title);
+is("変なフェーズは既定(1)の説明", stageIntro("23", 9).title, stageIntro("23", 1).title);
 
 console.log("\n対局の設定");
 is("フェーズ1: 5×5・CPU の軸・力なし・エリアなし", stageSetup("23", 1), { size: 5, cpuAxis: ["2", "3"], kingPowers: false, areas: false });
@@ -229,7 +229,7 @@ export { storyTileNote };`,
     if (typeof globalThis.Image === "undefined") globalThis.Image = class { set src(_) {} };
     if (typeof globalThis.Audio === "undefined") globalThis.Audio = class { play() {} pause() {} };
     const { screen, intro, storyTileNote } = createRequire(import.meta.url)(outfile);
-    const base = { name: "t", phase: 1, phaseWins: { 1: 0, 2: 0, 3: 0 }, story: { 1: [], 2: [], 3: [] } };
+    const base = { name: "t", phase: 1, phaseEpoch: PHASE_EPOCH, phaseWins: { 1: 0, 2: 0, 3: 0 }, story: { 1: [], 2: [], 3: [] } };
     const save = (p) => mem.set("tottery.account.v1", JSON.stringify(p));
     save(base);
     let h = screen();

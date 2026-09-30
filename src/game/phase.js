@@ -17,10 +17,18 @@ export const PHASES = Object.freeze([1, 2, 3]);
 export const PHASE_MAX = 3;
 
 /**
- * 既定のフェーズ。**ストーリーが載るまでは 3**(いまの挙動のまま)。
- * ストーリー公開時に 1 へ切り替える(既存プレイヤーも最初から、が本人の決め)
+ * 既定のフェーズ。ストーリー公開(2026-09-30)で **1** に切り替えた
+ * (既存プレイヤーもフォイルの有無に関わらず最初から、が本人の決め。テスト環境なので)。
+ * 公開前の端末が保存した phase:3 も PHASE_EPOCH で 1 へ戻す(profile.js loadProfile)
  */
-export const DEFAULT_PHASE = 3;
+export const DEFAULT_PHASE = 1;
+
+/**
+ * フェーズの「世代」。profile.phaseEpoch がこれと違う保存は、フェーズを DEFAULT_PHASE から
+ * やり直す(一度きりの移行)。全員を最初からにしたくなったら 1 つ上げる。
+ * phaseWins / story は消さない(公開時点では誰も持っていない)
+ */
+export const PHASE_EPOCH = 1;
 
 /** ストーリーの軸(王の数字の組)。この順に並ぶ。ステージの中身は story.js(これから) */
 export const STORY_AXES = Object.freeze(["23", "45", "67", "89", "10", "jqk"]);

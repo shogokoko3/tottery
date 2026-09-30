@@ -44,6 +44,7 @@ import { findBadWord } from "./badwords.js";
 import { clearBlocked } from "./blocked.js";
 import {
   DEFAULT_PHASE,
+  PHASE_EPOCH,
   addPhaseWin,
   canPromote,
   clearAxis,
@@ -139,8 +140,10 @@ const EMPTY = {
   missionProgress: null,
   // 一度クリアしたチュートリアル。2回目からは経験値を配らない
   cleared: [],
-  // フェーズ(ストーリーとフェーズ.md)。既定はストーリーが載るまで 3
+  // フェーズ(ストーリーとフェーズ.md)。既定は 1(ストーリー公開 2026-09-30)
   phase: DEFAULT_PHASE,
+  // フェーズの世代(phase.js PHASE_EPOCH)。違えばフェーズを最初からやり直す
+  phaseEpoch: PHASE_EPOCH,
   // そのフェーズでのオンライン勝利数(昇格の条件)
   phaseWins: { 1: 0, 2: 0, 3: 0 },
   // フェーズごとにクリアしたストーリーの軸
@@ -392,7 +395,9 @@ export function loadProfile() {
     cleared: Array.isArray(saved.cleared)
       ? saved.cleared.filter((x) => Number.isInteger(x))
       : [],
-    phase: normalizePhase(saved.phase),
+    // 世代が違う保存(公開前の端末が保存した phase:3 など)は、フェーズを既定からやり直す
+    phase: saved.phaseEpoch === PHASE_EPOCH ? normalizePhase(saved.phase) : DEFAULT_PHASE,
+    phaseEpoch: PHASE_EPOCH,
     phaseWins: normalizePhaseWins(saved.phaseWins),
     story: normalizeStory(saved.story),
     letters: Array.isArray(saved.letters)

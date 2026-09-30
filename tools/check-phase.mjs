@@ -3,7 +3,7 @@
  */
 import assert from "node:assert/strict";
 import {
-  PHASES, PHASE_MAX, DEFAULT_PHASE, STORY_AXES, PROMOTION_WINS,
+  PHASES, PHASE_MAX, DEFAULT_PHASE, PHASE_EPOCH, STORY_AXES, PROMOTION_WINS,
   normalizePhase, phaseOf, rulesForPhase, setupFlagsForPhase, normalizePhaseWins, normalizeStory,
   promotionStatus, canPromote, promote, clearAxis, addPhaseWin,
 } from "../src/game/phase.js";
@@ -17,11 +17,12 @@ const is = (label, got, want) => {
 
 console.log("決まりごと");
 is("フェーズは 1・2・3", [...PHASES], [1, 2, 3]);
-is("既定はストーリーが載るまで 3", DEFAULT_PHASE, 3);
+is("既定はストーリー公開で 1(既存プレイヤーも最初から)", DEFAULT_PHASE, 1);
+is("フェーズの世代", PHASE_EPOCH, 1);
 is("軸は 6 つ、この順", [...STORY_AXES], ["23", "45", "67", "89", "10", "jqk"]);
 is("昇格に要る勝利数", PROMOTION_WINS, 5);
-is("変な値は既定へ", [normalizePhase(0), normalizePhase(4), normalizePhase("2"), normalizePhase(null)], [3, 3, 3, 3]);
-is("profile から読む", [phaseOf({ phase: 1 }), phaseOf({}), phaseOf(null)], [1, 3, 3]);
+is("変な値は既定へ", [normalizePhase(0), normalizePhase(4), normalizePhase("2"), normalizePhase(null)], [1, 1, 1, 1]);
+is("profile から読む", [phaseOf({ phase: 2 }), phaseOf({}), phaseOf(null)], [2, 1, 1]);
 
 console.log("\nフェーズごとの対局の決まり");
 is("1: 力なし・エリアなし・5×5 だけ", rulesForPhase(1), { kingPowers: false, areas: false, sizes: [5] });
@@ -69,7 +70,15 @@ console.log("\nprofile との結びつき(recordGame)");
   // 保存の口は export されていないので、保存先の鍵に直接書く
   const saveProfile = (p) => mem.set("tottery.account.v1", JSON.stringify(p));
   const fresh = loadProfile();
-  is("新しい profile の既定", [fresh.phase, fresh.phaseWins, fresh.story], [3, { 1: 0, 2: 0, 3: 0 }, { 1: [], 2: [], 3: [] }]);
+  is("新しい profile の既定", [fresh.phase, fresh.phaseEpoch, fresh.phaseWins, fresh.story], [1, PHASE_EPOCH, { 1: 0, 2: 0, 3: 0 }, { 1: [], 2: [], 3: [] }]);
+  // 公開前の端末が保存した phase:3(世代なし)は 1 へ。世代が合っていれば保存どおり
+  saveProfile({ ...fresh, phase: 3, phaseEpoch: undefined });
+  is("世代の無い保存(公開前)はフェーズ 1 からやり直す", [loadProfile().phase, loadProfile().phaseEpoch], [1, PHASE_EPOCH]);
+  saveProfile({ ...fresh, phase: 3, phaseEpoch: PHASE_EPOCH - 1 });
+  is("古い世代の保存も 1 へ", loadProfile().phase, 1);
+  saveProfile({ ...fresh, phase: 2, phaseEpoch: PHASE_EPOCH, story: { 1: ["23", "45"], 2: [], 3: [] }, phaseWins: { 1: 5, 2: 0, 3: 0 } });
+  is("いまの世代の保存はフェーズも記録もそのまま", [loadProfile().phase, loadProfile().story[1], loadProfile().phaseWins[1]], [2, ["23", "45"], 5]);
+  saveProfile({ ...fresh, phase: 1, phaseEpoch: PHASE_EPOCH });
   saveProfile({ ...fresh, phase: 1 });
   recordGame(true, { online: true });
   is("オンラインで勝つと、そのフェーズの勝利が 1 つ", loadProfile().phaseWins, { 1: 1, 2: 0, 3: 0 });
@@ -89,7 +98,7 @@ console.log("\nprofile との結びつき(recordGame)");
   is("対局のフェーズが自分と同じなら数える", loadProfile().phaseWins, { 1: 1, 2: 2, 3: 0 });
   saveProfile({ ...loadProfile(), phase: 7, phaseWins: { 1: "x" }, story: { 2: ["23", "zz"] } });
   const back = loadProfile();
-  is("壊れた値は読み直しでそろう", [back.phase, back.phaseWins, back.story], [3, { 1: 0, 2: 0, 3: 0 }, { 1: [], 2: ["23"], 3: [] }]);
+  is("壊れた値は読み直しでそろう", [back.phase, back.phaseWins, back.story], [1, { 1: 0, 2: 0, 3: 0 }, { 1: [], 2: ["23"], 3: [] }]);
 }
 
 console.log(`\n${ok} ok / ${fail.length} NG`);
