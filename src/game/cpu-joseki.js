@@ -629,8 +629,9 @@ export function skyAct(opts = {}) {
         burstMin = 9;
       }
     }
+    // 継承者(王と同じ数字の仲間)。王の力なし(フェーズ1)では継承が起きないので 0 = 王は使い捨てにしない
     const heirs =
-      king && ["2", "3"].includes(king.rank)
+      king && s.kingPowers !== false && ["2", "3"].includes(king.rank)
         ? allMine.filter((q) => q.rank === king.rank && !q.isKing).length
         : 0;
     const kingPenalty =
@@ -721,7 +722,8 @@ export function skyAct(opts = {}) {
     const evalMove = (p, m, board0, pieces, depth) => {
       const ids = idsOf(board0, m);
       let score = capValue(ids);
-      const kamikaze = kamikazeRank && p.rank === kamikazeRank && !p.isKing;
+      // 道連れは王の力。力なし(フェーズ1)では起きないので、自分の危険を軽く見ない
+      const kamikaze = kamikazeRank && s.kingPowers !== false && p.rank === kamikazeRank && !p.isKing;
       let safe0 = moveSafety(s, me, p, m, ids, {
         unknownWeight,
         unknownThreats: unknown,
@@ -788,7 +790,8 @@ export function skyAct(opts = {}) {
         depth === 0 &&
         !extra &&
         moved.rank === "10" &&
-        (moved.isKing || moved.skyTwice || s.players[me].skyTwice)
+        // 10 の王の 2 回目は王の力。力なし(フェーズ1)では無い
+        ((moved.isKing && s.kingPowers !== false) || moved.skyTwice || s.players[me].skyTwice)
       ) {
         let best2 = 0;
         for (const m2 of legal(moved, board, s.boardSize, counts, kr)) {
@@ -1330,15 +1333,12 @@ export function josekiCpuAction(state, player, area, wantKing = null) {
     (state.setupMode === "simultaneous" || state.setupIdx === player)
   ) {
     const plan = (side && side.plan(state, player)) || chooseArmyPlan(state, player);
-    if (plan)
-      return {
-        type: "SETUP_CONFIRM",
-        player,
-        kingId: plan.kingId,
-        placement: (side && side.plan(state, player)
-          ? side.arrange
-          : arrangeArmy)(state, player, plan),
-      };
+    if (plan) {
+      let placement = (side && side.plan(state, player) ? side.arrange : arrangeArmy)(state, player, plan);
+      // 5×5(ストーリー)は自陣が 2 行しかなく、王が初手で討たれる置き方になりやすい。王の升を守る
+      if (state.boardSize === 5) placement = shieldKing(state, player, plan, placement);
+      return { type: "SETUP_CONFIRM", player, kingId: plan.kingId, placement };
+    }
   }
   if (
     state.phase !== "play" ||
@@ -1356,6 +1356,66 @@ export function josekiCpuAction(state, player, area, wantKing = null) {
     return action;
   }
   return cpuInformedAction(state, player);
+}
+
+/**
+ * 布陣の王の「晒され度」: 相手の自陣の**どの升にどの数字の駒が居たら**初手で王に届くか、その (升, 数字) の数。
+ * 伏せ札は読まない(相手の駒の数字を仮定しない = 全部の数字で見る)。味方の駒は盤に置いて壁にする。
+ * 王の力の有無は見ない(力ありで見るので届く範囲は広め = 守りは厳しめ)。10 は駒を飛び越えるので 0 にはならない
+ */
+export function kingExposure(size, player, plan, placement) {
+  const board = Array.from({ length: size }, () => Array(size).fill(null));
+  for (const c of plan.cards) {
+    const at = placement[c.id];
+    if (!at) continue;
+    board[at.row][at.col] = { id: c.id, rank: c.rank, suit: c.suit, owner: player, row: at.row, col: at.col, isKing: c.id === plan.kingId, alive: true };
+  }
+  const kingAt = placement[plan.kingId];
+  if (!kingAt) return 0;
+  const foe = 1 - player;
+  const [lo, hi] = territoryRows(size, foe);
+  let n = 0;
+  for (let row = lo; row <= hi; row++)
+    for (let col = 0; col < size; col++) {
+      if (board[row][col]) continue;
+      for (const rank of ALL_RANKS) {
+        const q = { id: `v${row}-${col}`, rank, suit: "spade", owner: foe, row, col, isKing: true, alive: true };
+        board[row][col] = q;
+        const hit = legal(q, board, size, {}, undefined).some(
+          (m) =>
+            (m.row === kingAt.row && m.col === kingAt.col) ||
+            (m.captures || []).some((c) => c.row === kingAt.row && c.col === kingAt.col),
+        );
+        board[row][col] = null;
+        if (hit) n++;
+      }
+    }
+  return n;
+}
+
+/**
+ * 5×5 の布陣の守り(2026-09-30 レビュー)。arrangeArmy の「最奥の中央」は 5×5 だと J/Q/K/10 の長い動きに
+ * 真正面から晒され、測定で 1〜2 割の局が初手で王を討たれた。王の升を味方の升と入れ替えて、
+ * 晒され度(kingExposure)がいちばん小さい形にする(同じなら陣形の点が高い方)
+ */
+export function shieldKing(state, player, plan, placement) {
+  const size = state.boardSize;
+  let best = placement,
+    bestExp = kingExposure(size, player, plan, placement),
+    bestScore = formationMetrics(plan, placement, size, player).score;
+  if (bestExp === 0) return placement;
+  for (const c of plan.cards) {
+    if (c.id === plan.kingId || !placement[c.id]) continue;
+    const trial = { ...placement, [plan.kingId]: placement[c.id], [c.id]: placement[plan.kingId] };
+    const exp = kingExposure(size, player, plan, trial);
+    const sc = formationMetrics(plan, trial, size, player).score;
+    if (exp < bestExp || (exp === bestExp && sc > bestScore)) {
+      best = trial;
+      bestExp = exp;
+      bestScore = sc;
+    }
+  }
+  return best;
 }
 
 /**

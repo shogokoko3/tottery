@@ -9,7 +9,7 @@ import { kingRankOf } from "../src/game/board.js";
 import { GAME_RULE_VERSION } from "../src/game/rule-version.js";
 import { cpuInformedAction } from "../src/game/cpu-informed.js";
 import { automaticAreaAction } from "../src/game/area-presentation.js";
-import { josekiCpuAction } from "../src/game/cpu-joseki.js";
+import { josekiCpuAction, kingExposure } from "../src/game/cpu-joseki.js";
 import { STORY_AXES, STORY_TICKETS, PHASE_EPOCH, clearAxis } from "../src/game/phase.js";
 import { MOVE_TEXT, KING_TEXT, RANKS } from "../src/game/constants.js";
 import { AREA_BY_RANK, AREA_INFO } from "../src/game/areas.js";
@@ -90,8 +90,14 @@ console.log("\n対局の終わり(recordGame の story)");
   is("対局のフェーズが自分と違えば数えない", loadProfile().story, { 1: ["23"], 2: [], 3: [] });
   recordGame(true, { story: { axis: "zz", phase: 1 }, xp: 0 });
   is("知らない軸は数えない", loadProfile().story[1], ["23"]);
-  recordGame(true, { online: true, story: { axis: "45", phase: 1 } });
-  is("ストーリーの対局はオンラインの勝ちには数えない(手元の CPU 戦なので online は立たない前提)", loadProfile().phaseWins[1], 1);
+  recordGame(true, { online: false, story: { axis: "45", phase: 1 } });
+  is("ストーリーの対局(online なし)はオンラインの勝ちに数えない", loadProfile().phaseWins[1], 0);
+  // 昇格(promotePhase): 条件を満たせば上がって保存され、次のフェーズの一覧は最初から
+  const { promotePhase } = await import("../src/game/profile.js");
+  save({ ...loadProfile(), phase: 1, story: { 1: [...STORY_AXES], 2: [], 3: [] }, phaseWins: { 1: 5, 2: 0, 3: 0 } });
+  is("昇格: 条件を満たせば 2 へ上がり保存される", [promotePhase().phase, loadProfile().phase], [2, 2]);
+  is("昇格後の一覧は最初から、褒美ももう一度", [storyList(loadProfile()).every((s) => !s.cleared), storyFreshClear(loadProfile(), "23")], [true, true]);
+  is("条件を満たさなければ上がらない", promotePhase().phase, 2);
 }
 
 console.log("\n山札と CPU の受け渡し");
@@ -107,7 +113,9 @@ console.log("\n山札と CPU の受け渡し");
       is(`${st.axis}/${k}: 52枚・重複なし`, [deck.length, new Set(deck.map((c) => c.id)).size], [52, 52]);
       is(`${st.axis}/${k}: CPU の手札に王の数字が 2 枚以上`, cpuHand.filter((r) => r === k).length >= 2, true);
       is(`${st.axis}/${k}: 軸の残りの数字も 1 枚ずつ`, st.ranks.filter((r) => r !== k).every((r) => cpuHand.includes(r)), true);
-      is(`${st.axis}/${k}: 積むのは 3 枚まで(手の内を読ませない)`, deck.slice(13, 16).every((c) => st.ranks.includes(c.rank)) && !st.ranks.includes(deck[16].rank) || deck.slice(13, 17).filter((c) => st.ranks.includes(c.rank)).length <= 4, true);
+      const want = [k, k, ...st.ranks.filter((r) => r !== k)];
+      is(`${st.axis}/${k}: 積むのは王 2 枚 + 軸の残り 1 枚ずつ、その順`, deck.slice(13, 13 + want.length).map((c) => c.rank), want);
+      is(`${st.axis}/${k}: 積むのは 4 枚まで(手の内を読ませない)`, want.length <= 4, true);
     }
   is("知らない軸の山札は null", storyDeck("xx", "2"), null);
 }
@@ -130,7 +138,9 @@ console.log("\n5×5 のステージを回す(CPU の王は必ず軸の数字。�
       if (s.interstitial) { s = reducer(s, { type: "DISMISS_INTERSTITIAL" }); continue; }
       if (s.setupEffects) { s = reducer(s, { type: "DISMISS_SETUP_EFFECTS" }); continue; }
       if (s.phase === "dice") {
-        const a = s.diceIdx <= 1 && s.dice[s.diceIdx] === null ? { type: "ROLL_DICE_SINGLE", value: s.diceIdx === 0 ? 6 : 1 } : s.diceIdx === 2 ? { type: "GOTO_MULLIGAN" } : s.diceIdx === 3 ? { type: "REROLL_DICE" } : { type: "NEXT_DICE_STEP" };
+        // 局ごとに先手を入れ替える(偶数の seed は人間が先手、奇数は CPU が先手)
+        const hi = seed % 2 === 0 ? 0 : 1;
+        const a = s.diceIdx <= 1 && s.dice[s.diceIdx] === null ? { type: "ROLL_DICE_SINGLE", value: s.diceIdx === hi ? 6 : 1 } : s.diceIdx === 2 ? { type: "GOTO_MULLIGAN" } : s.diceIdx === 3 ? { type: "REROLL_DICE" } : { type: "NEXT_DICE_STEP" };
         s = reducer(s, a); continue;
       }
       if (s.phase === "mulligan") {
@@ -150,8 +160,10 @@ console.log("\n5×5 のステージを回す(CPU の王は必ず軸の数字。�
         continue;
       }
       if (s.phase === "play") {
+        if (!s.setupSnapshot) s = { ...s, setupSnapshot: { boardSize: s.boardSize, pieces: structuredClone(s.pieces) } };
         if (s.turnNo >= cap) break;
-        const p = s.currentTurn;
+        // 継承の選択(pendingKingChoice)は手番でなく持ち主が答える
+        const p = s.pendingKingChoice ? s.pendingKingChoice.owner : s.currentTurn;
         let a = p === 1 ? act(s, 1) : automaticAreaAction(s) || cpuInformedAction(s, 0);
         if (!a) throw new Error(`${axis}/${k} 手番${s.turnNo}: 手が無い(${p})`);
         if (a.type === "__CPU_SHUFFLE") {
@@ -169,21 +181,39 @@ console.log("\n5×5 のステージを回す(CPU の王は必ず軸の数字。�
     Math.random = realRandom;
     return s;
   }
+  /** 布陣直後の CPU の王の晒され度が、5 つの升のうち最小か(shieldKing の約束) */
+  const exposedAtStart = (s) => {
+    const mine = Object.values(s.pieces).filter((q) => q.owner === 1);
+    const kingId = mine.find((q) => q.isKing).id;
+    const plan = { cards: mine.map((q) => ({ id: q.id, rank: q.rank, suit: q.suit })), kingId };
+    const placement = Object.fromEntries(mine.map((q) => [q.id, { row: q.row, col: q.col }]));
+    const mineExp = kingExposure(s.boardSize, 1, plan, placement);
+    let min = mineExp;
+    for (const q of mine) {
+      if (q.id === kingId) continue;
+      const trial = { ...placement, [kingId]: placement[q.id], [q.id]: placement[kingId] };
+      min = Math.min(min, kingExposure(s.boardSize, 1, plan, trial));
+    }
+    return mineExp > min;
+  };
   const N = 4;
-  for (const phase of [1, 2]) {
-    let wins = 0, games = 0, ended = 0;
+  for (const phase of [1, 2, 3]) {
+    let wins = 0, games = 0, ended = 0, exposed = 0;
     for (const st of STORY_STAGES)
       for (const k of st.ranks) {
         const kings = [];
         for (let i = 0; i < N; i++) {
-          const s = play(st.axis, k, phase, 1000 * phase + i * 17 + st.axis.length);
+          const s = play(st.axis, k, phase, 1000 * phase + i * 17 + st.axis.length + i);
           kings.push(kingRankOf(s, 1));
+          if (s.setupSnapshot && exposedAtStart(s.setupSnapshot)) exposed++;
           games++;
           if (s.phase === "gameover") { ended++; if (s.winner === 1) wins++; }
           if (phase === 1) is(`${st.axis}/${k} #${i}: 力なしの対局では置いた駒に powers:false`, Object.values(s.pieces).every((q) => q.powers === false), true);
+          if (phase === 3) is(`${st.axis}/${k} #${i}: フェーズ3は力あり・5×5 なのでエリアなし`, [s.kingPowers !== false, !!s.areasEnabled], [true, false]);
         }
         is(`フェーズ${phase} ${st.axis}/${k}: CPU の王は必ず ${k}(${N}局)`, kings, Array(N).fill(k));
       }
+    is(`フェーズ${phase}: 布陣直後の CPU の王は、5 つの升のうち晒され度がいちばん小さい升にいる(${games}局)`, exposed, 0);
     console.log(`  (参考) フェーズ${phase}: ${games}局中 ${ended}局が決着、CPU(定石)の勝ち ${wins}`);
   }
 }
@@ -267,6 +297,7 @@ export { storyTileNote };`,
     is("ホームのタイルの一言(次のステージ)", storyTileNote(base).includes("二と三の王"), true);
     is("ホームのタイルの一言(昇格できる)", storyTileNote({ ...base, story: { 1: [...STORY_AXES], 2: [], 3: [] }, phaseWins: { 1: 5, 2: 0, 3: 0 } }), "フェーズ 2 へ進めます");
     is("ホームのタイルの一言(全クリア・最後)", storyTileNote({ ...base, phase: 3, story: { 1: [], 2: [], 3: [...STORY_AXES] } }), "全ステージクリア");
+    is("ホームのタイルの一言(全クリア・勝利待ち)", storyTileNote({ ...base, story: { 1: [...STORY_AXES], 2: [], 3: [] }, phaseWins: { 1: 2, 2: 0, 3: 0 } }), "昇格まで オンラインの勝利あと 3");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -285,6 +316,7 @@ console.log("\n配線(game.jsx / screens.jsx)");
   is("ストーリーは軸の札を積んだ山札", /\.\.\.\(story && cpu && !network && !tutorial\s*\? \{ deck: storyDeck\(story\.axis, story\.king\) \}/.test(game), true);
   is("ゲストは部屋のフェーズで決め直す", game.includes("phase: onlinePhase(network.phase),"), true);
   is("勝てばクリアの記録(profile.story)。xp ははじめてのクリアだけ", /\.\.\.\(story\s*\? \{ \.\.\.\(won && freshStory \? \{ xp: STORY_XP \} : null\), story: \{ axis: story\.axis, phase: story\.phase \} \}/.test(game), true);
+  is("fresh は recordGame より先に取る(あとだと一度も配られない)", game.indexOf("const freshStory =") > 0 && game.indexOf("const freshStory =") < game.indexOf("const after = recordGame("), true);
   is("はじめてのクリアだけ褒美(先に fresh を取る。基準は recordGame と同じ)", /const freshStory =\s*!!story && won === true && phaseOf\(loadProfile\(\)\) === story\.phase && storyFreshClear\(loadProfile\(\), story\.axis\);/.test(game) && game.includes("if (freshStory) grantStoryReward(story.phase, story.axis).catch(() => {});"), true);
   is("次のステージは未クリアの中から、全部済みなら allCleared", game.includes("const next = nextStageAfter(afterProfile, story.axis);") && game.includes("allCleared: !nextStage(afterProfile),"), true);
   is("前の局の結果を持ち越さない", /if \(a\.phase !== "gameover"\) \{\s*recordedRef\.current = false;\s*\/\/[^\n]*\n\s*setStoryResult\(null\);/.test(game), true);
