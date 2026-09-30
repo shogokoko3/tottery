@@ -88,10 +88,18 @@ console.log("\n画面の説明");
     "utf8",
   );
   is(
-    "ランキングに9×9だけと書いてある",
-    /9×9のオンライン対戦の成績/.test(rank),
+    "ランキングに「フェーズ3の9×9」だけと書いてある",
+    /フェーズ3の9×9のオンライン対戦の成績/.test(rank) && /フェーズ1・2の対局は数えません/.test(rank),
     true,
   );
+  {
+    const game = readFileSync(join(here, "..", "src", "ui", "game.jsx"), "utf8");
+    is(
+      "持ち点の条件にフェーズ(フェーズ3だけ)が入っている",
+      /const ranked = [^;]*rankedPhase\(matchPhase\);/.test(game),
+      true,
+    );
+  }
   const screens = readFileSync(
     join(here, "..", "src", "ui", "screens.jsx"),
     "utf8",

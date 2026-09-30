@@ -38,7 +38,7 @@ export function RankGuide() {
         </tbody>
       </table>
       <div className="rank-guide-note">
-        <b>対象は9×9のオンライン対戦</b>
+        <b>対象はフェーズ3の9×9のオンライン対戦</b>
         <p>今シーズンのレートで段位を判定します。</p>
         <p>初期レートは1500。「兵」からスタートします。</p>
       </div>

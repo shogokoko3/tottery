@@ -13,7 +13,7 @@ export function RankingScreen({ onBack }) {
         </button>
       </header>
       <p className="hint ranking-scope">
-        9×9のオンライン対戦の成績で並びます。CPU戦と5×5は数えません。
+        フェーズ3の9×9のオンライン対戦の成績で並びます(練習相手を含む)。CPU戦・フレンド対戦・5×5と、フェーズ1・2の対局は数えません。
       </p>
       <nav className="season-tabs" aria-label="ランキングの種類">
         {[
