@@ -527,6 +527,9 @@ export function turtleAct(opts = {}) {
             const kAt = p.isKing ? moved : king;
             const danger = kingReachable(s, me, board, kAt, ids);
             if (danger) score -= 80;
+            // 王そのものを、相手が届きうる升へ出す手はさらに大きく下げる(2026-09-30 レビュー)。
+            // 9×9 のエリア無し(フェーズ2 のストーリー「王族」)で、王が取り返しに出て人間の2手目までに討たれる局が2割あった
+            if (danger && p.isKing) score -= 200;
             if (shell)
               score +=
                 shell *

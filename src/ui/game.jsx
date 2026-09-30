@@ -1822,7 +1822,8 @@ export function GameCore({
           (boardSize || 5) === 9
             ? { deck: josekiDeck(cpuArea.type, cpuArea.king) }
             : null),
-          // ストーリーのステージ: 軸の札を積んだ山札(src/game/story.js)。5×5 なので上の 9×9 の門は通らない
+          // ストーリーのステージ: 軸の札を積んだ山札(src/game/story.js storyDeckFor: 5×5 は storyDeck、9×9 は josekiDeck)。
+          // ストーリーは cpuArea を持たないので、上の「CPUのエリア」の門は通らない
           ...(story && cpu && !network && !tutorial
             ? { deck: storyDeckFor(story.axis, story.king, boardSize || 5) }
             : null),

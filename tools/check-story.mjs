@@ -351,7 +351,7 @@ console.log("\n配線(game.jsx / screens.jsx)");
   is("対局後の見出しは「ステージクリア!」", game.includes('"ステージクリア!"') && game.includes("次のステージへ") && game.includes("ストーリーへ"), true);
   is("ホームのタイルはストーリー(チュートリアルの場所)", /tone="story"[\s\S]*?label="ストーリー"[\s\S]*?note=\{storyTileNote\(profile\)\}[\s\S]*?onClick=\{onStory\}/.test(screens) && !/tone="tutorial"/.test(screens), true);
   is("ストーリーの画面とステージ前の1枚", screens.includes("<StoryScreen onBack={() => t(\"menu\")} onStart={(axis) => setStoryIntro(axis)} />") && screens.includes("<StoryIntro"), true);
-  is("ステージは 5×5・札を絞らない・王は軸から", screens.includes("boardSize={tut ? tut.boardSize : story ? story.size : i}") && screens.includes("size: stageSize(phaseOf(loadProfile()))") && screens.includes("pool={!a && !tut && !bot && !story ? localPool : null}") && screens.includes("king: pickStoryKing(axis)"), true);
+  is("ステージの盤はフェーズで決まる・札を絞らない・王は軸から", screens.includes("boardSize={tut ? tut.boardSize : story ? story.size : i}") && screens.includes("size: stageSize(phaseOf(loadProfile()))") && screens.includes("pool={!a && !tut && !bot && !story ? localPool : null}") && screens.includes("king: pickStoryKing(axis)"), true);
   is("GameCore に story を渡す", screens.includes("story={story}"), true);
   is("対局を離れるときは story を消す", (screens.match(/setStory\(null\)/g) || []).length >= 7, true);
   is("チュートリアルの配線は残す(検査の正規表現がそのまま)", screens.includes("tutorial={tut}") && screens.includes("onTutorial={showTutorials}") && screens.includes("<TutorialSelect"), true);
