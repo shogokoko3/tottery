@@ -5,7 +5,7 @@
  *   2  王の力あり
  *   3  フォイルの能力(王のエリア効果)あり
  *
- * 昇格は「そのフェーズのストーリー(6軸)を全部クリア」+「そのフェーズでオンライン5勝」。
+ * 昇格は「そのフェーズのストーリー(7軸)を全部クリア」+「そのフェーズでオンライン5勝」。
  * 持ち点(レート)はフェーズ3だけ(rankedPhase。game.jsx の ranked と verify-match がフェーズを見る)。
  * オンラインで選べる盤は rulesForPhase().sizes: フェーズ1 は 5×5、フェーズ2 は 9×9、フェーズ3 は両方(2026-09-30)。
  *
@@ -31,7 +31,8 @@ export const DEFAULT_PHASE = 1;
 export const PHASE_EPOCH = 1;
 
 /** ストーリーの軸(王の数字の組)。この順に並ぶ。ステージの中身は story.js(これから) */
-export const STORY_AXES = Object.freeze(["23", "45", "67", "89", "10", "jqk"]);
+// J・Q と K は別のステージ(2026-09-30 本人の指示。前は J・Q・K で1つ)
+export const STORY_AXES = Object.freeze(["23", "45", "67", "89", "10", "jq", "k"]);
 
 /** 昇格に要るオンライン勝利数(そのフェーズで) */
 export const PROMOTION_WINS = 5;

@@ -146,8 +146,7 @@ import {
   markFirstTutorialOffered,
   shouldOfferFirstTutorial,
 } from "../game/tutorial-nudge.js";
-import { TUTORIALS } from "../game/tutorial.js";
-import { pickStoryKing, stageOf } from "../game/story.js";
+import { markStoryPrimerSeen, nextStage, pickStoryKing, stageOf, storyPrimerSeen } from "../game/story.js";
 import { rankedPhase, stageSize } from "../game/phase.js";
 import { isBlocked } from "../game/blocked.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
@@ -674,7 +673,7 @@ export function MenuScreen({
 
 /**
  * 対戦の相手を選ぶ。ホームの「対戦する」から来る。
- * ランダムマッチだけは、ストーリーのフェーズ1(6ステージ)をクリアするまで開かない(src/game/online-gate.js)。
+ * ランダムマッチだけは、ストーリーのフェーズ1(7ステージ)をクリアするまで開かない(src/game/online-gate.js)。
  * 閉じている間は薄くして理由と残りのステージ数を添え、押すとストーリーへ
  */
 export function MatchingScreen({
@@ -2208,6 +2207,8 @@ function TotteryScreens() {
     // ストーリーのステージ({ axis, phase, king, title })と、その前に出す相手の王の説明(軸 id)
     [story, setStory] = (0, useState)(null),
     [storyIntro, setStoryIntro] = (0, useState)(null),
+    // ストーリーの導入(はじめての手引き)。"first" = はじめて開いた(読み終えたら次のステージの説明へ)/ "guide" = 「遊び方」から
+    [storyPrimer, setStoryPrimer] = (0, useState)(null),
     // ルール設定を開いた元の画面。「戻る」はここへ帰る。
     // 対戦の種類(o)から推測すると、CPU対戦とルームの「オフラインで対戦」が
     // どちらも "game" なので見分けられず、CPUの戻り先がフレンド対戦になる
@@ -2391,6 +2392,15 @@ function TotteryScreens() {
   // ストーリー(src/ui/story.jsx)。一覧 → ステージの前の1枚(相手の王の説明)→ 対局
   function showStory() {
     (u(null), m(!1), setTut(null), setStory(null), setStoryIntro(null), t("story"));
+    // はじめて開いたときは、どんなゲームか・勝ち方(導入)を一度だけ出す(2026-09-30 本人の指示)
+    if (!storyPrimerSeen()) setStoryPrimer("first");
+  }
+  // 導入を読み終えたら、次のステージ(はじめはフェーズ1 の 2・3)の説明へ
+  function storyAfterPrimer() {
+    markStoryPrimerSeen();
+    setStoryPrimer(null);
+    const next = nextStage(loadProfile());
+    if (next) setStoryIntro(next.axis);
   }
   // ステージを始める。相手(CPU)の王の数字は軸からその回ごとに決める(2・3 の回なら 2 か 3)
   function startStory(axis) {
@@ -2600,17 +2610,19 @@ function TotteryScreens() {
           home: (
             <>
               <HomeScreen onStart={() => t("menu")} />
-              {/* はじめての人には、いきなり第1話ではなく**手引き**を出す
-                  (2026-09-29 本人の指示。「寿司将棋」の導入が分かりやすかった)。
-                  どんなゲームか → 勝ち方 → 王は伏せたまま → 陣 → 2〜5の動き、を
-                  1ページずつ。最後の札の釦がそのまま第1話につながる */}
+              {/* はじめての人には**手引き**を出す(2026-09-29 本人の指示。「寿司将棋」の導入が分かりやすかった)。
+                  どんなゲームか → 1手ずつ → 勝ち方 → 王は伏せたまま → 陣、を1ページずつ。
+                  最後の札の釦はストーリーの最初のステージ(2・3 の動きを盤の図で)につながる(2026-09-30。前は第1話) */}
               {offerTutorial && (
                 <Primer
-                  doneLabel="第1話を始める"
+                  doneLabel="ストーリーを始める"
                   onSkip={() => setOfferTutorial(!1)}
                   onDone={() => {
                     setOfferTutorial(!1);
-                    startTutorial(TUTORIALS[0]);
+                    markStoryPrimerSeen();
+                    showStory();
+                    const next = nextStage(loadProfile());
+                    if (next) setStoryIntro(next.axis);
                   }}
                 />
               )}
@@ -2757,7 +2769,21 @@ function TotteryScreens() {
           letters: <InboxScreen tab="letters" onTab={(id) => t(id)} onBack={() => t("menu")} />,
           story: (
             <>
-              <StoryScreen onBack={() => t("menu")} onStart={(axis) => setStoryIntro(axis)} />
+              <StoryScreen
+                onBack={() => t("menu")}
+                onStart={(axis) => setStoryIntro(axis)}
+                onGuide={() => setStoryPrimer("guide")}
+              />
+              {/* どんなゲームか・勝ち方(寿司将棋のような導入。2026-09-30 本人の指示)。
+                  はじめて開いたときは読み終えると次のステージの説明へ。「遊び方」からはとじるだけ */}
+              {storyPrimer && (
+                <Primer
+                  doneLabel={storyPrimer === "first" ? "ステージへ" : "とじる"}
+                  skipLabel={storyPrimer === "first" ? "あとで" : "とじる"}
+                  onSkip={() => (markStoryPrimerSeen(), setStoryPrimer(null))}
+                  onDone={() => (storyPrimer === "first" ? storyAfterPrimer() : setStoryPrimer(null))}
+                />
+              )}
               {/* ステージの前に、相手の王の特徴を毎回説明する(2026-09-30 本人の指示) */}
               {storyIntro && (
                 <StoryIntro

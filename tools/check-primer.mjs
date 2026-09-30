@@ -7,10 +7,9 @@
  *
  * 守りたいのは、寿司将棋の導入が分かりやすかった理由そのもの:
  *   - **1ページ = 1つのこと。** 絵1枚と1〜2行だけ
- *   - **ルールが先、駒の動きが後。** 何をするゲームかを渡してから動きに入る
- *   - **駒は1ページに1つ。** 早見表のようにまとめて並べない
- *   - **動きの文と図を書き写さない。** ルール(MOVE_TEXT / getLegalMoves)から取る。
- *     ここに写すと、ルールを直したとき手引きだけが嘘になる
+ *   - **どんなゲームか → 勝ち方。** 何をするゲームかを先に渡す
+ * 2026-09-30 に導入だけに絞った。駒の動きはストーリーのフェーズ1 で、ステージごとに盤の図で見せる
+ * (tools/check-story.mjs が見る)
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -83,7 +82,7 @@ const js = transformSync(src, {
   jsxFragment: '"fragment"',
   format: "esm",
 }).code;
-const { PRIMER_PAGES, PRIMER_RANKS, Primer } = await import(
+const { PRIMER_PAGES, Primer } = await import(
   "data:text/javascript;base64," + Buffer.from(js).toString("base64")
 );
 
@@ -130,51 +129,22 @@ is(
 is("題がどれにも付いている", PRIMER_PAGES.every((p) => !!p.title), true);
 is("鍵が重ならない", new Set(PRIMER_PAGES.map((p) => p.key)).size, PRIMER_PAGES.length);
 
-console.log("\n順番(ルールが先、駒の動きが後)");
+console.log("\n導入の中身(寿司将棋のように: どんなゲームか → 勝ち方。2026-09-30 本人の指示)");
+is("並び: ようこそ → 1手ずつ → 勝ち方 → 王は伏せたまま → 陣 → あとはストーリーで", PRIMER_PAGES.map((p) => p.key), ["welcome", "turn", "win", "hidden", "setup", "story"]);
+is("どんなゲームかを最初に言う", PRIMER_PAGES[0].lines.join("").includes("ボードゲーム"), true);
+is("勝ち方を言う(相手の王を討てば勝ち)", PRIMER_PAGES.find((p) => p.key === "win").lines.join("").includes("相手の王を討てば勝ち"), true);
+is("駒の動きはここでは見せない(ステージの前に盤の図で見せる)", PRIMER_PAGES.some((p) => p.rank), false);
+is("王の力には触れない(フェーズ1 には無い)", PRIMER_PAGES.some((p) => /王の力|力がつき/.test(p.lines.join(""))), false);
+is("最後はストーリーへ渡す", /ストーリー/.test(PRIMER_PAGES.at(-1).title) && PRIMER_PAGES.at(-1).lines.join("").includes("2 と 3"), true);
 {
-  const firstRank = PRIMER_PAGES.findIndex((p) => p.rank);
-  const lastRank = PRIMER_PAGES.map((p) => !!p.rank).lastIndexOf(true);
-  is("駒より前にルールの札がある", firstRank > 0, true);
-  is("駒の札は続けて並ぶ", PRIMER_PAGES.slice(firstRank, lastRank + 1).every((p) => p.rank), true);
-  const before = PRIMER_PAGES.slice(0, firstRank).map((p) => p.key);
-  is("勝ち方は駒より先", before.includes("win"), true);
-  is("王が伏せたままであることも駒より先", before.includes("hidden"), true);
-}
-
-console.log("\n駒の札");
-is("導入で見せる段は第1話の札束と同じ", [...PRIMER_RANKS], [...CARD_POOLS.basic]);
-is(
-  "1ページに1つの段だけ",
-  PRIMER_PAGES.filter((p) => p.rank).length,
-  PRIMER_RANKS.length,
-);
-is(
-  "動きの文はルールのものをそのまま使う(書き写さない)",
-  PRIMER_PAGES.filter((p) => p.rank).every((p) => p.lines.length === 1 && p.lines[0] === MOVE_TEXT[p.rank]),
-  true,
-);
-{
-  // 図はルール(getLegalMoves)から描く MoveDiagram に任せる。手で塗らない
-  reset();
-  const firstRank = PRIMER_PAGES.findIndex((p) => p.rank);
-  states[0] = firstRank;
-  const tree = render({ onDone: () => {} });
-  const art = cls(tree, "primer-rank-art");
-  is("駒の札には絵札と図が並ぶ", !!art, true);
-  is(
-    "図はルールから描くものを使う",
-    all(art || {}, (n) => n.type === "MoveDiagram").map((n) => n.props.rank),
-    [PRIMER_PAGES[firstRank].rank],
-  );
-  is(
-    "絵札も出す",
-    all(art || {}, (n) => n.type === "CardFace").length,
-    1,
-  );
   // 絵は盤で使っているものをそのまま。手引きのためだけの絵を持たない
   const srcText = read("src/ui/primer.jsx");
   is("盤の駒(Piece)をそのまま並べる", /<Piece\b/.test(srcText), true);
   is("動ける先を手で塗っていない", /md-reach|md-cell/.test(srcText), false);
+  reset();
+  states[0] = PRIMER_PAGES.findIndex((p) => p.key === "turn");
+  const tree = render({ onDone: () => {} });
+  is("「1手ずつ」の絵は自分の駒 ▶ 相手の駒", all(tree, (n) => n.type === "Piece").length, 2);
 }
 
 console.log("\n送り方");
@@ -207,11 +177,11 @@ console.log("\n送り方");
   is("戻れる", texts(cls(tree, "primer-text")).includes(PRIMER_PAGES[0].lines[0]), true);
 }
 {
-  // 最後の一言は呼ぶ側が決める(導入は「第1話を始める」、早見表は「とじる」)
+  // 最後の一言は呼ぶ側が決める(10連のあとは「ストーリーを始める」、早見表は「とじる」)
   reset();
   states[0] = PRIMER_PAGES.length - 1;
-  const tree = render({ onDone: () => {}, doneLabel: "第1話を始める" });
-  is("最後の一言は呼ぶ側が決める", texts(cls(tree, "primer-next")).join(""), "第1話を始める");
+  const tree = render({ onDone: () => {}, doneLabel: "ストーリーを始める" });
+  is("最後の一言は呼ぶ側が決める", texts(cls(tree, "primer-next")).join(""), "ストーリーを始める");
   is("読み飛ばしを渡さなければ出さない", !!cls(tree, "primer-skip"), false);
 }
 {
@@ -226,7 +196,9 @@ console.log("\n配線");
 {
   const screens = read("src/ui/screens.jsx");
   is("はじめての人に手引きを出す", /offerTutorial && \(\s*<Primer/.test(screens), true);
-  is("読み終えたら第1話へ", /doneLabel="第1話を始める"/.test(screens), true);
+  is("読み終えたらストーリーの最初のステージへ(前は第1話)", /doneLabel="ストーリーを始める"[\s\S]{0,300}markStoryPrimerSeen\(\);\s*showStory\(\);\s*const next = nextStage\(loadProfile\(\)\);\s*if \(next\) setStoryIntro\(next\.axis\);/.test(screens), true);
+  is("ストーリーをはじめて開いたら導入を一度だけ", /if \(!storyPrimerSeen\(\)\) setStoryPrimer\("first"\);/.test(screens), true);
+  is("ストーリーの「遊び方」から読み返せる", screens.includes('onGuide={() => setStoryPrimer("guide")}') && /storyPrimer && \(\s*<Primer/.test(screens), true);
   is("あとで、も選べる", /onSkip=\{\(\) => setOfferTutorial\(!1\)\}/.test(screens), true);
   const guides = read("src/ui/guides.jsx");
   is("早見表からも読み返せる", /tab === "primer"/.test(guides), true);

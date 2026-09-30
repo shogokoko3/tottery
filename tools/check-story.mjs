@@ -2,7 +2,7 @@
  * ストーリー(src/game/story.js)の決まりを確かめる。設計は ストーリーとフェーズ.md
  */
 import assert from "node:assert/strict";
-import { STORY_STAGES, STORY_XP, stageOf, stageIntro, stageSetup, storyList, nextStage, ranksLabel, storyFreshClear, pickStoryKing, storyCpuArea, storyDeck, storyDeckFor, stageAfter, nextStageAfter } from "../src/game/story.js";
+import { STORY_STAGES, STORY_XP, stageOf, stageIntro, stageSetup, storyList, nextStage, ranksLabel, storyFreshClear, pickStoryKing, storyCpuArea, storyDeck, storyDeckFor, stageAfter, nextStageAfter, storyPrimerSeen, markStoryPrimerSeen } from "../src/game/story.js";
 import { reducer } from "../src/game/reducer.js";
 import { enrichAction } from "../src/game/actions.js";
 import { kingRankOf } from "../src/game/board.js";
@@ -23,16 +23,17 @@ const is = (label, got, want) => {
 
 console.log("ステージの並び");
 is("軸は phase.js の STORY_AXES と同じ順", STORY_STAGES.map((s) => s.axis), [...STORY_AXES]);
-is("6 ステージで A 以外の全部の数字を一度ずつ", STORY_STAGES.flatMap((s) => s.ranks).sort(), RANKS.filter((r) => r !== "A").sort());
+is("7 ステージで A 以外の全部の数字を一度ずつ", STORY_STAGES.flatMap((s) => s.ranks).sort(), RANKS.filter((r) => r !== "A").sort());
 is("どの軸も同じエリアに属する(軸=エリア)", STORY_STAGES.every((s) => new Set(s.ranks.map((r) => AREA_BY_RANK[r])).size === 1), true);
 is("名前と一言がある", STORY_STAGES.every((s) => s.name && s.tagline), true);
 is("知らない軸は null", stageOf("xx"), null);
-is("並びで次のステージ", [stageAfter("23").axis, stageAfter("10").axis, stageAfter("jqk"), stageAfter("xx")], ["45", "jqk", null, null]);
+is("並びで次のステージ", [stageAfter("23").axis, stageAfter("10").axis, stageAfter("jq").axis, stageAfter("k"), stageAfter("xx")], ["45", "jq", "k", null, null]);
+is("J・Q と K は別のステージ(2026-09-30)", [stageOf("jq").ranks, stageOf("k").ranks, stageOf("jqk")], [["J", "Q"], ["K"], null]);
 {
-  const p = { phase: 1, story: { 1: ["jqk"], 2: [], 3: [] } };
-  is("対局後の次のステージは未クリアの中から(J・Q・K を先に勝っても 2・3 へ)", nextStageAfter(p, "jqk").axis, "23");
+  const p = { phase: 1, story: { 1: ["k"], 2: [], 3: [] } };
+  is("対局後の次のステージは未クリアの中から(K を先に勝っても 2・3 へ)", nextStageAfter(p, "k").axis, "23");
   is("いまの軸の次から探す(4・5 の後は 6・7)", nextStageAfter({ phase: 1, story: { 1: ["45"], 2: [], 3: [] } }, "45").axis, "67");
-  is("末尾まで無ければ先頭へ戻る", nextStageAfter({ phase: 1, story: { 1: ["10", "jqk"], 2: [], 3: [] } }, "10").axis, "23");
+  is("末尾まで無ければ先頭へ戻る", nextStageAfter({ phase: 1, story: { 1: ["10", "jq", "k"], 2: [], 3: [] } }, "10").axis, "23");
   is("全部クリア済みなら null", nextStageAfter({ phase: 1, story: { 1: [...STORY_AXES], 2: [], 3: [] } }, "23"), null);
 }
 is("数字の読み", [ranksLabel(["2", "3"]), ranksLabel(["10"])], ["2 か 3", "10"]);
@@ -53,15 +54,27 @@ is("変なフェーズは既定(1)の説明", stageIntro("23", 9).title, stageIn
 console.log("\n対局の設定");
 is("フェーズ1: 5×5・CPU の軸・力なし・エリアなし", stageSetup("23", 1), { size: 5, cpuAxis: ["2", "3"], kingPowers: false, areas: false });
 is("フェーズ2: 9×9・力あり(旗なし)・エリアなし", stageSetup("45", 2), { size: 9, cpuAxis: ["4", "5"], areas: false });
-is("フェーズ3: 9×9・エリアあり", stageSetup("jqk", 3), { size: 9, cpuAxis: ["J", "Q", "K"], areas: true });
+is("フェーズ3: 9×9・エリアあり", stageSetup("jq", 3), { size: 9, cpuAxis: ["J", "Q"], areas: true });
+is("K だけのステージ", stageSetup("k", 1), { size: 5, cpuAxis: ["K"], kingPowers: false, areas: false });
 is("山札: 5×5 は storyDeck、9×9 は定石の山札(CPU の手札に王の数字が 4 枚=土・海)", [storyDeckFor("23", "2", 9).slice(13, 26).filter((c) => c.rank === "2").length >= 4, storyDeckFor("23", "2", 5).slice(13, 15).map((c) => c.rank)], [true, ["2", "2"]]);
 is("山札: 軸に無い王は null", storyDeckFor("23", "K", 9), null);
 is("知らない軸は null", stageSetup("xx", 1), null);
 
+console.log("\n導入(はじめての手引き)を見たかの印");
+{
+  const m = new Map();
+  const st = { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) };
+  is("はじめは見ていない", storyPrimerSeen(st), false);
+  markStoryPrimerSeen(st);
+  is("見たら印が付く", storyPrimerSeen(st), true);
+  const broken = { getItem: () => { throw new Error("x"); }, setItem: () => { throw new Error("x"); } };
+  is("保存が使えなければ出さない(毎回出てしまうのを防ぐ)", storyPrimerSeen(broken), true);
+}
+
 console.log("\n一覧と次のステージ");
 {
   let p = { phase: 1 };
-  is("はじめは何もクリアしていない", storyList(p).map((s) => s.cleared), [false, false, false, false, false, false]);
+  is("はじめは何もクリアしていない", storyList(p).map((s) => s.cleared), Array(7).fill(false));
   is("褒美はチケット 10 枚と xp", [storyList(p)[0].tickets, storyList(p)[0].xp], [STORY_TICKETS, STORY_XP]);
   is("次は 2・3", nextStage(p).axis, "23");
   p = clearAxis(p, "23");
@@ -104,9 +117,9 @@ console.log("\n対局の終わり(recordGame の story)");
 
 console.log("\n山札と CPU の受け渡し");
 {
-  is("王は軸から選ぶ(2・3 の回なら 2 か 3)", [pickStoryKing("23", () => 0), pickStoryKing("23", () => 0.99), pickStoryKing("10", () => 0.5), pickStoryKing("jqk", () => 0.5)], ["2", "3", "10", "Q"]);
+  is("王は軸から選ぶ(2・3 の回なら 2 か 3)", [pickStoryKing("23", () => 0), pickStoryKing("23", () => 0.99), pickStoryKing("10", () => 0.5), pickStoryKing("jq", () => 0.5), pickStoryKing("k", () => 0.9)], ["2", "3", "10", "Q", "K"]);
   is("知らない軸は null", pickStoryKing("xx"), null);
-  is("CPU に渡すエリアは軸と1対1", STORY_STAGES.map((s) => storyCpuArea(s.axis, s.ranks[0]).type), ["earth", "sea", "forest", "ice", "sky", "palace"]);
+  is("CPU に渡すエリアは軸と対応(J・Q と K はどちらも宮殿)", STORY_STAGES.map((s) => storyCpuArea(s.axis, s.ranks[0]).type), ["earth", "sea", "forest", "ice", "sky", "palace", "palace"]);
   is("軸に無い王は渡さない", storyCpuArea("23", "K"), null);
   for (const st of STORY_STAGES)
     for (const k of st.ranks) {
@@ -279,10 +292,10 @@ export { storyTileNote, introKeyCloses };`,
     save(base);
     let h = screen();
     is("見出しとフェーズ", h.includes("<h2>ストーリー</h2>") && h.includes("フェーズ <!-- -->1") || h.includes("フェーズ 1"), true);
-    is("6 ステージが並ぶ", (h.match(/class="story-stage /g) || []).length, 6);
+    is("7 ステージが並ぶ", (h.match(/class="story-stage /g) || []).length, 7);
     is("最初は 2・3 が次のステージ", /story-stage[^"]*is-next[^>]*>(?:(?!<\/button>).)*二と三の王/s.test(h), true);
-    is("未クリアの段には褒美(チケット 10枚)", (h.match(/チケット <!-- -->10<!-- -->枚|チケット 10枚/g) || []).length, 6);
-    is("昇格の条件が書いてある", h.includes("昇格の条件") && h.includes("6ステージ全部のクリア"), true);
+    is("未クリアの段には褒美(チケット 10枚)", (h.match(/チケット <!-- -->10<!-- -->枚|チケット 10枚/g) || []).length, 7);
+    is("昇格の条件が書いてある", h.includes("昇格の条件") && /7(<!-- -->)?ステージ全部のクリア/.test(h), true);
     is("ホームに戻る", h.includes("ホームに戻る"), true);
     save({ ...base, story: { 1: ["23", "45"], 2: [], 3: [] } });
     h = screen();
@@ -297,6 +310,9 @@ export { storyTileNote, introKeyCloses };`,
     for (const st of STORY_STAGES) {
       const i1 = intro(st.axis, 1), i2 = intro(st.axis, 2), i3 = intro(st.axis, 3);
       is(`${st.axis}: 前口上に相手の王の数字`, [i1, i2, i3].every((x) => x.includes(`相手の王は ${ranksLabel(st.ranks)}`) || x.includes(`相手の王は <!-- -->${ranksLabel(st.ranks)}`)), true);
+      // フェーズ1 は駒の動きを盤の図で(寿司将棋の導入のように。2026-09-30 本人の指示)。図は1つの駒に1つ
+      is(`${st.axis}: フェーズ1は駒ごとに盤の図(${st.ranks.length}つ)`, (i1.match(/class="move-diagram"/g) || []).length, st.ranks.length);
+      is(`${st.axis}: フェーズ2・3は図ではなく文`, [(i2.match(/class="move-diagram"/g) || []).length, (i3.match(/class="move-diagram"/g) || []).length], [0, 0]);
       is(`${st.axis}: フェーズ1は動き方(王の力の文は出ない)`, st.ranks.every((r) => i1.includes(MOVE_TEXT[r].slice(0, 12))) && !st.ranks.some((r) => i1.includes(KING_TEXT[r].slice(0, 12))), true);
       is(`${st.axis}: フェーズ2は王の力`, st.ranks.every((r) => i2.includes(KING_TEXT[r].slice(0, 12))), true);
       is(`${st.axis}: フェーズ3はエリア`, i3.includes(AREA_INFO[AREA_BY_RANK[st.ranks[0]]].name), true);
@@ -350,7 +366,7 @@ console.log("\n配線(game.jsx / screens.jsx)");
   is("手元のエリア(詳細設定・CPUのエリア・席名・定石)はフェーズ3だけ", screens.includes("const localAreas = rulesForPhase(phaseOf(loadProfile())).areas;") && /onCpuArea=\{\s*d && !tut && foilRevealed\(collection\) && !localPool && localAreas/.test(screens) && screens.includes("localAreas && cpuArea && cpuArea.king && i === 9"), true);
   is("対局後の見出しは「ステージクリア!」", game.includes('"ステージクリア!"') && game.includes("次のステージへ") && game.includes("ストーリーへ"), true);
   is("ホームのタイルはストーリー(チュートリアルの場所)", /tone="story"[\s\S]*?label="ストーリー"[\s\S]*?note=\{storyTileNote\(profile\)\}[\s\S]*?onClick=\{onStory\}/.test(screens) && !/tone="tutorial"/.test(screens), true);
-  is("ストーリーの画面とステージ前の1枚", screens.includes("<StoryScreen onBack={() => t(\"menu\")} onStart={(axis) => setStoryIntro(axis)} />") && screens.includes("<StoryIntro"), true);
+  is("ストーリーの画面とステージ前の1枚", /<StoryScreen\s+onBack=\{\(\) => t\("menu"\)\}\s+onStart=\{\(axis\) => setStoryIntro\(axis\)\}\s+onGuide=\{\(\) => setStoryPrimer\("guide"\)\}\s*\/>/.test(screens) && screens.includes("<StoryIntro"), true);
   is("ステージの盤はフェーズで決まる・札を絞らない・王は軸から", screens.includes("boardSize={tut ? tut.boardSize : story ? story.size : i}") && screens.includes("size: stageSize(phaseOf(loadProfile()))") && screens.includes("pool={!a && !tut && !bot && !story ? localPool : null}") && screens.includes("king: pickStoryKing(axis)"), true);
   is("GameCore に story を渡す", screens.includes("story={story}"), true);
   is("対局を離れるときは story を消す", (screens.match(/setStory\(null\)/g) || []).length >= 7, true);

@@ -127,14 +127,15 @@ console.log("\nストーリーの褒美(kind=story。earn の1日上限とは別
   is("同じステージは二度効かない", sw.storyReward("ST", 1, "23", day).applied, false);
   is("同じ軸でもフェーズが違えば別のステージ", sw.storyReward("ST", 2, "23", day).applied, true);
   for (const p of [1, 2, 3]) for (const a of STORY_AXES) sw.storyReward("ST", p, a, day);
-  is("全ステージで打ち止め(3 フェーズ × 6 軸)", sw.summary("ST").tickets, 30 + 3 * STORY_AXES.length * STORY_TICKETS);
+  is("全ステージで打ち止め(3 フェーズ × 7 軸)", sw.summary("ST").tickets, 30 + 3 * STORY_AXES.length * STORY_TICKETS);
   await throws("知らない軸は断る", () => sw.storyReward("ST", 1, "xx", day), /正しくありません/);
   await throws("フェーズ 4 は断る", () => sw.storyReward("ST", 4, "23", day), /正しくありません/);
   await throws("文字のフェーズは断る", () => sw.storyReward("ST", "1", "23", day), /正しくありません/);
   await throws("story: の id はほかの道から植えられない", () => sw.credit("SX", "story:ST:3:jqk", 1, "earn", day), /正しくありません/);
   is("別の人も自分のぶんを受け取れる", sw.storyReward("SU", 1, "23", day).applied, true);
   const rows = D.prepare("SELECT ref FROM wallet_ledger WHERE uid='ST' AND kind='story' ORDER BY ref").all();
-  is("台帳には「フェーズ:軸」で残る", rows.length === 18 && rows.some((r) => r.ref === "1:23") && rows.some((r) => r.ref === "3:jqk"), true);
+  is("台帳には「フェーズ:軸」で残る", rows.length === 3 * STORY_AXES.length && rows.some((r) => r.ref === "1:23") && rows.some((r) => r.ref === "3:jq") && rows.some((r) => r.ref === "3:k"), true);
+  await throws("前の軸 jqk はもう受けない", () => sw.storyReward("ST", 1, "jqk", day), /正しくありません/);
 }
 
 console.log("記念配布(campaigns.js)");

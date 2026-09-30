@@ -80,8 +80,28 @@ is("ホームのタイルは「ストーリー」(チュートリアルの場所
 is("公開前の phase:3 はフェーズ 1 に戻る(タイルの一言: フェーズ 1・次は二と三の王)", /フェーズ 1/.test(tile || "") && /二と三の王/.test(tile || ""), tile);
 is("チュートリアルのタイルは無い", !(await ev(`[...document.querySelectorAll(".home-grid .home-tile")].some(b=>b.textContent.includes("チュートリアル"))`)));
 await ev(`[...document.querySelectorAll(".home-grid .home-tile")].find(b=>b.textContent.includes("ストーリー")).click()`); await sleep(800);
+// はじめて開くと導入(どんなゲームか・勝ち方。寿司将棋のように)が出る。読み終えると 2・3 の説明へ
+is("はじめて開くと導入が出る", await ev(`!!document.querySelector(".primer")`));
+const firstTitle = await ev(`document.querySelector(".primer h3") ? document.querySelector(".primer h3").innerText : ""`);
+is("導入の1枚目は「トッタリーへようこそ」", firstTitle === "トッタリーへようこそ", firstTitle);
+const seen = [firstTitle];
+for (let i = 0; i < 8; i++) {
+  if (!(await clickText("つづき"))) break;
+  await sleep(250);
+  seen.push(await ev(`document.querySelector(".primer h3").innerText`));
+}
+await shot("02a-primer-last");
+is("導入の並び(どんなゲームか → 1手ずつ → 勝ち方 → 伏せた王 → 陣 → ストーリーへ)", JSON.stringify(seen) === JSON.stringify(["トッタリーへようこそ", "1手ずつ", "勝ち方", "王は名乗らない", "陣を組む", "あとはストーリーで"]), JSON.stringify(seen));
+is("導入の最後の釦は「ステージへ」", await clickText("ステージへ")); await sleep(700);
+await shot("02b-first-intro");
+const firstIntro = await ev(`document.querySelector(".story-intro") ? document.querySelector(".story-intro").innerText : ""`);
+is("読み終えると 2・3 のステージの説明", /相手の王は 2 か 3/.test(firstIntro), firstIntro.slice(0, 60));
+is("フェーズ1 の説明は駒ごとに盤の図(2 と 3 で2つ)", (await ev(`document.querySelectorAll(".story-intro .move-diagram").length`)) === 2);
+await clickSel(".story-intro .btn-ghost"); await sleep(400);
+is("説明の「戻る」で一覧に戻る", !(await ev(`!!document.querySelector(".story-intro")`)) && (await ev(`document.querySelectorAll(".story-stage").length`)) === 7);
+is("ストーリー画面に「遊び方」", await ev(`[...document.querySelectorAll("button")].some(b=>b.textContent.trim()==="遊び方")`));
 await shot("02-story");
-is("ストーリーの画面: 6ステージ", (await ev(`document.querySelectorAll(".story-stage").length`)) === 6);
+is("ストーリーの画面: 7ステージ", (await ev(`document.querySelectorAll(".story-stage").length`)) === 7);
 is("最初は 2・3 が次", await ev(`!!document.querySelector(".story-stage.is-next") && document.querySelector(".story-stage.is-next").textContent.includes("二と三")`));
 await clickSel(".story-stage"); await sleep(600);
 // Escape で閉じる(「はじめる」に最初から focus があっても効く)
@@ -172,6 +192,7 @@ await ev(`(()=>{const k="tottery.account.v1"; const p=JSON.parse(localStorage.ge
 await send("Page.navigate", { url: APP }); await sleep(2500);
 is("フェーズ2でホームに着く", await toHome("home3"));
 await ev(`[...document.querySelectorAll(".home-grid .home-tile")].find(b=>b.textContent.includes("ストーリー")).click()`); await sleep(800);
+is("2回目からは導入が出ない", !(await ev(`!!document.querySelector(".primer")`)));
 is("フェーズ2の一覧は 9×9", /フェーズ 2/.test(await ev(`document.querySelector(".story-phase").innerText`)) && /9×9/.test(await ev(`document.querySelector(".story-phase").innerText`)));
 await clickSel(".story-stage"); await sleep(600);
 const intro3 = await ev(`document.querySelector(".story-intro") ? document.querySelector(".story-intro").innerText : ""`);

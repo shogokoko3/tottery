@@ -1,8 +1,8 @@
 /**
  * ストーリー(2026-09-30 本人の指示。設計は ストーリーとフェーズ.md)。
  *
- * 王の軸で作った 6 ステージ: 2・3 / 4・5 / 6・7 / 8・9 / 10 / J・Q・K。
- * 同じ 6 ステージをフェーズごとに一周する(1: 王の力なし / 2: 王の力あり / 3: エリアあり)。
+ * 王の軸で作った 7 ステージ: 2・3 / 4・5 / 6・7 / 8・9 / 10 / J・Q / K(2026-09-30 に J・Q と K を分けた)。
+ * 同じ 7 ステージをフェーズごとに一周する(1: 王の力なし / 2: 王の力あり / 3: エリアあり)。
  *
  * 1 ステージ = CPU 戦。盤はフェーズ1 が 5×5、フェーズ2 からは 9×9(phase.js stageSize)。**相手(CPU)の王はその軸の数字**
  * (CPU はその軸の札が王になるように引き直し・王選び・配置をする。cpuAxis で伝える)。
@@ -27,7 +27,8 @@ export const STORY_STAGES = Object.freeze([
   Object.freeze({ axis: "67", ranks: Object.freeze(["6", "7"]), name: "六と七", tagline: "偶数マスの王。飛び石で迫る" }),
   Object.freeze({ axis: "89", ranks: Object.freeze(["8", "9"]), name: "八と九", tagline: "奇数マスの王。一歩から遠くまで" }),
   Object.freeze({ axis: "10", ranks: Object.freeze(["10"]), name: "十", tagline: "跳ぶ王。間の駒を飛び越える" }),
-  Object.freeze({ axis: "jqk", ranks: Object.freeze(["J", "Q", "K"]), name: "王族", tagline: "果てまで走る王。王の座は一つ" }),
+  Object.freeze({ axis: "jq", ranks: Object.freeze(["J", "Q"]), name: "JとQ", tagline: "果てまで走る王。縦横か斜めに一直線" }),
+  Object.freeze({ axis: "k", ranks: Object.freeze(["K"]), name: "K", tagline: "縦横斜めに走り、跳ぶこともできる王" }),
 ]);
 
 /** ステージごとの xp(仮置き。本人が決めるまでの値) */
@@ -196,4 +197,24 @@ export async function grantStoryReward(phase, axis) {
   await giveGift({ type: "ticket", amount: STORY_TICKETS }).catch(() => {});
   await earnStoryTicket(normalizePhase(phase), axis).catch(() => {});
   return STORY_TICKETS;
+}
+
+/**
+ * 導入(はじめての手引き)を見たか。ストーリーをはじめて開いたときに一度だけ出すため(2026-09-30)。
+ * 端末ごとの印(localStorage)。消えても導入がもう一度出るだけ
+ */
+const PRIMER_SEEN_KEY = "tottery.storyPrimer.v1";
+export function storyPrimerSeen(storage = globalThis.localStorage) {
+  try {
+    return storage.getItem(PRIMER_SEEN_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+export function markStoryPrimerSeen(storage = globalThis.localStorage) {
+  try {
+    storage.setItem(PRIMER_SEEN_KEY, "1");
+  } catch {
+    /* 保存できなくても進める */
+  }
 }

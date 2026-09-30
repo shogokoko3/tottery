@@ -2,8 +2,9 @@
  * ストーリー(2026-09-30 本人の指示。設計は ストーリーとフェーズ.md)。
  *
  * 画面は2つ:
- *   StoryScreen … いまのフェーズの6ステージ。クリアの印、褒美、昇格までの残り、昇格の釦
- *   StoryIntro  … ステージを始める前の1枚。**相手の王の特徴を毎回説明する**(中身はフェーズで変わる)
+ *   StoryScreen … いまのフェーズの7ステージ。クリアの印、褒美、昇格までの残り、昇格の釦、「遊び方」(導入)
+ *   StoryIntro  … ステージを始める前の1枚。**相手の王の特徴を毎回説明する**(中身はフェーズで変わる)。
+ *                 フェーズ1 は駒の動き方を**盤の図**で見せる(寿司将棋の導入のように。2026-09-30 本人の指示)
  *
  * チュートリアルの一覧(tutorial.jsx)に代わる導線。チュートリアルのコードは残す(本人の指示)
  */
@@ -11,10 +12,11 @@ import { useEffect, useState } from "react";
 import { typing } from "./key-target.js";
 import { ArrowLeft, Check } from "../icons.jsx";
 import { loadProfile, promotePhase } from "../game/profile.js";
-import { canPromote, promotionStatus, stageSize } from "../game/phase.js";
+import { STORY_AXES, canPromote, promotionStatus, stageSize } from "../game/phase.js";
 import { onlineGate } from "../game/online-gate.js";
 import { stageIntro, storyList, nextStage, ranksLabel } from "../game/story.js";
 import { CardFace } from "./cards.jsx";
+import { MoveDiagram } from "./guides.jsx";
 
 /** フェーズの一言 */
 export const PHASE_LABEL = Object.freeze({
@@ -23,7 +25,7 @@ export const PHASE_LABEL = Object.freeze({
   3: "エリアあり",
 });
 
-export function StoryScreen({ onBack, onStart }) {
+export function StoryScreen({ onBack, onStart, onGuide = null }) {
   const [profile, setProfile] = useState(() => loadProfile());
   const list = storyList(profile);
   const status = promotionStatus(profile);
@@ -34,6 +36,12 @@ export function StoryScreen({ onBack, onStart }) {
     <div className="setup-wrap story-wrap">
       <div className="story-head">
         <h2>ストーリー</h2>
+        {/* どんなゲームか・勝ち方(導入)をいつでも読み返せる */}
+        {onGuide && (
+          <button type="button" className="btn btn-ghost story-guide" onClick={onGuide}>
+            遊び方
+          </button>
+        )}
         <p className="story-phase">
           フェーズ {status.phase}
           <small>
@@ -88,7 +96,7 @@ export function StoryScreen({ onBack, onStart }) {
           ) : (
             <p className="hint">
               {/* 数字の前後に空白を置かない(375px で「5」と「勝」の間で折れる) */}
-              昇格の条件: 6ステージ全部のクリアと、このフェーズでオンライン対戦に{status.winsNeeded}勝。
+              昇格の条件: {STORY_AXES.length}ステージ全部のクリアと、このフェーズでオンライン対戦に{status.winsNeeded}勝。
               {status.axesLeft.length > 0 && `ステージはあと${status.axesLeft.length}。`}
               {status.winsLeft > 0 && `勝利はあと${status.winsLeft}。`}
             </p>
@@ -98,10 +106,10 @@ export function StoryScreen({ onBack, onStart }) {
       {status.last && (
         <p className="hint">最後のフェーズです。ステージは何度でも遊べます。</p>
       )}
-      {/* ランダムマッチはフェーズ1の6ステージをクリアすると開く(2026-09-30 本人の指示) */}
+      {/* ランダムマッチはフェーズ1の全ステージをクリアすると開く(2026-09-30 本人の指示) */}
       {!gate.ok && (
         <p className="hint story-gate">
-          フェーズ1の6ステージをクリアすると、ランダムマッチが開きます。
+          フェーズ1の{STORY_AXES.length}ステージをクリアすると、ランダムマッチが開きます。
         </p>
       )}
       <button className="btn btn-ghost btn-home" onClick={onBack}>
@@ -143,14 +151,29 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
           <h3>{intro.title}</h3>
           <p className="story-intro-lead">{intro.lead}</p>
         </div>
-        <ul className="story-intro-items">
-          {intro.items.map((it) => (
-            <li key={it.rank}>
-              <b>{it.rank}</b>
-              <span>{it.text}</span>
-            </li>
-          ))}
-        </ul>
+        {phase === 1 ? (
+          // フェーズ1 は駒の動き方を盤の図で。図はルール(getLegalMoves)から描く MoveDiagram、文は MOVE_TEXT のまま
+          <ul className="story-intro-moves">
+            {intro.items.map((it) => (
+              <li key={it.rank}>
+                <div className="story-move-art">
+                  <CardFace rank={it.rank} suit="spade" size="sm" />
+                  <MoveDiagram rank={it.rank} gridSize={5} />
+                </div>
+                <p>{it.text}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ul className="story-intro-items">
+            {intro.items.map((it) => (
+              <li key={it.rank}>
+                <b>{it.rank}</b>
+                <span>{it.text}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         <p className="hint">{intro.note}</p>
         <div className="setup-actions">
           <button type="button" className="btn btn-ghost" onClick={onBack}>

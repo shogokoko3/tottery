@@ -9266,3 +9266,48 @@ svg {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ストーリーのフェーズ1: ステージの前に、相手の王になる駒の動きを盤の図で(2026-09-30) */
+.story-intro-moves {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.story-intro-moves li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.story-move-art {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.story-intro-moves .move-diagram {
+  width: 92px;
+}
+.story-intro-moves p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+/* 「遊び方」は見出しの右に小さく */
+.story-head {
+  position: relative;
+}
+.story-guide {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-height: 34px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
