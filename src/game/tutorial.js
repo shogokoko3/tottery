@@ -18,11 +18,28 @@
  *   pieceId は見本の答え。hint(文)を開くと、見本の駒と道筋を光らせる。
  *   正解が1つでも、手持ちの駒から「どれなら届くか」を自分で探す1手になる。
  *   的が相手の王でも、文では「王」と書かずマスの名前で指す(伏せた情報のため)
+ *
+ * はじめの一局(FIRST_GAME。2026-10-01 本人の指示)で足したもの。第1〜13話は使わない。
+ *   text・nudge・hint などの文は、行の配列でも持てる(["1行目", "2行目"])。
+ *          読点の位置で行を切るため。画面は textLines() で1行ずつ出す
+ *   picked  need の駒を選んでいるあいだ、text の代わりに出す行
+ *   kingAlt { cardId, text }。あなたの王がその札なら、text の代わりに出す
+ *   nudge   台本に無い手を止めたときの一言(無ければ決まりの文)
+ *   holdFoe 読み終えて「つづき」を押すまで、台本の相手は指さない(foeHeld)
+ *   threat  { pieceId, targets }。holdFoe の札で、ねらう駒から的への光の筋(▼ は付けない)
+ *   nextLabel 「次へ」の代わりの釦の名
+ *   need.also  この札のあいだも通す操作(確定の前の王の選び直し)
+ *   choose.wrong・notCapture  的と違う駒を取る手・取らない手への一言
+ *   choose.hintGuide  ヒントを開いたときに出す動きの一覧(MoveGuidePanel の guide)
+ * 台本そのものには phase(対局のフェーズ。無ければ王の力あり)・storyAxis(ストーリーの
+ * 軸として記録する)・tagline(結果の締めの一行)・kingNote(結果のあなたの王の一行)、
+ * opening には stopAt:"king"(王を選ぶ段で止める)・lockPlacement(並べ直しを止める)。
  */
 const choose = (target, cell, hint) => ({ target, cell, hint });
 import { CARD_POOLS, PLAYER_META, SUITS } from "./constants.js";
 import { reducer } from "./reducer.js";
 import { emptyBoard, getLegalMoves } from "./board.js";
+import { PHASE_MAX, setupFlagsForPhase } from "./phase.js";
 
 const SUIT_OF = { S: "spade", H: "heart", D: "diamond", C: "club" };
 
@@ -97,6 +114,12 @@ const atPlace = (s) => s.phase === "setup" && s.setupSteps[0] === "place";
 const atKing = (s) => s.phase === "setup" && s.setupSteps[0] === "king";
 const myTurn = (s) => s.phase === "play" && s.currentTurn === 0;
 const atEnd = (s) => s.phase === "gameover";
+/** 相手の番で、撃破の札も王の継ぎ手選びも出ていない。相手が指す直前 */
+export const atFoeTurn = (s) =>
+  s.phase === "play" &&
+  s.currentTurn === 1 &&
+  !s.captureReveal &&
+  !s.pendingKingChoice;
 /** こちらの番に戻ってから出す。決着していればいつでも出す */
 const myTurnOrEnd = (s) =>
   s.phase === "gameover" ||
@@ -105,7 +128,10 @@ const myTurnOrEnd = (s) =>
 /* ---------------- 第1話 ---------------- */
 
 /**
- * はじめの一局。
+ * 動きで見抜く。
+ *
+ * 題は前は「はじめの一局」。導入の一局(FIRST_GAME)と名前が重なるので改めた
+ * (2026-10-01 本人の指示)。
  *
  * 2026-09-13 に作り替えた。テスターの感想「操作はできたが、何をしているのか
  * 分からないまま置いていかれた。1話終えてもまだ続くのかと思った」を受けて、
@@ -147,7 +173,7 @@ const EP1 = {
   level: 1,
   // 終えると入る経験値。次のレベルまでちょうど届く量にして、1話ずつ開く
   xp: 100,
-  title: "第1話 はじめの一局",
+  title: "第1話 動きで見抜く",
   subtitle: "相手の王を討て",
   pool: CARD_POOLS.basic,
   poolLabel: "2 〜 5",
@@ -2139,6 +2165,169 @@ const EP13 = {
   ],
 };
 
+/* ---------------- はじめの一局(導入。ストーリー「二と三の王」の初回) ---------------- */
+
+/**
+ * はじめの一局(2026-10-01 本人の指示)。
+ *
+ * 語り2枚のすぐあとに入る、台本つきの一局。ストーリー1つ目「二と三の王」の初回として
+ * 記録する(storyAxis)。第1〜13話とは別もので、TUTORIALS・ALL_TUTORIALS には入れない
+ * (レベル・話数・チュートリアルのチケットと切り離す)。
+ *
+ * フェーズ1(王の力なし)・5×5・札は 2〜5・あなたが先手。サイコロ・引き直し・並べるのは
+ * 台本が済ませ、王を選ぶ段で止める。あなたの手は2手。
+ *   王を選ぶ: 並べた5枚のどれでもよい。確定までは選び直せる(also)
+ *   1手目: 4♠ c2→c4 で 2♣ を取る(初手で取れる手はこれだけ)。c4 から b4 と d4 を両取り
+ *   相手: 王の 3♦ が d4→e3 へ逃げる(4♠ の届かない逃げ場はここだけ)。5♦ は見捨てる
+ *   2手目: 逃げた一枚か残された一枚かを自分で読み、e3 の 3♦ を 4♦ か 5♥ で討つ
+ * 相手に取る手は一度も無いので、どの札を王にしても負けない。王の力があると 3♦ を
+ * 取っても 3♥ が王位を継いで勝ちにならないので、phase:1 は外せない
+ * (検査は tools/check-first-game.mjs)。
+ */
+const FG_DECK = fill(
+  [
+    // あなたの5枚(t0〜t4)
+    "4S",
+    "5H",
+    "4D",
+    "3C",
+    "2H",
+    // 相手の5枚(t5〜t9)。王は 3♦(t6)
+    "2C",
+    "3D",
+    "4C",
+    "3H",
+    "5D",
+  ],
+  CARD_POOLS.basic,
+);
+
+// あなたの並び: c2 4♠ / c1 5♥ / e1 4♦ / a2 3♣ / b1 2♥
+const FG_MINE = {
+  t0: { row: 3, col: 2 },
+  t1: { row: 4, col: 2 },
+  t2: { row: 4, col: 4 },
+  t3: { row: 3, col: 0 },
+  t4: { row: 4, col: 1 },
+};
+
+export const FIRST_GAME = {
+  id: "first-game",
+  title: "はじめの一局",
+  // 王の力なし。無いと第1〜13話と同じく王の力ありで始まる
+  phase: 1,
+  // ストーリーのこの軸の初回として記録する。「あと N 手」は駒の手だけ数える
+  storyAxis: "23",
+  // 結果の締めの一行(第1〜13話の「相手の王を討て。」の代わり)
+  tagline: "一手に、読みを。一枚に、野望を。",
+  // 結果のあなたの王の札に添える一行。王を討った駒は表になる(reducer の名乗り)ので、
+  // 王にした 4♦・5♥ で討ったときは「伏せたまま」が嘘になる
+  kingNote: {
+    hidden: "あなたの王は、最後まで伏せたまま。",
+    struck: "あなたの王が、自ら討った。",
+  },
+  pool: CARD_POOLS.basic,
+  poolLabel: "2 〜 5",
+  boardSize: 5,
+  handSize: 5,
+  dice: [6, 2],
+  deck: FG_DECK,
+  reserveOrder: FG_DECK.slice(10).map((c) => c.id),
+  opening: {
+    discardIds: [],
+    placement: FG_MINE,
+    // 王は遊ぶ人が選ぶ。台本は並べるところまで
+    stopAt: "king",
+    // 並べ直すと台本の盤から外れて1手目が指せなくなる(4♠ を c2 から動かすなど)
+    lockPlacement: true,
+  },
+  foe: {
+    discardIds: [],
+    // a5 3♥ / e5 4♣ / b4 5♦ / c4 2♣ / d4 3♦(王)
+    placement: {
+      t5: { row: 1, col: 2 },
+      t6: { row: 1, col: 3 },
+      t7: { row: 0, col: 4 },
+      t8: { row: 0, col: 0 },
+      t9: { row: 1, col: 1 },
+    },
+    kingId: "t6",
+    moves: [{ pieceId: "t6", row: 2, col: 4 }],
+  },
+  steps: [
+    {
+      at: atKing,
+      text: ["どの札を、王にする?", "並べた五枚から、一枚をタップ。"],
+      nudge: ["王にする一枚を、タップ。"],
+      // 王は5枚のどれでもよい(cardId を持たない)
+      need: { type: "SETUP_PICK_KING" },
+      focus: { cells: Object.values(FG_MINE) },
+    },
+    {
+      at: atKing,
+      // 相手から見ても伏せ札、を先に言う。あとで相手の王が逃げる先の理由になる
+      text: ["その王も、ほかの札も、相手には伏せ札。", "選び直せる。決めたら「布陣を確定」。"],
+      nudge: ["決めたら「布陣を確定」。"],
+      need: { type: "SETUP_CONFIRM", also: ["SETUP_PICK_KING"] },
+      focus: { button: true },
+    },
+    {
+      at: myTurn,
+      // 語り1枚目の見出しを、伏せ札に指をかける瞬間にもう一度
+      text: ["その一枚が、王かもしれない。", "▼ の 4♠ を、タップ。"],
+      picked: ["光ったマスへ、動ける。", "▼ の伏せ札を、取れ。"],
+      nudge: ["動かすのは、▼ の 4♠。"],
+      need: { type: "MOVE_PIECE", pieceId: "t0", row: 1, col: 2 },
+      focus: {
+        cells: [
+          { row: 3, col: 2 },
+          { row: 1, col: 2 },
+        ],
+      },
+    },
+    {
+      // 両取り。相手が指す前に止めて、どちらを逃がすかを予想させる
+      at: atFoeTurn,
+      holdFoe: true,
+      text: ["外れ。でも 4♠ は、二枚をねらう。", "相手は、どちらを逃がす?"],
+      // 4♠ を王にした人には、伏せた王で攻めているのだと分かるように
+      kingAlt: {
+        cardId: "t0",
+        text: ["外れ。でも、あなたの王が二枚をねらう。", "相手は、どちらを逃がす?"],
+      },
+      // ▼ は「ここを触る」の印なので、相手の番には付けない。光の筋だけにして「つづき」を光らせる
+      threat: { pieceId: "t0", targets: ["t6", "t9"] },
+      nextLabel: "つづき",
+    },
+    {
+      at: myTurn,
+      // 自分で考える1手。二枚に同じ ▼ を付け、答えの側に印を寄せない
+      text: ["逃げた一枚か、残された一枚か。", "王だと思うほうを、討て。"],
+      need: {
+        type: "MOVE_PIECE",
+        pieceId: "t2",
+        row: 2,
+        col: 4,
+        choose: {
+          target: "t6",
+          cell: "e3",
+          // 動きから分かるのは数字まで(斜めに一歩は 3 も 5 も)。決め手は相手が守ったほう
+          hint: ["相手の王は、2 か 3。", "斜めに一歩なら、3 か 5。"],
+          hintGuide: { ranks: ["2", "3", "5"] },
+          wrong: ["その一枚は、置いていかれた。", "相手が守りたいのは、どっち?"],
+          notCapture: ["取るのは、▼ の二枚のどちらか。"],
+        },
+      },
+      focus: { pieces: ["t6", "t9"] },
+    },
+    {
+      at: atEnd,
+      text: ["読みが、王に届いた。", "次は、あなたが陣を組む。"],
+      end: true,
+    },
+  ],
+};
+
 export const TUTORIALS = [
   EP1,
   EP2,
@@ -2174,9 +2363,16 @@ export function tutorialMinutes(tut) {
   return tut.steps.filter((x) => x.need).length <= 5 ? 1 : 3;
 }
 
-/** index の札から最後までに残っている操作の数(その札が操作ならそれも数える) */
+/**
+ * index の札から最後までに残っている操作の数(その札が操作ならそれも数える)。
+ * ストーリーとして遊ぶ台本(はじめの一局)は駒の手だけを数える。
+ * 王を選ぶ・確定を「手」と呼ぶと、始めの「あと 4 手」が実際の2手と合わない
+ */
 export function movesLeft(tut, index) {
-  return tut.steps.slice(Math.max(0, index)).filter((x) => x.need).length;
+  return tut.steps
+    .slice(Math.max(0, index))
+    .filter((x) => x.need && (!tut.storyAxis || x.need.type === "MOVE_PIECE"))
+    .length;
 }
 
 /** 次の話。番外の話は続けて出さない(開く条件が別なので) */
@@ -2206,7 +2402,8 @@ export function matchesNeed(need, action) {
   // pieceId は見本の答え(ヒントと検査で使う)
   if (need.choose) return capturesCell(action, need.row, need.col);
   for (const key of Object.keys(need)) {
-    if (key === "type") continue;
+    // also は「この札のあいだも通す操作」の一覧で、操作の中身ではない
+    if (key === "type" || key === "also") continue;
     if (action[key] !== need[key]) return false;
   }
   return true;
@@ -2247,6 +2444,107 @@ export const FREE_ACTIONS = new Set([
   "RESIGN",
   "NEW_GAME",
 ]);
+
+/**
+ * opening.lockPlacement の台本で止める並べ直し。FREE_ACTIONS からは外さない
+ * (第2・11・12話は札を戻して置き直せる必要がある)
+ */
+const RELAYOUT_ACTIONS = new Set(["SETUP_BACK_TO_PLACE", "SETUP_UNPLACE_CARD"]);
+
+const NUDGE_DEFAULT = "その手はいまは指せません。▼ の付いたところを操作してください。";
+
+/** 文を行の配列にする。第1〜13話の文は1つの文字列、はじめの一局は行の配列で持つ */
+export function textLines(text) {
+  if (text === null || text === undefined || text === "") return [];
+  return Array.isArray(text) ? text : [text];
+}
+
+/** その手が、相手の駒のいるマスへ動くか(取る手か) */
+function takesPiece(s, action) {
+  if (Array.isArray(action.captures) && action.captures.length) return true;
+  const there = s.board && s.board[action.row] && s.board[action.row][action.col];
+  const mover = s.pieces && s.pieces[action.pieceId];
+  return !!there && !!mover && there.owner !== mover.owner;
+}
+
+/** 台本に無い手を止めたときの一言(行の配列)。台本に文が無ければ決まりの文 */
+function nudgeLines(step, s, action) {
+  const pick = step.need.choose;
+  if (pick) {
+    if (action.type === "MOVE_PIECE") {
+      const own = takesPiece(s, action) ? pick.wrong : pick.notCapture;
+      if (own) return textLines(own);
+    }
+    if (step.nudge) return textLines(step.nudge);
+    return [`その手では ${pick.cell} の駒を取れません。届く駒を探してください。`];
+  }
+  return textLines(step.nudge || NUDGE_DEFAULT);
+}
+
+/**
+ * 台本の関門。台本に無い操作は受け付けず、指示された操作だけを通す。
+ * 画面(game.jsx の y())と検査が同じものを使う。
+ * 通すなら null、止めるなら { nudge: [行] } を返す。
+ *
+ * その台本の場面がまだ来ていないあいだは何も止めない(進めるのは盤面のほう)。
+ * 説明だけの札を見ているあいだも、この先の操作は受け付ける。
+ */
+export function tutorialGate(tut, index, s, action) {
+  if (action.__foe) return null;
+  let step = tut.steps[index] || null;
+  if (tut.opening && tut.opening.lockPlacement && RELAYOUT_ACTIONS.has(action.type))
+    return { nudge: textLines((step && step.nudge) || NUDGE_DEFAULT) };
+  if (step && step.at && !step.at(s)) step = null;
+  if (step && !step.need) step = upcomingNeedStep(tut, index, s);
+  if (!step || !step.need) return null;
+  if (FREE_ACTIONS.has(action.type) || matchesNeed(step.need, action)) return null;
+  // 確定の札のあいだの王の選び直しなど
+  if (step.need.also && step.need.also.includes(action.type)) return null;
+  return { nudge: nudgeLines(step, s, action) };
+}
+
+/**
+ * 相手を待たせる札(holdFoe)を見ているか。そのあいだ台本の相手は指さない。
+ * 「つづき」で札が進むと放れる
+ */
+export function foeHeld(tut, index, s) {
+  const step = tut.steps[index];
+  return !!(step && step.holdFoe && (!step.at || step.at(s)));
+}
+
+/**
+ * 「前の説明へ」を出してよいか。読むだけの札にだけ戻れる(操作の札には戻れない)。
+ *
+ * 相手を待たせる札(holdFoe)とは行き来しない。自分で考える1手から戻ると、相手の番の
+ * 札なので場面が合わず、関門が全開になる。台本に無い手が通り、相手の台本が尽きて
+ * 止まった(2026-10-01 の確かめ)。同じ理由で、場面がもう過ぎた札にも戻らない
+ */
+export function canStepBack(tut, index, s) {
+  const prev = index > 0 ? tut.steps[index - 1] : null;
+  const cur = tut.steps[index];
+  if (!prev || prev.need) return false;
+  if (prev.holdFoe || (cur && cur.holdFoe)) return false;
+  if (s && prev.at && !prev.at(s)) return false;
+  return true;
+}
+
+/** 札に出す行。駒を選んでいるあいだは picked、王が kingAlt の札なら kingAlt.text */
+export function stepLines(step, s) {
+  if (!step) return [];
+  if (step.kingAlt && s && s.players && s.players[0].kingId === step.kingAlt.cardId)
+    return textLines(step.kingAlt.text);
+  if (step.picked && step.need && s && s.selectedId && s.selectedId === step.need.pieceId)
+    return textLines(step.picked);
+  return textLines(step.text);
+}
+
+/** 結果画面で、あなたの王の札に添える一行。台本に kingNote が無ければ null */
+export function myKingNote(tut, s) {
+  if (!tut.kingNote) return null;
+  const king = s.pieces && s.pieces[s.players[0].kingId];
+  // 王を討った駒は表になる(reducer の名乗り)
+  return king && king.revealed ? tut.kingNote.struck : tut.kingNote.hidden;
+}
 
 /**
  * 相手(青)の手。すべて台本どおりで、考えることはしない。
@@ -2351,7 +2649,8 @@ export function moveHintCandidates(hint) {
 /**
  * 台本に opening があれば、サイコロ・引き直し・布陣を済ませた状態を作る。
  * 画面(game.jsx)と検査(tools/check-tutorial.mjs)が同じものを使う。
- * あなたの側は opening の捨て札・並べ方・王で、相手の側は foe の台本で進める
+ * あなたの側は opening の捨て札・並べ方・王で、相手の側は foe の台本で進める。
+ * opening.stopAt が "king" なら、並べ終えて王を選ぶ段で止める(王はあなたが選ぶ)
  */
 export function openingState(tut, ruleVersion) {
   let s = reducer(
@@ -2365,12 +2664,18 @@ export function openingState(tut, ruleVersion) {
       pool: tut.pool,
       handSize: tut.handSize,
       scripted: !tut.bonus,
+      // phase の無い台本(第1〜13話)は王の力ありのまま。?? PHASE_MAX を落とすと
+      // normalizePhase が 1 を返し、王の力を教える話が全部壊れる
+      ...setupFlagsForPhase(tut.phase ?? PHASE_MAX),
       ...(tut.areas ? { areas: true, loadouts: tut.loadouts } : {}),
     },
   );
   const op = tut.opening;
   if (!op) return s;
+  const kingStop = op.stopAt === "king";
   for (let guard = 0; guard < 200 && s.phase !== "play"; guard++) {
+    // 王を選ぶ段で止める(はじめの一局)。相手の布陣は済ませておく
+    if (kingStop && atKing(s) && s.setupDone[1] && !s.interstitial) break;
     const before = s;
     if (s.interstitial) {
       s = reducer(s, { type: "DISMISS_INTERSTITIAL" });
@@ -2401,6 +2706,22 @@ export function openingState(tut, ruleVersion) {
               reserveOrder: [...tut.reserveOrder],
             })
           : reducer(s, foeAction(s, tut, 0, () => []));
+    } else if (s.phase === "setup" && kingStop && !s.setupDone[0]) {
+      // 画面と同じく1枚ずつ並べてから「王を選ぶ」へ。確定はしない
+      const pending = Object.entries(op.placement).find(([id, at]) => {
+        const cur = s.setupPlacements[0][id];
+        return !cur || cur.row !== at.row || cur.col !== at.col;
+      });
+      if (pending)
+        s = reducer(s, {
+          type: "SETUP_PLACE_CARD",
+          player: 0,
+          cardId: pending[0],
+          row: pending[1].row,
+          col: pending[1].col,
+        });
+      else if (!atKing(s)) s = reducer(s, { type: "SETUP_GOTO_KING_STEP", player: 0 });
+      else s = reducer(s, foeAction(s, tut, 0, () => []));
     } else if (s.phase === "setup") {
       if (!s.setupDone[0])
         s = reducer(s, {
@@ -2413,7 +2734,8 @@ export function openingState(tut, ruleVersion) {
     }
     if (s === before) throw new Error(`${tut.title}: opening が進まない(${s.phase})`);
   }
-  if (s.phase !== "play") throw new Error(`${tut.title}: opening が対局まで届かない`);
+  if (kingStop ? !(atKing(s) && s.setupDone[1]) : s.phase !== "play")
+    throw new Error(`${tut.title}: opening が${kingStop ? "王を選ぶ段" : "対局"}まで届かない`);
   return s;
 }
 
@@ -2488,7 +2810,10 @@ export function needDone(need, s) {
     case "SETUP_GOTO_KING_STEP":
       return false;
     case "SETUP_PICK_KING":
-      return s.setupPickKings[0] === need.cardId;
+      // cardId の無い need は「どれでもよいから1枚選ぶ」(はじめの一局)
+      return need.cardId
+        ? s.setupPickKings[0] === need.cardId
+        : !!s.setupPickKings[0];
     case "SETUP_CONFIRM":
       return false;
     case "TOGGLE_SHUFFLE_PICK":

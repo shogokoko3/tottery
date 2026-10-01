@@ -164,13 +164,16 @@ import { loadPlaySettings } from "../game/play-settings.js";
 import { TutorialSheet, TutorialSkipMenu } from "./tutorial.jsx";
 import { openingState } from "../game/tutorial.js";
 import {
-  FREE_ACTIONS,
+  canStepBack,
   currentStepIndex,
   foeAction,
-  matchesNeed,
+  foeHeld,
   movesLeft,
+  myKingNote,
+  stepLines,
+  textLines,
+  tutorialGate,
   tutorialMinutes,
-  upcomingNeedStep,
 } from "../game/tutorial.js";
 import { isTestPlay, recordGame, recordMastery } from "../game/profile.js";
 import { releaseXpNotice } from "../game/xp-notices.js";
@@ -641,6 +644,9 @@ export function GameView({
   // ストーリー: 次のステージへ(axis を受ける)/ 同じステージをもう一度(相手の王の説明から)
   onNextStory = null,
   onRetryStory = null,
+  // はじめの一局のあと、初回の10連がまだの人を門へ(2026-10-01 本人の指示)。
+  // 渡されたら「次のステージへ」の代わりに光る「門へ進む」を1つだけ出す。行き先は呼ぶ側が決める
+  onGate = null,
   // 「もう一度遊ぶ」を盤の作り直し(NEW_GAME)でなく、呼ぶ側に任せる(Bot 戦。1局の目印を新しくするため)
   onReplay = null,
   nextTutorial,
@@ -669,7 +675,12 @@ export function GameView({
     // 1台で交互に指しているときは「あなた」が決まらないので、色名で伝える
     lost =
       !drawn && youAre !== null && youAre !== void 0 && state.winner !== youAre,
-    won = youAre !== null && youAre !== void 0 && state.winner === youAre;
+    won = youAre !== null && youAre !== void 0 && state.winner === youAre,
+    // 第1〜13話。台本でもストーリーとして遊ぶもの(はじめの一局)は、結果をストーリーの形にする
+    lesson = !!tutorial && !story,
+    // はじめの一局の結果に添える、あなたの王の一行(台本に kingNote が無ければ null)。
+    // 王にした駒で討つと表になるので、そのときは「伏せたまま」ではなく「自ら討った」(myKingNote)
+    kingNote = tutorial && won ? myKingNote(tutorial, state) : null;
   // 記録の行を選んだら、その手の動きを再生する
   (0, useEffect)(() => {
     if (!f || at === null) return;
@@ -1063,10 +1074,10 @@ export function GameView({
         >
           {drawn
             ? "引き分け"
-            : tutorial && won
-              ? "チュートリアルクリア!"
-              : story && won
-                ? "ステージクリア!"
+            : story && won
+              ? "ステージクリア!"
+              : tutorial && won
+                ? "チュートリアルクリア!"
                 : won
                   ? "あなたの勝ち!"
                   : lost
@@ -1081,22 +1092,64 @@ export function GameView({
               const foeKing = Object.values(state.pieces).find(
                 (q) => q.owner !== youAre && q.isKing,
               );
-              return foeKing ? (
+              const foeReveal = foeKing ? (
                 <div className="tutorial-reveal">
                   <CardFace
                     owner={foeKing.owner}
                     rank={foeKing.rank}
                     suit={foeKing.suit}
                     size="sm"
+                    // 二人の王を並べるときは、どちらも王の姿で
+                    isKing={!!kingNote}
                   />
                   <p>
                     相手の王は <b>{foeKing.rank}{SUIT_SYMBOL[foeKing.suit]}</b> でした
                   </p>
                 </div>
               ) : null;
+              // はじめの一局は、あなたの王も並べる(kingNote)
+              const myKing = kingNote ? state.pieces[state.players[youAre].kingId] : null;
+              if (!myKing) return foeReveal;
+              return (
+                <div className="tutorial-reveal-pair">
+                  {foeReveal}
+                  <div className="tutorial-reveal tutorial-reveal-mine">
+                    <CardFace
+                      owner={myKing.owner}
+                      rank={myKing.rank}
+                      suit={myKing.suit}
+                      size="sm"
+                      isKing
+                    />
+                    <p>{kingNote}</p>
+                  </div>
+                </div>
+              );
             })()}
-            <p>{tutorial.steps.find((step) => step.end)?.text}</p>
-            <p className="tutorial-tagline">相手の王を討て。</p>
+            {/* 本文は結びの札の行。締めは台本の一行(第1〜13話は持たないので「相手の王を討て。」) */}
+            {(() => {
+              const end = tutorial.steps.find((step) => step.end);
+              const lines = textLines(end && end.text);
+              return lines.length > 1 ? (
+                <p className="tutorial-end-lines">
+                  {lines.map((line, i) => (
+                    <span className="tutorial-line-row" key={i}>
+                      {line}
+                    </span>
+                  ))}
+                </p>
+              ) : (
+                <p>{lines[0]}</p>
+              );
+            })()}
+            {/* 文ごとに折り返す(「一枚に、野/望を。」と語の途中で割れていた) */}
+            <p className="tutorial-tagline">
+              {(tutorial.tagline || "相手の王を討て。").match(/[^。]+。?/g).map((part, i) => (
+                <span className="tutorial-tagline-part" key={i}>
+                  {part}
+                </span>
+              ))}
+            </p>
           </>
         )}
         {lost && (
@@ -1130,7 +1183,9 @@ export function GameView({
           </div>
         )}
         <AdjudicationResult state={state} names={names} />
-        {!state.adjudication && state.endReason !== "frozen" && (
+        {/* 勝ち名乗りの飾り。両者の王を並べた結果(はじめの一局)では重なるので出さず、
+            「門へ進む」までを1画面に収める */}
+        {!state.adjudication && state.endReason !== "frozen" && !kingNote && (
           <div
             className={`king-card ${lost ? "lose-card" : "win-card"} ${tutorial && won ? "tutorial-king-card" : ""}`}
           >
@@ -1170,7 +1225,7 @@ export function GameView({
             )}
           </div>
         )}
-        {tutorial && won && (
+        {lesson && won && (
           <div className="tutorial-complete">
             {nextTutorial && onNextTutorial ? (
               <>
@@ -1204,7 +1259,8 @@ export function GameView({
             {story.fresh && (
               <p className="hint story-reward">ガチャチケット {STORY_TICKETS}枚を受け取りました</p>
             )}
-            {story.next && onNextStory ? (
+            {/* 門へ進むときは「次のステージへ」を出さない(次のステージはストーリーの一覧で知らせる) */}
+            {onGate ? null : story.next && onNextStory ? (
               <>
                 <p className="hint">次は「{story.next.title}」</p>
                 <button className="btn btn-primary btn-wide" onClick={() => onNextStory(story.next.axis)}>
@@ -1225,6 +1281,15 @@ export function GameView({
             この局で使った札だけを並べる(2026-09-22 本人の指示) */}
         {mastery && <MasteryGains gains={mastery.gains} titles={mastery.titles} />}
         </div>
+        {/* はじめの一局の褒美は門の向こう(10連)。送らずに見える場所に1つだけ光らせる。
+            記録が済むまで(ready)は出さない */}
+        {story && won && story.ready && onGate && (
+          <div className="gameover-gate">
+            <button className="btn btn-primary btn-wide result-gate" onClick={onGate}>
+              門へ進む <ArrowRight size={16} />
+            </button>
+          </div>
+        )}
         {/*
           対局後のボタンは 2×2 に固定(本人の指示 2026-09-17):
           左上 振り返り / 右上 マッチングへ / 左下 ホームへ / 右下 もう一度遊ぶ。
@@ -1244,7 +1309,7 @@ export function GameView({
                 ストーリーへ
               </button>
             )
-          ) : tutorial ? (
+          ) : lesson ? (
             // チュートリアルは同じ台本をなぞるだけなので、もう一度は出さない
             onTutorialList &&
             (!won || nextTutorial) && (
@@ -1263,7 +1328,7 @@ export function GameView({
               </button>
             )
           )}
-          {tutorial ? (
+          {lesson ? (
             // チュートリアルは左下にタイトルへ戻る、右下にホームへ(2026-09-21 本人の指示で左右入れ替え)
             onExit && (
               <button className="btn btn-ghost go-home" onClick={onExit}>
@@ -1280,7 +1345,7 @@ export function GameView({
               </button>
             )
           )}
-          {tutorial ? (
+          {lesson ? (
             // チュートリアルの右下はホームへ
             onHome && (
               <button className="btn btn-ghost go-again" onClick={onHome}>
@@ -1317,6 +1382,9 @@ export function GameView({
             <button className="btn btn-ghost go-again" onClick={onRetryStory}>
               <RotateCcw size={16} /> もう一度遊ぶ
             </button>
+          ) : tutorial ? (
+            // 台本の一局(はじめの一局)は NEW_GAME で作り直すと台本の盤にならないので出さない
+            null
           ) : (
             <button
               className="btn btn-ghost go-again"
@@ -1381,6 +1449,8 @@ export function GameCore({
   onNextStory = null,
   onRetryStory = null,
   round = 0,
+  // はじめの一局に勝ったあとの「門へ進む」(初回の10連がまだの人だけ呼ぶ側が渡す。GameView へ)
+  onGate = null,
   onRematch,
   // Bot と「もう一度遊ぶ」(screens.jsx が1局の目印を新しくして作り直す)
   onReplayBot = null,
@@ -1395,9 +1465,11 @@ export function GameCore({
   // ストーリーの結果(この局ではじめてクリアしたか)。対局後の画面に出す
   const [storyResult, setStoryResult] = useState(null);
   // この対局のフェーズ。通信は部屋のフェーズ(無ければ 3)、手元はストーリーのステージか自分の profile。
-  // チュートリアルはフェーズを見ない(いつも全部の決まり)。対局のあいだ変えない
+  // チュートリアルは台本のフェーズ(第1〜13話は持たないので全部の決まり)。対局のあいだ変えない。
+  // ?? PHASE_MAX を落とすと第1〜13話の王の力が消える(normalizePhase(undefined) は 1)。
+  // はじめの一局は phase:1(2026-10-01 本人の指示)
   const matchPhase = useRef(
-    tutorial ? PHASE_MAX : network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile()),
+    tutorial ? (tutorial.phase ?? PHASE_MAX) : network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile()),
   ).current;
   // レート・シーズンに数えるのはランダムマッチ(network.random)の 9×9 だけ。
   // フレンド対戦(合言葉・近くの端末)はランキングに載らない(本人の指示 2026-09-17)。
@@ -1630,27 +1702,17 @@ export function GameCore({
       E = { ...E, pieceId: a.selectedId };
     // 台本にない操作は受け付けない。指示された1手だけが通る。
     // ただし、その台本の場面がまだ来ていないあいだは何も止めない。
-    // 進めるのは盤面のほうで、ここでは数えない
+    // 進めるのは盤面のほうで、ここでは数えない。
+    // 決まりは tutorialGate(src/game/tutorial.js)にまとめ、検査(check-first-game)と同じものを使う。
+    // 説明だけの札のあいだもこの先の操作は通し、確定の前の王の選び直し(also)も通す。
+    // 並べ直し(lockPlacement)と台本に無い手は、台本の一言(行の配列)を返して止める
     if (tutorial && !E.__foe) {
-      let step = tutorial.steps[tutIdx];
-      if (step && step.at && !step.at(a)) step = null;
-      // 説明だけの札を見ているあいだも、この先の操作は受け付ける。
-      // 「次へ」を押さずに指しても案内が追いつくが、台本にない手は通さない
-      if (step && !step.need) step = upcomingNeedStep(tutorial, tutIdx, a);
-      if (
-        step &&
-        step.need &&
-        !FREE_ACTIONS.has(E.type) &&
-        !matchesNeed(step.need, E)
-      ) {
+      const gate = tutorialGate(tutorial, tutIdx, a, E);
+      if (gate) {
         // 取る手は確認が先に出てしまうので、ここで閉じる。
         // 出しっぱなしにすると「取るを押したのに何も起きない」になる
         setPendingCapture(null);
-        setTutNudge(
-          step.need.choose
-            ? `その手では ${step.need.choose.cell} の駒を取れません。届く駒を探してください。`
-            : "その手はいまは指せません。▼ の付いたところを操作してください。",
-        );
+        setTutNudge(gate.nudge);
         return;
       }
       setTutNudge(null);
@@ -1779,8 +1841,9 @@ export function GameCore({
         : null;
     // 対局のフェーズ(ストーリーとフェーズ.md)。通信は部屋から届く phase(無ければ 3 = 今までどおり)、
     // 手元はストーリーのステージのフェーズか、自分の profile のフェーズ
-    // チュートリアルは台本が王の力を教えるので、フェーズを見ない(いつも全部の決まり)
-    const phase = tutorial ? PHASE_MAX : network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile());
+    // チュートリアルは台本が王の力を教えるので、台本のフェーズ(無ければ全部の決まり)。
+    // はじめの一局は phase:1 で王の力なし。王の力が付くと 3♦ を討っても 3♥ が継いで勝ちにならない
+    const phase = tutorial ? (tutorial.phase ?? PHASE_MAX) : network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile());
     a.phase === "intro" &&
       matchRatings.ready &&
       // 対戦相手の画面を見終わるまで待つ(ホストが始めると相手側の画面も進むため)
@@ -1859,6 +1922,9 @@ export function GameCore({
     // 盤面エリアなどの演出中は y() が手を捨てるので、演出が終わってから
     // もう一度この effect が走るように fxBusy を条件と依存に入れる
     if (!tutorial || network || fxBusy) return;
+    // 相手を待たせる札(holdFoe。はじめの一局の両取り)を読んでいるあいだは指さない。
+    // 「つづき」で札が進むと tutIdx が変わり、この effect が走り直して指す
+    if (foeHeld(tutorial, tutIdx, a)) return;
     let act = foeAction(a, tutorial, foeIdxRef.current, (piece) =>
       getLegalMoves(
         piece,
@@ -1884,7 +1950,7 @@ export function GameCore({
       foeWait(a, act, 1200),
     );
     return () => clearTimeout(id);
-  }, [a, tutorial, network, fxBusy]);
+  }, [a, tutorial, network, fxBusy, tutIdx]);
 
   let T = 1;
   ((0, useEffect)(() => {
@@ -2508,8 +2574,11 @@ export function GameCore({
     // 「オンライン対戦をする」のミッションが誰にも達成できなかった。近くの端末は数えない
     // この1局で**はじめて**終える話か。終えたあとに profile を見ると
     // もう入っているので、先に覚えておく(褒美を二度配らないため)
+    // 台本とストーリーを同時に受けたら(はじめの一局。2026-10-01 本人の指示)ストーリーとして記録する。
+    // チュートリアルの xp・クリア・チケットは付けない(話の一覧・レベルの設計と切り離す)
+    const asLesson = !!tutorial && !story;
     const freshTutorial =
-      !!tutorial && won && !loadProfile().cleared.includes(tutorial.id);
+      asLesson && won && !loadProfile().cleared.includes(tutorial.id);
     // ストーリーのステージを、この1局で**はじめて**クリアするか(褒美を二度配らない)
     // recordGame と同じ基準(profile のフェーズがステージのフェーズと同じときだけ記録される)
     const freshStory =
@@ -2527,7 +2596,7 @@ export function GameCore({
       ...(typeof foeRating === "number"
         ? { foeRating, ...(bot ? null : { startRating: matchRatings.ratings[p] }) }
         : null),
-      ...(tutorial
+      ...(asLesson
         ? {
             xp: won ? tutorial.xp : 0,
             tutorial: !0,
@@ -2682,6 +2751,16 @@ export function GameCore({
         isKing: piece.isKing,
       };
     })(),
+    // 相手を待たせる札(holdFoe)の光の筋。ねらう駒から的へ(はじめの一局の両取り)。
+    // ▼ は「ここを触る」の印なので付けない。相手の番に押しても何も起きない(2026-10-01 の確かめ)
+    tutThreat = (() => {
+      const threat = tutActive && tutActive.threat;
+      if (!threat || fxBusy || a.captureReveal) return null;
+      const from = a.pieces[threat.pieceId];
+      if (!from || !from.alive) return null;
+      const to = threat.targets.map((id) => a.pieces[id]).filter((q) => q && q.alive);
+      return to.length ? { from, to } : null;
+    })(),
     // 盤や手札の上に「ここを触る」印が出ていないときは、
     // 画面を進めるボタンが押してほしいもの。読まなくても分かるように光らせる
     tutHasTarget = !!(
@@ -2725,8 +2804,11 @@ export function GameCore({
           // 残りの操作の数。「あと N 手」で終わりが見えるように(2026-09-25 本人の指示)
           left={movesLeft(tutorial, tutIdx)}
           nudge={tutNudge}
-          // 自分で考える1手のヒント。開くと見本の駒と道筋が光る
+          // 札の行。駒を選んだあと(picked)・王の札(kingAlt)で出し分ける
+          lines={stepLines(tutActive, a)}
+          // 自分で考える1手のヒント。開くと見本の駒と道筋が光る(動きの一覧があれば添える)
           hint={tutChoose && tutHint ? tutChoose.choose.hint : null}
+          hintGuide={tutChoose && tutHint ? tutChoose.choose.hintGuide || null : null}
           onHint={
             tutChoose && !tutHint
               ? () => {
@@ -2743,24 +2825,30 @@ export function GameCore({
           low={tutHasTarget}
           overlay={!!tutActive.overlay}
           onNext={() => setTutStep(tutIdx + 1)}
-          // 読むだけの札なら、前の札に戻って読み直せる(操作の札には戻れない)
-          onBack={
-            tutIdx > 0 && !tutorial.steps[tutIdx - 1]?.need
-              ? () => setTutStep(tutIdx - 1)
-              : null
+          // 相手を待たせる札(holdFoe)は「つづき」。盤に触るものが無いので釦を ▼ で光らせる
+          nextLabel={tutActive.nextLabel || null}
+          lit={!!tutActive.holdFoe}
+          // 読むだけの札なら、前の札に戻って読み直せる(操作の札には戻れない)。
+          // 待つ札とは行き来せず、場面の過ぎた札にも戻らない(戻ると関門が開いて行き止まる。canStepBack)
+          onBack={canStepBack(tutorial, tutIdx, a) ? () => setTutStep(tutIdx - 1) : null}
+          // この話を飛ばす: 終えたのと同じ扱い(経験値も同じ)で、次の話へ。
+          // ストーリーとして遊ぶ台本(はじめの一局)は飛ばせない。やめるのは上の「中断」から
+          onSkip={
+            tutorial.storyAxis
+              ? null
+              : () => {
+                  const after = skipTutorials([tutorial]);
+                  publishPlayer(after);
+                  grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
+                  if (nextTutorial && onNextTutorial) onNextTutorial();
+                  else if (onTutorialList) onTutorialList();
+                  else onExit();
+                }
           }
-          // この話を飛ばす: 終えたのと同じ扱い(経験値も同じ)で、次の話へ
-          onSkip={() => {
-            const after = skipTutorials([tutorial]);
-            publishPlayer(after);
-            grantTutorialTickets(after.skipped, { uid: myUid() }).catch(() => {});
-            if (nextTutorial && onNextTutorial) onNextTutorial();
-            else if (onTutorialList) onTutorialList();
-            else onExit();
-          }}
           skipXp={tutorial.xp || 0}
-          // 中断: クリアにせずホームへ(あとで最初から)。常に見える位置に出す
-          onInterrupt={onHome ? goHome : onExit}
+          // 中断: クリアにせずホームへ(あとで最初から)。常に見える位置に出す。
+          // はじめの一局は上のバーのストーリーの「中断」だけにする(札に二つ並べない)
+          onInterrupt={tutorial.storyAxis ? null : onHome ? goHome : onExit}
         />
       ) : tutHold ? (
         <TutorialSheet
@@ -2771,8 +2859,10 @@ export function GameCore({
         />
       ) : null;
 
-  // 上の「飛ばす」。案内の札が出ていない場面でも、チュートリアルの途中でいつでも押せる
-  const skipMenu = tutorial ? (
+  // 上の「飛ばす」。案内の札が出ていない場面でも、チュートリアルの途中でいつでも押せる。
+  // ストーリーとして遊ぶ台本(はじめの一局)は飛ばさず、下のストーリーの「中断」を出す
+  // (飛ばすとチュートリアルのチケットと xp が配られてしまう)
+  const skipMenu = tutorial && !tutorial.storyAxis ? (
     <TutorialSkipMenu
       tutorial={tutorial}
       onSkipThis={() => {
@@ -3522,6 +3612,7 @@ export function GameCore({
             paused={testPlay && !tutorial}
             focus={tutFocus}
             terse={!!tutorial}
+            lockPlacement={!!tutorial?.opening?.lockPlacement}
           />
         ) : (
           <KingStep
@@ -3536,6 +3627,11 @@ export function GameCore({
             paused={testPlay && !tutorial}
             focus={tutFocus}
             terse={!!tutorial}
+            // 台本が王を選ぶ段で止めた一局(はじめの一局)。見出しは札が言い、並べ直しは閉じ、
+            // 相手の並び(確定済み)を伏せ札で見せる
+            quiet={!!tutorial?.opening?.stopAt}
+            lockPlacement={!!tutorial?.opening?.lockPlacement}
+            showFoe={!!tutorial?.opening?.stopAt}
           />
         )}
       </GameShell>
@@ -3793,6 +3889,38 @@ export function GameCore({
                     })()}
                   </svg>
                 )}
+              {/* 待つ札の光の筋(はじめの一局。ねらう駒から二枚へ)。相手の直前の手の矢印と同じ描き方 */}
+              {tutThreat && (
+                <svg
+                  className="tutorial-threat"
+                  viewBox={`0 0 ${R} ${R}`}
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  {tutThreat.to.map((q) => {
+                    const fr = Jl ? R - 1 - tutThreat.from.row : tutThreat.from.row;
+                    const fc = Jl ? R - 1 - tutThreat.from.col : tutThreat.from.col;
+                    const tr = Jl ? R - 1 - q.row : q.row;
+                    const tc = Jl ? R - 1 - q.col : q.col;
+                    const dx = tc - fc, dy = tr - fr;
+                    const len = Math.hypot(dx, dy) || 1;
+                    const ux = dx / len, uy = dy / len;
+                    // 駒の絵の縁から縁へ。真ん中どうしを結ぶと駒の顔に被さる
+                    const sx = fc + 0.5 + ux * 0.3, sy = fr + 0.5 + uy * 0.3;
+                    const ex = tc + 0.5 - ux * 0.22, ey = tr + 0.5 - uy * 0.22;
+                    // 矢じりで「ねらう向き」を見せる
+                    const hw = 0.13, hl = 0.2;
+                    const hx = ex - ux * hl, hy = ey - uy * hl;
+                    const head = `${ex},${ey} ${hx - uy * hw},${hy + ux * hw} ${hx + uy * hw},${hy - ux * hw}`;
+                    return (
+                      <g key={q.id}>
+                        <line className="tutorial-threat-line" x1={sx} y1={sy} x2={hx} y2={hy} />
+                        <polygon className="tutorial-threat-head" points={head} />
+                      </g>
+                    );
+                  })}
+                </svg>
+              )}
               {/* 台本が「この駒をここへ」と言っているあいだ、その動きを薄い駒で繰り返して見せる
                   (2026-09-18 本人の指示。読むより見るほうが早い) */}
               {tutMoveHint && (
@@ -4202,6 +4330,7 @@ export function GameCore({
             story={story ? { ...story, fresh: false, next: null, allCleared: false, ...(storyResult || null), ready: !!storyResult } : null}
             onNextStory={onNextStory}
             onRetryStory={onRetryStory}
+            onGate={onGate}
             onReplay={bot && onReplayBot ? onReplayBot : null}
             nextTutorial={nextTutorial}
             onNextTutorial={onNextTutorial}

@@ -436,6 +436,8 @@ export function PlaceStep({
   paused,
   focus,
   terse,
+  // 並べ直しを止める台本(はじめの一局)。「この駒を手札に戻す」を出さない(関門でも止まる)
+  lockPlacement = false,
 }) {
   const names = useNames();
   const [picked, setPicked] = useState(null);
@@ -683,7 +685,7 @@ export function PlaceStep({
           )}
         </div>
       </div>
-      {picked && placedIds.has(picked) && (
+      {picked && placedIds.has(picked) && !lockPlacement && (
         <button
           className="btn btn-ghost"
           style={{ marginBottom: 12 }}
@@ -762,10 +764,18 @@ export function KingStep({
   paused,
   focus,
   terse,
+  // 見出し「○○: 王にするカードを決めてね」を出さない。台本の札が同じことを言う(はじめの一局)
+  quiet = false,
+  // 並べ直し(「配置に戻る」)を出さない。台本の盤から外れて1手目が指せなくなる(はじめの一局)
+  lockPlacement = false,
+  // 確定済みの相手の並びを伏せ札で薄く描く。台本の一局だけ(本番の同時布陣では並びも見せない)
+  showFoe = false,
 }) {
   const names = useNames();
   const placement = state.setupPlacements[pIdx];
   const pickedKing = state.setupPickKings[pIdx];
+  const foePlacement =
+    showFoe && state.setupDone[1 - pIdx] ? state.setupPlacements[1 - pIdx] || {} : {};
   const [lo, hi] = territoryRows(size, pIdx);
   const hasK = Object.keys(placement).some(
     (id) => findHandCard(player, id).rank === "K",
@@ -800,9 +810,11 @@ export function KingStep({
   return (
     <div className="setup-wrap setup-wrap-compact">
       <div className="setup-head">
-        <h2 style={{ color: PLAYER_META[pIdx].color }}>
-          {nameOf(pIdx, names)}: 王にするカードを決めてね
-        </h2>
+        {!quiet && (
+          <h2 style={{ color: PLAYER_META[pIdx].color }}>
+            {nameOf(pIdx, names)}: 王にするカードを決めてね
+          </h2>
+        )}
         <SetupOrderNote state={state} pIdx={pIdx} />
         <SetupTimer
           remainingMs={remainingMs}
@@ -836,6 +848,9 @@ export function KingStep({
                 (k) => placement[k].row === row && placement[k].col === col,
               );
               const card = id ? findHandCard(player, id) : null;
+              const foeHere =
+                !inZone &&
+                Object.values(foePlacement).some((at) => at.row === row && at.col === col);
               const selectable =
                 card &&
                 (!hasK || card.rank === "K") &&
@@ -884,6 +899,11 @@ export function KingStep({
                       )}
                     </div>
                   )}
+                  {foeHere && (
+                    <div className="mini-piece mini-piece-foe">
+                      <CardBack colorHex={PLAYER_META[1 - pIdx].color} size="sm" />
+                    </div>
+                  )}
                 </div>
               );
             }),
@@ -891,14 +911,16 @@ export function KingStep({
         </div>
       </div>
       <div className={`setup-actions ${revealWant > 0 ? "setup-actions-wrap" : ""}`}>
-        <button
-          className="btn btn-ghost"
-          onClick={() =>
-            dispatch({ type: "SETUP_BACK_TO_PLACE", player: pIdx })
-          }
-        >
-          <ArrowLeft size={16} /> 配置に戻る
-        </button>
+        {!lockPlacement && (
+          <button
+            className="btn btn-ghost"
+            onClick={() =>
+              dispatch({ type: "SETUP_BACK_TO_PLACE", player: pIdx })
+            }
+          >
+            <ArrowLeft size={16} /> 配置に戻る
+          </button>
+        )}
         {revealWant > 0 && !revealMode && (
           <button
             className="btn btn-primary"

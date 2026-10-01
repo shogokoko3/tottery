@@ -15,7 +15,7 @@ import { ArrowLeft, Check } from "../icons.jsx";
 import { loadProfile, promotePhase } from "../game/profile.js";
 import { STORY_AXES, canPromote, promotionStatus, stageSize } from "../game/phase.js";
 import { onlineGate } from "../game/online-gate.js";
-import { stageIntro, storyList, nextStage, ranksLabel } from "../game/story.js";
+import { stageIntro, storyList, nextStage, nextStageLine, ranksLabel } from "../game/story.js";
 import { CardFace } from "./cards.jsx";
 import { MoveDiagram } from "./guides.jsx";
 
@@ -31,6 +31,8 @@ export function StoryScreen({ onBack, onStart, onGuide = null }) {
   const list = storyList(profile);
   const status = promotionStatus(profile);
   const next = nextStage(profile);
+  // 次の一歩を1つだけ言う(2026-10-01 本人の指示。導入の終わりに着いた人には「次は、四と五の王。」)
+  const nextLine = nextStageLine(profile);
   const promotable = canPromote(profile);
   const gate = onlineGate(profile);
   return (
@@ -50,6 +52,7 @@ export function StoryScreen({ onBack, onStart, onGuide = null }) {
           </small>
         </p>
       </div>
+      {nextLine && <p className="story-next">{nextLine}</p>}
       <ol className="story-list" aria-label="ステージ">
         {list.map((s) => (
           <li key={s.axis}>
@@ -185,7 +188,12 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
             ))}
           </ul>
         )}
-        <p className="hint">{intro.note}</p>
+        {/* 1文1行(2026-10-01 本人の指示。長い1行だと語の途中で割れる) */}
+        <p className="hint story-intro-note">
+          {intro.note.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+        </p>
         <div className="setup-actions">
           <button type="button" className="btn btn-ghost" onClick={onBack}>
             戻る

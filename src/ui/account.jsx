@@ -27,6 +27,15 @@ import { Check, Close, Lock, Sparkle } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
 import { TitleFrame } from "./title-frame.jsx";
 
+/**
+ * 名前を決める画面の本文(2026-10-01 本人の指示)。1文1行。
+ * 「インターネット上のランキング」は法務メモ (C) で明記すると決めた語なので残す
+ */
+export const NAME_LINES = Object.freeze([
+  "インターネット上のランキングに出ます。",
+  "本名は避けて。あとから変えられます。",
+]);
+
 /** 名前を入れてもらう欄。登録画面と変更画面で共通に使う */
 function NameField({ value, onChange, error }) {
   const left = MAX_NAME_LEN - normalizeName(value).length;
@@ -49,8 +58,22 @@ function NameField({ value, onChange, error }) {
   );
 }
 
-/** はじめて遊ぶときの登録画面 */
-export function NameSetupScreen({ onDone, notice }) {
+/**
+ * はじめて遊ぶときの登録画面。
+ *
+ * 名前を聞くのは、はじめの一局に勝ったあと・門の語りの前(2026-10-01 本人の指示)。
+ * 合言葉つき(?room=)で開いた人だけは、起動してすぐここで聞いて部屋へ通す。
+ *
+ *   afterWin  はじめの一局に勝った直後に出すとき真。小見出しを「はじめての勝利」、釦を「決める」に
+ *             (偽なら起動直後の「はじめまして」「はじめる」)
+ *   onDone    名前を台帳へ載せたあと、次のプロフィールを渡して呼ぶ
+ *   notice    見出しの下に添える一言(任意)
+ *   reason    名前の壁(名前の無い人がランキングや対戦へ行こうとしたとき)で、いま聞くわけ(任意)
+ *   onCancel  名前の壁で、決めずに戻る。渡さなければ出さない(導入の中では名前を決めて進む)
+ *
+ * 本文の「インターネット上のランキング」は法務メモ (C) の明記。言い換えない
+ */
+export function NameSetupScreen({ onDone, notice, afterWin = false, reason = null, onCancel = null }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -73,15 +96,15 @@ export function NameSetupScreen({ onDone, notice }) {
   return (
     <div className="center-stage name-stage">
       <div className="name-card">
-        <p className="name-eyebrow">はじめまして</p>
-        <h2>名前を決めてください</h2>
+        <p className="name-eyebrow">{afterWin ? "はじめての勝利" : "はじめまして"}</p>
+        <h2>あなたの名前は?</h2>
+        {reason && <p className="name-reason">{reason}</p>}
         {notice && <p className="name-notice">{notice}</p>}
-        <p className="hint">
-          対戦中のターンや記録に、この名前が出ます。
-          <br />
-          対戦相手と、インターネット上のランキングに出ます。
-          <br />
-          本名は入れないでください。あとから変えられます。
+        {/* 1文1行。長い3行で「出ま/す」と割れていた(2026-10-01 本人の指示で2行に) */}
+        <p className="hint name-lines">
+          {NAME_LINES.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
         </p>
         <NameField
           value={value}
@@ -96,8 +119,13 @@ export function NameSetupScreen({ onDone, notice }) {
           onClick={submit}
           disabled={busy}
         >
-          <Sparkle size={16} /> はじめる
+          <Sparkle size={16} /> {afterWin ? "決める" : "はじめる"}
         </button>
+        {onCancel && (
+          <button className="btn btn-ghost btn-wide name-cancel" onClick={onCancel} disabled={busy}>
+            戻る
+          </button>
+        )}
       </div>
     </div>
   );

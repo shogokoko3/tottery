@@ -18,7 +18,7 @@ import { MOVE_TEXT, KING_TEXT } from "./constants.js";
 import { AREA_BY_RANK, AREA_INFO } from "./areas.js";
 import { buildDeck, shuffle } from "./board.js";
 import { josekiDeck } from "./cpu-joseki.js";
-import { STORY_AXES, STORY_TICKETS, normalizePhase, normalizeStory, phaseOf, rulesForPhase, setupFlagsForPhase, stageSize } from "./phase.js";
+import { STORY_TICKETS, normalizePhase, normalizeStory, phaseOf, rulesForPhase, setupFlagsForPhase, stageSize } from "./phase.js";
 
 /** ステージ。並びは STORY_AXES と同じ */
 export const STORY_STAGES = Object.freeze([
@@ -61,7 +61,8 @@ export const ranksLabel = (ranks) => ranks.join(" か ");
 
 /**
  * ステージの前に出す、相手の王の説明。フェーズで中身が変わる。
- *   { title, lead, items: [{ rank, text }] , note }
+ *   { title, lead, items: [{ rank, text }] , note: string[] }
+ * note は1文1行の配列(2026-10-01 本人の指示。長い1行だと語の途中で割れる)
  */
 export function stageIntro(axis, phase) {
   const stage = stageOf(axis);
@@ -74,14 +75,15 @@ export function stageIntro(axis, phase) {
       lead,
       // フェーズ1は駒の動き方だけ(2026-09-30 本人の指示)。王の力には触れない
       items: stage.ranks.map((rank) => Object.freeze({ rank, text: MOVE_TEXT[rank] })),
-      note: "王を討てば勝ち。王は伏せたまま、討たれるまで名乗らない。",
+      // 「名乗らない」はやめた(2026-10-01 本人の指示。語りと手引きからも外した言い回し)
+      note: Object.freeze(["相手の王を取れば、勝ち。", "王は、伏せたまま。取るまで分からない。"]),
     });
   if (p === 2)
     return Object.freeze({
       title: `${stage.name}の王の力`,
       lead,
       items: stage.ranks.map((rank) => Object.freeze({ rank, text: KING_TEXT[rank] })),
-      note: "王にした駒だけに付く力。相手の王の力を読んで討つ。",
+      note: Object.freeze(["王にした駒だけに付く力。", "相手の王の力を読んで討つ。"]),
     });
   const type = AREA_BY_RANK[stage.ranks[0]];
   const area = AREA_INFO[type];
@@ -90,7 +92,7 @@ export function stageIntro(axis, phase) {
     lead,
     items: [Object.freeze({ rank: stage.ranks.join("・"), text: `${area.name}: ${area.text}` })],
     // フェーズ3のステージは 9×9。相手(CPU)の王にはフォイルが付くので、相手のエリアは必ず立つ
-    note: "相手の王のエリアが立つ。あなたの王も、その数字のフォイルを装備していればエリアが立つ。",
+    note: Object.freeze(["相手の王のエリアが立つ。", "あなたの王も、その数字のフォイルを装備していればエリアが立つ。"]),
   });
 }
 
@@ -180,6 +182,15 @@ export function nextStage(profile) {
   return storyList(profile).find((s) => !s.cleared) || null;
 }
 
+/**
+ * 次に遊ぶステージの一行(2026-10-01 本人の指示)。ストーリー一覧の見出しの下と、手引きの最後の札に出す。
+ * 導入の終わり(10連のあと)に一覧へ着いた人には「次は、四と五の王。」。全部済んでいれば null
+ */
+export function nextStageLine(profile) {
+  const next = nextStage(profile);
+  return next ? `次は、${next.name}の王。` : null;
+}
+
 /** この1局で**はじめて**その軸をクリアするか(褒美を二度配らないため、終える前に見る) */
 export function storyFreshClear(profile, axis) {
   const phase = phaseOf(profile);
@@ -201,7 +212,9 @@ export async function grantStoryReward(phase, axis) {
 
 /**
  * 導入(はじめての手引き)を見たか。ストーリーをはじめて開いたときに一度だけ出すため(2026-09-30)。
- * 端末ごとの印(localStorage)。消えても導入がもう一度出るだけ
+ * 端末ごとの印(localStorage)。消えても導入がもう一度出るだけ。
+ * 2026-10-01 本人の指示で手引きは自動で出さなくなった(導入は src/game/intro.js)。いまは画面から呼ばない。
+ * 自動で出すのを戻すときのために残す
  */
 const PRIMER_SEEN_KEY = "tottery.storyPrimer.v1";
 // 保存(setItem)だけが失敗する端末(容量いっぱいなど)でも、この起動のあいだは二度と出さない
@@ -224,8 +237,10 @@ export function markStoryPrimerSeen(storage = globalThis.localStorage) {
 }
 
 /**
- * 導入の最後の札(「あとはストーリーで」)の文。次に遊ぶステージとフェーズに合わせる
- * (「まずは 2 と 3 から。」を固定にすると、進めた人や上のフェーズの人には合わない。2026-09-30 レビュー)
+ * 手引きの最後の札(「あとはストーリーで」)の文。次に遊ぶステージとフェーズに合わせる
+ * (「まずは 2 と 3 から。」を固定にすると、進めた人や上のフェーズの人には合わない。2026-09-30 レビュー)。
+ * 2行目はストーリー一覧の一行と同じ(nextStageLine。2026-10-01 本人の指示で手引きは自動で出さなくなり、
+ * 開くのは一覧の「遊び方」と早見表の「はじめに」だけ。閉じた先の一覧と同じ言葉で次の一歩を示す)
  */
 export function primerOutroLines(profile) {
   const phase = phaseOf(profile);
@@ -235,7 +250,5 @@ export function primerOutroLines(profile) {
       : phase === 2
         ? "ステージごとに、相手の王の力を覚えます。"
         : "ステージごとに、相手の王になる駒の動きを覚えます。";
-  const next = nextStage(profile);
-  if (!next) return [first, "ステージは何度でも遊べます。"];
-  return [first, next.axis === STORY_AXES[0] ? `まずは ${next.ranks.join(" と ")} から。` : `次は ${next.name}の王から。`];
+  return [first, nextStageLine(profile) || "ステージは何度でも遊べます。"];
 }

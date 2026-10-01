@@ -228,6 +228,30 @@ console.log("\n端末の送り方");
   calls.length = 0;
   is("二度目は送らない", await backfillTutorialRewards(), 0);
   is("二度目は通信しない", calls.length, 0);
+
+  // はじめの一局(台本をストーリー「二と三の王」として遊ぶ。2026-10-01 本人の指示)は、
+  // チュートリアルの道に褒美を送らない。褒美はストーリーの道(story-reward)の10枚だけ
+  const fs = await import("node:fs");
+  const { FIRST_GAME } = await import("../src/game/tutorial.js");
+  const { isRewardChapter } = await import("../src/game/tutorial-reward.js");
+  is("台本の id は話の番号ではない", isRewardChapter(FIRST_GAME.id), false);
+  calls.length = 0;
+  mode = "ok";
+  is("仮に入口へ渡っても0枚で、通信しない", [await grantTutorialTickets([FIRST_GAME.id]), calls.length], [0, 0]);
+  const game = fs.readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8");
+  is(
+    "game.jsx: story も受けた台本は話として記録しない(話のチケット・xp・クリアは story の無い台本だけ)",
+    /const asLesson = !!tutorial && !story;\s*const freshTutorial =\s*asLesson && won/.test(game) &&
+      /if \(freshTutorial\)\s*grantTutorialTickets\(\[tutorial\.id\]/.test(game) &&
+      /\.\.\.\(asLesson\s*\? \{\s*xp: won \? tutorial\.xp : 0,\s*tutorial: !0,/.test(game),
+    true,
+  );
+  is("game.jsx: 台本の一局は「この話を飛ばす」(チケットを配る)を出さない", /onSkip=\{\s*tutorial\.storyAxis\s*\? null/.test(game) && /const skipMenu = tutorial && !tutorial\.storyAxis \? \(/.test(game), true);
+  const screens = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
+  is("screens.jsx: はじめの一局は台本と story を同時に渡す", screens.includes("setTut(FIRST_GAME), setStory(firstGameStory())"), true);
+  calls.length = 0;
+  await earnStoryTicket(FIRST_GAME.phase, FIRST_GAME.storyAxis);
+  is("褒美はストーリーの道へ(フェーズ1 の二と三)", calls.map((c) => [c.op, c.body]), [["story-reward", { phase: 1, axis: "23" }]]);
 }
 
 console.log(`\n${ok} ok / ${fail.length} NG`);

@@ -18,10 +18,17 @@ assert.match(game, /onNextMatch=\{\(network \|\| bot\) && onNextMatch \? nextMat
 // チュートリアルの終了画面: 左下(go-home)にタイトルへ戻る、右下(go-again)にホームへ(2026-09-21 本人の指示で左右入れ替え)
 // チュートリアルのホームへはハブ(menu)、それ以外は従来の goHome
 // 対局後の「ホームへ」は(通常もチュートリアルも)ハブ(menu)へ。タイトル(home)ではない
-assert.match(screens, /onHome=\{goMenu\}/, "ホームへはハブ(menu)へ");
+// はじめの一局だけは、勝っていれば導入の続き(名前・門の語り)へ。済んでいればハブ(leaveFirstGame("menu")。2026-10-01)
+assert.match(screens, /onHome=\{firstGame \? \(\) => leaveFirstGame\("menu"\) : goMenu\}/, "ホームへはハブ(menu)へ");
+assert.match(screens, /function leaveFirstGame\(to = "story"\) \{[\s\S]*?if \(to === "menu"\) goMenu\(\);\s*else showStory\(\);/, "はじめの一局の「ホームへ」も、導入が済んでいればハブへ");
 assert.match(screens, /function goMenu\(\) \{\s*\(dropNearby\(\), w\(!1\), u\(null\), m\(!1\), setTut\(null\), setStory\(null\), t\("menu"\)\);/, "goMenu は後片付けしてハブへ");
-assert.match(game, /\{tutorial \? \(\s*\/\/[\s\S]*?onExit && \(\s*<button className="btn btn-ghost go-home" onClick=\{onExit\}>\s*\{exitLabel\}/, "チュートリアルは左下にタイトルへ戻る");
-assert.match(game, /\{tutorial \? \(\s*\/\/[\s\S]*?onHome && \(\s*<button className="btn btn-ghost go-again" onClick=\{onHome\}>[\s\S]*?ホームへ/, "チュートリアルは右下にホームへ");
+// 第1〜13話(lesson)の形。台本でもストーリーとして遊ぶ一局(はじめの一局。story も受ける)はストーリーの形
+// (2026-10-01 本人の指示)
+assert.match(game, /lesson = !!tutorial && !story,/, "チュートリアルの形は story の無い台本だけ");
+assert.match(game, /\{lesson \? \(\s*\/\/[\s\S]*?onExit && \(\s*<button className="btn btn-ghost go-home" onClick=\{onExit\}>\s*\{exitLabel\}/, "チュートリアルは左下にタイトルへ戻る");
+assert.match(game, /\{lesson \? \(\s*\/\/[\s\S]*?onHome && \(\s*<button className="btn btn-ghost go-again" onClick=\{onHome\}>[\s\S]*?ホームへ/, "チュートリアルは右下にホームへ");
+assert.match(grid, /\{story \? \(\s*\/\/[^\n]*\n\s*onTutorialList && \(\s*<button className="btn btn-ghost go-match" onClick=\{onTutorialList\}>\s*ストーリーへ/, "ストーリー(はじめの一局も)の右上はストーリーへ");
+assert.match(grid, /\) : tutorial \? \(\s*\/\/[^\n]*\n\s*null\s*\) : \(\s*<button\s+className="btn btn-ghost go-again"\s+onClick=\{\(\) => \(onReplay \? onReplay\(\) : dispatch\(\{ type: "NEW_GAME" \}\)\)\}/, "台本の一局に NEW_GAME の「もう一度遊ぶ」を出さない");
 for (const [cls, area] of [["go-review", "1 / 1"], ["go-match", "1 / 2"], ["go-home", "2 / 1"], ["go-again", "2 / 2"]])
   assert.match(css, new RegExp(`\\.gameover-grid \\.${cls} \\{ grid-area: ${area.replace(/\//g, "\\/")}; \\}`), `${cls} は ${area}`);
 assert.match(css, /\.gameover-grid \.hint \{\s*grid-column: 1 \/ -1;/, "案内文は全幅");

@@ -2551,6 +2551,15 @@
   color: #d5dcf0;
   font: 12px/1.7 sans-serif;
 }
+/* はじめての10連の結果だけに出す一行(2026-10-01 本人の指示)。引いた英雄と次の一局をつなぐ */
+.skins-first-pull-note {
+  margin: 8px 0 0;
+  color: #f0d98a;
+  font: 600 13px/1.7 "Shippori Mincho", serif;
+  letter-spacing: 0.04em;
+  word-break: auto-phrase;
+  text-wrap: balance;
+}
 .skins-result-areas {
   margin: 22px 0 12px;
   padding: 16px;

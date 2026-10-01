@@ -132,11 +132,17 @@ is("鍵が重ならない", new Set(PRIMER_PAGES.map((p) => p.key)).size, PRIMER
 console.log("\n導入の中身(寿司将棋のように: どんなゲームか → 勝ち方。2026-09-30 本人の指示)");
 is("並び: ようこそ → 1手ずつ → 勝ち方 → 討てなくなったら → 王は伏せたまま → 陣 → あとはストーリーで", PRIMER_PAGES.map((p) => p.key), ["welcome", "turn", "win", "judge", "hidden", "setup", "story"]);
 is("勝ち方のもう1つ(討てなくなったら、はじめに並べた札の合計が小さいほうの勝ち)", PRIMER_PAGES.find((p) => p.key === "judge").lines.join("").includes("合計が小さいほうの勝ち"), true);
-is("どんなゲームかを最初に言う", PRIMER_PAGES[0].lines.join("").includes("ボードゲーム"), true);
+// 1枚目の本文は語り1枚目(prologue.jsx)に合わせ、読点で行を切る(2026-10-01 本人の指示。
+// 1行の長文だと「ボードゲ/ーム」と語の途中で折り返していた)
+is("どんなゲームかを最初に言う(語り1枚目と同じ言葉)", PRIMER_PAGES[0].lines.join(""), "トランプの札を駒に、伏せて戦う一対一。");
+is("1枚目は読点で行を切る", [...PRIMER_PAGES[0].lines], ["トランプの札を駒に、", "伏せて戦う一対一。"]);
+is("「王は名乗らない」の題は「王は、伏せたまま」に", PRIMER_PAGES.find((p) => p.key === "hidden").title, "王は、伏せたまま");
+is("「名乗らない」の言い回しを使わない", PRIMER_PAGES.some((p) => /名乗らない/.test(p.title + p.lines.join(""))), false);
 is("勝ち方を言う(相手の王を討てば勝ち)", PRIMER_PAGES.find((p) => p.key === "win").lines.join("").includes("相手の王を討てば勝ち"), true);
 is("駒の動きはここでは見せない(ステージの前に盤の図で見せる)", PRIMER_PAGES.some((p) => p.rank), false);
 is("王の力には触れない(フェーズ1 には無い)", PRIMER_PAGES.some((p) => /王の力|力がつき/.test(p.lines.join(""))), false);
-is("最後はストーリーへ渡す", /ストーリー/.test(PRIMER_PAGES.at(-1).title) && PRIMER_PAGES.at(-1).lines.join("").includes("2 と 3"), true);
+// 最後の札の2行目は、ストーリー一覧の一行と同じ言い方(2026-10-01。呼ぶ側が次のステージに差し替える)
+is("最後はストーリーへ渡す(一覧の一行と同じ「次は、二と三の王。」)", /ストーリー/.test(PRIMER_PAGES.at(-1).title) && PRIMER_PAGES.at(-1).lines.at(-1) === "次は、二と三の王。", true);
 {
   // 絵は盤で使っているものをそのまま。手引きのためだけの絵を持たない
   const srcText = read("src/ui/primer.jsx");
@@ -190,12 +196,16 @@ console.log("\n送り方");
   is("戻れる", texts(cls(tree, "primer-text")).includes(PRIMER_PAGES[0].lines[0]), true);
 }
 {
-  // 最後の一言は呼ぶ側が決める(10連のあとは「ストーリーを始める」、早見表は「とじる」)
+  // 最後の一言は呼ぶ側が決める。既定は「とじる」(自動で出さなくなり、開いた画面へ閉じて戻るだけ。2026-10-01)
   reset();
   states[0] = PRIMER_PAGES.length - 1;
-  const tree = render({ onDone: () => {}, doneLabel: "ストーリーを始める" });
-  is("最後の一言は呼ぶ側が決める", texts(cls(tree, "primer-next")).join(""), "ストーリーを始める");
+  const tree = render({ onDone: () => {}, doneLabel: "ステージへ" });
+  is("最後の一言は呼ぶ側が決める", texts(cls(tree, "primer-next")).join(""), "ステージへ");
   is("読み飛ばしを渡さなければ出さない", !!cls(tree, "primer-skip"), false);
+  reset();
+  states[0] = PRIMER_PAGES.length - 1;
+  const plain = render({ onDone: () => {}, onSkip: () => {} });
+  is("既定は「とじる」(最後の釦も、途中でやめる釦も)", [texts(cls(plain, "primer-next")).join(""), texts(cls(plain, "primer-skip")).join("")], ["とじる", "とじる"]);
 }
 {
   reset();
@@ -208,19 +218,19 @@ console.log("\n送り方");
 console.log("\n配線");
 {
   const screens = read("src/ui/screens.jsx");
-  is("はじめての人に手引きを出す(ストーリーの導入をまだ見ていない人だけ)", /offerTutorial && !storyPrimerSeen\(\) && \(\s*<Primer/.test(screens), true);
-  is("読み終えたらストーリーの最初のステージへ(前は第1話)", /doneLabel="ストーリーを始める"[\s\S]{0,300}markStoryPrimerSeen\(\);\s*showStory\(\);\s*const next = nextStage\(loadProfile\(\)\);\s*if \(next\) setStoryIntro\(next\.axis\);/.test(screens), true);
-  is("ストーリーをはじめて開いたら導入を一度だけ", /if \(!storyPrimerSeen\(\)\) setStoryPrimer\("first"\);/.test(screens), true);
+  // 2026-10-01 本人の指示: 手引き7枚は自動では出さない(導入は語り2枚とはじめの一局。src/game/intro.js)。
+  // ストーリー画面の「遊び方」と早見表の「はじめに」に残す
+  is("ホームの案内(10連のあと)で自動に出さない", /offerTutorial|doneLabel="ストーリーを始める"/.test(screens), false);
+  is("ストーリーをはじめて開いても自動に出さない", /storyPrimerSeen\(\)|setStoryPrimer\("first"\)|storyAfterPrimer/.test(screens), false);
+  is("手引きを出すのはストーリーの「遊び方」の1か所だけ(screens.jsx)", (screens.match(/<Primer\b/g) || []).length, 1);
   is("ストーリーの「遊び方」から読み返せる", screens.includes('onGuide={() => setStoryPrimer("guide")}') && /storyPrimer && \(\s*<Primer/.test(screens), true);
-  is("導入を読み終えたら印を付けて次のステージの説明へ", /function storyAfterPrimer\(\) \{\s*markStoryPrimerSeen\(\);\s*setStoryPrimer\(null\);\s*const next = nextStage\(loadProfile\(\)\);\s*if \(next\) setStoryIntro\(next\.axis\);/.test(screens), true);
-  is("読み飛ばしても印を付ける・「遊び方」は閉じるだけ", screens.includes("onSkip={() => (markStoryPrimerSeen(), setStoryPrimer(null))}") && screens.includes('onDone={() => (storyPrimer === "first" ? storyAfterPrimer() : setStoryPrimer(null))}'), true);
-  is("ホームの導入は、ストーリーの導入をもう見た人には出さない(合言葉つきで始めた人に二度出ていた)", /offerTutorial && !storyPrimerSeen\(\) && \(/.test(screens) && /function showStory\(\) \{[\s\S]{0,300}setOfferTutorial\(!1\);/.test(screens), true);
+  is("「遊び方」は閉じるだけ(最後の釦も途中でやめる釦も「とじる」)", /<Primer\s+outro=\{primerOutroLines\(loadProfile\(\)\)\}\s+doneLabel="とじる"\s+skipLabel="とじる"\s+onSkip=\{\(\) => setStoryPrimer\(null\)\}\s+onDone=\{\(\) => setStoryPrimer\(null\)\}/.test(screens), true);
   is("導入と説明を重ねない", /storyIntro && !storyPrimer && \(/.test(screens), true);
-  is("導入の最後の文は次に遊ぶステージに合わせる(3か所とも)", (screens.match(/outro=\{primerOutroLines\(loadProfile\(\)\)\}/g) || []).length === 2 && read("src/ui/guides.jsx").includes("outro={primerOutroLines(loadProfile())}"), true);
-  is("あとで、も選べる", /onSkip=\{\(\) => setOfferTutorial\(!1\)\}/.test(screens), true);
+  is("手引きの最後の文は次に遊ぶステージに合わせる(2か所とも)", (screens.match(/outro=\{primerOutroLines\(loadProfile\(\)\)\}/g) || []).length === 1 && read("src/ui/guides.jsx").includes("outro={primerOutroLines(loadProfile())}"), true);
   const guides = read("src/ui/guides.jsx");
   is("早見表からも読み返せる", /tab === "primer"/.test(guides), true);
   is("早見表に「はじめに」がある", /はじめに/.test(guides), true);
+  is("早見表の手引きも閉じるだけ", guides.includes('<Primer doneLabel="とじる" onDone={onClose} onSkip={onClose} skipLabel="とじる"'), true);
   const css = read("src/styles.css");
   is("見た目が用意されている", /\.primer\b/.test(css), true);
 }

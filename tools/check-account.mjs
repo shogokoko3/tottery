@@ -133,5 +133,96 @@ is(
 is("前後の空白は字数に数えない", nameError("  あいうえおかきくけこ  "), null);
 is("整えても10文字を超えるなら断る", typeof nameError("あいうえおかきくけこさ") === "string", true);
 
+console.log("名前を決める画面の文言(2026-10-01 本人の指示)");
+{
+  // 画面(src/ui/account.jsx)を描かずに中身だけ見る。React と他の部品は偽物に差し替える
+  const fs = await import("node:fs");
+  const { transformSync } = await import("esbuild");
+  const states = [];
+  let si = 0;
+  globalThis.__acc = {
+    useState: (init) => {
+      const i = si++;
+      if (!(i in states)) states[i] = typeof init === "function" ? init() : init;
+      return [states[i], (v) => (states[i] = typeof v === "function" ? v(states[i]) : v)];
+    },
+    profile: { MAX_NAME_LEN, nameError, normalizeName },
+  };
+  globalThis.__accH = (type, props, ...children) => {
+    // 中の部品(NameField)は呼んで組み立てる。偽物(Sparkle など)は名前だけ残す
+    if (typeof type === "function" && !type.__stub) return type({ ...(props || {}), children });
+    return {
+      type: typeof type === "function" ? type.__stub : type,
+      props: props || {},
+      children: children.flat(Infinity).filter((c) => c !== null && c !== undefined && c !== false),
+    };
+  };
+  // 名前の整え方は本物、ほかの取り込みは何を呼ばれても空の偽物
+  globalThis.__accStub = new Proxy(
+    {},
+    {
+      get: (_, name) => {
+        if (name in globalThis.__acc.profile) return globalThis.__acc.profile[name];
+        const f = () => null;
+        f.__stub = String(name);
+        return f;
+      },
+    },
+  );
+  const src = fs
+    .readFileSync(new URL("../src/ui/account.jsx", import.meta.url), "utf8")
+    .replace(/import \{[^}]*\} from "react";/, "const { useState } = globalThis.__acc;")
+    .replace(/import \{([^}]*)\} from "[^"]+";/g, (_, names) => `const {${names}} = globalThis.__accStub;`);
+  const js = transformSync(src, { loader: "jsx", jsx: "transform", jsxFactory: "globalThis.__accH", jsxFragment: '"fragment"', format: "esm" }).code;
+  const { NameSetupScreen, NAME_LINES } = await import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
+  const texts = (n, into = []) => {
+    if (typeof n === "string") into.push(n);
+    else if (n && typeof n === "object") for (const c of n.children || []) texts(c, into);
+    return into;
+  };
+  const find = (n, ok) => {
+    if (!n || typeof n !== "object") return null;
+    if (ok(n)) return n;
+    for (const c of n.children || []) {
+      const hit = find(c, ok);
+      if (hit) return hit;
+    }
+    return null;
+  };
+  const cls = (n, name) => find(n, (x) => typeof x.props?.className === "string" && x.props.className.split(" ").includes(name));
+  const draw = (props) => {
+    states.length = 0;
+    si = 0;
+    return NameSetupScreen({ onDone: () => {}, ...props });
+  };
+  const start = draw({});
+  is("見出しは「あなたの名前は?」", texts(find(start, (n) => n.type === "h2")).join(""), "あなたの名前は?");
+  is("本文は2行", [...NAME_LINES], ["インターネット上のランキングに出ます。", "本名は避けて。あとから変えられます。"]);
+  is("本文は1文ずつ行に分けて出す", texts(cls(start, "name-lines")), [...NAME_LINES]);
+  is("法務メモ (C) の「インターネット上のランキング」を残す", texts(start).join("").includes("インターネット上のランキング"), true);
+  is("本名を避けるよう言う", texts(start).join("").includes("本名は避けて"), true);
+  is("起動直後は「はじめまして」", texts(cls(start, "name-eyebrow")).join(""), "はじめまして");
+  is("起動直後の釦は「はじめる」", texts(cls(start, "btn-primary")).join("").trim(), "はじめる");
+  const won = draw({ afterWin: true });
+  is("はじめの一局に勝った直後は「はじめての勝利」", texts(cls(won, "name-eyebrow")).join(""), "はじめての勝利");
+  is("勝った直後の釦は「決める」", texts(cls(won, "btn-primary")).join("").trim(), "決める");
+  is("勝った直後も本文は同じ2行", texts(cls(won, "name-lines")), [...NAME_LINES]);
+  is("名前の欄がある", !!cls(won, "name-input"), true);
+  is("導入の中では戻る釦を出さない(名前を決めて進む)", [!!cls(start, "name-cancel"), !!cls(won, "name-cancel"), !!cls(start, "name-reason")], [false, false, false]);
+  // 名前の壁(2026-10-01 本人の指示)。名前の無い人がランキングや対戦へ行こうとしたとき、わけを添えて聞き、戻れる
+  let cancelled = 0;
+  const wall = draw({ reason: "ランキングを見る前に、名前を決めよう。", onCancel: () => cancelled++ });
+  is("名前の壁: わけの一行", texts(cls(wall, "name-reason")).join(""), "ランキングを見る前に、名前を決めよう。");
+  is("名前の壁: 本文(法務メモの語)はそのまま", texts(cls(wall, "name-lines")), [...NAME_LINES]);
+  is("名前の壁: 決める釦はそのまま", texts(cls(wall, "btn-primary")).join("").trim(), "はじめる");
+  is("名前の壁: 「戻る」で決めずに戻れる", texts(cls(wall, "name-cancel")).join(""), "戻る");
+  cls(wall, "name-cancel").props.onClick();
+  is("名前の壁: 戻るを押すと onCancel", cancelled, 1);
+  is("名前の壁: わけは警告の赤(name-notice)ではない", !!cls(wall, "name-notice"), false);
+  const css = fs.readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  is("本文の行は1文ずつ積む", /\.name-lines span \{\s*display: block;/.test(css), true);
+  is("名前の壁のわけと戻る釦の見た目がある", /\.name-reason \{/.test(css) && /\.name-cancel \{/.test(css), true);
+}
+
 console.log(`\n${ok} ok / ${fails.length} fail`);
 if (fails.length) process.exit(1);

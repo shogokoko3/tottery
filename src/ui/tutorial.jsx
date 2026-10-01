@@ -5,6 +5,7 @@ import {
   TUTORIALS,
   EXTRA_TUTORIALS,
   moveHintCandidates,
+  textLines,
   tutorialMinutes,
 } from "../game/tutorial.js";
 import { MOVE_TEXT, SUIT_SYMBOL } from "../game/constants.js";
@@ -309,6 +310,15 @@ export function TutorialSheet({
   // 自分で考える1手のヒント。hint は開いた後の文、onHint は開く釦(開く前だけ渡る)
   hint = null,
   onHint = null,
+  // ヒントを開いたときに出す動きの一覧(MoveGuidePanel の guide。はじめの一局の 2・3・5)
+  hintGuide = null,
+  // 札に出す行。駒を選んだあと(picked)・王の札(kingAlt)で出し分けた行を呼ぶ側が渡す
+  // (stepLines)。無ければ step.text をそのまま
+  lines = null,
+  // 「次へ」の代わりの釦の名(はじめの一局の待つ札は「つづき」)
+  nextLabel = null,
+  // 「次へ」を ▼ で光らせる。盤に触るものが無く、押すのが釦だけの札(holdFoe)
+  lit = false,
 }) {
   const [confirm, setConfirm] = useState(false);
   // 前面の札は盤を隠さない場所(右か下)に置く。盤の駒の動きを見ながら読めるように。
@@ -370,6 +380,8 @@ export function TutorialSheet({
     };
   }, [front, overlay, step]);
   if (!step) return null;
+  // 文は行の配列でも持てる(はじめの一局)。読点の位置で行を切るため、2行以上は1行ずつ積む
+  const shown = lines || textLines(step.text);
   return (
     <div
       className={`tutorial-sheet ${front ? "tutorial-sheet-front" : ""} ${
@@ -406,19 +418,57 @@ export function TutorialSheet({
         {step.need && step.need.choose && (
           <p className="tutorial-choose-badge">自分で考える1手</p>
         )}
-        <p className="tutorial-line">{step.text}</p>
+        <p className="tutorial-line">
+          {shown.length > 1
+            ? shown.map((line, i) => (
+                <span className="tutorial-line-row" key={i}>
+                  {line}
+                </span>
+              ))
+            : shown[0]}
+        </p>
         {step.moveGuide && <MoveGuidePanel guide={step.moveGuide} />}
         {step.moveHint && <MoveHintPanel hint={step.moveHint} />}
         {step.hold ? null : step.need ? (
           <div className="tutorial-wait-row">
             <p className={`tutorial-wait ${nudge ? "tutorial-nudge" : ""}`}>
               <Hand size={15} />{" "}
-              {nudge ||
-                (step.need.choose
-                  ? "どの駒で取るかは自由です"
-                  : "▼ の付いたところを操作してください")}
+              {/* 止めたときの一言は行の配列(tutorialGate)。2行あれば行ごとに積む */}
+              {nudge && textLines(nudge).length > 1 ? (
+                <span className="tutorial-wait-lines">
+                  {textLines(nudge).map((line, i) => (
+                    <span className="tutorial-line-row" key={i}>
+                      {line}
+                    </span>
+                  ))}
+                </span>
+              ) : nudge ? (
+                textLines(nudge)[0]
+              ) : step.need.choose ? (
+                "どの駒で取るかは自由です"
+              ) : (
+                "▼ の付いたところを操作してください"
+              )}
             </p>
-            {hint && <p className="tutorial-hint-text">ヒント: {hint}</p>}
+            {hint && (
+              <p className="tutorial-hint-text">
+                {textLines(hint).map((line, i) =>
+                  i === 0 ? (
+                    `ヒント: ${line}`
+                  ) : (
+                    <span className="tutorial-line-row" key={i}>
+                      {line}
+                    </span>
+                  ),
+                )}
+              </p>
+            )}
+            {/* 動きの図は横一列に詰める。帯が高くなると、答えの駒が帯の下に隠れる */}
+            {hint && hintGuide && (
+              <div className="tutorial-hint-guide">
+                <MoveGuidePanel guide={hintGuide} />
+              </div>
+            )}
             {onHint && (
               <button
                 className="btn btn-ghost tutorial-back tutorial-back-wait"
@@ -449,8 +499,11 @@ export function TutorialSheet({
                 <ArrowLeft size={16} /> 戻る
               </button>
             )}
-            <button className="btn btn-primary tutorial-next" onClick={onNext}>
-              {step.end ? "とじる" : "次へ"} <ArrowRight size={16} />
+            <button
+              className={`btn btn-primary tutorial-next ${lit ? "guide-target" : ""}`}
+              onClick={onNext}
+            >
+              {step.end ? "とじる" : nextLabel || "次へ"} <ArrowRight size={16} />
             </button>
           </div>
         )}

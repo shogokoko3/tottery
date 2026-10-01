@@ -1,7 +1,7 @@
 /**
  * はじめての10連と、チュートリアルの褒美(2026-09-28 本人の指示)を確かめる。
  *
- *   - 名前を決めた直後、チュートリアルより先に10連を引く
+ *   - 導入の最後に引く(2026-10-01 本人の指示。はじめの一局に勝ち → 名前 → 門の語り → 10連 → ストーリー一覧)
  *   - SSR が1枚以上確定・**フォイルは出ない**・フリーズの演出はそのまま
  *   - チケットは使わない。一度きり(開き直しても出ない)
  *   - チュートリアルを1話終えるごとにガチャチケット
@@ -146,18 +146,28 @@ is("0枚なら出さない", ticketRewardLabel(0), null);
 console.log("\n配線");
 {
   const screens = read("src/ui/screens.jsx");
-  // 名前 → **語り** → 10連(2026-09-28 本人の指示で、あいだに語りが入った)
+  // 10連は導入の最後(2026-10-01 本人の指示)。はじめの一局に勝ち → 名前 → **門の語り** → 10連 → ストーリー一覧。
+  // 振り分けは src/game/intro.js(tools/check-intro.mjs)
   is(
-    "名前を決めたら、チュートリアルより先に語りへ",
-    /if \(!firstPullDone\(getCollection\(\)\)\) \{[\s\S]{0,120}setPrologue\(!0\);/.test(screens),
+    "門の語りを終えたら、そのまま10連へ",
+    /if \(intro === "gate"\)[\s\S]{0,400}setFirstPullMode\(!0\);[\s\S]{0,200}t\("skins"\);/.test(screens),
     true,
   );
   is(
-    "語りを終えたら、そのまま10連へ",
-    /if \(prologue\)[\s\S]{0,400}setFirstPullMode\(!0\);[\s\S]{0,200}t\("skins"\);/.test(screens),
+    "10連から戻るとストーリー一覧へ(手引きの誘い・ホームではない)",
+    /if \(firstPullMode\) \{\s*(\/\/[^\n]*\n\s*)*setFirstPullMode\(!1\);\s*showStory\(\);/.test(screens) && !/shouldOfferFirstTutorial/.test(screens),
     true,
   );
-  is("10連から戻るときに第1話へ誘う", /if \(firstPullMode\) \{/.test(screens), true);
+  is(
+    "10連は門の語りのあとだけ(名前の直後に引かせない)",
+    (screens.match(/setFirstPullMode\(!0\)/g) || []).length,
+    1,
+  );
+  is(
+    "「門へ進む」は10連がまだの人だけ",
+    screens.includes("onGate={firstGame && !firstPullDone(collection) ? () => leaveFirstGame() : null}"),
+    true,
+  );
   const skins = read("src/ui/skins.jsx");
   is("初回だけの引き方がある", /const rollFirst = async/.test(skins), true);
   is("チケットを使わない", /applyPull\(s, firstPullResult\(\), \{ free: true \}\)/.test(skins), true);
@@ -165,6 +175,32 @@ console.log("\n配線");
   is(
     "すでに引いていれば二度目は出さない",
     /if \(!firstPull \|\| firstPullDone\(collection\)/.test(skins),
+    true,
+  );
+  // はじめての10連の結果(2026-10-01 本人の指示)。導入の最後なので、駒とのつながりと次の一歩を1つだけ
+  is("初回の結果だけを見分ける", /const firstResults = firstPull && !!collection\.pending\?\.results;/.test(skins), true);
+  is(
+    "初回の結果に一行(着せた英雄だけが駒になる)",
+    /\{firstResults && \(\s*<p className="skins-first-pull-note">\s*装備した英雄が、次の一局から駒になる。\s*<\/p>/.test(skins),
+    true,
+  );
+  is("初回の結果の釦は「ストーリーへ」", /\{firstResults \? "ストーリーへ" : "結果を確認"\}/.test(skins), true);
+  is(
+    "閉じたあと呼ぶ側の onBack へ(閉じるのに失敗したら行かない)",
+    /const closeFirstResults = async \(\) => \{\s*const next = await closeResults\(\);\s*if \(next && onBack\) onBack\(\);\s*\};/.test(skins),
+    true,
+  );
+  is("初回の結果は、どの閉じ方でも同じ行き先", /const closeShown = firstResults \? closeFirstResults : closeResults;/.test(skins), true);
+  {
+    // 結果の枠の閉じ方は3つ(外側・Escape の onClose、×、下の釦)。どれも closeShown を通す
+    const modal = skins.slice(skins.indexOf('label={resultLabel}'), skins.indexOf("{foilOffer && !shop && ("));
+    is("外側・Escape で閉じても同じ", /onClose=\{closeShown\}/.test(modal), true);
+    is("×・下の釦も同じ", (modal.match(/onClick=\{closeShown\}/g) || []).length, 2);
+    is("結果の枠の中に、行き先を分けない閉じ方が残っていない", /closeResults\}/.test(modal), false);
+  }
+  is(
+    "一行の見た目が用意されている",
+    /\.skins-first-pull-note \{/.test(read("src/skins/styles.css")),
     true,
   );
   const col = read("src/skins/collection.js");

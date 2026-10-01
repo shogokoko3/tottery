@@ -9,10 +9,11 @@
  * **駒の動きはここでは見せない**(2026-09-30 本人の指示)。ストーリーのフェーズ1 で、ステージごとに
  * 相手の王になる駒の動きを盤の図で見せる(story.jsx StoryIntro)。王の力もフェーズ1 には無いので載せない。
  *
- * 出すのは3か所:
- *   - 10連のあと、はじめての人に(screens.jsx)。最後の札が「ストーリーを始める」
- *   - ストーリーをはじめて開いたとき(まだ見ていない人に一度だけ)。ストーリー画面の「遊び方」からも
+ * 出すのは2か所。どちらも開いた人が読むときだけで、自動では出さない(2026-10-01 本人の指示。
+ * 導入は語り2枚とはじめの一局に替わった。src/game/intro.js):
+ *   - ストーリー画面の「遊び方」(screens.jsx)
  *   - 早見表の「はじめに」(guides.jsx)
+ * どちらも最後の札の釦は「とじる」。閉じた先のストーリー一覧と同じ一行で、次のステージを示す
  */
 import { useEffect, useRef, useState } from "react";
 import { typing } from "./key-target.js";
@@ -23,10 +24,12 @@ import { CardFace, Piece } from "./cards.jsx";
  * 最後の札(story)の文は、呼ぶ側が次に遊ぶステージに合わせて差し替えられる(Primer の outro。story.js primerOutroLines)
  */
 export const PRIMER_PAGES = Object.freeze([
+  // 本文は語り1枚目(prologue.jsx)に合わせ、読点で行を切る(2026-10-01 本人の指示。
+  // 1行の長文だと「ボードゲ/ーム」と語の途中で折り返していた)
   Object.freeze({
     key: "welcome",
     title: "トッタリーへようこそ",
-    lines: ["トランプの札を駒にして戦う、1対1のボードゲームです。"],
+    lines: ["トランプの札を駒に、", "伏せて戦う一対一。"],
     art: "cards",
   }),
   Object.freeze({
@@ -51,9 +54,10 @@ export const PRIMER_PAGES = Object.freeze([
     ],
     art: "judge",
   }),
+  // 題は「名乗らない」をやめた(2026-10-01 本人の指示。語りからも外した言い回し)
   Object.freeze({
     key: "hidden",
-    title: "王は名乗らない",
+    title: "王は、伏せたまま",
     lines: [
       "王はお互いに伏せたまま。",
       "どれが王かは、討たれるまで分かりません。",
@@ -69,12 +73,13 @@ export const PRIMER_PAGES = Object.freeze([
     ],
     art: "setup",
   }),
+  // 2行目はストーリー一覧の一行と同じ言い方(story.js nextStageLine。呼ぶ側が次のステージに差し替える)
   Object.freeze({
     key: "story",
     title: "あとはストーリーで",
     lines: [
       "ステージごとに、相手の王になる駒の動きを覚えます。",
-      "まずは 2 と 3 から。",
+      "次は、二と三の王。",
     ],
     art: "story",
   }),
@@ -194,12 +199,13 @@ function PrimerArt({ page }) {
 /**
  * 手引き。
  *
- * onDone   読み終えた(最後の札の釦)。導入ではストーリーへ
+ * onDone   読み終えた(最後の札の釦)
  * onSkip   途中でやめる。渡さなければその釦を出さない
  * doneLabel 最後の札の釦の一言
- * skipLabel 途中でやめる釦の一言(導入は「あとで」、早見表からは「とじる」)
+ * skipLabel 途中でやめる釦の一言
+ * どちらも既定は「とじる」(自動で出さなくなったので、開いた画面へ閉じて戻るだけ。2026-10-01)
  */
-export function Primer({ onDone, onSkip = null, doneLabel = "はじめる", skipLabel = "あとで", outro = null }) {
+export function Primer({ onDone, onSkip = null, doneLabel = "とじる", skipLabel = "とじる", outro = null }) {
   const [at, setAt] = useState(0);
   const done = useRef(false);
   // 開いたら「つづき」に focus を置く(キーで送れるように。画面は送らない)

@@ -1565,7 +1565,10 @@ export function SkinsScreen({
   onBack,
   onBattlePass,
   initialTab = "gacha",
-  // はじめての10連(2026-09-28 本人の指示)。名前を決めた直後に一度だけ真で入る
+  // はじめての10連(2026-09-28 本人の指示)。導入の最後、はじめの一局に勝って名前を決め、
+  // 門の語りを通ったあとに一度だけ真で入る(2026-10-01 本人の指示で、一局のあとへ移した)。
+  // 真のとき、10連の結果を閉じると(「ストーリーへ」・×・Escape のどれでも)onBack を呼ぶ。
+  // 導入では、呼ぶ側が onBack でストーリー一覧へ送る
   firstPull = false,
 }) {
   const collection = useCollection(),
@@ -1809,7 +1812,8 @@ export function SkinsScreen({
   };
 
   /**
-   * はじめての10連(2026-09-28 本人の指示)。名前を決めた直後に一度だけ。
+   * はじめての10連(2026-09-28 本人の指示)。導入の最後に一度だけ
+   * (2026-10-01 本人の指示で、はじめの一局の勝ち → 名前 → 門の語り のあとへ移した)。
    * チケットは使わず、SSR が1枚以上確定、フォイルは出ない(src/skins/first-pull.js)。
    * 門もフリーズもふつう通り
    */
@@ -1907,6 +1911,14 @@ export function SkinsScreen({
     }
     return next;
   };
+  // はじめての10連の結果(2026-10-01 本人の指示)。導入の最後なので、引いた英雄と駒のつながりを
+  // 一行で渡し、次の一歩(ストーリー)を1つだけ示す。この回は閉じ方を問わず呼ぶ側の onBack へ
+  const firstResults = firstPull && !!collection.pending?.results;
+  const closeFirstResults = async () => {
+    const next = await closeResults();
+    if (next && onBack) onBack();
+  };
+  const closeShown = firstResults ? closeFirstResults : closeResults;
   /** フォイルを有償ジェムで買う。通ればサーバーの残高を写し、所持に足す */
   const buyFoilOffer = async (offer) => {
     if (busy.current) return false;
@@ -2460,7 +2472,7 @@ export function SkinsScreen({
         ) : (
           <SkinModal
             label={resultLabel}
-            onClose={closeResults}
+            onClose={closeShown}
             className="skins-results-overlay"
           >
             <div className="skin-modal-head">
@@ -2494,6 +2506,12 @@ export function SkinsScreen({
                     {SHARD_NAME}を使って交換しました。抽選はありません。
                   </p>
                 )}
+                {/* 着せた札(「装備しました」の印)だけが駒の姿になる。10枚全部とは読ませない */}
+                {firstResults && (
+                  <p className="skins-first-pull-note">
+                    装備した英雄が、次の一局から駒になる。
+                  </p>
+                )}
                 {results.some((r) => byId(r.id).foil) && (
                   <p className="skins-foil-acquired">
                     <FoilBadge /> フォイルを獲得しました
@@ -2504,7 +2522,7 @@ export function SkinsScreen({
                 className="skin-close"
                 aria-label={`${resultLabel}を閉じる`}
                 disabled={working}
-                onClick={closeResults}
+                onClick={closeShown}
               >
                 ×
               </button>
@@ -2649,9 +2667,9 @@ export function SkinsScreen({
               <button
                 className="skin-btn skin-btn-gold skins-result-done"
                 disabled={working}
-                onClick={closeResults}
+                onClick={closeShown}
               >
-                結果を確認
+                {firstResults ? "ストーリーへ" : "結果を確認"}
               </button>
             </div>
           </SkinModal>

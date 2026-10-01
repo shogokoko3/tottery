@@ -3706,12 +3706,20 @@ body:has(.skin-overlay) {
    プレイヤーの名前
    ========================================================================= */
 
+/* 札は舞台の幅いっぱい(360px まで)に。中身の幅で縮むと、額装の地(royal-theme.css)の
+   端に文字が触れ、小見出しが上の縁に重なっていた(2026-10-01 本人の指示で文言を直したときに見直し) */
 .name-stage {
+  width: 100%;
+  max-width: 392px;
   padding: 20px 16px;
 }
 .name-card {
   width: 100%;
   max-width: 360px;
+  margin: 0 auto;
+  padding: 22px 20px 24px;
+  border: 1px solid rgba(198, 164, 93, 0.55);
+  border-radius: 12px;
   text-align: center;
 }
 .name-eyebrow {
@@ -3750,6 +3758,22 @@ body:has(.skin-overlay) {
 }
 .name-note-bad {
   color: #ffb3b7;
+}
+/* 本文は1文1行で積む。文の途中で折り返すなら語の切れ目で(「出ま/す」と割らない) */
+.name-lines span {
+  display: block;
+  word-break: auto-phrase;
+}
+/* 名前の壁(名前の無い人がランキングや対戦へ行くとき)で、いま聞くわけ。
+   警告(.name-notice の赤)ではなく、見出しに添える金の一行 */
+.name-reason {
+  margin: 4px 0 10px;
+  color: var(--gold-soft);
+  font-size: 13px;
+  word-break: auto-phrase;
+}
+.name-cancel {
+  margin-top: 10px;
 }
 
 /* =========================================================================
@@ -8818,43 +8842,39 @@ svg {
   user-select: none;
 }
 
-/* はじまりの語り(2026-09-28 本人の指示)。名前を決めたあと、門が開く前に出す。
-   読ませるのではなく、一言渡して先へ送る作りにする */
+/* はじまりの語りと門の語り(2026-09-28 本人の指示。2026-10-01 に作り直し)。
+   一言渡して先へ送る作り。背景にタイトル絵は敷かない(絵の「相手の王を討て」が見出しと並んで透けた)。
+   暗い地に、見出し・絵(向かい合う二列/門の札)・釦だけ */
+/* 画面いっぱいに敷く。舞台の余白(20px)が残ると、暗い地が枠に見え、下へ 40px はみ出していた。
+   舞台の最低の高さ(520px)も外す(背の低い端末で下へはみ出す) */
+.stage:has(> .prologue) {
+  min-height: 0;
+  padding: 0;
+}
 .prologue {
   position: relative;
+  width: 100%;
   min-height: calc(100dvh - var(--top-bar-h, 0px));
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   align-items: center;
   gap: 18px;
-  padding: 0 22px calc(28px + env(safe-area-inset-bottom));
+  padding: 72px 22px calc(28px + env(safe-area-inset-bottom));
   overflow: hidden;
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
+  background:
+    radial-gradient(
+      90% 46% at 50% 58%,
+      rgba(52, 76, 116, 0.42) 0%,
+      rgba(6, 12, 24, 0) 72%
+    ),
+    linear-gradient(180deg, #0b1628 0%, #060c18 100%);
 }
-.prologue-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  /* 絵は舞台。文字を読ませるので、奥へ引く */
-  filter: brightness(0.45) saturate(0.85);
-  transform: scale(1.06);
-  animation: prologue-drift 18s ease-in-out infinite alternate;
-}
-.prologue-shade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(6, 12, 24, 0.55) 0%,
-    rgba(6, 12, 24, 0.2) 35%,
-    rgba(6, 12, 24, 0.92) 78%,
-    #060c18 100%
-  );
+/* 伏せ札を取る札は、絵の外を押しても進まない */
+.prologue.is-touch {
+  cursor: default;
 }
 .prologue-skip {
   position: absolute;
@@ -8871,22 +8891,31 @@ svg {
   letter-spacing: 0.06em;
   cursor: pointer;
 }
+/* 見出し・絵・一言の組を、上下の余白で真ん中寄りに置く(釦は下端) */
 .prologue-text {
   position: relative;
   z-index: 1;
+  margin-top: auto;
   text-align: center;
   max-width: 420px;
   animation: prologue-in 700ms ease-out both;
 }
-.prologue-line {
+.prologue-title {
   margin: 0 0 10px;
+  padding: 0;
+  font-weight: 700;
+  text-shadow: none;
+}
+/* 見出しは読点ごとの行で渡す。行の中では折り返さない(「王か/もしれない」と割らない) */
+.prologue-line {
+  display: block;
   font-family: "Shippori Mincho", serif;
-  font-size: clamp(21px, 6.4vw, 27px);
-  line-height: 1.7;
+  font-size: clamp(24px, 7.4vw, 31px);
+  line-height: 1.55;
   letter-spacing: 0.06em;
   color: #f7eace;
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
-  text-wrap: balance;
+  white-space: nowrap;
 }
 .prologue-note {
   margin: 0;
@@ -8896,11 +8925,13 @@ svg {
   letter-spacing: 0.04em;
   color: #c3b79f;
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+  text-wrap: balance;
   animation: prologue-in 700ms 320ms ease-out both;
 }
 .prologue-foot {
   position: relative;
   z-index: 1;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -8926,6 +8957,143 @@ svg {
 .prologue-next {
   width: 100%;
 }
+/* 絵の下の一言(「一枚、取ってみて。」→「外れ。王は、残りの四枚の中。」)。
+   取ったあとの一言は、めくれ終わるころに出す */
+.prologue-cue {
+  position: relative;
+  z-index: 1;
+  margin: -6px 0 0;
+  min-height: 1.8em;
+  font-family: "Shippori Mincho", serif;
+  font-size: clamp(13px, 3.8vw, 15px);
+  font-weight: 600;
+  line-height: 1.8;
+  letter-spacing: 0.06em;
+  color: var(--gold-soft);
+  text-align: center;
+  animation: prologue-in 500ms 900ms ease-out both;
+}
+
+/* 向かい合う二列。奥は相手の伏せ札、手前はあなたの札(盤の駒と同じ Piece)。
+   1列の上に、取った札を退かせる余白(--lift)を取る */
+.prologue-rows {
+  --pc-w: 50px;
+  --pc-h: 67px;
+  --pc-gap: 10px;
+  --lift: 58px;
+  /* 前へ1マス = 札の高さ + 列のあいだ */
+  --step: calc(var(--pc-h) + var(--pc-gap));
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  perspective: 700px;
+}
+.prologue-col {
+  position: relative;
+  width: var(--pc-w);
+  height: calc(var(--lift) + var(--step) + var(--pc-h));
+}
+.prologue-foe,
+.prologue-mine,
+.prologue-taken {
+  position: absolute;
+  left: 0;
+}
+.prologue-foe {
+  top: var(--lift);
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+.prologue-foe:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 3px;
+}
+.prologue-mine {
+  top: calc(var(--lift) + var(--step));
+  z-index: 1;
+}
+/* 伏せ札は淡く脈打って「押せる」を見せる(1枚目で、まだ取っていないあいだ) */
+.prologue-rows.is-inviting .prologue-foe {
+  cursor: pointer;
+  animation: prologue-beckon 2.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 160ms);
+}
+.prologue-rows.is-inviting .prologue-foe:active {
+  transform: scale(0.95);
+}
+/* 取る: 真正面の駒が前へ1マス → 伏せ札がめくれる → 取った札は列の上へ退く */
+.prologue-col.is-struck .prologue-mine {
+  transform: translateY(calc(-1 * var(--step)));
+  animation: prologue-advance 380ms cubic-bezier(0.55, 0, 0.35, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+.prologue-col.is-struck .prologue-foe {
+  opacity: 0;
+  transform: rotateY(90deg);
+  pointer-events: none;
+  animation: prologue-flip-out 140ms ease-in both;
+  animation-delay: calc(var(--d, 0ms) + 340ms);
+}
+.prologue-col.is-struck .prologue-taken {
+  top: 0;
+  z-index: 2;
+  transform-origin: 50% 0;
+  transform: scale(0.8);
+  animation: prologue-taken 820ms ease-out both;
+  animation-delay: calc(var(--d, 0ms) + 480ms);
+}
+/* 王を取る(2枚目)は、見出しが入ってから動く */
+.prologue-col.is-king {
+  --d: 700ms;
+}
+/* 2枚目に入ったら、1枚目で取った列は動かさずに置く(めくれた 9♦ はそのまま) */
+.prologue-col.is-struck.is-settled .prologue-mine,
+.prologue-col.is-struck.is-settled .prologue-foe,
+.prologue-col.is-struck.is-settled .prologue-taken {
+  animation: none;
+}
+
+/* 門の語りの絵。札の裏が一枚、金の光の中に浮かぶ */
+.prologue-gate-art {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 200px;
+  height: 200px;
+}
+.prologue-gate-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(240, 217, 138, 0.5) 0%,
+    rgba(212, 175, 55, 0.18) 40%,
+    rgba(212, 175, 55, 0) 70%
+  );
+  animation: prologue-glow 3.2s ease-in-out infinite;
+}
+.prologue-gate-card {
+  position: relative;
+  width: 96px;
+  height: 128px;
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px rgba(240, 217, 138, 0.7),
+    0 0 28px rgba(240, 217, 138, 0.5),
+    0 14px 30px rgba(0, 0, 0, 0.6);
+  animation: prologue-float 4s ease-in-out infinite;
+}
+
 @keyframes prologue-in {
   from {
     opacity: 0;
@@ -8936,18 +9104,105 @@ svg {
     transform: none;
   }
 }
-@keyframes prologue-drift {
-  from {
-    transform: scale(1.06) translateY(0);
+@keyframes prologue-beckon {
+  0%,
+  100% {
+    filter: none;
+    transform: none;
   }
-  to {
-    transform: scale(1.12) translateY(-2%);
+  50% {
+    filter: brightness(1.15) drop-shadow(0 0 8px rgba(240, 217, 138, 0.55));
+    transform: translateY(-2px);
   }
 }
+@keyframes prologue-advance {
+  from {
+    transform: none;
+  }
+}
+@keyframes prologue-flip-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 1;
+    transform: rotateY(90deg);
+  }
+}
+@keyframes prologue-taken {
+  0% {
+    transform: translateY(var(--lift)) rotateY(-90deg);
+  }
+  30% {
+    transform: translateY(var(--lift)) rotateY(0) scale(1.06);
+    filter: brightness(1.4) drop-shadow(0 0 10px var(--gold));
+  }
+  58% {
+    transform: translateY(var(--lift)) rotateY(0) scale(1);
+    filter: none;
+  }
+  100% {
+    transform: scale(0.8);
+  }
+}
+@keyframes prologue-glow {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+@keyframes prologue-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+/* 幅・高さの狭い端末(320×568 など)でも、二列の絵と釦が1画面に収まるように詰める */
+@media (max-width: 359px) {
+  .prologue {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .prologue-rows {
+    gap: 6px;
+  }
+}
+@media (max-height: 620px) {
+  .prologue {
+    padding-top: 56px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    gap: 10px;
+  }
+}
+/* 動きを減らす設定(端末の設定・対局中の演出オフ)では止め絵。終わりの形だけを出す */
+.prologue.is-still .prologue-text,
+.prologue.is-still .prologue-note,
+.prologue.is-still .prologue-cue,
+.prologue.is-still .prologue-col .prologue-foe,
+.prologue.is-still .prologue-col .prologue-mine,
+.prologue.is-still .prologue-col .prologue-taken,
+.prologue.is-still .prologue-gate-glow,
+.prologue.is-still .prologue-gate-card {
+  animation: none;
+}
 @media (prefers-reduced-motion: reduce) {
-  .prologue-bg,
-  .prologue-text,
-  .prologue-note {
+  .prologue .prologue-text,
+  .prologue .prologue-note,
+  .prologue .prologue-cue,
+  .prologue .prologue-col .prologue-foe,
+  .prologue .prologue-col .prologue-mine,
+  .prologue .prologue-col .prologue-taken,
+  .prologue .prologue-gate-glow,
+  .prologue .prologue-gate-card {
     animation: none;
   }
 }
@@ -9229,6 +9484,19 @@ svg {
 .story-intro .hint {
   margin: 0;
 }
+/* 一文ずつ積む(2026-10-01。長い1行だと語の途中で割れていた) */
+.story-intro-note span {
+  display: block;
+  word-break: auto-phrase;
+}
+/* 一覧の見出しの下の「次は、四と五の王。」(2026-10-01 本人の指示)。次の一歩を1つだけ */
+.story-next {
+  margin: 6px 0 12px;
+  text-align: center;
+  color: var(--gold);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
 
 /* 読み上げにだけ渡す文字(見た目には出さない) */
 .sr-only {
@@ -9325,4 +9593,132 @@ svg {
   .story-intro-moves .move-diagram {
     width: 76px;
   }
+}
+
+/* =========================================================================
+   はじめの一局(導入の台本の一局。2026-10-01 本人の指示)
+   ========================================================================= */
+/* 札の文は行の配列で持ち、読点の位置で行を切る。1行ずつ積む */
+.tutorial-line-row {
+  display: block;
+}
+/* 止めたときの一言が2行のとき。手の印の横に行を積む */
+.tutorial-wait-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+/* 待つ札の光の筋(ねらう駒から二枚へ)。▼ は付けず、流れる線で「ねらっている」を見せる */
+.tutorial-threat {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+  overflow: visible;
+}
+.tutorial-threat-line {
+  stroke: #f0d98a;
+  stroke-width: 0.1;
+  stroke-linecap: round;
+  stroke-dasharray: 0.16 0.1;
+  filter: drop-shadow(0 0 0.08px #f0d98a);
+  animation: tutorial-threat-flow 0.9s linear infinite;
+}
+.tutorial-threat-head {
+  fill: #f0d98a;
+  filter: drop-shadow(0 0 0.08px #f0d98a);
+}
+@keyframes tutorial-threat-flow {
+  to {
+    stroke-dashoffset: -0.26;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-threat-line {
+    animation: none;
+  }
+}
+/* 王を選ぶ画面に、確定済みの相手の並びを伏せ札で薄く */
+.mini-piece-foe {
+  opacity: 0.5;
+  pointer-events: none;
+}
+/* 結果: 相手の王とあなたの王を並べる */
+.tutorial-reveal-pair {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 14px;
+  margin: 6px 0 4px;
+}
+.tutorial-reveal-pair .tutorial-reveal {
+  flex: 1 1 0;
+  max-width: 150px;
+  margin: 0;
+}
+.tutorial-reveal-pair .tutorial-reveal p {
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: auto-phrase;
+  text-wrap: balance;
+}
+.tutorial-reveal-pair .tutorial-reveal b {
+  font-size: 16px;
+}
+.tutorial-end-lines {
+  margin: 10px 0 0;
+  line-height: 1.7;
+}
+/* 「門へ進む」。勝った褒美の先なので、金で脈打たせる */
+.result-gate {
+  animation: result-gate-glow 1.6s ease-in-out infinite;
+}
+@keyframes result-gate-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.5);
+  }
+  55% {
+    box-shadow: 0 0 18px 4px rgba(212, 175, 55, 0.45);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .result-gate {
+    animation: none;
+  }
+}
+/* ヒントの動きの図(2・3・5)は横一列。2列だと帯が背高になり、答えの駒が帯の下に隠れた */
+.tutorial-hint-guide .move-hint {
+  margin: 6px 0 2px;
+}
+.tutorial-hint-guide .move-hint-rows {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.tutorial-hint-guide .move-guide .move-hint-row {
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 5px;
+  padding: 4px 5px;
+}
+.tutorial-hint-guide .move-hint-row .move-diagram {
+  width: 30px;
+}
+.tutorial-hint-guide .move-hint-label b {
+  font-size: 13px;
+}
+.tutorial-hint-guide .move-hint-label small {
+  font-size: 10px;
+  line-height: 1.35;
+}
+/* 締めの一行は文ごとに折り返す(語の途中で割らない) */
+.tutorial-tagline-part {
+  display: inline-block;
+}
+/* 「門へ進む」は送る中身の外。2×2 の釦の上にいつも見える */
+.gameover-panel > .gameover-gate {
+  flex: none;
+  margin-top: 10px;
 }

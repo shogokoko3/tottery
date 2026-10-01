@@ -102,16 +102,17 @@ import { TutorialSelect } from "./tutorial.jsx";
 import { StoryScreen, StoryIntro, storyTileNote } from "./story.jsx";
 import { TsumeScreen, useTsumeDay } from "./tsume.jsx";
 import { tsumeReceipt } from "../game/tsume-daily.js";
-import { nextTutorialAfter } from "../game/tutorial.js";
+import { FIRST_GAME, nextTutorialAfter } from "../game/tutorial.js";
 import { ProfileSyncNotice } from "./profile-sync.jsx";
 import { XpGainToast } from "./xp-gain.jsx";
-import { TitleAcquisition } from "./title-acquisition.jsx";
+import { TitleAcquisition, useTitleNoticeHold } from "./title-acquisition.jsx";
 import { getXpNotices, subscribeXpNotices } from "../game/xp-notices.js";
 import { GAME_RULE_VERSION } from "../game/rule-version.js";
 import { foilRevealed } from "../skins/collection.js";
 import { roomRuleVersion } from "../net/sync.js";
 import { RankingScreen } from "./ranking.jsx";
 import {
+  PROFILE_CHANGED,
   hasName,
   isTestPlay,
   loadProfile,
@@ -132,7 +133,7 @@ import { TitleFrame } from "./title-frame.jsx";
 import TITLE_STYLES from "./title-frame.css";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
-import { onlineGate, onlineGateLabel } from "../game/online-gate.js";
+import { nameWallReason, needsName, onlineGate, onlineGateLabel } from "../game/online-gate.js";
 import {
   botPlan,
   makeBot,
@@ -142,11 +143,17 @@ import {
   botTitle,
   rematchBot,
 } from "../game/bot-match.js";
+import { pickStoryKing, primerOutroLines, stageOf } from "../game/story.js";
+// 導入の振り分け(2026-10-01 本人の指示。語り → はじめの一局 → 名前 → 門の語り → 10連 → ストーリー一覧)
 import {
-  markFirstTutorialOffered,
-  shouldOfferFirstTutorial,
-} from "../game/tutorial-nudge.js";
-import { markStoryPrimerSeen, nextStage, pickStoryKing, primerOutroLines, stageOf, storyPrimerSeen } from "../game/story.js";
+  firstGameDone,
+  firstGameStage,
+  firstGameStory,
+  introHoldsTitles,
+  introStep,
+  markPrologueSeen,
+  prologueSeen,
+} from "../game/intro.js";
 import { rankedPhase, stageSize } from "../game/phase.js";
 import { isBlocked } from "../game/blocked.js";
 import { dropOldRows, syncPlayer } from "../net/players.js";
@@ -178,13 +185,13 @@ import { backupIfDue } from "../net/backup.js";
 import { shopAvailable } from "../net/iap.js";
 import { claimableCount } from "../game/missions.js";
 import { getCollection, useCollection } from "../skins/store.js";
-// はじめての10連を引いたかの控え(2026-09-28 本人の指示)
+// はじめての10連を引いたかの控え(2026-09-28 本人の指示)。はじめの一局の結果の「門へ進む」を出すかに使う
 import { firstPullDone } from "../skins/first-pull.js";
 // フェーズ(ストーリーとフェーズ.md)。オンラインはフェーズごとに相手を分ける
 import { phaseOf, rulesForPhase } from "../game/phase.js";
-// はじまりの語り(2026-09-28 本人の指示)
+// はじまりの語りと門の語り(2026-09-28 本人の指示。2026-10-01 に導入の頭と10連の前の2か所へ)
 import { Prologue } from "./prologue.jsx";
-// はじめての手引き(2026-09-29 本人の指示)
+// はじめての手引き(2026-09-29 本人の指示)。2026-10-01 から自動では出さず、ストーリーの「遊び方」だけ
 import { Primer } from "./primer.jsx";
 // 相手が見つかったときの手ごたえ(2026-09-28 本人の指示)
 import { vibrateMatchFound } from "../game/haptics.js";
@@ -2196,7 +2203,8 @@ function TotteryScreens() {
     Object.fromEntries(Object.entries(loadout || {}).map(([rank, id]) => [rank, baseSkinId(id)]));
   // ランダムマッチの練習相手(Bot)。レート 1750 未満のあいだ、人の代わりに当たる。中身は CPU(強さ3段階)
   const [bot, setBot] = useState(null);
-  // はじめて遊ぶときは、まず名前を決めてもらう
+  // 名前を決めたか。名前を聞くのは、はじめの一局に勝ったあと(2026-10-01 本人の指示)。
+  // それまでに人と関わる場所へ行こうとしたら、名前の壁が先に聞く(needsName)
   let [named, setNamed] = (0, useState)(() => hasName()),
     [e, t] = (0, useState)("home"),
     [l, n] = (0, useState)(!1),
@@ -2208,7 +2216,8 @@ function TotteryScreens() {
     // ストーリーのステージ({ axis, phase, king, title })と、その前に出す相手の王の説明(軸 id)
     [story, setStory] = (0, useState)(null),
     [storyIntro, setStoryIntro] = (0, useState)(null),
-    // ストーリーの導入(はじめての手引き)。"first" = はじめて開いた(読み終えたら次のステージの説明へ)/ "guide" = 「遊び方」から
+    // ストーリーの「遊び方」(はじめての手引き)。"guide" のときだけ開く。
+    // はじめて開いたときに自動で出すのはやめた(2026-10-01 本人の指示)
     [storyPrimer, setStoryPrimer] = (0, useState)(null),
     // ルール設定を開いた元の画面。「戻る」はここへ帰る。
     // 対戦の種類(o)から推測すると、CPU対戦とルームの「オフラインで対戦」が
@@ -2218,17 +2227,19 @@ function TotteryScreens() {
     [round, setRound] = (0, useState)(0),
     // 運営に使用停止にされたかどうか
     [banned, setBanned] = (0, useState)(!1),
-    // 名前を決めた直後(10連のあと)に一度だけ出す、導入(はじめての手引き)の案内。読み終えるとストーリーへ
-    [offerTutorial, setOfferTutorial] = (0, useState)(!1),
-    // はじめての10連(2026-09-28 本人の指示)。名前を決めた直後、チュートリアルより先に引く
+    // はじめての10連(2026-09-28 本人の指示)。導入の最後、門の語りのあとに引く(2026-10-01 本人の指示)
     [firstPullMode, setFirstPullMode] = (0, useState)(!1),
-    // その手前に出す、はじまりの語り(2026-09-28 本人の指示。
-    // いきなり門が開くのではなく、なぜ召喚するのかを一言渡してから入る)
-    [prologue, setPrologue] = (0, useState)(!1),
+    // 導入の画面(src/game/intro.js の段のうち、対局でないもの)。
+    // "prologue" 語り2枚 / "name" 勝ったあとの名前 / "gate" 門の語り。null なら出さない
+    [intro, setIntro] = (0, useState)(null),
     // 詳細設定(src/game/custom-rules.js)。端末に覚える。null ならクラシック
     [customRules, setCustomRules] = (0, useState)(() => loadCustomRules()),
-    // リンク(?room=ABCDEF)から開いたときの合言葉。名前を決めたらフレンド対戦の画面へ
+    // リンク(?room=ABCDEF)から開いたときの合言葉。開いたらすぐフレンド対戦の画面へ(名前が無ければ名前の壁が先)
     [pendingRoom, setPendingRoom] = (0, useState)(() => roomFromLocation()),
+    // この起動のあいだ導入を押し付けないか。はじめの一局を中断したとき。
+    // 合言葉つき(?room=)で開いた起動も、部屋へ通すだけで導入は次の起動から。
+    // roomFromLocation は読んだ合言葉を URL から消すので、もう一度呼ばずに pendingRoom から決める
+    [introDeferred, setIntroDeferred] = (0, useState)(() => !!pendingRoom),
     // フレンド(2026-09-23)。開いているプロフィールの uid(null なら自分)と戻り先、招待の相手
     [profileUid, setProfileUid] = (0, useState)(null),
     [profileFrom, setProfileFrom] = (0, useState)("menu"),
@@ -2248,9 +2259,22 @@ function TotteryScreens() {
   function joinInvite(code) {
     (setInviteTo(null), setPendingRoom(code), u(null), m(!1), t("room"));
   }
+  // 合言葉つき(?room=)で開いたら、すぐ部屋へ。名前が無ければ名前の壁が先に聞く
+  // (2026-10-01 本人の指示。導入は次の起動から。introDeferred)
   useEffect(() => {
-    if (named && pendingRoom) t("room");
-  }, [named, pendingRoom]);
+    if (pendingRoom) t("room");
+  }, [pendingRoom]);
+  // 名前は設定(名前を変える)からも決められる。そのときも名前の壁を下ろす
+  useEffect(() => {
+    const onChange = () => setNamed(hasName());
+    window.addEventListener(PROFILE_CHANGED, onChange);
+    return () => window.removeEventListener(PROFILE_CHANGED, onChange);
+  }, []);
+  // 導入のあいだ(語り・はじめの一局・名前・門の語り・初回の10連)は称号の知らせを止め、
+  // ストーリー一覧に着いてから出す(2026-10-01 本人の指示。至高との邂逅・図鑑の開拓者などが10連の上に重なっていた)
+  useTitleNoticeHold(
+    introHoldsTitles({ intro, screen: e, firstGame: tut === FIRST_GAME, firstPull: firstPullMode }),
+  );
   // オンラインの印(フレンド一覧の「オンライン/オフライン」表示)。アプリを開いている間、2分ごとに打つ。
   // どの画面でも打つので、対戦中や着せ替え中でもオンラインのままになる(2026-09-25 本人の指示)
   useEffect(() => {
@@ -2390,20 +2414,48 @@ function TotteryScreens() {
   function showTutorials() {
     (u(null), m(!1), setTut(null), setStory(null), t("tutorial"));
   }
-  // ストーリー(src/ui/story.jsx)。一覧 → ステージの前の1枚(相手の王の説明)→ 対局
+  // ストーリー(src/ui/story.jsx)。一覧 → ステージの前の1枚(相手の王の説明)→ 対局。
+  // はじめて開いたときの手引きの自動表示はやめた(2026-10-01 本人の指示。「遊び方」と早見表に残す)
   function showStory() {
-    (u(null), m(!1), setTut(null), setStory(null), setStoryIntro(null), t("story"));
-    // はじめて開いたときは、どんなゲームか・勝ち方(導入)を一度だけ出す(2026-09-30 本人の指示)。
-    // ホームの導入の案内(10連のあと)はここで下ろす。合言葉つきで始めた人に二度出ていた
-    setOfferTutorial(!1);
-    if (!storyPrimerSeen()) setStoryPrimer("first");
+    (u(null), m(!1), setTut(null), setStory(null), setStoryIntro(null), setIntro(null), t("story"));
   }
-  // 導入を読み終えたら、次のステージ(はじめはフェーズ1 の 2・3)の説明へ
-  function storyAfterPrimer() {
-    markStoryPrimerSeen();
-    setStoryPrimer(null);
-    const next = nextStage(loadProfile());
-    if (next) setStoryIntro(next.axis);
+  // ステージを開く。ストーリー1つ目の初回(フェーズ1 で二と三の王が未クリア)は、
+  // ステージ前の説明を通さず台本の一局(はじめの一局)へ。2回目からは説明と CPU 戦(2026-10-01 本人の指示)
+  function openStage(axis) {
+    if (firstGameStage(loadProfile(), axis)) {
+      startFirstGame();
+      return;
+    }
+    setStoryIntro(axis);
+  }
+  // はじめの一局(台本 FIRST_GAME を、ストーリー「二と三の王」として遊ぶ)。
+  // 台本と story を同時に渡す。game.jsx は story として記録し、結果をストーリーの形にする
+  function startFirstGame() {
+    (u(null), setBot(null), setStoryIntro(null), setCpuSkins({}), setCpuArea(null), setRound(0), setIntro(null),
+      setTut(FIRST_GAME), setStory(firstGameStory()), m(!0), r("game"), t("game"));
+    window.scrollTo(0, 0);
+  }
+  // 導入の段へ(src/game/intro.js の introStep)。対局の後片付けをしてから出す
+  function goIntro(step) {
+    if (step === "first-game") {
+      startFirstGame();
+      return;
+    }
+    (u(null), m(!1), setTut(null), setStory(null), setStoryIntro(null), setIntro(step), t("home"));
+  }
+  // はじめの一局を離れる(結果のどの釦・中断・上の「トッタリー」でも)。
+  // 勝っていれば導入の続き(名前・門の語り)へ。中断なら、この起動のあいだは導入を押し付けない
+  function leaveFirstGame(to = "story") {
+    const profile = loadProfile();
+    if (firstGameDone(profile)) {
+      const step = introStep({ profile, collection: getCollection(), prologueSeen: true });
+      if (step) {
+        goIntro(step);
+        return;
+      }
+    } else setIntroDeferred(!0);
+    if (to === "menu") goMenu();
+    else showStory();
   }
   // ステージを始める。相手(CPU)の王の数字は軸からその回ごとに決める(2・3 の回なら 2 か 3)
   function startStory(axis) {
@@ -2414,6 +2466,19 @@ function TotteryScreens() {
       setStory({ axis, phase: phaseOf(loadProfile()), size: stageSize(phaseOf(loadProfile())), king: pickStoryKing(axis), title: `${stage.name}の王` }),
       m(!0), r("game"), t("game"));
     window.scrollTo(0, 0);
+  }
+  // タイトルの「ゲームスタート」。導入が済んでいなければ続きへ(途中でやめた人も次の起動でここから)。
+  // 済んでいれば(いまのテスター)、今までどおりホームへ
+  function startFromTitle() {
+    const step = introStep({
+      profile: loadProfile(),
+      collection: getCollection(),
+      prologueSeen: prologueSeen(),
+      room: !!pendingRoom,
+      deferred: introDeferred,
+    });
+    if (step) goIntro(step);
+    else t("menu");
   }
   // 上の「トッタリー」から。ルーム作成の予約(p)も引きずらないように
   function goHome() {
@@ -2453,43 +2518,72 @@ function TotteryScreens() {
         </div>
       </GameShell>
     );
-  if (!named)return (
+  // 導入(src/game/intro.js。2026-10-01 本人の指示)。
+  // タイトル → 語り2枚 → はじめの一局 → 結果 → 名前 → 門の語り → 10連 → ストーリー一覧。
+  // 語りを読み終える(読み飛ばす)と、はじめの一局へ
+  if (intro === "prologue")
+    return (
       <GameShell showRules={l} setShowRules={n}>
-        <NameSetupScreen
+        <Prologue
+          kind="intro"
           onDone={() => {
-            setNamed(!0);
-            // **語り → 10連**(2026-09-28 本人の指示)。最初にワクワクさせ、引き直しもしやすく。
-            // 引き終わってホームへ戻るときに、導入(手引き)の案内を出す
-            if (!firstPullDone(getCollection())) {
-              setPrologue(!0);
-              return;
-            }
-            // すでに引いている人(入れ直しなど)は、ここで導入の案内
-            if (shouldOfferFirstTutorial(loadProfile())) {
-              markFirstTutorialOffered();
-              setOfferTutorial(!0);
-            }
+            markPrologueSeen();
+            startFirstGame();
           }}
         />
       </GameShell>
     );
-  // はじまりの語り。読み終える(または読み飛ばす)と、そのまま召喚の門へ
-  if (prologue)
+  // はじめの一局に勝ったあと、門の語りの前に名前を聞く(「はじめての勝利」)
+  if (intro === "name")
+    return (
+      <GameShell showRules={l} setShowRules={n}>
+        <NameSetupScreen
+          afterWin
+          onDone={() => {
+            setNamed(!0);
+            const step = introStep({ profile: loadProfile(), collection: getCollection(), prologueSeen: true });
+            if (step) goIntro(step);
+            else showStory();
+          }}
+        />
+      </GameShell>
+    );
+  // 門の語り。読み終える(読み飛ばす)と、召喚の門へ(初回の10連。結果を閉じるとストーリー一覧へ)
+  if (intro === "gate")
     return (
       <GameShell showRules={l} setShowRules={n}>
         <Prologue
+          kind="gate"
           onDone={() => {
-            setPrologue(!1);
+            setIntro(null);
             setFirstPullMode(!0);
             setSkinsTab("gacha");
-            setSkinsFrom("home");
+            setSkinsFrom("story");
             t("skins");
+          }}
+        />
+      </GameShell>
+    );
+  // 名前の壁(2026-10-01 本人の指示)。名前の無いあいだに、ランキング・オンライン・合言葉の部屋・
+  // 近くの端末・フレンドへ行こうとしたら、先に名前を聞く。決めたらそのまま、その画面が開く
+  if (!named && needsName(e, o))
+    return (
+      <GameShell showRules={l} setShowRules={n} onHome={goHome}>
+        <NameSetupScreen
+          reason={nameWallReason(e)}
+          onDone={() => setNamed(!0)}
+          onCancel={() => {
+            (setPendingRoom(""), setInviteTo(null), w(!1));
+            t(e === "friends" || e === "spectate" ? "menu" : "matching");
           }}
         />
       </GameShell>
     );
   if (e === "game") {
     const nextTutorial = tut ? nextTutorialAfter(tut.id) : null;
+    // はじめの一局(台本をストーリー「二と三の王」として遊ぶ。2026-10-01 本人の指示)。
+    // 離れるとき(結果のどの釦・中断)は、勝っていれば導入の続き(名前・門の語り)へ
+    const firstGame = tut === FIRST_GAME;
     // 対局中に出す名前。相手の名前が分からない席は色名のまま
     let mine = loadProfile(),
       me = mine.name || null,
@@ -2497,11 +2591,14 @@ function TotteryScreens() {
         ? a.names || [null, null]
         : d
           ? [
-              me,
-              tut
-                ? null
-                : story
-                  ? story.title
+              // 名前を聞くのは、はじめの一局に勝ったあと(2026-10-01 本人の指示)。それまでの
+              // ストーリーの一局は色名でなく「あなた」
+              me || (story ? "あなた" : null),
+              // ストーリーの相手は台本の一局(はじめの一局)でもステージの名(「二と三の王」)
+              story
+                ? story.title
+                : tut
+                  ? null
                   : bot
                   ? bot.name
                   : localAreas && cpuArea && cpuArea.king && i === 9
@@ -2524,8 +2621,9 @@ function TotteryScreens() {
       skins = a
         ? (a.skins || [{}, {}]).map(sanitizeLoadout)
         : tut
-          ? // 第13話は台本が装備を持つ(王のスキンでエリアが立つ)
-            (tut.loadouts || [{}, {}]).map(sanitizeLoadout)
+          ? // 第13話は台本が装備を持つ(王のスキンでエリアが立つ)。
+            // はじめの一局は自分の装備中の見た目(10連で着せた英雄が、次の一局から駒になる)
+            (tut.loadouts || (firstGame ? [collection.equipped, {}] : [{}, {}])).map(sanitizeLoadout)
           : d
             ? [
                 collection.equipped,
@@ -2584,15 +2682,18 @@ function TotteryScreens() {
             onNextTutorial={
               nextTutorial ? () => startTutorial(nextTutorial) : null
             }
-            // ストーリーの「次のステージへ」「もう一度遊ぶ」は、いきなり対局ではなく相手の王の説明から(毎回出す。王も引き直す)
-            onNextStory={(axis) => (showStory(), setStoryIntro(axis))}
-            onRetryStory={story ? () => (showStory(), setStoryIntro(story.axis)) : null}
-            onTutorialList={story ? showStory : showTutorials}
-            onExit={tut ? s : story ? showStory : backToMatching}
-            exitLabel={tut ? "タイトルに戻る" : story ? "ストーリーに戻る" : "対戦相手を選ぶに戻る"}
+            // ストーリーの「次のステージへ」「もう一度遊ぶ」は、いきなり対局ではなく相手の王の説明から(毎回出す。王も引き直す)。
+            // 行き先が二と三の王の初回なら台本の一局(openStage)。はじめの一局は作り直すと台本の盤にならないので、もう一度は出さない
+            onNextStory={(axis) => (showStory(), openStage(axis))}
+            onRetryStory={story && !tut ? () => (showStory(), openStage(story.axis)) : null}
+            onTutorialList={firstGame ? () => leaveFirstGame() : story ? showStory : showTutorials}
+            onExit={firstGame ? () => leaveFirstGame() : tut ? s : story ? showStory : backToMatching}
+            exitLabel={tut && !story ? "タイトルに戻る" : story ? "ストーリーに戻る" : "対戦相手を選ぶに戻る"}
             // チュートリアルの「ホームへ」はハブ(menu)へ。タイトルに戻る(onExit=s)とは
             // 別の行き先にする(2026-09-21 本人の指示)。それ以外の対局は従来どおり
-            onHome={goMenu}
+            onHome={firstGame ? () => leaveFirstGame("menu") : goMenu}
+            // はじめの一局に勝ったら、結果に光る「門へ進む」(初回の10連がまだの人だけ)
+            onGate={firstGame && !firstPullDone(collection) ? () => leaveFirstGame() : null}
             onNextMatch={(a && a.random) || bot ? nextRandomMatch : null}
           />
         </AppearanceSeats>
@@ -2610,42 +2711,18 @@ function TotteryScreens() {
     >
       {
         {
-          home: (
-            <>
-              <HomeScreen onStart={() => t("menu")} />
-              {/* はじめての人には**手引き**を出す(2026-09-29 本人の指示。「寿司将棋」の導入が分かりやすかった)。
-                  どんなゲームか → 1手ずつ → 勝ち方 → 王は伏せたまま → 陣、を1ページずつ。
-                  最後の札の釦はストーリーの最初のステージ(2・3 の動きを盤の図で)につながる(2026-09-30。前は第1話) */}
-              {offerTutorial && !storyPrimerSeen() && (
-                <Primer
-                  outro={primerOutroLines(loadProfile())}
-                  doneLabel="ストーリーを始める"
-                  onSkip={() => setOfferTutorial(!1)}
-                  onDone={() => {
-                    setOfferTutorial(!1);
-                    markStoryPrimerSeen();
-                    showStory();
-                    const next = nextStage(loadProfile());
-                    if (next) setStoryIntro(next.axis);
-                  }}
-                />
-              )}
-            </>
-          ),
+          // タイトル。「ゲームスタート」で、導入が済んでいなければその続きへ(startFromTitle)。
+          // 手引き7枚を自動で出すのはやめた(2026-10-01 本人の指示。ストーリーの「遊び方」と早見表に残す)
+          home: <HomeScreen onStart={startFromTitle} />,
           skins: (
             <SkinsScreen
               firstPull={firstPullMode}
               onBack={() => {
                 if (firstPullMode) {
-                  // はじめての10連が終わった。ここで導入(手引き → ストーリー)へ誘う
+                  // はじめての10連が終わった。導入の終わりはストーリー一覧(「次は、四と五の王。」。
+                  // 止めておいた称号の知らせもここで出る。2026-10-01 本人の指示)
                   setFirstPullMode(!1);
-                  if (shouldOfferFirstTutorial(loadProfile())) {
-                    markFirstTutorialOffered();
-                    setOfferTutorial(!0);
-                  }
-                  // 合言葉つき(?room=)で開いた人は、語りと10連のあいだ部屋を待たせている。
-                  // ホームではなく部屋へ(2026-09-30 見直し。着かないままだった)
-                  t(pendingRoom ? "room" : "home");
+                  showStory();
                   return;
                 }
                 t(skinsFrom);
@@ -2775,18 +2852,18 @@ function TotteryScreens() {
             <>
               <StoryScreen
                 onBack={() => t("menu")}
-                onStart={(axis) => setStoryIntro(axis)}
+                onStart={openStage}
                 onGuide={() => setStoryPrimer("guide")}
               />
               {/* どんなゲームか・勝ち方(寿司将棋のような導入。2026-09-30 本人の指示)。
-                  はじめて開いたときは読み終えると次のステージの説明へ。「遊び方」からはとじるだけ */}
+                  「遊び方」から開いたときだけ。自動では出さない(2026-10-01 本人の指示) */}
               {storyPrimer && (
                 <Primer
                   outro={primerOutroLines(loadProfile())}
-                  doneLabel={storyPrimer === "first" ? "ステージへ" : "とじる"}
-                  skipLabel={storyPrimer === "first" ? "あとで" : "とじる"}
-                  onSkip={() => (markStoryPrimerSeen(), setStoryPrimer(null))}
-                  onDone={() => (storyPrimer === "first" ? storyAfterPrimer() : setStoryPrimer(null))}
+                  doneLabel="とじる"
+                  skipLabel="とじる"
+                  onSkip={() => setStoryPrimer(null)}
+                  onDone={() => setStoryPrimer(null)}
                 />
               )}
               {/* ステージの前に、相手の王の特徴を毎回説明する(2026-09-30 本人の指示)。導入と重ねない */}
