@@ -300,10 +300,18 @@ export function LogViewer({ piece, viewer, onClose, revealAll, onMemo }) {
             ✎ 自分だけの推理メモ
           </button>
         )}
+        {u && piece.originalRank && piece.originalRank !== piece.rank && (
+          <p className="card-origin-note">
+            元のカード：<b>{piece.originalRank}{SUIT_SYMBOL[piece.suit]}</b>
+            <span> → {piece.alive ? "現在" : "撃破時"}：{piece.rank}{SUIT_SYMBOL[piece.suit]}</span>
+          </p>
+        )}
         {u && (
           <CardGuide
             rank={piece.rank}
             suit={piece.suit}
+            mark={piece.mark}
+            originalRank={piece.originalRank}
             /* 王の力なしの対局(駒に powers:false)では「王の効果」を出さない */
             isKing={!!piece.isKing && piece.powers !== false}
             compact={!0}

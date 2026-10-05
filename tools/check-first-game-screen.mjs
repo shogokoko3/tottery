@@ -52,9 +52,14 @@ function held(king) {
   return settle(reducer(s, { type: "DISMISS_CAPTURE" }));
 }
 /** 討ち終えた局面(撃破の札は閉じたあと) */
-function finished(king, finisher) {
+function finished(king, finisher, miss = false) {
   let s = held(king);
   s = settle(reducer(s, foeAction(s, tut, 0, (p) => legal(s, p))));
+  if (miss) {
+    s = settle(reducer(s, moveOf(s, "t0", 1, 1)));
+    s = reducer(s, { type: "DISMISS_CAPTURE" });
+    s = settle(reducer(s, foeAction(s, tut, 1, (p) => legal(s, p))));
+  }
   s = settle(reducer(s, moveOf(s, finisher, 2, 4)));
   return reducer(s, { type: "DISMISS_CAPTURE" });
 }
@@ -133,9 +138,9 @@ console.log("A. 案内の札");
   const rows = (html) => [...html.matchAll(/<span class="tutorial-line-row">([^<]*)<\/span>/g)].map((m) => m[1]);
   const same = (x, y) => JSON.stringify(x) === JSON.stringify(y);
   // 1枚目(王を選ぶ): 2行を1行ずつ。飛ばす・中断は出さない(onSkip・onInterrupt を渡さない)
-  const pick = renderSheet({ step: tut.steps[0], lines: stepLines(tut.steps[0], openingState(tut, GAME_RULE_VERSION)), left: 2 });
+  const pick = renderSheet({ step: tut.steps[0], lines: stepLines(tut.steps[0], openingState(tut, GAME_RULE_VERSION)), left: 2, plain: true });
   ok("行の配列は1行ずつ出す", same(rows(pick), textLines(tut.steps[0].text)), rows(pick).join(" / "));
-  ok("「あと 2 手」", /あと 2 手/.test(pick));
+  ok("外れても続けられるので「最短 2 手」", /最短 2 手/.test(pick));
   ok("飛ばす・中断を渡さなければ出さない", !/この話を飛ばす|中断してやめる/.test(pick));
   // 3枚目(4♠ で取る): 4♠ を選ぶ前と後で文が変わる
   const s1 = started("t2");
@@ -213,7 +218,9 @@ console.log("\nC. 結果画面");
       const label = `王=${king}・${by === "t2" ? "4♦" : "5♥"} で討つ`;
       const html = renderView(s, tut, { story, onGate: () => {} });
       const struck = king === by;
-      ok(`${label}: あなたの王の一行は「${struck ? "自ら討った" : "伏せたまま"}」`, html.includes(struck ? tut.kingNote.struck : tut.kingNote.hidden) && !html.includes(struck ? tut.kingNote.hidden : tut.kingNote.struck));
+      const expected = struck ? tut.kingNote.struck : tut.kingNote.hidden;
+      const other = struck ? tut.kingNote.hidden : tut.kingNote.struck;
+      ok(`${label}: あなたの王の一行は「${struck ? "自ら討った" : "伏せたまま"}」`, expected.every((line) => html.includes(`<span class="tutorial-line-row">${line}</span>`)) && !html.includes(other[1]));
       ok(`${label}: 相手の王は 3♦`, /相手の王は <b>3♦<\/b> でした/.test(html));
     }
   const s = finished("t3", "t2");
@@ -226,21 +233,25 @@ console.log("\nC. 結果画面");
   ok("締めは台本の一行(「相手の王を討て。」ではない)", tagParts.join("") === tut.tagline && !/相手の王を討て。/.test(gate));
   ok("締めの一行は文ごとに折り返す(「一手に、読みを。」「一枚に、野望を。」)", tagParts.length === 2 && tagParts.every((x) => x.endsWith("。")), tagParts.join(" / "));
   ok("勝ち名乗りの飾りの札は出さない(両者の王と重なる。門へ進むまで1画面に)", !/king-card win-card/.test(gate));
-  ok("「二と三の王をクリア」とチケット10枚", /二と三の王をクリア/.test(gate) && /ガチャチケット 10枚を受け取りました/.test(gate));
+  ok("ステージ名とチケット10枚", /二と三の王/.test(gate) && /ガチャチケット 10枚を受け取りました/.test(gate.replace(/<[^>]*>/g, "")));
   ok("光る「門へ進む」を1つだけ", count(gate, /門へ進む/g) === 1 && /result-gate/.test(gate));
   ok(
     "「門へ進む」は送る中身の外(2×2 の釦の上に、いつも見える)",
     gate.indexOf('class="gameover-body"') < gate.indexOf('class="gameover-gate"') &&
-      gate.indexOf('class="gameover-gate"') < gate.indexOf('class="gameover-grid"') &&
+      gate.indexOf('class="gameover-gate"') < gate.indexOf('class="gameover-grid') &&
       gate.indexOf("門へ進む") > gate.indexOf('class="gameover-gate"'),
   );
   ok("門へ進むときは「次のステージへ」を出さない", !/次のステージへ/.test(gate) && !/次は「四と五の王」/.test(gate));
   ok("チュートリアルの塊(一覧へ・次は第N話)を出さない", !/チュートリアル一覧へ/.test(gate) && !/約\d分/.test(gate));
-  ok("下の釦はストーリーの形(振り返り・ストーリーへ・ホームへ)", /go-review/.test(gate) && /go-match"[^>]*>ストーリーへ/.test(gate) && /go-home"[^>]*>[\s\S]*?ホームへ/.test(gate));
+  ok("門へ進むときは振り返りだけを添える", /go-review/.test(gate) && !/go-match|go-home/.test(gate));
   ok("台本の一局に「もう一度遊ぶ」(NEW_GAME)を出さない", !/もう一度遊ぶ/.test(gate));
   ok("左下に「タイトルに戻る」を出さない", !/タイトルに戻る/.test(gate));
   const noGate = renderView(s, tut, { story, onNextStory: () => {} });
   ok("門が済んでいれば(onGate なし)「次のステージへ」", /次のステージへ/.test(noGate) && !/門へ進む/.test(noGate));
+  const recovered = renderView(finished("t3", "t2", true), tut, { story, onGate: () => {} });
+  ok("外れから勝った結果は、読み直したことを伝える", recovered.includes("外れた一枚から、候補を絞った。") && recovered.includes("読み直して、王に届いた。") && !recovered.includes("相手が逃がした一枚は、王だった。"));
+  const lost = renderView(s, null, { story, youAre: 1, onRetryStory: () => {} });
+  ok("通常ストーリーの敗北は撃破の一手と再挑戦を示す", lost.includes('class="story-loss-note"') && lost.includes("4♦ の e1 → e3 が、王に届いた。") && lost.includes('class="btn btn-primary go-again"'));
   const waiting = renderView(s, tut, { story: { ...story, ready: false }, onGate: () => {} });
   ok("記録が済むまでは「門へ進む」を出さない(ready)", !/門へ進む/.test(waiting));
   // 第1話はいままでどおり

@@ -45,7 +45,7 @@ export function normalizeWinChance(raw, day, rng = Math.random) {
   const target = Number.isInteger(raw.target) && raw.target >= 1 && raw.target <= WIN_CHANCE_WINDOW
     ? raw.target
     : drawTarget(rng);
-  return { day, done, played, target };
+  return { day, done, played, target, ...(typeof raw.uid === "string" ? { uid: raw.uid } : {}) };
 }
 
 /** 次の対局がチャンスか(上限に届いていれば false) */
@@ -84,6 +84,21 @@ export function rewardEventId(uid, day, done) {
   return `win-chance:${uid || "local"}:${day}:${done}`;
 }
 
+/** 勝利チャンス開始日以降の実在日と、1日3回までの受取番号。未来日は受け付けない。 */
+export function validWinChanceReward(day, done, now = Date.now()) {
+  if (typeof day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  const at = Date.parse(day + "T00:00:00Z");
+  return Number.isFinite(at) && new Date(at).toISOString().slice(0, 10) === day &&
+    day >= "2026-09-23" && day <= chanceDay(now) &&
+    Number.isInteger(done) && done >= 1 && done <= WIN_CHANCE_MAX_PER_DAY;
+}
+/** 配布済みアプリの earn 要求も、認証済みの本人の専用報酬へ寄せる。 */
+export function winChanceFromLegacyId(id, now = Date.now()) {
+  const m = typeof id === "string" ? /^win-chance:([^:]+):(\d{4}-\d{2}-\d{2}):(\d)$/.exec(id) : null;
+  return m && validWinChanceReward(m[2], Number(m[3]), now)
+    ? { day: m[2], done: Number(m[3]) } : null;
+}
+
 /* ---- 端末への保存 ---- */
 function storageOf(storage) {
   if (storage) return storage;
@@ -93,7 +108,7 @@ function storageOf(storage) {
     return null;
   }
 }
-export function loadWinChance(at = Date.now(), storage = null, rng = Math.random) {
+export function loadWinChance(at = Date.now(), storage = null, rng = Math.random, uid = null) {
   const st = storageOf(storage);
   let raw = null;
   try {
@@ -101,6 +116,7 @@ export function loadWinChance(at = Date.now(), storage = null, rng = Math.random
   } catch {
     raw = null;
   }
+  if (uid && raw?.uid && raw.uid !== uid) raw = null;
   return normalizeWinChance(raw, chanceDay(at), rng);
 }
 export function saveWinChance(state, storage = null) {

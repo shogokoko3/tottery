@@ -237,6 +237,9 @@ export function DiceDuo({
   limitMs,
   firstPlayer,
   tie = false,
+  // 見出しの代わりに出す一言(ストーリー2つ目の手当て「先手は、サイコロで決まる。」)。無ければ見出しのまま。
+  // 見出しの下に足すと、見出しと同じことを二度言う(2026-10-01 の見直し)
+  note = null,
 }) {
   const names = useNames();
   const [pressed, setPressed] = useState(false);
@@ -282,7 +285,7 @@ export function DiceDuo({
   return (
     <div className="center-stage dice-duo">
       <MatchupBar viewer={me} />
-      <h2>サイコロで先手を決めます</h2>
+      {note || <h2>サイコロで先手を決めます</h2>}
       {remainingMs != null && (
         <div className={`setup-timer ${remainingMs <= 5000 ? "setup-timer-urgent" : ""}`}>
           <div className="setup-timer-head">

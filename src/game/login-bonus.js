@@ -64,3 +64,15 @@ export function isPending(profile, today) {
   if (!profile || !today) return false;
   return profile.bonusDay !== today;
 }
+
+
+/** ログイン報酬の日付はサーバー時刻の日本時間0時で切り替える。端末の時計は使わない。 */
+export const loginDay = (now = Date.now()) =>
+  new Date(now + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+/** 配布済みアプリの受取番号。本人の台帳の照合にだけ使い、付与枚数の申告には使わない。 */
+export function legacyLoginIndex(id) {
+  if (typeof id !== "string" || !/^login:(0|[1-9]\d*)$/.test(id)) return null;
+  const n = Number(id.slice(6));
+  return Number.isSafeInteger(n) && n < Number.MAX_SAFE_INTEGER ? n : null;
+}

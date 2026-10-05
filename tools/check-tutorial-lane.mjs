@@ -88,8 +88,8 @@ console.log("入口(worker)");
     is(`変な指定(${JSON.stringify(bad)})は DO へ届かず 400`, [last, res.status], [null, 400]);
   }
   last = null;
-  res = await post("/api/wallet/earn", { id: "login:2026-09-30", n: 1 });
-  is("ふつうの earn は今まで通り", last, { op: "wallet-credit", uid: "player-1", id: "login:2026-09-30", n: 1, kind: "earn" });
+  res = await post("/api/wallet/earn", { id: "mission:daily-test:2026-09-30", n: 1 });
+  is("ふつうの earn は今まで通り", last, { op: "wallet-credit", uid: "player-1", id: "mission:daily-test:2026-09-30", n: 1, kind: "earn" });
   last = null;
   res = await worker.fetch(
     new Request("https://game.example/api/wallet/tutorial-reward", { method: "POST", body: JSON.stringify({ chapter: 1 }) }),

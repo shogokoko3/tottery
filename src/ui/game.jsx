@@ -1,3 +1,4 @@
+import { StoryAfterword } from "./story-chronicle.jsx";
 import { FormationHonor, formationScene } from "./formation-honor.jsx";
 import { useTitleNoticeHold } from "./title-acquisition.jsx";
 import { FieldBackdrop } from "./fields/backdrop.jsx";
@@ -53,8 +54,10 @@ import { getCollection } from "../skins/store.js";
 import { baseSkinId } from "../skins/catalog.js";
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
-import { STORY_XP, grantStoryReward, nextStage, nextStageAfter, storyCpuArea, storyDeckFor, storyFreshClear } from "../game/story.js";
-import { StoryInterruptMenu } from "./story.jsx";
+import { STORY_XP, grantStoryReward, nextStage, nextStageAfter, storyCpuArea, storyDeal, storyFreshClear, storyUntimed, storyRival, storyLossNote } from "../game/story.js";
+import { StoryCoachNote, StoryInterruptMenu } from "./story.jsx";
+import { KEEP_LABEL, coachArranges, coachScene, coachSeen, markCoachSeen, storyCoachPlan } from "../game/story-coach.js";
+import { prologueSeen } from "../game/intro.js";
 import { PHASE_MAX, STORY_TICKETS, phaseOf, rankedPhase, rulesForPhase, setupFlagsForPhase } from "../game/phase.js";
 import { onlinePhase } from "../net/match-settings.js";
 import { noteRandomResult, botAction } from "../game/bot-match.js";
@@ -107,17 +110,15 @@ import { isNearbyCode } from "../net/nearby.js";
 import { enterMatchPresence, leaveMatchPresence } from "../net/friends.js";
 import { normalizeSpectate } from "../game/profile-card.js";
 import { myUid } from "../net/auth.js";
-import { giveGift } from "../game/gifts.js";
 // チュートリアルを1話終えるごとのガチャチケット(2026-09-28 本人の指示)
 import { grantTutorialTickets } from "../game/tutorial-reward.js";
-import { earnTickets } from "../net/wallet.js";
+import { earnWinChanceTicket } from "../net/wallet.js";
 import {
   WIN_CHANCE_REWARD_TICKETS,
   chanceDay,
   chancesLeft,
   isChanceNext,
   loadWinChance,
-  rewardEventId,
   saveWinChance,
   settleWinChance,
 } from "../game/win-chance.js";
@@ -133,7 +134,7 @@ import {
   withLocalContext,
 } from "../net/sync.js";
 import { takePresentationBatch } from "../net/presentation.js";
-import { CardFace, Piece } from "./cards.jsx";
+import { CardFace, CapturedCardFace, Piece } from "./cards.jsx";
 import { useNames, useSeats } from "./names.jsx";
 import { PlayerIcon } from "./playericon.jsx";
 import { DIE_SETTLE_MS, DiceDuo, DiceStage, DiceStep, Die, MatchupBar } from "./dice.jsx";
@@ -197,8 +198,13 @@ export function ClockBar({
   viewer,
   extensionUses = [0, 0],
   ruleVersion,
+  // 時間制限なし(フェーズ1 のストーリー。2026-10-01 本人の指示)。残り時間と追加の印の代わりに「制限なし」。
+  // 席の名前と手番の光(clock-active)は残す(どちらの番かは、ここで分かる)
+  untimed = false,
 }) {
   const limited = hasLimitedClock(ruleVersion);
+  // 追加の印と決まりの一行は、時計が動く対局だけ
+  const extensions = limited && !untimed;
   const { names, icons, titles, frames } = useSeats();
   const fmt = (ms) => {
     const total = Math.max(0, Math.ceil(ms / 1000));
@@ -212,11 +218,11 @@ export function ClockBar({
           const active = currentTurn === idx;
           const ms = clocks[idx];
           const remaining = clockExtensionsRemaining(extensionUses[idx]);
-          const warning = limited && remaining <= 3;
+          const warning = extensions && remaining <= 3;
           return (
             <div
               className={`clock-cell ${active ? "clock-active" : ""} ${
-                ms <= CLOCK_EXTENSION_THRESHOLD_MS ? "clock-low" : ""
+                !untimed && ms <= CLOCK_EXTENSION_THRESHOLD_MS ? "clock-low" : ""
               } ${limited ? "clock-limited" : ""} ${titles && titleNameOf(titles[idx]) ? "clock-cell-titled" : ""}`}
               style={{ "--pc": PLAYER_META[idx].color }}
               key={idx}
@@ -236,9 +242,9 @@ export function ClockBar({
               </span>
               {/* 残り時間の脇に、追加の残り回数を小さな点で(2026-09-23 本人の指示。
                   「追加 あと6回」の行は場所を取っていた)。残り3回からは点が橙、0回で赤 */}
-              <strong className="clock-time">
-                {fmt(ms)}
-                {limited && (
+              <strong className={`clock-time ${untimed ? "clock-time-untimed" : ""}`}>
+                {untimed ? "制限なし" : fmt(ms)}
+                {extensions && (
                   <span
                     className={`clock-pips-inline ${warning ? "is-warning" : ""} ${remaining === 0 ? "is-empty" : ""}`}
                     role="img"
@@ -264,7 +270,7 @@ export function ClockBar({
           );
         })}
       </div>
-      {limited && (
+      {extensions && (
         <p className="clock-rule-hint">
           ターン開始時に30秒以下なら＋10秒・各6回まで
         </p>
@@ -508,12 +514,7 @@ export function CapturedRow({ players, dispatch, viewer }) {
                     }
                     key={`${o.id}-${capturedIndex}`}
                   >
-                    <CardFace
-                      owner={o.owner}
-                      rank={o.rank}
-                      suit={o.suit}
-                      size="sm"
-                    />
+                    <CapturedCardFace piece={o} size="sm" />
                   </div>
                 ))}
             </div>
@@ -681,6 +682,7 @@ export function GameView({
     // はじめの一局の結果に添える、あなたの王の一行(台本に kingNote が無ければ null)。
     // 王にした駒で討つと表になるので、そのときは「伏せたまま」ではなく「自ら討った」(myKingNote)
     kingNote = tutorial && won ? myKingNote(tutorial, state) : null;
+  const lossNote = story?.phase === 1 && !tutorial && lost ? storyLossNote(state, youAre) : null;
   // 記録の行を選んだら、その手の動きを再生する
   (0, useEffect)(() => {
     if (!f || at === null) return;
@@ -926,48 +928,15 @@ export function GameView({
                                   : void 0
                               }
                             >
-                              <div
-                                className={`piece-wrap side-ring ${A.frozen ? "piece-frozen" : ""}`}
-                                style={{ "--who": PLAYER_META[A.owner].color }}
-                              >
-                                <CardFace
-                                  owner={A.owner}
-                                  rank={A.rank}
-                                  suit={A.suit}
-                                  size={size >= 9 ? "xs" : "md"}
-                                  isKing={A.isKing}
-                                />
-                                {A.isKing && (
-                                  <Crown
-                                    size={size >= 9 ? 10 : 16}
-                                    className="king-badge"
-                                    style={{
-                                      color: PLAYER_META[A.owner].color,
-                                    }}
-                                  />
-                                )}
-                                {/* 盤面エリアの見た目。控え(replay)に入っているものをそのまま */}
-                                {A.mark && (
-                                  <span className={`mark-badge mark-${A.mark}`}>
-                                    {A.mark === "sky" ? "空" : "宮"}
-                                  </span>
-                                )}
-                                {!A.mark &&
-                                  !A.revealed &&
-                                  A.known &&
-                                  A.known[mySide] &&
-                                  A.owner !== mySide && (
-                                    <span className="known-badge">見抜</span>
-                                  )}
-                                {A.frozen && (
-                                  <span
-                                    className="frozen-badge"
-                                    aria-label="凍結"
-                                  >
-                                    ❄{A.frozenTurns || ""}
-                                  </span>
-                                )}
-                              </div>
+                              <Piece
+                                piece={A}
+                                viewer={mySide}
+                                size={size >= 9 ? "xs" : "md"}
+                                revealAll
+                                known={!!A.known?.[mySide]}
+                                frozen={!!A.frozen}
+                                frozenTurns={A.frozenTurns}
+                              />
                             </div>
                           );
                         })()}
@@ -1005,12 +974,7 @@ export function GameView({
                         }
                         key={`${p.id}-${capturedIndex}`}
                       >
-                        <CardFace
-                          owner={p.owner}
-                          rank={p.rank}
-                          suit={p.suit}
-                          size="sm"
-                        />
+                        <CapturedCardFace piece={p} size="sm" />
                       </div>
                     ))}
                   {s.capturedOwn.filter((p) => !p.alive).length === 0 && (
@@ -1086,7 +1050,8 @@ export function GameView({
         </h2>
         {tutorial && won && (
           <>
-            <p className="hint">{tutorial.title}</p>
+            {/* ストーリーとして遊ぶ台本(はじめの一局)はステージの名(「二と三の王」)。台本の題は出さない */}
+            <p className="hint gameover-sub">{story ? story.title : tutorial.title}</p>
             {(() => {
               // 討った相手の王の正体をここで開く。「どれが王かは取るまで分からない」を結果で伝える
               const foeKing = Object.values(state.pieces).find(
@@ -1121,7 +1086,14 @@ export function GameView({
                       size="sm"
                       isKing
                     />
-                    <p>{kingNote}</p>
+                    {/* 行の配列を1行ずつ(1本の文字列を balance で割ると、iPhone で「最後ま/で」と割れた) */}
+                    <p>
+                      {kingNote.map((line, i) => (
+                        <span className="tutorial-line-row" key={i}>
+                          {line}
+                        </span>
+                      ))}
+                    </p>
                   </div>
                 </div>
               );
@@ -1129,7 +1101,7 @@ export function GameView({
             {/* 本文は結びの札の行。締めは台本の一行(第1〜13話は持たないので「相手の王を討て。」) */}
             {(() => {
               const end = tutorial.steps.find((step) => step.end);
-              const lines = textLines(end && end.text);
+              const lines = stepLines(end, state);
               return lines.length > 1 ? (
                 <p className="tutorial-end-lines">
                   {lines.map((line, i) => (
@@ -1165,6 +1137,7 @@ export function GameView({
                     : "王を討たれました"}
           </p>
         )}
+        {lossNote && <div className="story-loss-note" role="note"><b>{lossNote.fact}</b><p>{lossNote.tip}</p></div>}
         {state.resignedBy !== null && state.resignedBy !== void 0 && (
           <p
             className="hint"
@@ -1201,7 +1174,8 @@ export function GameView({
             しくじったときは何も出さない(次の対局の「対戦相手」の画面でまた知らせる) */}
         {chance && chance.rewarded && (
           <div className="chance-notice chance-notice-won" role="status">
-            <b>勝利チャンス成功！</b> ガチャチケット{WIN_CHANCE_REWARD_TICKETS}枚を受け取りました
+            <b>勝利チャンス成功！</b> ガチャチケット{WIN_CHANCE_REWARD_TICKETS}枚
+            {chance.receipt === "pending" ? "を受取待ちです。通信でき次第、自動で受け取ります" : "を受け取りました"}
             {chance.left > 0 ? `(今日あと${chance.left}回)` : "(今日はここまで)"}
           </div>
         )}
@@ -1252,15 +1226,18 @@ export function GameView({
             )}
           </div>
         )}
-        {/* 記録が済むまで(storyResult が入るまで)は出さない。次の釦が一瞬欠けて見えるのを防ぐ */}
-        {story && won && story.ready && (
+        {/* 記録が済むまで(storyResult が入るまで)は出さない。次の釦が一瞬欠けて見えるのを防ぐ。
+            門へ進むとき(はじめの一局)は、褒美の一行を「門へ進む」の真上へ移す(送らずに見えるように) */}
+        {story && won && story.ready && !onGate && (
           <div className="tutorial-complete story-complete">
-            <p className="hint">{story.title}をクリア</p>
+            {/* 台本の一局は、見出しの下にステージの名が出ている */}
+            {!tutorial && <p className="hint">{story.title}をクリア</p>}
+            <StoryAfterword axis={story.axis} phase={story.phase} />
             {story.fresh && (
               <p className="hint story-reward">ガチャチケット {STORY_TICKETS}枚を受け取りました</p>
             )}
-            {/* 門へ進むときは「次のステージへ」を出さない(次のステージはストーリーの一覧で知らせる) */}
-            {onGate ? null : story.next && onNextStory ? (
+            {/* 次のステージはストーリーの一覧でも知らせる */}
+            {story.next && onNextStory ? (
               <>
                 <p className="hint">次は「{story.next.title}」</p>
                 <button className="btn btn-primary btn-wide" onClick={() => onNextStory(story.next.axis)}>
@@ -1279,12 +1256,16 @@ export function GameView({
         )}
         {/* 札ごとの熟練度。プレイヤーレベルのゲージ(XpGainToast)とは別に、
             この局で使った札だけを並べる(2026-09-22 本人の指示) */}
+        {story && won && story.ready && onGate && <StoryAfterword axis={story.axis} phase={story.phase} />}
         {mastery && <MasteryGains gains={mastery.gains} titles={mastery.titles} />}
         </div>
         {/* はじめの一局の褒美は門の向こう(10連)。送らずに見える場所に1つだけ光らせる。
-            記録が済むまで(ready)は出さない */}
+            記録が済むまで(ready)は出さない。チケットの一行も、送る中身でなくここに(375×667 で隠れていた) */}
         {story && won && story.ready && onGate && (
           <div className="gameover-gate">
+            {story.fresh && (
+              <p className="hint story-reward">ガチャチケット {STORY_TICKETS}枚を受け取りました</p>
+            )}
             <button className="btn btn-primary btn-wide result-gate" onClick={onGate}>
               門へ進む <ArrowRight size={16} />
             </button>
@@ -1295,9 +1276,18 @@ export function GameView({
           左上 振り返り / 右上 マッチングへ / 左下 ホームへ / 右下 もう一度遊ぶ。
           再戦の案内文は全幅で下に出す。チュートリアルは 右上=一覧、左下=タイトル、右下なし
         */}
+        {/* 門へ進むとき(はじめの一局)は「対戦の振り返り」だけ。「ストーリーへ」「ホームへ」は、
+            名前の画面(導入の続き)へ行ってしまい、釦の名と行き先が違った(2026-10-01 の見直し) */}
+        {onGate ? (
+          <div className="gameover-grid gameover-grid-single" role="group" aria-label="対局後の操作">
+            <button className="btn btn-ghost go-review" onClick={() => o(!0)}>
+              <Info size={16} /> 対戦の振り返り
+            </button>
+          </div>
+        ) : (
         <div className="gameover-grid" role="group" aria-label="対局後の操作">
           <button
-            className={`btn ${(tutorial || story) && won ? "btn-ghost" : "btn-primary"} go-review`}
+            className={`btn ${(tutorial || story) && won || lossNote ? "btn-ghost" : "btn-primary"} go-review`}
             onClick={() => o(!0)}
           >
             <Info size={16} /> 対戦の振り返り
@@ -1379,7 +1369,7 @@ export function GameView({
               </>
             )) : story && onRetryStory ? (
             // ストーリーのやり直しは相手の王の説明から(王の数字も引き直す)
-            <button className="btn btn-ghost go-again" onClick={onRetryStory}>
+            <button className={`btn ${lossNote ? "btn-primary" : "btn-ghost"} go-again`} onClick={onRetryStory}>
               <RotateCcw size={16} /> もう一度遊ぶ
             </button>
           ) : tutorial ? (
@@ -1394,6 +1384,7 @@ export function GameView({
             </button>
           )}
         </div>
+        )}
       </div>
     </div>
   );
@@ -1533,7 +1524,7 @@ export function GameCore({
     testPlay = (0, useRef)(isTestPlay()).current;
   // 勝利チャンス(2026-09-23 本人の指示)はランダムマッチ(人・Bot)だけ。対局の始めに読んでおき、終局で清算する
   const chanceEligible = !!((network && network.random) || bot) && !tutorial;
-  const chanceAtStart = (0, useRef)(chanceEligible ? loadWinChance() : null).current;
+  const chanceAtStart = (0, useRef)(chanceEligible ? loadWinChance(Date.now(), null, Math.random, myUid()) : null).current;
   // 対戦相手の画面はオンライン(人・Bot)だけ。CPU 戦・同じ端末・チュートリアルには出さない
   const showIntro = !!(network || bot) && !tutorial && !introDone;
   // 版18以降: サイコロと引き直しを両者同時に(2026-09-23 本人の指示)。画面はオンライン・CPU 戦で使う。
@@ -1562,10 +1553,14 @@ export function GameCore({
     setNowMs(Date.now());
   }, [simPrep, a.phase, diceFresh, a.mulliganIdx]);
   const prepLimit = a.phase === "dice" ? DICE_LIMIT_MS : MULLIGAN_LIMIT_MS;
+  // 時計を動かさない対局。チュートリアル・テストプレイと、フェーズ1 のストーリー
+  // (2026-10-01 本人の指示。はじめて出会うサイコロ・引き直し・陣を急かさない。story.js storyUntimed)。
+  // サイコロ・引き直し・布陣・持ち時間のどれも止める(下の noLimit もこれ)
+  const untimedStory = storyUntimed(story);
+  const untimed = !!tutorial || testPlay || untimedStory;
   const prepRemaining =
     simPrep &&
-    // noLimit はこの下で宣言される(let)ので、ここでは同じ条件を直接書く
-    !(tutorial || testPlay) &&
+    !untimed &&
     prepClockRef.current &&
     prepClockRef.current.phase === a.phase
       ? prepLimit - (nowMs - prepClockRef.current.at)
@@ -1593,8 +1588,27 @@ export function GameCore({
       return () => clearTimeout(t);
     }
   }, [simPrep, a.phase, a.diceIdx]);
-  // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない
-  let noLimit = !!tutorial || testPlay;
+  // チュートリアルは時間に追われずに読ませたいので、どちらの時計も動かさない(フェーズ1 のストーリーも。上の untimed)
+  let noLimit = untimed;
+  // ストーリー2つ目の手当て(src/game/story-coach.js。2026-10-01 本人の指示)。はじめの一局のあとの最初の CPU 戦で、
+  // サイコロ・引き直し・陣に一言ずつ。出すかは対局の始めに一度だけ決める(見せた控えを付けても、その場面のあいだは出す)
+  const [coach] = useState(() =>
+    storyCoachPlan({ story, tutorial, network, introSeen: prologueSeen(), seen: coachSeen() }),
+  );
+  const coachLines = coach ? coach[coachScene(a, 0)] || null : null;
+  const coachNote = coachLines ? <StoryCoachNote lines={coachLines} /> : null;
+  // 一言を出した場面に控えを付ける(二度と出さない)。陣は、おすすめの陣(自動配置)を並べた状態から始める(一度だけ)
+  const coachArrangedRef = useRef(false);
+  useEffect(() => {
+    if (!coach) return;
+    const scene = coachScene(a, 0);
+    if (!scene || !coach[scene]) return;
+    markCoachSeen(scene);
+    if (!coachArrangedRef.current && coachArranges(coach, a, 0)) {
+      coachArrangedRef.current = true;
+      y({ type: "SETUP_AUTO_ARRANGE", player: 0 });
+    }
+  }, [a.phase, a.setupSteps && a.setupSteps[0], a.setupDone && a.setupDone[0]]);
   // 自分が取った駒をバトルパスへ。チュートリアルでは進めない
   useBattlePass(a, network ? p : cpu ? 0 : a.currentTurn, !!tutorial, !!network);
 
@@ -1884,10 +1898,10 @@ export function GameCore({
           (boardSize || 5) === 9
             ? { deck: josekiDeck(cpuArea.type, cpuArea.king) }
             : null),
-          // ストーリーのステージ: 軸の札を積んだ山札(src/game/story.js storyDeckFor: 5×5 は storyDeck、9×9 は josekiDeck)。
+          // ストーリーの配札: フェーズ1は学習段階ごとの札と手札枚数、9×9は定石の山札。
           // ストーリーは cpuArea を持たないので、上の「CPUのエリア」の門は通らない
           ...(story && cpu && !network && !tutorial
-            ? { deck: storyDeckFor(story.axis, story.king, boardSize || 5) }
+            ? storyDeal(story)
             : null),
           // レベルで開いている札だけを配る(手元の対局。オンラインは相手と同じ山札なので絞らない)
           ...(pool && !network && !tutorial && !customRules
@@ -2641,22 +2655,23 @@ export function GameCore({
     // 出来事 id は「日・何回目」で決まるので、同じ成功を二度は積まない
     if (chanceEligible) {
       const day = chanceDay();
-      const r = settleWinChance(loadWinChance(), won);
-      saveWinChance(r.state);
-      if (r.rewarded) {
-        Promise.resolve(
-          giveGift({ type: "ticket", amount: WIN_CHANCE_REWARD_TICKETS }),
-        ).catch(() => {});
-        earnTickets(rewardEventId(myUid(), day, r.done), WIN_CHANCE_REWARD_TICKETS).catch(
-          () => {},
-        );
-      }
-      setChanceResult({
+      const r = settleWinChance(loadWinChance(Date.now(), null, Math.random, myUid()), won);
+      saveWinChance({ ...r.state, ...(myUid() ? { uid: myUid() } : {}) });
+      const result = {
         wasChance: r.wasChance,
         rewarded: r.rewarded,
         done: r.done,
         left: chancesLeft(r.state),
-      });
+        receipt: "pending",
+      };
+      setChanceResult(result);
+      if (r.rewarded) {
+        earnWinChanceTicket(day, r.done, myUid()).then(
+          received => setChanceResult(current => current === result
+            ? { ...current, receipt: received ? "received" : "pending" } : current),
+          () => {},
+        );
+      }
     }
     // ランダムマッチの結果を控える。人に負けたら、次のランダムマッチは Bot(src/game/bot-match.js)
     if ((network && network.random) || bot) noteRandomResult({ won, vsBot: !!bot });
@@ -2707,6 +2722,31 @@ export function GameCore({
     }, 140);
     return () => clearTimeout(id);
   }, [tutIdx, tutorial, a.phase]);
+
+  // ヒントを開くと帯が背高になる。盤の ▼ の駒(的と、ヒントが示す駒)がどれも帯と上のバーの間に入るよう送る
+  // (375×667 で、ヒントの 4♦ が帯の下に隠れた。2026-10-01 の見直し)。入りきらなければ上(的)を優先
+  (0, useEffect)(() => {
+    if (!tutorial || !tutHint) return;
+    let id = setTimeout(() => {
+      const band = document.querySelector(".tutorial-sheet-inner");
+      const marks = [...document.querySelectorAll(".board-grid .guide-target")];
+      if (!band || !marks.length) return;
+      const rects = marks.map((el) => el.getBoundingClientRect());
+      const top = Math.min(...rects.map((r) => r.top));
+      const bottom = Math.max(...rects.map((r) => r.bottom));
+      const bar = document.querySelector(".top-bar");
+      const ceil = (bar ? bar.getBoundingClientRect().bottom : 0) + 8;
+      const floor = band.getBoundingClientRect().top - 8;
+      if (top >= ceil && bottom <= floor) return;
+      const fits = bottom - top <= floor - ceil;
+      let still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollBy({
+        top: fits && bottom > floor ? bottom - floor : top - ceil,
+        behavior: still ? "auto" : "smooth",
+      });
+    }, 160);
+    return () => clearTimeout(id);
+  }, [tutHint, tutNudge, tutorial]);
 
   // 台本は一本道。いまの1枚だけを出し、場面が来ていなければ何も出さない
   let tutStepObj =
@@ -2828,6 +2868,8 @@ export function GameCore({
           // 相手を待たせる札(holdFoe)は「つづき」。盤に触るものが無いので釦を ▼ で光らせる
           nextLabel={tutActive.nextLabel || null}
           lit={!!tutActive.holdFoe}
+          // ストーリーとして遊ぶ台本(はじめの一局)は台本の文だけ。決まりの待ちの行は出さない
+          plain={!!tutorial.storyAxis}
           // 読むだけの札なら、前の札に戻って読み直せる(操作の札には戻れない)。
           // 待つ札とは行き来せず、場面の過ぎた札にも戻らない(戻ると関門が開いて行き止まる。canStepBack)
           onBack={canStepBack(tutorial, tutIdx, a) ? () => setTutStep(tutIdx - 1) : null}
@@ -3184,6 +3226,7 @@ export function GameCore({
             limitMs={DICE_LIMIT_MS}
             firstPlayer={a.firstPlayer}
             tie={a.diceIdx === 3}
+            note={coachNote}
           />
         </GameShell>
       );
@@ -3379,7 +3422,8 @@ export function GameCore({
         >
           <div className="setup-wrap">
             <MatchupBar viewer={me} />
-            <h2 style={{ color: PLAYER_META[me].color }}>交換するカードを選んでね</h2>
+            {/* 手当ての一言は見出しの代わりに(見出しと一言で同じことを二度言わない。陣・サイコロと同じ) */}
+            {coachNote || <h2 style={{ color: PLAYER_META[me].color }}>交換するカードを選んでね</h2>}
             {a.firstPlayer !== null && a.firstPlayer !== undefined && (
               <p className="mulligan-order">
                 <b>{me === a.firstPlayer ? "先手" : "後手"}</b>
@@ -3396,7 +3440,15 @@ export function GameCore({
             />
             <p className="hint">
               {myTurn
-                ? "捨てたい札をタップ(もう一度タップで取り消し)。同じ枚数を予備札から引き直します。捨て札は公開情報になります。時間が来たら、選んでいる札のまま引き直します。"
+                ? coachLines
+                  ? // 一言(「いらない札は、捨てて引き直せる。」「捨てた札は、相手にも見える。」)が出ているときは、
+                    // 触り方だけを1行で(同じことを重ねると、375×667 で「このまま」が画面の下へ押し出された)
+                    "捨てる札をタップ(もう一度で取り消し)。"
+                  : [
+                      "捨てたい札をタップ(もう一度タップで取り消し)。同じ枚数を予備札から引き直します。捨て札は公開情報になります。",
+                      // 時間制限なし(フェーズ1 のストーリーなど)では、時間切れの話をしない
+                      untimed ? "" : "時間が来たら、選んでいる札のまま引き直します。",
+                    ].join("")
                 : me === a.firstPlayer
                   ? "引き直しは済みました。相手(後攻)が交換するカードを選んでいます…"
                   : "先攻の相手が交換するカードを選んでいます。終わったらあなたの番です…"}
@@ -3420,13 +3472,25 @@ export function GameCore({
             />
             {myTurn ? (
               <button
-                className="btn btn-primary"
+                // 1枚も選んでいなければ、引き直さずに進む「このまま」(2026-10-01 本人の指示)。
+                // ストーリー2つ目の手当てでは、これを光らせる
+                className={`btn btn-primary ${coachLines && be.size === 0 ? "guide-target" : ""}`}
                 onClick={() => y({ type: "CONFIRM_MULLIGAN" })}
               >
-                {be.size}枚 引き直して確定 <Check size={16} />
+                {be.size === 0 ? (
+                  <>
+                    {KEEP_LABEL} <ArrowRight size={16} />
+                  </>
+                ) : (
+                  <>
+                    {be.size}枚 引き直して確定 <Check size={16} />
+                  </>
+                )}
               </button>
             ) : (
-              <p className="hint">相手が確定するか、時間が来るまでお待ちください。</p>
+              <p className="hint">
+                {untimed ? "相手が確定するまでお待ちください。" : "相手が確定するか、時間が来るまでお待ちください。"}
+              </p>
             )}
           </div>
         </GameShell>
@@ -3613,6 +3677,7 @@ export function GameCore({
             focus={tutFocus}
             terse={!!tutorial}
             lockPlacement={!!tutorial?.opening?.lockPlacement}
+            note={coachNote}
           />
         ) : (
           <KingStep
@@ -3703,6 +3768,8 @@ export function GameCore({
             ruleVersion={a.ruleVersion}
             currentTurn={displayed.currentTurn}
             viewer={P}
+            // フェーズ1 のストーリーは時間制限なし。止まった 5:00 を見せず「制限なし」と出す
+            untimed={untimedStory}
           />
         )}
         {/* 手番の帯(「○○の番です」＋最後の記録)は出さない(2026-09-24 本人の指示)。
@@ -3826,6 +3893,14 @@ export function GameCore({
               </p>
             )}
           </div>
+          <div className="piece-faction-legend" aria-label="駒の陣営">
+            {[0, 1].map((owner) => (
+              <span key={owner} className={`faction-${owner}`}>
+                <b aria-hidden="true">{P == null ? PLAYER_META[owner].name : owner === P ? "自" : "敵"}</b>
+                {P == null ? `${PLAYER_META[owner].name}陣営` : owner === P ? "自分の駒" : "相手の駒"}
+              </span>
+            ))}
+          </div>
           <div
             className="board-frame"
             style={{
@@ -3944,6 +4019,7 @@ export function GameCore({
                     rank={tutMoveHint.rank}
                     suit={tutMoveHint.suit}
                     isKing={tutMoveHint.isKing}
+                    mark={tutMoveHint.mark}
                     size={R >= 9 ? "xs" : "sm"}
                   />
                 </span>
@@ -4282,15 +4358,19 @@ export function GameCore({
           </div>
         )}
         <CapturedRow players={displayed.players} dispatch={y} viewer={P} />
-        <div className="resign-row">
-          <button
-            className="btn btn-ghost btn-resign"
-            disabled={fxBusy}
-            onClick={() => m(!0)}
-          >
-            <Flag size={16} /> 降参する
-          </button>
-        </div>
+        {/* ストーリーとして遊ぶ台本(はじめの一局)には「降参する」を出さない。やめるのは上の「中断」だけ
+            (降参すると負けとして記録され、台本の一局の行き先がずれる。2026-10-01 本人の指示) */}
+        {!(tutorial && tutorial.storyAxis) && (
+          <div className="resign-row">
+            <button
+              className="btn btn-ghost btn-resign"
+              disabled={fxBusy}
+              onClick={() => m(!0)}
+            >
+              <Flag size={16} /> 降参する
+            </button>
+          </div>
+        )}
         {privateNotes.editor}
         {!a.captureReveal && a.logViewerId && logPiece && (
           <LogViewer

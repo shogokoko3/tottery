@@ -143,8 +143,8 @@ import {
   botTitle,
   rematchBot,
 } from "../game/bot-match.js";
-import { pickStoryKing, primerOutroLines, stageOf } from "../game/story.js";
-// 導入の振り分け(2026-10-01 本人の指示。語り → はじめの一局 → 名前 → 門の語り → 10連 → ストーリー一覧)
+import { pickStoryKing, primerOutroLines, stageOf, nextStage, storyRival } from "../game/story.js";
+// 導入の振り分け。語り → はじめの一局 → 名前 → 門の語り → 10連 → 次の相手の紹介
 import {
   firstGameDone,
   firstGameStage,
@@ -2271,9 +2271,9 @@ function TotteryScreens() {
     return () => window.removeEventListener(PROFILE_CHANGED, onChange);
   }, []);
   // 導入のあいだ(語り・はじめの一局・名前・門の語り・初回の10連)は称号の知らせを止め、
-  // ストーリー一覧に着いてから出す(2026-10-01 本人の指示。至高との邂逅・図鑑の開拓者などが10連の上に重なっていた)
+  // 相手の紹介にも重ねない。紹介を閉じるか、対局へ進むと再開する。
   useTitleNoticeHold(
-    introHoldsTitles({ intro, screen: e, firstGame: tut === FIRST_GAME, firstPull: firstPullMode }),
+    introHoldsTitles({ intro, screen: e, firstGame: tut === FIRST_GAME, firstPull: firstPullMode, stageIntro: storyIntro }),
   );
   // オンラインの印(フレンド一覧の「オンライン/オフライン」表示)。アプリを開いている間、2分ごとに打つ。
   // どの画面でも打つので、対戦中や着せ替え中でもオンラインのままになる(2026-09-25 本人の指示)
@@ -2419,13 +2419,9 @@ function TotteryScreens() {
   function showStory() {
     (u(null), m(!1), setTut(null), setStory(null), setStoryIntro(null), setIntro(null), t("story"));
   }
-  // ステージを開く。ストーリー1つ目の初回(フェーズ1 で二と三の王が未クリア)は、
-  // ステージ前の説明を通さず台本の一局(はじめの一局)へ。2回目からは説明と CPU 戦(2026-10-01 本人の指示)
+  // 一覧では全てのクラスを、物語 → 対局説明の順に開く。
+  // 初回2・3の台本への分岐は、説明を終えた startStory で行う。
   function openStage(axis) {
-    if (firstGameStage(loadProfile(), axis)) {
-      startFirstGame();
-      return;
-    }
     setStoryIntro(axis);
   }
   // はじめの一局(台本 FIRST_GAME を、ストーリー「二と三の王」として遊ぶ)。
@@ -2459,10 +2455,14 @@ function TotteryScreens() {
   }
   // ステージを始める。相手(CPU)の王の数字は軸からその回ごとに決める(2・3 の回なら 2 か 3)
   function startStory(axis) {
+    if (firstGameStage(loadProfile(), axis)) {
+      startFirstGame();
+      return;
+    }
     const stage = stageOf(axis);
     if (!stage) return;
     // 相手の装備と選んだエリアは前の CPU 戦のものを引きずらない(Bot 戦と同じ)
-    (u(null), setTut(null), setBot(null), setStoryIntro(null), setCpuSkins(createCpuLoadout()), setCpuArea(null), setRound(0),
+    (u(null), setTut(null), setBot(null), setStoryIntro(null), setCpuSkins({ ...createCpuLoadout(), [stage.ranks[0]]: storyRival(axis).skin }), setCpuArea(null), setRound(0),
       setStory({ axis, phase: phaseOf(loadProfile()), size: stageSize(phaseOf(loadProfile())), king: pickStoryKing(axis), title: `${stage.name}の王` }),
       m(!0), r("game"), t("game"));
     window.scrollTo(0, 0);
@@ -2519,7 +2519,7 @@ function TotteryScreens() {
       </GameShell>
     );
   // 導入(src/game/intro.js。2026-10-01 本人の指示)。
-  // タイトル → 語り2枚 → はじめの一局 → 結果 → 名前 → 門の語り → 10連 → ストーリー一覧。
+  // タイトル → 語り2枚 → はじめの一局 → 結果 → 名前 → 門の語り → 10連 → 次の相手の紹介。
   // 語りを読み終える(読み飛ばす)と、はじめの一局へ
   if (intro === "prologue")
     return (
@@ -2548,7 +2548,7 @@ function TotteryScreens() {
         />
       </GameShell>
     );
-  // 門の語り。読み終える(読み飛ばす)と、召喚の門へ(初回の10連。結果を閉じるとストーリー一覧へ)
+  // 門の語り。読み終える(読み飛ばす)と、召喚の門へ(初回の10連。結果を閉じると次の相手の紹介へ)
   if (intro === "gate")
     return (
       <GameShell showRules={l} setShowRules={n}>
@@ -2719,10 +2719,11 @@ function TotteryScreens() {
               firstPull={firstPullMode}
               onBack={() => {
                 if (firstPullMode) {
-                  // はじめての10連が終わった。導入の終わりはストーリー一覧(「次は、四と五の王。」。
-                  // 止めておいた称号の知らせもここで出る。2026-10-01 本人の指示)
+                  // はじめての10連の勢いで、次の相手の紹介まで進む。戻れば一覧で選び直せる。
                   setFirstPullMode(!1);
                   showStory();
+                  const next = nextStage(loadProfile());
+                  if (next) openStage(next.axis);
                   return;
                 }
                 t(skinsFrom);

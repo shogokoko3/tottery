@@ -6,6 +6,7 @@ import { createPlayer, duration, eventFromStates } from "../skins/ace-magic.js";
 import { byId } from "../skins/catalog.js";
 import { useCollection } from "../skins/store.js";
 import { cardArtSrc } from "./cards.jsx";
+import { PROMOTION_ARROW_PATH } from "./card-status.js";
 import { SkinFilm } from "./skin-film.jsx";
 import { useReducedMotion } from "./skin-modal.jsx";
 
@@ -15,6 +16,7 @@ const square = ({ row, col }) => `${row},${col}`;
 // portrait, rank, suit or king marker, including while being absorbed.
 function cardPainter(event, loadouts, board) {
   const images = new Map();
+  const promotionArrow = new Path2D(PROMOTION_ARROW_PATH);
   const skinOf = (p) =>
     p.face === "front" ? byId(loadouts?.[p.owner]?.[p.rank]) : null;
   const sourceOf = (p) =>
@@ -22,7 +24,7 @@ function cardPainter(event, loadouts, board) {
       ? cardBackImg
       : skinOf(p)?.boardCard ||
         skinOf(p)?.card ||
-        cardArtSrc(p.rank, p.suit, p.isKing);
+        cardArtSrc(p.rank, p.suit);
   for (const p of [
     ...event.beforeCards,
     ...event.afterCards,
@@ -43,8 +45,7 @@ function cardPainter(event, loadouts, board) {
       parseFloat(style.paddingRight);
     const width = ((size === 9 ? 26 : 50) * 100) / gridWidth;
     const height = width * (size === 9 ? 35 / 26 : 67 / 50);
-    const img = images.get(sourceOf(p)),
-      skin = skinOf(p);
+    const img = images.get(sourceOf(p));
     ctx.save();
     ctx.globalAlpha *= Math.max(0, opacity);
     ctx.translate(x, y);
@@ -62,17 +63,32 @@ function cardPainter(event, loadouts, board) {
       p.face === "front" && p.isKing ? "#f4cf78" : PLAYER_META[p.owner].color;
     ctx.lineWidth = width * 0.035;
     ctx.stroke();
-    if (p.face === "front" && (skin || !img?.naturalWidth)) {
-      ctx.fillStyle = "#f9f1d8";
+    // 通常原画にも数字は含まれない。公開されている札だけに描く。
+    if (p.face === "front") {
+      ctx.fillStyle = "#fff8e8";
       ctx.fillRect(-width / 2, -height / 2, width * 0.38, height * 0.39);
       ctx.fillStyle = ["heart", "diamond"].includes(p.suit)
-        ? "#9c354a"
-        : "#242035";
+        ? "#ad172e"
+        : "#142234";
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      ctx.font = `bold ${width * 0.25}px Georgia, serif`;
-      ctx.fillText(p.rank, -width * 0.31, -height * 0.48);
-      ctx.fillText(SUIT_SYMBOL[p.suit] || "", -width * 0.31, -height * 0.27);
+      ctx.font = `900 ${width * 0.28}px Arial, sans-serif`;
+      ctx.fillText(p.rank, -width * 0.31, -height * 0.48, width * 0.34);
+      ctx.font = `bold ${width * 0.24}px Georgia, serif`;
+      if (p.mark === "palace") {
+        const edge = width * 0.26;
+        ctx.save();
+        ctx.translate(-width * 0.44, -height * 0.28);
+        ctx.fillStyle = "#785015";
+        ctx.fillRect(0, 0, edge, edge);
+        ctx.translate(edge * 0.08, edge * 0.08);
+        ctx.scale(edge * 0.84 / 16, edge * 0.84 / 16);
+        ctx.fillStyle = "#fff1aa";
+        ctx.fill(promotionArrow);
+        ctx.restore();
+      } else {
+        ctx.fillText(SUIT_SYMBOL[p.suit] || "", -width * 0.31, -height * 0.27);
+      }
     }
     if (p.face === "front" && p.isKing) {
       ctx.fillStyle = "#f4cf78";

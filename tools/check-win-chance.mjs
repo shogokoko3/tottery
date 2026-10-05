@@ -101,9 +101,10 @@ assert.equal(rewardEventId("u1", "2026-09-23", 2), "win-chance:u1:2026-09-23:2")
 // 配線
 const game = readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
 assert.ok(/const chanceEligible = !!\(\(network && network\.random\) \|\| bot\) && !tutorial;/.test(game), "ランダムマッチ(人・Bot)だけ");
-assert.ok(/const r = settleWinChance\(loadWinChance\(\), won\);/.test(game) && /saveWinChance\(r\.state\)/.test(game), "終局で清算して保存");
-assert.ok(/earnTickets\(rewardEventId\(myUid\(\), day, r\.done\), WIN_CHANCE_REWARD_TICKETS\)/.test(game), "成功ならサーバーの財布に出来事 id つきで積む");
-assert.ok(/giveGift\(\{ type: "ticket", amount: WIN_CHANCE_REWARD_TICKETS \}\)/.test(game), "手元の持ち物にも足す");
+assert.ok(/const r = settleWinChance\(loadWinChance\(Date\.now\(\), null, Math\.random, myUid\(\)\), won\);/.test(game) && /saveWinChance\(\{ \.\.\.r\.state/.test(game), "終局で清算して保存");
+assert.ok(game.includes("earnWinChanceTicket(day, r.done, myUid())"), "成功分は専用の受取処理へ");
+assert.ok(!game.includes("giveGift({ type: \"ticket\", amount: WIN_CHANCE_REWARD_TICKETS })"), "未確定の報酬を端末だけに足さない");
+assert.ok(game.includes('receipt: "pending"') && game.includes('chance.receipt === "pending"'), "受取待ちを区別する");
 assert.ok(/export function MatchIntro\(/.test(game) && /対戦相手が決まりました/.test(game), "対戦相手の画面がある");
 assert.ok(/const showIntro = !!\(network \|\| bot\) && !tutorial && !introDone;/.test(game), "対戦相手の画面はオンライン(人・Bot)だけ");
 assert.ok(/matchRatings\.ready && \/\/ [^/]*\n?[^!]*!showIntro &&/.test(game) || /!showIntro && \(\(network && p !== 0\)/.test(game), "見終わるまで START_SETUP を送らない");
@@ -112,3 +113,7 @@ const screens = readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), 
 assert.ok(/\? \[titleOf\(mine\)\.id, botTitle\(bot\)\]/.test(screens), "Bot にも称号を持たせる(時計欄と対戦相手の画面に出る)");
 
 console.log("勝利チャンス: 1〜5戦目にランダム・負けたら持ち越し・成功で周期が改まる・1日3回・翌日やり直し・配線 OK");
+
+saveWinChance({ day: chanceDay(), done: 3, played: 0, target: 1, uid: "old-player" }, storage);
+assert.equal(loadWinChance(Date.now(), storage, rng3, "new-player").done, 0, "別アカウントの成功回数は引き継がない");
+assert.equal(loadWinChance(Date.now(), storage, rng3, "old-player").done, 3, "本人の成功記録は維持");

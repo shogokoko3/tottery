@@ -487,6 +487,7 @@ export function paintCaptureBack(c, back, t, q, scale = 1) {
   if (q.reduced) {
     if (t < q.reveal)
       card(c, back, 0, 0, {
+        scale: t >= q.ready ? CAPTURE_SCALE : 1,
         alpha: 1 - ease((t - q.melt) / (q.reveal - q.melt)),
       });
     c.restore();
@@ -512,5 +513,74 @@ export function paintRoyalLight(c, elapsed, scale = 1) {
   c.save();
   c.scale(scale, scale);
   royalLight(c, 0, 0, elapsed + 750);
+  c.restore();
+}
+
+/** 取られた駒。中央へ運ぶ時刻は共通だが、ひびは暗く、破片は下へ落とす。
+ * 加算発光・星・光輪は使わない。受け取るのは裏面だけで正体は参照しない。 */
+export function paintLostBack(c, back, t, q, scale = 1) {
+  c.save();
+  c.scale(scale, scale);
+  if (q.reduced) {
+    if (t < q.reveal)
+      card(c, back, 0, 0, {
+        scale: t >= q.ready ? CAPTURE_SCALE : 1,
+        alpha: 1 - ease((t - q.melt) / (q.reveal - q.melt)),
+      });
+    c.restore();
+    return;
+  }
+  if (t < q.melt) {
+    const p = clamp((t - q.lift) / (q.ready - q.lift));
+    const lift =
+      28 * out(p) + (t >= q.hit ? 8 * (1 - ease((t - q.lift) / 110)) : 0);
+    card(c, back, 0, -lift, { scale: 1 + (CAPTURE_SCALE - 1) * ease(p) });
+    if (t >= q.crack) {
+      c.translate(0, -lift);
+      c.fillStyle = "#391b2590";
+      c.fillRect(-FW / 2, -FH / 2, FW, FH);
+      const p = ease((t - q.crack) / Math.max(1, q.melt - q.crack));
+      for (const index of [1, 4, 7, 10]) {
+        c.strokeStyle = "#060d17";
+        c.lineWidth = 5;
+        strokePartial(c, SEAMS[index], p);
+        c.strokeStyle = "#bb6965";
+        c.lineWidth = 1.3;
+        strokePartial(c, SEAMS[index], p);
+      }
+    }
+  } else if (t < q.reveal) {
+    const p = clamp((t - q.melt) / (q.reveal - q.melt));
+    c.translate(0, -28);
+    // Four jagged pieces separate and lose height under gravity.
+    const edge = [
+      [-FW / 2, -FH / 2],
+      [FW / 2, -FH / 2],
+      [FW / 2, FH / 2],
+      [-FW / 2, FH / 2],
+    ];
+    for (let i = 0; i < 4; i++) {
+      const a = edge[i],
+        b = edge[(i + 1) % 4];
+      const dx = (a[0] + b[0]) / FW,
+        dy = (a[1] + b[1]) / FH;
+      c.save();
+      c.translate(dx * 23 * p, dy * 14 * p + 65 * p * p);
+      c.rotate((i % 2 ? 1 : -1) * p * 0.22);
+      c.globalAlpha *= 1 - ease(p);
+      c.beginPath();
+      c.moveTo(...a);
+      c.lineTo(...b);
+      c.lineTo(b[0] * 0.45 + 4, b[1] * 0.45 - 3);
+      c.lineTo(0, 0);
+      c.lineTo(a[0] * 0.45 + 4, a[1] * 0.45 - 3);
+      c.closePath();
+      c.clip();
+      c.drawImage(back, -FW / 2, -FH / 2, FW, FH);
+      c.fillStyle = "#281521a6";
+      c.fillRect(-FW / 2, -FH / 2, FW, FH);
+      c.restore();
+    }
+  }
   c.restore();
 }

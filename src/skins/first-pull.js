@@ -2,7 +2,7 @@
  * 初回の10連(2026-09-28 本人の指示)。
  *
  * 導入の最後に引く(2026-10-01 本人の指示)。はじめの一局に勝った褒美として、
- * 名前 → 門の語り のあとに門が開き、結果を閉じるとストーリー一覧へ(振り分けは src/game/intro.js)。
+ * 名前 → 門の語り のあとに門が開き、結果を閉じると次の相手の紹介へ(振り分けは screens.jsx)。
  * 前は名前を決めた直後、チュートリアルより先に引いていた(「最初にワクワクさせる」「リセマラをしやすく」)。
  * いまは引き直すたびに語りと一局(1〜2分)を通る。リセマラのしやすさより、勝った手ごたえを先に置いた
  *
@@ -86,4 +86,13 @@ export function firstPullResult(random = Math.random) {
 /** 引いたことを控える(二度目は出さない) */
 export function markFirstPull(state) {
   return { ...state, [FIRST_PULL_KEY]: true };
+}
+
+/** 結果から盤上の姿を見せる一枚。次のステージで使える装備を優先し、未装備とは区別する。 */
+export function firstPullCompanion(state, pool = null) {
+  const drawn = (state?.pending?.results || []).map((r) => byId(r.id)).filter(Boolean);
+  const equipped = drawn.filter((s) => state.owned?.[s.id] > 0 && state.equipped?.[s.rank] === s.id);
+  const usable = (s) => !pool || pool.includes(s.rank);
+  const skin = equipped.find(usable) || equipped[0] || drawn[0];
+  return skin ? { skin, equipped: equipped.includes(skin), available: usable(skin) } : null;
 }

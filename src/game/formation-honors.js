@@ -42,6 +42,7 @@ export function formationLayout(state, viewer) {
       rank: p.rank,
       suit: p.suit,
       king: !!p.isKing,
+      ...(p.mark === "palace" ? { promoted: true } : null),
     })),
   };
 }

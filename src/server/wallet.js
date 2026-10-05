@@ -1,3 +1,4 @@
+import { LoginRewards } from "./login-rewards.js";
 import { resolveSummonFreeze } from "../skins/summon-freeze.js";
 /**
  * サーバー側の財布。uid ごとのチケット(遊んで貯まる)、ジェム(有償と無償を分けて持つ)、買い切りの権利。
@@ -64,8 +65,13 @@ import {
 } from "../game/tutorial-reward.js";
 import { STORY_TICKETS, isStoryAxis, normalizePhase, PHASES, storyEventId } from "../game/phase.js";
 
+import {
+  WIN_CHANCE_REWARD_TICKETS, validWinChanceReward,
+  rewardEventId as winChanceEventId,
+} from "../game/win-chance.js";
+
 /** サーバーが組む出来事 id の接頭辞と、それを書いてよい道(kind)。apply() が守る */
-const RESERVED_PREFIX = Object.freeze({ tutorial: "tutorial", campaign: "campaign", story: "story" });
+const RESERVED_PREFIX = Object.freeze({ login: "login", tutorial: "tutorial", campaign: "campaign", story: "story", "win-chance": "win-chance" });
 
 /** 遊んで貯める分(kind=earn)は端末の申告なので、1回と1日(UTC)の上限で抑える */
 export const EARN_EVENT_MAX = 10;
@@ -96,6 +102,8 @@ export class Wallet {
     sql("CREATE TABLE IF NOT EXISTS wallet_ledger (id TEXT PRIMARY KEY, uid TEXT, tickets INTEGER NOT NULL, gems INTEGER NOT NULL, kind TEXT, ref TEXT, at INTEGER, gems_free INTEGER NOT NULL DEFAULT 0)");
     addColumn(sql, "wallet_ledger", "gems_free");
     sql("CREATE INDEX IF NOT EXISTS wallet_ledger_uid ON wallet_ledger(uid, at)");
+    sql("CREATE TABLE IF NOT EXISTS login_rewards (uid TEXT NOT NULL, day TEXT NOT NULL, issuedAt INTEGER NOT NULL, taken INTEGER NOT NULL, amount INTEGER NOT NULL, claimedAt INTEGER, PRIMARY KEY(uid,day))");
+    sql("CREATE TABLE IF NOT EXISTS login_legacy_receipts (uid TEXT NOT NULL, id TEXT NOT NULL, day TEXT NOT NULL, PRIMARY KEY(uid,id))");
     // 旧 wallet_events(チケットだけ)を引き継ぐ。id が同じなら二度は入らない
     sql("CREATE TABLE IF NOT EXISTS wallet_events (id TEXT PRIMARY KEY, uid TEXT, delta INTEGER, kind TEXT, ref TEXT, at INTEGER)");
     sql("INSERT OR IGNORE INTO wallet_ledger (id, uid, tickets, gems, kind, ref, at, gems_free) SELECT id, uid, delta, 0, kind, ref, at, 0 FROM wallet_events");
@@ -332,6 +340,26 @@ export class Wallet {
     const r = this.apply(uid, id, { tickets: STORY_TICKETS }, "story", `${phase}:${axis}`, now);
     return { ...r, ...this.summary(uid, now) };
   }
+  loginStatus(uid, now) { return new LoginRewards(this).status(uid, now); }
+  loginReward(uid, day, now) { return new LoginRewards(this).claim(uid, day, now); }
+  legacyLoginReward(uid, id, now) { return new LoginRewards(this).legacy(uid, id, now); }
+  /** 勝利チャンスは earn の30枚枠とは別に、日付と1〜3回目で一度ずつ。 */
+  winChanceReward(uid, day, done, now) {
+    if (!validWinChanceReward(day, done, now))
+      throw new Error("勝利報酬の指定が正しくありません。");
+    const id = winChanceEventId(uid, day, done);
+    const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
+    if (seen) {
+      if (seen.uid !== uid) throw new Error("他の人の出来事です。");
+      return { applied: false, ...this.summary(uid, now) };
+    }
+    // 旧版の local ID で既に受領した本人は二重加算しない。他人の行は影響しない。
+    const legacy = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", winChanceEventId("local", day, done))[0];
+    if (legacy?.uid === uid) return { applied: false, ...this.summary(uid, now) };
+    const result = this.apply(uid, id, { tickets: WIN_CHANCE_REWARD_TICKETS }, "win-chance", day, now);
+    return { ...result, ...this.summary(uid, now) };
+  }
+
   /** 出来事 id で冪等に増減する。減らす場合は残高を超えない */
   apply(uid, id, { tickets = 0, gemsPaid = 0, gemsFree = 0 }, kind, ref, now) {
     if (typeof id !== "string" || !/^[\w:.+-]{1,128}$/.test(id))
@@ -642,6 +670,8 @@ export class Wallet {
     this.sql("DELETE FROM foil_purchases WHERE uid=?", uid);
     this.sql("DELETE FROM iap_diag WHERE uid=?", uid);
     this.sql("DELETE FROM pass_grants WHERE uid=?", uid);
+    this.sql("DELETE FROM login_rewards WHERE uid=?", uid);
+    this.sql("DELETE FROM login_legacy_receipts WHERE uid=?", uid);
     this.sql("DELETE FROM wallets WHERE uid=?", uid);
     this.sql("DELETE FROM wallet_ledger WHERE uid=?", uid);
     this.sql("DELETE FROM wallet_events WHERE uid=?", uid);

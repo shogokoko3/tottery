@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { armAudioUnlock } from "./audio/index.js";
 import { checkAppVersion } from "./net/app-version.js";
 import { TotteryApp } from "./ui/screens.jsx";
+import { installNativeInteractionGuard } from "./ui/native-interactions.js";
 
 /**
  * 描くところで落ちたときの受け皿。
@@ -100,6 +101,9 @@ function VersionGate({ children }) {
     </>
   );
 }
+
+// 入力欄以外はゲームの操作だけを受け付ける。
+installNativeInteractionGuard(document);
 
 // 音は最初に画面を触るまで鳴らせない決まりになっている。
 // 最初のタップを待ち受けて、そこで解錠する

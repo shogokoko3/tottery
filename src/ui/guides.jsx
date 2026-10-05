@@ -114,12 +114,14 @@ export function CardGuide({
   isKing = !1,
   compact = !1,
   placing = !1,
+  mark,
+  originalRank,
 }) {
   return (
     <div className={`card-guide ${compact ? "card-guide-compact" : ""}`}>
       <div className="cg-head">
         {suit ? (
-          <CardFace rank={rank} suit={suit} />
+          <CardFace rank={rank} suit={suit} mark={mark} originalRank={originalRank} />
         ) : (
           <div className="cg-rank">{rank}</div>
         )}

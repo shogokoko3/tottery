@@ -14,15 +14,18 @@ import { seasonApiBase } from "./season.js";
 import { updateCollection, getCollection } from "../skins/store.js";
 import { byId } from "../skins/catalog.js";
 import { grantSkin } from "../skins/collection.js";
+import { WIN_CHANCE_KEY, WIN_CHANCE_MAX_PER_DAY, validWinChanceReward, rewardEventId as winChanceEventId } from "../game/win-chance.js";
 
 /** チケットをサーバーの財布で持つか。false なら今まで通り端末だけ */
 export const WALLET_SERVER = true;
 const PENDING_KEY = "tottery.wallet.pending.v1";
 const MIGRATED_KEY = "tottery.wallet.migrated.v1";
 
-async function walletRequest(op, body = {}) {
+async function walletRequest(op, body = {}, expectedUid = null) {
   const auth = await ensureAuth();
   if (!auth) throw new Error("通信を確認して、もう一度お試しください。");
+  if (expectedUid && auth.uid !== expectedUid)
+    throw new Error("報酬を獲得したアカウントで受け取ってください。");
   let res;
   try {
     res = await fetch(`${seasonApiBase()}/api/wallet/${op}`, {
@@ -78,6 +81,16 @@ async function mirror(data) {
   return data;
 }
 
+let walletTail = Promise.resolve();
+function orderedWallet(task) {
+  const result = walletTail.then(task);
+  walletTail = result.catch(() => {});
+  return result;
+}
+function requestAndMirror(op, body = {}, uid = null) {
+  return orderedWallet(async () => mirror(await walletRequest(op, body, uid)));
+}
+
 function readPending() {
   try {
     const v = JSON.parse(localStorage.getItem(PENDING_KEY) || "[]");
@@ -95,32 +108,90 @@ function writePending(list) {
 }
 
 /** 溜めていた加算を送る。送れた分だけ消す */
-export async function flushPending() {
-  // 消すときは**そのつど読み直す**。最初に読んだ一覧を書き戻すと、同時に走った別の
-  // flush(取りこぼしの回収と新しいクリアなど)が積んだ分を上書きで消してしまう(2026-09-30)
+let flushTail = Promise.resolve();
+export function flushPending() {
+  const result = flushTail.then(drainPending);
+  flushTail = result.catch(() => {});
+  return result;
+}
+async function drainPending() {
   const drop = (id) => writePending(readPending().filter((x) => x.id !== id));
-  for (const ev of readPending()) {
+  const attempted = new Set();
+  // 送信中に追加された報酬も読み直して処理する。
+  for (;;) {
+    const ev = readPending().find(x => !attempted.has(x.id));
+    if (!ev) return;
+    attempted.add(ev.id);
     try {
-      // チケットは earn、無償ジェムは earn-gems、バトルパスのマス報酬は pass-reward、
-      // チュートリアルの話は tutorial-reward(何話かだけ送る。id はサーバーが組む)
-      await mirror(
-        ev.pass
-          ? await walletRequest("pass-reward", { id: ev.id })
-          : ev.tutorial
-            ? await walletRequest("tutorial-reward", { chapter: ev.tutorial })
-            : ev.story
-              ? await walletRequest("story-reward", { phase: ev.story.phase, axis: ev.story.axis })
-            : ev.gems
-              ? await walletRequest("earn-gems", { id: ev.id, gems: ev.gems })
-              : await walletRequest("earn", { id: ev.id, n: ev.n }),
-      );
+      if (ev.login) await requestAndMirror("login-reward", ev.login, ev.uid);
+      else if (ev.winChance) await requestAndMirror("win-chance-reward", ev.winChance, ev.uid);
+      else if (ev.pass) await requestAndMirror("pass-reward", { id: ev.id });
+      else if (ev.tutorial) await requestAndMirror("tutorial-reward", { chapter: ev.tutorial });
+      else if (ev.story) await requestAndMirror("story-reward", ev.story);
+      else if (ev.gems) await requestAndMirror("earn-gems", { id: ev.id, gems: ev.gems });
+      else await requestAndMirror("earn", { id: ev.id, n: ev.n });
       drop(ev.id);
     } catch (e) {
-      // 上限・形の誤り・パスの週上限や未所持で拒まれたものは捨てる(残しても二度と通らない)。通信の失敗は残す
-      if (/これ以上|正しくありません|他の人|上限|持っていません/.test(e.message)) drop(ev.id);
-      else break;
+      if (/獲得したアカウント/.test(e.message)) continue;
+      // 圏外なら残りも保存したまま終了し、件数分の通信タイムアウトを待たない。
+      if (/通信を確認|財布を読み込/.test(e.message)) break;
+      // 上限・ID衝突・通信失敗は、獲得記録を捨てる理由にしない。
+      // その1件を保留し、独立したログイン・勝利などの受取は続ける。
+      if (ev.login || ev.winChance || /^login:/.test(ev.id) || /これ以上|他の人|上限/.test(e.message)) continue;
+      if (/正しくありません|持っていません/.test(e.message)) drop(ev.id);
+      else continue;
     }
   }
+}
+
+function queueWinChance(day, done, uid) {
+  if (!validWinChanceReward(day, done)) return null;
+  const id = winChanceEventId(uid, day, done), list = readPending();
+  if (!list.some(x => x.id === id)) {
+    // 獲得の控えは保存に失敗したまま成功扱いにしない。
+    localStorage.setItem(PENDING_KEY, JSON.stringify([...list, { id, uid, winChance: { day, done }, at: Date.now() }]));
+  }
+  return id;
+}
+export async function earnWinChanceTicket(day, done, uid = null) {
+  const id = queueWinChance(day, done, uid);
+  if (!id) return false;
+  await flushPending();
+  return !readPending().some(x => x.id === id);
+}
+/** 旧版で捨てられた分は、端末に残る成功記録から再申請。受領済み分は台帳で重複排除。 */
+async function recoverWinChanceTickets() {
+  let state;
+  try { state = JSON.parse(localStorage.getItem(WIN_CHANCE_KEY) || "null"); } catch { return; }
+  if (!state || !validWinChanceReward(state.day, state.done)) return;
+  const auth = await ensureAuth();
+  if (!auth || (state.uid && state.uid !== auth.uid)) return;
+  // 旧形式に持ち主を付け、後日のアカウント変更で使い回さない。
+  if (!state.uid) {
+    const current = JSON.parse(localStorage.getItem(WIN_CHANCE_KEY) || "null");
+    if (current && current.day === state.day && current.done === state.done && !current.uid)
+      localStorage.setItem(WIN_CHANCE_KEY, JSON.stringify({ ...current, uid: auth.uid }));
+  }
+  for (let done = 1; done <= Math.min(state.done, WIN_CHANCE_MAX_PER_DAY); done++)
+    queueWinChance(state.day, done, auth.uid);
+}
+
+/** ログイン報酬はサーバーの受取状態を正とする。端末の bonusTaken/時計は送らない。 */
+export async function getLoginBonus() {
+  await flushPending();
+  return requestAndMirror("login-status");
+}
+export async function claimLoginBonus(day, uid) {
+  if (typeof uid !== "string" || !uid || typeof day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(day))
+    throw new Error("ログイン報酬を確認してから、もう一度お試しください。");
+  const id = `login:${uid}:${day}`, list = readPending();
+  if (!list.some(x => x.id === id))
+    localStorage.setItem(PENDING_KEY, JSON.stringify([...list, { id, uid, login: { day }, at: Date.now() }]));
+  // 他の報酬の保留に妨げられず送る。応答の消失・端末への保存失敗なら次回再送する。
+  const data = await requestAndMirror("login-reward", { day }, uid);
+  if (!data.login?.received) throw new Error("受け取りを確認できませんでした。もう一度お試しください。");
+  writePending(readPending().filter(x => x.id !== id));
+  return data;
 }
 
 /**
@@ -153,13 +224,14 @@ export async function earnStoryTicket(phase, axis) {
 /** 残高を取り直す(溜めていた加算も先に送る) */
 export async function syncWallet() {
   if (!WALLET_SERVER) return getCollection();
+  await recoverWinChanceTickets().catch(() => {});
   await flushPending().catch(() => {});
-  return mirror(await walletRequest("summary"));
+  return requestAndMirror("summary");
 }
 
 /**
  * 遊んで貯める分を財布へ。id は「何で」「いつ」で決まる形にする
- * (例: login:2026-09-12, mission:daily-1:2026-09-12)。同じ id は二度効かない
+ * (例: mission:daily-1:2026-09-12)。ログインは専用APIを使う。同じ id は二度効かない
  */
 export async function earnTickets(id, n) {
   if (!WALLET_SERVER || !Number.isSafeInteger(n) || n <= 0) return;
@@ -186,7 +258,7 @@ export async function earnPassTicket(id) {
  * 通れば新しい残高(applied が false なら受け取り済み)。圏外なら投げる(控えない。手紙は残るので後で押せる)
  */
 export async function claimCampaign(campaignId) {
-  return mirror(await walletRequest("campaign", { campaign: campaignId }));
+  return requestAndMirror("campaign", { campaign: campaignId });
 }
 
 /**
@@ -200,16 +272,18 @@ export async function claimCampaign(campaignId) {
  * 成功応答が不正・通信失敗の場合は同じ要求を再確認し、抽選し直さない。
  */
 export async function pullFromServer(id, n) {
+  return orderedWallet(async () => {
   const data = await walletRequest("pull", { id, n });
   if (!(Array.isArray(data?.skins) && data.skins.length === n && data.skins.every(id => byId(id))))
     throw new Error("抽選結果を読み込めませんでした。同じ召喚をもう一度確認してください。");
   await mirror(data);
   return { skins: data.skins, freeze: data.freeze || null, receipt: id };
+  });
 }
 
 /** ガチャの前に減らす。通れば新しい残高、足りなければ投げる */
 export async function debitTickets(id, n) {
-  return mirror(await walletRequest("debit", { id, n }));
+  return requestAndMirror("debit", { id, n });
 }
 
 /**
@@ -226,14 +300,14 @@ export async function earnGems(id, n) {
 
 /** 無償ジェムをエーテルに。通れば { ether } を含む新しい残高、足りなければ投げる */
 export async function buyEther(id, gems) {
-  return mirror(await walletRequest("ether", { id, gems }));
+  return requestAndMirror("ether", { id, gems });
 }
 
 /** フォイルを有償ジェムで買う(src/skins/foil-shop.js)。通れば新しい残高、足りなければ投げる */
 export async function buyFoil(product, skins) {
   // 購入ごとに最新の所持を登録し、サーバーも保存済み全カードを照合する。
   await syncCollection();
-  return mirror(await walletRequest("foil", { product, skins }));
+  return requestAndMirror("foil", { product, skins });
 }
 
 /**
@@ -264,17 +338,17 @@ export async function syncCollection() {
       ([id, count]) => byId(id) && Number.isSafeInteger(count) && count > 0,
     )
     .map(([id]) => id);
-  return mirror(await walletRequest("collection", { ownedIds }));
+  return requestAndMirror("collection", { ownedIds });
 }
 
 /** ジェムでチケットを買う(両替)。通れば新しい残高、足りなければ投げる */
 export async function exchangeGems(id, tickets) {
-  return mirror(await walletRequest("exchange", { id, tickets }));
+  return requestAndMirror("exchange", { id, tickets });
 }
 
 /** ジェムでバトルパス(買い切りの権利)を買う。足りなければ投げる */
 export async function buyPassWithGems(id) {
-  return mirror(await walletRequest("buy-pass", { id }));
+  return requestAndMirror("buy-pass", { id });
 }
 
 /** ガチャの結果を運営の履歴に残す。残高は動かさない。記録が落ちても遊びは止めない */
@@ -298,13 +372,13 @@ export async function migrateOnce() {
     /* 読めなければ送って、サーバー側の一度きりに任せる */
   }
   const local = getCollection().tickets || 0;
-  const data = await walletRequest("migrate", { tickets: local });
+  const data = await requestAndMirror("migrate", { tickets: local });
   try {
     localStorage.setItem(MIGRATED_KEY, "1");
   } catch {
     /* 次回はサーバーが弾く */
   }
-  return mirror(data);
+  return data;
 }
 
 /** 出来事の id を作る(ガチャ1回ごとなど、決まった形が無いもの) */

@@ -86,6 +86,21 @@ export function captureSoundOnBus(audioCtx, output, hit) {
   }
   function sound(kind) {
     if (!audioCtx || audioCtx.state !== "running") return;
+    // 損失は低く短い衝撃と下降音。通常の撃破SEや高音のきらめきは使わない。
+    if (kind === "loss-hit") {
+      tone(135, 48, 0.21, 0.14);
+      noise(0.085, 0.14, 580, "lowpass");
+    }
+    if (kind === "loss-crack") noise(0.06, 0.13, 850, "lowpass");
+    if (kind === "loss-break") {
+      noise(0.19, 0.16, 720, "lowpass");
+      tone(94, 36, 0.26, 0.11);
+    }
+    if (kind === "loss-open") tone(146, 98, 0.18, 0.038, "triangle");
+    if (kind === "loss-royal") {
+      tone(110, 38, 0.55, 0.12);
+      noise(0.26, 0.07, 360, "lowpass");
+    }
     if (kind === "dash") {
       noise(0.16, 0.055, 1800);
       tone(170, 350, 0.11, 0.027, "sine");

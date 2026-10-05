@@ -1,7 +1,7 @@
 /**
  * アプリ側の課金・財布の口を確かめる(通信は偽物)。
  *  - 商品の目録が矛盾していない
- *  - 遊んで貯める分の控え: 同じ id は一度だけ、通信の失敗は残し、二度と通らないものは捨てる
+ *  - 遊んで貯める分の控え: 同じ id は一度だけ、通信の失敗・日次上限では消さず、次回の再送に残す
  *  - 購入の控え: 通ったら消す、400(二度と通らない)も消す、通信の失敗は残す
  */
 const store = {};
@@ -64,21 +64,21 @@ is("バトルパスは App Store の商品ではない(ジェムで買う)", pro
 
 console.log("\n遊んで貯める分の控え");
 mode = "net";
-await earnTickets("login:1", 3);
-is("圏外なら控えに残る", pending(), ["login:1"]);
-await earnTickets("login:1", 3);
-is("同じ id は二重に控えない", pending(), ["login:1"]);
+await earnTickets("mission:test:1", 3);
+is("圏外なら控えに残る", pending(), ["mission:test:1"]);
+await earnTickets("mission:test:1", 3);
+is("同じ id は二重に控えない", pending(), ["mission:test:1"]);
 mode = "ok"; calls.length = 0;
 await flushPending();
 is("通じたら送って控えから消す", pending(), []);
-is("送った中身は id と枚数", calls[0].body, { id: "login:1", n: 3 });
+is("送った中身は id と枚数", calls[0].body, { id: "mission:test:1", n: 3 });
 is("サーバーの残高を端末の写しへ", getCollection().tickets, 42);
 mode = "reject";
-await earnTickets("login:2", 3);
-is("二度と通らないもの(上限)は捨てる", pending(), []);
+await earnTickets("mission:test:2", 3);
+is("日次上限は翌日回復するので控えを残す", pending(), ["mission:test:2"]);
 mode = "server";
-await earnTickets("login:3", 3);
-is("サーバーの一時的な失敗は残す", pending(), ["login:3"]);
+await earnTickets("mission:test:3", 3);
+is("サーバーの一時的な失敗は以前の保留と一緒に残す", pending(), ["mission:test:2", "mission:test:3"]);
 
 console.log("\n購入の控え");
 store["tottery.iap.pending.v1"] = JSON.stringify([{ jws: "A", at: 1 }, { jws: "B", at: 2 }]);

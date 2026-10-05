@@ -23,10 +23,10 @@ export function captureTiming(move, count = 1, reduced = false) {
     : {
         hit,
         lift: hit + 90,
-        ready: hit + 320,
-        crack: hit + 430,
-        melt: hit + 950,
-        reveal: hit + 1590,
+        ready: hit + 570,
+        crack: hit + 720,
+        melt: hit + 1240,
+        reveal: hit + 1880,
       };
   return { ...q, gap: reduced ? 320 : 520, count, reduced };
 }
@@ -47,7 +47,19 @@ export function captureFrame(t, q, cards) {
   return { shown, collected, index, king, royal, at, collect, done };
 }
 
-export function captureCues(q) {
+export function captureCues(q, mine = true) {
+  if (!mine)
+    return q.reduced
+      ? [
+          [q.hit, "loss-hit"],
+          [q.reveal, "loss-open"],
+        ]
+      : [
+          [q.hit, "loss-hit"],
+          [q.crack, "loss-crack"],
+          [q.melt, "loss-break"],
+          [q.reveal, "loss-open"],
+        ];
   if (q.reduced)
     return [
       [q.hit, "hit"],

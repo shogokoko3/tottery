@@ -161,7 +161,9 @@ console.log("\n絵の長押しで iOS の札を出さない");
 {
   const css = read("src/styles.css");
   is("根で切る", /\.tottery-root \{\s*-webkit-touch-callout: none;/.test(css), true);
-  is("文字の選択は触らない", /\.tottery-root \{\s*-webkit-touch-callout: none;\s*\}/.test(css), true);
+  const template = read("index.template.html");
+  is("文字選択をゲーム全体で抑える", /html,body\{[^}]*user-select:none;[^}]*touch-callout:none;/.test(template), true);
+  is("入力欄は編集と貼り付けを許可する", /input,textarea,[^}]*user-select:text;[^}]*touch-callout:default;/.test(template), true);
 }
 
 console.log(`\n${ok} ok / ${fail.length} NG`);

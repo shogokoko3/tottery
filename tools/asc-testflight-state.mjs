@@ -9,8 +9,9 @@
  *     外部の IN_BETA_TESTING = 公開リンクの人にも配っている。READY_FOR_BETA_SUBMISSION は外部の審査に出す前
  *   - グループごとのテスターの人数と、配っているビルド
  *
- * **強制アップデート(wrangler.jsonc の MIN_APP_BUILD)は、外部の「テスター」グループがそのビルドを
- * IN_BETA_TESTING で受け取れるようになってから上げる。** 先に上げると、公開リンクの人が更新先の無いまま止まる。
+ * 2026-10-04 本人指定・範囲訂正: 新しいビルドの配信先は内部「開発」のみ。
+ * 既存の外部「テスター」向けビルドと公開リンクは維持する。
+ * 開発用ビルドに合わせて MIN_APP_BUILD を上げない。外部の既存利用者に更新先が無いまま強制更新をかけない。
  *
  * 鍵は ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_PATH(無ければ testflight.yml と同じ値と ~/.appstoreconnect の鍵)。Node 22 で動かす。
  */

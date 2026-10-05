@@ -197,6 +197,7 @@ console.log("\nD. 称号の知らせを止める場面・語りを見たかの�
   is("はじめの一局のあいだは止める", introHoldsTitles({ screen: "game", firstGame: true }), true);
   is("初回の10連のあいだは止める", introHoldsTitles({ screen: "skins", firstPull: true }), true);
   is("ストーリー一覧に着いたら放す", introHoldsTitles({ screen: "story" }), false);
+  is("相手の紹介の上には称号通知を重ねない", introHoldsTitles({ screen: "story", stageIntro: "45" }), true);
   is("ほかの対局・ふつうのガチャでは止めない", [introHoldsTitles({ screen: "game" }), introHoldsTitles({ screen: "skins" }), introHoldsTitles({})], [false, false, false]);
   is("10連の印が残っていても、ガチャの画面でなければ止めない", introHoldsTitles({ screen: "story", firstPull: true }), false);
   const m = new Map();
@@ -247,14 +248,14 @@ console.log("\nE. 画面の配線(screens.jsx)");
     true,
   );
   is(
-    "10連の結果を閉じたら、ストーリー一覧へ(ホームや手引きではない)",
-    /if \(firstPullMode\) \{\s*(\/\/[^\n]*\n\s*)*setFirstPullMode\(!1\);\s*showStory\(\);\s*return;\s*\}/.test(screens),
+    "10連の結果を閉じたら、次の相手を紹介。未クリアがなければ一覧へ",
+    /if \(firstPullMode\) \{\s*(\/\/[^\n]*\n\s*)*setFirstPullMode\(!1\);\s*showStory\(\);\s*const next = nextStage\(loadProfile\(\)\);\s*if \(next\) openStage\(next.axis\);\s*return;\s*\}/.test(screens),
     true,
   );
   is("ストーリー一覧から開くステージは openStage", /<StoryScreen\s+onBack=\{\(\) => t\("menu"\)\}\s+onStart=\{openStage\}/.test(screens), true);
   is(
-    "ストーリー1つ目の初回は、ステージ前の説明を通さず台本の一局",
-    /if \(firstGameStage\(loadProfile\(\), axis\)\) \{\s*startFirstGame\(\);\s*return;\s*\}\s*setStoryIntro\(axis\);/.test(fn("openStage")),
+    "物語を読んだあとの初回2・3は、これまでどおり台本の一局",
+    /if \(firstGameStage\(loadProfile\(\), axis\)\) \{\s*startFirstGame\(\);\s*return;\s*\}/.test(fn("startStory")),
     true,
   );
   is(
@@ -280,7 +281,7 @@ console.log("\nE. 画面の配線(screens.jsx)");
   is("「門へ進む」は10連がまだの人だけ", screens.includes("onGate={firstGame && !firstPullDone(collection) ? () => leaveFirstGame() : null}"), true);
   is("はじめの一局はもう一度を出さない(作り直すと台本の盤にならない)", screens.includes("onRetryStory={story && !tut ? () => (showStory(), openStage(story.axis)) : null}"), true);
   is("はじめの一局の駒は装備中の見た目", screens.includes("(tut.loadouts || (firstGame ? [collection.equipped, {}] : [{}, {}])).map(sanitizeLoadout)"), true);
-  is("導入のあいだ称号の知らせを止める", /useTitleNoticeHold\(\s*introHoldsTitles\(\{ intro, screen: e, firstGame: tut === FIRST_GAME, firstPull: firstPullMode \}\),\s*\);/.test(screens), true);
+  is("導入と相手の紹介のあいだ称号の知らせを止める", /useTitleNoticeHold\(\s*introHoldsTitles\(\{ intro, screen: e, firstGame: tut === FIRST_GAME, firstPull: firstPullMode, stageIntro: storyIntro \}\),\s*\);/.test(screens), true);
   is("手引きを自動で出さない(ホームの案内・ストーリーの初回)", /offerTutorial|storyPrimerSeen|setStoryPrimer\("first"\)|doneLabel="ストーリーを始める"/.test(screens), false);
   is("ストーリーの「遊び方」からは読める", screens.includes('onGuide={() => setStoryPrimer("guide")}') && /storyPrimer && \(\s*<Primer/.test(screens), true);
   is("語りの控えは導入のモジュールから", /markPrologueSeen,\s*prologueSeen,\s*\} from "\.\.\/game\/intro\.js";/.test(screens), true);

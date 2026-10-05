@@ -6,5 +6,11 @@
 <meta name="apple-mobile-web-app-title" content="トッタリー"><title>トッタリー</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<style>html,body{margin:0;padding:0;background:#071120;}#root{min-height:100vh;}body{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;}</style>
+<style>
+html,body{margin:0;padding:0;background:#071120;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+#root{min-height:100vh;}
+body{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;}
+/* 入力欄では、名前の編集や合言葉の貼り付けを使えるようにする。 */
+input,textarea,[contenteditable=""],[contenteditable="true"],[contenteditable="plaintext-only"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
+</style>
 </head><body><div id="root"></div><script>__BUNDLE__</script></body></html>

@@ -1,7 +1,7 @@
 /**
  * 導入の振り分け(2026-10-01 本人の指示)。起動から導入の終わりまで、次に出すものを1つに決める。
  *
- *   タイトル → 語り2枚 → はじめの一局(ストーリー「二と三の王」の初回)→ 結果 → 名前 → 門の語り → 10連 → ストーリー一覧
+ *   タイトル → 語り2枚 → はじめの一局(ストーリー「二と三の王」の初回)→ 結果 → 名前 → 門の語り → 10連 → 次の相手の紹介
  *
  * 進みは持ち物から読む(二と三の王のクリア・名前・10連の控え)。足した控えは「語りを見た」だけ。
  * 途中でやめた人は、次の起動で続きへ戻す。画面(screens.jsx)と検査(tools/check-intro.mjs)が同じ関数を呼ぶ。
@@ -11,7 +11,7 @@
  *    二と三の王が未クリアなら、ストーリー1つ目を開いたときに台本の一局になる(firstGameStage)
  *  - 一局を中断した起動のあいだは押し付けない(deferred)。次の起動でまた続きへ
  *  - 合言葉つき(?room=)で開いた起動は、名前を聞いて部屋へ通すだけ(名前は screens.jsx の名前の壁)。導入は次の起動から
- *  - 称号の知らせは、導入のあいだ止めておき、ストーリー一覧に着いてから出す(introHoldsTitles)
+ *  - 称号の知らせは導入と相手の紹介のあいだ止めておく(introHoldsTitles)
  */
 import { FIRST_GAME } from "./tutorial.js";
 import { normalizeStory, phaseOf } from "./phase.js";
@@ -76,10 +76,10 @@ export function introStep({ profile, collection, prologueSeen = false, room = fa
 
 /**
  * 導入のあいだ称号の知らせを止めるか。語り・名前・門の語り(intro)、はじめの一局、初回の10連。
- * 止めた知らせは、ストーリー一覧に着いたところで出る
+ * 相手の紹介にも重ねない。閉じるか対局へ進むと再開する
  */
-export function introHoldsTitles({ intro = null, screen = null, firstGame = false, firstPull = false } = {}) {
-  return !!intro || (screen === "game" && !!firstGame) || (screen === "skins" && !!firstPull);
+export function introHoldsTitles({ intro = null, screen = null, firstGame = false, firstPull = false, stageIntro = false } = {}) {
+  return !!intro || (screen === "story" && !!stageIntro) || (screen === "game" && !!firstGame) || (screen === "skins" && !!firstPull);
 }
 
 /** 語りを見たかの控え(端末ごと)。消えても語りがもう一度出るだけ */

@@ -14,6 +14,7 @@ import {
   firstPullDone,
   firstPullResult,
   markFirstPull,
+  firstPullCompanion,
 } from "../src/skins/first-pull.js";
 import { applyPull, normalize } from "../src/skins/collection.js";
 import { baseSkinId, byId } from "../src/skins/catalog.js";
@@ -179,12 +180,19 @@ console.log("\n配線");
   );
   // はじめての10連の結果(2026-10-01 本人の指示)。導入の最後なので、駒とのつながりと次の一歩を1つだけ
   is("初回の結果だけを見分ける", /const firstResults = firstPull && !!collection\.pending\?\.results;/.test(skins), true);
+  is("初回は重複整理を出さない", skins.includes("{!firstResults && collection.pending?.results && ("), true);
+  is("結果のあと、次の相手の説明まで進める", screens.includes("const next = nextStage(loadProfile());\n                  if (next) openStage(next.axis);"), true);
+  const state = { pending: { results: [{ id: "angel-j" }, { id: "pirate-male" }] }, owned: { "angel-j": 1, "pirate-male": 1 }, equipped: { J: "angel-j", 4: "pirate-male" } };
+  is("次のステージで使える装備を先に見せる", firstPullCompanion(state, ["2", "3", "4", "5"]).skin.id, "pirate-male");
+  is("まだ使わない数字は後の登場として伝える", firstPullCompanion({ ...state, equipped: { J: "angel-j" } }, ["2", "3", "4", "5"]).available, false);
+  is("未装備の英雄を装備済みとは呼ばない", firstPullCompanion({ ...state, equipped: {} }).equipped, false);
+  is("結果が無ければ英雄の紹介を出さない", firstPullCompanion({}), null);
   is(
     "初回の結果に一行(着せた英雄だけが駒になる)",
-    /\{firstResults && \(\s*<p className="skins-first-pull-note">\s*装備した英雄が、次の一局から駒になる。\s*<\/p>/.test(skins),
+    /\{firstResults && \(\s*<p className="skins-first-pull-note">\s*出会った英雄を、あなたの盤へ。\s*<\/p>/.test(skins),
     true,
   );
-  is("初回の結果の釦は「ストーリーへ」", /\{firstResults \? "ストーリーへ" : "結果を確認"\}/.test(skins), true);
+  is("初回は「次の対局へ」、全クリア済みなら一覧へ", skins.includes('{firstResults ? (nextStory ? "次の対局へ" : "ストーリーへ") : "結果を確認"}'), true);
   is(
     "閉じたあと呼ぶ側の onBack へ(閉じるのに失敗したら行かない)",
     /const closeFirstResults = async \(\) => \{\s*const next = await closeResults\(\);\s*if \(next && onBack\) onBack\(\);\s*\};/.test(skins),

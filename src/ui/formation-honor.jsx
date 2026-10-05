@@ -25,8 +25,9 @@ export function formationScene(state, viewer, skins) {
         rank: p.rank,
         king: p.king,
         suit: SUIT_SYMBOL[p.suit],
-        image: absolute(skin?.image || cardArtSrc(p.rank, p.suit, p.king)),
-        printed: !skin,
+        promoted: !!p.promoted,
+        image: absolute(skin?.image || cardArtSrc(p.rank, p.suit)),
+        printed: false, // 通常原画・スキンとも、数字とスートは演出側で描く。
       };
     }),
   };

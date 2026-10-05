@@ -11,13 +11,18 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { typing } from "./key-target.js";
-import { ArrowLeft, Check } from "../icons.jsx";
+import { ArrowLeft } from "../icons.jsx";
 import { loadProfile, promotePhase } from "../game/profile.js";
 import { STORY_AXES, canPromote, promotionStatus, stageSize } from "../game/phase.js";
 import { onlineGate } from "../game/online-gate.js";
-import { stageIntro, storyList, nextStage, nextStageLine, ranksLabel } from "../game/story.js";
+import { stageIntro, storyList, nextStage, nextStageLine, ranksLabel, storyLesson, storyRival } from "../game/story.js";
 import { CardFace } from "./cards.jsx";
+import { findTitle } from "../game/titles.js";
+import { TitleFrame } from "./title-frame.jsx";
 import { MoveDiagram } from "./guides.jsx";
+import { CHRONICLE, STORY_PHASES, storyArc, storyEpisode } from "../game/story-narrative.js";
+import { ChronicleStyles, StoryArt, StoryReader, ChronicleWorld, StoryPurpose } from "./story-chronicle.jsx";
+import { StoryChapterArt } from "./story-chapter-art.jsx";
 
 /** フェーズの一言 */
 export const PHASE_LABEL = Object.freeze({
@@ -28,97 +33,239 @@ export const PHASE_LABEL = Object.freeze({
 
 export function StoryScreen({ onBack, onStart, onGuide = null }) {
   const [profile, setProfile] = useState(() => loadProfile());
-  const list = storyList(profile);
   const status = promotionStatus(profile);
-  const next = nextStage(profile);
-  // 次の一歩を1つだけ言う(2026-10-01 本人の指示。導入の終わりに着いた人には「次は、四と五の王。」)
-  const nextLine = nextStageLine(profile);
+  const [phase, setPhase] = useState(status.phase);
+  const [reading, setReading] = useState(null);
+  const list = storyList({ ...profile, phase });
+  const next = phase === status.phase ? nextStage(profile) : null;
+  const nextLine = phase === status.phase ? nextStageLine(profile) : null;
   const promotable = canPromote(profile);
   const gate = onlineGate(profile);
+  const available = phase <= status.phase;
+  const act = STORY_PHASES[phase];
+  const titleGoal = ["win10", "win30"]
+    .map(findTitle)
+    .find((title) => title && !title.unlocked(profile));
   return (
-    <div className="setup-wrap story-wrap">
-      <div className="story-head">
-        <h2>ストーリー</h2>
-        {/* どんなゲームか・勝ち方(導入)をいつでも読み返せる */}
-        {onGuide && (
-          <button type="button" className="btn btn-ghost story-guide" onClick={onGuide}>
-            遊び方
-          </button>
-        )}
-        <p className="story-phase">
-          フェーズ {status.phase}
-          <small>
-            {PHASE_LABEL[status.phase]}・{stageSize(status.phase)}×{stageSize(status.phase)}
-          </small>
-        </p>
-      </div>
-      {nextLine && <p className="story-next">{nextLine}</p>}
-      <ol className="story-list" aria-label="ステージ">
-        {list.map((s) => (
-          <li key={s.axis}>
+    <div className="setup-wrap story-wrap chronicle-hub">
+      <ChronicleStyles />
+      <header className="chronicle-hero">
+        <StoryArt axis="k" phase={Math.min(phase, status.phase)} />
+        <div className="chronicle-hero-top">
+          <span>ストーリー · 七つの立場、三つの時代</span>
+          {onGuide && (
             <button
               type="button"
-              className={`story-stage ${s.cleared ? "is-cleared" : ""} ${next && next.axis === s.axis ? "is-next" : ""}`}
-              onClick={() => onStart(s.axis)}
+              className="chronicle-text-button"
+              onClick={onGuide}
             >
-              <span className="story-stage-ranks" aria-hidden="true">
-                {s.ranks.map((r) => (
-                  <CardFace key={r} rank={r} suit="spade" size="xs" />
-                ))}
-              </span>
-              <span className="story-stage-body">
-                <b>{s.name}の王</b>
-                <small>{s.tagline}</small>
-              </span>
-              <span className="story-stage-tail">
-                {s.cleared ? (
-                  <>
-                    {/* アイコンは aria-label を落とすので、読み上げ用の文字を添える */}
-                    <Check size={16} aria-hidden="true" />
-                    <span className="sr-only">クリア済み</span>
-                  </>
-                ) : (
-                  <small className="story-stage-reward">チケット {s.tickets}枚</small>
-                )}
-              </span>
+              遊び方
             </button>
-          </li>
-        ))}
-      </ol>
-      {/* 昇格までの残り。最後のフェーズでは出さない */}
-      {!status.last && (
-        <section className="story-promotion" aria-label="昇格">
-          {promotable ? (
-            <button
-              type="button"
-              className="btn btn-primary story-promote"
-              onClick={() => setProfile(promotePhase())}
-            >
-              フェーズ {status.phase + 1} へ進む
-              <small>{PHASE_LABEL[status.phase + 1]}</small>
-            </button>
-          ) : (
-            <p className="hint">
-              {/* 数字の前後に空白を置かない(375px で「5」と「勝」の間で折れる) */}
-              昇格の条件: {STORY_AXES.length}ステージ全部のクリアと、このフェーズでオンライン対戦に{status.winsNeeded}勝。
-              {status.axesLeft.length > 0 && `ステージはあと${status.axesLeft.length}。`}
-              {status.winsLeft > 0 && `勝利はあと${status.winsLeft}。`}
-            </p>
           )}
+        </div>
+        <div>
+          <small className="chronicle-kicker">
+            THE CHRONICLE OF THE ASHEN CROWN
+          </small>
+          <h2>{CHRONICLE.title}</h2>
+          <p>{CHRONICLE.subtitle}</p>
+        </div>
+      </header>
+      <div className="chronicle-main">
+        <nav className="chronicle-phases" aria-label="物語のフェーズ">
+          {[1, 2, 3].map((p) => (
+            <button
+              type="button"
+              key={p}
+              aria-pressed={phase === p}
+              onClick={() => setPhase(p)}
+            >
+              <small>
+                PHASE {p}
+                <span>
+                  {p > status.phase
+                    ? "未解放"
+                    : p < status.phase
+                      ? "回想"
+                      : "進行中"}
+                </span>
+              </small>
+              <b>{STORY_PHASES[p].title}</b>
+            </button>
+          ))}
+        </nav>
+        <section className="chronicle-phase-intro">
+          <h3>{act.label}</h3>
+          <p>{act.summary}</p>
+          <div className="chronicle-journey">
+            <b>{phase === 1 ? "あなたが戦う理由" : "あなたが引き受けるもの"}</b>
+            <p>{phase === 1 ? CHRONICLE.player : act.purpose}</p>
+          </div>
+          <p className="story-phase">
+            フェーズ {phase}
+            <small>
+              {PHASE_LABEL[phase]}・{stageSize(phase)}×{stageSize(phase)}
+            </small>
+          </p>
         </section>
+        {!available ? (
+          <section className="chronicle-locked">
+            <b>この先の頁は、まだ閉じている。</b>
+            <p>
+              現在のフェーズの7ステージをクリアし、
+              <br />
+              オンライン対戦で{status.winsNeeded}
+              勝すると、次のフェーズへ進めます。
+            </p>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setPhase(status.phase)}
+            >
+              進行中の物語へ
+            </button>
+          </section>
+        ) : (
+          <>
+            {nextLine && <p className="story-next">{nextLine}</p>}
+            <div
+              className="story-progress"
+              aria-label={`${list.filter((s) => s.cleared).length} / ${list.length} ステージクリア`}
+            >
+              <div aria-hidden="true">
+                {list.map((s) => (
+                  <i
+                    key={s.axis}
+                    className={
+                      s.cleared
+                        ? "is-cleared"
+                        : next?.axis === s.axis
+                          ? "is-next"
+                          : ""
+                    }
+                  />
+                ))}
+              </div>
+              <small>
+                {list.filter((s) => s.cleared).length} / {list.length} クリア
+              </small>
+            </div>
+            <ol className="story-list" aria-label="七つの物語">
+              {list.map((s) => {
+                const arc = storyArc(s.axis),
+                  chapter = storyEpisode(s.axis, phase);
+                const replayOnly = phase < status.phase;
+                return (
+                  <li key={s.axis} className="chronicle-chapter">
+                    <button
+                      type="button"
+                      className={`story-stage ${s.cleared ? "is-cleared" : ""} ${next?.axis === s.axis ? "is-next" : ""}`}
+                      onClick={() =>
+                        replayOnly ? setReading(s.axis) : onStart(s.axis)
+                      }
+                    >
+                      <span className="chronicle-chapter-image">
+                        <StoryChapterArt axis={s.axis} phase={phase} />
+                        <span>{s.ranks.join(" · ")}</span>
+                      </span>
+                      <span className="story-stage-body">
+                        <span className="chronicle-role">
+                          {arc.role} ／ {arc.theme}
+                        </span>
+                        <b>{chapter.title}</b>
+                        <span className="story-stage-rival">{arc.cast}</span>
+                        <small>{chapter.hook}</small>
+                        <span className="sr-only">{s.name}の王</span>
+                      </span>
+                    </button>
+                    <div className="chronicle-chapter-tail">
+                      <small>
+                        {s.cleared
+                          ? "✓ クリア済み · 後日談を解放"
+                          : `初回クリア · チケット ${s.tickets}枚`}
+                      </small>
+                      <button
+                        type="button"
+                        className="chronicle-text-button"
+                        onClick={() => setReading(s.axis)}
+                      >
+                        {s.cleared ? "回想を読む" : "物語を読む"}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </>
+        )}
+        <ChronicleWorld phase={Math.min(phase, status.phase)} />
+        {titleGoal && (
+          <details className="chronicle-world">
+            <summary>対局を重ねて目指す称号</summary>
+            <section className="story-title-goal">
+              <TitleFrame id={titleGoal.id} />
+              <p>
+                {titleGoal.how}・現在 {profile.wins || 0}勝
+              </p>
+              <small>獲得した称号は、オンラインの名前に添えられます。</small>
+            </section>
+          </details>
+        )}
+        {!status.last && (
+          <section className="story-promotion" aria-label="昇格">
+            {promotable ? (
+              <button
+                type="button"
+                className="btn btn-primary story-promote"
+                onClick={() => {
+                  const promoted = promotePhase();
+                  setProfile(promoted);
+                  setPhase(promotionStatus(promoted).phase);
+                }}
+              >
+                フェーズ {status.phase + 1} へ進む
+                <small>
+                  {STORY_PHASES[status.phase + 1].title} ·{" "}
+                  {PHASE_LABEL[status.phase + 1]}
+                </small>
+              </button>
+            ) : (
+              <p className="hint">
+                昇格の条件: {STORY_AXES.length}
+                ステージ全部のクリアと、このフェーズでオンライン対戦に
+                {status.winsNeeded}勝。
+                {status.axesLeft.length > 0 &&
+                  `ステージはあと${status.axesLeft.length}。`}
+                {status.winsLeft > 0 && `勝利はあと${status.winsLeft}。`}
+              </p>
+            )}
+          </section>
+        )}
+        {status.last && (
+          <p className="hint">
+            最後のフェーズです。ステージは何度でも遊べます。
+          </p>
+        )}
+        {!gate.ok && (
+          <p className="hint story-gate">
+            ランダムマッチまで、あと{gate.remaining}ステージ。
+            <span>フレンドとは、ホームの「対戦する」から今すぐ遊べます。</span>
+          </p>
+        )}
+        <button className="btn btn-ghost btn-home" onClick={onBack}>
+          <ArrowLeft size={16} /> ホームに戻る
+        </button>
+      </div>
+      {reading && (
+        <StoryReader
+          key={`${reading}-${phase}`}
+          axis={reading}
+          phase={phase}
+          part="all"
+          onDone={() => setReading(null)}
+          onClose={() => setReading(null)}
+        />
       )}
-      {status.last && (
-        <p className="hint">最後のフェーズです。ステージは何度でも遊べます。</p>
-      )}
-      {/* ランダムマッチはフェーズ1の全ステージをクリアすると開く(2026-09-30 本人の指示) */}
-      {!gate.ok && (
-        <p className="hint story-gate">
-          フェーズ1の{STORY_AXES.length}ステージをクリアすると、ランダムマッチが開きます。
-        </p>
-      )}
-      <button className="btn btn-ghost btn-home" onClick={onBack}>
-        <ArrowLeft size={16} /> ホームに戻る
-      </button>
     </div>
   );
 }
@@ -136,34 +283,49 @@ export function introKeyCloses(e) {
 
 /** ステージの前の1枚。相手の王の特徴を、そのフェーズの中身で */
 export function StoryIntro({ axis, phase, onStart, onBack }) {
+  const [reading, setReading] = useState(true);
+  const arc = storyArc(axis);
   const intro = stageIntro(axis, phase);
+  const rival = storyRival(axis, phase);
+  const lesson = storyLesson(axis, phase);
   // 開いたら「はじめる」に focus(画面は送らない。autoFocus だと札がスクロールして題が隠れていた)
   const startRef = useRef(null);
   useEffect(() => {
     try {
-      if (startRef.current && startRef.current.focus) startRef.current.focus({ preventScroll: true });
+      if (!reading && startRef.current && startRef.current.focus) startRef.current.focus({ preventScroll: true });
     } catch {
       /* focus できなくても押せる */
     }
-  }, [axis]);
+  }, [axis, reading]);
   useEffect(() => {
     const onKey = (e) => {
-      if (introKeyCloses(e)) onBack();
+      if (!reading && introKeyCloses(e)) onBack();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onBack]);
+  }, [onBack, reading]);
   if (!intro) return null;
   return (
-    <div className="modal-overlay">
-      <div className="modal-panel story-intro" role="dialog" aria-modal="true" aria-label="相手の王">
+    <>
+    <ChronicleStyles />
+    <div className="modal-overlay" style={reading ? { display: "none" } : undefined}>
+      <div className="modal-panel story-intro chronicle-rules" role="dialog" aria-modal="true" aria-label="相手の王">
         <div className="story-intro-head">
           <span className="skins-eyebrow">
             フェーズ {phase}・{PHASE_LABEL[phase]}・{stageSize(phase)}×{stageSize(phase)}
           </span>
-          <h3>{intro.title}</h3>
+          <h3>{storyEpisode(axis, phase)?.title}</h3>
+          <p className="chronicle-kicker">対局説明 · {intro.title}</p>
           <p className="story-intro-lead">{intro.lead}</p>
         </div>
+        {arc && <div className="chronicle-roster">{arc.characters.map(c => <div key={c.rank}><CardFace rank={c.rank} suit="spade" size="sm" skinId={false} /><span><b>{c.name}</b><small>{c.detail}</small></span></div>)}</div>}
+        <StoryPurpose episode={storyEpisode(axis, phase)} />
+        {rival && (
+          <div className="story-rival">
+            <div><b>{rival.quoteSpeaker || rival.name}</b><p className="story-rival-quote">{rival.quote}</p><small>{rival.aim}</small></div>
+          </div>
+        )}
+        {lesson && <p className="story-lesson">手札{lesson.handSize}枚から5枚を並べる。<span>使う札：{lesson.pool.join("・")}／時間制限なし</span></p>}
         {phase === 1 ? (
           // フェーズ1 は駒の動き方を盤の図で。図はルール(getLegalMoves)から描く MoveDiagram、文は MOVE_TEXT のまま。
           // 図は 9×9 の中央から描く(5×5 だと 2マス先までしか描けず、8 と 2・J と 4 などが同じ絵になっていた)
@@ -171,7 +333,7 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
             {intro.items.map((it) => (
               <li key={it.rank}>
                 <div className="story-move-art">
-                  <CardFace rank={it.rank} suit="spade" size="sm" />
+                  <CardFace rank={it.rank} suit="spade" size="sm" skinId={false} />
                   <MoveDiagram rank={it.rank} gridSize={9} />
                 </div>
                 <p>{it.text}</p>
@@ -204,6 +366,8 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
         </div>
       </div>
     </div>
+    {reading && <StoryReader key={`${axis}-${phase}`} axis={axis} phase={phase} onDone={() => setReading(false)} onClose={onBack} battle />}
+    </>
   );
 }
 
@@ -280,6 +444,21 @@ export function StoryInterruptMenu({ onInterrupt }) {
       </button>
       {confirm && (typeof document === "undefined" ? confirm : createPortal(confirm, portalRoot()))}
     </>
+  );
+}
+
+/**
+ * ストーリー2つ目の手当ての一言(src/game/story-coach.js。2026-10-01 本人の指示)。1文1行。
+ * サイコロと引き直しは見出しの下、陣は見出しの代わりに帯へ置く。無ければ何も出さない
+ */
+export function StoryCoachNote({ lines }) {
+  if (!lines || !lines.length) return null;
+  return (
+    <p className="story-coach" role="status">
+      {lines.map((line, i) => (
+        <span key={i}>{line}</span>
+      ))}
+    </p>
   );
 }
 

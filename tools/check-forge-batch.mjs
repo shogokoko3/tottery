@@ -119,8 +119,8 @@ assert.ok(
 // --- 画面の配線 ---
 assert.match(
   ui,
-  /\{\/\* 崩せるのはガチャの結果だけ[\s\S]*?\{collection\.pending\?\.results && \(\s*<ResultDismantle/,
-  "自動分解は pending(ガチャ)のときだけ。まとめ錬成の結果に付けない",
+  /\{\/\* 崩せるのはガチャの結果だけ[\s\S]*?\{!firstResults && collection\.pending\?\.results && \(\s*<ResultDismantle/,
+  "重複整理は通常のガチャだけ。初回召喚・まとめ錬成の結果には付けない",
 );
 assert.match(ui, /craftResult\?\.results/, "結果の並びは lastCraft.results も見る");
 assert.match(ui, /<AmountPicker/, "枚数を選ぶ部品を確認の中に置く");

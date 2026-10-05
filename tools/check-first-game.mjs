@@ -167,7 +167,7 @@ for (const king of MY) {
    ===================================================================== */
 console.log("\nB. 台本の通し");
 /** 1通りを最後まで指す。食い違いを文で返す(途中で止まっても例外にしない) */
-function playThrough(king, repick, finisher) {
+function playThrough(king, repick, finisher, miss = false) {
   const errs = [];
   const want = (cond, what) => {
     if (!cond) errs.push(what);
@@ -221,14 +221,20 @@ function playThrough(king, repick, finisher) {
     want(!canStepBack(tut, idxOf(m), m.a), "待つ札に「前の説明へ」が出る");
     m = runFoe(settle({ ...m, tutStep: idxOf(m) + 1 }));
     want(m.a.pieces.t6.row === 2 && m.a.pieces.t6.col === 4 && m.a.currentTurn === 0, "「つづき」のあと相手が e3 へ逃げない");
-    // 5枚目: 自分で考える1手。b4 は止まる・取らない手も止まる・「前の説明へ」は出ない
+    // 5枚目: どちらの札も取れる。外れたら実際の撃破を見て、次の手で読み直せる。
     const pick = active(m);
     if (!want(!!pick && pick.need && pick.need.choose && idxOf(m) === 4, "自分で考える1手の札が出ない")) return errs;
     want(movesLeft(tut, idxOf(m)) === 1, "2手目で「あと 1 手」にならない");
     want(!canStepBack(tut, idxOf(m), m.a), "自分で考える1手に「前の説明へ」が出る");
     r = press(m, moveOf(m.a, "t0", 1, 1));
-    want(same(r.blocked, textLines(pick.need.choose.wrong)), `b4 を取る手が止まらない(${JSON.stringify(r.blocked)})`);
-    r = press(m, moveOf(m.a, "t0", 2, 2));
+    want(!r.blocked && !r.m.a.pieces.t9.alive && !!r.m.a.captureReveal, "b4 を選んでも外れの札を取れない");
+    if (miss) {
+      m = runFoe(press(r.m, { type: "DISMISS_CAPTURE" }).m);
+      want(m.a.currentTurn === 0 && m.foeIdx === 2, "外れたあと相手が動かずに止まる");
+      want(same(stepLines(active(m), m.a), pick.afterMiss.text), "外れたあとの手がかりが出ない");
+      want(m.a.players[0].kingId === king && m.a.pieces[king].alive, "外れた分岐で自分の王が失われる");
+    }
+    r = press(m, moveOf(m.a, "t0", 2, miss ? 1 : 2));
     want(same(r.blocked, textLines(pick.need.choose.notCapture)), `取らない手が止まらない(${JSON.stringify(r.blocked)})`);
     for (const [id, row, col] of [["t4", 4, 0], ["t3", 2, 1], ["t2", 3, 4]]) {
       const mv = moveOf(m.a, id, row, col);
@@ -241,7 +247,7 @@ function playThrough(king, repick, finisher) {
     want(m.a.phase === "gameover" && m.a.winner === 0 && !m.a.adjudication, `勝ちで終わらない(${m.a.phase} ${m.a.winner})`);
     want(m.a.pieces[king].alive && m.a.pieces[king].isKing, "あなたの王が生きていない");
     m = settle({ ...m, a: reducer(m.a, { type: "DISMISS_CAPTURE" }) });
-    want(!!active(m) && active(m).end && same(stepLines(active(m), m.a), textLines(tut.steps[5].text)), "結びの札が出ない");
+    want(!!active(m) && active(m).end && same(stepLines(active(m), m.a), miss ? tut.steps[5].afterMiss.text : tut.steps[5].text), "選択に合う結びの札が出ない");
     // 結果のあなたの王の一行。王が自分で討つと表になる(reducer の名乗り)
     const struck = king === finisher;
     want(!!m.a.pieces[king].revealed === struck, "王が討ったときだけ表になる、が成り立たない");
@@ -254,13 +260,13 @@ function playThrough(king, repick, finisher) {
 const won = [];
 for (const king of MY)
   for (const repick of [false, true])
-    for (const finisher of ["t2", "t1"]) {
-      const label = `王=${king}${repick ? "(選び直し)" : ""}・${finisher === "t2" ? "4♦" : "5♥"} で討つ`;
-      const errs = playThrough(king, repick, finisher);
+    for (const finisher of ["t2", "t1"]) for (const miss of [false, true]) {
+      const label = `王=${king}${repick ? "(選び直し)" : ""}・${miss ? "外してから" : "一度で"} ${finisher === "t2" ? "4♦" : "5♥"} で討つ`;
+      const errs = playThrough(king, repick, finisher, miss);
       if (!errs.length) won.push(label);
       ok(label, errs.length === 0, errs.join(" / "));
     }
-ok("20 通りすべて勝ちまで通る", won.length === 20, `${won.length}/20`);
+ok("外れの分岐も含め40通りすべて勝ちまで通る", won.length === 40, `${won.length}/40`);
 
 /* =====================================================================
    C. 押せる操作をすべてたどる(深さ優先)
@@ -374,6 +380,7 @@ console.log("\nD. 文");
   for (const st of tut.steps) {
     for (const key of ["text", "picked", "nudge"]) lines.push(...textLines(st[key]));
     if (st.kingAlt) lines.push(...textLines(st.kingAlt.text));
+    if (st.afterMiss) lines.push(...textLines(st.afterMiss.text));
     const pick = st.need && st.need.choose;
     if (pick) for (const key of ["hint", "wrong", "notCapture"]) lines.push(...textLines(pick[key]));
   }

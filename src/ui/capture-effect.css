@@ -39,26 +39,41 @@
 }
 .capture-scene-title {
   position: absolute;
-  top: max(46px, env(safe-area-inset-top));
-  left: 12px;
-  right: 12px;
+  /* 実測した上部バー・カード・確認欄の間へ、描画側が top を設定する。 */
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  height: calc(1.3em + 16px);
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  color: #fce7ac;
+  white-space: nowrap;
+  color: #fff0c5;
   font:
-    600 clamp(28px, 6vw, 42px)/1.4 "Hiragino Mincho ProN",
+    700 clamp(26px, 6vw, 36px)/1.3 "Hiragino Mincho ProN",
     "Yu Mincho",
     serif;
-  letter-spacing: 0.14em;
-  text-shadow:
-    0 2px 8px #000,
-    0 0 24px #a87520;
+  letter-spacing: 0.12em;
+  border: 1px solid #d6b777a6;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #152438f5, #080f1bf5);
+  box-shadow: 0 6px 24px #0008;
+  text-shadow: 0 2px 3px #000;
   pointer-events: none;
+}
+.capture-scene-title:empty {
+  opacity: 0;
 }
 .capture-scene-title.is-royal {
   color: #ffe1a0;
-  text-shadow:
-    0 2px 8px #000,
-    0 0 30px #bd872d;
+  border-color: #f1cb7a;
+  box-shadow:
+    0 6px 24px #0008,
+    0 0 22px #bd872d45;
 }
 .capture-scene-footer {
   position: absolute;
@@ -141,15 +156,23 @@
 }
 @media (max-height: 500px) {
   .capture-scene-title {
-    top: 12px;
     font-size: 24px;
   }
   .capture-scene-footer {
-    min-height: 96px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 0;
     padding: 6px 10px;
   }
+  .capture-scene-count {
+    height: auto;
+    margin: 0;
+  }
   .capture-scene-footer .btn {
-    margin-top: 4px;
+    min-width: 120px;
+    margin: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -159,4 +182,53 @@
   .capture-scene-face {
     will-change: auto;
   }
+}
+
+/* 損失は金の輝きから分離し、暗い赤・喪失の文字・低い音で伝える。 */
+.capture-scene.is-loss .capture-scene-title {
+  color: #ffe6e1;
+  border-color: #af625c;
+  background: linear-gradient(145deg, #361f2bf5, #151320f5);
+  box-shadow: 0 6px 24px #0008;
+  font-size: clamp(21px, 5.5vw, 30px);
+  letter-spacing: 0.04em;
+  padding-inline: 14px;
+}
+.capture-scene.is-loss .card-face {
+  border-color: #b7746b;
+  box-shadow: 0 2px 8px #0009;
+}
+.capture-scene.is-loss .card-captain-fallback::after {
+  box-shadow: none;
+  border-color: #b7746b;
+}
+.capture-scene.is-loss .capture-scene-face .card-standard img,
+.capture-scene.is-loss .capture-scene-face .card-skinned img {
+  filter: saturate(0.6) brightness(0.75);
+}
+.capture-loss-stamp {
+  position: absolute;
+  bottom: 9px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-9deg);
+  padding: 3px 7px;
+  border: 1px solid #dda199;
+  color: #ffe5df;
+  background: #441d27ec;
+  font:
+    800 14px/1.3 system-ui,
+    sans-serif;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.capture-scene.is-loss .capture-scene-footer {
+  border-color: #975e5b;
+}
+.capture-scene.is-loss .capture-scene-count {
+  color: #e7b3ac;
+}
+.capture-scene.is-loss .capture-scene-footer .btn {
+  border-color: #ac7770;
+  background: #40222b;
+  color: #fff0ea;
 }

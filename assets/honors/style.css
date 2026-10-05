@@ -26,3 +26,15 @@
 .game-honor .finish-button{min-height:44px;bottom:2.5%;font-size:13px}
 .game-honor .stage-bottom{display:none}
 .game-honor .award-copy h1{font-size:clamp(24px,7vw,40px)}
+
+/* カード原画の数字を分離した通常版も、演出中にスートを読めるようにする。 */
+.card .rank{top:0;left:0;min-width:17px;padding:1px 2px 2px;border-radius:0 0 4px 0;background:#fff8e8;color:#142234;font:900 clamp(13px,1.6vw,20px)/1 Arial,Helvetica,sans-serif;text-align:center;text-shadow:none;box-shadow:1px 1px 3px #07111ab3}
+.card .rank.red-suit{color:#ad172e}
+.card .suit{font-family:Georgia,'Times New Roman',serif;font-size:.8em;line-height:1;margin-top:0}
+
+.card .suit.promoted{display:grid;place-items:center;width:1.1em;height:1.1em;margin:0 auto;border-radius:2px;background:#785015;color:#fff1aa;box-shadow:inset 0 0 0 .5px #edc968}.card .suit.promoted svg{display:block;width:.9em;height:.9em}
+
+/* iframe 内にも、ゲーム本体と同じ長押しの抑制を適用する。 */
+html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+img,video,canvas,svg{-webkit-user-drag:none;}
+input,textarea,[contenteditable=""],[contenteditable="true"],[contenteditable="plaintext-only"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}

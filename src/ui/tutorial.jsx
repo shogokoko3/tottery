@@ -319,6 +319,10 @@ export function TutorialSheet({
   nextLabel = null,
   // 「次へ」を ▼ で光らせる。盤に触るものが無く、押すのが釦だけの札(holdFoe)
   lit = false,
+  // 台本の文だけを出す(はじめの一局)。決まりの待ちの行(「▼ の付いたところを操作してください」
+  // 「どの駒で取るかは自由です」)は出さない。札の文が触る場所を言っていて、▼ の無い札
+  // (布陣を確定)では嘘になり、帯が背高になって盤の駒を隠した(2026-10-01 の見直し)。止めたときの一言は出す
+  plain = false,
 }) {
   const [confirm, setConfirm] = useState(false);
   // 前面の札は盤を隠さない場所(右か下)に置く。盤の駒の動きを見ながら読めるように。
@@ -413,7 +417,7 @@ export function TutorialSheet({
               <span className={i <= index ? "on" : ""} key={i} />
             ))}
           </div>
-          {left > 0 && <small className="tutorial-left">あと {left} 手</small>}
+          {left > 0 && <small className="tutorial-left">{plain ? "最短" : "あと"} {left} 手</small>}
         </div>
         {step.need && step.need.choose && (
           <p className="tutorial-choose-badge">自分で考える1手</p>
@@ -431,25 +435,27 @@ export function TutorialSheet({
         {step.moveHint && <MoveHintPanel hint={step.moveHint} />}
         {step.hold ? null : step.need ? (
           <div className="tutorial-wait-row">
-            <p className={`tutorial-wait ${nudge ? "tutorial-nudge" : ""}`}>
-              <Hand size={15} />{" "}
-              {/* 止めたときの一言は行の配列(tutorialGate)。2行あれば行ごとに積む */}
-              {nudge && textLines(nudge).length > 1 ? (
-                <span className="tutorial-wait-lines">
-                  {textLines(nudge).map((line, i) => (
-                    <span className="tutorial-line-row" key={i}>
-                      {line}
-                    </span>
-                  ))}
-                </span>
-              ) : nudge ? (
-                textLines(nudge)[0]
-              ) : step.need.choose ? (
-                "どの駒で取るかは自由です"
-              ) : (
-                "▼ の付いたところを操作してください"
-              )}
-            </p>
+            {(nudge || !plain) && (
+              <p className={`tutorial-wait ${nudge ? "tutorial-nudge" : ""}`}>
+                <Hand size={15} />{" "}
+                {/* 止めたときの一言は行の配列(tutorialGate)。2行あれば行ごとに積む */}
+                {nudge && textLines(nudge).length > 1 ? (
+                  <span className="tutorial-wait-lines">
+                    {textLines(nudge).map((line, i) => (
+                      <span className="tutorial-line-row" key={i}>
+                        {line}
+                      </span>
+                    ))}
+                  </span>
+                ) : nudge ? (
+                  textLines(nudge)[0]
+                ) : step.need.choose ? (
+                  "どの駒で取るかは自由です"
+                ) : (
+                  "▼ の付いたところを操作してください"
+                )}
+              </p>
+            )}
             {hint && (
               <p className="tutorial-hint-text">
                 {textLines(hint).map((line, i) =>

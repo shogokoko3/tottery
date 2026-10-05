@@ -1,0 +1,338 @@
+{
+  "mode": "built-in image_gen",
+  "intent": "generate",
+  "purpose": "7クラス × 3フェーズの見出し専用イラスト。紙芝居用の既存画像とは別素材。",
+  "format": "portrait 2:3; original PNG and production 400×600 WebP; full image displayed without crop",
+  "assets": [
+    {
+      "axis": "23",
+      "phase": 1,
+      "title": "最後の種袋",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Toma, young clean-shaven brown-haired male farmer in an off-white shirt and brown vest with a hoe; Mina, brown-haired braided young woman villager in a brown shawl and off-white blouse with a sickle. They are brother and sister, NOT romantic.\nScene for this phase: At a rustic barn doorway, the brother and sister firmly protect one small tied seed sack in front of them. Toma is tense and defiant, Mina watchful. Dawn amber through weathered wood, muted brown and gold. Hoe and sickle remain down at their sides. Tight joint waist-up portrait, not a wide scene.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-30d03577-4e90-4a98-95c1-eb2a8d8f021e.png",
+      "referenceImages": [
+        "assets/cards/standard/2.webp",
+        "assets/cards/standard/3.webp"
+      ],
+      "original": "assets/story/chapter-portraits/23-phase-1.png",
+      "output": "assets/story/chapter-portraits/23-phase-1.webp",
+      "sha256": "10ce10c9bdfcafd0b47806d48487d12881e1099361a05a2fc97f6face3057b75",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "23",
+      "phase": 2,
+      "title": "配る側の手",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Toma, young clean-shaven brown-haired male farmer in an off-white shirt and brown vest with a hoe; Mina, brown-haired braided young woman villager in a brown shawl and off-white blouse with a sickle. They are brother and sister, NOT romantic.\nScene for this phase: At a village grain distribution table, Toma holds a small wooden grain scoop and hesitates; Mina holds an empty wooden bowl, meeting the viewer with determined compassion. Both heads clearly visible. Cool wintry blue-grey daylight, a few stacked grain sacks behind them, earnest concern and responsibility. Tight joint waist-up portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-ef2b8d40-7176-46bf-ae2e-9ddea89bf02a.png",
+      "referenceImages": [
+        "assets/cards/standard/2.webp",
+        "assets/cards/standard/3.webp"
+      ],
+      "original": "assets/story/chapter-portraits/23-phase-2.png",
+      "output": "assets/story/chapter-portraits/23-phase-2.webp",
+      "sha256": "210c0bce9aefdf178011511eb58eeefe06c668328f41a2374250dfff6ab21317",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "23",
+      "phase": 3,
+      "title": "水の行き先",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Toma, young clean-shaven brown-haired male farmer in an off-white shirt and brown vest with a hoe; Mina, brown-haired braided young woman villager in a brown shawl and off-white blouse with a sickle. They are brother and sister, NOT romantic.\nScene for this phase: Beside a stone sluice in early spring, Toma braces a short wooden sluice lever and Mina safeguards a small seed pouch against her chest. Resolve and cautious hope in both faces. Pale green shoots, a narrow ribbon of flowing water, fresh dawn light, brown work clothes with mud. Tight joint waist-up portrait, no dramatic ending revealed.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-4d244d1c-a797-400e-9b53-6ac4540edc3b.png",
+      "referenceImages": [
+        "assets/cards/standard/2.webp",
+        "assets/cards/standard/3.webp"
+      ],
+      "original": "assets/story/chapter-portraits/23-phase-3.png",
+      "output": "assets/story/chapter-portraits/23-phase-3.webp",
+      "sha256": "2371b02c13e506ade052c2ad430ff39fe4ed62997d0575ae1b5b16abff308a9b",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "45",
+      "phase": 1,
+      "title": "義賊の値札",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Row, young clean-shaven brown-haired male thief wearing an olive-green hood and brown leather; Sera, dark-brown-haired young female thief wearing a charcoal hood and fitted brown leather. Preserve the two different hood colors and facial identities, daggers sheathed unless stated.\nScene for this phase: On a shadowed woodland road, Row guards a small seized wooden medicine box while Sera lifts one herb bundle with a troubled questioning expression. Row's initial swagger tempered by suspicion. Olive forest tones, amber rim light, faint broken cart wheel. Tight joint waist-up portrait, medicine readable as herbs without labels.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-2478341e-2cfb-4a0e-9a48-195de3388779.png",
+      "referenceImages": [
+        "assets/cards/standard/4.webp",
+        "assets/cards/standard/5.webp"
+      ],
+      "original": "assets/story/chapter-portraits/45-phase-1.png",
+      "output": "assets/story/chapter-portraits/45-phase-1.webp",
+      "sha256": "0e4710d9ddefa9054beca4a3f11071e83cc9fcecfd95b39e8d884bf2587ae634",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "45",
+      "phase": 2,
+      "title": "恩人の帳簿",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Row, young clean-shaven brown-haired male thief wearing an olive-green hood and brown leather; Sera, dark-brown-haired young female thief wearing a charcoal hood and fitted brown leather. Preserve the two different hood colors and facial identities, daggers sheathed unless stated.\nScene for this phase: At an old monastery by lantern light, Sera holds an open leather ledger in the lower center and Row holds a small coin purse while looking troubled. They confront their own complicity. Cool navy shadows and a single warm lantern, stone arch hint behind, hoods frame fully visible faces. Tight joint waist-up portrait, ledger pages have only indistinct marks.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-0c5f48cd-4af6-41b2-a543-89783bc0d61e.png",
+      "referenceImages": [
+        "assets/cards/standard/4.webp",
+        "assets/cards/standard/5.webp"
+      ],
+      "original": "assets/story/chapter-portraits/45-phase-2.png",
+      "output": "assets/story/chapter-portraits/45-phase-2.webp",
+      "sha256": "790c2988262760c87d4ba5fb3e95d369df2ab45ad4c1634be75e397bcc78847a",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "45",
+      "phase": 3,
+      "title": "返すための道",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Row, young clean-shaven brown-haired male thief wearing an olive-green hood and brown leather; Sera, dark-brown-haired young female thief wearing a charcoal hood and fitted brown leather. Preserve the two different hood colors and facial identities, daggers sheathed unless stated.\nScene for this phase: On a mountain relief route at pale morning, the two former thieves guard a secured medicine crate. Sera carries a rolled route map and Row steadies a leather strap, both vigilant and humble rather than triumphant. Misty blue-green mountain path and tiny cart silhouette behind, patched same original leather clothes. Tight joint waist-up portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-001f99b2-475b-47a9-8aab-3163b7843fc1.png",
+      "referenceImages": [
+        "assets/cards/standard/4.webp",
+        "assets/cards/standard/5.webp"
+      ],
+      "original": "assets/story/chapter-portraits/45-phase-3.png",
+      "output": "assets/story/chapter-portraits/45-phase-3.webp",
+      "sha256": "c663876978692355dd866c4f8bceee991355b45ec61e3ac778943745266631f1",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "67",
+      "phase": 1,
+      "title": "正しい封蝋",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Leon, clean-shaven young blond male knight with tousled short hair, and Erna, light-blond female knight with hair gathered back. Both wear silver steel plate over royal blue cloth. Preserve distinct faces and original outfits.\nScene for this phase: At a stone checkpoint bridge under cold overcast sky, Leon holds his sword vertically beside his shoulder while Erna holds a folded royal order with a small red wax seal at chest level. Duty and doubt, both eyes visible. Closed iron barrier faintly behind. Tight joint waist-up portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-8df17f91-d561-4f52-940b-8259a469a130.png",
+      "referenceImages": [
+        "assets/cards/standard/6.webp",
+        "assets/cards/standard/7.webp"
+      ],
+      "original": "assets/story/chapter-portraits/67-phase-1.png",
+      "output": "assets/story/chapter-portraits/67-phase-1.webp",
+      "sha256": "cde5638c9c6235ba062f4a2f15f41032159886db1e64c27003186402bb3c3e2f",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "67",
+      "phase": 2,
+      "title": "消せない報告",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Leon, clean-shaven young blond male knight with tousled short hair, and Erna, light-blond female knight with hair gathered back. Both wear silver steel plate over royal blue cloth. Preserve distinct faces and original outfits.\nScene for this phase: In a knight headquarters before an inquiry, Erna protectively holds several sealed reports while Leon has one hand on a sheathed sword and a tired conflicted expression. Candlelit amber faces against midnight-blue stone interior, no flamboyant pose. Keep armor and faces readable. Tight joint waist-up portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-967f2f84-6ad6-4d4c-baf9-c258d8475ab6.png",
+      "referenceImages": [
+        "assets/cards/standard/6.webp",
+        "assets/cards/standard/7.webp"
+      ],
+      "original": "assets/story/chapter-portraits/67-phase-2.png",
+      "output": "assets/story/chapter-portraits/67-phase-2.webp",
+      "sha256": "9cfeb7f68cc5c3185f679432ef47e0e3f47025db4bc70207e9b6c16f9422b61d",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "67",
+      "phase": 3,
+      "title": "剣を預ける相手",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Leon, clean-shaven young blond male knight with tousled short hair, and Erna, light-blond female knight with hair gathered back. Both wear silver steel plate over royal blue cloth. Preserve distinct faces and original outfits.\nScene for this phase: In a bright town square, Leon presents his sword lowered safely across his torso while Erna holds an open civic charter at waist level. A small new modest shoulder badge on the same silver armor and royal blue cloth. Responsible, calm, determined expressions, warm clear daylight and softly suggested town rooftops. Tight joint waist-up portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-1655c926-1452-40e2-b0b7-53bdbddb4a73.png",
+      "referenceImages": [
+        "assets/cards/standard/6.webp",
+        "assets/cards/standard/7.webp"
+      ],
+      "original": "assets/story/chapter-portraits/67-phase-3.png",
+      "output": "assets/story/chapter-portraits/67-phase-3.webp",
+      "sha256": "f5de2ce466e2e76f3a324c9e6835e4f736f5d084f501e18503b84b534772a6e1",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "89",
+      "phase": 1,
+      "title": "閉門までの百歩",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Gad: clean-shaven young male heavy shield infantryman wearing his steel helmet and teal neckcloth, with large angular teal shield. Bald: distinct middle-aged rugged bearded male heavy infantryman with short brown hair, NO helmet, dark steel armor and rust-red scarf, with a large two-handed axe. Exactly TWO men, exactly ONE helmet, worn by Gad. No extra helmet or duplicate head.\nScene for this phase: Before a closing fortress gate at dusk, Gad leans forward protectively with his teal shield low in front; Bald stands slightly behind holding the axe shaft upright, worried but resolute. Sunset amber faces with cold teal steel, a faint raised portcullis behind. Both complete heads side by side and fully inside frame. Tight joint waist-up portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-973cfc04-c0fb-4367-af18-d0bd7bce61d9.png",
+      "referenceImages": [
+        "assets/cards/standard/8.webp",
+        "assets/cards/standard/9.webp"
+      ],
+      "original": "assets/story/chapter-portraits/89-phase-1.png",
+      "output": "assets/story/chapter-portraits/89-phase-1.webp",
+      "sha256": "921fd24d1bb988d645f33c69561dc3fd05cf3f996531f3d87b0b4541bd2a7c1d",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "89",
+      "phase": 2,
+      "title": "盾の裏の名前",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Gad: clean-shaven young male heavy shield infantryman wearing his steel helmet and teal neckcloth, with large angular teal shield. Bald: distinct middle-aged rugged bearded male heavy infantryman with short brown hair, NO helmet, dark steel armor and rust-red scarf, with a large two-handed axe. Exactly TWO men, exactly ONE helmet, worn by Gad. No extra helmet or duplicate head.\nScene for this phase: In a dim barracks record room, Bald holds a folded gate log in front of his chest and faces the weight of responsibility; Gad rests a hand on his teal shield and watches him with sober resolve. Cool indigo stone, warm candle edge lighting, rolled records behind. Gad keeps helmet on, Bald bareheaded. Tight joint waist-up portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-0ced683c-a34e-477f-bd14-275a090b7b6d.png",
+      "referenceImages": [
+        "assets/cards/standard/8.webp",
+        "assets/cards/standard/9.webp"
+      ],
+      "original": "assets/story/chapter-portraits/89-phase-2.png",
+      "output": "assets/story/chapter-portraits/89-phase-2.webp",
+      "sha256": "9ed342c9a6838284eb4507e0f6e5565c67a8c6bcd3b977d7fa7a9bdd8cbc60fb",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "89",
+      "phase": 3,
+      "title": "壁を壊す斧",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Gad: clean-shaven young male heavy shield infantryman wearing his steel helmet and teal neckcloth, with large angular teal shield. Bald: distinct middle-aged rugged bearded male heavy infantryman with short brown hair, NO helmet, dark steel armor and rust-red scarf, with a large two-handed axe. Exactly TWO men, exactly ONE helmet, worn by Gad. No extra helmet or duplicate head.\nScene for this phase: At a rain-damaged fortress rescue passage, Gad braces his raised angular teal shield outward below face level while Bald readies his huge axe diagonally downward to clear a broken timber. Active rescue stance, rain mist and pale daylight, determination and protective urgency. Both heads remain wholly visible and uncovered by tools. Gad helmeted, Bald bareheaded. Tight joint waist-up portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-621db13e-2b0c-49b9-b316-53b9d0f04c5d.png",
+      "referenceImages": [
+        "assets/cards/standard/8.webp",
+        "assets/cards/standard/9.webp"
+      ],
+      "original": "assets/story/chapter-portraits/89-phase-3.png",
+      "output": "assets/story/chapter-portraits/89-phase-3.webp",
+      "sha256": "f2e5c2624199a68483a736dfcf8b33eeff448ca6e077910c6c810768622d7fb1",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "10",
+      "phase": 1,
+      "title": "鞍の下の手紙",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Ald, young clean-shaven male mounted knight in silver steel helmet and navy blue cloth, his dark-brown horse with brass harness and small blue pennant. Preserve knight identity, equipment and horse identity.\nScene for this phase: Ald pauses on a rainy border road, holding a folded sealed letter close to his chest while mounted. Regretful but steady eyes, cold rain with a warm horizon. Compose rider's complete helmeted head in upper center and the horse's complete head immediately below and to one side, including both ears and muzzle, enough breathing space all around. Portrait, not full horse body.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-28cf2537-87cb-4b8f-b084-d81dcc6edcef.png",
+      "referenceImages": [
+        "assets/cards/standard/10.webp"
+      ],
+      "original": "assets/story/chapter-portraits/10-phase-1.png",
+      "output": "assets/story/chapter-portraits/10-phase-1.webp",
+      "sha256": "e9ac24fa7f096f0c0c5f79382bdacbd8c7635c6d9d0f75d8e2807eaf2bcc04d3",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "10",
+      "phase": 2,
+      "title": "二つの旗の間",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Ald, young clean-shaven male mounted knight in silver steel helmet and navy blue cloth, his dark-brown horse with brass harness and small blue pennant. Preserve knight identity, equipment and horse identity.\nScene for this phase: Ald mounted at a border fort, tightly holding a new sealed dispatch pouch while looking over his shoulder with urgent concern. Two distant small contrasting cloth pennants behind him symbolize divided orders. Copper sunset and smoky grey fort. Compose complete helmeted head upper center and whole horse head below with visible ears and muzzle, not cropped. Compact rider-and-horse portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-7cb42eb8-9ec2-4a4a-b2bf-b15556f09c23.png",
+      "referenceImages": [
+        "assets/cards/standard/10.webp"
+      ],
+      "original": "assets/story/chapter-portraits/10-phase-2.png",
+      "output": "assets/story/chapter-portraits/10-phase-2.webp",
+      "sha256": "68b6d2d3795bed6d98be7862456a265855850696c85eaf6ba816cabe15410a4d",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "10",
+      "phase": 3,
+      "title": "一頭では届かない",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Ald, young clean-shaven male mounted knight in silver steel helmet and navy blue cloth, his dark-brown horse with brass harness and small blue pennant. Preserve knight identity, equipment and horse identity.\nScene for this phase: Ald and his horse pause at a mountain relay station in clear spring morning. Ald holds a rolled route map and rests his other gloved hand reassuringly on the horse's neck, tired but hopeful. A simple wooden relay post and mountain path behind, blue-green and warm ivory light. Whole rider head and whole horse head, ears and muzzle, inside the frame. Compact portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-d4a71665-1ad4-4f39-b92c-54d14b9a99ef.png",
+      "referenceImages": [
+        "assets/cards/standard/10.webp"
+      ],
+      "original": "assets/story/chapter-portraits/10-phase-3.png",
+      "output": "assets/story/chapter-portraits/10-phase-3.webp",
+      "sha256": "245b6f5c704bde00008ac13d28fc70b8462772ec1bb64d62e7bb09555bf5010d",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "jq",
+      "phase": 1,
+      "title": "届かない請願",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Yuris, young clean-shaven blond male squire in a black high-collared tunic and ivory cape with modest gold chain; Queen Lydia, long wavy ash-blond woman with her angular gold crown, ivory and wine-red regal clothes and a green-jewel scepter. Yuris has NO crown. Two distinct adults, no romantic pose.\nScene for this phase: In a white palace corridor, Yuris holds a bundle of folded petitions and Lydia rests one hand on them while keeping her green-jewel scepter low. Yuris uneasy, queen composed with concealed remorse. Ivory stone and wine-red drapery, muted afternoon light. Intimate joint waist-up portrait, both complete heads and entire queen's crown visible.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-0f2bba8f-e294-4dbd-9405-2d7fa566f3b6.png",
+      "referenceImages": [
+        "assets/cards/standard/J.webp",
+        "assets/cards/standard/Q.webp"
+      ],
+      "original": "assets/story/chapter-portraits/jq-phase-1.png",
+      "output": "assets/story/chapter-portraits/jq-phase-1.webp",
+      "sha256": "0832adde81f18eb4735a7a101dd3e507229be0d14e0e86ca18816094b7c05bc1",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "jq",
+      "phase": 2,
+      "title": "慈悲の支払先",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Yuris, young clean-shaven blond male squire in a black high-collared tunic and ivory cape with modest gold chain; Queen Lydia, long wavy ash-blond woman with her angular gold crown, ivory and wine-red regal clothes and a green-jewel scepter. Yuris has NO crown. Two distinct adults, no romantic pose.\nScene for this phase: In a candlelit palace budget chamber, Lydia has opened a small royal jewelry casket at waist height while Yuris holds an unrolled household inventory. Both thoughtful and burdened by the cost of relief. Burgundy and dark teal backdrop, warm gold light on faces. Same outfits, queen's complete crown visible, squire no crown. Tight joint waist-up portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-6ff874c6-0154-48ee-95c0-1cd54f95f475.png",
+      "referenceImages": [
+        "assets/cards/standard/J.webp",
+        "assets/cards/standard/Q.webp"
+      ],
+      "original": "assets/story/chapter-portraits/jq-phase-2.png",
+      "output": "assets/story/chapter-portraits/jq-phase-2.webp",
+      "sha256": "158f89f960d824c14475e0775a95dfbacb5dfd1e9a83541f914f8926919fb692",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "jq",
+      "phase": 3,
+      "title": "空いた椅子の主",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: Yuris, young clean-shaven blond male squire in a black high-collared tunic and ivory cape with modest gold chain; Queen Lydia, long wavy ash-blond woman with her angular gold crown, ivory and wine-red regal clothes and a green-jewel scepter. Yuris has NO crown. Two distinct adults, no romantic pose.\nScene for this phase: At the entrance to a public council hall, Lydia listens soberly with her hands open and empty, scepter lowered at side; Yuris carries an unsealed petition openly against his chest. Soft dawn daylight, one modest empty wooden chair faintly in background. Both face the assembly with humility and resolve. Tight joint waist-up portrait, entire crown and hair inside frame.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-63c029b0-24ff-43c2-98f7-0d9906e9c33e.png",
+      "referenceImages": [
+        "assets/cards/standard/J.webp",
+        "assets/cards/standard/Q.webp"
+      ],
+      "original": "assets/story/chapter-portraits/jq-phase-3.png",
+      "output": "assets/story/chapter-portraits/jq-phase-3.webp",
+      "sha256": "be1cd19e734e50c4e5f214f0501d878a240e32a9dd5d42b855c2ab65f07d76fe",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "k",
+      "phase": 1,
+      "title": "王印の持ち主",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: King Edric, young clean-shaven brown-haired man with angular gold crown, black high-collared gold-embroidered tunic, ivory cape, gold chain and sheathed sword. Preserve the young face, NOT an old bearded king.\nScene for this phase: Edric seated in front of a shadowed throne, one hand resting on a sealed tax order at waist level, looking troubled yet guarded. A few military bills and dark crimson drapery hint at pressure. Crown completely visible with generous headroom, upper torso and both shoulders inside frame, centered formal waist-up portrait. Burgundy shadows and restrained gold light.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-68d48fb5-9bf2-4bd4-9d7b-ebc5261aa43b.png",
+      "referenceImages": [
+        "assets/cards/standard/K.webp"
+      ],
+      "original": "assets/story/chapter-portraits/k-phase-1.png",
+      "output": "assets/story/chapter-portraits/k-phase-1.webp",
+      "sha256": "e9ba1a2a728f859c549f358cde37149ac0071c71b63527a12623ba5fe6d9889d",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "k",
+      "phase": 2,
+      "title": "返されない王印",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: King Edric, young clean-shaven brown-haired man with angular gold crown, black high-collared gold-embroidered tunic, ivory cape, gold chain and sheathed sword. Preserve the young face, NOT an old bearded king.\nScene for this phase: Edric standing at a war council table, holding a small royal seal loosely in an open palm and looking at it with troubled restraint. A folded map at the lower edge and faint blue banners, cool nocturnal teal with candlelit gold accents. Whole head, crown and shoulders inside frame, waist-up portrait, substantial safe margins.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-73bcdbe6-dd24-49f5-9a77-56dea6b3cc7d.png",
+      "referenceImages": [
+        "assets/cards/standard/K.webp"
+      ],
+      "original": "assets/story/chapter-portraits/k-phase-2.png",
+      "output": "assets/story/chapter-portraits/k-phase-2.webp",
+      "sha256": "3467d3c7f2856254b8f56c0f4d3bf5d7e37f44a40c565772eae59096f7c06c59",
+      "width": 400,
+      "height": 600
+    },
+    {
+      "axis": "k",
+      "phase": 3,
+      "title": "冠を置く場所",
+      "prompt": "Use case: illustration-story.\nAsset type: dedicated portrait chapter-heading thumbnail for a Japanese medieval fantasy mobile game, completely new art distinct from the landscape story scenes.\nPrimary request: one SINGLE standalone vertical illustration, 2:3 portrait aspect, approximately 1024x1536. This art will be displayed at only 104px wide, so prioritize recognisable large faces, clear silhouettes and clean storytelling props.\nInput images: character identity and painterly style references only; do NOT copy their extreme close crop.\nStyle: refined hand-painted anime-influenced medieval fantasy, textured brushwork, crisp expressive faces and readable armor/fabric, muted earthy navy/teal/gold palette, matching provided references.\nComposition: compact portrait, not a distant panorama; for pairs, both people equally important and close together, heads gently staggered vertically if useful. BOTH complete heads/hair/hoods/helmets/crowns within the central 80% of the image width and upper 65% of height, at least 8% safe margin at left/right/top. Neither face may be obscured by another person or a prop. Frame to waist with relaxed shoulder space; no body spilling off image edges. Keep bottom 12% low detail for a separate UI rank strip. Background simplified and subordinate. No extra foreground people.\nConstraints: no letters, numbers, text, typography, captions, card suits, decorative card frame, border, split panels, collage or watermark. No gore. Preserve faces and characteristic costume from reference images. New illustration only.\nSubject: King Edric, young clean-shaven brown-haired man with angular gold crown, black high-collared gold-embroidered tunic, ivory cape, gold chain and sheathed sword. Preserve the young face, NOT an old bearded king.\nScene for this phase: Edric in a dawn-lit reconstruction council chamber, now bareheaded, holding his angular gold crown in both hands at waist level, preparing to set it on the table. His face is steady and reflective rather than triumphant. Same black tunic and ivory cape; soft pale gold light and simple council table behind. Whole head, hair, shoulders and crown inside frame. Centered waist-up portrait.",
+      "source": "/Users/shogo/.codex/generated_images/01a0c357-7392-7cb0-b758-fab542818e77/exec-b9d37d69-5e24-4bf8-8bdf-30d4da5d68df.png",
+      "referenceImages": [
+        "assets/cards/standard/K.webp"
+      ],
+      "original": "assets/story/chapter-portraits/k-phase-3.png",
+      "output": "assets/story/chapter-portraits/k-phase-3.webp",
+      "sha256": "9c286cce88e404c5a563012c7a6d59a8178c0d7f54cb951c617a46cc457c9179",
+      "width": 400,
+      "height": 600
+    }
+  ]
+}

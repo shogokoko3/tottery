@@ -29,7 +29,7 @@
 .card-face > .foil-artwork {
   z-index: 0;
 }
-.card-face > .skin-card-mark,
+.card-face > .card-index,
 .card-face > .skin-king-mark {
   z-index: 2;
 }

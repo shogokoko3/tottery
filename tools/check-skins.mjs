@@ -304,10 +304,8 @@ try {
     assert.equal(html.includes("red-suit"), red);
     assert.match(html, /skin-king-mark/);
   }
-  // Normal J/Q/K have no captain image: their own/revealed faces still need
-  // the shared gold king treatment, without a custom text badge. Hidden enemies
-  // must not expose the role.
-  for (const rank of ["J", "Q", "K"]) {
+  // 全13種の通常キャラは王になっても同じ原画。公開された札だけを金枠にする。
+  for (const rank of ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]) {
     for (const suit of ["spade", "heart", "diamond", "club"]) {
       const king = { ...ace, rank, suit };
       for (const [viewer, revealed] of [[0, false], [1, true]]) {
@@ -320,12 +318,26 @@ try {
       assert.doesNotMatch(hidden, /card-captain|card-king-mark|king-badge| · 王/);
       assert.doesNotMatch(render({...king, isKing: false}, 0, [{}, {}]), /card-captain-fallback|card-king-mark/);
     }
-    const skinned = render({...ace, rank}, 0, [{[rank]: `angel-${rank.toLowerCase()}`}, {}]);
-    assert.match(skinned, /skin-king-mark/);
-    assert.doesNotMatch(skinned, /card-captain-fallback|class="card-king-mark"/);
+    if (["J", "Q", "K"].includes(rank)) {
+      const skinned = render({...ace, rank}, 0, [{[rank]: `angel-${rank.toLowerCase()}`}, {}]);
+      assert.match(skinned, /skin-king-mark/);
+      assert.doesNotMatch(skinned, /card-captain-fallback|class="card-king-mark"/);
+    }
   }
-  for (const rank of ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10"])
-    assert.doesNotMatch(render({...ace, rank}, 0, [{}, {}]), /card-captain-fallback|class="card-king-mark"/);
+  // 原画から数字を分離しても、全52枚の数字・スートが残り、裏札には漏れない。
+  for (const rank of ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]) {
+    const art = fs.readFileSync(`assets/cards/standard/${rank}.webp`).toString("base64");
+    for (const [suit, symbol] of [["spade", "♠"], ["heart", "♥"], ["diamond", "♦"], ["club", "♣"]]) {
+      const normal = {...ace, rank, suit, isKing: false};
+      const front = render(normal, 0, [{}, {}]);
+      assert.ok(front.includes(art), `${rank}${symbol}: 採用原画を表示`);
+      assert.ok(front.includes(`>${rank}<small>${symbol}</small>`), `${rank}${symbol}: 数字とスートを表示`);
+      assert.equal(front.includes("red-suit"), ["heart", "diamond"].includes(suit));
+      const hidden = render(normal, 1, [{}, {}]);
+      assert.doesNotMatch(hidden, /card-index|card-standard|card-captain/);
+      assert.ok(!hidden.includes(art), "相手の伏せ札に原画を含めない");
+    }
+  }
   assert.match(
     render(ace, 0, [{ A: "genie-magician" }, {}]),
     /data-skin="genie-magician"/,
@@ -353,7 +365,7 @@ for (const skin of SKINS)
   }
 if (SKINS.some((s) => !s.video && !(s.videos?.swap && s.videos?.capture)))
   throw new Error("動画の無いスキンがある");
-console.log("盤面の表裏・所有者・数字・Aの4スート・全35画像と18本の動画: OK");
+console.log("通常52枚の原画・数字・4スート・王の枠・伏せ札、スキン画像と動画: OK");
 
 // 開示演出の決まり。前兆は束の中でいちばん強い格(SSR は低確率で SR に抑える)、
 // 昇格は R→SR→SSR だが素で出ることもある。乱数は使わず束の中身から決める

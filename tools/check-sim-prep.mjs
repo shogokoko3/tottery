@@ -120,7 +120,7 @@ const start = (ruleVersion) =>
   assert.ok(/export function DiceDuo\(/.test(dice) && /振る残り時間/.test(dice), "両者のサイコロと残り時間");
   const setup = readFileSync(new URL("../src/ui/setup.jsx", import.meta.url), "utf8");
   assert.ok(/export function SetupOrderNote\(/.test(setup) && /あなたは先攻/.test(setup) && /あなたは後攻/.test(setup), "布陣中に先攻・後攻");
-  assert.equal((setup.match(/<SetupOrderNote state=\{state\} pIdx=\{pIdx\} \/>/g) || []).length, 2, "配置と王選びの両方に出す");
+  assert.equal((setup.match(/<SetupOrderNote state=\{state\} pIdx=\{pIdx\}(?: plain=\{quiet\})? \/>/g) || []).length, 2, "配置と王選びの両方に出す(王選びは簡潔な表示にも対応)");
 }
 
 console.log("版18 同時のサイコロ／先攻→後攻の引き直し: 旧版そのまま・CPU・配線 OK");

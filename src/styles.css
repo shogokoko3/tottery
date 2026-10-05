@@ -650,12 +650,89 @@ h3 {
   object-fit: fill;
   display: block;
 }
+/* 通常版とスキン共通。数字・スートは絵に焼き込まず、26px幅でも鮮明に描く。 */
+.card-standard {
+  border: 1px solid #b8aa89;
+  background: #101b24;
+}
+.card-face.card-standard img {
+  object-fit: cover;
+}
+.card-index {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  min-width: 17px;
+  padding: 1px 2px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 0 4px 0;
+  background: #fff8e8;
+  color: #142234;
+  box-shadow: 1px 1px 3px #07111ab3;
+  font: 900 15px/1 Arial, Helvetica, sans-serif;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -.04em;
+  text-shadow: none;
+  pointer-events: none;
+}
+.card-index small {
+  display: block;
+  font: 700 12px/1 Georgia, "Times New Roman", serif;
+  letter-spacing: 0;
+}
+.card-index.red-suit {
+  color: #ad172e;
+}
+/* 宮殿の昇格はスートの位置で示す。盤の外に別の「宮」札を足さない。 */
+.card-index .card-suit-promoted {
+  display: grid;
+  place-items: center;
+  width: 1.1em;
+  height: 1.1em;
+  color: #fff1aa;
+  background: #785015;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 .5px #edc968;
+}
+.card-suit-promoted svg {
+  display: block;
+  width: .9em;
+  height: .9em;
+}
+.card-face[data-size="xs"] .card-index {
+  min-width: 12px;
+  padding: 0 1px 1px;
+  font-size: 11px;
+  border-radius: 0 0 3px 0;
+}
+.card-face[data-size="xs"] .card-index small { font-size: 9px; }
+.card-face[data-size="sm"] .card-index {
+  min-width: 14px;
+  padding: 1px 1px 2px;
+  font-size: 13px;
+}
+.card-face[data-size="sm"] .card-index small { font-size: 10px; }
+.card-face[data-size="tray"] .card-index {
+  min-width: 15px;
+  padding: 1px 1px 2px;
+  font-size: 13px;
+}
+.card-face[data-size="tray"] .card-index small { font-size: 11px; }
+.card-face[data-size="lg"] .card-index {
+  min-width: 25px;
+  padding: 2px 3px 3px;
+  font-size: 23px;
+}
+.card-face[data-size="lg"] .card-index small { font-size: 18px; }
 /* 王(隊長)は縁を金色に光らせる */
 .card-captain {
   box-shadow: 0 0 10px rgba(212, 175, 55, 0.7);
 }
-/* J/Q/K have no captain artwork. Match the existing gold rim and shared
-   captain glow, without adding a separate badge or covering the illustration. */
+/* 通常キャラの王。原画を変えずに、金の縁と光で役割を示す。 */
 .card-captain-fallback::after {
   content: "";
   position: absolute;
@@ -973,6 +1050,23 @@ h3 {
 .captured-card {
   cursor: pointer;
 }
+.captured-card-face {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  vertical-align: top;
+}
+.captured-card-note {
+  color: #f1d596;
+  font: 700 9px/1.3 Arial, "Hiragino Sans", sans-serif;
+  white-space: nowrap;
+}
+.card-origin-note {
+  color: #d5deed;
+  font: 12px/1.7 Arial, "Hiragino Sans", sans-serif;
+}
+.card-origin-note b { color: #f1d596; }
 .discard-panel {
   margin: 14px 0;
 }
@@ -6501,7 +6595,7 @@ body:has(.skin-overlay) {
   border-radius: 3px;
   white-space: nowrap;
 }
-/* 空・宮殿で現れた札の専用のしるし */
+/* 空で変身した札のしるし(宮殿の昇格はスート欄で示す) */
 .mark-badge {
   position: absolute;
   bottom: -4px;
@@ -6517,10 +6611,6 @@ body:has(.skin-overlay) {
 .mark-sky {
   background: #5a48b8;
   color: #f1edff;
-}
-.mark-palace {
-  background: var(--gold);
-  color: #1b1405;
 }
 
 /* 海のエリア: 引き寄せは跳ばずに滑らせる(通常の移動は1マスずつ止まる) */
@@ -7566,6 +7656,12 @@ p.hint > span.gem-shop-diag {
   display: inline-flex;
   gap: 2px;
   vertical-align: middle;
+}
+/* 時間制限なしの対局(フェーズ1 のストーリー)。止まった数字の代わりの小さな一言 */
+.clock-time.clock-time-untimed {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
 }
 .clock-pips-inline i {
   width: 4px;
@@ -8817,17 +8913,9 @@ p.hint > span.gem-shop-diag {
   color: var(--gold-soft);
 }
 
-/* 絵を長押ししたときに、iOS の「共有…／写真に保存／コピー」が出ないようにする
-   (2026-09-28 本人の報告)。アプリの中の絵は保存させるものではないし、
-   長押しは対局では「駒をつかむ」「推理メモ」に使うので、この札が出ると操作の邪魔になる。
-
-   **根(.tottery-root)にまとめて効かせる。** 絵ごとに書くと、新しい絵を足したときに
-   また出てしまう。callout は受け継ぐので、根で切れば中の絵すべてに効く。
-   文字が選べるかどうか(user-select)はここでは触らない —
-   合言葉などを写せなくなるため。
-
-   pointer-events は触らない。切ると絵を押して選ぶところ(ガチャの結果・スキンの一覧)が
-   反応しなくなる。callout を切るだけで、長押しの札は出なくなる */
+/* 画面単体のプレビューでも絵の保存メニューを出さない。
+   ゲーム全体の文字選択とメニューの抑制は index.template.html と
+   src/ui/native-interactions.js。入力欄は編集・貼り付けを許可する。 */
 .tottery-root {
   -webkit-touch-callout: none;
 }
@@ -9340,6 +9428,41 @@ svg {
 .story-wrap {
   gap: 14px;
 }
+.story-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-dim);
+}
+.story-progress > div { display: flex; flex: 1; gap: 5px; }
+.story-progress i { flex: 1; height: 4px; border-radius: 4px; background: var(--line); }
+.story-progress i.is-cleared { background: var(--gold); }
+.story-progress i.is-next { background: var(--gold-soft); opacity: 0.5; }
+.story-stage-rival { color: var(--gold-soft); font-size: 12px; }
+.story-title-goal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 20px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: radial-gradient(ellipse at top, #94743720, transparent 80%);
+  text-align: center;
+}
+.story-title-goal p { margin: 0; font-size: 13px; color: var(--gold-soft); }
+.story-title-goal small { color: var(--text-dim); line-height: 1.6; }
+.story-rival { display: flex; align-items: center; gap: 14px; text-align: left; }
+.story-rival > .card-face { flex: none; }
+.story-rival > div { min-width: 0; }
+.story-rival b { color: var(--gold-soft); font-size: 13px; }
+.story-rival small { color: var(--text-dim); font-size: 12px; line-height: 1.6; }
+.story-rival-quote { margin: 5px 0; font-size: 14px; line-height: 1.7; color: var(--gold-soft); }
+.story-lesson { margin: 0; color: var(--text); font-size: 12px; line-height: 1.7; }
+.story-lesson span, .story-gate span { display: block; color: var(--text-dim); }
+.story-loss-note { padding: 12px; border: 1px solid var(--line); border-radius: 12px; text-align: left; }
+.story-loss-note b { font-size: 14px; line-height: 1.7; font-weight: 500; }
+.story-loss-note p { margin: 6px 0 0; color: var(--text-dim); font-size: 13px; line-height: 1.7; }
 .story-head {
   display: flex;
   flex-direction: column;
@@ -9443,6 +9566,14 @@ svg {
   flex-direction: column;
   gap: 14px;
   max-width: 420px;
+  max-height: calc(100dvh - 40px - var(--top-bar-h, 0px) - var(--tutorial-band, 0px));
+  overflow-y: auto;
+}
+.story-intro .setup-actions { position: sticky; bottom: -24px; padding: 12px 0; background: #0b1729; z-index: 1; }
+@media (max-width: 390px) {
+  .story-stage { gap: 8px; padding: 10px 8px; }
+  .story-stage-ranks .card-face { width: 29px !important; height: 39px !important; }
+  .story-stage-reward { max-width: 54px; white-space: normal; text-align: right; }
 }
 .story-intro-head {
   display: flex;
@@ -9496,6 +9627,45 @@ svg {
   color: var(--gold);
   font-size: 14px;
   letter-spacing: 0.04em;
+}
+/* ストーリー2つ目の手当ての一言(2026-10-01 本人の指示)。サイコロと引き直しは見出しの下に、1文1行で。
+   金の縁で「案内」と分かるように。行は1文ずつ渡す(読点の途中で割らない) */
+.story-coach {
+  margin: 2px auto 8px;
+  padding: 6px 12px;
+  max-width: 360px;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 10px;
+  background: rgba(8, 17, 32, 0.72);
+  color: var(--gold-soft);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+.story-coach span {
+  display: block;
+  word-break: auto-phrase;
+}
+/* 陣では見出しの代わりに帯(貼り付く .setup-head)の中へ。盤と手札と釦を1画面に収めるため小さめに */
+.setup-wrap-compact .setup-head .story-coach {
+  margin: 0 auto 4px;
+  padding: 4px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+/* 一言のぶん、背の低い端末では盤を少し詰める(375×667 で「王を選ぶ」まで1画面) */
+.setup-wrap-compact:has(.story-coach) .mini-board {
+  width: min(78vw, 320px, calc(100dvh - 440px));
+}
+@media (max-width: 340px) {
+  .story-coach {
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+  .setup-wrap-compact .setup-head .story-coach {
+    font-size: 12px;
+  }
 }
 
 /* 読み上げにだけ渡す文字(見た目には出さない) */
@@ -9721,4 +9891,204 @@ svg {
 .gameover-panel > .gameover-gate {
   flex: none;
   margin-top: 10px;
+}
+
+
+/* 9×9でも表裏・スキンによらず陣営を示す。色に加えて自／敵を併記。 */
+.faction-0 { --faction-edge: #ef967e; --faction-ink: #722e25; }
+.faction-1 { --faction-edge: #81d7e2; --faction-ink: #155665; }
+.piece-faction { isolation: isolate; border-radius: 4px; }
+.piece-faction::after {
+  content: ""; position: absolute; inset: -1px;
+  border: 2px solid var(--faction-edge); border-radius: 4px;
+  box-shadow: 0 0 0 1px #08121e; pointer-events: none; z-index: 3;
+}
+.piece-faction.piece-selected::after {
+  border-color: #fff3ba;
+  box-shadow: 0 0 0 2px #a77925;
+}
+.piece-faction-mark {
+  position: absolute; top: 0; right: 0; z-index: 4;
+  min-width: 15px; height: 16px; padding: 1px 2px;
+  display: grid; place-items: center;
+  color: #fff; background: var(--faction-ink);
+  border: 1px solid var(--faction-edge); border-radius: 0 3px 0 5px;
+  font: 800 11px/1 system-ui, sans-serif;
+  pointer-events: none;
+}
+.piece-enemy .piece-faction-mark { border-radius: 0 3px 0 0; }
+.piece-faction[data-size="xs"] .piece-faction-mark {
+  min-width: 11px; height: 12px; padding: 0; font-size: 9px;
+}
+.cell .piece-faction[data-size="xs"] {
+  width: 26px; height: 35px;
+  max-width: calc(100% - 6px); max-height: calc(100% - 6px);
+}
+.cell .piece-faction > .card-face,
+.cell .piece-faction > .card-back { max-width: none; max-height: none; }
+.cell .piece-faction[data-size="xs"] > .card-face,
+.cell .piece-faction[data-size="xs"] > .card-back { width: 100% !important; height: 100% !important; }
+.piece-faction > .revealed-badge,
+.piece-faction > .known-badge,
+.piece-faction > .mark-badge,
+.piece-faction > .king-badge,
+.piece-faction > .frozen-badge { z-index: 5; }
+.piece-faction > .revealed-badge { background: var(--faction-ink); color: #fff; white-space: nowrap; }
+.piece-faction-legend {
+  display: flex; justify-content: center; gap: 20px;
+  margin: 0 0 7px; color: #e0e6ed; font: 11px/1.4 system-ui, sans-serif;
+}
+.piece-faction-legend > span { display: flex; align-items: center; gap: 5px; }
+.piece-faction-legend b {
+  padding: 1px 3px; border: 1px solid var(--faction-edge);
+  border-radius: 3px; background: var(--faction-ink); color: #fff;
+}
+/* 相手が名乗りを上げても、こちらの損失を金色の輝きで祝わない。 */
+.piece-enemy.piece-unveiled { animation-name: piece-unveil-enemy; }
+@keyframes piece-unveil-enemy {
+  from { transform: rotateY(90deg); }
+  to { transform: rotateY(0); }
+}
+/* 記録再生の損失も、光の輪ではなく切れ目と落下で示す。 */
+.fx-defeat-mine {
+  background: #491e26aa; border-radius: 3px; inset: 10%;
+  animation-name: fx-loss-fall;
+}
+.fx-defeat-mine::before {
+  inset: 15% 45%; background: #df8277; box-shadow: none;
+  border-radius: 0; transform: rotate(38deg); animation: none;
+}
+.fx-defeat-mine::after { display: none; }
+@keyframes fx-loss-fall {
+  0% { opacity: 0; transform: translateY(0); }
+  20% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(18px); }
+}
+
+.board-outer:has(> .piece-faction-legend) { flex-direction: column; align-items: center; }
+.board-outer:has(> .piece-faction-legend) > .area-notice-slot { top: 29px; }
+.piece-faction[data-size="xs"] .piece-faction-mark { right: -2px; }
+.piece-faction[data-size="xs"] > .card-skinned.card-captain { border-width: 1px; }
+
+/* 状態の札は右下へ。数字・スートが並ぶ左端を空ける。 */
+.piece-faction[data-size="xs"] > .revealed-badge,
+.piece-faction[data-size="xs"] > .known-badge,
+.piece-faction[data-size="xs"] > .mark-badge {
+  left: auto; right: -2px; bottom: -2px; transform: none;
+  width: 11px; padding: 0; border: 1px solid #c4cfdd88;
+  font: 700 8px/1 system-ui, sans-serif; border-radius: 2px; text-align: center;
+}
+
+.cell .piece-faction[data-size="md"] {
+  width: 50px; height: 67px;
+  max-width: calc(100% - 10px); max-height: calc(100% - 10px);
+}
+.cell .piece-faction[data-size="md"] > .card-face,
+.cell .piece-faction[data-size="md"] > .card-back { width: 100% !important; height: 100% !important; }
+
+/* 盤面では数字・スート・陣営を左の情報帯へ。イラストには重ねない。 */
+.cell .piece-faction {
+  --piece-rail: 15px;
+  --piece-tag-height: 12px;
+  --piece-rank-font: 15px;
+  --piece-suit-font: 11px;
+}
+.cell .piece-faction[data-size="xs"] {
+  --piece-rail: 11px;
+  --piece-tag-height: 8px;
+  --piece-rank-font: 11px;
+  --piece-suit-font: 8px;
+  width: 40px;
+  height: 48px;
+  max-width: calc(100% - 3px);
+  max-height: calc(100% - 3px);
+}
+.cell .piece-faction[data-size="md"] {
+  width: 66px;
+  height: 78px;
+  max-width: calc(100% - 6px);
+  max-height: calc(100% - 6px);
+}
+.cell .piece-faction > .card-face,
+.cell .piece-faction > .card-back {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: 3px;
+  padding-left: var(--piece-rail);
+  background: linear-gradient(to right, #f6efdf 0 var(--piece-rail), #111b28 var(--piece-rail));
+  box-shadow: none;
+}
+.cell .piece-faction > .card-face > img,
+.cell .piece-faction > .card-face > .foil-artwork,
+.cell .piece-faction > .card-back > img {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  object-fit: contain;
+  border-radius: 0 3px 3px 0;
+}
+.cell .piece-faction .foil-artwork > img { object-fit: contain; }
+.cell .piece-faction .card-index {
+  left: 0;
+  top: 0;
+  width: var(--piece-rail);
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--piece-rank-font);
+  line-height: 1;
+  letter-spacing: -.06em;
+  gap: 0;
+}
+.cell .piece-faction .card-index small { font-size: var(--piece-suit-font); }
+.cell .piece-faction .card-suit-promoted { width: 1em; height: 1em; }
+.cell .piece-faction .skin-king-mark { display: none; }
+.cell .piece-faction::after {
+  inset: -1px;
+  border-width: 1px;
+  border-radius: 4px;
+  box-shadow: none;
+}
+.cell .piece-faction.piece-selected::after {
+  border-color: #fff3ba;
+  box-shadow: 0 0 0 1px #a77925;
+}
+.cell .piece-faction > .piece-faction-mark {
+  top: auto;
+  bottom: -1px;
+  left: 0;
+  right: auto;
+  width: var(--piece-rail);
+  min-width: 0;
+  height: var(--piece-tag-height);
+  padding: 0;
+  border: 0;
+  border-radius: 0 0 0 3px;
+  font-size: 10px;
+  line-height: 1;
+}
+.cell .piece-faction[data-size="xs"] > .piece-faction-mark { font-size: 8px; }
+.cell .piece-faction[data-size="xs"] > .revealed-badge,
+.cell .piece-faction[data-size="xs"] > .known-badge,
+.cell .piece-faction[data-size="xs"] > .mark-badge {
+  width: 10px;
+  min-width: 0;
+  height: 9px;
+  right: -1px;
+  bottom: -1px;
+  border-width: .5px;
+  font-size: 8px;
+}
+.cell .piece-faction .card-captain-fallback::after {
+  left: var(--piece-rail);
+  --captain-rim: 1px;
+}
+
+.cell .piece-faction > .card-back {
+  background: linear-gradient(to right, var(--faction-ink) 0 var(--piece-rail), #111b28 var(--piece-rail));
 }

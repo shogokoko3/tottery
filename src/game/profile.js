@@ -12,6 +12,7 @@
  */
 
 import { hasIcon } from "./icons.js";
+import { applyStoryReviewGrant } from "./story-review-grant.js";
 import { normalizeCard } from "./profile-card.js";
 import { findTitle, hasTitle, newlyEarned } from "./titles.js";
 import { SECRETS } from "./secrets.js";
@@ -325,8 +326,16 @@ export function promotePhase() {
 }
 
 export function loadProfile() {
-  const saved = read(KEY) || read(OLD_KEY);
-  if (!saved) return { ...EMPTY };
+  const stored = read(KEY) || read(OLD_KEY);
+  if (!stored) return { ...EMPTY };
+  const saved = applyStoryReviewGrant(stored);
+  if (saved !== stored) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(saved));
+    } catch {
+      // 保存できない環境でも、この読み取りでは確認用の進行を利用できる。
+    }
+  }
   const savedDraws = Number(saved.draws);
   // 対戦だけの数と、その勝ち・引き分け。古い保存には無いので、全体の数から
   // 見積もる(対戦の数を超えない)。以後は recordGame が対戦だけを数える
@@ -400,6 +409,9 @@ export function loadProfile() {
     phaseEpoch: PHASE_EPOCH,
     phaseWins: normalizePhaseWins(saved.phaseWins),
     story: normalizeStory(saved.story),
+    ...(typeof saved.storyReviewGrant === "string"
+      ? { storyReviewGrant: saved.storyReviewGrant }
+      : {}),
     letters: Array.isArray(saved.letters)
       ? saved.letters.filter((x) => typeof x === "string")
       : [],
@@ -897,7 +909,7 @@ export function markBonusTaken(at) {
 export function adoptUid(uid) {
   const profile = loadProfile();
   if (!uid || profile.id === uid) return profile;
-  const next = { ...profile, id: uid };
+  const next = applyStoryReviewGrant({ ...profile, id: uid });
   saveProfile(next);
   return next;
 }

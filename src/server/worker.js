@@ -12,7 +12,9 @@ import { verifyAppleTransaction } from "./applejws.js";
 import { minAppBuild, updateUrl } from "./app-version.js";
 import { seasonAt, seasonRewards } from "../game/season.js";
 import { Friends } from "./friends.js";
+import { legacyLoginIndex } from "../game/login-bonus.js";
 import { chapterFromLegacyId, isRewardChapter } from "../game/tutorial-reward.js";
+import { validWinChanceReward, winChanceFromLegacyId } from "../game/win-chance.js";
 import { PHASES, isStoryAxis } from "../game/phase.js";
 
 const json = (data, status = 200) =>
@@ -165,6 +167,11 @@ async function handleApi(request, env, url) {
       const eventId = (x) => (typeof x === "string" && /^[\w:.-]{1,128}$/.test(x) ? x : null);
       if (url.pathname.startsWith("/api/wallet/")) {
         const wop = url.pathname.slice("/api/wallet/".length);
+        if (wop === "login-status") return call("wallet-login-status");
+        if (wop === "login-reward")
+          return typeof body.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.day)
+            ? call("wallet-login-reward", { day: body.day })
+            : json({ error: "ログイン報酬の日付が正しくありません。" }, 400);
         if (wop === "summary") return call("wallet-summary");
         // 機種変更の引き継ぎ。端末の記録の控えを預かる・返す(中身は見ない)
         if (wop === "backup-save" && typeof body.blob === "string" && body.blob.length <= BACKUP_MAX)
@@ -179,6 +186,10 @@ async function handleApi(request, env, url) {
         // サーバーが引く(2026-09-18)。debit は配布済みのビルドが使うので残す
         if (wop === "pull" && eventId(body.id) && (body.n === 1 || body.n === 10))
           return call("wallet-pull", { id: body.id, n: body.n });
+        if (wop === "win-chance-reward")
+          return validWinChanceReward(body.day, body.done)
+            ? call("wallet-win-chance-reward", { day: body.day, done: body.done })
+            : json({ error: "勝利報酬の指定が正しくありません。" }, 400);
         // ストーリーのステージの褒美。端末は「どのフェーズの何の軸」だけ送る
         if (wop === "story-reward")
           return PHASES.includes(body.phase) && isStoryAxis(body.axis)
@@ -200,6 +211,16 @@ async function handleApi(request, env, url) {
               ? call("wallet-tutorial-reward", { chapter })
               : json({ error: "話の番号が正しくありません。" }, 400);
           }
+          if (body.id.startsWith("win-chance:")) {
+            const reward = winChanceFromLegacyId(body.id);
+            return reward
+              ? call("wallet-win-chance-reward", reward)
+              : json({ error: "勝利報酬の指定が正しくありません。" }, 400);
+          }
+          if (body.id.startsWith("login:"))
+            return legacyLoginIndex(body.id) !== null
+              ? call("wallet-login-legacy", { id: body.id })
+              : json({ error: "ログイン報酬の指定が正しくありません。" }, 400);
           return call("wallet-credit", { id: body.id, n: body.n, kind: "earn" });
         }
         // 記念配布(src/game/campaigns.js)。枚数はサーバーが台帳から読む。uid ごとに一度きり
@@ -467,12 +488,16 @@ export class SeasonLedger {
             friend: args.target === uid || fr.isFriend(uid, args.target),
           };
         }
+        if (op === "wallet-login-status") return w.loginStatus(uid, now);
+        if (op === "wallet-login-reward") return w.loginReward(uid, args.day, now);
+        if (op === "wallet-login-legacy") return w.legacyLoginReward(uid, args.id, now);
         if (op === "wallet-summary") return w.summary(uid, now);
         if (op === "wallet-backup-save") return w.saveBackup(uid, args.blob, now);
         if (op === "wallet-backup-load") return w.loadBackup(uid);
         if (op === "wallet-debit") return w.debit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-pull") return w.pull(uid, args.id, args.n, now);
         if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
+        if (op === "wallet-win-chance-reward") return w.winChanceReward(uid, args.day, args.done, now);
         if (op === "wallet-tutorial-reward") return w.tutorialReward(uid, args.chapter, now);
         if (op === "wallet-story-reward") return w.storyReward(uid, args.phase, args.axis, now);
         if (op === "wallet-campaign") return w.campaign(uid, args.campaign, now);

@@ -14,9 +14,10 @@
  *
  * 決めごとの控え(未定): ステージごとの xp の量。いまは STORY_XP で仮置き
  */
-import { MOVE_TEXT, KING_TEXT } from "./constants.js";
+import { storyArc, storyEpisode } from "./story-narrative.js";
+import { MOVE_TEXT, KING_TEXT, SUIT_SYMBOL } from "./constants.js";
 import { AREA_BY_RANK, AREA_INFO } from "./areas.js";
-import { buildDeck, shuffle } from "./board.js";
+import { buildDeck, shuffle, squareName } from "./board.js";
 import { josekiDeck } from "./cpu-joseki.js";
 import { STORY_TICKETS, normalizePhase, normalizeStory, phaseOf, rulesForPhase, setupFlagsForPhase, stageSize } from "./phase.js";
 
@@ -36,6 +37,70 @@ export const STORY_XP = 300;
 
 export function stageOf(axis) {
   return STORY_STAGES.find((s) => s.axis === axis) || null;
+}
+
+/** フェーズ1は、この相手までに出会った札で遊ぶ。手札と予備札も一緒に調整する。 */
+export function storyLesson(axis, phase = 1) {
+  const index = STORY_STAGES.findIndex((s) => s.axis === axis);
+  if (index < 0 || normalizePhase(phase) !== 1) return null;
+  const pool = STORY_STAGES.slice(0, Math.max(2, index + 1)).flatMap((s) => s.ranks);
+  const handSize = [7, 7, 9, 11, 13, 13, 13][index];
+  return { pool, handSize };
+}
+
+/** 一言の挑戦状と、その局で意識すること。長い会話を挟まず盤につなぐ。 */
+const RIVALS = Object.freeze({
+  "23": { name: "門前の番人", quote: "逃げた一枚を、どう読む？", aim: "相手の動きから、王を探そう。", after: "読みは届いた。門の先へ進め。" },
+  "45": { name: "双歩の衛士", quote: "今度は、君の王を探そう。", aim: "自分の王に、味方を一枚添えよう。", after: "その陣なら、先へ進める。" },
+  "67": { name: "飛び石の旅人", quote: "届かないと思った、その先へ。", aim: "二マス先から届く手に注目しよう。", after: "距離を読めたな。次はもっと遠くだ。" },
+  "89": { name: "遠見の狩人", quote: "遠くにいるから、安心かい？", aim: "一・三マス先への動きを見よう。", after: "遠くの一手まで、見えてきたね。" },
+  "10": { name: "空渡りの騎士", quote: "その壁を、越えてみせよう。", aim: "駒を飛び越える行き先を見よう。", after: "壁の向こうまで、読まれたか。" },
+  "jq": { name: "二筋の宰相", quote: "縦横か、斜めか。道を見よ。", aim: "一直線に届く道を探そう。", after: "道は開いた。玉座で待つ者のもとへ。" },
+  "k": { name: "玉座の主", quote: "ここまでの読みを、見せてみよ。", aim: "動きと逃げ方から、王を絞ろう。", after: "見事だ。その読みを、次の相手へ。" },
+});
+
+export function storyRival(axis, phase = 1) {
+  if (!RIVALS[axis]) return null;
+  const p = normalizePhase(phase);
+  const arc = storyArc(axis), episode = storyEpisode(axis, p);
+  const voice = episode.before.filter(page => page.speaker !== "語り" && page.speaker !== "あなた").at(-1);
+  return {
+    ...RIVALS[axis],
+    name: arc.cast,
+    skin: false,
+    quote: voice.text,
+    quoteSpeaker: voice.speaker,
+    after: episode.after.at(-1).text,
+    aim: p === 1 ? RIVALS[axis].aim : p === 2 ? "王の力で、前の一局との違いを探そう。" : "相手のエリアに合わせて、陣を考えよう。",
+  };
+}
+
+/** 新規対局の配札。通常のCPU戦・通信対戦の配札には使わない。 */
+export function storyDeal(story) {
+  if (!story || !stageOf(story.axis)) return null;
+  const lesson = storyLesson(story.axis, story.phase);
+  return lesson
+    ? { ...lesson, deck: storyDeck(story.axis, story.king, lesson.handSize, lesson.pool) }
+    : { deck: storyDeckFor(story.axis, story.king, stageSize(story.phase)) };
+}
+
+/** 結果で確かめられる事実を一つだけ伝える。未公開の推測やCPUの意図は説明しない。 */
+export function storyLossNote(state, seat = 0) {
+  if (!state || state.phase !== "gameover" || state.winner == null || state.winner === seat) return null;
+  if (state.resignedBy === seat) return { fact: "今回は、ここで一休み。", tip: "同じ相手に、何度でも挑める。" };
+  if (state.adjudication) return { fact: "今回は、採用した札の合計で決着。", tip: "次は、判定の前に王を探してみよう。" };
+  const king = state.pieces?.[state.players?.[seat]?.kingId];
+  const move = state.lastMove;
+  const mover = state.pieces?.[move?.pieceId];
+  const taken = state.replay?.at(-1)?.mark?.taken || [];
+  if (king?.alive === false && mover && move.owner !== seat && move.captured &&
+      taken.some((p) => p.owner === seat && p.row === king.row && p.col === king.col)) {
+    return {
+      fact: `${mover.rank}${SUIT_SYMBOL[mover.suit]} の ${squareName(move.from.row, move.from.col, state.boardSize)} → ${squareName(move.to.row, move.to.col, state.boardSize)} が、王に届いた。`,
+      tip: "次は、王の近くの相手がどこへ動けるか見よう。",
+    };
+  }
+  return { fact: "次の一局で、もう一度読んでみよう。", tip: "振り返りで、決着の一手を確かめられる。" };
 }
 
 /** 並びで次のステージ(クリアの有無は見ない)。最後なら null */
@@ -112,6 +177,15 @@ export function stageSetup(axis, phase) {
   });
 }
 
+/**
+ * ストーリーの対局に時計をかけないか(2026-10-01 本人の指示)。フェーズ1 は時間制限なし
+ * (サイコロ・引き直し・布陣・持ち時間のどれも動かさない)。はじめて出会うサイコロ・引き直し・陣を急かさないため。
+ * フェーズ2・3 は今までどおり(オンラインは story を持たない)
+ */
+export function storyUntimed(story) {
+  return !!story && normalizePhase(story.phase) === 1;
+}
+
 /** その回の CPU の王の数字を1つ決める(軸からランダム。2・3 の回なら 2 か 3) */
 export function pickStoryKing(axis, random = Math.random) {
   const stage = stageOf(axis);
@@ -132,18 +206,18 @@ export function storyCpuArea(axis, king) {
 }
 
 /**
- * 軸の王を**約束する**山札。通常の 52 枚を切り、CPU(後手の席 = player 1)の手札の
- * 先頭に「王の数字 2 枚 + 軸の残りの数字 1 枚ずつ」を積む。残りは人間 13 枚 → CPU の残り → 予備札。
+ * 軸の王を**約束する**山札。指定した pool(省略時は52枚)を切り、CPU(席1)の手札の
+ * 先頭に「王の数字 2 枚 + 軸の残りの数字 1 枚ずつ」を積む。残りは人間の手札 → CPU の残り → 予備札。
  *
  * 引き直しは乱数(reducer の CONFIRM_MULLIGAN は Math.random)なので、引き直しで狙うだけでは
  * 2・3 の軸でおよそ 3%、10 の軸でおよそ 19% が軸の札を持てない。山札に積めば必ず持つ。
  * 9×9 の定石(josekiDeck)は 9 枚も積むので手の内が読めてしまう。5×5 は 3 枚まで。
- * 人間の 13 枚は積んだ札を除いた残りから配るので、人間の手は普段どおりの乱数
+ * 人間の手札は積んだ札を除いた残りから配る。手札枚数は pool の総数と合わせて storyLesson で決める
  */
-export function storyDeck(axis, king, handSize = 13) {
+export function storyDeck(axis, king, handSize = 13, pool = null) {
   const stage = stageOf(axis);
   if (!stage || !stage.ranks.includes(king)) return null;
-  const deck = shuffle(buildDeck(null));
+  const deck = shuffle(buildDeck(pool));
   const want = [king, king, ...stage.ranks.filter((r) => r !== king)];
   const used = new Set();
   const stacked = [];

@@ -25,6 +25,8 @@
  *   picked  need の駒を選んでいるあいだ、text の代わりに出す行
  *   kingAlt { cardId, text }。あなたの王がその札なら、text の代わりに出す
  *   nudge   台本に無い手を止めたときの一言(無ければ決まりの文)
+ *   wrongCell  need の駒のまま、違うマスへ動かしたときの一言(「動かすのは 4♠」では、
+ *          動かしている駒を動かせと言うことになる。2026-10-01 の見直し)
  *   holdFoe 読み終えて「つづき」を押すまで、台本の相手は指さない(foeHeld)
  *   threat  { pieceId, targets }。holdFoe の札で、ねらう駒から的への光の筋(▼ は付けない)
  *   nextLabel 「次へ」の代わりの釦の名
@@ -2222,9 +2224,10 @@ export const FIRST_GAME = {
   tagline: "一手に、読みを。一枚に、野望を。",
   // 結果のあなたの王の札に添える一行。王を討った駒は表になる(reducer の名乗り)ので、
   // 王にした 4♦・5♥ で討ったときは「伏せたまま」が嘘になる
+  // 行の配列で持つ。1本の文字列を balance で割ると、iPhone(auto-phrase なし)で「最後ま/で」「自/ら」と割れた
   kingNote: {
-    hidden: "あなたの王は、最後まで伏せたまま。",
-    struck: "あなたの王が、自ら討った。",
+    hidden: ["あなたの王は、", "最後まで伏せたまま。"],
+    struck: ["あなたの王が、", "自ら討った。"],
   },
   pool: CARD_POOLS.basic,
   poolLabel: "2 〜 5",
@@ -2252,7 +2255,11 @@ export const FIRST_GAME = {
       t9: { row: 1, col: 1 },
     },
     kingId: "t6",
-    moves: [{ pieceId: "t6", row: 2, col: 4 }],
+    moves: [
+      { pieceId: "t6", row: 2, col: 4 },
+      // 残された5を取った分岐でも、王へ届く手を残して対局を続ける。
+      { pieceId: "t7", row: 1, col: 4 },
+    ],
   },
   steps: [
     {
@@ -2277,6 +2284,8 @@ export const FIRST_GAME = {
       text: ["その一枚が、王かもしれない。", "▼ の 4♠ を、タップ。"],
       picked: ["光ったマスへ、動ける。", "▼ の伏せ札を、取れ。"],
       nudge: ["動かすのは、▼ の 4♠。"],
+      // 4♠ で空きマス(c3・b2・d2・e2)へ動かしたとき。札は picked の「▼ の伏せ札を、取れ。」のまま
+      wrongCell: ["そこに、伏せ札は無い。"],
       need: { type: "MOVE_PIECE", pieceId: "t0", row: 1, col: 2 },
       focus: {
         cells: [
@@ -2303,6 +2312,7 @@ export const FIRST_GAME = {
       at: myTurn,
       // 自分で考える1手。二枚に同じ ▼ を付け、答えの側に印を寄せない
       text: ["逃げた一枚か、残された一枚か。", "王だと思うほうを、討て。"],
+      afterMiss: { target: "t9", text: ["取ったのは 5。王ではなかった。", "逃げた一枚を、もう一度見よう。"] },
       need: {
         type: "MOVE_PIECE",
         pieceId: "t2",
@@ -2311,18 +2321,21 @@ export const FIRST_GAME = {
         choose: {
           target: "t6",
           cell: "e3",
+          alternatives: [{ row: 1, col: 1 }],
           // 動きから分かるのは数字まで(斜めに一歩は 3 も 5 も)。決め手は相手が守ったほう
           hint: ["相手の王は、2 か 3。", "斜めに一歩なら、3 か 5。"],
           hintGuide: { ranks: ["2", "3", "5"] },
           wrong: ["その一枚は、置いていかれた。", "相手が守りたいのは、どっち?"],
-          notCapture: ["取るのは、▼ の二枚のどちらか。"],
+          // ▼ を数えさせない。ヒントを開くと、あなたの 4♦ にも ▼ が付いて三つになる
+          notCapture: ["取るのは、逃げた一枚か、残された一枚。"],
         },
       },
       focus: { pieces: ["t6", "t9"] },
     },
     {
       at: atEnd,
-      text: ["読みが、王に届いた。", "次は、あなたが陣を組む。"],
+      text: ["相手が逃がした一枚は、王だった。", "動きと選択が、手がかりになる。"],
+      afterMiss: { target: "t9", text: ["外れた一枚から、候補を絞った。", "読み直して、王に届いた。"] },
       end: true,
     },
   ],
@@ -2400,7 +2413,8 @@ export function matchesNeed(need, action) {
   if (need.type !== action.type) return false;
   // 自分で考える1手。どの駒で取るかは任せ、的のマス(need.row・col)を取る手なら通す。
   // pieceId は見本の答え(ヒントと検査で使う)
-  if (need.choose) return capturesCell(action, need.row, need.col);
+  if (need.choose) return capturesCell(action, need.row, need.col) ||
+    (need.choose.alternatives || []).some((cell) => capturesCell(action, cell.row, cell.col));
   for (const key of Object.keys(need)) {
     // also は「この札のあいだも通す操作」の一覧で、操作の中身ではない
     if (key === "type" || key === "also") continue;
@@ -2478,6 +2492,8 @@ function nudgeLines(step, s, action) {
     if (step.nudge) return textLines(step.nudge);
     return [`その手では ${pick.cell} の駒を取れません。届く駒を探してください。`];
   }
+  if (step.wrongCell && action.type === "MOVE_PIECE" && action.pieceId === step.need.pieceId)
+    return textLines(step.wrongCell);
   return textLines(step.nudge || NUDGE_DEFAULT);
 }
 
@@ -2531,6 +2547,8 @@ export function canStepBack(tut, index, s) {
 /** 札に出す行。駒を選んでいるあいだは picked、王が kingAlt の札なら kingAlt.text */
 export function stepLines(step, s) {
   if (!step) return [];
+  if (step.afterMiss && s?.pieces?.[step.afterMiss.target]?.alive === false)
+    return textLines(step.afterMiss.text);
   if (step.kingAlt && s && s.players && s.players[0].kingId === step.kingAlt.cardId)
     return textLines(step.kingAlt.text);
   if (step.picked && step.need && s && s.selectedId && s.selectedId === step.need.pieceId)
@@ -2538,12 +2556,12 @@ export function stepLines(step, s) {
   return textLines(step.text);
 }
 
-/** 結果画面で、あなたの王の札に添える一行。台本に kingNote が無ければ null */
+/** 結果画面で、あなたの王の札に添える行(行の配列)。台本に kingNote が無ければ null */
 export function myKingNote(tut, s) {
   if (!tut.kingNote) return null;
   const king = s.pieces && s.pieces[s.players[0].kingId];
   // 王を討った駒は表になる(reducer の名乗り)
-  return king && king.revealed ? tut.kingNote.struck : tut.kingNote.hidden;
+  return textLines(king && king.revealed ? tut.kingNote.struck : tut.kingNote.hidden);
 }
 
 /**

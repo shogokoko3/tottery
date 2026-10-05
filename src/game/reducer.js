@@ -2019,6 +2019,7 @@ function coreReducer(state, action) {
             rank: piece.rank,
             suit: piece.suit,
             owner: piece.owner,
+            ...(piece.mark ? { mark: piece.mark, originalRank: piece.originalRank } : null),
             // 取ってはじめて、それが王だったと分かる
             isKing: !!piece.isKing,
           });
@@ -2096,6 +2097,7 @@ function coreReducer(state, action) {
           rank: victim.rank,
           suit: victim.suit,
           owner: victim.owner,
+          ...(victim.mark ? { mark: victim.mark, originalRank: victim.originalRank } : null),
           isKing: !!victim.isKing,
         });
         next.log = [

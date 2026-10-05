@@ -1,3 +1,12 @@
+// iframe は親のイベント制御が届かないため、ここでも標準メニューを抑える。
+for (const type of ['contextmenu','selectstart','dragstart']) {
+  document.addEventListener(type, event => {
+    const target=event.target?.nodeType===1?event.target:event.target?.parentElement;
+    if(target?.closest('input, textarea')||target?.isContentEditable)return;
+    event.preventDefault();
+  }, true);
+}
+
 let embeddedConfig=null;
 
 const THEMES={
@@ -334,7 +343,7 @@ let def;if(id==='ice'){def={width:3,name:'隅の要塞',cells:[['J','angel-j'],[
 if(embeddedConfig){def={width:embeddedConfig.width,cells:embeddedConfig.cells.map(c=>[c.row,c.col,c.rank,c.king])};}
 activeWidth=def.width;activeCells=def.cells;$('.formation-caption h2').textContent=theme.formationName;$('#cards').setAttribute('aria-label',theme.formationName+'・9枚の布陣');$('#cards').style.gridTemplateColumns=`repeat(${activeWidth},1fr)`;stage.dataset.width=activeWidth;
 cards=def.cells.map(([r,c,rank,king])=>[rank,id==='hell'&&'JQK'.includes(rank)?'demon-'+rank.toLowerCase():assetMap[rank],king]);const king=cards.findIndex(c=>c[2]);order=cards.map((_,i)=>i).sort((a,b)=>Math.hypot(def.cells[a][0]-def.cells[king][0],def.cells[a][1]-def.cells[king][1])-Math.hypot(def.cells[b][0]-def.cells[king][0],def.cells[b][1]-def.cells[king][1]));$('#cards').replaceChildren();elements=cards.map(([rank,asset,isKing],i)=>{const e=document.createElement('div');e.className='card'+(isKing?' king':'');e.innerHTML=`<div class="art"><img src="${embeddedConfig.cells[i].image}" alt="${rank}${isKing?'・王':''}"></div><span class="rank">${rank}<span class="suit">♠</span></span><div class="frost"></div><div class="shine"></div>${isKing?'<span class="crown" aria-label="王">♛</span>':''}`;$('#cards').append(e);return e});
-if(embeddedConfig)elements.forEach((e,i)=>{const c=embeddedConfig.cells[i];e.querySelector('img').src=c.image;e.querySelector('.suit').textContent=c.suit;e.querySelector('.rank').style.display=c.printed?'none':'';});
+if(embeddedConfig)elements.forEach((e,i)=>{const c=embeddedConfig.cells[i];e.querySelector('img').src=c.image;const suit=e.querySelector('.suit');suit.textContent=c.suit;if(c.promoted)suit.innerHTML='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1 1 8h4v7h6V8h4z" fill="currentColor"/></svg>';suit.classList.toggle('promoted',!!c.promoted);e.querySelector('.rank').classList.toggle('red-suit',['♥','♦'].includes(c.suit));e.querySelector('.rank').style.display=c.printed?'none':'';});
 $$('[data-theme]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.theme===id));$('#status').textContent=theme.area+'の素材を読み込み中';now=0;layoutCards();render();await Promise.all([...document.images,effectImages[id]].filter(Boolean).map(im=>im.decode().catch(()=>{})));if(token!==loadToken)return;loading(false);layoutCards();play();}
 window.addEventListener('message',e=>{
  if(e.source!==parent||e.origin!==location.origin||e.data?.type!=='tottery-honor-start'||embeddedConfig)return;

@@ -105,7 +105,7 @@ console.log("\nチュートリアルの褒美(kind=tutorial。earn の1日上限
   is("(その人の 5 話の行は tutorial の道のもの)", D.prepare("SELECT kind FROM wallet_ledger WHERE id='tutorial:TW:5'").all()[0].kind, "tutorial");
 
   // 旧版で tutorial:local:N として earn に積まれた人は、同じ話を二度受け取らない
-  fresh.credit("TL", "login:x", 1, "earn", day); // 台帳に行を作るためのふつうの earn
+  fresh.credit("TL", "seed:x", 1, "earn", day); // 台帳に行を作るためのふつうの earn
   D.prepare("INSERT INTO wallet_ledger (id, uid, tickets, gems, kind, ref, at, gems_free) VALUES (?,?,?,?,?,?,?,?)").run("tutorial:local:2", "TL", 10, 0, "earn", "2026-09-28", day, 0);
   D.prepare("UPDATE wallets SET tickets = tickets + 10 WHERE uid='TL'").run();
   const before = fresh.summary("TL").tickets;

@@ -37,7 +37,8 @@ import {
   FREE_GACHA,
   PULL_COST,
 } from "../skins/collection.js";
-import { recordGachaStats } from "../game/profile.js";
+import { recordGachaStats, loadProfile } from "../game/profile.js";
+import { nextStage, storyLesson } from "../game/story.js";
 import { useTitleNoticeHold } from "./title-acquisition.jsx";
 import {
   SHARD_NAME,
@@ -117,6 +118,7 @@ import {
   firstPullDone,
   firstPullResult,
   markFirstPull,
+  firstPullCompanion,
 } from "../skins/first-pull.js";
 // 長押しの受け口(2026-09-28 本人の指示)
 import { useLongPress } from "./long-press.js";
@@ -1567,8 +1569,7 @@ export function SkinsScreen({
   initialTab = "gacha",
   // はじめての10連(2026-09-28 本人の指示)。導入の最後、はじめの一局に勝って名前を決め、
   // 門の語りを通ったあとに一度だけ真で入る(2026-10-01 本人の指示で、一局のあとへ移した)。
-  // 真のとき、10連の結果を閉じると(「ストーリーへ」・×・Escape のどれでも)onBack を呼ぶ。
-  // 導入では、呼ぶ側が onBack でストーリー一覧へ送る
+  // 真のとき、結果の閉じ方を問わず onBack を呼ぶ。呼ぶ側が次の相手の紹介へ送る。
   firstPull = false,
 }) {
   const collection = useCollection(),
@@ -1622,23 +1623,14 @@ export function SkinsScreen({
       try {
         // 別枠にする前に取りこぼしたチュートリアルの褒美を一度だけ送り直す(サーバーは話ごとに冪等)
         await backfillTutorialRewards().catch(() => {});
-        await syncWallet();
+        const wallet = await syncWallet();
+        if (alive && Number.isSafeInteger(wallet?.adsLeftToday)) setAdsLeft(wallet.adsLeftToday);
       } catch {
         /* 圏外なら写しのまま */
       }
     })();
     shopAvailable().then((ok) => alive && setShopOk(ok));
     adsAvailable().then((ok) => alive && setAdsOk(ok));
-    // 残り回数はサーバーの財布から(端末では数えない)
-    syncWallet()
-      .then(
-        (d) =>
-          alive &&
-          d &&
-          Number.isSafeInteger(d.adsLeftToday) &&
-          setAdsLeft(d.adsLeftToday),
-      )
-      .catch(() => {});
     return () => {
       alive = false;
     };
@@ -1914,6 +1906,8 @@ export function SkinsScreen({
   // はじめての10連の結果(2026-10-01 本人の指示)。導入の最後なので、引いた英雄と駒のつながりを
   // 一行で渡し、次の一歩(ストーリー)を1つだけ示す。この回は閉じ方を問わず呼ぶ側の onBack へ
   const firstResults = firstPull && !!collection.pending?.results;
+  const nextStory = firstResults ? nextStage(loadProfile()) : null;
+  const companion = firstResults ? firstPullCompanion(collection, nextStory ? storyLesson(nextStory.axis, nextStory.phase)?.pool : null) : null;
   const closeFirstResults = async () => {
     const next = await closeResults();
     if (next && onBack) onBack();
@@ -2509,7 +2503,7 @@ export function SkinsScreen({
                 {/* 着せた札(「装備しました」の印)だけが駒の姿になる。10枚全部とは読ませない */}
                 {firstResults && (
                   <p className="skins-first-pull-note">
-                    装備した英雄が、次の一局から駒になる。
+                    出会った英雄を、あなたの盤へ。
                   </p>
                 )}
                 {results.some((r) => byId(r.id).foil) && (
@@ -2527,6 +2521,20 @@ export function SkinsScreen({
                 ×
               </button>
             </div>
+            {firstResults && companion && (
+              <div className="skins-first-companion">
+                <CardFace rank={companion.skin.rank} suit="spade" size="lg" skinId={companion.skin.id} animated={false} />
+                <div>
+                  <small>盤上では、この姿に</small>
+                  <strong>{companion.skin.name}</strong>
+                  <p>{companion.equipped
+                    ? companion.available
+                      ? `${companion.skin.rank} に装備済み。手札に来たら、陣に加えよう。`
+                      : `${companion.skin.rank} に装備済み。この数字が登場するステージで活躍する。`
+                    : `${companion.skin.rank} に装備すると、同じ数字の札がこの姿に。`}</p>
+                </div>
+              </div>
+            )}
             <div
               className={`skins-results-grid ${results.length === 1 ? "single-result" : ""}`}
             >
@@ -2648,7 +2656,7 @@ export function SkinsScreen({
               </section>
             )}
             {/* 崩せるのはガチャの結果だけ。錬成・交換・加工の1枚は対象にしない */}
-            {collection.pending?.results && (
+            {!firstResults && collection.pending?.results && (
               <ResultDismantle
                 collection={collection}
                 results={results}
@@ -2669,7 +2677,7 @@ export function SkinsScreen({
                 disabled={working}
                 onClick={closeShown}
               >
-                {firstResults ? "ストーリーへ" : "結果を確認"}
+                {firstResults ? (nextStory ? "次の対局へ" : "ストーリーへ") : "結果を確認"}
               </button>
             </div>
           </SkinModal>

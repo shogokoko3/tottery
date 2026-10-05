@@ -37,6 +37,7 @@ const api = (() => {
       result.rank = String(piece.rank);
       result.suit = piece.suit;
       result.isKing = piece.isKing === true;
+      if (piece.mark === "palace") result.mark = "palace";
     }
     return result;
   }

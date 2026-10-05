@@ -1,0 +1,99 @@
+{
+  "description": "通常キャラ。ランクごとに4スート共通の原画を使い、数字・スート・王の枠は画面側で描画。",
+  "width": 240,
+  "height": 320,
+  "quality": 90,
+  "cards": [
+    {
+      "rank": "A",
+      "source": "../redesign-v1/a-v1.png",
+      "sourceSha256": "98d6040f9f5fa74289c9af7daa5fe9d9f50bd3410cdcc459f395c09cbac1ce53",
+      "file": "A.webp",
+      "bytes": 16390
+    },
+    {
+      "rank": "2",
+      "source": "../redesign-v1/2-v1.png",
+      "sourceSha256": "5c6fde205ee48b799a17ddf9ec2b623652e5448a3294f6becd11247cfcd283dd",
+      "file": "2.webp",
+      "bytes": 21988
+    },
+    {
+      "rank": "3",
+      "source": "../redesign-v1/3-v1.png",
+      "sourceSha256": "3ae47998fe862062c3b7cb9c5435a126d7a942472b422f257dc6632fd7cf6550",
+      "file": "3.webp",
+      "bytes": 20608
+    },
+    {
+      "rank": "4",
+      "source": "../redesign-v1/4-v1.png",
+      "sourceSha256": "c67f592dfce6129ef4662e4a4faa6e1e991823a094a49bbc6c182806c15e8439",
+      "file": "4.webp",
+      "bytes": 18812
+    },
+    {
+      "rank": "5",
+      "source": "../redesign-v1/5-v1.png",
+      "sourceSha256": "b58310210657d8653f3fb8d2c813cfe8287184d70d1d78f54c856be110e682f5",
+      "file": "5.webp",
+      "bytes": 18932
+    },
+    {
+      "rank": "6",
+      "source": "../redesign-v1/6-v1.png",
+      "sourceSha256": "c3459dead239af38182c3dfd338880b813207e41782493f0a99bd28e58c98e29",
+      "file": "6.webp",
+      "bytes": 22982
+    },
+    {
+      "rank": "7",
+      "source": "../redesign-v1/7-v1.png",
+      "sourceSha256": "f864fcfc7f5571b32031f8d34a0722026e40525cda215dd5ccd91d5f3266f453",
+      "file": "7.webp",
+      "bytes": 22832
+    },
+    {
+      "rank": "8",
+      "source": "../redesign-v2/8-v3.png",
+      "sourceSha256": "fdcb71ac6a753b7f332fe89bfd3e631a6bb5a17ddfb9bf42099fffb1a2009819",
+      "file": "8.webp",
+      "bytes": 26490
+    },
+    {
+      "rank": "9",
+      "source": "../redesign-v2/9-v2.png",
+      "sourceSha256": "e0327e2e5ee171713fc265b08a7bc8e591de006e2b98cafa40cee2fbf141b610",
+      "file": "9.webp",
+      "bytes": 25166
+    },
+    {
+      "rank": "10",
+      "source": "../redesign-v1/10-v1.png",
+      "sourceSha256": "9a0be4ba25abbbc461b2d2e1b70ca3832ce03677a2c305b01f05e105a4d9307b",
+      "file": "10.webp",
+      "bytes": 22424
+    },
+    {
+      "rank": "J",
+      "source": "../redesign-v1/j-v1.png",
+      "sourceSha256": "828a71565dba629d38d50ad1d569850cbaf2ca89c838b978486b6ccb74c898ef",
+      "file": "J.webp",
+      "bytes": 19434
+    },
+    {
+      "rank": "Q",
+      "source": "../redesign-v1/q-v1.png",
+      "sourceSha256": "81e1fd4a63473ea01348ac123a5c9f7e5458ce2ca8904e02cd1bf53cdb74c93e",
+      "file": "Q.webp",
+      "bytes": 23688
+    },
+    {
+      "rank": "K",
+      "source": "../redesign-v1/k-v1.png",
+      "sourceSha256": "50158f2b4ee9160cbb9811e591976bde70c7860f6ed56e561504c1e92936562f",
+      "file": "K.webp",
+      "bytes": 22068
+    }
+  ]
+}

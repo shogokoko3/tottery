@@ -260,16 +260,18 @@ export function territoryOwnerOf(e, t, l) {
 }
 /**
  * 布陣中に、自分が先攻か後攻かを示す(2026-09-23 本人の指示)。
- * サイコロで決まった順。布陣ボーナス(ストレート)で入れ替わることがあるので「サイコロの結果」と添える
+ * サイコロで決まった順。布陣ボーナス(ストレート)で入れ替わることがあるので「サイコロの結果」と添える。
+ * plain は台本の一局(はじめの一局)。サイコロは台本が裏で振っていて遊ぶ人は見ていないので、サイコロに触れない
  */
-export function SetupOrderNote({ state, pIdx }) {
+export function SetupOrderNote({ state, pIdx, plain = false }) {
   const first = state && state.firstPlayer;
   if (first !== 0 && first !== 1) return null;
   const mine = first === pIdx;
+  const why = plain ? "" : "サイコロの結果、";
   return (
     <p className={`setup-order ${mine ? "setup-order-first" : "setup-order-second"}`}>
       <b>{mine ? "あなたは先攻" : "あなたは後攻"}</b>
-      <span>{mine ? "サイコロの結果、先に動きます" : "サイコロの結果、相手が先に動きます"}</span>
+      <span>{mine ? `${why}先に動きます` : `${why}相手が先に動きます`}</span>
     </p>
   );
 }
@@ -438,6 +440,8 @@ export function PlaceStep({
   terse,
   // 並べ直しを止める台本(はじめの一局)。「この駒を手札に戻す」を出さない(関門でも止まる)
   lockPlacement = false,
+  // 見出しの代わりに帯へ置く一言(ストーリー2つ目の手当て「伏せた一枚に、策がある。」)。無ければ見出しのまま
+  note = null,
 }) {
   const names = useNames();
   const [picked, setPicked] = useState(null);
@@ -590,9 +594,13 @@ export function PlaceStep({
       {/* 見出し・先攻後攻・残り時間は1つの帯にまとめ、スクロールしても上に貼り付く。
           盤と手札を1画面に収め、配置しながら残り時間を見られるようにする(2026-09-23 本人の指示) */}
       <div className="setup-head">
-        <h2 style={{ color: PLAYER_META[pIdx].color }}>
-          {nameOf(pIdx, names)}: カードを盤面に配置してね
-        </h2>
+        {/* 一言があれば見出しの代わりに帯へ置く(ストーリー2つ目の手当て)。帯の下に足すと、
+            375×667 の端末で「王を選ぶ」が画面の下へ押し出された */}
+        {note || (
+          <h2 style={{ color: PLAYER_META[pIdx].color }}>
+            {nameOf(pIdx, names)}: カードを盤面に配置してね
+          </h2>
+        )}
         <SetupOrderNote state={state} pIdx={pIdx} />
         <SetupTimer
           remainingMs={remainingMs}
@@ -815,7 +823,7 @@ export function KingStep({
             {nameOf(pIdx, names)}: 王にするカードを決めてね
           </h2>
         )}
-        <SetupOrderNote state={state} pIdx={pIdx} />
+        <SetupOrderNote state={state} pIdx={pIdx} plain={quiet} />
         <SetupTimer
           remainingMs={remainingMs}
           label="王を選ぶ残り時間"

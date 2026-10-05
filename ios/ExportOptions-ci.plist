@@ -6,6 +6,9 @@
 	     ローカルは ios/ExportOptions.plist(自動署名)を使う。 -->
 	<key>method</key>
 	<string>app-store-connect</string>
+	<!-- 2026-10-04: 配信先は本人指定の内部「開発」のみ。 -->
+	<key>testFlightInternalTestingOnly</key>
+	<true/>
 	<key>destination</key>
 	<string>upload</string>
 	<key>signingStyle</key>

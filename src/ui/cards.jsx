@@ -1,9 +1,10 @@
-import { CAPTAIN_CARD_ART, NORMAL_CARD_ART, cardBackImg } from "../assets.js";
+import { NORMAL_CARD_ART, cardBackImg } from "../assets.js";
 import { PLAYER_META, SUIT_SYMBOL } from "../game/constants.js";
 import { useSeats } from "./names.jsx";
 import { byId } from "../skins/catalog.js";
 import { Crown } from "../icons.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
+import { PROMOTION_ARROW_PATH } from "./card-status.js";
 
 export const SUIT_CODE = {
   spade: "S",
@@ -11,9 +12,8 @@ export const SUIT_CODE = {
   diamond: "D",
   club: "C",
 };
-export function cardArtSrc(e, t, l) {
-  let n = e + SUIT_CODE[t];
-  return (l && CAPTAIN_CARD_ART[n]) || NORMAL_CARD_ART[n];
+export function cardArtSrc(rank, suit) {
+  return NORMAL_CARD_ART[rank + SUIT_CODE[suit]];
 }
 export function CardFace({
   rank,
@@ -23,14 +23,20 @@ export function CardFace({
   owner,
   skinId,
   animated = true,
+  mark,
+  originalRank,
 }) {
   const seats = useSeats();
   // false selects the embedded normal art while a remote skin is unavailable.
-  const selected = skinId === false ? null : byId(skinId || seats.skins?.[owner]?.[rank]);
+  const selected =
+    skinId === false ? null : byId(skinId || seats.skins?.[owner]?.[rank]);
   const skin = selected?.rank === String(rank) ? selected : null;
-  // J/Q/K have no separate captain artwork. Give their normal illustration an
-  // explicit king treatment too, including in views that render CardFace alone.
-  const kingFrame = isKing && !skin && !CAPTAIN_CARD_ART[rank + SUIT_CODE[suit]];
+  // 王になっても同じ人物。通常キャラ全13種を金色の縁で区別する。
+  const kingFrame = isKing && !skin;
+  const promoted = mark === "palace";
+  const promotionLabel = promoted
+    ? ` · 昇格${originalRank ? `（元は${originalRank}${SUIT_SYMBOL[suit]}）` : ""}`
+    : "";
   let a =
     size === "xs"
       ? {
@@ -48,18 +54,18 @@ export function CardFace({
               w: 40,
               h: 53,
             }
-        : size === "lg"
-          ? {
-              w: 78,
-              h: 104,
-            }
-          : {
-              w: 50,
-              h: 67,
-            };
+          : size === "lg"
+            ? {
+                w: 78,
+                h: 104,
+              }
+            : {
+                w: 50,
+                h: 67,
+              };
   return (
     <div
-      className={`card-face ${isKing ? "card-captain" : ""} ${kingFrame ? "card-captain-fallback" : ""} ${skin ? "card-skinned" : ""}`}
+      className={`card-face ${isKing ? "card-captain" : ""} ${kingFrame ? "card-captain-fallback" : ""} ${skin ? "card-skinned" : "card-standard"}`}
       data-size={size}
       data-skin={skin?.id}
       style={{
@@ -69,19 +75,25 @@ export function CardFace({
     >
       <FoilArtwork
         skin={skin}
-        src={skin?.boardCard || skin?.card || cardArtSrc(rank, suit, isKing)}
-        alt={`${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}${isKing ? " · 王" : ""}`}
+        src={skin?.boardCard || skin?.card || cardArtSrc(rank, suit)}
+        alt={`${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}${isKing ? " · 王" : ""}${promotionLabel}`}
         animated={animated}
       />
-      {skin && (
-        <span
-          aria-hidden="true"
-          className={`skin-card-mark ${suit === "heart" || suit === "diamond" ? "red-suit" : ""}`}
-        >
-          {rank}
+      <span
+        aria-hidden="true"
+        className={`card-index ${skin ? "skin-card-mark" : ""} ${suit === "heart" || suit === "diamond" ? "red-suit" : ""}`}
+      >
+        {rank}
+        {promoted ? (
+          <small className="card-suit-promoted" title="昇格">
+            <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+              <path d={PROMOTION_ARROW_PATH} fill="currentColor" />
+            </svg>
+          </small>
+        ) : (
           <small>{SUIT_SYMBOL[suit]}</small>
-        </span>
-      )}
+        )}
+      </span>
       {skin && isKing && (
         <span className="skin-king-mark" aria-label="王">
           ♛
@@ -90,6 +102,27 @@ export function CardFace({
     </div>
   );
 }
+/** 撃破履歴は戦闘時の強さを保持し、捨て札の絵は物理カードの元の数字に戻す。 */
+export function CapturedCardFace({ piece, size = "sm" }) {
+  const rank = piece.originalRank || piece.rank;
+  const changed = rank !== piece.rank;
+  return (
+    <div
+      className="captured-card-face"
+      title={
+        changed
+          ? `元のカード ${rank}${SUIT_SYMBOL[piece.suit]} ／ 撃破時 ${piece.rank}${SUIT_SYMBOL[piece.suit]}`
+          : undefined
+      }
+    >
+      <CardFace owner={piece.owner} rank={rank} suit={piece.suit} size={size} />
+      {changed && (
+        <small className="captured-card-note">撃破時 {piece.rank}</small>
+      )}
+    </div>
+  );
+}
+
 export function CardBack({ colorHex, size = "md", backId, owner }) {
   const seats = useSeats();
   const moon = (backId ?? seats.backs?.[owner]) === "moon-crest";
@@ -156,15 +189,23 @@ export function Piece({
     // 持ち主でなくても表向きに見える。土・森で見抜いた駒は自分だけに。
     // 審判視点の観戦(revealAll)では全部表向き
     i = revealAll || piece.owner === viewer || !!piece.revealed || !!known;
-  const mark =
-    piece.mark === "sky" ? "空" : piece.mark === "palace" ? "宮" : null;
-  // 相手の駒が表向き(公開・見抜き)だと自分の駒と見分けにくい(本人の指摘 2026-09-15)。
-  // 相手の表向きの駒だけ、相手の色の枠(記録の盤面と同じ side-ring)で囲む。伏せ札は裏面が相手の色
-  const foeFace = i && piece.owner !== viewer;
+  const skyMark = i && piece.mark === "sky";
+  // 陣営は公開情報。表裏・絵柄・王の正体に依存しない同じ枠を使う。
+  const own = piece.owner === viewer;
+  const spectator = viewer == null;
+  const factionLabel = spectator
+    ? `${u.name}陣営`
+    : own
+      ? "自分の駒"
+      : "相手の駒";
+  const factionMark = spectator ? u.name : own ? "自" : "敵";
   return (
     <div
-      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""} ${justRevealed ? "piece-unveiled" : ""} ${frozen ? "piece-frozen" : ""} ${foeFace ? "side-ring piece-foe-face" : ""}`}
-      style={foeFace ? { "--who": u.color } : undefined}
+      className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""} ${justRevealed ? "piece-unveiled" : ""} ${frozen ? "piece-frozen" : ""} piece-faction faction-${piece.owner} ${!spectator && !own ? "piece-enemy" : "piece-ally"}`}
+      style={{ "--who": u.color }}
+      data-size={size}
+      data-faction={piece.owner}
+      aria-label={`${factionLabel}・${u.name}陣営`}
     >
       {i ? (
         <CardFace
@@ -173,21 +214,29 @@ export function Piece({
           suit={piece.suit}
           size={size}
           isKing={piece.isKing}
+          mark={piece.mark}
+          originalRank={piece.originalRank}
         />
       ) : (
         <CardBack colorHex={u.color} size={size} owner={piece.owner} />
       )}
-      {piece.revealed && !mark && <span className="revealed-badge">公開</span>}
-      {mark && (
-        <span
-          className={`mark-badge mark-${piece.mark}`}
-          aria-label={piece.mark === "sky" ? "空のエリアで変身" : "宮殿で昇格"}
-        >
-          {mark}
+      <span className="piece-faction-mark" aria-hidden="true">
+        {factionMark}
+      </span>
+      {piece.revealed && !piece.mark && (
+        <span className="revealed-badge" aria-label="公開された駒">
+          {size === "xs" ? "公" : "公開"}
+        </span>
+      )}
+      {skyMark && (
+        <span className="mark-badge mark-sky" aria-label="空のエリアで変身">
+          空
         </span>
       )}
       {known && !piece.revealed && piece.owner !== viewer && (
-        <span className="known-badge">見抜</span>
+        <span className="known-badge" aria-label="見抜いた駒">
+          {size === "xs" ? "見" : "見抜"}
+        </span>
       )}
       {frozen && (
         <span

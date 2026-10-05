@@ -20,8 +20,13 @@ import { CardFace } from "./cards.jsx";
 import { byId } from "../skins/catalog.js";
 import { useSeats } from "./names.jsx";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
-import { paintCaptureBack, paintRoyalLight } from "./capture-renderer.js";
+import {
+  paintCaptureBack,
+  paintLostBack,
+  paintRoyalLight,
+} from "./capture-renderer.js";
 import styles from "./capture-effect.css";
+import { captureLayout, captureBackPose } from "./capture-layout.js";
 
 const portraitImages = new Map();
 const portraitSource = (skin) => skin?.boardCard || skin?.card;
@@ -96,6 +101,7 @@ export function CaptureEffect({
   });
   const canvas = useRef(null),
     floating = useRef(null),
+    titleRef = useRef(null),
     footer = useRef(null),
     slots = useRef([]);
   const elapsed = useRef(0),
@@ -138,6 +144,8 @@ export function CaptureEffect({
       lastView = "",
       previous = -1;
     let rect,
+      bounds,
+      layout,
       width,
       height,
       dpr,
@@ -157,7 +165,20 @@ export function CaptureEffect({
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       el.width = Math.round(width * dpr);
       el.height = Math.round(height * dpr);
+      bounds = el.getBoundingClientRect();
       rect = boardRef.current?.getBoundingClientRect();
+      const header = document.querySelector(".top-bar");
+      layout = captureLayout({
+        width,
+        height,
+        headerBottom:
+          (header?.getBoundingClientRect().bottom ?? 0) - bounds.top,
+        footerTop:
+          (footer.current?.getBoundingClientRect().top ?? bounds.bottom - 150) -
+          bounds.top,
+        titleHeight: titleRef.current?.getBoundingClientRect().height || 54,
+      });
+      if (titleRef.current) titleRef.current.style.top = `${layout.titleY}px`;
     };
     measure();
     const observer =
@@ -166,10 +187,14 @@ export function CaptureEffect({
         : null;
     observer?.observe(el);
     if (boardRef.current) observer?.observe(boardRef.current);
+    if (footer.current) observer?.observe(footer.current);
+    if (titleRef.current) observer?.observe(titleRef.current);
+    const header = document.querySelector(".top-bar");
+    if (header) observer?.observe(header);
     window.addEventListener("resize", measure);
     const audio = createCaptureSound();
     const unduck = duckMusic(q.reveal + cards.length * q.gap + 1400);
-    const cues = captureCues(q);
+    const cues = captureCues(q, mine);
     let announced = 0,
       royalPlayed = false;
 
@@ -183,10 +208,7 @@ export function CaptureEffect({
       const t = elapsed.current,
         frame = captureFrame(t, q, cards);
       const flipped = viewer === 1;
-      const center = {
-        x: rect ? rect.left + rect.width / 2 : width / 2,
-        y: rect ? rect.top + rect.height / 2 : height * 0.43,
-      };
+      const { focal, zoom } = layout;
       const positions = (
         points.length
           ? points
@@ -199,51 +221,44 @@ export function CaptureEffect({
             ]
       ).map((p) => ({
         x: rect
-          ? rect.left +
+          ? rect.left -
+            bounds.left +
             (((flipped ? boardSize - 1 - p.col : p.col) + 0.5) * rect.width) /
               boardSize
-          : center.x,
+          : focal.x,
         y: rect
-          ? rect.top +
+          ? rect.top -
+            bounds.top +
             (((flipped ? boardSize - 1 - p.row : p.row) + 0.5) * rect.height) /
               boardSize
-          : center.y,
+          : focal.y,
         owner: p.owner,
       }));
-      const zoom = Math.min(1.16, width / 380);
       const base = (boardSize >= 9 ? 26 : 38) / 75;
-      const focus = cards.length === 1 ? positions[0] : center;
-      const endY = footer.current?.getBoundingClientRect().top ?? height - 150;
-      const focal = {
-        x: Math.max(74, Math.min(width - 74, focus.x)),
-        y: Math.max(110, Math.min(endY - 110, focus.y - 28 * zoom)),
-      };
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
       context.clearRect(0, 0, width, height);
-      const shade = t < q.crack ? 0 : 0.22 * ease((t - q.crack) / 170);
+      const shade = 0.4 * ease((t - q.lift) / Math.max(1, q.ready - q.lift));
       context.fillStyle = `rgba(3,8,16,${shade})`;
       context.fillRect(0, 0, width, height);
       if (t < q.melt + 950) {
-        const travel = reduced
-          ? 0
-          : ease((t - q.lift) / Math.max(1, q.ready - q.lift));
-        positions.forEach((p) => {
-          const single = cards.length === 1;
-          const x = single ? mix(p.x, focal.x, travel) : p.x;
-          const y = single ? mix(p.y, focal.y + 28 * zoom, travel) : p.y;
+        // まとめ取りも裏面を中央へ集め、重なり切ったら1枚の破砕として描く。
+        // ひびは到着後の静止時間を経てから。取った位置では割らない。
+        const backs = t >= q.ready ? positions.slice(0, 1) : positions;
+        backs.forEach((p) => {
+          const pose = captureBackPose(t, q, p, focal, base, zoom);
           context.save();
-          context.translate(x, y);
-          paintCaptureBack(
+          context.translate(pose.x, pose.y);
+          (mine ? paintCaptureBack : paintLostBack)(
             context,
             textures[p.owner] || textures[0],
             t,
             q,
-            single ? mix(base, zoom, travel) : base,
+            pose.scale,
           );
           context.restore();
         });
       }
-      if (frame.royal && !reduced) {
+      if (mine && frame.royal && !reduced) {
         context.save();
         context.translate(focal.x, focal.y);
         paintRoyalLight(context, t - frame.at - 220, zoom);
@@ -260,11 +275,15 @@ export function CaptureEffect({
           : ease((t - frame.collect) / 280);
         const x = mix(
           focal.x,
-          slot ? slot.left + slot.width / 2 : focal.x,
+          slot ? slot.left - bounds.left + slot.width / 2 : focal.x,
           fly,
         );
         const y =
-          mix(focal.y, slot ? slot.top + slot.height / 2 : height - 100, fly) -
+          mix(
+            focal.y,
+            slot ? slot.top - bounds.top + slot.height / 2 : height - 100,
+            fly,
+          ) -
           Math.sin(fly * Math.PI) * (reduced ? 0 : 34);
         const scale = mix((109.5 * zoom) / 78, 40 / 78, fly);
         floating.current.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%) scale(${scale})`;
@@ -276,16 +295,22 @@ export function CaptureEffect({
         for (const [at, cue] of cues)
           if (previous < at && t >= at) {
             audio.play(cue);
-            if (cue === "hit") vibrateCapture({ mine, king: false, count: 1 });
+            if (cue === "hit" || cue === "loss-hit")
+              vibrateCapture({ mine, king: false, count: 1 });
           }
-        if (frame.shown > announced && frame.shown > 0 && cards.length > 1) {
+        if (
+          mine &&
+          frame.shown > announced &&
+          frame.shown > 0 &&
+          cards.length > 1
+        ) {
           playSound("capture", {
             rate: captureRate({ index: frame.index, total: cards.length }),
           });
           if (frame.index > 0) audio.play("open");
         }
         if (frame.royal && !royalPlayed) {
-          audio.play("royal");
+          audio.play(mine ? "royal" : "loss-royal");
           vibrateCapture({ mine, king: true, count: 1 });
           royalPlayed = true;
         }
@@ -319,7 +344,7 @@ export function CaptureEffect({
       audio.stop();
       unduck?.();
     };
-  }, [q, points, boardSize, viewer, reveal, seats.backs]);
+  }, [q, points, boardSize, viewer, reveal, seats.backs, mine]);
 
   useLayoutEffect(() => {
     const slot = slots.current[view.index],
@@ -334,19 +359,19 @@ export function CaptureEffect({
   }, [view.done]);
   const shown = cards.slice(0, view.shown);
   const royal = view.royal && shown.some((c) => c.isKing);
-  const title = royal
-    ? mine
+  const title = !mine
+    ? royal
+      ? "自分の王が取られた"
+      : "自分の駒が取られた"
+    : royal
       ? "王を討った"
-      : "王が討たれた"
-    : view.shown
-      ? mine
+      : view.shown
         ? "撃破"
-        : "駒を取られた"
-      : "";
+        : "";
   return (
     <SkinModal
-      label="撃破したカードの公開"
-      className="capture-scene"
+      label={mine ? "撃破したカードの公開" : "自分が失ったカードの確認"}
+      className={`capture-scene ${mine ? "is-capture" : "is-loss"}`}
       onClose={() => {
         if (doneRef.current) onClose();
       }}
@@ -358,6 +383,7 @@ export function CaptureEffect({
         aria-hidden="true"
       />
       <div
+        ref={titleRef}
         className={`capture-scene-title ${royal ? "is-royal" : ""}`}
         role="status"
       >
@@ -371,6 +397,7 @@ export function CaptureEffect({
           key={view.index}
         >
           <Face {...cards[view.index]} />
+          {!mine && <span className="capture-loss-stamp">喪失</span>}
         </div>
       )}
       <div
@@ -378,11 +405,12 @@ export function CaptureEffect({
         className={`capture-scene-footer ${view.done ? "is-done" : ""}`}
       >
         <p className="capture-scene-count">
+          {!mine && "あなたの失った駒　"}
           {view.shown ? `${view.shown} / ${cards.length} 枚` : ""}
         </p>
         <div
           className="capture-scene-records"
-          aria-label="正体が判明したカード"
+          aria-label={mine ? "正体が判明したカード" : "あなたの失ったカード"}
         >
           {Array.from({ length: cards.length }, (_, index) => (
             <div
@@ -398,7 +426,7 @@ export function CaptureEffect({
           ))}
         </div>
         <button
-          className="btn btn-primary"
+          className={`btn ${mine ? "btn-primary" : "btn-ghost"}`}
           disabled={!view.done}
           onClick={onClose}
         >
