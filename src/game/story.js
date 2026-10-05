@@ -15,7 +15,7 @@
  * 決めごとの控え(未定): ステージごとの xp の量。いまは STORY_XP で仮置き
  */
 import { storyArc, storyEpisode } from "./story-narrative.js";
-import { MOVE_TEXT, KING_TEXT, SUIT_SYMBOL } from "./constants.js";
+import { MOVE_TEXT, KING_TEXT, SUIT_SYMBOL, movePhrases } from "./constants.js";
 import { AREA_BY_RANK, AREA_INFO } from "./areas.js";
 import { buildDeck, shuffle, squareName } from "./board.js";
 import { josekiDeck } from "./cpu-joseki.js";
@@ -126,7 +126,8 @@ export const ranksLabel = (ranks) => ranks.join(" か ");
 
 /**
  * ステージの前に出す、相手の王の説明。フェーズで中身が変わる。
- *   { title, lead, items: [{ rank, text }] , note: string[] }
+ *   { title, lead, items: [{ rank, text, phrases? }] , note: string[] }
+ * フェーズ1 の items は phrases(MOVE_PHRASES の句の並び)も持つ。画面は句ごとに折り返す(2026-10-05 見直し)
  * note は1文1行の配列(2026-10-01 本人の指示。長い1行だと語の途中で割れる)
  */
 export function stageIntro(axis, phase) {
@@ -139,9 +140,11 @@ export function stageIntro(axis, phase) {
       title: `${stage.name}の王`,
       lead,
       // フェーズ1は駒の動き方だけ(2026-09-30 本人の指示)。王の力には触れない
-      items: stage.ranks.map((rank) => Object.freeze({ rank, text: MOVE_TEXT[rank] })),
-      // 「名乗らない」はやめた(2026-10-01 本人の指示。語りと手引きからも外した言い回し)
-      note: Object.freeze(["相手の王を取れば、勝ち。", "王は、伏せたまま。取るまで分からない。"]),
+      // 文は MOVE_TEXT のまま。画面は句(phrases)ごとに出す(375 幅で「縦横に2マスま/で。」と割れた)
+      items: stage.ranks.map((rank) => Object.freeze({ rank, text: MOVE_TEXT[rank], phrases: Object.freeze([...movePhrases(rank)]) })),
+      // 「名乗らない」はやめた(2026-10-01 本人の指示。語りと手引きからも外した言い回し)。
+      // 1文1行(2026-10-06 見直し。2文を1行に入れていて、320 幅で「取/るまで分からない。」と割れた。文は変えない)
+      note: Object.freeze(["相手の王を取れば、勝ち。", "王は、伏せたまま。", "取るまで分からない。"]),
     });
   if (p === 2)
     return Object.freeze({
@@ -318,11 +321,14 @@ export function markStoryPrimerSeen(storage = globalThis.localStorage) {
  */
 export function primerOutroLines(profile) {
   const phase = phaseOf(profile);
+  // 1行目は句の並び(Primer は句ごとに折り返す。2026-10-05 見直し。1本の文字列だと
+  // 「…駒の動きを / 覚えます。」の手前で語の途中から割れた)。2行目は一覧の一行と同じ文字列(読点で切る)。
+  // 言葉は導入の調子(です・ますを使わない。2026-10-06 本人の指示)。句は読点で切り、狭い幅でも読点で折れる
   const first =
     phase >= 3
-      ? "ステージごとに、相手の王のエリアを覚えます。"
+      ? ["ステージごとに、", "相手の王のエリアを覚える。"]
       : phase === 2
-        ? "ステージごとに、相手の王の力を覚えます。"
-        : "ステージごとに、相手の王になる駒の動きを覚えます。";
-  return [first, nextStageLine(profile) || "ステージは何度でも遊べます。"];
+        ? ["ステージごとに、", "相手の王の力を覚える。"]
+        : ["ステージごとに、", "相手の王の動きを覚える。"];
+  return [first, nextStageLine(profile) || "ステージは、何度でも遊べる。"];
 }

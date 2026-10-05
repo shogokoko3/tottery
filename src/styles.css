@@ -6438,6 +6438,12 @@ body:has(.skin-overlay) {
   border: 0;
   border-radius: 6px;
 }
+/* 導入のあいだ(語り・はじめの一局・名前・門の語り・初回の10連・次の相手の紹介とその対局)は出さない
+   (2026-10-06 見直し)。門の語りの唯一の釦「門を開く」を覆っていた。送り直しは裏で続く。
+   根の data-intro は screens.jsx が立てる(称号の知らせを止めるのと同じあいだ) */
+:root[data-intro] .profile-sync-notice {
+  display: none;
+}
 
 /* ===== 盤面エリア(src/game/areas.js / src/ui/areas.jsx) =====
    自陣の色に、エリアごとの薄い色を重ねる。駒の見え方を邪魔しない程度 */
@@ -7623,6 +7629,17 @@ p.hint > span.gem-shop-diag {
 }
 .setup-order-second b {
   border-color: rgba(143, 188, 232, 0.5);
+  color: #8fbce8;
+}
+/* 札(「あなたは先攻」)は折り返さない(320 幅で「あなたは後/攻」と割れた。2026-10-06 見直し) */
+.setup-order b {
+  white-space: nowrap;
+}
+/* 導入の一局の先後(「最初の一手は、あなた。」の一行だけ)。札が無いぶん、文を少し前に出す */
+.setup-order-plain span {
+  color: var(--gold-soft);
+}
+.setup-order-plain.setup-order-second span {
   color: #8fbce8;
 }
 /* 持ち点をサーバーの記録に合わせたときの添え書き(2026-09-23) */
@@ -9868,10 +9885,19 @@ svg {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
 }
+/* 文の列は 375 幅で 62px(句の「2マスまで。」が 56px。2026-10-05 見直しで枠の内側の余白を詰めた) */
 .tutorial-hint-guide .move-guide .move-hint-row {
   grid-template-columns: 30px minmax(0, 1fr);
-  gap: 5px;
-  padding: 4px 5px;
+  gap: 4px;
+  padding: 4px 3px;
+}
+/* 320 幅では横に並べると文の列が 44px しかない。図の下に文を置く(句が1行に収まる) */
+@media (max-width: 360px) {
+  .tutorial-hint-guide .move-guide .move-hint-row {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+  }
 }
 .tutorial-hint-guide .move-hint-row .move-diagram {
   width: 30px;
@@ -9887,10 +9913,128 @@ svg {
 .tutorial-tagline-part {
   display: inline-block;
 }
+/* 句ごとに折り返す文(2026-10-05 見直し)。句(語のまとまり)を1つの塊にし、塊の間でだけ折り返す。
+   iPhone の WebKit は word-break: auto-phrase を知らず、「縦横1マ/ス。」「その駒を取れま/す。」と割れた。
+   ヒントの動きの図・ストーリーの対局説明(フェーズ1)・手引き。句は MOVE_PHRASES と primer.jsx が持つ */
+.text-phrase {
+  display: inline-block;
+}
+/* はじめの一局の結果の上に重ねる、勝ったあとの名前(「戻る」で結果へ。2026-10-05 見直し)。
+   下の結果が透けて読みにくくならないよう、札に重ねた画面と同じ地を敷く */
+.intro-name-cover .name-stage {
+  padding: 0;
+}
+.intro-name-cover .name-card {
+  background: linear-gradient(170deg, #132844, #0b1729);
+  border: 2px solid var(--gold);
+  max-height: 100%;
+  overflow-y: auto;
+}
 /* 「門へ進む」は送る中身の外。2×2 の釦の上にいつも見える */
 .gameover-panel > .gameover-gate {
   flex: none;
   margin-top: 10px;
+}
+/* 背の低い画面(375×667 など)では、はじめの一局の結果(門へ進むがある結果)だけを詰め、締めの一行まで
+   送らずに見せる(2026-10-05 見直し。締めが送る中身の下に隠れ、字の頭だけが見えていた。約51px 足りない)。
+   飾りの冠を外し(34px)、見出し・ステージの名・結びの行の余白を詰める。締めを門の塊へ移すと、
+   門の塊が高くなって結びの行が隠れるので、詰めるほうにした */
+@media (max-height: 700px) {
+  .gameover-panel:has(.gameover-gate) .gameover-body > svg:first-child {
+    display: none;
+  }
+  .gameover-panel:has(.gameover-gate) h2 {
+    margin: 2px 0;
+  }
+  .gameover-panel:has(.gameover-gate) .gameover-sub {
+    margin: 2px 0 6px;
+  }
+  .gameover-panel:has(.gameover-gate) .tutorial-end-lines {
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .gameover-panel:has(.gameover-gate) .tutorial-tagline {
+    margin: 4px 0 0;
+  }
+}
+/* もっと背の低い画面(320×568。SE 第1世代・拡大表示の SE2/SE3/8)では、上の詰め方でも締めの一行が入らなかった
+   (本文の箱 412px のうち 214px しか見えない。2026-10-06 見直し)。二人の王の札の絵とステージの名を外し、
+   文だけ残す(両者の王の数字と「伏せたまま」「自ら討った」は文に残る) */
+@media (max-height: 600px) {
+  .gameover-panel:has(.gameover-gate) .tutorial-reveal-pair .card-face,
+  .gameover-panel:has(.gameover-gate) .gameover-sub {
+    display: none;
+  }
+  .gameover-panel:has(.gameover-gate) .tutorial-reveal-pair {
+    margin: 2px 0 0;
+  }
+  /* それでも約28px 足りなかった。見出し・締めの字と行の高さ、「門へ進む」の厚みを詰める */
+  .gameover-panel:has(.gameover-gate) h2 {
+    font-size: 22px;
+  }
+  .gameover-panel:has(.gameover-gate) .tutorial-end-lines {
+    line-height: 1.4;
+  }
+  .gameover-panel:has(.gameover-gate) .tutorial-tagline {
+    font-size: 17px;
+    line-height: 1.4;
+  }
+  .gameover-panel > .gameover-gate .result-gate {
+    padding: 11px 16px;
+  }
+}
+/* 「対戦の振り返り」は1行で(320 幅で「対戦の振り/返り」と割れた。2026-10-06 見直し) */
+.gameover-grid-single .go-review {
+  white-space: nowrap;
+}
+/* はじめの一局の帯(plain)を、背の低い画面(320×568)で詰める(2026-10-06 見直し)。帯の上端が約 380pt にあり、
+   王を討てる唯一の駒 4♦(e1。356〜411pt)が帯の下に入った。ヒントを開くと帯がさらに背高になった。
+   内側の余白と行の高さを詰め、ヒントの図は小さな盤を外して数字と句だけにする(盤を見れば動きは分かる)。
+   盤は game.jsx が上のバーと帯のあいだへまるごと送る */
+@media (max-height: 600px) {
+  .tutorial-sheet-plain:not(.tutorial-sheet-front) .tutorial-sheet-inner {
+    padding: 8px 12px 6px;
+  }
+  .tutorial-sheet-plain .tutorial-line {
+    margin: 4px 0 4px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .tutorial-sheet-plain .tutorial-choose-badge {
+    margin: 4px 0 0;
+    line-height: 1.3;
+  }
+  .tutorial-sheet-plain .tutorial-wait {
+    padding: 4px 0 2px;
+  }
+  .tutorial-sheet-plain .tutorial-hint-text {
+    line-height: 1.45;
+  }
+  .tutorial-sheet-plain .tutorial-back-wait {
+    padding: 4px 14px;
+  }
+  .tutorial-sheet-plain .tutorial-hint-guide .move-hint {
+    margin: 4px 0 0;
+  }
+  .tutorial-sheet-plain .tutorial-hint-guide .move-hint-row .move-diagram {
+    display: none;
+  }
+  .tutorial-sheet-plain .tutorial-hint-guide .move-guide .move-hint-row {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+    padding: 3px 2px;
+  }
+  .tutorial-sheet-front.tutorial-sheet-plain .tutorial-sheet-inner {
+    padding: 12px 14px 10px;
+  }
+  .tutorial-sheet-front.tutorial-sheet-plain .tutorial-line {
+    font-size: 14.5px;
+    line-height: 1.6;
+  }
+  .tutorial-sheet-front.tutorial-sheet-plain .tutorial-next {
+    margin-top: 6px;
+  }
 }
 
 

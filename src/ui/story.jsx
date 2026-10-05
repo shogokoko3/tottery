@@ -21,8 +21,9 @@ import { findTitle } from "../game/titles.js";
 import { TitleFrame } from "./title-frame.jsx";
 import { MoveDiagram } from "./guides.jsx";
 import { CHRONICLE, STORY_PHASES, storyArc, storyEpisode } from "../game/story-narrative.js";
-import { ChronicleStyles, StoryArt, StoryReader, ChronicleWorld, StoryPurpose } from "./story-chronicle.jsx";
+import { ChronicleStyles, StoryArt, StoryReader, ChronicleWorld, StoryPurpose, StoryText, JoinedPhrases } from "./story-chronicle.jsx";
 import { StoryChapterArt } from "./story-chapter-art.jsx";
+import { Phrases } from "./phrases.jsx";
 
 /** フェーズの一言 */
 export const PHASE_LABEL = Object.freeze({
@@ -31,8 +32,21 @@ export const PHASE_LABEL = Object.freeze({
   3: "エリアあり",
 });
 
-export function StoryScreen({ onBack, onStart, onGuide = null }) {
+export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = false }) {
   const [profile, setProfile] = useState(() => loadProfile());
+  // 導入を終えて一覧へ来たら(revealNext)、「次は、四と五の王。」を画面の真ん中へ送る(2026-10-06 見直し)。
+  // 一行は年代記の見出しとフェーズの札の下にあり、375×667 では 712px、320×568 では 832px で、送らないと見えなかった
+  const nextRef = useRef(null);
+  useEffect(() => {
+    if (!revealNext) return undefined;
+    const id = setTimeout(() => {
+      const el = nextRef.current;
+      if (!el || !el.scrollIntoView) return;
+      const still = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ block: "center", behavior: still ? "auto" : "smooth" });
+    }, 250);
+    return () => clearTimeout(id);
+  }, [revealNext]);
   const status = promotionStatus(profile);
   const [phase, setPhase] = useState(status.phase);
   const [reading, setReading] = useState(null);
@@ -49,10 +63,13 @@ export function StoryScreen({ onBack, onStart, onGuide = null }) {
   return (
     <div className="setup-wrap story-wrap chronicle-hub">
       <ChronicleStyles />
+      {/* 年代記の短い文は句の塊で出す(語の途中で割らない。2026-10-06 見直し)。長い地の文は段落のまま */}
       <header className="chronicle-hero">
         <StoryArt axis="k" phase={Math.min(phase, status.phase)} />
         <div className="chronicle-hero-top">
-          <span>ストーリー · 七つの立場、三つの時代</span>
+          <span>
+            <Phrases text="ストーリー · 七つの立場、三つの時代" />
+          </span>
           {onGuide && (
             <button
               type="button"
@@ -68,7 +85,9 @@ export function StoryScreen({ onBack, onStart, onGuide = null }) {
             THE CHRONICLE OF THE ASHEN CROWN
           </small>
           <h2>{CHRONICLE.title}</h2>
-          <p>{CHRONICLE.subtitle}</p>
+          <p>
+            <StoryText text={CHRONICLE.subtitle} />
+          </p>
         </div>
       </header>
       <div className="chronicle-main">
@@ -90,7 +109,9 @@ export function StoryScreen({ onBack, onStart, onGuide = null }) {
                       : "進行中"}
                 </span>
               </small>
-              <b>{STORY_PHASES[p].title}</b>
+              <b>
+                <StoryText text={STORY_PHASES[p].title} />
+              </b>
             </button>
           ))}
         </nav>
@@ -99,7 +120,8 @@ export function StoryScreen({ onBack, onStart, onGuide = null }) {
           <p>{act.summary}</p>
           <div className="chronicle-journey">
             <b>{phase === 1 ? "あなたが戦う理由" : "あなたが引き受けるもの"}</b>
-            <p>{phase === 1 ? CHRONICLE.player : act.purpose}</p>
+            {/* フェーズ1 はあなたが戦う理由(段落)。2・3 は短い目的なので句で */}
+            <p>{phase === 1 ? CHRONICLE.player : <StoryText text={act.purpose} />}</p>
           </div>
           <p className="story-phase">
             フェーズ {phase}
@@ -110,7 +132,9 @@ export function StoryScreen({ onBack, onStart, onGuide = null }) {
         </section>
         {!available ? (
           <section className="chronicle-locked">
-            <b>この先の頁は、まだ閉じている。</b>
+            <b>
+              <Phrases text="この先の頁は、まだ閉じている。" />
+            </b>
             <p>
               現在のフェーズの7ステージをクリアし、
               <br />
@@ -127,7 +151,11 @@ export function StoryScreen({ onBack, onStart, onGuide = null }) {
           </section>
         ) : (
           <>
-            {nextLine && <p className="story-next">{nextLine}</p>}
+            {nextLine && (
+              <p className="story-next" ref={nextRef}>
+                {nextLine}
+              </p>
+            )}
             <div
               className="story-progress"
               aria-label={`${list.filter((s) => s.cleared).length} / ${list.length} ステージクリア`}
@@ -170,19 +198,25 @@ export function StoryScreen({ onBack, onStart, onGuide = null }) {
                       </span>
                       <span className="story-stage-body">
                         <span className="chronicle-role">
-                          {arc.role} ／ {arc.theme}
+                          <JoinedPhrases head={arc.role} sep="／" tail={arc.theme} />
                         </span>
-                        <b>{chapter.title}</b>
+                        <b>
+                          <StoryText text={chapter.title} />
+                        </b>
                         <span className="story-stage-rival">{arc.cast}</span>
-                        <small>{chapter.hook}</small>
+                        <small>
+                          <StoryText text={chapter.hook} />
+                        </small>
                         <span className="sr-only">{s.name}の王</span>
                       </span>
                     </button>
                     <div className="chronicle-chapter-tail">
                       <small>
-                        {s.cleared
-                          ? "✓ クリア済み · 後日談を解放"
-                          : `初回クリア · チケット ${s.tickets}枚`}
+                        {s.cleared ? (
+                          <JoinedPhrases head="✓ クリア済み" sep="·" tail="後日談を解放" />
+                        ) : (
+                          <JoinedPhrases head="初回クリア" sep="·" tail={`チケット ${s.tickets}枚`} />
+                        )}
                       </small>
                       <button
                         type="button"
@@ -314,20 +348,24 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
           <span className="skins-eyebrow">
             フェーズ {phase}・{PHASE_LABEL[phase]}・{stageSize(phase)}×{stageSize(phase)}
           </span>
-          <h3>{storyEpisode(axis, phase)?.title}</h3>
+          <h3>
+            <StoryText text={storyEpisode(axis, phase)?.title} />
+          </h3>
           <p className="chronicle-kicker">対局説明 · {intro.title}</p>
           <p className="story-intro-lead">{intro.lead}</p>
         </div>
-        {arc && <div className="chronicle-roster">{arc.characters.map(c => <div key={c.rank}><CardFace rank={c.rank} suit="spade" size="sm" skinId={false} /><span><b>{c.name}</b><small>{c.detail}</small></span></div>)}</div>}
+        {/* 登場人物の一言・この局のねらいは句の塊で(語の途中で割らない。2026-10-06 見直し)。挑戦状(台詞)は段落のまま */}
+        {arc && <div className="chronicle-roster">{arc.characters.map(c => <div key={c.rank}><CardFace rank={c.rank} suit="spade" size="sm" skinId={false} /><span><b>{c.name}</b><small><StoryText text={c.detail} /></small></span></div>)}</div>}
         <StoryPurpose episode={storyEpisode(axis, phase)} />
         {rival && (
           <div className="story-rival">
-            <div><b>{rival.quoteSpeaker || rival.name}</b><p className="story-rival-quote">{rival.quote}</p><small>{rival.aim}</small></div>
+            <div><b>{rival.quoteSpeaker || rival.name}</b><p className="story-rival-quote">{rival.quote}</p><small><Phrases text={rival.aim} /></small></div>
           </div>
         )}
         {lesson && <p className="story-lesson">手札{lesson.handSize}枚から5枚を並べる。<span>使う札：{lesson.pool.join("・")}／時間制限なし</span></p>}
         {phase === 1 ? (
-          // フェーズ1 は駒の動き方を盤の図で。図はルール(getLegalMoves)から描く MoveDiagram、文は MOVE_TEXT のまま。
+          // フェーズ1 は駒の動き方を盤の図で。図はルール(getLegalMoves)から描く MoveDiagram、文は MOVE_TEXT のまま
+          // (句に切った MOVE_PHRASES で出す。つなぐと MOVE_TEXT)。
           // 図は 9×9 の中央から描く(5×5 だと 2マス先までしか描けず、8 と 2・J と 4 などが同じ絵になっていた)
           <ul className="story-intro-moves">
             {intro.items.map((it) => (
@@ -336,7 +374,14 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
                   <CardFace rank={it.rank} suit="spade" size="sm" skinId={false} />
                   <MoveDiagram rank={it.rank} gridSize={9} />
                 </div>
-                <p>{it.text}</p>
+                {/* 句ごとに折り返す(語の途中で割らない。2026-10-05 見直し) */}
+                <p>
+                  {(it.phrases || [it.text]).map((phrase, i) => (
+                    <span className="text-phrase" key={i}>
+                      {phrase}
+                    </span>
+                  ))}
+                </p>
               </li>
             ))}
           </ul>

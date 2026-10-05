@@ -1,3 +1,4 @@
+import { missionRewardOf, missionFromLegacyId, validMissionReward } from "../game/mission-reward.js";
 import { LoginRewards } from "./login-rewards.js";
 import { resolveSummonFreeze } from "../skins/summon-freeze.js";
 /**
@@ -71,7 +72,7 @@ import {
 } from "../game/win-chance.js";
 
 /** サーバーが組む出来事 id の接頭辞と、それを書いてよい道(kind)。apply() が守る */
-const RESERVED_PREFIX = Object.freeze({ login: "login", tutorial: "tutorial", campaign: "campaign", story: "story", "win-chance": "win-chance" });
+const RESERVED_PREFIX = Object.freeze({ earn: "earn", mission: "mission", pass: "pass", login: "login", tutorial: "tutorial", campaign: "campaign", story: "story", "win-chance": "win-chance" });
 
 /** 遊んで貯める分(kind=earn)は端末の申告なので、1回と1日(UTC)の上限で抑える */
 export const EARN_EVENT_MAX = 10;
@@ -252,6 +253,7 @@ export class Wallet {
     const purchasedFoils = this.purchasedFoilsOf(uid);
     return {
       tickets: r.tickets,
+      missionClaims: this.missionClaims(uid, now ?? Date.now()),
       gems: r.gems + r.gems_free,
       gemsPaid: r.gems,
       gemsFree: r.gems_free,
@@ -288,15 +290,15 @@ export class Wallet {
   passReward(uid, id, now) {
     if (!this.entitlementsOf(uid).includes(BATTLEPASS_ENTITLEMENT))
       throw new Error("バトルパスを持っていません。");
-    const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
-    if (seen) {
-      if (seen.uid !== uid) throw new Error("他の人の出来事です。");
-      return { applied: false, ...this.summary(uid, now) };
-    }
+    if (typeof id !== "string" || !/^[\w:.-]{1,128}$/.test(id) || RESERVED_PREFIX[id.split(":")[0]])
+      throw new Error("出来事の id が正しくありません。");
+    const scoped = `pass:${uid}:${id}`;
+    const seen = this.sql("SELECT 1 FROM wallet_ledger WHERE uid=? AND kind='pass' AND (id=? OR id=?)", uid, id, scoped)[0];
+    if (seen) return { applied: false, ...this.summary(uid, now) };
     if (this.passTicketsThisWeek(uid, now) + 1 > BATTLEPASS_WEEK_TICKET_MAX)
       throw new Error("今週のバトルパスの上限に達しました。");
     // ref=週にして、その週の枚数を数えられるようにする
-    const r = this.apply(uid, id, { tickets: 1 }, "pass", weekOf(now), now);
+    const r = this.apply(uid, scoped, { tickets: 1 }, "pass", weekOf(now), now);
     return { ...r, ...this.summary(uid, now) };
   }
   /**
@@ -340,6 +342,28 @@ export class Wallet {
     const r = this.apply(uid, id, { tickets: STORY_TICKETS }, "story", `${phase}:${axis}`, now);
     return { ...r, ...this.summary(uid, now) };
   }
+  /** 受取状態もサーバーを正とする。旧版で端末だけ受取済みにしたものを隠さない。 */
+  missionClaims(uid, now = Date.now()) {
+    const rows = this.sql("SELECT id,kind,ref FROM wallet_ledger WHERE uid=? AND (kind='mission' OR (kind='earn' AND id LIKE 'mission:%'))", uid);
+    return [...new Set(rows.map(row => row.kind === "mission" ? missionRewardOf(row.ref)?.id : missionFromLegacyId(row.id)).filter(id => id && validMissionReward(id, now)))];
+  }
+  missionReward(uid, mission, now, currency = null) {
+    const def = missionRewardOf(mission);
+    if (!def || (currency && currency !== def.reward.type)) throw new Error("ミッション報酬の指定が正しくありません。");
+    const id = `mission:${uid}:${mission}`;
+    const receipt = () => ({ ...this.summary(uid, now), uid, missionReceipt: { id: mission, received: true } });
+    if (this.sql("SELECT 1 FROM wallet_ledger WHERE uid=? AND id=? AND kind='mission'", uid, id)[0])
+      return { applied: false, ...receipt() };
+    const oldIds = [`mission:${mission}`, ...(def.period ? [`mission:${mission}:${def.period}`] : [])];
+    // 旧版の成功記録は本人のものだけを照合。使い終わった残高も復活させない。
+    if (oldIds.some(old => this.sql("SELECT 1 FROM wallet_ledger WHERE uid=? AND id=? AND kind='earn'", uid, old)[0]))
+      return { applied: false, ...receipt() };
+    if (!validMissionReward(mission, now)) throw new Error("この期間のミッション報酬は確認が必要です。受取記録は保存されています。");
+    const amount = def.reward.amount;
+    const delta = def.reward.type === "ticket" ? { tickets: amount } : { gemsFree: amount };
+    const result = this.apply(uid, id, delta, "mission", mission, now);
+    return { applied: result.applied, ...receipt() };
+  }
   loginStatus(uid, now) { return new LoginRewards(this).status(uid, now); }
   loginReward(uid, day, now) { return new LoginRewards(this).claim(uid, day, now); }
   legacyLoginReward(uid, id, now) { return new LoginRewards(this).legacy(uid, id, now); }
@@ -362,7 +386,7 @@ export class Wallet {
 
   /** 出来事 id で冪等に増減する。減らす場合は残高を超えない */
   apply(uid, id, { tickets = 0, gemsPaid = 0, gemsFree = 0 }, kind, ref, now) {
-    if (typeof id !== "string" || !/^[\w:.+-]{1,128}$/.test(id))
+    if (typeof id !== "string" || !/^[\w:.+-]{1,320}$/.test(id))
       throw new Error("出来事の id が正しくありません。");
     for (const d of [tickets, gemsPaid, gemsFree])
       if (!Number.isSafeInteger(d) || Math.abs(d) > 1000000)
@@ -406,7 +430,17 @@ export class Wallet {
     );
     return { applied: true, ...this.summary(uid) };
   }
-  credit(uid, id, n, kind, now) { return this.apply(uid, id, { tickets: n }, kind, null, now); }
+  /** 同じ出来事名でも別アカウントの残高を妨げない。旧成功記録との互換は残す。 */
+  earn(uid, id, delta, now) {
+    if (typeof id !== "string" || !/^[\w:.+-]{1,128}$/.test(id) || RESERVED_PREFIX[id.split(":")[0]])
+      throw new Error("出来事の id が正しくありません。");
+    if (this.sql("SELECT 1 FROM wallet_ledger WHERE uid=? AND id=? AND kind='earn'", uid, id)[0])
+      return { applied: false, ...this.summary(uid, now) };
+    return this.apply(uid, `earn:${uid}:${id}`, delta, "earn", null, now);
+  }
+  credit(uid, id, n, kind, now) {
+    return kind === "earn" ? this.earn(uid, id, { tickets: n }, now) : this.apply(uid, id, { tickets: n }, kind, null, now);
+  }
   /**
    * 記念配布(src/game/campaigns.js)。uid ごとに一度きり。枚数は台帳から読む(端末は id だけ送る)。
    * 出来事 id に uid を含めるのは、台帳の id が全体で一意(他の人の出来事を弾く)なため
@@ -420,7 +454,7 @@ export class Wallet {
   }
   debit(uid, id, n, kind, now) { return this.apply(uid, id, { tickets: -n }, kind, null, now); }
   /** 無償ジェムを足す(端末の申告。上限つき) */
-  earnGems(uid, id, n, now) { return this.apply(uid, id, { gemsFree: n }, "earn", null, now); }
+  earnGems(uid, id, n, now) { return this.earn(uid, id, { gemsFree: n }, now); }
   /** ジェムを使う。無償→有償の順に取り崩し、1つの出来事にする。extra は同時に足すもの(両替のチケットなど) */
   spendGems(uid, id, amount, kind, ref, now, extra = {}, { paidOnly = false, freeOnly = false } = {}) {
     if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("枚数が正しくありません。");

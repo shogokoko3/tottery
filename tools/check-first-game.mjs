@@ -7,9 +7,10 @@
  *   A. 盤の上の正しさ: 王を選ぶ段で止まる・王の力なし・役なし・初手で取れるのは 4♠ だけ・
  *      相手に取る手が無い・判定にならない
  *   B. 台本の通し: 王5通り × 選び直しのあり・なし × 4♦/5♥ で勝ちまで。holdFoe で相手が止まる・
- *      b4 は関門で止まる・並べ直しは止まる・結果のあなたの王の一行
- *   C. 押せる操作をすべてたどる: 行き止まりが無く、勝ち以外で終わらない
- *   D. 文: 各行20字まで・行の出し分け・あと N 手
+ *      b4 は関門で止まる・並べ直しは止まる・結果のあなたの王の一行・1手目の空きマスは「そこに、伏せ札は無い。」・
+ *      外したあとの取らない手は「取るのは、逃げた一枚。」
+ *   C. 押せる操作をすべてたどる: 行き止まりが無く、勝ち以外で終わらない。あなたの番に札の無い場面が無い
+ *   D. 文: 各行20字まで・行の出し分け・あと N 手・一言に ▼ を数えさせない
  *   E. 第1〜13話は変わらない(王の力あり・一覧に入らない・関門の文・題)
  */
 import { reducer } from "../src/game/reducer.js";
@@ -71,6 +72,8 @@ function settle(m) {
 }
 /** y(): 関門を通れば reducer へ。止まれば一言を返す */
 function press(m, E) {
+  // 画面と同じ: マスを押した手は、選んでいる駒(selectedId)を pieceId に足してから関門へ(game.jsx の y())
+  if (E.type === "MOVE_PIECE" && !E.pieceId && m.a.selectedId) E = { ...E, pieceId: m.a.selectedId };
   const g = tutorialGate(tut, idxOf(m), m.a, E);
   if (g) return { blocked: g.nudge, m };
   return { m: settle({ ...m, a: reducer(m.a, E) }) };
@@ -206,6 +209,17 @@ function playThrough(king, repick, finisher, miss = false) {
     want(same(r.blocked, textLines(tut.steps[2].nudge)), `ほかの駒の手が止まらない(${JSON.stringify(r.blocked)})`);
     const sel = settle({ ...m, a: reducer(m.a, { type: "SELECT_PIECE", id: "t0" }) });
     want(same(stepLines(active(sel), sel.a), textLines(tut.steps[2].picked)), "4♠ を選んでも文が変わらない");
+    // 4♠ で c4 以外の空きマスへ動かすと、台本の一言(wrongCell)で止まり、札は picked のまま(2026-10-05 見直し)
+    const empties = legal(m.a, m.a.pieces.t0).filter((mv) => !mv.capture);
+    want(same(empties.map((mv) => sq(mv.row, mv.col)).sort(), ["b2", "c3", "d2", "e2"]), `4♠ の空きマスが c3・b2・d2・e2 でない(${empties.map((mv) => sq(mv.row, mv.col))})`);
+    for (const mv of empties) {
+      const direct = press(m, { type: "MOVE_PIECE", pieceId: "t0", row: mv.row, col: mv.col, captures: mv.captures });
+      want(same(direct.blocked, textLines(tut.steps[2].wrongCell)), `4♠→${sq(mv.row, mv.col)} が「そこに、伏せ札は無い。」で止まらない(${JSON.stringify(direct.blocked)})`);
+      // 画面と同じ形: 4♠ を選んでから、pieceId を付けずにマスを押す
+      const viaSel = press(sel, { type: "MOVE_PIECE", row: mv.row, col: mv.col, captures: mv.captures });
+      want(same(viaSel.blocked, textLines(tut.steps[2].wrongCell)), `選んでから ${sq(mv.row, mv.col)} を押しても台本の一言で止まらない`);
+      want(same(stepLines(active(viaSel.m), viaSel.m.a), textLines(tut.steps[2].picked)), "止めたあと札が picked のままでない");
+    }
     r = press(sel, { type: "MOVE_PIECE", pieceId: "t0", row: 1, col: 2 });
     want(!r.blocked, "4♠ c2→c4 が止まる");
     m = runFoe(r.m);
@@ -235,7 +249,9 @@ function playThrough(king, repick, finisher, miss = false) {
       want(m.a.players[0].kingId === king && m.a.pieces[king].alive, "外れた分岐で自分の王が失われる");
     }
     r = press(m, moveOf(m.a, "t0", 2, miss ? 1 : 2));
-    want(same(r.blocked, textLines(pick.need.choose.notCapture)), `取らない手が止まらない(${JSON.stringify(r.blocked)})`);
+    // 外したあとは、残された一枚(5♦)はもう盤に無い。取らない手の一言は逃げた一枚だけを指す(2026-10-05 見直し)
+    const notCapture = miss ? pick.afterMiss.notCapture : pick.need.choose.notCapture;
+    want(same(r.blocked, textLines(notCapture)), `取らない手が止まらない・一言が場面に合わない(${JSON.stringify(r.blocked)})`);
     for (const [id, row, col] of [["t4", 4, 0], ["t3", 2, 1], ["t2", 3, 4]]) {
       const mv = moveOf(m.a, id, row, col);
       if (mv) want(!!press(m, mv).blocked, `取らない手 ${id}→${sq(row, col)} が通る`);
@@ -321,7 +337,7 @@ function keyOf(m) {
 }
 {
   const seen = new Set();
-  const res = { states: 0, ends: [], stuck: [], place: [], dead: [], powers: 0 };
+  const res = { states: 0, ends: [], stuck: [], place: [], dead: [], powers: 0, silent: [] };
   const stack = [[start(), []]];
   while (stack.length) {
     let [m, path] = stack.pop();
@@ -333,6 +349,8 @@ function keyOf(m) {
     const a = m.a;
     if (a.kingPowers !== false) res.powers++;
     if (a.phase === "play" && isDeadPosition(a)) res.dead.push(path);
+    // あなたの番に、案内の札が無い場面(はじめの一局の待ちの帯は、撃破の札と相手の番にしか出さない。game.jsx の tutHold)
+    if (a.phase === "play" && a.currentTurn === 0 && !a.captureReveal && !active(m) && idxOf(m) < tut.steps.length) res.silent.push(path);
     if (a.phase === "gameover") {
       res.ends.push({ path, winner: a.winner, adj: !!a.adjudication, king: a.players[0].kingId, by: a.lastMove && a.lastMove.pieceId });
       continue;
@@ -363,6 +381,7 @@ function keyOf(m) {
   ok("並べる場面へ戻れない", res.place.length === 0, res.place.slice(0, 2).map((p) => p.join(" > ")).join(" // "));
   ok("判定の局面が無い", res.dead.length === 0);
   ok("王の力の付いた局面が無い", res.powers === 0);
+  ok("あなたの番に案内の札が無い場面が無い(待ちの帯の決まり文句を出さずに済む)", res.silent.length === 0, res.silent.slice(0, 2).map((p) => p.join(" > ")).join(" // "));
   const bad = res.ends.filter((e) => e.winner !== 0 || e.adj);
   ok("勝ち以外の決着が無い", res.ends.length > 0 && bad.length === 0, bad.slice(0, 2).map((e) => e.path.join(" > ")).join(" // "));
   const combos = MY.flatMap((kg) => ["t1", "t2"].map((by) => `${kg}:${by}`));
@@ -380,16 +399,22 @@ console.log("\nD. 文");
   for (const st of tut.steps) {
     for (const key of ["text", "picked", "nudge"]) lines.push(...textLines(st[key]));
     if (st.kingAlt) lines.push(...textLines(st.kingAlt.text));
-    if (st.afterMiss) lines.push(...textLines(st.afterMiss.text));
+    if (st.afterMiss) lines.push(...textLines(st.afterMiss.text), ...textLines(st.afterMiss.notCapture));
+    lines.push(...textLines(st.wrongCell));
     const pick = st.need && st.need.choose;
-    if (pick) for (const key of ["hint", "wrong", "notCapture"]) lines.push(...textLines(pick[key]));
+    if (pick) for (const key of ["hint", "wrong", "notCapture", "badge"]) lines.push(...textLines(pick[key]));
   }
+  lines.push(...textLines(tut.foeTurn));
   const long = lines.filter((l) => [...l].length > 20);
   ok(`札の文はどれも1行20字まで(${lines.length} 行)`, long.length === 0, long.join(" / "));
   ok("札の文は行の配列で持つ", tut.steps.every((st) => Array.isArray(st.text)));
   ok("文に「将棋」を使わない", !lines.some((l) => l.includes("将棋")));
   ok("始めは「あと 2 手」(王を選ぶ・確定は数えない)", movesLeft(tut, 0) === 2);
   ok("結果の締めの一行", tut.tagline === "一手に、読みを。一枚に、野望を。");
+  // 結びの札と決め手の印(2026-10-06 本人の指示)。導入の言葉の調子で
+  ok("結びの札は「相手が逃がした一枚は、王だった。」「動きを読めば、王に届く。」", same(tut.steps[5].text, ["相手が逃がした一枚は、王だった。", "動きを読めば、王に届く。"]), JSON.stringify(tut.steps[5].text));
+  ok("決め手の札の印は「あなたが読む、一手。」", tut.steps[4].need.choose.badge === "あなたが読む、一手。");
+  ok("第1〜13話の決め手は印を持たない(画面の決まりの「自分で考える1手」のまま)", ALL_TUTORIALS.every((t) => t.steps.every((x) => !(x.need && x.need.choose && x.need.choose.badge))));
   const pick = tut.steps[4].need.choose;
   ok("ヒント: 2 か 3・斜めに一歩なら 3 か 5", same(pick.hint, ["相手の王は、2 か 3。", "斜めに一歩なら、3 か 5。"]));
   ok("ヒントの動きの図は 2・3・5", same(pick.hintGuide.ranks, ["2", "3", "5"]));
@@ -400,6 +425,17 @@ console.log("\nD. 文");
   // 盤面を渡さなくても、待つ札とは行き来しない(戻ると関門が開いて行き止まる)
   ok("待つ札と自分で考える1手は「前の説明へ」を出さない", !canStepBack(tut, 3) && !canStepBack(tut, 4));
   ok("文字列はそのまま1行", same(textLines("あ"), ["あ"]) && same(textLines(null), []));
+  // 取らない手の一言は ▼ を数えさせない(ヒントを開くと、あなたの 4♦ にも ▼ が付いて三つになる)
+  const notCaptures = [...textLines(pick.notCapture), ...textLines(tut.steps[4].afterMiss.notCapture)];
+  ok("取らない手の一言に ▼ を使わない(外したあとの一言も)", notCaptures.length === 2 && notCaptures.every((l) => !l.includes("▼")), notCaptures.join(" / "));
+  ok("外したあとの取らない手は、逃げた一枚だけを指す", same(tut.steps[4].afterMiss.notCapture, ["取るのは、逃げた一枚。"]));
+  ok("1手目の空きマスの一言", same(tut.steps[2].wrongCell, ["そこに、伏せ札は無い。"]));
+  // 相手の番の帯の一行(game.jsx の tutHold)。決まり文句の「相手の番です。少し待ってください。」を使わない
+  ok("相手の番の一行は台本が持つ(です・ます調の決まり文句でない)", Array.isArray(tut.foeTurn) && tut.foeTurn.length === 1 && !/です|ます|ください/.test(tut.foeTurn.join("")), JSON.stringify(tut.foeTurn));
+  // 結果のあなたの王の行(2026-10-06 見直し)。行は文字列か句の配列。読点の無い長い行は手で切る
+  const notes = [...tut.kingNote.hidden, ...tut.kingNote.struck].map((l) => (Array.isArray(l) ? l.join("") : l));
+  ok("結果のあなたの王の行は20字まで・です/ます調でない", notes.every((l) => [...l].length <= 20 && !/です|ます/.test(l)), notes.join(" / "));
+  ok("「最後まで伏せたまま。」は「最後まで」「伏せたまま。」の句(320 幅の半分の列で語の途中で割れた)", same(tut.kingNote.hidden, ["あなたの王は、", ["最後まで", "伏せたまま。"]]));
 }
 
 /* =====================================================================

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { dockSheet } from "./tutorial-dock.js";
+import { Phrases } from "./phrases.jsx";
 import {
   TUTORIALS,
   EXTRA_TUTORIALS,
@@ -8,7 +9,7 @@ import {
   textLines,
   tutorialMinutes,
 } from "../game/tutorial.js";
-import { MOVE_TEXT, SUIT_SYMBOL } from "../game/constants.js";
+import { MOVE_TEXT, SUIT_SYMBOL, movePhrases } from "../game/constants.js";
 import { squareName } from "../game/board.js";
 import { MoveDiagram, KingMoveFigure } from "./guides.jsx";
 import { getCollection } from "../skins/store.js";
@@ -51,7 +52,9 @@ export const KING_ROW_TEXT = {
 
 /**
  * 駒の動きの一覧(判定なし)。対局の初めに「この対局の駒はこう動く」を見せる。
- * kings を立てると、同じ数字を王にしたときの力を並べる
+ * kings を立てると、同じ数字を王にしたときの力を並べる。
+ * phrased を立てると、文を句(MOVE_PHRASES)ごとに折り返す(はじめの一局のヒントの図。文の列が 375 幅で 60px ほど
+ * しかなく、iPhone で「縦横1マ/ス。」と割れた。2026-10-05 見直し)。第1〜13話の一覧はいままでどおり
  */
 export function MoveGuidePanel({ guide }) {
   const kings = !!guide.kings;
@@ -72,7 +75,15 @@ export function MoveGuidePanel({ guide }) {
             <span className="move-hint-label">
               <b>{kings ? `${rank} の王` : rank}</b>
               <small>
-                {kings ? KING_ROW_TEXT[rank] || "" : MOVE_TEXT[rank]}
+                {kings
+                  ? KING_ROW_TEXT[rank] || ""
+                  : guide.phrased
+                    ? movePhrases(rank).map((phrase, i) => (
+                        <span className="text-phrase" key={i}>
+                          {phrase}
+                        </span>
+                      ))
+                    : MOVE_TEXT[rank]}
               </small>
             </span>
           </div>
@@ -386,11 +397,14 @@ export function TutorialSheet({
   if (!step) return null;
   // 文は行の配列でも持てる(はじめの一局)。読点の位置で行を切るため、2行以上は1行ずつ積む
   const shown = lines || textLines(step.text);
+  // はじめの一局(plain)は、行の中も句の塊で出す(2026-10-06 見直し。320 幅で「…二枚をね/らう。」と
+  // 語の途中で割れた)。第1〜13話の文はいままでどおり
+  const say = (line) => (plain ? <Phrases text={line} /> : line);
   return (
     <div
       className={`tutorial-sheet ${front ? "tutorial-sheet-front" : ""} ${
         front && low ? "tutorial-sheet-low" : ""
-      } ${front && dock ? `tutorial-sheet-dock tutorial-sheet-dock-${dock.side}` : ""}`}
+      } ${front && dock ? `tutorial-sheet-dock tutorial-sheet-dock-${dock.side}` : ""} ${plain ? "tutorial-sheet-plain" : ""}`}
       role="status"
       aria-live="polite"
     >
@@ -419,17 +433,20 @@ export function TutorialSheet({
           </div>
           {left > 0 && <small className="tutorial-left">{plain ? "最短" : "あと"} {left} 手</small>}
         </div>
+        {/* 印は台本が持てる(はじめの一局は「あなたが読む、一手。」。句の塊で出す)。無ければ決まりの一言 */}
         {step.need && step.need.choose && (
-          <p className="tutorial-choose-badge">自分で考える1手</p>
+          <p className="tutorial-choose-badge">
+            {step.need.choose.badge ? <Phrases text={step.need.choose.badge} /> : "自分で考える1手"}
+          </p>
         )}
         <p className="tutorial-line">
           {shown.length > 1
             ? shown.map((line, i) => (
                 <span className="tutorial-line-row" key={i}>
-                  {line}
+                  {say(line)}
                 </span>
               ))
-            : shown[0]}
+            : say(shown[0])}
         </p>
         {step.moveGuide && <MoveGuidePanel guide={step.moveGuide} />}
         {step.moveHint && <MoveHintPanel hint={step.moveHint} />}
@@ -443,12 +460,12 @@ export function TutorialSheet({
                   <span className="tutorial-wait-lines">
                     {textLines(nudge).map((line, i) => (
                       <span className="tutorial-line-row" key={i}>
-                        {line}
+                        {say(line)}
                       </span>
                     ))}
                   </span>
                 ) : nudge ? (
-                  textLines(nudge)[0]
+                  say(textLines(nudge)[0])
                 ) : step.need.choose ? (
                   "どの駒で取るかは自由です"
                 ) : (
@@ -460,10 +477,14 @@ export function TutorialSheet({
               <p className="tutorial-hint-text">
                 {textLines(hint).map((line, i) =>
                   i === 0 ? (
-                    `ヒント: ${line}`
+                    plain ? (
+                      <Fragment key={i}>{say(`ヒント: ${line}`)}</Fragment>
+                    ) : (
+                      `ヒント: ${line}`
+                    )
                   ) : (
                     <span className="tutorial-line-row" key={i}>
-                      {line}
+                      {say(line)}
                     </span>
                   ),
                 )}

@@ -62,6 +62,7 @@ async function mirror(data) {
     return {
       ...next,
       tickets: data.tickets,
+      walletMissionClaims: Array.isArray(data.missionClaims) ? data.missionClaims : s.walletMissionClaims,
       gems: Number.isSafeInteger(data.gems) ? data.gems : s.gems || 0,
       gemsPaid: Number.isSafeInteger(data.gemsPaid)
         ? data.gemsPaid
@@ -89,6 +90,16 @@ function orderedWallet(task) {
 }
 function requestAndMirror(op, body = {}, uid = null) {
   return orderedWallet(async () => mirror(await walletRequest(op, body, uid)));
+}
+
+function requestMissionAndMirror(mission, uid) {
+  return orderedWallet(async () => {
+    const data = await walletRequest("mission-reward", { mission }, uid);
+    if (data.uid !== uid || !Number.isSafeInteger(data.tickets) || !Number.isSafeInteger(data.gemsFree) ||
+        data.missionReceipt?.id !== mission || data.missionReceipt.received !== true)
+      throw new Error("受け取りを確認できませんでした。もう一度お試しください。");
+    return mirror(data);
+  });
 }
 
 function readPending() {
@@ -123,7 +134,8 @@ async function drainPending() {
     if (!ev) return;
     attempted.add(ev.id);
     try {
-      if (ev.login) await requestAndMirror("login-reward", ev.login, ev.uid);
+      if (ev.mission) await requestMissionAndMirror(ev.mission, ev.uid);
+      else if (ev.login) await requestAndMirror("login-reward", ev.login, ev.uid);
       else if (ev.winChance) await requestAndMirror("win-chance-reward", ev.winChance, ev.uid);
       else if (ev.pass) await requestAndMirror("pass-reward", { id: ev.id });
       else if (ev.tutorial) await requestAndMirror("tutorial-reward", { chapter: ev.tutorial });
@@ -137,7 +149,7 @@ async function drainPending() {
       if (/通信を確認|財布を読み込/.test(e.message)) break;
       // 上限・ID衝突・通信失敗は、獲得記録を捨てる理由にしない。
       // その1件を保留し、独立したログイン・勝利などの受取は続ける。
-      if (ev.login || ev.winChance || /^login:/.test(ev.id) || /これ以上|他の人|上限/.test(e.message)) continue;
+      if (ev.mission || ev.login || ev.winChance || /^(login|mission):/.test(ev.id) || /これ以上|他の人|上限/.test(e.message)) continue;
       if (/正しくありません|持っていません/.test(e.message)) drop(ev.id);
       else continue;
     }
@@ -174,6 +186,20 @@ async function recoverWinChanceTickets() {
   }
   for (let done = 1; done <= Math.min(state.done, WIN_CHANCE_MAX_PER_DAY); done++)
     queueWinChance(state.day, done, auth.uid);
+}
+
+/** ミッションは枚数を送らず、カタログ上のIDだけで受け取る。確定前のローカル加算はしない。 */
+export async function claimMissionReward(mission) {
+  const auth = await ensureAuth();
+  if (!auth) throw new Error("通信を確認して、もう一度お試しください。");
+  const id = `mission:${auth.uid}:${mission}`, list = readPending();
+  if (!list.some(x => x.id === id))
+    localStorage.setItem(PENDING_KEY, JSON.stringify([...list, { id, uid: auth.uid, mission, at: Date.now() }]));
+  const data = await requestMissionAndMirror(mission, auth.uid);
+  if (!data.missionReceipt?.received || data.missionReceipt.id !== mission)
+    throw new Error("受け取りを確認できませんでした。もう一度お試しください。");
+  writePending(readPending().filter(x => x.id !== id));
+  return data;
 }
 
 /** ログイン報酬はサーバーの受取状態を正とする。端末の bonusTaken/時計は送らない。 */

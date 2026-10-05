@@ -161,6 +161,10 @@ export function normalize(raw) {
     season: sanitizeSeasonCache(value.season),
     tsume: sanitizeTsumeProgress(value.tsume),
     missionClaims: sanitizeMissionClaims(value.missionClaims),
+    // null は旧サーバー・未同期。[] はサーバーが未受取を確認した状態。
+    walletMissionClaims: Array.isArray(value.walletMissionClaims)
+      ? [...new Set(value.walletMissionClaims.filter(id => typeof id === "string" && id.length <= 128))].slice(-256)
+      : null,
     missionDrawDay:
       typeof value.missionDrawDay === "string" &&
       /^\d{4}-\d{2}-\d{2}$/.test(value.missionDrawDay)
@@ -228,6 +232,9 @@ export function normalize(raw) {
     // はじめての10連を引いたか(2026-09-28 本人の指示)。
     // ここに並べないと normalize が落としてしまい、開き直すたびに初回の10連が出る
     firstPullDone: value.firstPullDone === true,
+    // 初回の10連の結果をまだ閉じていないか(2026-10-05 見直し)。落とすと、結果の前にアプリを閉じた人が
+    // 次の起動で結果へ戻れない(src/skins/first-pull.js の firstPullOpen)
+    firstPullOpen: value.firstPullOpen === true && value.firstPullDone === true,
     pending: results.length
       ? {
           results,

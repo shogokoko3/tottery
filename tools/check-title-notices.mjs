@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   clearTitleNotices,
   dismissTitleNotice,
   getTitleNotices,
   holdTitleNotices,
+  limitTitleNotices,
   subscribeTitleNotices,
 } from "../src/game/title-notices.js";
 import { TITLES, newlyEarned } from "../src/game/titles.js";
@@ -173,6 +175,85 @@ assert.equal(getTitleNotices().held, false);
   clearTitleNotices();
   assert.equal(visit({ screen: "game" }), false, "ほかの対局では止めない(導入の保留を持ち越さない)");
 }
+// 件数の決まり(limitTitleNotices。2026-10-05 見直し)。n 件を閉じたら残りは held と同じく待たせ、解除で続きを出す
+{
+  resetAccount();
+  clearTitleNotices();
+  recordGachaStats({ foil: 1, ssr: 1, freeze: 1 });
+  grantTitle("fortress");
+  const queued = getTitleNotices().notices;
+  assert.equal(queued.length, 4, "4件積む");
+  assert.equal(getTitleNotices().left, null, "決まりが無ければ数えない");
+  const release = limitTitleNotices(1);
+  assert.deepEqual([getTitleNotices().held, getTitleNotices().left], [false, 1], "1件なら1件目は出す");
+  assert.equal(dismissTitleNotice(queued[0].id), true);
+  assert.deepEqual([getTitleNotices().held, getTitleNotices().left], [true, 0], "1件を閉じたら残りは待たせる");
+  assert.equal(getTitleNotices().notices[0], queued[1], "待たせても落とさない");
+  const second = limitTitleNotices(3);
+  assert.equal(getTitleNotices().held, true, "決まりが重なれば少ないほう(0)に従う");
+  second();
+  release();
+  release();
+  assert.deepEqual([getTitleNotices().held, getTitleNotices().left], [false, null], "解除すると続き(2件目)を出す。二重解除でも崩れない");
+  assert.equal(getTitleNotices().notices[0], queued[1]);
+  const zero = limitTitleNotices(0);
+  assert.equal(getTitleNotices().held, true, "0 件なら出さない");
+  zero();
+  clearTitleNotices();
+  // 画面: 決まりがあるときは出してよい分だけを数える(「あと3件」「›」で残りを匂わせない)。決まりは値が変わるまで持ち続ける
+  const ui = fs.readFileSync(new URL("../src/ui/title-acquisition.jsx", import.meta.url), "utf8");
+  assert.ok(/count=\{left === null \|\| left === undefined \? notices\.length : Math\.min\(notices\.length, left\)\}/.test(ui), "画面は残りの件数で数える");
+  assert.ok(/export function useTitleNoticeLimit\(count\) \{[\s\S]{0,200}if \(on\) return limitTitleNotices\(count\);\s*\}, \[on \? count : null\]\);/.test(ui), "件数の決まりは値が変わるまで持ち続ける");
+  // 知らせの言葉は導入の調子(です・ますを使わない。2026-10-06 本人の指示)。読み上げと見える一言をそろえる
+  assert.ok(
+    /<span\s+className="title-award-announcement"[^>]*>\s*称号「\{notice\.name\}」を手に入れた。設定で、装備できる。\s*<\/span>/.test(ui),
+    "読み上げは「称号「X」を手に入れた。設定で、装備できる。」",
+  );
+  assert.ok(/<p>設定で、装備できる。<\/p>/.test(ui), "見える一言は「設定で、装備できる。」");
+  assert.ok(!/装備できます|獲得しました/.test(ui), "です・ます調の「獲得しました」「装備できます」を残さない");
+}
+// 導入を終えたあと(初回の10連を閉じてから、ホームを開くまで)。画面と同じく、introHoldsTitles の保留と
+// introTitleQuota の件数を、値が変わったときだけ持ち替える(useTitleNoticeHold・useTitleNoticeLimit)
+{
+  const { introHoldsTitles, introTitleQuota } = await import("../src/game/intro.js");
+  resetAccount();
+  clearTitleNotices();
+  let release = null;
+  let limit = null;
+  let quota = null;
+  const visit = (scene) => {
+    const want = introHoldsTitles(scene);
+    if (want && !release) release = holdTitleNotices();
+    if (!want && release) {
+      release();
+      release = null;
+    }
+    const q = introTitleQuota(scene);
+    if (q !== quota) {
+      if (limit) limit();
+      limit = q === null ? null : limitTitleNotices(q);
+      quota = q;
+    }
+    const { held, notices } = getTitleNotices();
+    return held ? null : notices[0] ? notices[0].titleId : "";
+  };
+  recordGame(true, { deferXpNotice: true, xp: 300, story: { axis: "23", phase: 1 } });
+  saveName("導入のあと");
+  recordGachaStats({ pulls: 10, ssr: 1, freeze: 0, foil: 0 });
+  const queued = ids();
+  assert.ok(queued.length >= 3, `一局と10連で知らせが積まれる(${queued.join(",")})`);
+  const after = { afterIntro: true };
+  assert.equal(visit({ ...after, screen: "story", stageIntro: "45" }), null, "次の相手の紹介のあいだは出さない");
+  assert.equal(visit({ ...after, screen: "game" }), null, "紹介から対局へ進んでも、四と五の王のサイコロの上には出さない");
+  assert.equal(visit({ ...after, screen: "story" }), queued[0], "一覧に着いたら1件目だけ");
+  dismissTitleNotice(getTitleNotices().notices[0].id);
+  assert.equal(visit({ ...after, screen: "story" }), null, "1件目を閉じたら、一覧では続けて出さない");
+  assert.equal(visit({ ...after, screen: "story", stageIntro: "45" }), null, "紹介を開き直しても出さない");
+  assert.equal(visit({ ...after, screen: "story" }), null, "紹介を閉じて一覧に戻っても、数え直さない");
+  assert.equal(visit({ screen: "menu" }), queued[1], "ホームを開いたら残りを出す");
+  assert.deepEqual(ids(), queued.slice(1), "待たせたあいだの知らせを1件も落とさない");
+  clearTitleNotices();
+}
 console.log(
-  "称号獲得: 全7エリア・対局・熟練度・ガチャ・ミッション・配布・シーズン・保留/順序・保存失敗・引継ぎ・導入のあいだ: OK",
+  "称号獲得: 全7エリア・対局・熟練度・ガチャ・ミッション・配布・シーズン・保留/順序・保存失敗・引継ぎ・導入のあいだ・件数の決まり・知らせの言葉・導入のあと: OK",
 );

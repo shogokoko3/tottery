@@ -95,3 +95,10 @@
     transition: none;
   }
 }
+/* はじめの一局の結果(「門へ進む」のある結果)では、上の帯のすぐ下に出す(2026-10-06 見直し)。
+   下に出すと、出始めの約2.4秒「門へ進む」と「対戦の振り返り」を覆った。導入でいちばん押してほしい釦を隠さない。
+   根の data-xp-at は game.jsx の GameView が、その結果を出しているあいだだけ立てる */
+:root[data-xp-at="top"] .xp-gain {
+  top: calc(var(--top-bar-h, 0px) + 8px);
+  bottom: auto;
+}

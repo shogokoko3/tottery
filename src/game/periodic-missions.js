@@ -233,7 +233,9 @@ export function periodicMissionRows(profile, collection, at = Date.now()) {
           : def.key === "wins"
             ? progress.wins
             : Number(progress.kingWins.includes(king.rank));
-    const claimed = claims.includes(id);
+    const claimed = ["ticket", "gems"].includes(def.reward.type) && Array.isArray(collection?.walletMissionClaims)
+      ? collection.walletMissionClaims.includes(id)
+      : claims.includes(id);
     const now = claimed ? def.goal : Math.min(def.goal, raw);
     return {
       ...def,

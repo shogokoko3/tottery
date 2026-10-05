@@ -229,7 +229,14 @@ export function MoveConfirm({ from, to, onCancel, onConfirm }) {
   );
 }
 
-export function CaptureConfirm({ count, squares, onCancel, onConfirm }) {
+/**
+ * 取る前の確認。plain ははじめの一局(台本をストーリーとして遊ぶ一局)。導入の言葉の調子にそろえ、
+ * 決まり文句の「取った駒の正体は、取ったあとに公開されます。」を短い一行にする(2026-10-05 見直し)。
+ * 見出しも問いかけに替え、マスは見出しに入れる(「この駒を取ります」「対象のマス: c4」はです・ます調と
+ * 硬い言葉のまま残っていた。2026-10-06 見直し)。はじめの一局の相手の駒は、どれも伏せ札
+ */
+export function CaptureConfirm({ count, squares, onCancel, onConfirm, plain = false }) {
+  const where = squares && squares.length > 0 ? squares : null;
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div
@@ -237,16 +244,24 @@ export function CaptureConfirm({ count, squares, onCancel, onConfirm }) {
         onClick={(e) => e.stopPropagation()}
       >
         <h3>
-          {count > 1 ? `${count}体をまとめて取ります` : "この駒を取ります"}
+          {plain
+            ? count > 1
+              ? `伏せ札を${count}枚、まとめて取る?`
+              : where
+                ? `${where[0]} の伏せ札を、取る?`
+                : "この伏せ札を、取る?"
+            : count > 1
+              ? `${count}体をまとめて取ります`
+              : "この駒を取ります"}
         </h3>
         <p className="hint">
-          {squares && squares.length > 0 && (
+          {where && !plain && (
             <>
-              対象のマス: <strong>{squares.join(" / ")}</strong>
+              対象のマス: <strong>{where.join(" / ")}</strong>
               <br />
             </>
           )}
-          取った駒の正体は、取ったあとに公開されます。
+          {plain ? "取れば、正体が分かる。" : "取った駒の正体は、取ったあとに公開されます。"}
         </p>
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onCancel}>

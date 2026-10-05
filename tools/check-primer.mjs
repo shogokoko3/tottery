@@ -82,7 +82,7 @@ const js = transformSync(src, {
   jsxFragment: '"fragment"',
   format: "esm",
 }).code;
-const { PRIMER_PAGES, Primer } = await import(
+const { PRIMER_PAGES, Primer, primerLineText, primerPhrases } = await import(
   "data:text/javascript;base64," + Buffer.from(js).toString("base64")
 );
 
@@ -107,6 +107,8 @@ const texts = (node, into = []) => {
   else if (node && typeof node === "object") for (const c of node.children || []) texts(c, into);
   return into;
 };
+// 行ごとの文(<p> の中の句をつないだもの)。2026-10-05 見直しで行の中は句ごとの span になった
+const rows = (node) => all(node, (n) => n.type === "p").map((p) => texts(p).join(""));
 const cls = (node, name) =>
   find(node, (n) => typeof n.props?.className === "string" && n.props.className.split(" ").includes(name));
 const render = (props) => {
@@ -127,20 +129,71 @@ is(
   true,
 );
 is("題がどれにも付いている", PRIMER_PAGES.every((p) => !!p.title), true);
+// 題も句の塊で出す(2026-10-06 見直し。320 幅で「トッタリーへようこ/そ」と割れた)。手で切った句をつなぐと題
+is("1枚目の題は「トッタリーへ」「ようこそ」の句(つなぐと題)", [...(PRIMER_PAGES[0].titlePhrases || [])], ["トッタリーへ", "ようこそ"]);
+is("手で切った題の句は、つなぐと題と同じ", PRIMER_PAGES.every((p) => !p.titlePhrases || p.titlePhrases.join("") === p.title), true);
+is(
+  "題は句の塊で描く(手で切った句か、読点で切った句)",
+  /<h3>\s*\{\(page\.titlePhrases \|\| primerPhrases\(page\.title\)\)\.map\(\(phrase, i\) => \(\s*<span className="text-phrase" key=\{i\}>/.test(fs.readFileSync(new URL("../src/ui/primer.jsx", import.meta.url), "utf8")),
+  true,
+);
 is("鍵が重ならない", new Set(PRIMER_PAGES.map((p) => p.key)).size, PRIMER_PAGES.length);
 
 console.log("\n導入の中身(寿司将棋のように: どんなゲームか → 勝ち方。2026-09-30 本人の指示)");
-is("並び: ようこそ → 1手ずつ → 勝ち方 → 討てなくなったら → 王は伏せたまま → 陣 → あとはストーリーで", PRIMER_PAGES.map((p) => p.key), ["welcome", "turn", "win", "judge", "hidden", "setup", "story"]);
-is("勝ち方のもう1つ(討てなくなったら、はじめに並べた札の合計が小さいほうの勝ち)", PRIMER_PAGES.find((p) => p.key === "judge").lines.join("").includes("合計が小さいほうの勝ち"), true);
+is("並び: ようこそ → 一手ずつ → 勝ち方 → 討てなくなったら → 王は伏せたまま → 陣 → あとはストーリーで", PRIMER_PAGES.map((p) => p.key), ["welcome", "turn", "win", "judge", "hidden", "setup", "story"]);
+is("勝ち方のもう1つ(どちらの王も討てなくなったら、はじめに並べた札の合計が小さいほうの勝ち)", PRIMER_PAGES.find((p) => p.key === "judge").lines.map(primerLineText), ["どちらの王も討てなくなったら、", "はじめに並べた札の合計が、小さいほうの勝ち。"]);
 // 1枚目の本文は語り1枚目(prologue.jsx)に合わせ、読点で行を切る(2026-10-01 本人の指示。
 // 1行の長文だと「ボードゲ/ーム」と語の途中で折り返していた)
 is("どんなゲームかを最初に言う(語り1枚目と同じ言葉)", PRIMER_PAGES[0].lines.join(""), "トランプの札を駒に、伏せて戦う一対一。");
 is("1枚目は読点で行を切る", [...PRIMER_PAGES[0].lines], ["トランプの札を駒に、", "伏せて戦う一対一。"]);
 is("「王は名乗らない」の題は「王は、伏せたまま」に", PRIMER_PAGES.find((p) => p.key === "hidden").title, "王は、伏せたまま");
-is("「名乗らない」の言い回しを使わない", PRIMER_PAGES.some((p) => /名乗らない/.test(p.title + p.lines.join(""))), false);
-is("勝ち方を言う(相手の王を討てば勝ち)", PRIMER_PAGES.find((p) => p.key === "win").lines.join("").includes("相手の王を討てば勝ち"), true);
+is("「名乗らない」の言い回しを使わない", PRIMER_PAGES.some((p) => /名乗らない/.test(p.title + p.lines.map(primerLineText).join(""))), false);
+is("勝ち方を言う(相手の王を討てば勝ち)", PRIMER_PAGES.find((p) => p.key === "win").lines.map(primerLineText), ["相手の王を討てば、勝ち。"]);
 is("駒の動きはここでは見せない(ステージの前に盤の図で見せる)", PRIMER_PAGES.some((p) => p.rank), false);
-is("王の力には触れない(フェーズ1 には無い)", PRIMER_PAGES.some((p) => /王の力|力がつき/.test(p.lines.join(""))), false);
+is("王の力には触れない(フェーズ1 には無い)", PRIMER_PAGES.some((p) => /王の力|力がつき/.test(p.lines.map(primerLineText).join(""))), false);
+{
+  // 行の中は句(語のまとまり)ごとの塊で折り返す(2026-10-05 見直し)。iPhone の WebKit は auto-phrase を知らず、
+  // 「その駒を取れま/す。」「小さいほう/の勝ちです。」と割れた。句をつないだ文は前と同じ
+  const { primerOutroLines } = await import("../src/game/story.js");
+  const em = (t) => [...t].reduce((n, c) => n + (/[\x20-\x7e]/.test(c) ? 0.6 : 1), 0);
+  const allLines = [
+    ...PRIMER_PAGES.flatMap((p) => p.lines),
+    ...[1, 2, 3].flatMap((phase) => primerOutroLines({ phase, story: { 1: [], 2: [], 3: [] } })),
+  ];
+  is("句をつなぐと行の文(読点・句点で切った句も、手で切った句も)", allLines.every((line) => primerPhrases(line).join("") === primerLineText(line)), true);
+  // 文の欄は 375 幅で 281px・320 幅で 226px ほど(14px)。1つの句は全角15字ぶんまで
+  is("1つの句は全角15字ぶんまで(320 幅の文の欄に入る)", allLines.flatMap(primerPhrases).filter((p) => em(p) > 15), []);
+  // 2026-10-06 本人の指示で導入の調子に書き直した。句は読点で切る。読点の無い長い句(「どちらの王も討てなくなったら、」)は手で切る
+  is(
+    "句は読点で切り、読点の無い長い句は手で切る(討てなくなったら・一手ずつ・あとはストーリーで)",
+    [
+      primerPhrases(PRIMER_PAGES.find((p) => p.key === "judge").lines[0]),
+      primerPhrases(PRIMER_PAGES.find((p) => p.key === "judge").lines[1]),
+      primerPhrases(PRIMER_PAGES.find((p) => p.key === "turn").lines[1]),
+      primerPhrases(primerOutroLines({ phase: 1, story: { 1: [], 2: [], 3: [] } })[0]),
+    ],
+    [
+      ["どちらの王も", "討てなくなったら、"],
+      ["はじめに並べた札の合計が、", "小さいほうの勝ち。"],
+      ["相手の駒へ進めば、", "その一枚を取れる。"],
+      ["ステージごとに、", "相手の王の動きを覚える。"],
+    ],
+  );
+  // 言葉は導入(語り・はじめの一局)の調子(2026-10-06 本人の指示)。題も本文も、最後の札の差し替え(フェーズ1〜3・全部クリア)も
+  const words = [
+    ...PRIMER_PAGES.map((p) => p.title),
+    ...allLines.map(primerLineText),
+    ...primerOutroLines({ phase: 3, story: { 1: [], 2: [], 3: ["23", "45", "67", "89", "10", "jq", "k"] } }).map(primerLineText),
+  ];
+  is("です・ます調を使わない(題も本文も)", words.filter((w) => /です|ます|ください|でした/.test(w)), []);
+  is("「将棋」とほかのゲームの名前を使わない", words.filter((w) => /将棋|チェス|ポーカー|ババ抜き|大富豪/.test(w)), []);
+  is("数は漢数字(「1手」「1枚」「1つ」と書かない)", PRIMER_PAGES.flatMap((p) => [p.title, ...p.lines.map(primerLineText)]).filter((w) => /[0-9０-９]/.test(w)), []);
+  is("題「1手ずつ」は「一手ずつ」", PRIMER_PAGES.find((p) => p.key === "turn").title, "一手ずつ");
+  // 20字を超える行(「はじめに並べた札の合計が、小さいほうの勝ち。」)は、狭い幅で読点のところで折れる
+  is("1行は20字前後(22字まで)", words.filter((w) => [...w].length > 22), []);
+  is("最後の札の差し替えも導入の調子(全部クリアしたら「ステージは、何度でも遊べる。」)", primerOutroLines({ phase: 3, story: { 1: [], 2: [], 3: ["23", "45", "67", "89", "10", "jq", "k"] } })[1], "ステージは、何度でも遊べる。");
+  is("文字列の行は読点・句点のあとで切る", [primerPhrases("次は、二と三の王。"), primerPhrases("王はお互いに伏せたまま。"), primerPhrases("")], [["次は、", "二と三の王。"], ["王はお互いに伏せたまま。"], []]);
+}
 // 最後の札の2行目は、ストーリー一覧の一行と同じ言い方(2026-10-01。呼ぶ側が次のステージに差し替える)
 is("最後はストーリーへ渡す(一覧の一行と同じ「次は、二と三の王。」)", /ストーリー/.test(PRIMER_PAGES.at(-1).title) && PRIMER_PAGES.at(-1).lines.at(-1) === "次は、二と三の王。", true);
 {
@@ -151,7 +204,7 @@ is("最後はストーリーへ渡す(一覧の一行と同じ「次は、二と
   reset();
   states[0] = PRIMER_PAGES.findIndex((p) => p.key === "turn");
   const tree = render({ onDone: () => {} });
-  is("「1手ずつ」の絵は自分の駒 ▶ 相手の駒", all(tree, (n) => n.type === "Piece").length, 2);
+  is("「一手ずつ」の絵は自分の駒 ▶ 相手の駒", all(tree, (n) => n.type === "Piece").length, 2);
   reset();
   states[0] = PRIMER_PAGES.findIndex((p) => p.key === "judge");
   const judge = render({ onDone: () => {} });
@@ -159,7 +212,16 @@ is("最後はストーリーへ渡す(一覧の一行と同じ「次は、二と
   reset();
   states[0] = PRIMER_PAGES.length - 1;
   const out = render({ onDone: () => {}, outro: ["一行目", "次は 六と七の王から。"] });
-  is("最後の札の文は呼ぶ側が差し替えられる(次に遊ぶステージ)", texts(cls(out, "primer-text")), ["一行目", "次は 六と七の王から。"]);
+  is("最後の札の文は呼ぶ側が差し替えられる(次に遊ぶステージ)", rows(cls(out, "primer-text")), ["一行目", "次は 六と七の王から。"]);
+  {
+    // 行の中は句ごとの塊だけ(塊の外に字を置かない)
+    reset();
+    states[0] = PRIMER_PAGES.findIndex((p) => p.key === "judge");
+    const judgeText = cls(render({ onDone: () => {} }), "primer-text");
+    const spans = all(judgeText, (n) => n.type === "span");
+    is("行の中は句ごとの塊(text-phrase)", spans.length > 0 && spans.every((n) => n.props.className === "text-phrase") && all(judgeText, (n) => n.type === "p").every((p) => p.children.every((c) => typeof c === "object" && c.type === "span")), true);
+    is("塊をつなぐと行の文", rows(judgeText), PRIMER_PAGES.find((p) => p.key === "judge").lines.map(primerLineText));
+  }
   const src2 = read("src/ui/primer.jsx");
   is("開いたら「つづき」に focus(画面は送らない)", /focus\(\{ preventScroll: true \}\)/.test(src2) && /ref=\{nextRef\}/.test(src2), true);
   is("自分の中に向いた矢印・Escape は受ける", /t\.closest\("\.primer"\)/.test(src2) && /e\.key === "Escape" && onSkip/.test(src2), true);
@@ -171,13 +233,13 @@ console.log("\n送り方");
   reset();
   let done = 0;
   let tree = render({ onDone: () => done++ });
-  is("はじめは1ページ目", texts(cls(tree, "primer-text")).includes(PRIMER_PAGES[0].lines[0]), true);
+  is("はじめは1ページ目", rows(cls(tree, "primer-text")).includes(primerLineText(PRIMER_PAGES[0].lines[0])), true);
   is("1ページ目は戻れない", cls(tree, "primer-back").props.disabled, true);
   for (let i = 1; i < PRIMER_PAGES.length; i++) {
     cls(tree, "primer-next").props.onClick();
     tree = render({ onDone: () => done++ });
   }
-  is("最後まで送れる", texts(cls(tree, "primer-text")).includes(PRIMER_PAGES.at(-1).lines[0]), true);
+  is("最後まで送れる", rows(cls(tree, "primer-text")).includes(primerLineText(PRIMER_PAGES.at(-1).lines[0])), true);
   is("途中では終わらない", done, 0);
   cls(tree, "primer-next").props.onClick();
   is("最後を押すと終わる", done, 1);
@@ -193,7 +255,7 @@ console.log("\n送り方");
   tree = render({ onDone: () => {} });
   cls(tree, "primer-back").props.onClick();
   tree = render({ onDone: () => {} });
-  is("戻れる", texts(cls(tree, "primer-text")).includes(PRIMER_PAGES[0].lines[0]), true);
+  is("戻れる", rows(cls(tree, "primer-text")).includes(primerLineText(PRIMER_PAGES[0].lines[0])), true);
 }
 {
   // 最後の一言は呼ぶ側が決める。既定は「とじる」(自動で出さなくなり、開いた画面へ閉じて戻るだけ。2026-10-01)

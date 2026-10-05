@@ -7,7 +7,7 @@ import { GemAmount } from "./gem.jsx";
  * 分かれているので、受け取りはここでまとめている。
  */
 import { useEffect, useRef, useState } from "react";
-import { earnTickets, earnGems } from "../net/wallet.js";
+import { claimMissionReward, syncWallet } from "../net/wallet.js";
 import { ArrowLeft, Check, Crown } from "../icons.jsx";
 import {
   grantMissionTitle,
@@ -23,7 +23,7 @@ import {
   useCollection,
   updateCollection,
 } from "../skins/store.js";
-import { claimPeriodicMission, missionPeriods } from "../game/periodic-missions.js";
+import { claimPeriodicMission } from "../game/periodic-missions.js";
 import { useMissionProfile } from "./mission-profile.js";
 
 /** 褒美の呼び名。手紙の添付と同じ形なので、共通のものを使う */
@@ -45,6 +45,13 @@ export function MissionsScreen({ onBack, embedded = false }) {
   const claiming = useRef(false);
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState("daily");
+  useEffect(() => {
+    let active = true;
+    syncWallet().catch(() => {
+      if (active) setMessage("受取状況を確認できませんでした。通信を確認してからお試しください。");
+    });
+    return () => { active = false; };
+  }, []);
   const scrollArea = useRef(null);
   const rows = listMissions(profile, collection);
   const visibleRows = rows.filter((m) => categoryOf(m) === category);
@@ -57,22 +64,15 @@ export function MissionsScreen({ onBack, embedded = false }) {
   /** 1件ぶんを配る。控えるのは配り終えてから(途中で失敗しても二重取りにならない) */
   async function give(mission) {
     if (mission.periodic) {
-      const now = Date.now();
-      // touchDay() はプロフィールを返す(日付ではない)。claimPeriodicMission の第2引数はプロフィール
-      const nextProfile = touchDay();
-      await updateCollection((collection) =>
-        claimPeriodicMission(collection, nextProfile, mission.id, now),
-      );
-      // サーバーの財布にも。id はミッションと期間で決まる(毎日/毎週で変わる)ので、やり直しても二重にならず、
-      // 期間が変われば新しく配れる。以前は touchDay() の戻り値(プロフィール)を日付として使い、
-      // id が常に "mission:xxx:[object Object]" になって2日目以降サーバーが再付与しなかった(2026-09-24 本人の報告)
-      const period = missionPeriods(now);
-      const key = categoryOf(mission) === "weekly" ? period.week : period.day;
-      const eventId = `mission:${mission.id}:${key}`;
-      if (mission.reward?.type === "ticket")
-        earnTickets(eventId, mission.reward.amount).catch(() => {});
-      if (mission.reward?.type === "gems")
-        earnGems(eventId, mission.reward.amount).catch(() => {});
+      const current = touchDay();
+      const latest = statusOf(mission, current, getCollection());
+      if (latest.claimed) return current;
+      if (!latest.done) throw new Error("まだミッションの条件を満たしていません。");
+      if (["ticket", "gems"].includes(mission.reward.type)) {
+        await claimMissionReward(mission.id);
+      } else {
+        await updateCollection(c => claimPeriodicMission(c, current, mission.id));
+      }
       return loadProfile();
     }
     const current = loadProfile();
@@ -82,11 +82,9 @@ export function MissionsScreen({ onBack, embedded = false }) {
       throw new Error("まだミッションの条件を満たしていません。");
     if (mission.reward.type === "title")
       return grantMissionTitle(mission.id, mission.reward.id);
-    await giveGift(mission.reward);
-    if (mission.reward.type === "ticket")
-      earnTickets(`mission:${mission.id}`, mission.reward.amount).catch(() => {});
-    if (mission.reward.type === "gems")
-      earnGems(`mission:${mission.id}`, mission.reward.amount).catch(() => {});
+    if (["ticket", "gems"].includes(mission.reward.type))
+      await claimMissionReward(mission.id);
+    else await giveGift(mission.reward);
     return markMissionClaimed(mission.id);
   }
 

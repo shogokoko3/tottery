@@ -14,6 +14,8 @@
  *  - フリーズ(凍る)などの演出は**そのまま**。門も通常どおり
  *
  * 一度きり。引いたら控えを残し、二度目は出さない。
+ * 結果を閉じるまでは、もう1つ控え(firstPullOpen)を立てておく。結果を閉じる前にアプリを閉じた人は、
+ * 次の起動で結果へ戻り、閉じると次の相手の紹介へ進む(src/game/intro.js の "first-pull"。2026-10-05 見直し)
  */
 import { POOL, baseSkinId, byId } from "./catalog.js";
 import { resolveSummonFreeze } from "./summon-freeze.js";
@@ -27,9 +29,25 @@ export const FIRST_PULL_KEY = "firstPullDone";
 /** 差し替えに使える SSR。フォイルは含まない */
 const SSR_POOL = POOL.filter((s) => s.rarity === "SSR");
 
+/** 初回の10連の結果をまだ閉じていない控え(collection の中に持つ。2026-10-05 見直し) */
+export const FIRST_PULL_OPEN_KEY = "firstPullOpen";
+
 /** もう初回の10連を引いたか */
 export function firstPullDone(state) {
   return !!(state && state[FIRST_PULL_KEY]);
+}
+
+/**
+ * 初回の10連の結果が、まだ閉じられずに残っているか。控えだけでなく結果(pending)もあるときだけ。
+ * ふつうのガチャの画面から結果を閉じた人(控えは残るが結果は無い)は、もう戻さない
+ */
+export function firstPullOpen(state) {
+  return !!(
+    firstPullDone(state) &&
+    state[FIRST_PULL_OPEN_KEY] &&
+    Array.isArray(state.pending?.results) &&
+    state.pending.results.length
+  );
 }
 
 /** その id が SSR か(フォイルでも、もとが SSR なら SSR) */
@@ -83,9 +101,9 @@ export function firstPullResult(random = Math.random) {
   return out;
 }
 
-/** 引いたことを控える(二度目は出さない) */
+/** 引いたことを控える(二度目は出さない)。結果を閉じるまでの控えも同じ更新で立てる */
 export function markFirstPull(state) {
-  return { ...state, [FIRST_PULL_KEY]: true };
+  return { ...state, [FIRST_PULL_KEY]: true, [FIRST_PULL_OPEN_KEY]: true };
 }
 
 /** 結果から盤上の姿を見せる一枚。次のステージで使える装備を優先し、未装備とは区別する。 */

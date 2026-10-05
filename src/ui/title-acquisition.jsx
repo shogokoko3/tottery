@@ -9,6 +9,7 @@ import {
   dismissTitleNotice,
   getTitleNotices,
   holdTitleNotices,
+  limitTitleNotices,
   subscribeTitleNotices,
 } from "../game/title-notices.js";
 import { TitleFrame } from "./title-frame.jsx";
@@ -20,6 +21,14 @@ export function useTitleNoticeHold(blocked) {
   useLayoutEffect(() => {
     if (blocked) return holdTitleNotices();
   }, [!!blocked]);
+}
+
+/** 出してよい件数を決める(null なら数えない)。値が変わるまで同じ決まりを持ち続ける(2026-10-05 見直し) */
+export function useTitleNoticeLimit(count) {
+  const on = count !== null && count !== undefined;
+  useLayoutEffect(() => {
+    if (on) return limitTitleNotices(count);
+  }, [on ? count : null]);
 }
 
 function Award({ notice, count }) {
@@ -38,13 +47,14 @@ function Award({ notice, count }) {
       style={titleDesign(notice.titleId).style}
       aria-label="新しい称号を獲得"
     >
+      {/* 読み上げも見える一言も、導入の言葉の調子で(です・ますを使わない。2026-10-06 本人の指示) */}
       <span
         className="title-award-announcement"
         role="status"
         aria-live="polite"
         aria-atomic="true"
       >
-        称号「{notice.name}」を獲得しました。設定で装備できます。
+        称号「{notice.name}」を手に入れた。設定で、装備できる。
       </span>
       <div className="title-award-glow" aria-hidden="true" />
       <div className="title-award-rays" aria-hidden="true" />
@@ -58,7 +68,7 @@ function Award({ notice, count }) {
           <TitleFrame id={notice.titleId} size="showcase" />
           <i className="title-award-sheen" />
         </div>
-        <p>設定で装備できます</p>
+        <p>設定で、装備できる。</p>
         {count > 1 && (
           <span className="title-award-count">あと{count - 1}件</span>
         )}
@@ -81,7 +91,7 @@ function Award({ notice, count }) {
 }
 
 export function TitleAcquisition() {
-  const { notices, held } = useSyncExternalStore(
+  const { notices, held, left } = useSyncExternalStore(
     subscribeTitleNotices,
     getTitleNotices,
     getTitleNotices,
@@ -99,8 +109,13 @@ export function TitleAcquisition() {
   return createPortal(
     <>
       <style>{frameStyles + styles}</style>
+      {/* 件数の決まりがあるときは、出してよい分だけを数える(残りを「あと N 件」「›」で匂わせない) */}
       {!held && visible && notices[0] && (
-        <Award key={notices[0].id} notice={notices[0]} count={notices.length} />
+        <Award
+          key={notices[0].id}
+          notice={notices[0]}
+          count={left === null || left === undefined ? notices.length : Math.min(notices.length, left)}
+        />
       )}
     </>,
     document.body,

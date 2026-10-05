@@ -1837,6 +1837,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* 所持の札(「通常×1」「箔—」。2026-09-19 から札の下端)があるときは、名をその上へ上げる(2026-10-06 見直し)。
+   どちらも札の下端に置いていて、名が所持の札の後ろに隠れ、「黄昏のレヴナント」が「ﾚｳ」しか見えなかった。
+   所持の札は下端のまま(並べ方は変えない) */
+.reveal-front:has(.reveal-owned) .reveal-name {
+  /* 所持の札の上端(下から 3%(高さ) + 約15px)の少し上。padding の % は幅で測るので、高さの 3% は幅の 4% */
+  padding-bottom: calc(4% + 18px);
+}
 /* 昇格。今の格を見せたまま、札がくるくる回って次の格へ */
 .reveal-card.is-spinning .reveal-inner {
   animation: reveal-spin 1.1s cubic-bezier(0.35, 0.05, 0.25, 1) both;

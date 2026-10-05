@@ -12,6 +12,7 @@ import {
   FIRST_PULL_SIZE,
   drawFirstPull,
   firstPullDone,
+  firstPullOpen,
   firstPullResult,
   markFirstPull,
   firstPullCompanion,
@@ -29,6 +30,8 @@ import {
   chapterFromLegacyId,
 } from "../src/game/tutorial-reward.js";
 import { ALL_TUTORIALS, TUTORIALS } from "../src/game/tutorial.js";
+import { SKINS } from "../src/skins/catalog.js";
+import { namePhrases, phrasesOf } from "../src/ui/phrase-split.js";
 
 let ok = 0;
 const fail = [];
@@ -105,6 +108,12 @@ console.log("\n一度きり・チケットを使わない");
   is("10枚ぶん所持に入る", st.pending.results.length, 10);
   const again = normalize(JSON.parse(JSON.stringify(st)));
   is("保存して読み直しても控えは残る", firstPullDone(again), true);
+  // 結果を閉じるまでの控え(2026-10-05 見直し)。閉じる前にアプリを閉じた人を、次の起動で結果へ戻す
+  is("引いたら「結果をまだ閉じていない」控えも同じ更新で立つ", [st.firstPullOpen, firstPullOpen(st)], [true, true]);
+  is("保存して読み直しても「まだ閉じていない」控えは残る(normalize が落とさない)", [again.firstPullOpen, firstPullOpen(again)], [true, true]);
+  const closed = normalize({ ...again, pending: null, firstPullOpen: false });
+  is("結果を閉じたら控えは下りる(10連の控えは残る)", [firstPullOpen(closed), firstPullDone(closed)], [false, true]);
+  is("「まだ閉じていない」控えだけでは立たない(10連の控えと結果が要る)", [normalize({ firstPullOpen: true }).firstPullOpen, firstPullOpen({ firstPullOpen: true, pending: { results: [{ id: "x" }] } })], [false, false]);
 }
 {
   // 通常の10連は今まで通り、フリーズでフォイルに昇格しうる
@@ -156,17 +165,21 @@ console.log("\n配線");
   );
   is(
     "10連から戻るとストーリー一覧へ(手引きの誘い・ホームではない)",
-    /if \(firstPullMode\) \{\s*(\/\/[^\n]*\n\s*)*setFirstPullMode\(!1\);\s*showStory\(\);/.test(screens) && !/shouldOfferFirstTutorial/.test(screens),
+    /if \(firstPullMode\) \{\s*(\/\/[^\n]*\n\s*)*setFirstPullMode\(!1\);\s*setSkinsFrom\("menu"\);\s*setAfterIntro\(!0\);\s*showStory\(\);/.test(screens) && !/shouldOfferFirstTutorial/.test(screens),
     true,
   );
+  // 10連の画面を開くのは2か所: 門の語りのあとと、結果を閉じる前にやめた人の続き("first-pull"。2026-10-05 見直し)
   is(
-    "10連は門の語りのあとだけ(名前の直後に引かせない)",
-    (screens.match(/setFirstPullMode\(!0\)/g) || []).length,
-    1,
+    "10連は門の語りのあと(と、結果を閉じる前にやめた人の続き)だけ(名前の直後に引かせない)",
+    [
+      (screens.match(/setFirstPullMode\(!0\)/g) || []).length,
+      /if \(step === "first-pull"\) \{[\s\S]{0,200}setFirstPullMode\(!0\)/.test(screens),
+    ],
+    [2, true],
   );
   is(
-    "「門へ進む」は10連がまだの人だけ",
-    screens.includes("onGate={firstGame && !firstPullDone(collection) ? () => leaveFirstGame() : null}"),
+    "「門へ進む」は10連がまだの人だけ(一局を始めるときに門へ進むと決めた人。前の版のテスターには出さない。2026-10-06 見直し)",
+    screens.includes("onGate={firstGame && firstGate && !firstPullDone(collection) ? () => leaveFirstGame() : null}"),
     true,
   );
   const skins = read("src/ui/skins.jsx");
@@ -214,7 +227,12 @@ console.log("\n配線");
   const col = read("src/skins/collection.js");
   is(
     "控えは normalize を通る(開き直しても消えない)",
-    /firstPullDone: value\.firstPullDone === true/.test(col),
+    /firstPullDone: value\.firstPullDone === true/.test(col) && /firstPullOpen: value\.firstPullOpen === true && value\.firstPullDone === true/.test(col),
+    true,
+  );
+  is(
+    "召喚の結果を閉じたら「まだ閉じていない」控えも下ろす(skins.jsx の closeResults)",
+    /\{ \.\.\.s, pending: null, firstPullOpen: false \}/.test(skins),
     true,
   );
   const game = read("src/ui/game.jsx");
@@ -232,6 +250,39 @@ console.log("\n配線");
   is(
     "一覧から全部飛ばしたときも配る",
     /grantTutorialTickets\(after\.skipped/.test(read("src/ui/tutorial.jsx")),
+    true,
+  );
+}
+
+console.log("\n10連の言葉と折り返し(2026-10-06 見直し)");
+{
+  const skins = read("src/ui/skins.jsx");
+  // 導入の10連(初回の10連)は導入の言葉の調子で。ふつうのガチャはいままでどおり
+  is("10連の演出に導入の印(plain)を渡す", /onFinish=\{finishAcquisition\}\s*reduce=\{reduce \|\| collection\.summonMotion === "skip"\}\s*plain=\{firstResults\}/.test(skins), true);
+  const plainCopy = ["すべての札が、現れた。", "輝きが、札に宿っていく…", "札を引き寄せて、めくれ。", "札を引き寄せて、めくれ。指でなぞれば、次々に。"];
+  is("10連の演出の文(導入): です・ます調を使わない", plainCopy.every((t) => skins.includes(`"${t}"`)) && plainCopy.every((t) => !/です|ます|ください/.test(t)), true);
+  is(
+    "ふつうのガチャの演出の文はいままでどおり",
+    ["すべての札が現れました。", "札に宿る輝きをお待ちください。", "札を引き寄せてめくるか、指でなぞって次々にめくれます。"].every((t) => skins.includes(`"${t}"`)),
+    true,
+  );
+  is("10連の結果の印は「装備した」(ふつうのガチャは「装備しました」)", /\{firstResults \? "装備した" : "装備しました"\}/.test(skins), true);
+  // 札の名は「の」と空白のあとで句に切る(4列の狭い列で「黄昏のレヴナン/ト」と割れた)
+  const names = [...new Set(SKINS.map((s) => s.name))];
+  const em = (t) => [...t.trim()].reduce((n, c) => n + (/[\x20-\x7e]/.test(c) ? 0.6 : 1), 0);
+  is(`札の名(${names.length})は句をつなぐと名と同じ`, names.filter((n) => namePhrases(n).join("") !== n), []);
+  is("札の名の句はどれも全角6字ぶんまで(320 幅の4列に入る)", names.flatMap((n) => namePhrases(n)).filter((p) => em(p) > 6), []);
+  is("「黄昏のレヴナント」は「黄昏の」「レヴナント」・「癒天使 ラファエル」は「癒天使 」「ラファエル」", [namePhrases("黄昏のレヴナント"), namePhrases("癒天使 ラファエル")], [["黄昏の", "レヴナント"], ["癒天使 ", "ラファエル"]]);
+  is("結果の札の名と、盤上の姿の名は句の塊で出す", (skins.match(/<Phrases text=\{namePhrases\((s|companion\.skin)\.name\)\} \/>/g) || []).length, 2);
+  is(
+    "盤上の姿の一行は句で折り返す(「3 に装備済み。」「手札に来たら、」「陣に加えよう。」)",
+    phrasesOf("3 に装備済み。手札に来たら、陣に加えよう。"),
+    ["3 に装備済み。", "手札に来たら、", "陣に加えよう。"],
+  );
+  // 演出の札の名を、所持の札(通常×1・箔—)の上へ上げる(名が所持の札の後ろに隠れていた)
+  is(
+    "演出の札の名は所持の札の上(所持の札は下端のまま)",
+    /\.reveal-front:has\(\.reveal-owned\) \.reveal-name \{[^}]*padding-bottom: calc\(4% \+ 18px\);/.test(read("src/skins/styles.css")) && /\.reveal-owned \{\s*position: absolute;\s*left: 4%;\s*right: 4%;\s*bottom: 3%;/.test(read("src/skins/styles.css")),
     true,
   );
 }

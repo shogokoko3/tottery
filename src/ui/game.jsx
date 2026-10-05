@@ -56,8 +56,10 @@ import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
 import { STORY_XP, grantStoryReward, nextStage, nextStageAfter, storyCpuArea, storyDeal, storyFreshClear, storyUntimed, storyRival, storyLossNote } from "../game/story.js";
 import { StoryCoachNote, StoryInterruptMenu } from "./story.jsx";
-import { KEEP_LABEL, coachArranges, coachScene, coachSeen, markCoachSeen, storyCoachPlan } from "../game/story-coach.js";
+import { COACH_WAIT_LINES, KEEP_LABEL, coachArranges, coachScene, coachSeen, markCoachSeen, storyCoachPlan } from "../game/story-coach.js";
 import { prologueSeen } from "../game/intro.js";
+// 句ごとに折り返す文(iPhone の WebKit は auto-phrase を知らない。2026-10-06 見直し)
+import { Phrases } from "./phrases.jsx";
 import { PHASE_MAX, STORY_TICKETS, phaseOf, rankedPhase, rulesForPhase, setupFlagsForPhase } from "../game/phase.js";
 import { onlinePhase } from "../net/match-settings.js";
 import { noteRandomResult, botAction } from "../game/bot-match.js";
@@ -704,6 +706,15 @@ export function GameView({
     const id = setTimeout(() => setPlaying(!1), ms);
     return () => clearTimeout(id);
   }, [f, at, playSeq]);
+  // はじめの一局の結果(「門へ進む」のある結果)では、経験値の知らせを上の帯のすぐ下に出す(2026-10-06 見直し)。
+  // 下に出すと、出始めの約2.4秒「門へ進む」と「対戦の振り返り」を覆った。置き場所は xp-gain.css が根の印で決める
+  const gateResult = !!onGate && won;
+  (0, useEffect)(() => {
+    const root = typeof document !== "undefined" ? document.documentElement : null;
+    if (!gateResult || !root || !root.removeAttribute) return undefined;
+    root.setAttribute("data-xp-at", "top");
+    return () => root.removeAttribute("data-xp-at");
+  }, [gateResult]);
 
   if (f) {
     let d = viewer === 1,
@@ -1067,9 +1078,24 @@ export function GameView({
                     // 二人の王を並べるときは、どちらも王の姿で
                     isKing={!!kingNote}
                   />
-                  <p>
-                    相手の王は <b>{foeKing.rank}{SUIT_SYMBOL[foeKing.suit]}</b> でした
-                  </p>
+                  {kingNote ? (
+                    // はじめの一局は、右のあなたの王(「あなたの王は、」「最後まで伏せたまま。」)と対句の2行。
+                    // です・ます調の決まり文句「…でした」を使わない(2026-10-06 見直し。第1〜13話はいままでどおり)
+                    <p>
+                      <span className="tutorial-line-row">
+                        <Phrases text="相手の王は、" />
+                      </span>
+                      <span className="tutorial-line-row">
+                        <span className="text-phrase">
+                          <b>{foeKing.rank}{SUIT_SYMBOL[foeKing.suit]}</b> だった。
+                        </span>
+                      </span>
+                    </p>
+                  ) : (
+                    <p>
+                      相手の王は <b>{foeKing.rank}{SUIT_SYMBOL[foeKing.suit]}</b> でした
+                    </p>
+                  )}
                 </div>
               ) : null;
               // はじめの一局は、あなたの王も並べる(kingNote)
@@ -1086,11 +1112,13 @@ export function GameView({
                       size="sm"
                       isKing
                     />
-                    {/* 行の配列を1行ずつ(1本の文字列を balance で割ると、iPhone で「最後ま/で」と割れた) */}
+                    {/* 行の配列を1行ずつ(1本の文字列を balance で割ると、iPhone で「最後ま/で」と割れた)。
+                        行の中は句の塊。320 幅の半分の列では「最後まで伏せたまま。」が入らず「伏/せたまま。」と
+                        割れたので、句の間で折る(2026-10-06 見直し) */}
                     <p>
                       {kingNote.map((line, i) => (
                         <span className="tutorial-line-row" key={i}>
-                          {line}
+                          <Phrases text={line} />
                         </span>
                       ))}
                     </p>
@@ -1102,11 +1130,12 @@ export function GameView({
             {(() => {
               const end = tutorial.steps.find((step) => step.end);
               const lines = stepLines(end, state);
+              // 行の配列(はじめの一局)は、行の中を句の塊で(320 幅で「王だっ/た。」と割れた。2026-10-06 見直し)
               return lines.length > 1 ? (
                 <p className="tutorial-end-lines">
                   {lines.map((line, i) => (
                     <span className="tutorial-line-row" key={i}>
-                      {line}
+                      <Phrases text={line} />
                     </span>
                   ))}
                 </p>
@@ -1254,17 +1283,21 @@ export function GameView({
             )}
           </div>
         )}
+        {/* はじめの一局(門へ進む結果)には「後日談を読む」を出さない(2026-10-06 見直し)。375×667 では釦の上の端だけが
+            空の帯のように覗き、開くと門(名前 → 10連)から外れた。後日談はストーリー一覧の二と三の王の札から読める */}
         {/* 札ごとの熟練度。プレイヤーレベルのゲージ(XpGainToast)とは別に、
             この局で使った札だけを並べる(2026-09-22 本人の指示) */}
-        {story && won && story.ready && onGate && <StoryAfterword axis={story.axis} phase={story.phase} />}
         {mastery && <MasteryGains gains={mastery.gains} titles={mastery.titles} />}
         </div>
         {/* はじめの一局の褒美は門の向こう(10連)。送らずに見える場所に1つだけ光らせる。
             記録が済むまで(ready)は出さない。チケットの一行も、送る中身でなくここに(375×667 で隠れていた) */}
         {story && won && story.ready && onGate && (
           <div className="gameover-gate">
+            {/* 導入の言葉の調子で(です・ます調の決まり文句を避ける。2026-10-06 見直し。ほかのステージの結果はいままでどおり) */}
             {story.fresh && (
-              <p className="hint story-reward">ガチャチケット {STORY_TICKETS}枚を受け取りました</p>
+              <p className="hint story-reward">
+                <Phrases text={`ガチャチケット ${STORY_TICKETS}枚を、手に入れた。`} />
+              </p>
             )}
             <button className="btn btn-primary btn-wide result-gate" onClick={onGate}>
               門へ進む <ArrowRight size={16} />
@@ -1442,6 +1475,9 @@ export function GameCore({
   round = 0,
   // はじめの一局に勝ったあとの「門へ進む」(初回の10連がまだの人だけ呼ぶ側が渡す。GameView へ)
   onGate = null,
+  // 結果の上に重ねる画面(はじめの一局の勝ったあとの名前。2026-10-05 見直し)。この GameShell の中に出す
+  // (色の決まりは .tottery-root に付いているので、外に出すと色が抜ける)
+  cover = null,
   onRematch,
   // Bot と「もう一度遊ぶ」(screens.jsx が1局の目印を新しくして作り直す)
   onReplayBot = null,
@@ -2704,9 +2740,11 @@ export function GameCore({
     setTutHint(!1);
   }, [tutIdx]);
 
+  // はじめの一局(台本をストーリーとして遊ぶ一局)の盤の上では、下の「盤をまるごと入れる」決まりで送る
+  const fitPlain = !!(tutorial && tutorial.storyAxis && a.phase === "play");
   // 次に触る場所が説明の帯に隠れないよう、画面をそこまで送る
   (0, useEffect)(() => {
-    if (!tutorial) return;
+    if (!tutorial || fitPlain) return;
     let id = setTimeout(() => {
       let el =
         document.querySelector(".guide-target") ||
@@ -2727,6 +2765,7 @@ export function GameCore({
   // (375×667 で、ヒントの 4♦ が帯の下に隠れた。2026-10-01 の見直し)。入りきらなければ上(的)を優先
   (0, useEffect)(() => {
     if (!tutorial || !tutHint) return;
+    if (fitPlain) return;
     let id = setTimeout(() => {
       const band = document.querySelector(".tutorial-sheet-inner");
       const marks = [...document.querySelectorAll(".board-grid .guide-target")];
@@ -2747,6 +2786,40 @@ export function GameCore({
     }, 160);
     return () => clearTimeout(id);
   }, [tutHint, tutNudge, tutorial]);
+
+  // はじめの一局は、盤をまるごと上のバーと帯(または盤の上に出す札)のあいだに入れる(2026-10-06 見直し)。
+  // ▼ を真ん中へ送る決まり(上の2つ)だと、320×568 で王を討てる唯一の駒 4♦(e1)が帯の下に入り、
+  // ヒントを開くと 5 段目が上のバーの下に入った。札が替わる・ヒントを開く・一言が出る・駒を選ぶたびに測り直す。
+  // 盤が入りきらないときだけ、▼ の駒と光の筋(ねらい)を入れる。それも入らなければ下(先に触る自分の駒)を優先
+  (0, useEffect)(() => {
+    if (!fitPlain) return;
+    let id = setTimeout(() => {
+      const grid = document.querySelector(".board-grid");
+      if (!grid) return;
+      const bar = document.querySelector(".top-bar");
+      const ceil = (bar ? bar.getBoundingClientRect().bottom : 0) + 6;
+      // 盤の右に置いた札(dock-right)は盤を隠さない。それ以外は札の上端まで
+      const sheet = document.querySelector(".tutorial-sheet-inner");
+      const docked = !!document.querySelector(".tutorial-sheet-dock-right");
+      const floor = (sheet && !docked ? sheet.getBoundingClientRect().top : window.innerHeight) - 6;
+      const span = (els) => {
+        const rs = els.map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 || r.height > 0);
+        return rs.length ? { top: Math.min(...rs.map((r) => r.top)), bottom: Math.max(...rs.map((r) => r.bottom)) } : null;
+      };
+      let want = span([grid]);
+      if (!want) return;
+      if (want.bottom - want.top > floor - ceil)
+        want = span([...document.querySelectorAll(".board-grid .guide-target, .tutorial-threat-line, .tutorial-threat-head")]) || want;
+      // 送る量。入るなら動かす量を最小に、入らなければ下をそろえる
+      const lo = want.bottom - floor;
+      const hi = want.top - ceil;
+      const by = lo > hi ? lo : lo > 0 ? lo : hi < 0 ? hi : 0;
+      if (Math.abs(by) < 2) return;
+      let still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollBy({ top: by, behavior: still ? "auto" : "smooth" });
+    }, 160);
+    return () => clearTimeout(id);
+  }, [fitPlain, tutIdx, tutHint, tutNudge, a.selectedId, !!a.captureReveal]);
 
   // 台本は一本道。いまの1枚だけを出し、場面が来ていなければ何も出さない
   let tutStepObj =
@@ -2823,16 +2896,25 @@ export function GameCore({
     // 何をすればよいかは必ず出す。読む人が迷わないように
     tutHold =
       tutorial && !tutActive && tutIdx < tutorial.steps.length
-        ? {
-            hold: !0,
-            text:
-              a.phase === "play" &&
-              a.currentTurn === 1 &&
-              !pendingCapture &&
-              !a.captureReveal
-                ? "相手の番です。少し待ってください。"
-                : "▼ の付いたボタンを押して進めてください。",
-          }
+        ? tutorial.storyAxis
+          ? // ストーリーとして遊ぶ台本(はじめの一局)は決まり文句を出さない(2026-10-05 見直し)。
+            // 撃破の札・取る確認のあいだは、札に自分の釦がある。後ろの帯は端がのぞくだけなので出さない。
+            // 相手の番は台本の一行(foeTurn)
+            a.captureReveal || pendingCapture
+              ? null
+              : a.phase === "play" && a.currentTurn === 1 && tutorial.foeTurn
+                ? { hold: !0, text: tutorial.foeTurn }
+                : null
+          : {
+              hold: !0,
+              text:
+                a.phase === "play" &&
+                a.currentTurn === 1 &&
+                !pendingCapture &&
+                !a.captureReveal
+                  ? "相手の番です。少し待ってください。"
+                  : "▼ の付いたボタンを押して進めてください。",
+            }
         : null,
     // 最後の説明と次の話への案内は、撃破札の確認後に完了画面へまとめる。
     tutSheet =
@@ -2861,8 +2943,10 @@ export function GameCore({
           // 「次へ」で進む説明の札は、盤の上に前面で出して気づかせる。
           // 撃破の札などのモーダルが出ている間は下の帯に戻す(覆うと閉じられない)。
           front={!tutActive.need && !a.captureReveal && !a.pendingKingChoice}
-          // 駒やマスを光らせている札は下寄せにして、盤の真ん中を空ける
-          low={tutHasTarget}
+          // 駒やマスを光らせている札は下寄せにして、盤の真ん中を空ける。
+          // ねらいの筋(threat)を見せる待つ札も下寄せ(2026-10-06 見直し。真ん中に置くと、320×568 で
+          // 札が説明している4段目(4♠・ねらう筋・ねらわれた二枚)を自分で隠した)
+          low={tutHasTarget || !!tutActive.threat}
           overlay={!!tutActive.overlay}
           onNext={() => setTutStep(tutIdx + 1)}
           // 相手を待たせる札(holdFoe)は「つづき」。盤に触るものが無いので釦を ▼ で光らせる
@@ -2898,6 +2982,8 @@ export function GameCore({
           index={tutIdx - 1}
           total={tutorial.steps.length}
           left={movesLeft(tutorial, tutIdx)}
+          // はじめの一局は、ほかの札と同じく「最短 N 手」
+          plain={!!tutorial.storyAxis}
         />
       ) : null;
 
@@ -3227,6 +3313,8 @@ export function GameCore({
             firstPlayer={a.firstPlayer}
             tie={a.diceIdx === 3}
             note={coachNote}
+            // ストーリー2つ目の手当ての局は、導入の言葉の調子で(2026-10-06 見直し)
+            plain={!!coach}
           />
         </GameShell>
       );
@@ -3427,10 +3515,18 @@ export function GameCore({
             {a.firstPlayer !== null && a.firstPlayer !== undefined && (
               <p className="mulligan-order">
                 <b>{me === a.firstPlayer ? "先手" : "後手"}</b>
-                <span>
-                  {playerLabel(a.firstPlayer, P, names)}が先手・
-                  {playerLabel(1 - a.firstPlayer, P, names)}が後手
-                </span>
+                {coach ? (
+                  // 手当ての局は、はじめの一局と同じ言い方(名前の三人称「ためしが先手・四と五の王が後手」を使わない。
+                  // 2026-10-06 見直し)
+                  <span>
+                    <Phrases text={me === a.firstPlayer ? "最初の一手は、あなた。" : "最初の一手は、相手。"} />
+                  </span>
+                ) : (
+                  <span>
+                    {playerLabel(a.firstPlayer, P, names)}が先手・
+                    {playerLabel(1 - a.firstPlayer, P, names)}が後手
+                  </span>
+                )}
               </p>
             )}
             <SetupTimer
@@ -3449,9 +3545,21 @@ export function GameCore({
                       // 時間制限なし(フェーズ1 のストーリーなど)では、時間切れの話をしない
                       untimed ? "" : "時間が来たら、選んでいる札のまま引き直します。",
                     ].join("")
-                : me === a.firstPlayer
-                  ? "引き直しは済みました。相手(後攻)が交換するカードを選んでいます…"
-                  : "先攻の相手が交換するカードを選んでいます。終わったらあなたの番です…"}
+                : coachLines
+                  ? // 手当ての一言(「いらない札は、捨てて引き直せる。」)と言葉をそろえる(「カード」と混ぜない。2026-10-05 見直し)。
+                    // 行の配列を1行ずつ、行の中は句の塊で(320 幅で「選ん/でいる。」と割れた)。先手の文は、引き直しても
+                    // 「このまま」で進んでも合う言い方にする(「引き直しは済んだ」は、このままの人には嘘だった。2026-10-06 見直し)
+                    (me === a.firstPlayer
+                      ? COACH_WAIT_LINES.first
+                      : COACH_WAIT_LINES.second
+                    ).map((line, i) => (
+                      <span className="tutorial-line-row" key={i}>
+                        <Phrases text={line} />
+                      </span>
+                    ))
+                  : me === a.firstPlayer
+                    ? "引き直しは済みました。相手(後攻)が交換するカードを選んでいます…"
+                    : "先攻の相手が交換するカードを選んでいます。終わったらあなたの番です…"}
             </p>
             <MulliganHand
               owner={me}
@@ -3467,7 +3575,8 @@ export function GameCore({
             <DiscardPanel
               owner={1 - me}
               cards={a.players[1 - me].discard}
-              label={`${shortPlayerLabel(1 - me, P, names)}(${PLAYER_META[1 - me].name})が捨てたカード`}
+              // 手当ての一言が出ている局は「札」にそろえる(2026-10-05 見直し)
+              label={`${shortPlayerLabel(1 - me, P, names)}(${PLAYER_META[1 - me].name})が捨てた${coachLines ? "札" : "カード"}`}
               color={PLAYER_META[1 - me].color}
             />
             {myTurn ? (
@@ -3487,7 +3596,8 @@ export function GameCore({
                   </>
                 )}
               </button>
-            ) : (
+            ) : coachLines ? null : (
+              // 手当ての一言が出ている局は、上の待つ文が同じことを言っている(二度言わない。2026-10-06 見直し)
               <p className="hint">
                 {untimed ? "相手が確定するまでお待ちください。" : "相手が確定するか、時間が来るまでお待ちください。"}
               </p>
@@ -3678,6 +3788,7 @@ export function GameCore({
             terse={!!tutorial}
             lockPlacement={!!tutorial?.opening?.lockPlacement}
             note={coachNote}
+            orderPlain={!!coach}
           />
         ) : (
           <KingStep
@@ -3697,6 +3808,8 @@ export function GameCore({
             quiet={!!tutorial?.opening?.stopAt}
             lockPlacement={!!tutorial?.opening?.lockPlacement}
             showFoe={!!tutorial?.opening?.stopAt}
+            // ストーリー2つ目の手当ての局は、先後の一行を導入の言い方で(2026-10-06 見直し)
+            orderPlain={!!coach}
           />
         )}
       </GameShell>
@@ -3752,7 +3865,15 @@ export function GameCore({
       setShowRules={f}
       netInfo={N}
       onBack={() => {
-        if (!fxBusy) r(!0);
+        if (fxBusy) return;
+        // 勝負がついたあとは「対局をやめますか?」「中断」「降参」を出さない(2026-10-05 見直し。勝ち終えた
+        // はじめの一局で「クリアにも負けにもなりません」と出ていた)。門があれば門へ、無ければ結果の「戻る」と同じ
+        if (a.phase === "gameover") {
+          if (onGate) onGate();
+          else leaveGame();
+          return;
+        }
+        r(!0);
       }}
     >
       <div className={`play-wrap${Pl ? " has-shuffle-bar" : ""}`}>
@@ -3864,6 +3985,8 @@ export function GameCore({
         )}
         {pendingCapture && (
           <CaptureConfirm
+            // はじめの一局は台本の言葉の調子で(決まり文句の「公開されます」を出さない。2026-10-05 見直し)
+            plain={!!tutorial?.storyAxis}
             count={pendingCapture.count}
             squares={(
               pendingCapture.captures || [
@@ -4258,7 +4381,9 @@ export function GameCore({
             </button>
           </div>
         )}
-        {!Pl && x && a.selectedId && (
+        {/* はじめの一局(台本をストーリーとして遊ぶ一局)には出さない(2026-10-06 見直し)。1枚に1つのことを教える札の
+            外に、はじめての人には分からない言葉の釦が光り、押すと台本の流れから外れた */}
+        {!Pl && x && a.selectedId && !(tutorial && tutorial.storyAxis) && (
           <div className="action-bar">
             <button
               className="btn btn-ghost"
@@ -4437,6 +4562,7 @@ export function GameCore({
             }
           />
         )}
+        {a.phase === "gameover" && cover}
       </div>
     </GameShell>
   );

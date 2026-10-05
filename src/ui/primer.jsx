@@ -20,8 +20,15 @@ import { typing } from "./key-target.js";
 import { CardFace, Piece } from "./cards.jsx";
 
 /**
- * 導入の札。どんなゲームか → 1手ずつ → 勝ち方 → 討てなくなったら → 王は伏せたまま → 陣 → あとはストーリーで。
+ * 導入の札。どんなゲームか → 一手ずつ → 勝ち方 → 討てなくなったら → 王は伏せたまま → 陣 → あとはストーリーで。
  * 最後の札(story)の文は、呼ぶ側が次に遊ぶステージに合わせて差し替えられる(Primer の outro。story.js primerOutroLines)
+ *
+ * 行は文字列か句の配列(2026-10-05 見直し)。画面は句ごとに折り返さない塊(span)で出す。文字列は読点・句点の
+ * あとで句に切る(primerPhrases)。読点の無い長い句は配列で手で切る。iPhone の WebKit は word-break: auto-phrase を
+ * 知らず、「その駒を取れま/す。」「小さいほう/の勝ちです。」と割れた
+ *
+ * 言葉は導入(語り・はじめの一局)の調子にそろえる(2026-10-06 本人の指示)。です・ますを使わない。
+ * 主語は遊ぶ人・一枚/一手・読点で句を切る。1枚1つ・1〜2行・1行20字前後。数は漢数字(「一手ずつ」「一枚」)
  */
 export const PRIMER_PAGES = Object.freeze([
   // 本文は語り1枚目(prologue.jsx)に合わせ、読点で行を切る(2026-10-01 本人の指示。
@@ -29,61 +36,63 @@ export const PRIMER_PAGES = Object.freeze([
   Object.freeze({
     key: "welcome",
     title: "トッタリーへようこそ",
+    // 題も句の塊で(320 幅で「トッタリーへようこ/そ」と割れた。2026-10-06 見直し)。ほかの題は読点で切る
+    titlePhrases: Object.freeze(["トッタリーへ", "ようこそ"]),
     lines: ["トランプの札を駒に、", "伏せて戦う一対一。"],
     art: "cards",
   }),
   Object.freeze({
     key: "turn",
-    title: "1手ずつ",
-    lines: ["自分の番に、駒を1つ動かします。", "相手の駒のマスへ進むと、その駒を取れます。"],
+    title: "一手ずつ",
+    lines: ["あなたの番に、一枚を動かす。", "相手の駒へ進めば、その一枚を取れる。"],
     art: "capture",
   }),
   Object.freeze({
     key: "win",
     title: "勝ち方",
-    lines: ["相手の王を討てば勝ちです。"],
+    lines: ["相手の王を討てば、勝ち。"],
     art: "win",
   }),
-  // 勝ち方のもう1つ(adjudication.js)。5×5 の 2・3 の王どうしでも起こりうる(2026-09-30 レビュー)
+  // 勝ち方のもう1つ(adjudication.js)。5×5 の 2・3 の王どうしでも起こりうる(2026-09-30 レビュー)。
+  // 数えるのは、はじめに並べた札(途中で出した予備札は数えない)。読点の無い1行目は手で切る
   Object.freeze({
     key: "judge",
     title: "討てなくなったら",
-    lines: [
-      "どちらの王も討てなくなったら、",
-      "はじめに並べた札の数字の合計が小さいほうの勝ちです。",
-    ],
+    lines: [["どちらの王も", "討てなくなったら、"], "はじめに並べた札の合計が、小さいほうの勝ち。"],
     art: "judge",
   }),
   // 題は「名乗らない」をやめた(2026-10-01 本人の指示。語りからも外した言い回し)
   Object.freeze({
     key: "hidden",
     title: "王は、伏せたまま",
-    lines: [
-      "王はお互いに伏せたまま。",
-      "どれが王かは、討たれるまで分かりません。",
-    ],
+    lines: ["あなたの王も、相手の王も、伏せたまま。", "どの一枚が王か、取るまで分からない。"],
     art: "hidden",
   }),
   Object.freeze({
     key: "setup",
     title: "陣を組む",
-    lines: [
-      "配られた札から駒を選んで並べ、",
-      "その中の1枚を王に決めます。",
-    ],
+    lines: ["配られた札から選んで、自陣に並べる。", "その中の一枚を、王にする。"],
     art: "setup",
   }),
   // 2行目はストーリー一覧の一行と同じ言い方(story.js nextStageLine。呼ぶ側が次のステージに差し替える)
   Object.freeze({
     key: "story",
     title: "あとはストーリーで",
-    lines: [
-      "ステージごとに、相手の王になる駒の動きを覚えます。",
-      "次は、二と三の王。",
-    ],
+    lines: ["ステージごとに、相手の王の動きを覚える。", "次は、二と三の王。"],
     art: "story",
   }),
 ]);
+
+/** 行を句の並びにする。配列ならそのまま、文字列なら読点・句点のあとで切る */
+export function primerPhrases(line) {
+  if (Array.isArray(line)) return line;
+  return String(line ?? "").match(/[^、。]+[、。]*|[、。]+/g) || [];
+}
+
+/** 行の文(句をつないだもの) */
+export function primerLineText(line) {
+  return Array.isArray(line) ? line.join("") : String(line ?? "");
+}
 
 /** 見せ札を1枚作る。盤の駒とまったく同じ描き方にする(別に絵を用意しない) */
 const chip = (rank, suit, owner, isKing = false) => ({
@@ -246,7 +255,13 @@ export function Primer({ onDone, onSkip = null, doneLabel = "とじる", skipLab
     <div className="modal-overlay">
       <div className="modal-panel primer" role="dialog" aria-modal="true" aria-label="はじめての手引き">
         <div className="primer-head">
-          <h3>{page.title}</h3>
+          <h3>
+            {(page.titlePhrases || primerPhrases(page.title)).map((phrase, i) => (
+              <span className="text-phrase" key={i}>
+                {phrase}
+              </span>
+            ))}
+          </h3>
           {onSkip && (
             <button
               type="button"
@@ -261,9 +276,16 @@ export function Primer({ onDone, onSkip = null, doneLabel = "とじる", skipLab
         {/* 札を送るたびに入り直す(key で作り直す) */}
         <div className="primer-body" key={page.key} aria-live="polite">
           <PrimerArt page={page} />
+          {/* 1行ずつ。行の中は句ごとに折り返す(語の途中で割らない) */}
           <div className="primer-text">
             {page.lines.map((line) => (
-              <p key={line}>{line}</p>
+              <p key={primerLineText(line)}>
+                {primerPhrases(line).map((phrase, i) => (
+                  <span className="text-phrase" key={i}>
+                    {phrase}
+                  </span>
+                ))}
+              </p>
             ))}
           </div>
         </div>

@@ -240,8 +240,30 @@ export function DiceDuo({
   // 見出しの代わりに出す一言(ストーリー2つ目の手当て「先手は、サイコロで決まる。」)。無ければ見出しのまま。
   // 見出しの下に足すと、見出しと同じことを二度言う(2026-10-01 の見直し)
   note = null,
+  // 導入の言葉の調子(ストーリー2つ目の手当ての局。2026-10-06 見直し)。です・ます調の決まり文句
+  // (「まだ振っていません」「4 が出ました」「…が先手です」)を使わず、先手は「あなた」を主語に言う。
+  // ほかの対局はいままでどおり
+  plain = false,
 }) {
   const names = useNames();
+  // 言葉の出し分け。plain は導入の言い方
+  const say = plain
+    ? {
+        rolling: "転がっている…",
+        notYet: "まだ振っていない",
+        foeWaiting: "相手が振るのを待っている…",
+        rolled: (v) => `${v} が出た`,
+        tie: "同じ目。もう一度…",
+        waitFoe: "相手のサイコロを待っている…",
+      }
+    : {
+        rolling: "転がしています…",
+        notYet: "まだ振っていません",
+        foeWaiting: "相手が振るのを待っています…",
+        rolled: (v) => `${v} が出ました`,
+        tie: "同じ目でした。もう一度振ります…",
+        waitFoe: "相手のサイコロを待っています…",
+      };
   const [pressed, setPressed] = useState(false);
   // 押してから 900ms 転がして、それから出目を決める(1人用の DiceStep と同じ手触り)
   useEffect(() => {
@@ -272,12 +294,12 @@ export function DiceDuo({
           {v === null
             ? idx === me
               ? pressed
-                ? "転がしています…"
-                : "まだ振っていません"
-              : "相手が振るのを待っています…"
+                ? say.rolling
+                : say.notYet
+              : say.foeWaiting
             : settled
-              ? `${v} が出ました`
-              : "転がしています…"}
+              ? say.rolled(v)
+              : say.rolling}
         </small>
       </div>
     );
@@ -313,18 +335,21 @@ export function DiceDuo({
           disabled={pressed}
           onClick={() => setPressed(true)}
         >
-          {pressed ? "転がしています…" : "サイコロを振る"}
+          {pressed ? say.rolling : "サイコロを振る"}
         </button>
       ) : both && mineSettled && foeSettled ? (
         tie ? (
-          <p className="hint">同じ目でした。もう一度振ります…</p>
+          <p className="hint">{say.tie}</p>
         ) : (
           <p style={{ color: PLAYER_META[firstPlayer].color, fontWeight: 700 }}>
-            {playerLabel(firstPlayer, me, names)}が先手です
+            {plain
+              ? // 主語はあなた。相手は席の名(「四と五の王」)で
+                `先手は、${firstPlayer === me ? "あなた" : (names && names[firstPlayer]) || "相手"}。`
+              : `${playerLabel(firstPlayer, me, names)}が先手です`}
           </p>
         )
       ) : (
-        <p className="hint">相手のサイコロを待っています…</p>
+        <p className="hint">{say.waitFoe}</p>
       )}
     </div>
   );

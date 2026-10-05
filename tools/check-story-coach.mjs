@@ -50,7 +50,7 @@ if (!globalThis.window) globalThis.window = globalThis;
 if (!globalThis.window.dispatchEvent) globalThis.window.dispatchEvent = () => true;
 if (!globalThis.window.addEventListener) globalThis.window.addEventListener = () => {};
 
-const { COACH_LINES, COACH_SCENES, KEEP_LABEL, coachArranges, coachScene, coachSeen, markCoachSeen, storyCoachPlan } = await import(
+const { COACH_LINES, COACH_SCENES, COACH_WAIT_LINES, KEEP_LABEL, coachArranges, coachScene, coachSeen, markCoachSeen, storyCoachPlan } = await import(
   "../src/game/story-coach.js"
 );
 const { STORY_STAGES, stageSetup, storyDeal, storyLesson, storyUntimed, pickStoryKing, storyCpuArea } = await import("../src/game/story.js");
@@ -96,7 +96,17 @@ console.log("\nB. 文");
   // 本人の決め6の文(2026-10-01)。磨くときはここも直す
   is("サイコロ", [...COACH_LINES.dice], ["先手は、サイコロで決まる。"]);
   is("引き直し", [...COACH_LINES.mulligan], ["いらない札は、捨てて引き直せる。", "捨てた札は、相手にも見える。"]);
-  is("陣", [...COACH_LINES.setup], ["伏せた一枚に、策がある。", "手札から5枚。迷ったら「自動配置」。"]);
+  // 陣の2行目は、おすすめの陣を並べ終えた画面に合わせた(2026-10-06 見直し。前は「手札から5枚。迷ったら「自動配置」。」)
+  is("陣", [...COACH_LINES.setup], ["伏せた一枚に、策がある。", "おすすめの陣を、並べておいた。"]);
+  is("陣: おすすめの陣を並べた画面で、これから並べるように言わない・「自動配置」を勧めない", COACH_LINES.setup.some((l) => /自動配置|手札から|迷ったら/.test(l)), false);
+  // 引き直しで相手を待つあいだの文(2026-10-06 見直し)。先手は「このまま」で進んだ人にも合う言い方
+  is("待つ文(先手)", [...COACH_WAIT_LINES.first], ["あなたの手札は、決まった。", "相手が、捨てる札を選んでいる…"]);
+  is("待つ文(後手)", [...COACH_WAIT_LINES.second], ["相手が、捨てる札を選んでいる。", "次は、あなた…"]);
+  const waits = [...COACH_WAIT_LINES.first, ...COACH_WAIT_LINES.second];
+  is("待つ文: どの行も20字まで・句点か「…」で終わる・「札」(「カード」を使わない)", waits.filter((l) => [...l].length > 20 || !/[。…]$/.test(l) || l.includes("カード")), []);
+  is("待つ文: 先手の文は、引き直さなかった人に嘘にならない(「引き直しは済んだ」と言わない)", COACH_WAIT_LINES.first.some((l) => /引き直し/.test(l)), false);
+  is("待つ文: です・ます調の決まり文句を使わない", waits.filter((l) => /です|ます|ください/.test(l)), []);
+  is("待つ文は凍らせてある", Object.isFrozen(COACH_WAIT_LINES) && Object.isFrozen(COACH_WAIT_LINES.first) && Object.isFrozen(COACH_WAIT_LINES.second), true);
   const lines = COACH_SCENES.flatMap((k) => COACH_LINES[k]);
   is("どの行も20字まで", lines.filter((l) => [...l].length > 20), []);
   is("1文1行(行は句点で終わる)", lines.every((l) => l.endsWith("。")), true);
@@ -308,8 +318,8 @@ const seats={names:["あなた","四と五の王"],icons:[null,null],titles:[nul
 const wrap=(el)=>renderToStaticMarkup(<SeatsProvider value={seats}>{el}</SeatsProvider>);
 const noop=()=>{};
 export const note=(lines)=>renderToStaticMarkup(<StoryCoachNote lines={lines} />);
-export const dice=(lines)=>wrap(<DiceDuo dice={[null,null]} me={0} onRoll={noop} remainingMs={null} limitMs={20000} firstPlayer={null} note={lines ? <StoryCoachNote lines={lines} /> : null} />);
-export const place=(state, lines)=>wrap(<PlaceStep state={state} player={state.players[0]} pIdx={0} size={5} dispatch={noop} remainingMs={null} limitMs={1} note={lines ? <StoryCoachNote lines={lines} /> : null} />);
+export const dice=(lines, plain=false)=>wrap(<DiceDuo dice={[null,null]} me={0} onRoll={noop} remainingMs={null} limitMs={20000} firstPlayer={null} note={lines ? <StoryCoachNote lines={lines} /> : null} plain={plain} />);
+export const place=(state, lines, orderPlain=false)=>wrap(<PlaceStep state={state} player={state.players[0]} pIdx={0} size={5} dispatch={noop} remainingMs={null} limitMs={1} note={lines ? <StoryCoachNote lines={lines} /> : null} orderPlain={orderPlain} />);
 export const clock=(props)=>wrap(<ClockBar clocks={[300000,300000]} currentTurn={0} viewer={0} extensionUses={[0,0]} {...props} />);`,
       },
       bundle: true,
@@ -362,10 +372,26 @@ export const clock=(props)=>wrap(<ClockBar clocks={[300000,300000]} currentTurn=
   is("一言は1文1行(行ごとの span)", rows(note(COACH_LINES.setup)), [...COACH_LINES.setup]);
   is("一言が無ければ何も出さない", [note(null), note([])], ["", ""]);
   const d = dice(COACH_LINES.dice);
-  is("サイコロ: 見出しの下に一言", rows(d), [...COACH_LINES.dice]);
-  is("サイコロ: 一言は見出しと出目の間", d.indexOf("サイコロで先手を決めます") < d.indexOf("story-coach") && d.indexOf("story-coach") < d.indexOf("dice-duo-sides"), true);
-  is("サイコロ: 手当てが無ければ一言なし", /story-coach/.test(dice(null)), false);
+  // 一言は見出しの代わり(見出しと一言で同じことを二度言わない。dice.jsx の {note || <h2>…}。2026-10-05 見直しで名と検査を作りに合わせた)
+  is("サイコロ: 一言を1文1行で出す", rows(d), [...COACH_LINES.dice]);
+  is("サイコロ: 一言は見出しの代わり(見出しを出さない)・出目より前", !d.includes("サイコロで先手を決めます") && d.indexOf("story-coach") >= 0 && d.indexOf("story-coach") < d.indexOf("dice-duo-sides"), true);
+  is("サイコロ: 手当てが無ければ見出しのまま・一言なし", dice(null).includes("サイコロで先手を決めます") && !/story-coach/.test(dice(null)), true);
   is("サイコロ: 時間制限なしなら残り時間の帯なし", /振る残り時間/.test(d), false);
+  // 手当ての局のサイコロは導入の言葉の調子(2026-10-06 見直し)。ほかの対局はいままでどおり
+  const dp = dice(COACH_LINES.dice, true);
+  const text = (html) => html.replace(/<[^>]*>/g, "");
+  is("サイコロ(手当ての局): まだ振っていない・相手を待っている(です・ます調を使わない)", /まだ振っていない/.test(text(dp)) && /相手が振るのを待っている…/.test(text(dp)) && !/です|ます|ください/.test(text(dp)), true);
+  is("サイコロ(ふつうの対局): いままでどおり", /まだ振っていません/.test(text(dice(null))) && /相手が振るのを待っています…/.test(text(dice(null))), true);
+  {
+    const src = read("src/ui/dice.jsx");
+    is(
+      "サイコロ(手当ての局): 出目・同じ目・勝者の文も導入の言い方(「4 が出た」「同じ目。もう一度…」「先手は、あなた。」)",
+      /rolled: \(v\) => `\$\{v\} が出た`/.test(src) && /tie: "同じ目。もう一度…"/.test(src) && /`先手は、\$\{firstPlayer === me \? "あなた" : \(names && names\[firstPlayer\]\) \|\| "相手"\}。`/.test(src),
+      true,
+    );
+    const plainSay = (src.match(/const say = plain\s*\? \{([\s\S]*?)\}\s*: \{/) || ["", ""])[1];
+    is("サイコロ(手当ての局): 言葉の表にです・ます調が無い", !!plainSay && !/です|ます|ください/.test(plainSay), true);
+  }
   // 陣: 本物の reducer で並べる段まで進めた盤
   let s = reducer(
     { phase: "intro" },
@@ -386,6 +412,10 @@ export const clock=(props)=>wrap(<ClockBar clocks={[300000,300000]} currentTurn=
   is("陣: 手当てが無ければ見出しのまま", /カードを盤面に配置してね/.test(place(s, null)), true);
   is("陣: おすすめの陣が並んだ状態(5/5)と「自動配置」「王を選ぶ」", /5<!-- -->\/<!-- -->5|5\/5/.test(p) && /自動配置/.test(p) && /王を選ぶ/.test(p), true);
   is("陣: 時間制限なしなら残り時間の帯なし", /布陣の残り時間/.test(p), false);
+  // 先後の一行(2026-10-06 見直し)。手当ての局は「最初の一手は、あなた。」だけ(札・「サイコロの結果、」・です・ます を出さない)
+  const pp = place(s, COACH_LINES.setup, true).replace(/<[^>]*>/g, "");
+  is("陣(手当ての局): 先後は「最初の一手は、あなた。」の一行だけ", /最初の一手は、あなた。/.test(pp) && !/あなたは先攻|サイコロの結果|先に動きます/.test(pp), true);
+  is("陣(ふつうの対局): 先後はいままでどおり", /あなたは先攻/.test(place(s, null).replace(/<[^>]*>/g, "")) && /サイコロの結果、先に動きます/.test(place(s, null).replace(/<[^>]*>/g, "")), true);
   is("陣: 手当てが無ければ一言なし", /story-coach/.test(place(s, null)), false);
   const timed = clock({ ruleVersion: GAME_RULE_VERSION });
   const free = clock({ ruleVersion: GAME_RULE_VERSION, untimed: true });
@@ -415,8 +445,10 @@ console.log("\nH. 配線(game.jsx)");
     true,
   );
   is("サイコロ(DiceDuo)に一言", /tie=\{a\.diceIdx === 3\}\s*note=\{coachNote\}/.test(game), true);
+  is("サイコロ(DiceDuo)は手当ての局で導入の言い方", /note=\{coachNote\}\s*(\/\/[^\n]*\n\s*)*plain=\{!!coach\}/.test(game), true);
+  is("陣と王を選ぶ段の先後は手当ての局で導入の言い方", (game.match(/orderPlain=\{!!coach\}/g) || []).length === 2, true);
   is("引き直しは一言を見出しの代わりに表示", /\{coachNote \|\| <h2[^\n]*交換するカードを選んでね<\/h2>\}/.test(game), true);
-  is("陣(PlaceStep)に一言・王を選ぶ段(KingStep)には出さない", /<PlaceStep[\s\S]{0,600}?note=\{coachNote\}[\s\S]{0,40}?\/>/.test(game) && !/<KingStep[\s\S]{0,900}?note=/.test(game), true);
+  is("陣(PlaceStep)に一言・王を選ぶ段(KingStep)には出さない", /<PlaceStep[\s\S]{0,600}?note=\{coachNote\}\s*orderPlain=\{!!coach\}\s*\/>/.test(game) && !/<KingStep[\s\S]{0,900}?note=/.test(game), true);
   is("PlaceStep は note を見出しの代わりに帯へ置く", /<div className="setup-head">\s*(\{\/\*[\s\S]*?\*\/\}\s*)?\{note \|\| \(\s*<h2 style=\{\{ color: PLAYER_META\[pIdx\]\.color \}\}>\s*\{nameOf\(pIdx, names\)\}: カードを盤面に配置してね/.test(setup), true);
   is(
     "引き直し: 1枚も選んでいなければ「このまま」、手当てではそれを光らせる",
@@ -425,6 +457,24 @@ console.log("\nH. 配線(game.jsx)");
   );
   is("引き直し: 時間制限なしでは時間切れの話をしない", /untimed \? "" : "時間が来たら、選んでいる札のまま引き直します。"/.test(game) && /untimed \? "相手が確定するまでお待ちください。" : "相手が確定するか、時間が来るまでお待ちください。"/.test(game), true);
   is("引き直し: 一言が出ていれば、案内は触り方の1行だけ(同じことを重ねない)", /\? coachLines\s*\? (\/\/[^\n]*\n\s*)*"捨てる札をタップ\(もう一度で取り消し\)。"/.test(game), true);
+  // 一言(「いらない札は、捨てて引き直せる。」「捨てた札は、相手にも見える。」)と同じ画面では「札」にそろえる(2026-10-05 見直し)
+  is(
+    "引き直し: 一言が出ている局の待つ文は「札」の行の配列(COACH_WAIT_LINES)を1行ずつ、行の中は句の塊で",
+    /: coachLines\s*\? (\/\/[^\n]*\n\s*)*\(me === a\.firstPlayer\s*\? COACH_WAIT_LINES\.first\s*: COACH_WAIT_LINES\.second\s*\)\.map\(\(line, i\) => \(\s*<span className="tutorial-line-row" key=\{i\}>\s*<Phrases text=\{line\} \/>\s*<\/span>\s*\)\)\s*: me === a\.firstPlayer\s*\? "引き直しは済みました。相手\(後攻\)が交換するカードを選んでいます…"/.test(game),
+    true,
+  );
+  is(
+    "引き直し: 一言が出ている局は、手札の下の「お待ちください」を出さない(上の待つ文と二度言わない)",
+    /\) : coachLines \? null : \(\s*(\/\/[^\n]*\n\s*)*<p className="hint">\s*\{untimed \? "相手が確定するまでお待ちください。"/.test(game),
+    true,
+  );
+  is(
+    "引き直し: 手当ての局の先後の札は「最初の一手は、あなた。」(名前の三人称を使わない)",
+    /\{coach \? \(\s*(\/\/[^\n]*\n\s*)*<span>\s*<Phrases text=\{me === a\.firstPlayer \? "最初の一手は、あなた。" : "最初の一手は、相手。"\} \/>\s*<\/span>\s*\) : \(\s*<span>\s*\{playerLabel\(a\.firstPlayer, P, names\)\}が先手・/.test(game),
+    true,
+  );
+  is("引き直し: 一言が出ている局は、捨て札の見出しも「捨てた札」", /が捨てた\$\{coachLines \? "札" : "カード"\}`\}/.test(game), true);
+  is("引き直し: 一言の文は「札」(「カード」を使わない)", Object.values(COACH_LINES).flat().every((l) => !l.includes("カード")), true);
   is("対局の時計に untimed を渡す", /<ClockBar[\s\S]{0,400}?untimed=\{untimedStory\}/.test(game), true);
   is("台本の引き直し(順番の画面)の釦はそのまま(第1〜13話の文「引き直して確定」)", (game.match(/\{be\.size\}枚 引き直して確定 <Check size=\{16\} \/>/g) || []).length === 2, true);
   is("CSS: 一言の枠と、時間制限なしの時計", /\.story-coach \{/.test(css) && /\.story-coach span \{[^}]*display: block;/.test(css) && /\.clock-time\.clock-time-untimed \{/.test(css), true);

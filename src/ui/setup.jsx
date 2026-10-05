@@ -23,6 +23,8 @@ import { ArrowLeft, Crown, Dice, Grid } from "../icons.jsx";
 import { CardBack, CardFace } from "./cards.jsx";
 import { CardGuide } from "./guides.jsx";
 import { useNames } from "./names.jsx";
+// 句ごとに折り返す文(iPhone の WebKit は auto-phrase を知らない。2026-10-06 見直し)
+import { Phrases } from "./phrases.jsx";
 
 export function DiscardPanel({ cards, label, color, owner }) {
   if (!cards || cards.length === 0) return null;
@@ -261,17 +263,30 @@ export function territoryOwnerOf(e, t, l) {
 /**
  * 布陣中に、自分が先攻か後攻かを示す(2026-09-23 本人の指示)。
  * サイコロで決まった順。布陣ボーナス(ストレート)で入れ替わることがあるので「サイコロの結果」と添える。
- * plain は台本の一局(はじめの一局)。サイコロは台本が裏で振っていて遊ぶ人は見ていないので、サイコロに触れない
+ * plain は導入の一局(はじめの一局と、ストーリー2つ目の手当ての局)。言葉を導入の調子にそろえ
+ * (です・ます調の決まり文句を避ける。2026-10-05 見直し)、「最初の一手は、あなた。」の一行だけにする
+ * (2026-10-06 見直し。札「あなたは先攻」と横の文が同じことを二度言い、サイコロと引き直しの「先手」と
+ * 「先攻」が混ざっていた。サイコロは手当ての局でも直前に見ているので、「サイコロの結果、」も要らない)。
+ * 札は折り返さない。横の文は句ごとに折り返す(320 幅で「あなたは後/攻」「…先に動き/ます」と割れた)
  */
 export function SetupOrderNote({ state, pIdx, plain = false }) {
   const first = state && state.firstPlayer;
   if (first !== 0 && first !== 1) return null;
   const mine = first === pIdx;
-  const why = plain ? "" : "サイコロの結果、";
+  if (plain)
+    return (
+      <p className={`setup-order setup-order-plain ${mine ? "setup-order-first" : "setup-order-second"}`}>
+        <span>
+          <Phrases text={mine ? "最初の一手は、あなた。" : "最初の一手は、相手。"} />
+        </span>
+      </p>
+    );
   return (
     <p className={`setup-order ${mine ? "setup-order-first" : "setup-order-second"}`}>
       <b>{mine ? "あなたは先攻" : "あなたは後攻"}</b>
-      <span>{mine ? `${why}先に動きます` : `${why}相手が先に動きます`}</span>
+      <span>
+        <Phrases text={mine ? "サイコロの結果、先に動きます" : "サイコロの結果、相手が先に動きます"} />
+      </span>
     </p>
   );
 }
@@ -442,6 +457,8 @@ export function PlaceStep({
   lockPlacement = false,
   // 見出しの代わりに帯へ置く一言(ストーリー2つ目の手当て「伏せた一枚に、策がある。」)。無ければ見出しのまま
   note = null,
+  // 先後の一行を導入の言い方にする(ストーリー2つ目の手当ての局。SetupOrderNote の plain。2026-10-06 見直し)
+  orderPlain = false,
 }) {
   const names = useNames();
   const [picked, setPicked] = useState(null);
@@ -601,7 +618,7 @@ export function PlaceStep({
             {nameOf(pIdx, names)}: カードを盤面に配置してね
           </h2>
         )}
-        <SetupOrderNote state={state} pIdx={pIdx} />
+        <SetupOrderNote state={state} pIdx={pIdx} plain={orderPlain} />
         <SetupTimer
           remainingMs={remainingMs}
           label="布陣の残り時間"
@@ -778,6 +795,8 @@ export function KingStep({
   lockPlacement = false,
   // 確定済みの相手の並びを伏せ札で薄く描く。台本の一局だけ(本番の同時布陣では並びも見せない)
   showFoe = false,
+  // 先後の一行を導入の言い方にする(ストーリー2つ目の手当ての局。はじめの一局は quiet で同じになる)
+  orderPlain = false,
 }) {
   const names = useNames();
   const placement = state.setupPlacements[pIdx];
@@ -823,7 +842,7 @@ export function KingStep({
             {nameOf(pIdx, names)}: 王にするカードを決めてね
           </h2>
         )}
-        <SetupOrderNote state={state} pIdx={pIdx} plain={quiet} />
+        <SetupOrderNote state={state} pIdx={pIdx} plain={quiet || orderPlain} />
         <SetupTimer
           remainingMs={remainingMs}
           label="王を選ぶ残り時間"

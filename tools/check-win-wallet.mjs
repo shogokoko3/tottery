@@ -8,7 +8,7 @@ import {chanceDay, rewardEventId, validWinChanceReward, WIN_CHANCE_KEY} from '..
 const T=Date.UTC(2026,9,2,7),day=chanceDay(T);
 const fresh=()=>{const db=new DatabaseSync(':memory:');return {db,w:new Wallet((q,...a)=>db.prepare(q).all(...a))}};
 const {db,w}=fresh();
-for(let n=0;n<3;n++)w.credit('cap','mission:'+n,10,'earn',T);
+for(let n=0;n<3;n++)w.credit('cap','generic:'+n,10,'earn',T);
 assert.throws(()=>w.credit('cap','another',1,'earn',T),/これ以上/);
 for(let done=1;done<=3;done++)assert.equal(w.winChanceReward('cap',day,done,T).tickets,30+done,'full mission quota must not discard win tickets');
 assert.equal(w.winChanceReward('cap',day,1,T).tickets,33,'retry cannot award twice');

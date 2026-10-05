@@ -12,6 +12,7 @@ import { verifyAppleTransaction } from "./applejws.js";
 import { minAppBuild, updateUrl } from "./app-version.js";
 import { seasonAt, seasonRewards } from "../game/season.js";
 import { Friends } from "./friends.js";
+import { missionRewardOf, missionFromLegacyId } from "../game/mission-reward.js";
 import { legacyLoginIndex } from "../game/login-bonus.js";
 import { chapterFromLegacyId, isRewardChapter } from "../game/tutorial-reward.js";
 import { validWinChanceReward, winChanceFromLegacyId } from "../game/win-chance.js";
@@ -167,6 +168,10 @@ async function handleApi(request, env, url) {
       const eventId = (x) => (typeof x === "string" && /^[\w:.-]{1,128}$/.test(x) ? x : null);
       if (url.pathname.startsWith("/api/wallet/")) {
         const wop = url.pathname.slice("/api/wallet/".length);
+        if (wop === "mission-reward")
+          return missionRewardOf(body.mission)
+            ? call("wallet-mission-reward", { mission: body.mission })
+            : json({ error: "ミッション報酬の指定が正しくありません。" }, 400);
         if (wop === "login-status") return call("wallet-login-status");
         if (wop === "login-reward")
           return typeof body.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.day)
@@ -221,14 +226,27 @@ async function handleApi(request, env, url) {
             return legacyLoginIndex(body.id) !== null
               ? call("wallet-login-legacy", { id: body.id })
               : json({ error: "ログイン報酬の指定が正しくありません。" }, 400);
+          if (body.id.startsWith("mission:")) {
+            const mission = missionFromLegacyId(body.id);
+            return mission && missionRewardOf(mission).reward.type === "ticket"
+              ? call("wallet-mission-reward", { mission, currency: "ticket" })
+              : json({ error: "ミッション報酬の指定が正しくありません。" }, 400);
+          }
           return call("wallet-credit", { id: body.id, n: body.n, kind: "earn" });
         }
         // 記念配布(src/game/campaigns.js)。枚数はサーバーが台帳から読む。uid ごとに一度きり
         if (wop === "campaign" && typeof body.campaign === "string" && /^[\w.-]{1,64}$/.test(body.campaign))
           return call("wallet-campaign", { campaign: body.campaign });
         // 無償ジェム(ミッションや手紙、バトルパスの完成)。端末の申告なので上限つき
-        if (wop === "earn-gems" && eventId(body.id) && Number.isSafeInteger(body.gems) && body.gems > 0)
+        if (wop === "earn-gems" && eventId(body.id) && Number.isSafeInteger(body.gems) && body.gems > 0) {
+          if (body.id.startsWith("mission:")) {
+            const mission = missionFromLegacyId(body.id);
+            return mission && missionRewardOf(mission).reward.type === "gems"
+              ? call("wallet-mission-reward", { mission, currency: "gems" })
+              : json({ error: "ミッション報酬の指定が正しくありません。" }, 400);
+          }
           return call("wallet-earn-gems", { id: body.id, gems: body.gems });
+        }
         if (wop === "migrate" && Number.isSafeInteger(body.tickets) && body.tickets >= 0)
           return call("wallet-migrate", { tickets: body.tickets });
         if (wop === "exchange" && eventId(body.id) && Number.isSafeInteger(body.tickets) && body.tickets > 0 && body.tickets <= 100)
@@ -488,6 +506,7 @@ export class SeasonLedger {
             friend: args.target === uid || fr.isFriend(uid, args.target),
           };
         }
+        if (op === "wallet-mission-reward") return w.missionReward(uid, args.mission, now, args.currency);
         if (op === "wallet-login-status") return w.loginStatus(uid, now);
         if (op === "wallet-login-reward") return w.loginReward(uid, args.day, now);
         if (op === "wallet-login-legacy") return w.legacyLoginReward(uid, args.id, now);

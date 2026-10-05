@@ -122,6 +122,8 @@ import {
 } from "../skins/first-pull.js";
 // 長押しの受け口(2026-09-28 本人の指示)
 import { useLongPress } from "./long-press.js";
+// 句ごとに折り返す文と札の名(iPhone の WebKit は auto-phrase を知らない。2026-10-06 見直し)
+import { Phrases, namePhrases } from "./phrases.jsx";
 import { backfillTutorialRewards } from "../game/tutorial-reward.js";
 
 const foilPct = FOIL_CHANCE * 100;
@@ -458,6 +460,8 @@ function SummonReveal({
   reduce,
   drawNumber = 0,
   freeze: freezeInput = null,
+  // 導入の10連(初回の10連)。案内の文を導入の言葉の調子にする(です・ます調の決まり文句を避ける。2026-10-06 見直し)
+  plain = false,
 }) {
   const freeze = useMemo(() => normalizeSummonFreeze(freezeInput, results.map(r => r.id)), [freezeInput, results]);
   // 引いた札ごとに、そのキャラの通常とフォイルを何枚持っているか(結果に出す)
@@ -573,9 +577,15 @@ function SummonReveal({
         <div className="reveal-omen" aria-hidden="true" />
         <p className="reveal-caption" role="status">
           {allComplete
-            ? "すべての札が現れました。"
+            ? plain
+              ? "すべての札が、現れた。"
+              : "すべての札が現れました。"
             : all
-              ? foilIndexes.length ? "まだ、輝きは終わらない。" : "札に宿る輝きをお待ちください。"
+              ? foilIndexes.length
+                ? "まだ、輝きは終わらない。"
+                : plain
+                  ? "輝きが、札に宿っていく…"
+                  : "札に宿る輝きをお待ちください。"
               : freeze ? "" : OMEN_TEXT[omen]}
         </p>
         <div
@@ -610,8 +620,12 @@ function SummonReveal({
           {all || freezeLocked
             ? ""
             : results.length === 1
-              ? "札を引き寄せて、めくってください。"
-              : "札を引き寄せてめくるか、指でなぞって次々にめくれます。"}
+              ? plain
+                ? "札を引き寄せて、めくれ。"
+                : "札を引き寄せて、めくってください。"
+              : plain
+                ? "札を引き寄せて、めくれ。指でなぞれば、次々に。"
+                : "札を引き寄せてめくるか、指でなぞって次々にめくれます。"}
         </p>
         <div className="reveal-actions">
           {!all && !freezeLocked && (
@@ -1891,7 +1905,8 @@ export function SkinsScreen({
     // (2026-09-22 本人の指示。「しばらく表示しない」を押していれば出さない)
     const before = collection;
     const next = await run((s) => {
-      const base = craftResult ? { ...s, lastCraft: null } : { ...s, pending: null };
+      // 召喚の結果を閉じたら、初回の10連の「まだ閉じていない」控えも下ろす(2026-10-05 見直し)
+      const base = craftResult ? { ...s, lastCraft: null } : { ...s, pending: null, firstPullOpen: false };
       return pulledFoils.length ? startFoilWindow(base) : base;
     });
     // 有償ジェムはサーバーの財布にあるので、Web でも(iOS で買った分を)使える。店の釦だけ iOS 限定
@@ -2450,6 +2465,7 @@ export function SkinsScreen({
             freeze={collection.pending.freeze}
             onFinish={finishAcquisition}
             reduce={reduce || collection.summonMotion === "skip"}
+            plain={firstResults}
           />
         ) : acquisitionMode === "foil" && craftedFoil ? (
           <CraftedFoilReveal
@@ -2526,12 +2542,21 @@ export function SkinsScreen({
                 <CardFace rank={companion.skin.rank} suit="spade" size="lg" skinId={companion.skin.id} animated={false} />
                 <div>
                   <small>盤上では、この姿に</small>
-                  <strong>{companion.skin.name}</strong>
-                  <p>{companion.equipped
-                    ? companion.available
-                      ? `${companion.skin.rank} に装備済み。手札に来たら、陣に加えよう。`
-                      : `${companion.skin.rank} に装備済み。この数字が登場するステージで活躍する。`
-                    : `${companion.skin.rank} に装備すると、同じ数字の札がこの姿に。`}</p>
+                  <strong>
+                    <Phrases text={namePhrases(companion.skin.name)} />
+                  </strong>
+                  {/* 句ごとに折り返す(320 幅で「手札に/来たら、陣に加えよ/う。」と割れた。2026-10-06 見直し) */}
+                  <p>
+                    <Phrases
+                      text={
+                        companion.equipped
+                          ? companion.available
+                            ? `${companion.skin.rank} に装備済み。手札に来たら、陣に加えよう。`
+                            : `${companion.skin.rank} に装備済み。この数字が登場するステージで活躍する。`
+                          : `${companion.skin.rank} に装備すると、同じ数字の札がこの姿に。`
+                      }
+                    />
+                  </p>
                 </div>
               </div>
             )}
@@ -2587,7 +2612,10 @@ export function SkinsScreen({
                         </small>
                       )}
                     </div>
-                    <strong>{s.name}</strong>
+                    {/* 名は「の」と空白のあとで句に切る(4列の狭い列で「黄昏のレヴナン/ト」と割れた。2026-10-06 見直し) */}
+                    <strong>
+                      <Phrases text={namePhrases(s.name)} />
+                    </strong>
                     {/* このキャラのフォイルを所持・装備しているときは、通常版の装備釦を出さない。
                         上位のフォイルが付いているのに通常版へ戻す操作は紛らわしい(2026-09-21 本人の指示) */}
                     {/* 手で着せなくてよかったことが分かるように、この抽選で
@@ -2597,10 +2625,11 @@ export function SkinsScreen({
                     collection.equipped[s.rank] === s.id ? (
                       <small
                         className="skins-result-equipped"
-                        aria-label={`${s.rank}に「${s.name}」を装備しました`}
+                        aria-label={`${s.rank}に「${s.name}」を装備${firstResults ? "した" : "しました"}`}
                       >
                         <i aria-hidden="true" />
-                        装備しました
+                        {/* 導入の10連は導入の言葉の調子で(2026-10-06 見直し) */}
+                        {firstResults ? "装備した" : "装備しました"}
                       </small>
                     ) : !s.foil &&
                     foil &&

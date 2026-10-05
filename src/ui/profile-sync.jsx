@@ -4,6 +4,7 @@ import {
   retryProfileSync,
   watchProfileSync,
 } from "../net/profile-sync.js";
+import { Phrases } from "./phrases.jsx";
 
 export function ProfileSyncNotice() {
   const [failed, setFailed] = useState(false);
@@ -20,7 +21,10 @@ export function ProfileSyncNotice() {
   if (!failed) return null;
   return (
     <aside className="profile-sync-notice" role="status">
-      <span>成績を保存できていません。通信が戻ると再送します。</span>
+      {/* 句ごとに折り返す(375 幅で「再送/します。」と割れた。2026-10-06 見直し) */}
+      <span>
+        <Phrases text="成績を保存できていません。通信が戻ると再送します。" />
+      </span>
       <button onClick={() => retryProfileSync()}>再送</button>
     </aside>
   );

@@ -23,7 +23,7 @@ assert.throws(() => w.credit('another','login:0',1,'earn',T), /正しく/); // n
 assert.equal(grant('another').tickets,1, 'another account receives its own first login');
 assert.equal(w.loginStatus('old-owner',T).login.received,true);
 assert.equal(grant('old-owner').tickets,1, 'accepted old reward is never credited again');
-for (let i=0;i<3;i++) w.credit('cap','mission:'+i,10,'earn',T);
+for (let i=0;i<3;i++) w.credit('cap','generic:'+i,10,'earn',T);
 assert.throws(() => w.credit('cap','over-cap',1,'earn',T),/これ以上/);
 assert.equal(grant('cap').tickets,31, 'login bypasses unrelated generic cap');
 assert.equal(grant('cap').tickets,31, 'repeat request and second device cannot duplicate');

@@ -14,7 +14,9 @@ import art89 from "../../assets/story/chronicle/89.webp";
 import art10 from "../../assets/story/chronicle/10.webp";
 import artJQ from "../../assets/story/chronicle/jq.webp";
 import artK from "../../assets/story/chronicle/k.webp";
+import { storyPhrases } from "../game/story-phrases.js";
 import { CardFace } from "./cards.jsx";
+import { Phrases } from "./phrases.jsx";
 import css from "./story-chronicle.css";
 
 export const STORY_ART = {
@@ -28,6 +30,28 @@ export const STORY_ART = {
 };
 export function ChronicleStyles() {
   return <style>{css}</style>;
+}
+
+/**
+ * 年代記の短い文(章の名・ステージの一行・目的・次へ続く一言など)を句の塊で出す(2026-10-06 見直し)。
+ * 切り方は story-phrases.js(無ければ読点・句点で切る)。語り・台詞・あらすじ・対立する理由の本文・
+ * 世界の説明のような長い地の文は、段落のまま折り返す
+ */
+export function StoryText({ text }) {
+  return <Phrases text={storyPhrases(text)} />;
+}
+
+/**
+ * 「立場 ／ 主題」「初回クリア · チケット 10枚」のように区切りでつないだ句。区切りは前の句の終わりに付け、
+ * 次の句との間はふつうの空白にする(そこで折り返すと消える)。塊の端に入れた空白は塊の中で消えるので外に置く
+ */
+export function JoinedPhrases({ head, sep, tail }) {
+  return (
+    <>
+      <span className="text-phrase">{`${head} ${sep}`}</span>{" "}
+      <Phrases text={storyPhrases(tail)} />
+    </>
+  );
 }
 
 /** 三つの場面を一枚に収めた挿絵。各フェーズはその1/3だけを表示する。 */
@@ -51,17 +75,25 @@ export function StoryPurpose({ episode, compact = false }) {
   return (
     <aside className="chronicle-purpose" aria-label="あなたの目的">
       <small>あなたの目的</small>
-      <p>{goal}</p>
+      <p>
+        <StoryText text={goal} />
+      </p>
       {!compact && (
         <details>
-          <summary>{kind} · 対立する理由</summary>
+          <summary>
+            <JoinedPhrases head={kind} sep="·" tail="対立する理由" />
+          </summary>
           <p>{reason}</p>
           {rivalIdeal && (
             <dl>
               <dt>相手の信念</dt>
-              <dd>{rivalIdeal}</dd>
+              <dd>
+                <StoryText text={rivalIdeal} />
+              </dd>
               <dt>あなたの信念</dt>
-              <dd>{playerIdeal}</dd>
+              <dd>
+                <StoryText text={playerIdeal} />
+              </dd>
             </dl>
           )}
         </details>
@@ -147,7 +179,9 @@ export function StoryReader({
             <small>
               フェーズ {phase} · {arc.role}
             </small>
-            <h3>{episode.title}</h3>
+            <h3>
+              <StoryText text={episode.title} />
+            </h3>
           </div>
           <button
             type="button"
@@ -170,9 +204,15 @@ export function StoryReader({
         >
           <div key={page} aria-live="polite" aria-atomic="true">
             <small className="chronicle-kicker">
-              {ending
-                ? "戦いのあと"
-                : `${arc.name} ／ ${STORY_PHASES[phase].label}`}
+              {ending ? (
+                <Phrases text="戦いのあと" />
+              ) : (
+                <JoinedPhrases
+                  head={arc.name}
+                  sep="／"
+                  tail={STORY_PHASES[phase].label}
+                />
+              )}
             </small>
             <b className="chronicle-speaker">{current.speaker}</b>
             <p>{current.text}</p>
@@ -192,7 +232,7 @@ export function StoryReader({
                     ? `フェーズ ${phase + 1} へ続く`
                     : "この物語の結び"}
                 </small>
-                {episode.next}
+                <StoryText text={episode.next} />
               </p>
             )}
           </div>

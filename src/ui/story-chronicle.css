@@ -718,3 +718,12 @@
   margin: 2px 0 0;
   color: #e6ddcd;
 }
+
+/* 320 幅(SE 第1世代)では札の名「閉ざされた門」(全角6字・66px)が列(64px)に入らず、「閉ざされた/門」と
+   割れた。左右の余白を詰めて 70px にする(2026-10-06 見直し。札の名は句の塊で、語の途中では折らない) */
+@media (max-width: 359px) {
+  .chronicle-phases button {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+}

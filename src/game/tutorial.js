@@ -32,7 +32,7 @@
  *   nextLabel 「次へ」の代わりの釦の名
  *   need.also  この札のあいだも通す操作(確定の前の王の選び直し)
  *   choose.wrong・notCapture  的と違う駒を取る手・取らない手への一言
- *   choose.hintGuide  ヒントを開いたときに出す動きの一覧(MoveGuidePanel の guide)
+ *   choose.hintGuide  ヒントを開いたときに出す動きの一覧(MoveGuidePanel の guide。phrased で句ごとに折り返す)
  * 台本そのものには phase(対局のフェーズ。無ければ王の力あり)・storyAxis(ストーリーの
  * 軸として記録する)・tagline(結果の締めの一行)・kingNote(結果のあなたの王の一行)、
  * opening には stopAt:"king"(王を選ぶ段で止める)・lockPlacement(並べ直しを止める)。
@@ -2222,11 +2222,16 @@ export const FIRST_GAME = {
   storyAxis: "23",
   // 結果の締めの一行(第1〜13話の「相手の王を討て。」の代わり)
   tagline: "一手に、読みを。一枚に、野望を。",
+  // 案内の札の出番でない相手の番に、帯へ出す一行(2026-10-05 見直し。決まり文句の「相手の番です。
+  // 少し待ってください。」の代わり)。次の札「逃げた一枚か、残された一枚か。」へつなぐ
+  foeTurn: ["相手の番。どの一枚が動く?"],
   // 結果のあなたの王の札に添える一行。王を討った駒は表になる(reducer の名乗り)ので、
   // 王にした 4♦・5♥ で討ったときは「伏せたまま」が嘘になる
-  // 行の配列で持つ。1本の文字列を balance で割ると、iPhone(auto-phrase なし)で「最後ま/で」「自/ら」と割れた
+  // 行の配列で持つ。1本の文字列を balance で割ると、iPhone(auto-phrase なし)で「最後ま/で」「自/ら」と割れた。
+  // 行は文字列か句の配列(画面は句の塊で出す)。読点の無い「最後まで伏せたまま。」は手で切る
+  // (2026-10-06 見直し。320 幅の半分の列に入らず「最後まで伏/せたまま。」と割れた)
   kingNote: {
-    hidden: ["あなたの王は、", "最後まで伏せたまま。"],
+    hidden: ["あなたの王は、", ["最後まで", "伏せたまま。"]],
     struck: ["あなたの王が、", "自ら討った。"],
   },
   pool: CARD_POOLS.basic,
@@ -2312,7 +2317,12 @@ export const FIRST_GAME = {
       at: myTurn,
       // 自分で考える1手。二枚に同じ ▼ を付け、答えの側に印を寄せない
       text: ["逃げた一枚か、残された一枚か。", "王だと思うほうを、討て。"],
-      afterMiss: { target: "t9", text: ["取ったのは 5。王ではなかった。", "逃げた一枚を、もう一度見よう。"] },
+      // 先に残された一枚(5♦)を取って外したあと。取らない手の一言も、もう盤に無い一枚を指さない(2026-10-05 見直し)
+      afterMiss: {
+        target: "t9",
+        text: ["取ったのは 5。王ではなかった。", "逃げた一枚を、もう一度見よう。"],
+        notCapture: ["取るのは、逃げた一枚。"],
+      },
       need: {
         type: "MOVE_PIECE",
         pieceId: "t2",
@@ -2324,17 +2334,21 @@ export const FIRST_GAME = {
           alternatives: [{ row: 1, col: 1 }],
           // 動きから分かるのは数字まで(斜めに一歩は 3 も 5 も)。決め手は相手が守ったほう
           hint: ["相手の王は、2 か 3。", "斜めに一歩なら、3 か 5。"],
-          hintGuide: { ranks: ["2", "3", "5"] },
+          // 文は句ごとに折り返す(phrased。図の列が狭く、語の途中で割れた。2026-10-05 見直し)
+          hintGuide: { ranks: ["2", "3", "5"], phrased: true },
           wrong: ["その一枚は、置いていかれた。", "相手が守りたいのは、どっち?"],
           // ▼ を数えさせない。ヒントを開くと、あなたの 4♦ にも ▼ が付いて三つになる
           notCapture: ["取るのは、逃げた一枚か、残された一枚。"],
+          // 札の上の印(2026-10-06 本人の指示)。導入の言葉の調子で。第1〜13話は持たず、決まりの「自分で考える1手」
+          badge: "あなたが読む、一手。",
         },
       },
       focus: { pieces: ["t6", "t9"] },
     },
     {
       at: atEnd,
-      text: ["相手が逃がした一枚は、王だった。", "動きと選択が、手がかりになる。"],
+      // 2行目は2026-10-06 本人の指示(前は「動きと選択が、手がかりになる。」)
+      text: ["相手が逃がした一枚は、王だった。", "動きを読めば、王に届く。"],
       afterMiss: { target: "t9", text: ["外れた一枚から、候補を絞った。", "読み直して、王に届いた。"] },
       end: true,
     },
@@ -2481,12 +2495,19 @@ function takesPiece(s, action) {
   return !!there && !!mover && there.owner !== mover.owner;
 }
 
+/** 外した一枚(afterMiss.target)がもう倒れているか。札の文(stepLines)と一言(nudgeLines)で同じ決まり */
+function missed(step, s) {
+  return !!(step.afterMiss && s?.pieces?.[step.afterMiss.target]?.alive === false);
+}
+
 /** 台本に無い手を止めたときの一言(行の配列)。台本に文が無ければ決まりの文 */
 function nudgeLines(step, s, action) {
   const pick = step.need.choose;
   if (pick) {
     if (action.type === "MOVE_PIECE") {
-      const own = takesPiece(s, action) ? pick.wrong : pick.notCapture;
+      // 外したあとは、残っているのは逃げた一枚だけ(afterMiss.notCapture)
+      const notCapture = (missed(step, s) && step.afterMiss.notCapture) || pick.notCapture;
+      const own = takesPiece(s, action) ? pick.wrong : notCapture;
       if (own) return textLines(own);
     }
     if (step.nudge) return textLines(step.nudge);
@@ -2547,8 +2568,7 @@ export function canStepBack(tut, index, s) {
 /** 札に出す行。駒を選んでいるあいだは picked、王が kingAlt の札なら kingAlt.text */
 export function stepLines(step, s) {
   if (!step) return [];
-  if (step.afterMiss && s?.pieces?.[step.afterMiss.target]?.alive === false)
-    return textLines(step.afterMiss.text);
+  if (missed(step, s)) return textLines(step.afterMiss.text);
   if (step.kingAlt && s && s.players && s.players[0].kingId === step.kingAlt.cardId)
     return textLines(step.kingAlt.text);
   if (step.picked && step.need && s && s.selectedId && s.selectedId === step.need.pieceId)
