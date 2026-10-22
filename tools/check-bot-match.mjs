@@ -200,7 +200,7 @@ assert.ok(/const planRef = useRef\(botReady \? botPlan\(myRating\(\)\) : "none"\
   assert.ok(game.includes("onReplay={bot && onReplayBot ? onReplayBot : null}") && game.includes("onClick={() => (onReplay ? onReplay() : dispatch({ type: \"NEW_GAME\" }))}"), "対局後の「もう一度遊ぶ」は Bot なら呼ぶ側へ");
   // 近くの端末との対戦(network.nearby)だけは数えない(2026-09-17)
   assert.ok(/const ranked = \(!!\(network && network\.random\) \|\| !!bot\) && a\.boardSize === 9 && rankedPhase\(matchPhase\);/.test(game), "Bot の 9×9 は持ち点に数える(フレンド対戦は数えない)");
-  assert.ok(/if \(bot\) E = botAction\(a, T, E, bot\);/.test(game), "Bot の強さ(段階)を手に反映する");
+  assert.ok(/if \(bot && !aliceCpuInteraction\) E = botAction\(a, T, E, bot\);/.test(game), "Bot の強さ(段階)を手に反映する");
   assert.ok(/const CPU_TURN_MS = 5000;/.test(game) && /foeWait\(a, E, CPU_TURN_MS\)/.test(game), "CPU・Bot は対局中の1手に5秒使う(2026-09-17)");
   assert.ok(/\? bot\.rating/.test(game), "相手の点は Bot の人物の点");
   // 2026-09-24 本人の報告: 2000 未満は必ず Bot と当たるので、数えないと「オンライン対戦をする」が達成できない

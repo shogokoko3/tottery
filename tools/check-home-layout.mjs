@@ -12,6 +12,7 @@ import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { build } from "esbuild";
+import { HOME_THEMES, homeThemeAssets } from "../src/skins/home-themes.js";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tottery-home-"));
 try {
@@ -25,12 +26,16 @@ import {MenuScreen, MatchingScreen} from './src/ui/screens.jsx';
 import {ShopScreen} from './src/ui/shop.jsx';
 import {QuestsScreen} from './src/ui/quests.jsx';
 import {CardMasteryScreen} from './src/ui/card-mastery.jsx';
+import {updateCollection} from './src/skins/store.js';
+import {ProfileCard} from './src/ui/profile.jsx';
 const noop=()=>{};
 export const home=()=>renderToStaticMarkup(<MenuScreen onPlay={noop} onTutorial={noop} onTsume={noop} onSkins={noop} onBattlePass={noop} onMissions={noop} onCards={noop} onShop={noop} onLetters={noop} />);
 export const quests=(tab)=>renderToStaticMarkup(<QuestsScreen tab={tab} onTab={noop} onBack={noop} onSkins={noop} />);
-export const cards=()=>renderToStaticMarkup(<CardMasteryScreen onBack={noop} />);
+export const cards=(initialSeries=null)=>renderToStaticMarkup(<CardMasteryScreen onBack={noop} initialSeries={initialSeries} />);
 export const matching=()=>renderToStaticMarkup(<MatchingScreen onOnline={noop} onFriend={noop} onCpu={noop} onBack={noop} onTutorial={noop} onRanking={noop} />);
-export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={noop} onFoil={noop} onBattlePass={noop} />);`,
+export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={noop} onFoil={noop} onBattlePass={noop} />);
+export const themedHome=async(collection)=>{await updateCollection(()=>collection);return home();};
+export const profileCard=(bg)=>renderToStaticMarkup(<ProfileCard view={{card:{bg,stats:{}}}} name="表示確認" />);`,
     },
     bundle: true,
     platform: "node",
@@ -103,9 +108,15 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
   for (const h of [qm, qp]) assert.ok(h.includes("ホームに戻る"), "どちらのタブにも「ホームに戻る」");
 
   // 1b. カードの画面: 17スキンの熟練度(2026-09-24 でスキン制に)。既定の描画はスキン未所持=全てロック
-  const cd = cards();
-  assert.ok(cd.includes("<h2>カード</h2>"), "カードの見出し");
+  // まずシリーズ選択(ガチャの選択画面と同じ作り。2026-10-16 本人の指示)。選ぶといつもの一覧で、右上に「シリーズ選択へ」
+  const pick = cards();
+  assert.ok(pick.includes("<h2>カード</h2>"), "カードの見出し");
+  assert.equal((pick.match(/card-mastery-pick"/g) || []).length, 2, "シリーズ選択はレジェンドとワンダーランド");
+  assert.ok(pick.includes("このシリーズの熟練度を見る") && pick.includes("ワンダーランド"), "シリーズごとに選ぶ釦");
+  assert.ok(!pick.includes("card-mastery-row"), "選ぶ前は一覧を出さない");
+  const cd = cards("heroes");
   assert.equal((cd.match(/card-mastery-row/g) || []).length, 17, "スキンは17種");
+  assert.ok(cd.includes("シリーズ選択へ") && cd.includes("card-mastery-back"), "一覧の右上に「シリーズ選択へ」");
   assert.ok(cd.includes("スキンをまだ持っていません") || cd.includes("スキンを獲得すると解放") || cd.includes("手に入れると解放"), "未所持スキンはロック(鎖)");
   assert.ok(cd.includes("十七英雄の主") && cd.includes("盤上無双"), "通しの称号も出る");
   assert.ok(cd.includes("盤の有利不利には効きません"), "盤に効かないことを断る");
@@ -123,6 +134,22 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
   for (const label of ["ジェムを買う", "ガチャチケット", "フォイルを買う", "バトルパス"])
     assert.ok(sh.includes(label), `ショップに「${label}」`);
   assert.ok(/1枚 150ジェム \/ 10枚 1,200ジェム/.test(sh), "チケットの値段を出す");
+  // 実際のホーム描画が、キャラ・背景・装飾・枠・配色を同じセットから読む。
+  const { themedHome, profileCard } = createRequire(import.meta.url)(outfile);
+  for (const theme of HOME_THEMES.filter((item) => item.series === "alice")) {
+    const rendered = await themedHome({ owned: { [theme.unlockFoil]: 1 }, homeTheme: theme.id });
+    assert.ok(rendered.includes(`data-home-area="${theme.id}"`));
+    for (const file of Object.values(homeThemeAssets(theme)))
+      assert.ok(rendered.includes(file), `${theme.name}: ${file}`);
+    assert.ok(rendered.includes(`--home-accent:${theme.accent}`));
+    assert.ok(rendered.includes(`--home-frame:${theme.secondary}`));
+    assert.ok(rendered.includes(`<h2>${theme.name}</h2>`));
+    assert.ok(!rendered.includes("skins/home-v1/alice-"), "初期シリーズのパスへ流れない");
+    assert.ok(profileCard(theme.id).includes(homeThemeAssets(theme).decoration));
+    const locked = await themedHome({ owned: { [theme.id]: 1 }, homeTheme: theme.id });
+    assert.ok(locked.includes('data-home-area="default"'));
+    assert.ok(!locked.includes(homeThemeAssets(theme).scene));
+  }
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });
 }

@@ -423,23 +423,27 @@ console.log("\n運営ツール(手動付与・購入履歴・ガチャ履歴)");
   is("商品外の札は断る", /正しくありません/.test(msg), true);
 }
 
-// 無償ジェムをエーテルに(10 → 20)。**無償だけ**で払い、有償は溶かさない。10 の倍数だけ
+// ジェムをエーテルに(10 → 20)。無償→有償の順で払う(2026-10-16 本人の指示)。10 の倍数だけ
 {
   const D = new DatabaseSync(":memory:");
   const ew = new Wallet((q, ...a) => D.prepare(q).all(...a));
   ew.purchase("G", { transactionId: "t-eth", productId: "com.shogokoko.tottery.gems.600", environment: "Sandbox", purchaseDate: 1 }, 10);
   const b = ew.summary("G"); // 有償600・無償(初回2倍600+おまけ60)
   const r = ew.buyEther("G", "eth-1", 100, 20);
-  is("100 無償ジェム → 200 エーテル", r.ether, 200);
-  is("無償だけ減る", [r.gemsFree, r.gemsPaid], [b.gemsFree - 100, b.gemsPaid]);
+  is("100 ジェム → 200 エーテル", r.ether, 200);
+  is("無償が足りるうちは無償だけ減る", [r.gemsFree, r.gemsPaid], [b.gemsFree - 100, b.gemsPaid]);
   is("同じ id は二度効かず ether 0", ew.buyEther("G", "eth-1", 100, 30).ether, 0);
   let msg = "";
   try { ew.buyEther("G", "eth-2", 15, 40); } catch (e) { msg = e.message; }
   is("10 の倍数でなければ断る", /正しくありません/.test(msg), true);
   try { ew.buyEther("G", "eth-3", 10000, 50); } catch (e) { msg = e.message; }
   is("1,000 を超える量は断る", /正しくありません/.test(msg), true);
-  try { ew.buyEther("G", "eth-4", 1000, 60); } catch (e) { msg = e.message; }
-  is("無償が足りなければ有償があっても失敗", /無償ジェムが足りません/.test(msg), true);
+  const r4 = ew.buyEther("G", "eth-4", 1000, 60);
+  const freeLeft = b.gemsFree - 100;
+  is("無償が足りなければ残りを有償から", [r4.ether, r4.gemsFree, r4.gemsPaid], [2000, 0, b.gemsPaid - (1000 - freeLeft)]);
+  msg = "";
+  try { ew.buyEther("G", "eth-5", 1000, 70); } catch (e) { msg = e.message; }
+  is("無償も有償も足りなければ失敗", /ジェムが足りません/.test(msg), true);
   is("catalog の換算", [etherFor(10), etherFor(50), etherFor(1000), etherFor(1010), etherFor(7)], [20, 100, 2000, null, null]);
 }
 

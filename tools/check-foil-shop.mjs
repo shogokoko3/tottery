@@ -9,14 +9,16 @@
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { FOIL_PRODUCTS, productOf, priceFor, bandOf, ownsAllButSecret, skinVisibleInCollection, foilOffers, coversPool, FOIL_WINDOW_MS, foilWindow, foilWindowLabel, startFoilWindow, FOIL_OFFER_SNOOZE_MS, snoozeFoilOffer, foilOfferSnoozed, shouldOfferFoils } from "../src/skins/foil-shop.js";
+import { FOIL_PRODUCTS, productOf, priceFor, bandOf, ownsAllButSecret, skinVisibleInCollection, foilOffers, coversPool, FOIL_WINDOW_MS, foilWindow, foilWindowLabel, startFoilWindow, FOIL_OFFER_SNOOZE_MS, snoozeFoilOffer, foilOfferSnoozed, shouldOfferFoils, openFoilSeries } from "../src/skins/foil-shop.js";
 import { ALL_SKINS, byId, foilId } from "../src/skins/catalog.js";
 
 assert.equal(coversPool(), true, "15キャラのフォイルが商品1〜9にちょうど1回ずつ");
+assert.equal(coversPool("alice"), true, "ワンダーランドの12キャラのフォイルも商品にちょうど1回ずつ");
 const prices = Object.fromEntries(FOIL_PRODUCTS.map((p) => [p.id, p.price]));
 assert.deepEqual(prices, {
   "foil-2-3": 1500, "foil-4-5": 1500, "foil-6-7": 3000, "foil-8-9": 3000,
-  "foil-10": 5000, "foil-jq-angel": 5000, "foil-jq-demon": 5000, "foil-k-angel": 5000, "foil-k-demon": 5000, "foil-a": 2000,
+  "foil-10": 5000, "foil-jq-angel": 5000, "foil-jq-demon": 5000, "foil-k-angel": 5000, "foil-k-demon": 5000, "foil-a": 2000, "foil-alice-a": 2000,
+  "foil-alice-2-3": 1500, "foil-alice-4-5": 1500, "foil-alice-6-7": 3000, "foil-alice-8-9": 3000, "foil-alice-10": 5000, "foil-alice-jk": 5000, "foil-alice-q": 5000,
 });
 assert.equal(productOf("foil-a").secret, true);
 assert.ok(!productOf("foil-a").pending, "A の絵と購入条件の接続後に公開");
@@ -34,8 +36,10 @@ assert.equal(bandOf("zombie-male:foil").id, "foil-2-3");
 assert.equal(bandOf("genie-magician"), null, "secret は帯にしない");
 
 // 勧める商品
-const none = foilOffers({ owned: {} });
+const none = foilOffers({ owned: {} }, { series: "heroes" });
 assert.equal(none.length, 9, "何も持っていなければ 9 商品(A は出ない)");
+assert.equal(foilOffers({ owned: {} }, { series: "alice" }).length, 7, "ワンダーランドは 7 商品(A は出ない)");
+assert.equal(foilOffers({ owned: {} }).length, 16, "シリーズを指定しなければ両方");
 assert.ok(none.every((o) => !o.partial && o.price === o.product.price));
 const some = foilOffers({ owned: { "zombie-male:foil": 1, "angel-j:foil": 1, "angel-q:foil": 1 } }, { exclude: ["foil-10"] });
 assert.ok(!some.some((o) => o.product.id === "foil-jq-angel"), "全部持っている商品は出ない");
@@ -44,15 +48,15 @@ const half = some.find((o) => o.product.id === "foil-2-3");
 assert.deepEqual([half.skins, half.price, half.partial], [["zombie-female"], 750, true], "片方を持っていれば残りを按分");
 
 // A: 全カード(A のフォイル以外)をそろえたときだけ見える
-const everything = Object.fromEntries(ALL_SKINS.map((s) => [s.id, 1]));
+const everything = Object.fromEntries(ALL_SKINS.filter(s => s.series === "heroes").map((s) => [s.id, 1]));
 delete everything[foilId("genie-magician")];
 assert.equal(ownsAllButSecret({ owned: everything }), true);
 for (const id of Object.keys(everything))
   assert.equal(ownsAllButSecret({ owned: { ...everything, [id]: 0 } }), false, `${id}も全カードの条件に必要`);
 assert.equal(ownsAllButSecret({ owned: { [foilId("genie-magician")]: 1 } }), false);
 assert.equal(ownsAllButSecret(null), false);
-assert.deepEqual(foilOffers({ owned: everything }).map((offer) => [offer.product.id, offer.price]), [["foil-a", 2000]], "全収集後はAだけを有償2,000で案内");
-assert.deepEqual(foilOffers({ owned: { ...everything, [foilId("genie-magician")]: 1 } }), [], "Aも所持済みなら購入を案内しない");
+assert.deepEqual(foilOffers({ owned: everything }, { series: "heroes" }).map((offer) => [offer.product.id, offer.price]), [["foil-a", 2000]], "全収集後はAだけを有償2,000で案内");
+assert.deepEqual(foilOffers({ owned: { ...everything, [foilId("genie-magician")]: 1 } }, { series: "heroes" }), [], "Aも所持済みなら購入を案内しない");
 assert.ok(!JSON.stringify(foilOffers({ owned: {} })).includes("genie"), "そろえるまで A の存在を出さない");
 const secretSkin = byId(foilId("genie-magician"));
 assert.equal(skinVisibleInCollection({ owned: {} }, secretSkin), false, "未収集なら図鑑にも存在を出さない");
@@ -64,9 +68,9 @@ assert.equal(skinVisibleInCollection({ owned: {} }, null), false);
 
 // 配線
 const skins = readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
-assert.ok(/if \(next && pulledFoils\.length && WALLET_SERVER && shouldOfferFoils\(before, next\)\)/.test(skins), "ガチャでフォイルが出て結果を閉じたら出す(Web でも有償ジェムがあれば買える。新しく72時間が始まったときだけ)");
+assert.ok(/if \(next && foilSeries && WALLET_SERVER && shouldOfferFoils\(before, next, Date\.now\(\), foilSeries\)\)/.test(skins), "ガチャでフォイルが出て結果を閉じたら出す(Web でも有償ジェムがあれば買える。そのシリーズの72時間が新しく始まったときだけ)");
 assert.ok(/onShop=\{shopOk \? \(\) => setShop\(true\) : null\}/.test(skins), "ジェムを買う釦は iOS だけ");
-assert.ok(/setFoilOffer\(\{ exclude \}\)/.test(skins), "引いた帯を除いて出す");
+assert.ok(/setFoilOffer\(\{ exclude, series: foilSeries \}\)/.test(skins), "引いた帯を除いて、引いたシリーズの商品を出す");
 // 決済の呼び出しは src/ui/buy.js の1本に寄せてある(ショップ・ガチャ画面が同じ道を使う。2026-09-17)
 const buyui = readFileSync(new URL("../src/ui/buy.js", import.meta.url), "utf8");
 assert.ok(/await buyFoil\(offer\.product\.id, offer\.skins\);/.test(buyui), "購入APIを使う(呼び出しは src/ui/buy.js 1本)");
@@ -132,13 +136,85 @@ console.log("フォイルの直接購入: 値段・15キャラを網羅・按分
   assert.equal(normalize({ foilOfferSnoozeUntil: -1 }).foilOfferSnoozeUntil, null);
   // 画面の配線
   const shop = fs.readFileSync(new URL("../src/ui/shop.jsx", import.meta.url), "utf8");
-  assert.ok(/const foilKnown = foilRevealed\(collection\) && window\.open;/.test(shop), "ショップの欄は72時間の中だけ");
+  // シリーズごとの釦は72時間の外でも置き、外では見るだけで買えない(2026-10-15 本人の指示)
+  assert.ok(/const foilSeriesAll = SERIES\.filter\(\(s\) => isSeriesOpen\(s\.id\)\);/.test(shop), "ショップの釦は始まったシリーズ全部(72時間の外でも)");
+  assert.ok(/locked=\{!w\.open\}/.test(shop), "72時間の外では見るだけ");
+  assert.ok(!/disabled=\{!foilKnown\}/.test(shop), "「フォイルを買う」は閉じない");
   assert.ok(/72時間だけ並びます/.test(shop), "閉じているときは理由を出す");
+  const pickerSrc = fs.readFileSync(new URL("../src/ui/foil-offer.jsx", import.meta.url), "utf8");
+  assert.ok(/disabled=\{working \|\| locked\}/.test(pickerSrc), "見るだけのときは商品を押せない");
+  assert.ok(/const short = !locked && buyable\.length > 0 && gemsPaid < cheapest;/.test(pickerSrc), "見るだけのときはジェムを買う誘いを出さない");
   const skins = fs.readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
-  assert.ok(/pulledFoils\.length \? startFoilWindow\(base\) : base/.test(skins.replace(/\s+/g, " ")), "ガチャでフォイルを引いたら72時間の印を押す(並んでいる間は引き直さない)");
-  assert.ok(/WALLET_SERVER && shouldOfferFoils\(before, next\)/.test(skins), "ポップアップは新しく始まったときだけ、止めていないときだけ");
+  assert.ok(/foilSeries \? startFoilWindow\(base, Date\.now\(\), foilSeries\) : base/.test(skins.replace(/\s+/g, " ")), "ガチャでフォイルを引いたら72時間の印を押す(並んでいる間は引き直さない)");
+  assert.ok(/WALLET_SERVER && shouldOfferFoils\(before, next, Date\.now\(\), foilSeries\)/.test(skins), "ポップアップは新しく始まったときだけ、止めていないときだけ");
   assert.ok(/onSnooze=\{async \(\) => \{\s*await run\(\(s\) => snoozeFoilOffer\(s\)\);/.test(skins), "「しばらく表示しない」で台帳に期限を書く");
   const offer = fs.readFileSync(new URL("../src/ui/foil-offer.jsx", import.meta.url), "utf8");
   assert.ok(/しばらく表示しない/.test(offer) && /onSnooze/.test(offer), "シートに「しばらく表示しない」がある");
 }
 console.log("フォイルの欄は72時間だけ・並んでいる間は引き直さない・ポップアップは新しく始まったときだけ・しばらく表示しない OK");
+
+/* ---- シリーズごとに別の72時間(2026-10-15 本人の指示「レジェンド・ゲートと同じ仕組みをワンダーランドにも」) ---- */
+{
+  const now = 1_700_000_000_000;
+  const a = startFoilWindow({ owned: {} }, now, "alice");
+  assert.equal(a.foilOfferAtBySeries.alice, now, "ワンダーランドで引いた時刻は別に控える");
+  assert.equal(a.foilOfferAt ?? null, null, "レジェンド・ゲートの欄は始まらない");
+  assert.equal(foilWindow(a, now, "alice").open, true);
+  assert.equal(foilWindow(a, now).open, false, "レジェンド・ゲートの欄は閉じたまま");
+  assert.equal(shouldOfferFoils({}, a, now, "alice"), true, "ワンダーランドのポップアップ");
+  assert.equal(shouldOfferFoils({}, a, now), false, "レジェンド・ゲートのポップアップは出ない");
+  const both = startFoilWindow(a, now + 1000);
+  assert.equal(both.foilOfferAt, now + 1000);
+  assert.deepEqual(openFoilSeries(both, now + 2000).map((s) => s.id), ["alice", "heroes"], "並んでいるシリーズ(SERIES の順)");
+  assert.deepEqual(openFoilSeries(both, now + FOIL_WINDOW_MS).map((s) => s.id), ["heroes"], "ワンダーランドの72時間が先に閉じる");
+  assert.equal(startFoilWindow(a, now + 10 * 3600e3, "alice").foilOfferAtBySeries.alice, now, "並んでいる間は引き直さない");
+  assert.deepEqual(
+    foilOffers({ owned: {} }, { series: "alice" }).map((o) => o.product.id),
+    ["foil-alice-2-3", "foil-alice-4-5", "foil-alice-6-7", "foil-alice-8-9", "foil-alice-10", "foil-alice-jk", "foil-alice-q"],
+    "ワンダーランドの商品は数字の組の順",
+  );
+  assert.equal(bandOf("alice-Q-queen:foil").id, "foil-alice-q", "Q は単体(2026-10-15 本人の決め)");
+  assert.equal(bandOf("alice-K-king").id, "foil-alice-jk", "J・K はセット");
+  assert.deepEqual(productOf("foil-alice-jk").skins, ["alice-J-knave", "alice-K-king"]);
+  assert.equal(bandOf("alice-A-alice"), null, "アリスの A は帯にしない(secret)");
+  assert.equal(priceFor(productOf("foil-alice-jk"), ["alice-K-king"]), 2500, "J・K の片方は按分");
+  assert.equal(priceFor(productOf("foil-alice-q"), ["alice-Q-queen"]), 5000);
+  for (const p of FOIL_PRODUCTS) assert.ok(["heroes", "alice"].includes(p.series), `${p.id} にシリーズがある`);
+  for (const p of FOIL_PRODUCTS.filter((x) => x.series === "alice" && !x.secret))
+    for (const id of p.skins) assert.equal(byId(id)?.series, "alice", `${id} はワンダーランドの札`);
+  // 端末の保存(normalize)でも残る。heroes は従来の foilOfferAt なので別名には入れない
+  const { normalize } = await import("../src/skins/collection.js");
+  const kept = normalize({ foilOfferAtBySeries: { alice: now, heroes: now, bad: -1 } });
+  assert.deepEqual(kept.foilOfferAtBySeries, { alice: now }, "heroes と壊れた値は落とす");
+  assert.equal(foilWindow(kept, now, "alice").open, true);
+  // 画面の配線: ショップはシリーズごとの欄、ポップアップはそのシリーズだけ
+  const shop = readFileSync(new URL("../src/ui/shop.jsx", import.meta.url), "utf8");
+  assert.ok(/openFoilSeries\(collection\)/.test(shop) && /foilOffers\(collection, \{ series: series\.id, includeOwned: true \}\)/.test(shop), "ショップの欄はシリーズごと");
+  const sheet = readFileSync(new URL("../src/ui/foil-offer.jsx", import.meta.url), "utf8");
+  assert.ok(/areaForSkin\(rank, id\)/.test(sheet), "ワンダーランドの札は盤面効果を見せる");
+  console.log("フォイルの直接購入: ワンダーランドの7商品・シリーズごとの72時間・ポップアップの出し分け OK");
+}
+
+/* ---- ショップでは獲得済みの商品も「獲得済み」で残す(2026-10-15 本人の指示。ポップアップには出さない) ---- */
+{
+  const owned = { "zombie-male:foil": 1, "zombie-female:foil": 1, "angel-j:foil": 1 };
+  const plain = foilOffers({ owned }, { series: "heroes" });
+  assert.ok(!plain.some((o) => o.product.id === "foil-2-3"), "ふつうは全部そろえた商品を出さない(ポップアップ)");
+  assert.ok(!plain.some((o) => o.done), "ふつうは done が混ざらない");
+  const all = foilOffers({ owned }, { series: "heroes", includeOwned: true });
+  const done = all.find((o) => o.product.id === "foil-2-3");
+  assert.deepEqual([done.done, done.skins, done.owned, done.price, done.partial], [true, [], ["zombie-male", "zombie-female"], 0, false], "そろえた商品は done で残す");
+  const half = all.find((o) => o.product.id === "foil-jq-angel");
+  assert.deepEqual([half.done, half.skins, half.owned, half.price, half.partial], [false, ["angel-q"], ["angel-j"], 2500, true], "片方だけなら残りを按分、持っている札も分かる");
+  assert.equal(all.length, 9, "A 以外の 9 商品が全部並ぶ");
+  assert.ok(all.every((o) => Array.isArray(o.owned)), "owned は常にある");
+  const aliceAll = foilOffers({ owned: { "alice-10-cheshire-cat:foil": 1 } }, { series: "alice", includeOwned: true });
+  assert.equal(aliceAll.find((o) => o.product.id === "foil-alice-10").done, true, "ワンダーランドも同じ");
+  const shop2 = readFileSync(new URL("../src/ui/shop.jsx", import.meta.url), "utf8");
+  assert.ok(/includeOwned: true/.test(shop2) && /showOwned/.test(shop2), "ショップの欄は獲得済みも並べる");
+  const picker = readFileSync(new URL("../src/ui/foil-offer.jsx", import.meta.url), "utf8");
+  assert.ok(/獲得済み/.test(picker) && /o\.done \?/.test(picker), "獲得済みの商品は買えない行として見せる");
+  const skinsSrc = readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
+  assert.ok(!/includeOwned/.test(skinsSrc), "ポップアップには出さない");
+  console.log("フォイルの直接購入: ショップでは獲得済みの商品も「獲得済み」で残す OK");
+}

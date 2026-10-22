@@ -1,6 +1,14 @@
+import { WONDERLAND_ARCHITECTURE } from "./summon-wonderland.js";
 // Hand-traced inner door edges in the painted artwork (normalised image x/y).
 // These contours stop at the inside of the jamb: the carved surround stays still.
 export const SUMMON_ARCHITECTURE = {
+  "first-victory": {
+    seam: .5,
+    exterior: "skins/summon/first-victory-v1/gate.webp",
+    interior: "skins/summon/first-victory-v1/interior.webp",
+    edge: [[.285,.715],[.285,.358],[.294,.311],[.316,.269],[.354,.231],[.399,.205],[.446,.191],[.5,.186],[.548,.192],[.601,.207],[.646,.232],[.681,.27],[.706,.313],[.719,.359],[.719,.715]],
+  },
+  ...WONDERLAND_ARCHITECTURE,
   sky: {
     seam: 0.5,
     edge: [

@@ -36,6 +36,8 @@ import {
 import { campaignOf, campaignOpen } from "../game/campaigns.js";
 import { productOf as foilProductOf, priceFor as foilPriceFor, ownsAllButSecret } from "../skins/foil-shop.js";
 import { ALL_SKINS, byId as skinById, foilId } from "../skins/catalog.js";
+import { poolForSeries } from "../skins/catalog.js";
+import { contentSeason, isSeriesOpen, openSeries, passSeasonOfTicketId } from "../game/content-seasons.js";
 import { drawOne } from "../skins/collection.js";
 
 /**
@@ -135,6 +137,8 @@ export class Wallet {
     sql("CREATE TABLE IF NOT EXISTS iap_diag (uid TEXT PRIMARY KEY, at INTEGER, build INTEGER, storefront TEXT, count INTEGER, error TEXT, ms INTEGER)");
     // 運営がバトルパスを「クリア状態」にした印。summary の passComplete で端末に伝え、端末が盤を埋める
     sql("CREATE TABLE IF NOT EXISTS pass_grants (uid TEXT PRIMARY KEY, at INTEGER)");
+    // シーズンごとのバトルパスのクリア印(heroes 以外。heroes は pass_grants のまま)
+    sql("CREATE TABLE IF NOT EXISTS pass_grants_season (uid TEXT, season TEXT, at INTEGER, PRIMARY KEY(uid, season))");
     // 機種変更の引き継ぎに使う、端末の記録の控え(名前・戦績・レベル・所持スキンなど)。
     // uid ごとに最新の1件だけ。Apple で本人確認した人の端末が預ける(src/net/backup.js)
     sql("CREATE TABLE IF NOT EXISTS profile_backups (uid TEXT PRIMARY KEY, blob TEXT, at INTEGER)");
@@ -225,7 +229,7 @@ export class Wallet {
   /** 公開中の商品の購入条件。completeフラグは受け取らず、保存済みの全IDを照合する。 */
   checkFoilOwnership(uid, product, skins) {
     const collection = this.collectionOf(uid);
-    if (product.secret && !ownsAllButSecret(collection))
+    if (product.secret && !ownsAllButSecret(collection, product.series || "heroes"))
       throw new Error("このフォイルの購入条件を満たしていません。");
     if (skins.some((id) => collection.owned[foilId(id)]))
       throw new Error("このフォイルはすでに持っています。");
@@ -252,6 +256,8 @@ export class Wallet {
     const passWeek = now == null ? null : this.passTicketsThisWeek(uid, now);
     const purchasedFoils = this.purchasedFoilsOf(uid);
     return {
+      // 開いているシーズンのガチャだけ(src/game/content-seasons.js)
+      gachaSeries: openSeries(now ?? Date.now()),
       tickets: r.tickets,
       missionClaims: this.missionClaims(uid, now ?? Date.now()),
       gems: r.gems + r.gems_free,
@@ -259,6 +265,7 @@ export class Wallet {
       gemsFree: r.gems_free,
       entitlements: this.entitlementsOf(uid),
       passComplete: this.sql("SELECT at FROM pass_grants WHERE uid=?", uid)[0]?.at ?? null,
+      passCompleteBySeason: Object.fromEntries(this.sql("SELECT season, at FROM pass_grants_season WHERE uid=?", uid).map((r) => [r.season, r.at])),
       purchasedFoils,
       secretFoilEligible: ownsAllButSecret(this.collectionOf(uid, purchasedFoils)),
       prices: { ticket: GEM_PER_TICKET, ticketBundle: TICKET_BUNDLE, battlepass: BATTLEPASS_GEMS, ether: ETHER_EXCHANGE },
@@ -288,7 +295,9 @@ export class Wallet {
    * マス×周ごとに id で冪等。週(UTC月曜始まり)72枚(3周ぶん)まで。無料の earn とは別枠
    */
   passReward(uid, id, now) {
-    if (!this.entitlementsOf(uid).includes(BATTLEPASS_ENTITLEMENT))
+    // 出来事 id にシーズンが入る(bp:pass:<シーズン>:<周>:<マス>)。無ければ魔術師(従来の形)
+    const season = contentSeason(passSeasonOfTicketId(id) || "heroes");
+    if (!season || !this.entitlementsOf(uid).includes(season.entitlement))
       throw new Error("バトルパスを持っていません。");
     if (typeof id !== "string" || !/^[\w:.-]{1,128}$/.test(id) || RESERVED_PREFIX[id.split(":")[0]])
       throw new Error("出来事の id が正しくありません。");
@@ -456,7 +465,7 @@ export class Wallet {
   /** 無償ジェムを足す(端末の申告。上限つき) */
   earnGems(uid, id, n, now) { return this.earn(uid, id, { gemsFree: n }, now); }
   /** ジェムを使う。無償→有償の順に取り崩し、1つの出来事にする。extra は同時に足すもの(両替のチケットなど) */
-  spendGems(uid, id, amount, kind, ref, now, extra = {}, { paidOnly = false, freeOnly = false } = {}) {
+  spendGems(uid, id, amount, kind, ref, now, extra = {}, { paidOnly = false } = {}) {
     if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("枚数が正しくありません。");
     const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) return this.apply(uid, id, { gemsPaid: -1 }, kind, ref, now); // 冪等の判定だけ通す
@@ -466,11 +475,6 @@ export class Wallet {
     if (paidOnly) {
       if (pools.paid < amount) throw new Error(`有償ジェムが足りません(あと${amount - pools.paid})`);
       return this.apply(uid, id, { ...extra, gemsPaid: -amount }, kind, ref, now);
-    }
-    // 無償だけで払う品(エーテル両替)は有償に触れない
-    if (freeOnly) {
-      if (pools.free < amount) throw new Error(`無償ジェムが足りません(あと${amount - pools.free})`);
-      return this.apply(uid, id, { ...extra, gemsFree: -amount }, kind, ref, now);
     }
     if (pools.free + pools.paid < amount)
       throw new Error(`ジェムが足りません(あと${amount - pools.free - pools.paid})`);
@@ -532,25 +536,31 @@ export class Wallet {
     return this.spendGems(uid, id, ticketsPrice(tickets), "exchange", null, now, { tickets });
   }
   /**
-   * 無償ジェムをエーテルに(src/iap/catalog.js の ETHER_EXCHANGE)。**無償だけ**で払う(有償は溶かさない)。
+   * ジェムをエーテルに(src/iap/catalog.js の ETHER_EXCHANGE)。無償→有償の順で払う
+   * (2026-10-16 本人の指示。それまでは無償だけだった。端末は使う前に必ず確認を出す)。
    * エーテルは端末の持ち物なので、ここでは減らすだけ。返り値の ether を端末が足す
    */
   buyEther(uid, id, gems, now) {
     const ether = etherFor(gems);
     if (ether === null) throw new Error("ジェムの数が正しくありません(10 の倍数、1,000 まで)。");
-    const r = this.spendGems(uid, id, gems, "ether", null, now, {}, { freeOnly: true });
+    const r = this.spendGems(uid, id, gems, "ether", null, now);
     return { ...r, ether: r.applied ? ether : 0 };
   }
   /** ジェムでバトルパス(買い切りの権利)を買う。既に持っていれば減らさない */
-  buyPass(uid, id, now) {
-    if (this.entitlementsOf(uid).includes(BATTLEPASS_ENTITLEMENT))
+  buyPass(uid, id, now, seasonId = "heroes") {
+    // シーズンごとの買い切り(2026-10-15 本人の指示)。始まっていないシーズンは買えない
+    const season = contentSeason(seasonId);
+    if (!season) throw new Error("そのバトルパスはありません。");
+    if (season.start > now) throw new Error("そのバトルパスはまだ始まっていません。");
+    const ENTITLEMENT = season.entitlement;
+    if (this.entitlementsOf(uid).includes(ENTITLEMENT))
       return { applied: false, ...this.summary(uid) };
     // バトルパスはジェム(無償→有償の順)で買える(2026-09-24 本人の決め。それまでは有償だけ:2026-09-13)。
     // 無課金でもミッションのジェムを3週間ほどためれば届く量にしてある(週500)。
     // 冪等: 同じ id が既にあれば spendGems が applied:false を返し、二重には減らない
-    const r = this.spendGems(uid, id, BATTLEPASS_GEMS, "pass", BATTLEPASS_ENTITLEMENT, now);
+    const r = this.spendGems(uid, id, BATTLEPASS_GEMS, "pass", ENTITLEMENT, now);
     if (r.applied)
-      this.sql("INSERT OR IGNORE INTO entitlements VALUES (?,?,?,?)", uid, BATTLEPASS_ENTITLEMENT, id, now);
+      this.sql("INSERT OR IGNORE INTO entitlements VALUES (?,?,?,?)", uid, ENTITLEMENT, id, now);
     return { ...r, ...this.summary(uid) };
   }
   /** 端末にあったチケットを一度だけ引き継ぐ(上限つき。既定では受け付けない) */
@@ -583,10 +593,13 @@ export class Wallet {
    * 権利(解放)が無ければ付け、印(pass_grants)を置く。盤そのものは端末にあるので、端末が summary の
    * passComplete を見て埋める(src/ui/battlepass.jsx)。二度押しても印の時刻が進むだけ
    */
-  adminPassComplete(uid, now) {
+  adminPassComplete(uid, now, seasonId = "heroes") {
     if (typeof uid !== "string" || !uid) throw new Error("相手のuidが必要です。");
-    this.sql("INSERT OR IGNORE INTO entitlements (uid, productId, transactionId, at) VALUES (?,?,?,?)", uid, BATTLEPASS_ENTITLEMENT, `grant:${now}`, now);
-    this.sql("INSERT OR REPLACE INTO pass_grants (uid, at) VALUES (?,?)", uid, now);
+    const season = contentSeason(seasonId);
+    if (!season) throw new Error("そのバトルパスはありません。");
+    this.sql("INSERT OR IGNORE INTO entitlements (uid, productId, transactionId, at) VALUES (?,?,?,?)", uid, season.entitlement, `grant:${now}`, now);
+    if (season.id === "heroes") this.sql("INSERT OR REPLACE INTO pass_grants (uid, at) VALUES (?,?)", uid, now);
+    else this.sql("INSERT OR REPLACE INTO pass_grants_season (uid, season, at) VALUES (?,?,?)", uid, season.id, now);
     return { ok: true, uid, ...this.summary(uid, now) };
   }
   /** 購入履歴(運営用)。uid を渡せばその人、無ければ全体の新しい順 */
@@ -608,7 +621,9 @@ export class Wallet {
    * チケットの減算は台帳(apply)が冪等なので、二重に引かれない。
    * 先に減らしてから引く。減らせなければ投げる(足りないときは札を配らない)。
    */
-  pull(uid, id, n, now) {
+  pull(uid, id, n, now, series = "heroes") {
+    poolForSeries(series);
+    if (!isSeriesOpen(series, now)) throw new Error("このシリーズの召喚はまだ始まっていません。");
     if (!Number.isSafeInteger(n) || (n !== 1 && n !== 10))
       throw new Error("1回または10回を選んでください。");
     const done = this.sql("SELECT skins FROM gacha_draws WHERE id=?", id)[0];
@@ -618,12 +633,13 @@ export class Wallet {
       if (owner && owner.uid !== uid) throw new Error("他の人の抽選です。");
       const saved = JSON.parse(done.skins);
       const packet = Array.isArray(saved) ? { skins: saved, freeze: null } : saved;
+      if ((packet.series || "heroes") !== series) throw new Error("前の抽選とシリーズが違います。");
       if (packet.skins.length !== n) throw new Error("前の抽選と枚数が違います。");
       return { ...this.summary(uid, now), ...packet, applied: false };
     }
     const r = this.debit(uid, id, n, "pull", now);
-    const initial = Array.from({ length: n }, () => drawOne(serverRandom));
-    const packet = resolveSummonFreeze(initial, serverRandom);
+    const initial = Array.from({ length: n }, () => drawOne(serverRandom, series));
+    const packet = { ...resolveSummonFreeze(initial, serverRandom), series };
     const { skins } = packet;
     this.sql("INSERT OR IGNORE INTO gacha_draws VALUES (?,?,?,?)", id, uid, JSON.stringify(packet), now);
     for (const skinId of skins) {
@@ -704,6 +720,7 @@ export class Wallet {
     this.sql("DELETE FROM foil_purchases WHERE uid=?", uid);
     this.sql("DELETE FROM iap_diag WHERE uid=?", uid);
     this.sql("DELETE FROM pass_grants WHERE uid=?", uid);
+    this.sql("DELETE FROM pass_grants_season WHERE uid=?", uid);
     this.sql("DELETE FROM login_rewards WHERE uid=?", uid);
     this.sql("DELETE FROM login_legacy_receipts WHERE uid=?", uid);
     this.sql("DELETE FROM wallets WHERE uid=?", uid);

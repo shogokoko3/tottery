@@ -24,8 +24,32 @@ for (const [id, world] of Object.entries({
   "dragon-knight": "sky",
   "angel-q": "heaven",
   "demon-k": "hell",
+  "alice-2-dodo": "alice-caucus",
+  "alice-3-bill": "alice-caucus",
+  "alice-6-gryphon": "alice-quadrille",
+  "alice-7-mock-turtle": "alice-quadrille",
+  "alice-8-white-rabbit": "alice-maze",
+  "alice-9-caterpillar": "alice-maze",
+  "alice-4-hatter": "alice-tea",
+  "alice-5-march-hare": "alice-tea",
+  "alice-10-cheshire-cat": "alice-illusion",
+  "alice-J-knave": "alice-croquet",
+  "alice-Q-queen": "alice-croquet",
+  "alice-K-king": "alice-croquet",
 }))
-  assert.equal(summonWorldForSkin(byId(id)), world);
+  {
+    assert.equal(summonWorldForSkin(byId(id)), world);
+    assert.equal(summonPlan(draw(id)).world, world);
+    assert.equal(summonPlan(draw(`${id}:foil`)).world, world);
+    assert.equal(summonPlan(draw(`${id}:foil`)).gold, true);
+  }
+{
+  const results = draw("alice-2-dodo", "alice-Q-queen:foil", "alice-4-hatter", "alice-8-white-rabbit");
+  assert.equal(summonPlan(results, 0).world, "alice-caucus", "10連の門でSSRを優先しない");
+  assert.equal(summonPlan(results, .99).world, "alice-maze");
+  assert.equal(summonPlan(results, 0).gold, true, "別エリアのフォイルでも金の門");
+  assert.equal(summonPlan(results).world, summonPlan(results.map(r => ({...r}))).world, "再表示で専用の門も変わらない");
+}
 // 門の世界は引いた札から1枚を均等に(2026-09-17 本人の決定)。SSR やフォイルを優先しない。
 // 門の色はこれまでどおり: フォイルがあれば金、なければ銅
 assert.deepEqual(
@@ -93,14 +117,13 @@ assert.ok(fs.statSync("assets/skins/summon/gate-relief.webp").size > 10000);
 for (const world of ["earth", "sea", "forest", "ice", "sky", "heaven", "hell"])
   assert.ok(fs.statSync(`assets/skins/summon/${world}-hall.webp`).size > 10000);
 for (const world of Object.keys(SUMMON_WORLDS)) {
+  const [exterior, interior] = summonAssetUrls(world);
   assert.ok(
-    fs.statSync(
-      `assets/skins/summon/art-v3/${SUMMON_ARCHITECTURE[world].asset || `${world}.webp`}`,
-    ).size > 10000,
+    fs.statSync(`assets/${exterior}`).size > 10000,
     `召喚建築 ${world} が配信元に含まれる`,
   );
   assert.ok(
-    fs.statSync(`assets/skins/summon/interior-v4/${world}.webp`).size > 10000,
+    fs.statSync(`assets/${interior}`).size > 10000,
     `門の奥の空間 ${world} が配信元に含まれる`,
   );
 }
@@ -441,7 +464,7 @@ for (const world of Object.keys(SUMMON_WORLDS)) {
   }
   scene.dispose();
 }
-assert.ok(maxOutlineError < .002, `7エリアの扉/枠の投影位置が一致する: ${maxOutlineError}px`);
+assert.ok(maxOutlineError < .002, `13エリアの扉/枠の投影位置が一致する: ${maxOutlineError}px`);
 // Warm context survives sequential draws, and is released only after leaving
 // gacha and ending any active scene. Cancellations never attach a stale canvas.
 const {warmSummonRenderer, createPreparedSummonScene} = geometryContext.module.exports;
@@ -467,5 +490,5 @@ const cancelled = await createPreparedSummonScene(host, {world: "earth", gold: f
 assert.equal(cancelled, null);
 assert.equal(host.children.length, 2, "キャンセルした演出は後から表示しない");
 console.log(
-  "召喚導入: 7世界・銅/金・1/10枚・2+2+3+2秒・読込待機/切替/失敗・初回描画/フェード/開始前スキップ・門は触れるまで開かない・同一結果更新で巻戻しなし・扉/枠の位置一致: OK",
+  "召喚導入: 13世界・アリス12キャラ/通常/フォイル専用門・銅/金・1/10枚・2+2+3+2秒・読込待機/切替/失敗・初回描画/フェード/開始前スキップ・門は触れるまで開かない・同一結果更新で巻戻しなし・扉/枠の位置一致: OK",
 );

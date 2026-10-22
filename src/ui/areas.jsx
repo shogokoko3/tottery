@@ -8,6 +8,7 @@
  */
 import { PLAYER_META, SUIT_SYMBOL } from "../game/constants.js";
 import { isAutomaticArea } from "../game/area-presentation.js";
+import { AliceAreaBar } from "./alice-areas.jsx";
 import {
   AREA_INFO,
   canUseArea,
@@ -38,12 +39,15 @@ export function AreaBar({
   chosen = null,
   onConfirm = null,
   onUnchoose = null,
+  aliceArea = null,
 }) {
   const areas = state.areas || [null, null];
   if (!areas[0] && !areas[1]) return null;
   const me = viewer;
   const foe = 1 - viewer;
   const mine = areas[me];
+  if (mine?.type?.startsWith("alice-") || (!mine && areas[foe]?.type?.startsWith("alice-")))
+    return <AliceAreaBar state={state} viewer={viewer} controller={aliceArea} />;
   const can = mine && myTurn && !busy ? canUseArea(state, me) : { ok: false };
   const info = mine
     ? {

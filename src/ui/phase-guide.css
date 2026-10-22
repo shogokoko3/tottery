@@ -1,0 +1,131 @@
+.phase-guide {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  padding: 18px 16px 40px;
+  color: #eee5d3;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.phase-guide h2 {
+  margin: 6px 0 16px;
+  font-size: 28px;
+}
+.phase-guide h3 {
+  margin: 4px 0 12px;
+  font-size: 21px;
+}
+.phase-guide h4 {
+  margin: 24px 0 8px;
+  font-size: 17px;
+}
+.phase-guide p {
+  margin: 10px 0;
+}
+.phase-guide small {
+  color: #d6bd83;
+}
+.phase-guide-heading {
+  margin-block: 24px;
+}
+.phase-guide-common {
+  padding: 12px;
+  border-left: 3px solid #d6bd83;
+  background: #d6bd8310;
+  font-weight: bold;
+}
+.phase-guide-steps {
+  display: grid;
+  gap: 8px;
+  margin-block: 20px;
+}
+.phase-guide-steps button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #a78d5755;
+  border-radius: 12px;
+  background: #17252b;
+  color: #eee5d3;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.phase-guide-steps button.is-selected {
+  border-color: #e1c27a;
+  background: #2b302a;
+  box-shadow: inset 3px 0 #e1c27a;
+}
+.phase-guide-steps span {
+  font-size: 13px;
+  color: #c7c4b9;
+}
+.phase-guide-detail,
+.phase-guide-progress {
+  margin-block: 20px;
+  padding: 18px;
+  background: #132128;
+  border: 1px solid #a78d5755;
+  border-radius: 14px;
+}
+.phase-guide-rules {
+  margin-block: 18px;
+  font-size: 14px;
+}
+.phase-guide-rules div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 8px;
+  border-bottom: 1px solid #a78d5725;
+}
+.phase-guide-rules dd {
+  margin: 0;
+  text-align: right;
+}
+.phase-guide-example {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.phase-guide-example figure {
+  flex: 1 1 125px;
+  max-width: 240px;
+  min-width: 0;
+  margin: 0;
+}
+.phase-guide-example .move-diagram {
+  width: 100%;
+  max-width: none;
+}
+.phase-guide-example figcaption {
+  margin-top: 8px;
+  font-size: 13px;
+}
+.phase-guide-area {
+  padding-top: 4px;
+}
+.phase-guide details summary {
+  padding: 12px 0;
+  cursor: pointer;
+  color: #e1c27a;
+}
+.phase-guide-progress label {
+  display: block;
+  margin-top: 16px;
+}
+.phase-guide-progress progress {
+  display: block;
+  width: 100%;
+  height: 12px;
+  margin-top: 8px;
+  accent-color: #d6bd83;
+}
+.phase-guide button:focus-visible,
+.phase-guide summary:focus-visible {
+  outline: 2px solid #f5d78e;
+  outline-offset: 4px;
+}

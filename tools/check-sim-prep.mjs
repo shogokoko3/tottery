@@ -13,7 +13,8 @@ import { GAME_RULE_VERSION, hasSimultaneousPrep } from "../src/game/rule-version
 
 import { cpuAction } from "../src/game/cpu.js";
 
-assert.equal(GAME_RULE_VERSION, 18);
+assert.equal(GAME_RULE_VERSION, 19);
+assert.equal(hasSimultaneousPrep(19), true);
 assert.equal(hasSimultaneousPrep(18), true);
 assert.equal(hasSimultaneousPrep(17), false);
 assert.equal(DICE_LIMIT_MS, 20000);

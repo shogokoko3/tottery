@@ -138,6 +138,8 @@ console.log("名前を決める画面の文言(2026-10-01 本人の指示)");
   // 画面(src/ui/account.jsx)を描かずに中身だけ見る。React と他の部品は偽物に差し替える
   const fs = await import("node:fs");
   const { transformSync } = await import("esbuild");
+  // 句の切り方も本物(本文の行は句の塊で出す。2026-10-06)
+  const { phrasesOf } = await import("../src/ui/phrase-split.js");
   const states = [];
   let si = 0;
   globalThis.__acc = {
@@ -146,7 +148,7 @@ console.log("名前を決める画面の文言(2026-10-01 本人の指示)");
       if (!(i in states)) states[i] = typeof init === "function" ? init() : init;
       return [states[i], (v) => (states[i] = typeof v === "function" ? v(states[i]) : v)];
     },
-    profile: { MAX_NAME_LEN, nameError, normalizeName },
+    profile: { MAX_NAME_LEN, nameError, normalizeName, phrasesOf },
   };
   globalThis.__accH = (type, props, ...children) => {
     // 中の部品(NameField)は呼んで組み立てる。偽物(Sparkle など)は名前だけ残す
@@ -174,7 +176,7 @@ console.log("名前を決める画面の文言(2026-10-01 本人の指示)");
     .replace(/import \{[^}]*\} from "react";/, "const { useState } = globalThis.__acc;")
     .replace(/import \{([^}]*)\} from "[^"]+";/g, (_, names) => `const {${names}} = globalThis.__accStub;`);
   const js = transformSync(src, { loader: "jsx", jsx: "transform", jsxFactory: "globalThis.__accH", jsxFragment: '"fragment"', format: "esm" }).code;
-  const { NameSetupScreen, NAME_LINES } = await import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
+  const { NameSetupScreen, NAME_LINES, setupNameError } = await import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
   const texts = (n, into = []) => {
     if (typeof n === "string") into.push(n);
     else if (n && typeof n === "object") for (const c of n.children || []) texts(c, into);
@@ -195,10 +197,30 @@ console.log("名前を決める画面の文言(2026-10-01 本人の指示)");
     si = 0;
     return NameSetupScreen({ onDone: () => {}, ...props });
   };
+  // 行ごとの文(行の span の中の句をつないだもの)
+  const lineTexts = (n) => (n ? n.children.map((row) => texts(row).join("")) : []);
   const start = draw({});
   is("見出しは「あなたの名前は?」", texts(find(start, (n) => n.type === "h2")).join(""), "あなたの名前は?");
-  is("本文は2行", [...NAME_LINES], ["インターネット上のランキングに出ます。", "本名は避けて。あとから変えられます。"]);
-  is("本文は1文ずつ行に分けて出す", texts(cls(start, "name-lines")), [...NAME_LINES]);
+  // 2026-10-06 本人の指示(「訂正します」)で導入の調子に。です・ますを使わない
+  is("本文は2行", [...NAME_LINES], ["インターネット上のランキングに、名前が出る。", "本名は避けて。あとから変えられる。"]);
+  is("本文はです・ます調でない(導入の調子)", NAME_LINES.filter((l) => /です|ます|ください/.test(l)), []);
+  is("本文は1文ずつ行に分けて出す", lineTexts(cls(start, "name-lines")), [...NAME_LINES]);
+  {
+    // 行の中は読点・句点のあとの句の塊(iPhone の WebKit は auto-phrase を知らず、狭い幅で語の途中で割れる)
+    const rows = cls(start, "name-lines").children;
+    is(
+      "行の中は句の塊(text-phrase)だけ",
+      rows.every((row) => row.type === "span" && row.children.length > 0 && row.children.every((c) => typeof c === "object" && c.type === "span" && c.props.className === "text-phrase")),
+      true,
+    );
+    is(
+      "句は読点・句点のあとで切る",
+      rows.map((row) => row.children.map((c) => texts(c).join(""))),
+      [["インターネット上のランキングに、", "名前が出る。"], ["本名は避けて。", "あとから変えられる。"]],
+    );
+    // 320 幅の札の文の欄は 246px ほど(13px)。1つの句は全角18字まで
+    is("1つの句は全角18字まで(320 幅の札に入る)", NAME_LINES.flatMap(phrasesOf).filter((p) => [...p].length > 18), []);
+  }
   is("法務メモ (C) の「インターネット上のランキング」を残す", texts(start).join("").includes("インターネット上のランキング"), true);
   is("本名を避けるよう言う", texts(start).join("").includes("本名は避けて"), true);
   is("起動直後は「はじめまして」", texts(cls(start, "name-eyebrow")).join(""), "はじめまして");
@@ -206,21 +228,51 @@ console.log("名前を決める画面の文言(2026-10-01 本人の指示)");
   const won = draw({ afterWin: true });
   is("はじめの一局に勝った直後は「はじめての勝利」", texts(cls(won, "name-eyebrow")).join(""), "はじめての勝利");
   is("勝った直後の釦は「決める」", texts(cls(won, "btn-primary")).join("").trim(), "決める");
-  is("勝った直後も本文は同じ2行", texts(cls(won, "name-lines")), [...NAME_LINES]);
+  is("勝った直後も本文は同じ2行", lineTexts(cls(won, "name-lines")), [...NAME_LINES]);
   is("名前の欄がある", !!cls(won, "name-input"), true);
   is("導入の中では戻る釦を出さない(名前を決めて進む)", [!!cls(start, "name-cancel"), !!cls(won, "name-cancel"), !!cls(start, "name-reason")], [false, false, false]);
   // 名前の壁(2026-10-01 本人の指示)。名前の無い人がランキングや対戦へ行こうとしたとき、わけを添えて聞き、戻れる
   let cancelled = 0;
   const wall = draw({ reason: "ランキングを見る前に、名前を決めよう。", onCancel: () => cancelled++ });
   is("名前の壁: わけの一行", texts(cls(wall, "name-reason")).join(""), "ランキングを見る前に、名前を決めよう。");
-  is("名前の壁: 本文(法務メモの語)はそのまま", texts(cls(wall, "name-lines")), [...NAME_LINES]);
+  is("名前の壁: 本文(法務メモの語)はそのまま", lineTexts(cls(wall, "name-lines")), [...NAME_LINES]);
   is("名前の壁: 決める釦はそのまま", texts(cls(wall, "btn-primary")).join("").trim(), "はじめる");
   is("名前の壁: 「戻る」で決めずに戻れる", texts(cls(wall, "name-cancel")).join(""), "戻る");
   cls(wall, "name-cancel").props.onClick();
   is("名前の壁: 戻るを押すと onCancel", cancelled, 1);
   is("名前の壁: わけは警告の赤(name-notice)ではない", !!cls(wall, "name-notice"), false);
+  {
+    // 断りの一言も導入の調子(2026-10-06 本人の指示「訂正します」)。断る決まりは nameError と同じ
+    const kinds = { empty: "  ", long: "あいうえおかきくけこさ", bad: "ちんこ" };
+    is(
+      "断りの一言: 空・長すぎ・使えない語",
+      Object.values(kinds).map(setupNameError),
+      ["名前を入れて。", `名前は${MAX_NAME_LEN}文字まで。`, "その名前は使えない。別の名前にして。"],
+    );
+    is("断りの一言: です・ます調でない", Object.values(kinds).map(setupNameError).filter((t) => /です|ます|ください/.test(t)), []);
+    // nameError の文が変わって言い換えが外れると、です・ますの文がそのまま出る。それを見張る
+    is("断りの一言: nameError の文をどれも言い換えている", Object.values(kinds).filter((n) => setupNameError(n) === nameError(n)), []);
+    is("断りの一言: 通す名前は断らない", [setupNameError("たろう"), setupNameError("  あいうえおかきくけこ  ")], [null, null]);
+    // 320 幅の札の欄(246px ほど)に、12px の字で1行に入る
+    is("断りの一言: 全角18字まで", Object.values(kinds).map(setupNameError).filter((t) => [...t].length > 18), []);
+    // 画面: 空のまま「決める」を押すと、欄の下の一言が言い換えた文になる
+    states.length = 0;
+    si = 0;
+    const first = NameSetupScreen({ onDone: () => {}, afterWin: true });
+    await cls(first, "btn-primary").props.onClick();
+    si = 0;
+    const after = NameSetupScreen({ onDone: () => {}, afterWin: true });
+    is("画面: 空のまま押すと「名前を入れて。」", texts(cls(after, "name-note")).join(""), "名前を入れて。");
+    is("画面: 断りは赤の一言(name-note-bad)", cls(after, "name-note").props.className.includes("name-note-bad"), true);
+    // 設定の「名前を変える」は、です・ます調の画面なので nameError の文のまま
+    const acc = fs.readFileSync(new URL("../src/ui/account.jsx", import.meta.url), "utf8");
+    const edit = acc.slice(acc.indexOf("export function NameEditModal"));
+    is("設定の名前の変更は nameError の文のまま", edit.includes("const bad = nameError(value);") && !edit.slice(0, 600).includes("setupNameError"), true);
+  }
   const css = fs.readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
-  is("本文の行は1文ずつ積む", /\.name-lines span \{\s*display: block;/.test(css), true);
+  // 行(子の span)だけを積む。中の句(.text-phrase)まで block にすると句ごとに改行する
+  is("本文の行は1文ずつ積む(行の span だけ。句は塊のまま)", /\.name-lines > span \{\s*display: block;/.test(css) && !/\.name-lines span \{/.test(css), true);
+  is("句は折り返さない塊", /\.text-phrase \{\s*display: inline-block;/.test(css), true);
   is("名前の壁のわけと戻る釦の見た目がある", /\.name-reason \{/.test(css) && /\.name-cancel \{/.test(css), true);
 }
 

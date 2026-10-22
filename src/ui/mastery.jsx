@@ -1,3 +1,4 @@
+import { playSound, useCue } from "../audio/index.js";
 import { MASTERY_STEPS, MASTERY_SKIN_RANK } from "../game/constants.js";
 import { byId } from "../skins/catalog.js";
 import { FRAME_GRADES } from "./title-design.js";
@@ -13,6 +14,7 @@ const skinLabel = (id) => byId(id)?.name || id;
  * 段に届いた行だけ印を強くする。
  */
 export function MasteryGains({ gains, titles }) {
+  useCue("mastery", !!gains?.some(g => g.after > g.before && g.added > 0));
   // 王を一度も動かさなかった局は、欄ごと出さない
   if (!gains || !gains.length) return null;
   // 王は1局に1種類なので、ふつうは1行。念のため並べ替えは残す

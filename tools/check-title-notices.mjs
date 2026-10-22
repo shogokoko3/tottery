@@ -206,8 +206,9 @@ assert.equal(getTitleNotices().held, false);
   assert.ok(/export function useTitleNoticeLimit\(count\) \{[\s\S]{0,200}if \(on\) return limitTitleNotices\(count\);\s*\}, \[on \? count : null\]\);/.test(ui), "件数の決まりは値が変わるまで持ち続ける");
   // 知らせの言葉は導入の調子(です・ますを使わない。2026-10-06 本人の指示)。読み上げと見える一言をそろえる
   assert.ok(
-    /<span\s+className="title-award-announcement"[^>]*>\s*称号「\{notice\.name\}」を手に入れた。設定で、装備できる。\s*<\/span>/.test(ui),
-    "読み上げは「称号「X」を手に入れた。設定で、装備できる。」",
+    // 理由(手に入れ方)を間に挟む(2026-10-15 本人の指示「どういう理由で獲得したのか」)
+    /<span\s+className="title-award-announcement"[^>]*>\s*称号「\{notice\.name\}」を手に入れた。\{notice\.how \? `\$\{notice\.how\}。` : ""\}設定で、装備できる。\s*<\/span>/.test(ui),
+    "読み上げは「称号「X」を手に入れた。(理由。)設定で、装備できる。」",
   );
   assert.ok(/<p>設定で、装備できる。<\/p>/.test(ui), "見える一言は「設定で、装備できる。」");
   assert.ok(!/装備できます|獲得しました/.test(ui), "です・ます調の「獲得しました」「装備できます」を残さない");

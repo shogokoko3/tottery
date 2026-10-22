@@ -1,3 +1,7 @@
+import {AliceControls} from "./alice-controls.jsx";
+import {useAliceEffects,AliceBoardEffects,AliceEffectNotice} from "./alice-effects.jsx";
+import {useAliceArea} from "./alice-areas.jsx";
+import {aliceSkin,aliceKing,aliceBoard,aliceClocksHidden,reverseLimit,reverseCandidates,reverseLocked,reverseTurnsLeft} from "../game/alice-rules.js";
 import { StoryAfterword } from "./story-chronicle.jsx";
 import { FormationHonor, formationScene } from "./formation-honor.jsx";
 import { useTitleNoticeHold } from "./title-acquisition.jsx";
@@ -22,6 +26,7 @@ import { winKingCardImg } from "../assets.js";
 import { requestFriendByUid, readFriends } from "../net/friends.js";
 import { enrichAction } from "../game/actions.js";
 import { ACE_FOIL_SKIN_ID, canUseAceFoil } from "../game/ace-foil.js";
+import { canUseRevolution, revolutionAce } from "../game/alice-rules.js";
 import { ACE_FOIL_RULE_VERSION, hasSimultaneousPrep } from "../game/rule-version.js";
 import {
   isFrozen,
@@ -202,11 +207,12 @@ export function ClockBar({
   ruleVersion,
   // 時間制限なし(フェーズ1 のストーリー。2026-10-01 本人の指示)。残り時間と追加の印の代わりに「制限なし」。
   // 席の名前と手番の光(clock-active)は残す(どちらの番かは、ここで分かる)
+  hidden = false,
   untimed = false,
 }) {
   const limited = hasLimitedClock(ruleVersion);
   // 追加の印と決まりの一行は、時計が動く対局だけ
-  const extensions = limited && !untimed;
+  const extensions = limited && !untimed && !hidden;
   const { names, icons, titles, frames } = useSeats();
   const fmt = (ms) => {
     const total = Math.max(0, Math.ceil(ms / 1000));
@@ -224,7 +230,7 @@ export function ClockBar({
           return (
             <div
               className={`clock-cell ${active ? "clock-active" : ""} ${
-                !untimed && ms <= CLOCK_EXTENSION_THRESHOLD_MS ? "clock-low" : ""
+                !untimed && !hidden && ms <= CLOCK_EXTENSION_THRESHOLD_MS ? "clock-low" : ""
               } ${limited ? "clock-limited" : ""} ${titles && titleNameOf(titles[idx]) ? "clock-cell-titled" : ""}`}
               style={{ "--pc": PLAYER_META[idx].color }}
               key={idx}
@@ -245,7 +251,7 @@ export function ClockBar({
               {/* 残り時間の脇に、追加の残り回数を小さな点で(2026-09-23 本人の指示。
                   「追加 あと6回」の行は場所を取っていた)。残り3回からは点が橙、0回で赤 */}
               <strong className={`clock-time ${untimed ? "clock-time-untimed" : ""}`}>
-                {untimed ? "制限なし" : fmt(ms)}
+                {untimed ? "制限なし" : hidden ? "？？？" : fmt(ms)}
                 {extensions && (
                   <span
                     className={`clock-pips-inline ${warning ? "is-warning" : ""} ${remaining === 0 ? "is-empty" : ""}`}
@@ -644,6 +650,7 @@ export function GameView({
   tutorial,
   // ストーリーのステージ(+ fresh: この局ではじめてクリアした / next: 次に遊ぶ未クリアのステージ / allCleared)
   story = null,
+  introReady = false,
   // ストーリー: 次のステージへ(axis を受ける)/ 同じステージをもう一度(相手の王の説明から)
   onNextStory = null,
   onRetryStory = null,
@@ -1049,7 +1056,9 @@ export function GameView({
         >
           {drawn
             ? "引き分け"
-            : story && won
+            : tutorial?.intro && won
+              ? "初勝利!"
+              : story && won
               ? "ステージクリア!"
               : tutorial && won
                 ? "チュートリアルクリア!"
@@ -1228,7 +1237,7 @@ export function GameView({
             )}
           </div>
         )}
-        {lesson && won && (
+        {lesson && !tutorial.intro && won && (
           <div className="tutorial-complete">
             {nextTutorial && onNextTutorial ? (
               <>
@@ -1291,22 +1300,16 @@ export function GameView({
         </div>
         {/* はじめの一局の褒美は門の向こう(10連)。送らずに見える場所に1つだけ光らせる。
             記録が済むまで(ready)は出さない。チケットの一行も、送る中身でなくここに(375×667 で隠れていた) */}
-        {story && won && story.ready && onGate && (
+        {tutorial?.intro && won && introReady && onGate && (
           <div className="gameover-gate">
-            {/* 導入の言葉の調子で(です・ます調の決まり文句を避ける。2026-10-06 見直し。ほかのステージの結果はいままでどおり) */}
-            {story.fresh && (
-              <p className="hint story-reward">
-                <Phrases text={`ガチャチケット ${STORY_TICKETS}枚を、手に入れた。`} />
-              </p>
-            )}
             <button className="btn btn-primary btn-wide result-gate" onClick={onGate}>
-              門へ進む <ArrowRight size={16} />
+              初勝利の報酬を受け取る <ArrowRight size={16} />
             </button>
           </div>
         )}
         {/*
           対局後のボタンは 2×2 に固定(本人の指示 2026-09-17):
-          左上 振り返り / 右上 マッチングへ / 左下 ホームへ / 右下 もう一度遊ぶ。
+          左上 振り返り / 右上 マッチングへ(連戦)・対戦相手を選ぶ(手元) / 左下 ホームへ / 右下 もう一度遊ぶ。
           再戦の案内文は全幅で下に出す。チュートリアルは 右上=一覧、左下=タイトル、右下なし
         */}
         {/* 門へ進むとき(はじめの一局)は「対戦の振り返り」だけ。「ストーリーへ」「ホームへ」は、
@@ -1345,9 +1348,9 @@ export function GameView({
               <Globe size={16} /> マッチングへ
             </button>
           ) : (onExit && (
-              // 手元の対局は、対戦相手を選ぶ画面へ
+              // 手元の対局(CPU・同じ端末・フレンド)は、対戦相手を選ぶ画面へ。釦もその画面の名で(2026-10-15 本人の指示)
               <button className="btn btn-ghost go-match" onClick={onExit}>
-                <Globe size={16} /> マッチングへ
+                <Globe size={16} /> 対戦相手を選ぶ
               </button>
             )
           )}
@@ -1491,6 +1494,7 @@ export function GameCore({
   const foeArea = story ? storyCpuArea(story.axis, story.king) : cpuArea;
   // ストーリーの結果(この局ではじめてクリアしたか)。対局後の画面に出す
   const [storyResult, setStoryResult] = useState(null);
+  const [introReady, setIntroReady] = useState(false);
   // この対局のフェーズ。通信は部屋のフェーズ(無ければ 3)、手元はストーリーのステージか自分の profile。
   // チュートリアルは台本のフェーズ(第1〜13話は持たないので全部の決まり)。対局のあいだ変えない。
   // ?? PHASE_MAX を落とすと第1〜13話の王の力が消える(normalizePhase(undefined) は 1)。
@@ -1711,19 +1715,22 @@ export function GameCore({
       !!a.captureReveal ||
       !!a.setupEffects,
   );
-  const fxBusy = cinematic.busy || aceMagic.busy || areaFx.busy || honorBusy;
+  const aliceFx = useAliceEffects(a, network ? p : cpu ? 0 : null, cinematic.busy || aceMagic.busy || areaFx.busy || honorBusy || !!a.captureReveal || !!a.setupEffects);
+  const fxBusy = cinematic.busy || aceMagic.busy || areaFx.busy || aliceFx.busy || honorBusy;
   const autoArea = automaticAreaAction(a);
   const autoIssued = useRef(null);
   // 布陣ボーナスを読んでいるあいだ、相手の確認を待っているあいだは持ち時間を減らさない
   const pauseClock =
-    fxBusy || !!a.captureReveal || !!a.setupEffects || setupWaiting(a);
+    fxBusy || !!a.captureReveal || !!a.setupEffects || !!a.aliceRevive || !!a.aliceRecruit?.length || setupWaiting(a);
   useTitleNoticeHold(pauseClock);
   const captureDisplayed = useCapturePresentation(a);
   const displayed = aceMagic.busy
     ? aceMagic.displayState
     : areaFx.busy
       ? areaFx.displayState
-      : captureDisplayed;
+      : aliceFx.busy
+        ? aliceFx.displayState
+        : captureDisplayed;
   const fieldTheme = boardFieldTheme(displayed);
   const privateNotes = usePrivateNotes(
     a,
@@ -1822,11 +1829,13 @@ export function GameCore({
       // 無ければ捨てる。名乗り無しなら reducer が自分で振る。
       // チュートリアルの目は上ですでに入っているので、ここでは上書きしない
       const seedMissing =
+        ((E.type === "ALICE_ACTION" || (E.type === "MOVE_PIECE" && U.ruleVersion >= 19)) && E.seed == null) ||
         (E.type === "ROLL_DICE_SINGLE" && E.value == null) ||
         (E.type === "CONFIRM_MULLIGAN" && !E.reserveOrder) ||
         (E.type === "CONFIRM_SHUFFLE" && !E.order) ||
         (E.type === "USE_ACE_FOIL" && (!E.aId || !E.pickIds || !E.order)) ||
         (E.type === "USE_AREA" && !E.picks && E.hit == null);
+      if (E.type === "MOVE_PIECE" && U.aliceFake) E = {...E,fakeRow:U.aliceFake.row,fakeCol:U.aliceFake.col};
       let be = network
         ? enrichAction(withLocalContext(E, U), U)
         : seedMissing
@@ -1905,6 +1914,7 @@ export function GameCore({
           size: boardSize || 5,
           setupMode: network || cpu ? "simultaneous" : "sequential",
           // フェーズ1は王の力なし(kingPowers:false)。それ以外は旗を載せない(今までどおり)
+          ...(skins ? {loadouts:skins} : {}),
           ...setupFlagsForPhase(phase),
           // 盤面エリア(試験ルール、src/game/areas.js)。9×9 だけ。
           // 手元の対局(CPU・同じ端末)は常に。オンラインは部屋の版が
@@ -2007,12 +2017,13 @@ export function GameCore({
     // 布陣ボーナスを読んでいるあいだは CPU も待つ(閉じたら盤が動いていた、にしない)
     if (!cpu || network || tutorial || fxBusy || autoArea || a.setupEffects)
       return;
+    const aliceCpuInteraction=a.aliceRevive || a.aliceRecruit?.length || a.aliceCommitted || Object.values(a.pieces).some(p=>p.alive && (p.ownerHidden || p.illusion));
     let E =
-      foeArea && foeArea.king
+      !aliceCpuInteraction && foeArea && foeArea.king
         ? josekiCpuAction(a, T, foeArea.type, foeArea.king)
         : cpuAction(a, T);
     // Bot の強さ(3段階)。弱い段階は移動の一部をでたらめな合法手に差し替える
-    if (bot) E = botAction(a, T, E, bot);
+    if (bot && !aliceCpuInteraction) E = botAction(a, T, E, bot);
     if (!E) return;
     // Bot は人らしく、少し考える時間を足す(0.5〜2.5秒の揺れ)
     let U = foeWait(a, E, CPU_TURN_MS) + (bot ? 500 + Math.floor(Math.random() * 2000) : 0),
@@ -2600,6 +2611,7 @@ export function GameCore({
       recordedRef.current = false;
       // 前の局の結果(ストーリー)を次の局に持ち越さない
       setStoryResult(null);
+      setIntroReady(false);
       return;
     }
     if (recordedRef.current || !matchRatings.ready) return;
@@ -2624,15 +2636,16 @@ export function GameCore({
     // 「オンライン対戦をする」のミッションが誰にも達成できなかった。近くの端末は数えない
     // この1局で**はじめて**終える話か。終えたあとに profile を見ると
     // もう入っているので、先に覚えておく(褒美を二度配らないため)
-    // 台本とストーリーを同時に受けたら(はじめの一局。2026-10-01 本人の指示)ストーリーとして記録する。
-    // チュートリアルの xp・クリア・チケットは付けない(話の一覧・レベルの設計と切り離す)
-    const asLesson = !!tutorial && !story;
+    // 導入は専用の完了記録を使い、ストーリー・チュートリアルのクリアや報酬には結び付けない。
+    const asIntro = tutorial?.intro === true;
+    const asLesson = !!tutorial && !story && !asIntro;
     const freshTutorial =
       asLesson && won && !loadProfile().cleared.includes(tutorial.id);
     // ストーリーのステージを、この1局で**はじめて**クリアするか(褒美を二度配らない)
     // recordGame と同じ基準(profile のフェーズがステージのフェーズと同じときだけ記録される)
     const freshStory =
-      !!story && won === true && phaseOf(loadProfile()) === story.phase && storyFreshClear(loadProfile(), story.axis);
+      !!story && won === true && phaseOf(loadProfile()) === story.phase && storyFreshClear(loadProfile(), story.axis) &&
+      (story.phase !== 1 || story.axis !== "23" || loadProfile().firstStoryRead);
     const after = recordGame(won, {
       online: ((!!network && !network.nearby) || !!bot) && !tutorial,
       matchId: network
@@ -2646,6 +2659,7 @@ export function GameCore({
       ...(typeof foeRating === "number"
         ? { foeRating, ...(bot ? null : { startRating: matchRatings.ratings[p] }) }
         : null),
+      ...(asIntro ? { introFirstGame: true, xp: won ? tutorial.xp : 0 } : null),
       ...(asLesson
         ? {
             xp: won ? tutorial.xp : 0,
@@ -2661,6 +2675,7 @@ export function GameCore({
       ...(network ? { phase: onlinePhase(network.phase) } : null),
     });
     xpNoticeRef.current = after.xpNoticeId;
+    if (asIntro) setIntroReady(loadProfile().introFirstGameDone);
     // 1話終えるごとにガチャチケット(2026-09-28 本人の指示)。失敗しても対局は止めない
     if (freshTutorial)
       grantTutorialTickets([tutorial.id], { uid: myUid() }).catch(() => {});
@@ -2741,7 +2756,7 @@ export function GameCore({
   }, [tutIdx]);
 
   // はじめの一局(台本をストーリーとして遊ぶ一局)の盤の上では、下の「盤をまるごと入れる」決まりで送る
-  const fitPlain = !!(tutorial && tutorial.storyAxis && a.phase === "play");
+  const fitPlain = !!(tutorial && tutorial.intro && a.phase === "play");
   // 次に触る場所が説明の帯に隠れないよう、画面をそこまで送る
   (0, useEffect)(() => {
     if (!tutorial || fitPlain) return;
@@ -2896,7 +2911,7 @@ export function GameCore({
     // 何をすればよいかは必ず出す。読む人が迷わないように
     tutHold =
       tutorial && !tutActive && tutIdx < tutorial.steps.length
-        ? tutorial.storyAxis
+        ? tutorial.intro
           ? // ストーリーとして遊ぶ台本(はじめの一局)は決まり文句を出さない(2026-10-05 見直し)。
             // 撃破の札・取る確認のあいだは、札に自分の釦がある。後ろの帯は端がのぞくだけなので出さない。
             // 相手の番は台本の一行(foeTurn)
@@ -2953,14 +2968,14 @@ export function GameCore({
           nextLabel={tutActive.nextLabel || null}
           lit={!!tutActive.holdFoe}
           // ストーリーとして遊ぶ台本(はじめの一局)は台本の文だけ。決まりの待ちの行は出さない
-          plain={!!tutorial.storyAxis}
+          plain={!!tutorial.intro}
           // 読むだけの札なら、前の札に戻って読み直せる(操作の札には戻れない)。
           // 待つ札とは行き来せず、場面の過ぎた札にも戻らない(戻ると関門が開いて行き止まる。canStepBack)
           onBack={canStepBack(tutorial, tutIdx, a) ? () => setTutStep(tutIdx - 1) : null}
           // この話を飛ばす: 終えたのと同じ扱い(経験値も同じ)で、次の話へ。
           // ストーリーとして遊ぶ台本(はじめの一局)は飛ばせない。やめるのは上の「中断」から
           onSkip={
-            tutorial.storyAxis
+            tutorial.intro
               ? null
               : () => {
                   const after = skipTutorials([tutorial]);
@@ -2974,7 +2989,7 @@ export function GameCore({
           skipXp={tutorial.xp || 0}
           // 中断: クリアにせずホームへ(あとで最初から)。常に見える位置に出す。
           // はじめの一局は上のバーのストーリーの「中断」だけにする(札に二つ並べない)
-          onInterrupt={tutorial.storyAxis ? null : onHome ? goHome : onExit}
+          onInterrupt={tutorial.intro ? null : onHome ? goHome : onExit}
         />
       ) : tutHold ? (
         <TutorialSheet
@@ -2983,14 +2998,14 @@ export function GameCore({
           total={tutorial.steps.length}
           left={movesLeft(tutorial, tutIdx)}
           // はじめの一局は、ほかの札と同じく「最短 N 手」
-          plain={!!tutorial.storyAxis}
+          plain={!!tutorial.intro}
         />
       ) : null;
 
   // 上の「飛ばす」。案内の札が出ていない場面でも、チュートリアルの途中でいつでも押せる。
   // ストーリーとして遊ぶ台本(はじめの一局)は飛ばさず、下のストーリーの「中断」を出す
   // (飛ばすとチュートリアルのチケットと xp が配られてしまう)
-  const skipMenu = tutorial && !tutorial.storyAxis ? (
+  const skipMenu = tutorial && !tutorial.intro ? (
     <TutorialSkipMenu
       tutorial={tutorial}
       onSkipThis={() => {
@@ -3011,7 +3026,7 @@ export function GameCore({
       // 中断: クリア扱いにせず、その場でホームへ戻る(あとで最初から遊べる)
       onInterrupt={onHome ? goHome : onExit}
     />
-  ) : story && a.phase !== "gameover" ? (
+  ) : (story || tutorial?.intro) && a.phase !== "gameover" ? (
     // ストーリーのステージの「中断」(2026-10-01 本人の指示)。準備の場面から対局中まで、上のバーにいつも出す。
     // クリアにも負けにもしない(記録は対局の終わりにしか付けない)。ストーリーの一覧へ戻る。決着したあとは出さない
     <StoryInterruptMenu onInterrupt={() => (onTutorialList || onExit)()} />
@@ -3036,12 +3051,13 @@ export function GameCore({
       )}
     </>
   );
+  const hiddenAliceMove = a.lastMove && a.lastMove.owner !== (network ? p : cpu ? 0 : displayed.currentTurn) && a.pieces[a.lastMove.pieceId]?.illusion;
   let R = a.boardSize,
     P = network
       ? p
       : cpu
         ? 0
-        : (aceMagic.viewer ?? areaFx.viewer ?? displayed.currentTurn),
+        : (a.aliceRecruit?.[0]?.owner ?? a.aliceRevive?.owner ?? aceMagic.viewer ?? areaFx.viewer ?? aliceFx.viewer ?? displayed.currentTurn),
     x =
       !fxBusy &&
       !autoArea &&
@@ -3050,6 +3066,11 @@ export function GameCore({
     N = network
       ? `${p === 0 ? "host" : "guest"} acts:${g.current.size} d${a.diceIdx}[${(a.dice || []).map((E) => E ?? "-").join(",")}]`
       : null;
+  const aliceArea = useAliceArea(a, P, {
+    myTurn: !!x,
+    busy: fxBusy || !!a.captureReveal || !!pendingCapture || !!pendingMove || !!areaPick || !!a.setupEffects || setupWaiting(a),
+    dispatch: y,
+  });
 
   // 場面に合った曲へ。勝敗のジングルは「自分」がいる対局だけ勝ち負けを分ける。
   // 1台で交互に指す対戦はどちらも自分なので、いつも勝ちの側で鳴らす
@@ -3061,6 +3082,7 @@ export function GameCore({
     clocks: liveClocks,
     self: network ? p : cpu ? 0 : null,
     tutorial,
+    clocksHidden: aliceClocksHidden(a),
   });
 
   // 効果音。知らせるのは自分に関わる残り時間だけ。
@@ -3070,7 +3092,7 @@ export function GameCore({
     self: network ? p : cpu ? 0 : null,
     captureHandled: !!a.captureReveal || aceMagic.captureHandled,
     warnMs:
-      noLimit || pauseClock
+      noLimit || pauseClock || aliceClocksHidden(a)
         ? null
         : a.phase === "setup"
           ? setupRemaining
@@ -3308,7 +3330,8 @@ export function GameCore({
             dice={a.dice}
             me={prepSeat}
             onRoll={() => y({ type: "ROLL_DICE_SINGLE", player: prepSeat })}
-            remainingMs={a.diceIdx < 2 ? prepRemaining : null}
+            // 両方の目がそろったあとも帯の高さを残す(DiceDuo が見えなくする)。消すと並びが上に跳ぶ
+            remainingMs={prepRemaining}
             limitMs={DICE_LIMIT_MS}
             firstPlayer={a.firstPlayer}
             tie={a.diceIdx === 3}
@@ -3519,7 +3542,7 @@ export function GameCore({
                   // 手当ての局は、はじめの一局と同じ言い方(名前の三人称「ためしが先手・四と五の王が後手」を使わない。
                   // 2026-10-06 見直し)
                   <span>
-                    <Phrases text={me === a.firstPlayer ? "最初の一手は、あなた。" : "最初の一手は、相手。"} />
+                    <Phrases text={me === a.firstPlayer ? "あなたが先に動かします。" : "相手が先に動かします。"} />
                   </span>
                 ) : (
                   <span>
@@ -3820,7 +3843,7 @@ export function GameCore({
     ct = M
       ? getLegalMoves(
           M,
-          a.board,
+          aliceBoard(a,P),
           R,
           a.players[P].armyRankCounts,
           kingRankOf(a, P),
@@ -3840,6 +3863,11 @@ export function GameCore({
   const areaChosen =
     areaChoice && areaCands.includes(areaChoice) ? a.pieces[areaChoice] : null;
   const aceFoil = canUseAceFoil(a, P);
+  // 革命の扉(アリスのAのフォイル効果)。魔術師と同じ帯で、使えるかが開かずに分かる(2026-10-15 本人の指示)
+  const revolution = canUseRevolution(a, P);
+  const showRevolution =
+    !tutorial && a.phase === "play" && a.areasEnabled && !!revolutionAce(a, P);
+  const revolutionUsed = a.aliceUsed?.[P]?.revolution === (a.turnNo || 0);
   const showAceFoil =
     !tutorial &&
     a.phase === "play" &&
@@ -3876,7 +3904,7 @@ export function GameCore({
         r(!0);
       }}
     >
-      <div className={`play-wrap${Pl ? " has-shuffle-bar" : ""}`}>
+      <div className={`play-wrap${(aliceFx.busy ? !!displayed.shuffleMode : Pl) ? " has-shuffle-bar" : ""}${aliceArea.type ? " has-alice-area" : ""}`}>
         {network && a.ruleVersion !== GAME_RULE_VERSION && (
           <p className="hint">
             この対局は従来ルールで進みます。新しいルールを使うには、両者が再読み込みして新しい対局を始めてください。
@@ -3884,6 +3912,7 @@ export function GameCore({
         )}
         {!tutorial && (
           <ClockBar
+            hidden={aliceClocksHidden(a)}
             clocks={liveClocks}
             extensionUses={displayed.clockExtensionUses}
             ruleVersion={a.ruleVersion}
@@ -3898,9 +3927,22 @@ export function GameCore({
         {logOpen && (
           <LiveLogModal log={displayed.log} onClose={() => setLogOpen(false)} />
         )}
-        {a.phase === "play" && (
+        <AliceControls state={a} viewer={P} myTurn={!!x && !aliceArea.picking} dispatch={y} busy={fxBusy} />
+        {/* 相手が K の効果で予備札を置いているあいだの一言。仲間にする配置と映像のあとに出る(上の発動順) */}
+        {a.kPlacement &&
+          a.kPlacement.owner !== P &&
+          a.currentTurn === a.kPlacement.owner &&
+          !a.captureReveal &&
+          !a.aliceRecruit?.length &&
+          !a.aliceRevive &&
+          !fxBusy && (
+            <div className="alice-controls hint" role="status">
+              相手がKの効果で予備札を配置しています…
+            </div>
+          )}
+        {(aliceFx.busy ? displayed.phase : a.phase) === "play" && (
           <AreaBar
-            state={a}
+            state={aliceFx.busy ? displayed : a}
             viewer={P}
             myTurn={!!x}
             dispatch={y}
@@ -3924,6 +3966,7 @@ export function GameCore({
             busy={fxBusy || !!a.captureReveal || !!Pl || !!a.selectedId}
             names={names}
             onHelp={() => f("areas")}
+            aliceArea={aliceArea}
             focusFire={!!(tutFocus && tutFocus.areaButton)}
           />
         )}
@@ -3967,6 +4010,36 @@ export function GameCore({
             </button>
           </div>
         )}
+        {/* 革命の扉(アリスのAのフォイル効果)。魔術師の帯と同じ作り・同じ置き場(2026-10-15 本人の指示) */}
+        {showRevolution && (
+          <div className="area-bar ace-foil-bar" role="group" aria-label="革命の扉">
+            <span
+              className="area-chip area-chip-alice-ace"
+              title="革命の扉: 自分の王とAを除く駒からランダムに1体の数字を逆転する。毎ターン1回、通常の行動の前に。発動後も通常の行動ができる"
+            >
+              <b>革命の扉</b>
+              <small>{revolutionUsed ? "このターンは発動済み" : "毎ターン1回・行動前に"}</small>
+            </span>
+            <button
+              className="btn btn-primary btn-small"
+              style={revolutionUsed ? { visibility: "hidden" } : undefined}
+              disabled={
+                !x ||
+                !revolution.ok ||
+                !!pendingCapture ||
+                !!a.selectedId ||
+                !!a.shuffleMode ||
+                !!areaPick ||
+                aliceArea.picking ||
+                revolutionUsed
+              }
+              title={revolution.why || "毎ターン1回・通常の行動前に任意発動"}
+              onClick={() => y({ type: "ALICE_ACTION", kind: "revolution", player: P })}
+            >
+              発動
+            </button>
+          </div>
+        )}
         {pendingMove && (
           <MoveConfirm
             from={pendingMove.fromSquare}
@@ -3986,7 +4059,7 @@ export function GameCore({
         {pendingCapture && (
           <CaptureConfirm
             // はじめの一局は台本の言葉の調子で(決まり文句の「公開されます」を出さない。2026-10-05 見直し)
-            plain={!!tutorial?.storyAxis}
+            plain={!!tutorial?.intro}
             count={pendingCapture.count}
             squares={(
               pendingCapture.captures || [
@@ -4009,6 +4082,7 @@ export function GameCore({
           {/* エリアの知らせは盤の上に重ねる。流れの中に置くと、出る瞬間に盤が下がる(2026-09-23 本人の指示) */}
           <div className="area-notice-slot" aria-live="polite">
             <AreaEffectNotice effect={areaFx} names={names} />
+            <AliceEffectNotice effect={aliceFx} />
             {/* エラーの案内も盤の上に重ねる。「相手のターンです」の類は出さない(2026-09-24 本人の指示。持ち時間の減りで分かる) */}
             {s && (
               <p className="hint play-status play-status-alert" role="status">
@@ -4025,7 +4099,7 @@ export function GameCore({
             ))}
           </div>
           <div
-            className="board-frame"
+            className={`board-frame${tutorial?.id === "first-game" ? " first-game-board" : ""}`}
             style={{
               "--n": R,
             }}
@@ -4047,10 +4121,12 @@ export function GameCore({
             >
               <FieldBackdrop theme={fieldTheme} areas={displayed.areas} />
               <AreaEffects effect={areaFx} flipped={Jl} />
+              <AliceBoardEffects effect={aliceFx} flipped={Jl} size={R >= 9 ? "xs" : "md"} />
+              {a.lastAliceSmoke != null && <div key={`smoke-${a.lastAliceSmoke}`} className="alice-smoke" aria-hidden="true"/>}
               {/* 相手の直前の手を矢印で示す(2026-09-23 本人の指示「どこからどこへ動いたか」)。
                   出発点と着地点のマスの印だけでは、出発点(空いたマス)が目に入らなかった。
                   自分の手は自分が指したので出さない。1台の端末で交互に指すときは両方に出す */}
-              {a.lastMove &&
+              {a.lastMove && !hiddenAliceMove &&
                 !aceMagic.busy &&
                 a.lastMove.from &&
                 a.lastMove.to &&
@@ -4155,10 +4231,10 @@ export function GameCore({
                 }).map((be, at) => {
                   let ne = Jl ? R - 1 - U : U,
                     Me = Jl ? R - 1 - at : at,
-                    ze = displayed.board[ne][Me],
+                    ze = aliceBoard(displayed,P)[ne][Me],
                     Zt = ct.find((wl) => wl.row === ne && wl.col === Me),
                     Zo = territoryOwnerOf(ne, Me, R),
-                    Vt = aceMagic.busy ? null : a.lastMove,
+                    Vt = aceMagic.busy || hiddenAliceMove ? null : a.lastMove,
                     Vo = Vt && Vt.from.row === ne && Vt.from.col === Me,
                     Go = Vt && Vt.to.row === ne && Vt.to.col === Me,
                     Oi = aceMagic.busy ? null : a.lastSwap,
@@ -4244,8 +4320,9 @@ export function GameCore({
                               }
                             : void 0
                       }
-                      className={`cell ${aceMagic.mask.has(`${ne},${Me}`) ? "ace-magic-masked" : ""} ${Zt ? (Zt.capture ? "cell-capture" : "cell-move") : ""} ${Zo !== null ? `zone-${Zo}` : ""} ${Zo !== null && a.areas && a.areas[Zo] ? `area-${a.areas[Zo].type}` : ""} ${S0} ${focusCell(ne, Me) ? "guide-target" : ""}`}
+                      className={`cell${aliceFx.isMasked(ne, Me) ? " alice-fx-mask" : ""}${aliceArea.cellClass(ne, Me)} ${a.aliceBlocked?.[P]?.row===ne && a.aliceBlocked?.[P]?.col===Me ? "alice-blocked" : ""} ${aceMagic.mask.has(`${ne},${Me}`) ? "ace-magic-masked" : ""} ${Zt ? (Zt.capture ? "cell-capture" : "cell-move") : ""} ${Zo !== null ? `zone-${Zo}` : ""} ${Zo !== null && a.areas && a.areas[Zo] ? `area-${a.areas[Zo].type}` : ""} ${S0} ${focusCell(ne, Me) ? "guide-target" : ""}`}
                       onClick={() => {
+                        if (aliceArea.pickCell(ze, ne, Me)) return;
                         Pl ||
                           ze ||
                           (Zt
@@ -4273,6 +4350,11 @@ export function GameCore({
                               : void 0
                           }
                           onClick={(wl) => {
+                            if (aliceArea.picking) {
+                              wl.stopPropagation();
+                              aliceArea.pickCell(ze, ne, Me);
+                              return;
+                            }
                             // 盤面エリアの駒選び(空・宮殿)
                             if (areaPick) {
                               wl.stopPropagation();
@@ -4284,7 +4366,7 @@ export function GameCore({
                             if ((wl.stopPropagation(), Pl)) {
                               y({
                                 type: "TOGGLE_SHUFFLE_PICK",
-                                id: ze.id,
+                                id: ze.ghostOf || ze.id,
                               });
                               return;
                             }
@@ -4314,14 +4396,16 @@ export function GameCore({
                             viewer={P}
                             size={R >= 9 ? "xs" : "md"}
                             isSelected={
+                              aliceArea.isSelected(ze) ||
                               (!!M && a.selectedId === ze.id) ||
                               (!!areaChosen && areaChosen.id === ze.id) ||
                               (Pl &&
                                 (a.shuffleMode.aId === ze.id ||
-                                  a.shuffleMode.picks.includes(ze.id)))
+                                  a.shuffleMode.picks.includes(ze.ghostOf || ze.id)))
                             }
                             isPickable={
-                              (!!Pl && ze.id !== a.shuffleMode.aId) ||
+                              aliceArea.isPickable(ze) ||
+                              (!!Pl && ze.id !== a.shuffleMode.aId && (!ze.barrier || ze.owner===P) && (!aliceSkin(a,P,"A") || reverseCandidates(a,a.pieces[a.shuffleMode.aId]).some(p=>p.id===(ze.ghostOf || ze.id)))) ||
                               (areaPick && areaCands.includes(ze.id))
                             }
                             isGuided={focusPiece(ze.id)}
@@ -4329,10 +4413,12 @@ export function GameCore({
                             known={isKnownTo(displayed, P, ze)}
                             frozen={isFrozen(displayed, ze)}
                             frozenTurns={frozenTurnsLeft(displayed, ze)}
+                            reversed={reverseLocked(displayed, ze)}
+                            reversedTurns={reverseTurnsLeft(displayed, ze)}
                             skyBonus={hasVisibleSkyBonus(displayed, ze, P)}
                             extraReady={displayed.extraMoveFor === ze.id}
                           />
-                          {privateNotes.marker(ze)}
+                          {privateNotes.marker(ze.ghostOf ? {...ze,id:ze.ghostOf} : ze)}
                         </div>
                       )}
                     </div>
@@ -4355,19 +4441,19 @@ export function GameCore({
         {Pl && (
           <div className="action-bar ace-shuffle-bar" role="group" aria-label="Aの入れ替えの確認">
             <span>
-              入れ替える駒を2つ選択({a.shuffleMode.picks.length}/2)
-              <small>味方だけを選ぶと、囲んだ相手を取れます</small>
+              {aliceSkin(a,P,"A") ? `数字を逆転する駒を選択(${a.shuffleMode.picks.length}/${reverseLimit(a,a.pieces[a.shuffleMode.aId])})` : `入れ替える駒を2つ選択(${a.shuffleMode.picks.length}/2)`}
+              <small>{aliceSkin(a,P,"A") ? "相手のAには不発。⇅の駒(逆転してから3ターン)は選べません。手番は消費しません" : "味方だけを選ぶと、囲んだ相手を取れます"}</small>
             </span>
             <button
               className="btn btn-primary"
-              disabled={a.shuffleMode.picks.length !== 2}
+              disabled={a.shuffleMode.picks.length !== (aliceSkin(a,P,"A") ? reverseLimit(a,a.pieces[a.shuffleMode.aId]) : 2) || a.shuffleMode.picks.length===0}
               onClick={() =>
                 y({
-                  type: "CONFIRM_SHUFFLE",
+                  ...(aliceSkin(a,P,"A") ? {type:"ALICE_ACTION",kind:"reverse",aId:a.shuffleMode.aId,pickIds:a.shuffleMode.picks} : {type:"CONFIRM_SHUFFLE"}),
                 })
               }
             >
-              シャッフル実行 <Shuffle size={14} />
+              {aliceSkin(a,P,"A") ? "数字逆転" : "シャッフル実行"} <Shuffle size={14} />
             </button>
             <button
               className="btn btn-ghost"
@@ -4383,7 +4469,7 @@ export function GameCore({
         )}
         {/* はじめの一局(台本をストーリーとして遊ぶ一局)には出さない(2026-10-06 見直し)。1枚に1つのことを教える札の
             外に、はじめての人には分からない言葉の釦が光り、押すと台本の流れから外れた */}
-        {!Pl && x && a.selectedId && !(tutorial && tutorial.storyAxis) && (
+        {!Pl && x && a.selectedId && !(tutorial && tutorial.intro) && (
           <div className="action-bar">
             <button
               className="btn btn-ghost"
@@ -4428,8 +4514,35 @@ export function GameCore({
           })()}
         {/* 何がどこで取られたか分かってから、予備札を置かせる。
             撃破の札より先に出てしまうと、状況が分からないまま置くことになる */}
-        {a.kPlacement && a.kPlacement.owner === P && !a.captureReveal && (
-          <ReservePlacer state={a} dispatch={y} size={R} focus={tutFocus} />
+        {/* 発動順(2026-10-16 本人の指示): 駒を動かした側の処理が先。ワンダーランドの J・Q・K が相手の J・Q を取って
+            仲間にするときは、仲間の配置 → その映像 → 取られた側の K の予備札の配置、の順。両者の画面とも同じ順で進む。
+            決まりの側(reducer の actorAllowed)も仲間にする待ちのあいだは予備札の手を断る */}
+        {a.kPlacement &&
+          a.kPlacement.owner === P &&
+          a.currentTurn === P &&
+          !a.captureReveal &&
+          !a.aliceRecruit?.length &&
+          !a.aliceRevive &&
+          !fxBusy && (
+            <ReservePlacer state={a} dispatch={y} size={R} focus={tutFocus} />
+          )}
+        {/* ハートの J・Q・K で撃破した駒を仲間にする置き場。K の予備札と同じ画面・同じ決まり
+            (自陣の空きマスに置く。2026-10-15 本人の指示)。撃破の札を見てから出す */}
+        {a.aliceRecruit?.[0]?.owner === P && !a.captureReveal && !fxBusy && (
+          <ReservePlacer
+            state={a}
+            dispatch={y}
+            size={R}
+            placement={{ owner: P, cards: [a.aliceRecruit[0].card] }}
+            title="撃破した駒を仲間にする"
+            hint={`撃破した ${a.aliceRecruit[0].card.rank}${SUIT_SYMBOL[a.aliceRecruit[0].card.suit] || ""} を仲間にできます。自陣の空きマスをタップして置き場所を決めます。`}
+            skipLabel="仲間にしない"
+            addsCount={false}
+            onPlace={(card, row, col) =>
+              y({ type: "ALICE_ACTION", kind: "recruit", player: P, row, col })
+            }
+            onSkip={() => y({ type: "ALICE_ACTION", kind: "decline", player: P })}
+          />
         )}
         {/* めったに起きない場面に出くわしたら、その場で知らせる。
             どれくらい珍しかったかを見せないと、ただの不運に見える */}
@@ -4485,7 +4598,7 @@ export function GameCore({
         <CapturedRow players={displayed.players} dispatch={y} viewer={P} />
         {/* ストーリーとして遊ぶ台本(はじめの一局)には「降参する」を出さない。やめるのは上の「中断」だけ
             (降参すると負けとして記録され、台本の一局の行き先がずれる。2026-10-01 本人の指示) */}
-        {!(tutorial && tutorial.storyAxis) && (
+        {!(tutorial && tutorial.intro) && (
           <div className="resign-row">
             <button
               className="btn btn-ghost btn-resign"
@@ -4533,6 +4646,7 @@ export function GameCore({
             onNextMatch={(network || bot) && onNextMatch ? nextMatch : null}
             tutorial={tutorial}
             story={story ? { ...story, fresh: false, next: null, allCleared: false, ...(storyResult || null), ready: !!storyResult } : null}
+            introReady={introReady}
             onNextStory={onNextStory}
             onRetryStory={onRetryStory}
             onGate={onGate}

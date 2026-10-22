@@ -483,12 +483,26 @@
   line-height: 1.8;
   color: #cbc6bb;
 }
+.home-customize-set-preview {
+  --home-frame: #92764e;
+  position: relative;
+  isolation: isolate;
+  margin-bottom: 16px;
+}
+.home-customize-set-preview.has-theme {
+  padding: 28px 22px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.home-customize-set-preview .home-realm-frame {
+  inset: 0;
+}
 .home-customize-preview {
   position: relative;
   height: 180px;
   border: 1px solid #b3996459;
   background: #102039;
-  margin: 0 4px 16px;
+  margin: 0 4px;
 }
 .home-customize-preview > img {
   width: 100%;
@@ -547,6 +561,12 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+.home-theme-series {
+  grid-column: 1 / -1;
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: #f0dcae;
 }
 .home-characters {
   margin: 0 0 24px;
@@ -840,7 +860,14 @@ body:has(.stage > .home-wrap) {
   margin-block: 0;
   padding: 22px 24px max(20px, env(safe-area-inset-bottom));
 }
-.home-wrap > :is(.home-account-row, .home-resource-bar, .home-hero, .mission-message, .home-alerts) {
+.home-wrap
+  > :is(
+    .home-account-row,
+    .home-resource-bar,
+    .home-hero,
+    .mission-message,
+    .home-alerts
+  ) {
   flex-shrink: 0;
 }
 .home-wrap .home-account-row {
@@ -982,7 +1009,9 @@ body:has(.stage > .home-wrap) {
   line-height: 1.5;
   letter-spacing: 0;
 }
-.home-wrap[data-home-area] .home-grid :is(.home-tile > small, .home-wide-label small) {
+.home-wrap[data-home-area]
+  .home-grid
+  :is(.home-tile > small, .home-wide-label small) {
   grid-column: 2;
   font-size: 11px;
   line-height: 1.5;
@@ -1065,7 +1094,9 @@ body:has(.stage > .home-wrap) {
     padding-inline: 6px;
     column-gap: 5px;
   }
-  .home-wrap[data-home-area] .home-grid :is(.home-tile > b, .home-wide-label b) {
+  .home-wrap[data-home-area]
+    .home-grid
+    :is(.home-tile > b, .home-wide-label b) {
     font-size: 12px;
   }
 }
@@ -1114,7 +1145,8 @@ body:has(.stage > .home-wrap) {
     grid-template-rows: auto auto minmax(0, 1fr) auto;
     gap: 6px 18px;
     padding: 12px max(24px, env(safe-area-inset-right))
-      max(12px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+      max(12px, env(safe-area-inset-bottom))
+      max(24px, env(safe-area-inset-left));
   }
   .home-wrap > .home-account-row {
     grid-area: 1 / 1;

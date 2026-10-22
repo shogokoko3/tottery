@@ -1,3 +1,4 @@
+import { ALICE_SKINS } from "../skins/alice.js";
 /**
  * 盤面エリア。
  *
@@ -52,6 +53,14 @@ export const AREA_BY_RANK = Object.freeze({
 });
 
 export const AREA_INFO = Object.freeze({
+  "alice-revolution": {name:"革命の扉",text:"自軍の王とAを除く駒、および相手の王を除く駒からランダムで1体の数字を逆転。Aが王でなくても発動できる。",usesTurn:false,needsPiece:false},
+  "alice-caucus": {name: "コーカス・レース", text: "自分のターンに1回、任意で発動。盤面中央を軸に、3×3・5×5・7×7・9×9の指定マスと、その上の駒をまとめて180度回転させます。対象外のマスは動きません。手番は消費せず、続けて駒を動かせます。", usesTurn: false, needsPiece: false},
+  "alice-quadrille": {name: "カドリール", text: "自分のターンに1回、味方1体と相手1体を選び、相手の駒を味方と3ターン同じ動き方にします。味方の王・A・ティーカップは選べません。相手の王・A・ティーカップは選べます。手番は消費せず、続けて駒を動かせます。", usesTurn: false, needsPiece: false},
+  "alice-maze": {name: "迷いの森", text: "双方の残り時間を隠します。相手のターンが始まるたび、盤面の空きマス1箇所をランダムに選び、そのターン中は相手が移動できなくします。自分のターンが始まると封鎖を解除します。ボタン操作なしで働く効果です。", usesTurn: false, needsPiece: false},
+  "alice-tea": {name: "終わらないお茶会", text: "自分のターンに1回、任意で発動。両軍の駒とティーカップの合計が18体未満なら、18体になるまで自陣の空きマスにティーカップをランダムに配置します。空きマスがなくなると配置は止まります。手番は消費せず、続けて駒を動かせます。", usesTurn: false, needsPiece: false},
+  "alice-illusion": {name: "幻影", text: "自分のターンに1回、駒を動かす前に任意で発動。煙で盤面を覆い、選んだ味方2体の位置を入れ替えます。公開されていた駒も、入れ替え後は正体を隠します。手番は消費せず、続けて駒を動かせます。", usesTurn: false, needsPiece: false},
+  "alice-croquet": {name: "クロッケー大会", text: "自分のターンに1回、王を中心とした5×5内のトランプ兵1体を飛ばします。着地点は指定マスと上下左右からランダムに選びます（中央5箇所・端4箇所・角3箇所）。駒に当たると、敵味方を問わず両方を撃破。空きマスなら移動だけ行います。手番は消費しません。", usesTurn: false, needsPiece: false},
+
   earth: {
     name: "土のエリア",
     text: "毎ターンの初めに自動発動。直前に動いた相手の駒の正体を必ず見抜く。王も対象。正体は自分だけに表示。",
@@ -134,6 +143,11 @@ export const FREEZE_TURNS = AREA_TUNING.freezeTurns;
 /** 森で見抜く駒の数(互換用) */
 export const FOREST_REVEALS = AREA_TUNING.forestReveals;
 
+export function areaForSkin(rank, skinId) {
+  const skin = ALICE_SKINS.find(s => s.id === skinId?.replace(/:foil$/, ""));
+  return skin ? (skin.rank===String(rank) ? skin.fieldEffect?.type || null : null) : areaForKing(rank);
+}
+
 export function areaForKing(rank) {
   return AREA_BY_RANK[rank] || null;
 }
@@ -164,7 +178,7 @@ export function isKnownTo(state, viewer, piece) {
   return !!(
     state.known &&
     state.known[viewer] &&
-    state.known[viewer][piece.id]
+    state.known[viewer][piece.ghostOf || piece.id]
   );
 }
 
@@ -200,10 +214,10 @@ export function initAreas(state) {
   const loadouts = state.areaLoadouts;
   const areas = [0, 1].map((i) => {
     const rank = kingRankOf(state, i);
-    const type = areaForKing(rank);
     const skin = loadouts && loadouts[i] ? loadouts[i][rank] : null;
+    const type = areaForSkin(rank, skin);
     // フォイル以外のスキンでは立たない
-    return type && areaSkinOk(skin)
+    return type && type!=="alice-revolution" && (!type.startsWith("alice-") || state.ruleVersion >= 19) && areaSkinOk(skin)
       ? { type, used: false, uses: 0, rank, skin }
       : null;
   });
@@ -326,6 +340,7 @@ export function canUseArea(state, player) {
     return { ok: false, why: "対局中ではありません" };
   const area = state.areas && state.areas[player];
   if (!area) return { ok: false, why: "エリアがありません" };
+  if(area.type.startsWith("alice-")) return {ok:false,why:"シーズン2の操作を使ってください"};
   if (
     recurringArea(state, area.type)
       ? area.lastUsedTurn === (state.turnNo || 0)
@@ -829,7 +844,7 @@ export function hasAction(state, player) {
  * (本人の決め: 凍らされて動かせる駒がなければ負け)。endTurn から呼ぶ。
  */
 export function loseIfFrozen(state) {
-  if (!state.areasEnabled || state.winner != null) return state;
+  if (!state.areasEnabled || state.winner != null || state.aliceRevive || state.aliceRecruit?.length) return state;
   const player = state.currentTurn;
   const frozen = Object.values(state.pieces).some(
     (p) => p.alive && p.owner === player && isFrozen(state, p),

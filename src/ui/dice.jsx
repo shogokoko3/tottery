@@ -1,3 +1,4 @@
+import { playSound, useCue } from "../audio/index.js";
 import { useEffect, useState } from "react";
 import { dieImg } from "../assets.js";
 import { PLAYER_META, playerLabel } from "../game/constants.js";
@@ -268,6 +269,7 @@ export function DiceDuo({
   // 押してから 900ms 転がして、それから出目を決める(1人用の DiceStep と同じ手触り)
   useEffect(() => {
     if (!pressed) return;
+    playSound("dice");
     const t = setTimeout(() => {
       setPressed(false);
       onRoll();
@@ -309,7 +311,12 @@ export function DiceDuo({
       <MatchupBar viewer={me} />
       {note || <h2>サイコロで先手を決めます</h2>}
       {remainingMs != null && (
-        <div className={`setup-timer ${remainingMs <= 5000 ? "setup-timer-urgent" : ""}`}>
+        // 両方の目がそろったら残り時間は要らないが、帯を消すと下の並びが上に跳ぶ。
+        // 振っている間と同じ高さのまま見えなくして、サイコロと言葉の位置を変えない(2026-10-15 本人の指摘)
+        <div
+          className={`setup-timer ${remainingMs <= 5000 && !both ? "setup-timer-urgent" : ""} ${both ? "setup-timer-done" : ""}`}
+          aria-hidden={both ? "true" : undefined}
+        >
           <div className="setup-timer-head">
             <span>振る残り時間</span>
             <strong>{Math.max(0, Math.ceil(remainingMs / 1000))}秒</strong>
@@ -329,28 +336,31 @@ export function DiceDuo({
         </span>
         {side(foe, dice[foe] === null, foeSettled)}
       </div>
-      {dice[me] === null ? (
-        <button
-          className="btn btn-primary"
-          disabled={pressed}
-          onClick={() => setPressed(true)}
-        >
-          {pressed ? say.rolling : "サイコロを振る"}
-        </button>
-      ) : both && mineSettled && foeSettled ? (
-        tie ? (
-          <p className="hint">{say.tie}</p>
+      {/* 釦・待ちの一言・結果は同じ枠に入れ、釦と同じ高さをいつも確保する。入れ替わっても上の並びが動かない */}
+      <div className="dice-duo-foot">
+        {dice[me] === null ? (
+          <button
+            className="btn btn-primary"
+            disabled={pressed}
+            onClick={() => setPressed(true)}
+          >
+            {pressed ? say.rolling : "サイコロを振る"}
+          </button>
+        ) : both && mineSettled && foeSettled ? (
+          tie ? (
+            <p className="hint">{say.tie}</p>
+          ) : (
+            <p style={{ color: PLAYER_META[firstPlayer].color, fontWeight: 700 }}>
+              {plain
+                ? // 主語はあなた。相手は席の名(「四と五の王」)で
+                  `先手は、${firstPlayer === me ? "あなた" : (names && names[firstPlayer]) || "相手"}。`
+                : `${playerLabel(firstPlayer, me, names)}が先手です`}
+            </p>
+          )
         ) : (
-          <p style={{ color: PLAYER_META[firstPlayer].color, fontWeight: 700 }}>
-            {plain
-              ? // 主語はあなた。相手は席の名(「四と五の王」)で
-                `先手は、${firstPlayer === me ? "あなた" : (names && names[firstPlayer]) || "相手"}。`
-              : `${playerLabel(firstPlayer, me, names)}が先手です`}
-          </p>
-        )
-      ) : (
-        <p className="hint">{say.waitFoe}</p>
-      )}
+          <p className="hint">{say.waitFoe}</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -398,6 +408,7 @@ export function DiceStep({ playerIdx, value, onRoll, onNext }) {
   // 押してから 900ms 転がして、それから出目を決める。決まると止まりはじめる
   (0, useEffect)(() => {
     if (!a) return;
+    playSound("dice");
     let m = setTimeout(() => {
       (u(!1), onRoll());
     }, 900);

@@ -1,4 +1,4 @@
-import { POOL, baseSkinId, byId, foilId } from "./catalog.js";
+import { ALL_POOL as POOL, baseSkinId, byId, foilId } from "./catalog.js";
 
 export const FREEZE_FOIL_CHANCE = 0.3;
 const poolIds = new Set(POOL.map((s) => s.id));
@@ -35,7 +35,7 @@ export function resolveSummonFreeze(initial, random = Math.random, { allowFoil =
     if (skin.rarity === "SSR")
       return allowFoil && unit(random) < FREEZE_FOIL_CHANCE ? foilId(id) : id;
     const pool = POOL.filter(
-      (s) => s.rarity === (skin.rarity === "R" ? "SR" : "SSR"),
+      (s) => s.series === skin.series && s.rarity === (skin.rarity === "R" ? "SR" : "SSR"),
     );
     return pool[Math.floor(unit(random) * pool.length)].id;
   });
@@ -54,7 +54,7 @@ export function normalizeSummonFreeze(value, finalIds) {
   const valid = value.initial.every((id, i) => {
     const before = byId(id),
       after = byId(finalIds[i]);
-    if (!eligible(finalIds[i])) return false;
+    if (!eligible(finalIds[i]) || before.series !== after.series) return false;
     if (before.foil) return finalIds[i] === id;
     if (before.rarity === "SSR")
       return finalIds[i] === id || finalIds[i] === foilId(id);
@@ -82,6 +82,14 @@ export function summonFoilOrder(results, freeze) {
     (freezeFoilUpgrade(freeze, index, result.id) ? bonus : original).push(index);
   });
   return [...original, ...bonus];
+}
+/** 「n / 全体」の全体の数。元からのフォイルを見せている間は昇格分を数に入れない。
+ * 1/2 のような表記で、あとに昇格の演出が控えていると分かってしまうのを防ぐ
+ * (2026-10-15 本人の指摘)。昇格分を見せる番になってから、はじめて全体の数に含める。 */
+export function summonFoilTotal(results, freeze, index) {
+  const order = summonFoilOrder(results, freeze);
+  if (freezeFoilUpgrade(freeze, index, results[index]?.id)) return order.length;
+  return order.filter((i) => !freezeFoilUpgrade(freeze, i, results[i].id)).length;
 }
 export function freezeLadder(initialId, finalId) {
   const before = byId(initialId),

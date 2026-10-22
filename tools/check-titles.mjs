@@ -137,5 +137,46 @@ is(
   "見習い",
 );
 
+
+console.log("獲得日時と獲得順(2026-10-15 本人の指示)");
+{
+  const { titleEarnedAt, titleEarnedLabel, sortTitlesByEarned } =
+    await import("../src/game/titles.js");
+  // 記録が始まる前に取った称号(first・ten…)には控えが無い
+  store["tottery.account.v1"] = JSON.stringify({ ...loadProfile(), titleAt: undefined });
+  let q = loadProfile();
+  is("古い保存には獲得日時が無い", q.titleAt, {});
+  is("記録が無ければ null", titleEarnedAt(q, "first"), null);
+  is("記録が無い言い方", titleEarnedLabel(q, TITLES.find((t) => t.id === "first")), "獲得日の記録なし");
+  is("最初からの言い方", titleEarnedLabel(q, TITLES.find((t) => t.id === "novice")), "最初から");
+  // 配られた称号には、その保存の時刻が控えられる
+  const t0 = Date.now();
+  grantTitle("regular");
+  q = loadProfile();
+  const at = titleEarnedAt(q, "regular");
+  is("配られた称号に獲得日時が付く", Number.isFinite(at) && at >= t0 && at <= Date.now(), true);
+  is("もう一度保存しても時刻は動かない", (saveName("しょうご"), titleEarnedAt(loadProfile(), "regular")), at);
+  is("言い方は年/月/日", /^\d{4}\/\d{1,2}\/\d{1,2} に獲得$/.test(titleEarnedLabel(q, TITLES.find((t) => t.id === "regular"))), true);
+  // 対局で自動で開く称号にも付く
+  store["tottery.account.v1"] = JSON.stringify({ ...loadProfile(), plays: 49 });
+  recordGame(true);
+  is("対局で開いた称号にも獲得日時が付く", titleEarnedAt(loadProfile(), "fifty") > 0, true);
+  // 壊れた値は捨てる
+  store["tottery.account.v1"] = JSON.stringify({ ...loadProfile(), titleAt: { regular: at, bad: "x", neg: -1 } });
+  is("壊れた時刻は読まない", loadProfile().titleAt, { regular: at });
+  // 並べ替え: 記録なし・最初からが先頭(一覧の順)、あとは古い順。同時刻は一覧の順
+  const list = ["fifty", "regular", "novice", "first", "devoted"].map((id) => TITLES.find((t) => t.id === id));
+  const sorted = sortTitlesByEarned(list, { titleAt: { fifty: 300, regular: 100, devoted: 100 } }).map((t) => t.id);
+  is("獲得順に並ぶ", sorted, ["novice", "first", "regular", "devoted", "fifty"]);
+  // 新しい順(2026-10-16 本人の指示): 新しいものが先頭、同時刻は一覧の順のまま、記録なし・最初からは末尾
+  const { orderTitles } = await import("../src/game/titles.js");
+  const newest = sortTitlesByEarned(list, { titleAt: { fifty: 300, regular: 100, devoted: 100 } }, { newestFirst: true }).map((t) => t.id);
+  is("新しい順に並ぶ", newest, ["fifty", "regular", "devoted", "novice", "first"]);
+  is("設定の値で並べる(newest)", orderTitles(list, { titleAt: { fifty: 300, regular: 100, devoted: 100 } }, "newest").map((t) => t.id), newest);
+  is("設定の値で並べる(list はそのまま)", orderTitles(list, {}, "list").map((t) => t.id), ["fifty", "regular", "novice", "first", "devoted"]);
+  const acct = (await import("node:fs")).readFileSync(new URL("../src/ui/account.jsx", import.meta.url), "utf8");
+  is("切り替えに「新しい順」がある", /\["newest", "獲得が新しい順"\]/.test(acct) && /saved === "earned" \|\| saved === "newest"/.test(acct), true);
+}
+
 console.log(`\n${ok} ok / ${fails.length} fail`);
 process.exit(fails.length ? 1 : 0);

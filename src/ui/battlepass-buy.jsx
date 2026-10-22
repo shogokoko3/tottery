@@ -16,6 +16,8 @@ export function BattlePassBuy({
   onShop,
   message = "",
   art = true,
+  passName = "バトルパス",
+  rewardName = "限定のAスキン",
 }) {
   const [confirm, setConfirm] = useState(false);
   const short = gems < BATTLEPASS_GEMS;
@@ -25,7 +27,7 @@ export function BattlePassBuy({
       {confirm ? (
         <div className="foil-offer-confirm">
           <p>
-            バトルパスを ジェム <b>{yen(BATTLEPASS_GEMS)}</b> で解放しますか？
+            {passName}を ジェム <b>{yen(BATTLEPASS_GEMS)}</b> で解放しますか？
             買い切りです。無償ジェムから先に使います。
           </p>
           <div className="setup-actions">
@@ -47,7 +49,7 @@ export function BattlePassBuy({
       ) : (
         <>
           <p className="hint">
-            マスを埋めるとガチャチケット。1周目の完成で限定のAスキン。週3回まで周回できます。
+            マスを埋めるとガチャチケット。1周目の完成で{rewardName}。週3回まで周回できます。
             解放は買い切りです。ミッションでためた<b>無償ジェムでも解放できます</b>。
           </p>
           <p className="hint">

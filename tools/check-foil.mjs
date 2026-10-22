@@ -58,13 +58,13 @@ const noRandom = () => assert.fail("この経路では再抽選しない");
 
 assert.equal(FOIL_SUFFIX, ":foil");
 assert.equal(FOIL_CHANCE, 0.01);
-assert.equal(SKINS.length, 17);
+assert.equal(SKINS.length, 30);
 assert.equal(POOL.length, 15);
-assert.equal(FOIL_SKINS.length, 15);
-assert.equal(SPECIAL_FOIL_SKINS.length, 1);
-assert.equal(ALL_FOIL_SKINS.length, 16);
-assert.equal(ALL_SKINS.length, 33);
-assert.equal(new Set(ALL_SKINS.map((s) => s.id)).size, 33);
+assert.equal(FOIL_SKINS.length, 27);
+assert.equal(SPECIAL_FOIL_SKINS.length, 2);
+assert.equal(ALL_FOIL_SKINS.length, 29);
+assert.equal(ALL_SKINS.length, 59);
+assert.equal(new Set(ALL_SKINS.map((s) => s.id)).size, 59);
 assert.deepEqual(ODDS, { R: 65, SR: 32, SSR: 3 });
 assert.equal(baseSkinId("elf-male:foil"), "elf-male");
 assert.equal(baseSkinId("elf-male"), "elf-male");
@@ -107,7 +107,8 @@ assert.deepEqual(ownedAce.equipped, { A: aceFoil.id });
 assert.deepEqual(normalize(JSON.parse(JSON.stringify(ownedAce))), ownedAce);
 assert.deepEqual(ownedAce.acquired, {}, "Aフォイルは通算100回の対象外");
 for (const roll of [0, 0.999999]) {
-  const cpu = createCpuLoadout(() => roll);
+  // 最初のシリーズで確かめる(シーズン2のシリーズは check-cpu-alice.mjs)
+  const cpu = createCpuLoadout(() => roll, "heroes");
   assert.equal(cpu.A, ace.id, "Aフォイル追加後もCPUのAは通常版");
   assert.equal(cpu["10"], roll === 0 ? "dragon-knight:foil" : "pegasus-knight");
   assert.equal(ensureCpuFoil(cpu, "A").A, ace.id);

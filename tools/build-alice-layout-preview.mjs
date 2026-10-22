@@ -1,0 +1,8 @@
+// 実際のコンポーネントを使うローカル配置確認。?demo=1 で確認用2枚を付与。
+import { createRequire } from 'node:module';
+import fs from 'node:fs';
+const repo=process.cwd();
+const require=createRequire(repo+'/package.json');
+const {build}=require('esbuild');
+const r=await build({format:'esm',bundle:true,write:false,jsx:'automatic',loader:{'.css':'text','.png':'dataurl','.webp':'dataurl'},define:{__AUDIO_FILES__:'{}'},stdin:{resolveDir:repo,loader:'jsx',contents:`import React from 'react';import {createRoot} from 'react-dom/client';import {SkinsScreen} from './src/ui/skins.jsx';import {SeatsProvider} from './src/ui/names.jsx';import {updateCollection} from './src/skins/store.js';import {grantSkin} from './src/skins/collection.js';import css from './src/styles.css';import skins from './src/skins/styles.css';document.head.append(Object.assign(document.createElement('style'),{textContent:css+skins+'body{margin:0;background:#0b111d;color:#ece7da}'}));if (new URLSearchParams(location.search).has('demo')) await updateCollection(s=>{let next=s;for(const id of ['alice-10-cheshire-cat','alice-10-cheshire-cat:foil']) if(!next.owned[id]) next=grantSkin(next,id);return next;});createRoot(document.getElementById('root')).render(<SeatsProvider value={[]}><SkinsScreen initialTab="gacha"/></SeatsProvider>);`}});
+fs.writeFileSync(repo+'/alice-layout-preview.html','<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>アリスシリーズ 配置確認</title><div id="root"></div><script type="module">'+r.outputFiles[0].text.replaceAll('</script','<\\/script')+'</script></html>');

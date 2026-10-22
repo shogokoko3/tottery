@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { areaTheme } from "../game/field-presentation.js";
 import { AREA_INFO } from "../game/areas.js";
-import { fieldUrl } from "./fields/backdrop.jsx";
+import { FieldArtwork } from "./fields/backdrop.jsx";
 
 /** 宮殿は天界と魔界の2種。それ以外は1種 */
 export function themesOf(type, skinId) {
@@ -61,10 +61,11 @@ export function AreaPreview({ type, skinId, className = "" }) {
         <figure className="area-preview" key={theme}>
           <div
             className={`area-preview-board ${near ? "is-loaded" : ""}`}
-            style={near ? { backgroundImage: `url(${fieldUrl(theme)})` } : undefined}
+            style={{ "--field-inset": "3%" }}
             role="img"
             aria-label={`${AREA_INFO[type].name}の盤の見た目`}
           >
+            {near && <FieldArtwork theme={theme} />}
             <div className="area-preview-grid" aria-hidden="true">
               {Array.from({ length: 81 }).map((_, i) => (
                 <span

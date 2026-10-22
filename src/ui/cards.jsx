@@ -5,6 +5,7 @@ import { byId } from "../skins/catalog.js";
 import { Crown } from "../icons.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { PROMOTION_ARROW_PATH } from "./card-status.js";
+import { alicePieceArt } from "../skins/alice-piece-art.js";
 
 export const SUIT_CODE = {
   spade: "S",
@@ -25,12 +26,14 @@ export function CardFace({
   animated = true,
   mark,
   originalRank,
+  artworkSkin,
 }) {
   const seats = useSeats();
   // false selects the embedded normal art while a remote skin is unavailable.
   const selected =
     skinId === false ? null : byId(skinId || seats.skins?.[owner]?.[rank]);
-  const skin = selected?.rank === String(rank) ? selected : null;
+  const skin = artworkSkin || (selected?.rank === String(rank) ? selected : null);
+  const cup = rank === "tea";
   // 王になっても同じ人物。通常キャラ全13種を金色の縁で区別する。
   const kingFrame = isKing && !skin;
   const promoted = mark === "palace";
@@ -76,14 +79,14 @@ export function CardFace({
       <FoilArtwork
         skin={skin}
         src={skin?.boardCard || skin?.card || cardArtSrc(rank, suit)}
-        alt={`${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}${isKing ? " · 王" : ""}${promotionLabel}`}
+        alt={cup ? skin?.name || "ティーカップ" : `${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}${isKing ? " · 王" : ""}${promotionLabel}`}
         animated={animated}
       />
       <span
         aria-hidden="true"
         className={`card-index ${skin ? "skin-card-mark" : ""} ${suit === "heart" || suit === "diamond" ? "red-suit" : ""}`}
       >
-        {rank}
+        {cup ? "☕" : rank}
         {promoted ? (
           <small className="card-suit-promoted" title="昇格">
             <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -91,7 +94,7 @@ export function CardFace({
             </svg>
           </small>
         ) : (
-          <small>{SUIT_SYMBOL[suit]}</small>
+          <small>{cup ? (skin?.baseId?.endsWith("green-copper") ? "↗" : "↕") : SUIT_SYMBOL[suit]}</small>
         )}
       </span>
       {skin && isKing && (
@@ -104,6 +107,8 @@ export function CardFace({
 }
 /** 撃破履歴は戦闘時の強さを保持し、捨て札の絵は物理カードの元の数字に戻す。 */
 export function CapturedCardFace({ piece, size = "sm" }) {
+  const seats = useSeats();
+  const artworkSkin = alicePieceArt(piece, seats.skins?.[piece.owner]);
   const rank = piece.originalRank || piece.rank;
   const changed = rank !== piece.rank;
   return (
@@ -115,7 +120,7 @@ export function CapturedCardFace({ piece, size = "sm" }) {
           : undefined
       }
     >
-      <CardFace owner={piece.owner} rank={rank} suit={piece.suit} size={size} />
+      <CardFace owner={piece.owner} rank={rank} suit={piece.suit} size={size} artworkSkin={artworkSkin} animated={false} />
       {changed && (
         <small className="captured-card-note">撃破時 {piece.rank}</small>
       )}
@@ -178,17 +183,22 @@ export function Piece({
   known = false,
   frozen = false,
   frozenTurns = 0,
+  // アリスの逆転の縛り中(逆転から3ターンはもう一度選べない)。左上に ⇅ と残りターン(2026-10-16 本人の指示で盤で分かるように)
+  reversed = false,
+  reversedTurns = 0,
   skyBonus = false,
   extraReady = false,
   // 観戦の審判視点(フレンド戦)。両者の伏せ札まで表向きに見せる
   revealAll = false,
   size = "md",
 }) {
+  const seats = useSeats();
+  const artworkSkin = alicePieceArt(piece, seats.skins?.[piece.owner]);
   let u = PLAYER_META[piece.owner],
     // フラッシュで公開された駒と、王を討って名乗りを上げた駒は、
     // 持ち主でなくても表向きに見える。土・森で見抜いた駒は自分だけに。
     // 審判視点の観戦(revealAll)では全部表向き
-    i = revealAll || piece.owner === viewer || !!piece.revealed || !!known;
+    i = revealAll || (!(piece.ownerHidden && piece.owner===viewer) && (piece.owner === viewer || !!piece.revealed || !!known));
   const skyMark = i && piece.mark === "sky";
   // 陣営は公開情報。表裏・絵柄・王の正体に依存しない同じ枠を使う。
   const own = piece.owner === viewer;
@@ -207,8 +217,9 @@ export function Piece({
       data-faction={piece.owner}
       aria-label={`${factionLabel}・${u.name}陣営`}
     >
-      {i ? (
+      {piece.tea || i ? (
         <CardFace
+          artworkSkin={artworkSkin}
           owner={piece.owner}
           rank={piece.rank}
           suit={piece.suit}
@@ -220,10 +231,12 @@ export function Piece({
       ) : (
         <CardBack colorHex={u.color} size={size} owner={piece.owner} />
       )}
+      {i && piece.soldier && <span className="alice-soldier" aria-label="トランプ兵">♜</span>}
+      {piece.barrier && <span className="alice-barrier" aria-label="バリア"/>}
       <span className="piece-faction-mark" aria-hidden="true">
         {factionMark}
       </span>
-      {piece.revealed && !piece.mark && (
+      {i && piece.revealed && !piece.mark && (
         <span className="revealed-badge" aria-label="公開された駒">
           {size === "xs" ? "公" : "公開"}
         </span>
@@ -244,6 +257,15 @@ export function Piece({
           aria-label={`凍結・残り${frozenTurns}ターン`}
         >
           ❄<b>{frozenTurns || ""}</b>
+        </span>
+      )}
+      {reversed && (
+        <span
+          className="reverse-badge"
+          aria-label={`数字が逆転中・あと${reversedTurns}ターンは逆転の対象に選べない`}
+          title={`数字が逆転中。あと${reversedTurns}ターンは逆転の対象に選べません`}
+        >
+          ⇅<b>{reversedTurns || ""}</b>
         </span>
       )}
       {skyBonus && i && (

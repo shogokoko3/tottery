@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "tool": "built-in image_gen (edit)",
+  "revisions": {
+    "alice-tea": "reports/alice-tea-square-party/prompt.json"
+  },
+  "common": "Edit the FIRST image, a tactical game environmental background. The second and third images are style and composition references from the SAME existing game. Match their lush detailed environmental storytelling, deep believable space at the perimeter, rich natural material painting, and broad playable foreground. Preserve the first image's identity and recognizable peripheral motifs; rebuild the composition into a richly illustrated game arena, not a thin decorative picture frame. One square 1536x1536 image. Full illustration fills the image; no added frame or vignette and NO flattened solid floor overlay. Slightly elevated bird's eye perspective with a level unobstructed foreground arena and scenic depth at the upper edge, like the reference ship deck or forest arena. Decorative scenery is visible in the outer 12-18 percent, with 4 corners showing beautiful substantial detail. Center remains a beautiful nuanced natural surface with texture, soft irregular shadows and gentle atmospheric light, never monotonous blank beige. Keep center floor textures LOW contrast, never fake square tiles or painted gameplay grid lines. No rectangular repeating floor seams, no checkerboard, no grid, no card pieces, no interface, no captions, no text. Actual 9x9 game cells will be overlaid from 3% to 97% of the image; ensure even edge cells can still show a card clearly, avoid opaque towering objects inside central 82%. No existing film adaptation designs. Specific motif direction: ",
+  "references": [
+    "reports/alice-area-design-v1/*.png (edit target)",
+    "assets/fields/forest.png (style reference)",
+    "assets/fields/sea.png (style reference)"
+  ],
+  "designs": [
+    [
+      "alice-caucus",
+      "コーカス・レース",
+      "Circular sandy garden race court surrounded by ferns, feathers, tiny pennants and worn stone concentric circles, ochre sandstone and sage, central open sand with very faint concentric wear patterns."
+    ],
+    [
+      "alice-quadrille",
+      "カドリール",
+      "Seaside dance court of pale pearlescent stone, turquoise tide pools at edges, shells, lobster silhouettes carved into peripheral stone, paired curved ornamental paths, pale aquamarine and ivory."
+    ],
+    [
+      "alice-maze",
+      "迷いの森",
+      "Enchanted woodland clearing, tall twisted trunks and unusual mushrooms only along edges, old pocket watches tucked among roots, branching trails disappearing into mist, moss green and muted blue, central flat light mossy stone."
+    ],
+    [
+      "alice-tea",
+      "終わらないお茶会",
+      "Garden tea court, ivory tiled central clearing surrounded at edges by antique tables set with mismatched porcelain cups, teapots, folded napkins and pocket watches, muted burgundy sage and cream, no guests."
+    ],
+    [
+      "alice-illusion",
+      "幻影",
+      "Moonlit surreal garden court, aged pale slate in center, mirrored archways, silvery curling fog and faint feline smile carvings around perimeter, desaturated midnight teal and silver, no cat character and no stripes."
+    ],
+    [
+      "alice-croquet",
+      "クロッケー大会",
+      "Royal croquet garden from directly overhead, flat pale green turf center, clipped hedges, white roses, small heart ornaments, brass wickets, mallets and ornamental flamingo sculptures only on edges, burgundy ivory and green."
+    ]
+  ]
+}

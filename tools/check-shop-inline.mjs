@@ -35,7 +35,7 @@ export const shop=()=>renderToStaticMarkup(<ShopScreen onBack={noop} onGacha={no
 export const packs=(products)=>renderToStaticMarkup(<GemPacks gems={0} gemsPaid={0} gemsFree={0} onMessage={noop} initialProducts={products} />);
 export const tickets=()=>renderToStaticMarkup(<TicketBuy gems={0} onBuy={noop} />);
 export const pass=()=>renderToStaticMarkup(<BattlePassBuy gemsPaid={0} onBuy={noop} />);
-export const foils=(owned,paid=0)=>renderToStaticMarkup(<FoilOfferPicker offers={foilOffers(normalize({owned}))} gemsPaid={paid} onBuy={noop} onShop={noop} />);
+export const foils=(owned,paid=0)=>renderToStaticMarkup(<FoilOfferPicker offers={foilOffers(normalize({owned}), { series: "heroes" })} gemsPaid={paid} onBuy={noop} onShop={noop} />);
 export const allFoilIds=()=>ALL_FOIL_SKINS.map((s)=>s.id);`,
     },
     bundle: true,
@@ -94,8 +94,8 @@ export const allFoilIds=()=>ALL_FOIL_SKINS.map((s)=>s.id);`,
   // フォイルは有償ジェムだけ。引いた直後は残高が無いことが多いので、
   // **商品を選ぶ前から**ジェムを買う道を出す(本人の指示 2026-09-17)
   const fo = fs.readFileSync("src/ui/foil-offer.jsx", "utf8");
-  assert.match(fo, /const cheapest = Math\.min\(\.\.\.offers\.map\(\(o\) => o\.price\)\)/, "いちばん安い商品と比べる");
-  assert.match(fo, /const short = gemsPaid < cheapest;/);
+  assert.match(fo, /const cheapest = buyable\.length \? Math\.min\(\.\.\.buyable\.map\(\(o\) => o\.price\)\) : 0;/, "いちばん安い商品と比べる");
+  assert.match(fo, /const short = !locked && buyable\.length > 0 && gemsPaid < cheapest;/, "見るだけ(locked)のときは出さない");
   assert.match(fo, /foil-offer-buy/, "一覧の段階で出す(確認に進む前)");
   assert.match(fo, /有償ジェムは iPhone・iPad のアプリで買えます/, "買えない端末では理由を出す");
   assert.ok(fo.indexOf("foil-offer-buy") < fo.indexOf('className="foil-offer-list"'), "一覧より前に置く");
@@ -138,7 +138,7 @@ export const allFoilIds=()=>ALL_FOIL_SKINS.map((s)=>s.id);`,
 const buyui = fs.readFileSync("src/ui/buy.js", "utf8");
 assert.match(buyui, /exchangeGems\(newEventId\("xchg"\), n\)/);
 assert.match(buyui, /buyFoil\(offer\.product\.id, offer\.skins\)/);
-assert.match(buyui, /buyPassWithGems\(newEventId\("pass"\)\)/);
+assert.match(buyui, /buyPassWithGems\(newEventId\("pass"\), season\)/);
 // 残高不足の言い方は商品ごとに違う。フォイルだけ「有償ジェム」
 assert.match(buyui, /const PAID_SHORT = \/有償ジェムが足りません\//);
 assert.match(buyui, /return failed\(e, PAID_SHORT\);/, "フォイルは有償ジェムの言い方");

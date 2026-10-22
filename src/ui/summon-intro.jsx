@@ -11,7 +11,7 @@ import STYLES from "../skins/summon-intro.css";
 import { prepareSummonSound, startSummonSound } from "../skins/summon-sound.js";
 
 /** Presentation only. The draw and debit have already been committed. */
-export function SummonIntro({ results, targetRef, onFinish, onReady }) {
+export function SummonIntro({ results, targetRef, onFinish, onReady, gateWorld = null }) {
   const root = useRef(null),
     canvas = useRef(null),
     finishRef = useRef(onFinish);
@@ -20,7 +20,9 @@ export function SummonIntro({ results, targetRef, onFinish, onReady }) {
   readyRef.current = onReady;
   // Wallet/storage synchronisation normalises results into a new array even
   // when the draw is unchanged. Keep the scene alive across those updates.
-  const { world, gold, count } = summonPlan(results);
+  const drawPlan = summonPlan(results);
+  const { gold, count } = drawPlan;
+  const world = gateWorld && SUMMON_WORLDS[gateWorld] ? gateWorld : drawPlan.world;
   const plan = useMemo(() => ({ world, gold, count }), [world, gold, count]);
   const [loading, setLoading] = useState(true);
   // 門の前で待っているか。触れるまで開かない(2026-09-28 本人の指示)
@@ -204,6 +206,7 @@ export function SummonIntro({ results, targetRef, onFinish, onReady }) {
     <div
       ref={root}
       className={`summon-intro ${plan.gold ? "is-gold" : "is-bronze"}`}
+      data-world={plan.world}
       aria-label="召喚の門"
       aria-busy={loading}
       role="group"
@@ -213,7 +216,7 @@ export function SummonIntro({ results, targetRef, onFinish, onReady }) {
         <div ref={canvas} className="summon-scene-host" aria-hidden="true" />
         <div className="summon-cinema-shade" aria-hidden="true" />
         <div className="summon-world-name" aria-hidden="true">
-          <span>運命の一枚を、この手に。</span>
+          <span>{SUMMON_WORLDS[plan.world].series === "alice" ? "ワンダーランド・ゲート" : "運命の一枚を、この手に。"}</span>
           <strong>{SUMMON_WORLDS[plan.world].name}</strong>
           <i />
         </div>
@@ -249,7 +252,7 @@ export function SummonIntro({ results, targetRef, onFinish, onReady }) {
         >
           {/* 添え書きは輪の**上**へ。下に置くと「門をスキップ」と重なっていた
               (2026-09-28 本人の報告)。下端はいちばん短い「門にふれて開く」だけにする */}
-          <span className="summon-gate-hint">押しているあいだ、門が応えます</span>
+          <span className="summon-gate-hint">タップすると、門が開きます</span>
           <span className="summon-gate-ring" aria-hidden="true" />
           <span className="summon-gate-label">門にふれて開く</span>
         </button>

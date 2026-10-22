@@ -5,8 +5,8 @@
  *      ヒントの行と 2・3・5 の動きの図(文は句ごと)・まちがいの一言の2行・飛ばす/中断を出さない・
  *      待ちの帯は台本の一行と「最短 N 手」
  *   B. 王を選ぶ画面(KingStep): 見出しを出さない・「配置に戻る」を出さない・相手の伏せ札5枚・先後の一行・取る確認
- *   C. 結果画面(GameView): ステージクリア・両者の王・あなたの王の一行(王5通り × 4♦/5♥)・結びの行・
- *      締めの一行・「門へ進む」・下の釦はストーリーの形・背の低い画面で詰める決まり
+ *   C. 結果画面(GameView): 初勝利・両者の王・あなたの王の一行(王5通り × 4♦/5♥)・結びの行・
+ *      締めの一行・「初勝利の報酬を受け取る」・下の釦はストーリーの形・背の低い画面で詰める決まり
  *   D. 配線(game.jsx・screens.jsx): フェーズ・関門・相手の待ち・記録・中断・席の名前・待ちの帯・勝負のあとの
  *      上の「トッタリー」・ヒントのときの送り・降参を出さない
  *   (iPhone の大きさで描いて測るのは tools/check-intro-fit.mjs。頭なしの Chrome を使うので npm run check の外)
@@ -106,7 +106,7 @@ try {
       contents: `import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';
 import {GameView} from './src/ui/game.jsx';import {SeatsProvider} from './src/ui/names.jsx';
 import {TutorialSheet} from './src/ui/tutorial.jsx';import {KingStep} from './src/ui/setup.jsx';import {CaptureConfirm} from './src/ui/overlays.jsx';
-const seats={names:["あなた","二と三の王"],icons:[null,null],titles:[null,null],skins:[{},{}]};
+const seats={names:["あなた","練習相手"],icons:[null,null],titles:[null,null],skins:[{},{}]};
 const wrap=(el)=>renderToStaticMarkup(<SeatsProvider value={seats}>{el}</SeatsProvider>);
 export const renderSheet=(props)=>wrap(<TutorialSheet index={1} total={6} onNext={()=>{}} {...props} />);
 export const renderKing=(state, props)=>wrap(<KingStep state={state} player={state.players[0]} pIdx={0} size={5} dispatch={()=>{}} remainingMs={null} limitMs={1} {...props} />);
@@ -172,7 +172,7 @@ console.log("A. 案内の札");
   // 1枚目(王を選ぶ): 2行を1行ずつ。飛ばす・中断は出さない(onSkip・onInterrupt を渡さない)
   const pick = renderSheet({ step: tut.steps[0], lines: stepLines(tut.steps[0], openingState(tut, GAME_RULE_VERSION)), left: 2, plain: true });
   ok("行の配列は1行ずつ出す", same(rows(pick), textLines(tut.steps[0].text)), rows(pick).join(" / "));
-  // 行の中は句の塊(2026-10-06 見直し。320 幅で「…二枚をね/らう。」と語の途中で割れた)
+  // 行の中は句の塊(2026-10-06 見直し。320 幅で「…二枚をね/らう。」と語の途中で割れた。数え方はいまは算用数字の「2枚」)
   ok("はじめの一局(plain)の行は句の塊だけで出す", phrasedRows(pick) && /class="tutorial-sheet[^"]*tutorial-sheet-plain/.test(pick));
   ok("外れても続けられるので「最短 2 手」", /最短 2 手/.test(pick));
   ok("飛ばす・中断を渡さなければ出さない", !/この話を飛ばす|中断してやめる/.test(pick));
@@ -200,22 +200,22 @@ console.log("A. 案内の札");
     const held2 = renderSheet({ step: tut.steps[3], lines: stepLines(tut.steps[3], s), nextLabel: "つづき", lit: true, front: true, low: true, plain: true });
     ok(`待つ札(plain)の文は句の塊で、つなぐと台本の行(王=${king})`, same(rows(held2), want) && phrasedRows(held2), rows(held2).join(" / "));
     if (king === "t0")
-      ok("4♠ を王にした人の待つ札は「外れ。」「でも、」「あなたの王が二枚をねらう。」の句で折り返す", held2.includes('<span class="text-phrase">あなたの王が二枚をねらう。</span>'));
+      ok("4♠ を王にした人の待つ札も句の塊で折り返す", held2.includes('<span class="text-phrase">4♠で取れる相手の札が2枚あります。</span>'));
     ok(`待つ札は下寄せ(tutorial-sheet-low)(王=${king})`, /tutorial-sheet-front tutorial-sheet-low/.test(held2));
   }
   // 5枚目(自分で考える1手): ヒントは開く前は釦だけ、開くと2行と 2・3・5 の図
   const choose = tut.steps[4];
   const closed = renderSheet({ step: choose, lines: textLines(choose.text), onHint: () => {} });
   ok("ヒントを開く前は釦だけ", /ヒントを見る/.test(closed) && !/move-guide/.test(closed) && !/ヒント: /.test(closed));
-  // 印は導入の言葉の調子で「あなたが読む、一手。」(2026-10-06 本人の指示)。句の塊で出す。第1〜13話は「自分で考える1手」のまま
+  // 印は導入の言葉の調子で「どちらが王か考えてみましょう。」(2026-10-06 本人の指示)。句の塊で出す。第1〜13話は「自分で考える1手」のまま
   const badgeOf = (html) => (html.match(/<p class="tutorial-choose-badge">([\s\S]*?)<\/p>/) || [])[1];
   ok(
-    "はじめの一局の印は「あなたが読む、一手。」(句の塊で。「自分で考える1手」は出さない)",
-    badgeOf(closed) === '<span class="text-phrase">あなたが読む、</span><span class="text-phrase">一手。</span>' && !/自分で考える1手/.test(closed),
+    "はじめの一局の印は「どちらが王か考えてみましょう。」(句の塊で。「自分で考える1手」は出さない)",
+    badgeOf(closed) === '<span class="text-phrase">どちらが王か考えてみましょう。</span>' && !/自分で考える1手/.test(closed),
     badgeOf(closed),
   );
   const plainClosed = renderSheet({ step: choose, lines: textLines(choose.text), onHint: () => {}, plain: true });
-  ok("画面と同じ渡し方(plain)でも印は「あなたが読む、一手。」", text(badgeOf(plainClosed) || "") === "あなたが読む、一手。");
+  ok("画面と同じ渡し方(plain)でも印は「どちらが王か考えてみましょう。」", text(badgeOf(plainClosed) || "") === "どちらが王か考えてみましょう。");
   const epChoosers = ALL_TUTORIALS.flatMap((t) => t.steps).filter((x) => x.need && x.need.choose);
   ok(
     "第1〜13話の印は「自分で考える1手」のまま(台本に印を持たない)",
@@ -282,9 +282,17 @@ console.log("\nB. 王を選ぶ画面");
   ok("ふつうの王選びは相手の並びを描かない", !/mini-piece-foe/.test(plain));
   // 先後の一行(2026-10-05 見直し)。はじめの一局は導入の言葉の調子で(です・ます調の決まり文句を避ける)
   // 札「あなたは先攻」と横の文が同じことを二度言っていた。一行だけにする(2026-10-06 見直し)
-  ok("はじめの一局の先後は「最初の一手は、あなた。」の一行だけ(札もサイコロも出さない)", /最初の一手は、あなた。/.test(text(quiet)) && !/あなたは先攻|先攻|先に動きます|サイコロ/.test(text(quiet)) && /setup-order setup-order-plain/.test(quiet));
+  ok("はじめの一局の先後は「あなたが先に動かします。」の一行だけ(札もサイコロも出さない)", /あなたが先に動かします。/.test(text(quiet)) && !/あなたは先攻|先攻|先に動きます|サイコロ/.test(text(quiet)) && /setup-order setup-order-plain/.test(quiet));
   ok("先後の札は折り返さない(320 幅で「あなたは後/攻」と割れた)", /\.setup-order b \{\s*white-space: nowrap;\s*\}/.test(fs.readFileSync(new URL("../src/styles.css", import.meta.url), "utf8")));
   ok("ふつうの王選びの先後はいままでどおり(文は句ごとに折り返す)", /あなたは先攻/.test(text(plain)) && /サイコロの結果、先に動きます/.test(text(plain)) && /<span class="text-phrase">先に動きます<\/span>/.test(plain));
+  // 案内の一行(2026-10-06 見直し)。.hint の balance の折り返しで、320 幅だと「…王にす/る1枚を…」と語の途中で割れた。
+  // 文は変えずに句の塊にし、1つの span に包む(案内の行は flex なので、句を直に並べると句ごとに離れた箱になる)
+  const full = renderKing(s, {});
+  ok(
+    "ふつうの王選びの案内は句の塊(「配置したカードの中から」「王にする1枚を」「タップしてください。」)",
+    /<p class="hint setup-hint-line"><span><span class="text-phrase">配置したカードの中から<\/span><span class="text-phrase">王にする1枚を<\/span><span class="text-phrase">タップしてください。<\/span><\/span><\/p>/.test(full),
+    (full.match(/<p class="hint setup-hint-line">[\s\S]*?<\/p>/) || [""])[0],
+  );
   // 取る確認(2026-10-05 見直し)。はじめの一局は短い一行、ほかの対局はいままでどおり
   const take = renderCapture({ plain: true });
   ok("はじめの一局の取る確認は「取れば、正体が分かる。」", /取れば、正体が分かる。/.test(take) && !/公開されます/.test(take));
@@ -298,59 +306,59 @@ console.log("\nB. 王を選ぶ画面");
    ===================================================================== */
 console.log("\nC. 結果画面");
 {
-  const story = { axis: "23", phase: 1, size: 5, king: "3", title: "二と三の王", fresh: true, next: { axis: "45", title: "四と五の王" }, allCleared: false, ready: true };
+  const story = null;
   const endLines = textLines(tut.steps.find((x) => x.end).text);
   for (const king of ["t0", "t1", "t2", "t3", "t4"])
     for (const by of ["t2", "t1"]) {
       const s = finished(king, by);
       const label = `王=${king}・${by === "t2" ? "4♦" : "5♥"} で討つ`;
-      const html = renderView(s, tut, { story, onGate: () => {} });
+      const html = renderView(s, tut, { story, introReady: true, onGate: () => {} });
       const struck = king === by;
       const expected = struck ? tut.kingNote.struck : tut.kingNote.hidden;
       const other = struck ? tut.kingNote.hidden : tut.kingNote.struck;
       ok(
-        `${label}: あなたの王の一行は「${struck ? "自ら討った" : "伏せたまま"}」`,
+        `${label}: あなたの王の一行は「${struck ? "相手の王を取りました" : "伏せたまま"}」`,
         expected.every((line) => rowsOf(html).includes(lineText(line))) && !text(html).includes(lineText(other[1])),
       );
       // 右のあなたの王と対句の2行(です・ます調の「…でした」を使わない。2026-10-06 見直し)
-      ok(`${label}: 相手の王は「相手の王は、」「3♦ だった。」`, rowsOf(html).includes("相手の王は、") && rowsOf(html).includes("3♦ だった。") && !/でした/.test(text(html)));
+      ok(`${label}: 相手の王は「相手の王は、」「3♦ だった。」`, rowsOf(html).includes("相手の王は、") && rowsOf(html).includes("3♦ だった。"));
     }
   const s = finished("t3", "t2");
-  // 次のステージへの受け口(onNextStory)も渡したうえで、門へ進むが勝つことを見る
-  const gate = renderView(s, tut, { story, onGate: () => {}, onNextStory: () => {} });
-  ok("見出しは「ステージクリア!」", /ステージクリア!/.test(gate) && !/チュートリアルクリア/.test(gate));
+  // 次のステージへの受け口(onNextStory)も渡したうえで、初勝利の報酬を受け取るが勝つことを見る
+  const gate = renderView(s, tut, { story, introReady: true, onGate: () => {}, onNextStory: () => {} });
+  ok("見出しは「初勝利!」", /初勝利!/.test(gate) && !/ステージクリア!|チュートリアルクリア/.test(gate));
   ok("両者の王を並べる(tutorial-reveal-pair)", /tutorial-reveal-pair/.test(gate) && count(gate, /class="tutorial-reveal[ "]/g) === 2);
-  ok("本文は結びの札の行(行の中は句の塊)", endLines.every((l) => rowsOf(gate).includes(l)) && gate.includes('<span class="text-phrase">王だった。</span>'));
+  ok("本文は結びの札の行(行の中は句の塊)", endLines.every((l) => rowsOf(gate).includes(l)) && gate.includes('<span class="text-phrase">王でした。</span>'));
   ok("結果の行(結び・二人の王)はどれも句の塊だけで出す", phrasedRows(gate));
   ok("あなたの王の「最後まで伏せたまま。」は「最後まで」「伏せたまま。」の句", tut.kingNote.hidden[1].join("") === "最後まで伏せたまま。" && gate.includes('<span class="text-phrase">最後まで</span><span class="text-phrase">伏せたまま。</span>'));
   const tagParts = [...gate.matchAll(/<span class="tutorial-tagline-part">([^<]*)<\/span>/g)].map((m) => m[1]);
   ok("締めは台本の一行(「相手の王を討て。」ではない)", tagParts.join("") === tut.tagline && !/相手の王を討て。/.test(gate));
   ok("締めの一行は文ごとに折り返す(「一手に、読みを。」「一枚に、野望を。」)", tagParts.length === 2 && tagParts.every((x) => x.endsWith("。")), tagParts.join(" / "));
-  ok("勝ち名乗りの飾りの札は出さない(両者の王と重なる。門へ進むまで1画面に)", !/king-card win-card/.test(gate));
-  ok("ステージ名とチケット10枚(導入の言葉の調子で「手に入れた。」)", /二と三の王/.test(gate) && /ガチャチケット 10枚を、手に入れた。/.test(text(gate)) && !/受け取りました/.test(text(gate)));
+  ok("勝ち名乗りの飾りの札は出さない(両者の王と重なる。初勝利の報酬を受け取るまで1画面に)", !/king-card win-card/.test(gate));
+  ok("導入結果にストーリー名・ステージ報酬を出さない", !/二と三の王|story-reward/.test(gate));
   // 「後日談を読む」は出さない(2026-10-06 見直し。375×667 で上の端だけ空の帯のように覗き、開くと門から外れた)
-  ok("門へ進む結果に「後日談を読む」を出さない", !/後日談/.test(text(gate)));
-  ok("結果の文にです・ます調の決まり文句を使わない(締め・結び・二人の王・褒美)", !/です|ます|でした|ください/.test(text(gate.slice(gate.indexOf("ステージクリア"), gate.indexOf('class="gameover-grid')))));
-  ok("光る「門へ進む」を1つだけ", count(gate, /門へ進む/g) === 1 && /result-gate/.test(gate));
+  ok("初勝利の報酬を受け取る結果に「後日談を読む」を出さない", !/後日談/.test(text(gate)));
+  ok("結果の文に子ども向けの口調を使わない(締め・結び・二人の王・褒美)", !/だよ|だったね|見つけたね/.test(text(gate.slice(gate.indexOf("初勝利"), gate.indexOf('class="gameover-grid')))));
+  ok("光る「初勝利の報酬を受け取る」を1つだけ", count(gate, /初勝利の報酬を受け取る/g) === 1 && /result-gate/.test(gate));
   ok(
-    "「門へ進む」は送る中身の外(2×2 の釦の上に、いつも見える)",
+    "「初勝利の報酬を受け取る」は送る中身の外(2×2 の釦の上に、いつも見える)",
     gate.indexOf('class="gameover-body"') < gate.indexOf('class="gameover-gate"') &&
       gate.indexOf('class="gameover-gate"') < gate.indexOf('class="gameover-grid') &&
-      gate.indexOf("門へ進む") > gate.indexOf('class="gameover-gate"'),
+      gate.indexOf("初勝利の報酬を受け取る") > gate.indexOf('class="gameover-gate"'),
   );
-  ok("門へ進むときは「次のステージへ」を出さない", !/次のステージへ/.test(gate) && !/次は「四と五の王」/.test(gate));
+  ok("初勝利の報酬を受け取るときは「次のステージへ」を出さない", !/次のステージへ/.test(gate) && !/次は「四と五の王」/.test(gate));
   ok("チュートリアルの塊(一覧へ・次は第N話)を出さない", !/チュートリアル一覧へ/.test(gate) && !/約\d分/.test(gate));
-  ok("門へ進むときは振り返りだけを添える", /go-review/.test(gate) && !/go-match|go-home/.test(gate));
+  ok("初勝利の報酬を受け取るときは振り返りだけを添える", /go-review/.test(gate) && !/go-match|go-home/.test(gate));
   ok("台本の一局に「もう一度遊ぶ」(NEW_GAME)を出さない", !/もう一度遊ぶ/.test(gate));
   ok("左下に「タイトルに戻る」を出さない", !/タイトルに戻る/.test(gate));
   const noGate = renderView(s, tut, { story, onNextStory: () => {} });
-  ok("門が済んでいれば(onGate なし)「次のステージへ」", /次のステージへ/.test(noGate) && !/門へ進む/.test(noGate));
-  const recovered = renderView(finished("t3", "t2", true), tut, { story, onGate: () => {} });
-  ok("外れから勝った結果は、読み直したことを伝える", text(recovered).includes("外れた一枚から、候補を絞った。") && text(recovered).includes("読み直して、王に届いた。") && !text(recovered).includes("相手が逃がした一枚は、王だった。"));
-  const lost = renderView(s, null, { story, youAre: 1, onRetryStory: () => {} });
+  ok("導入だけでは次のストーリーや後日談を解放しない", !/次のステージへ|初勝利の報酬を受け取る|後日談/.test(noGate));
+  const recovered = renderView(finished("t3", "t2", true), tut, { story, introReady: true, onGate: () => {} });
+  ok("外れから勝った結果は、読み直したことを伝える", text(recovered).includes("王以外の札を取っても対局は続きます。") && text(recovered).includes("手がかりを集めて王を見つけました。") && !text(recovered).includes("相手が逃がした札が、王でした。"));
+  const lost = renderView(s, null, { story: { axis: "23", phase: 1, size: 5, title: "二と三の王", ready: true }, youAre: 1, onRetryStory: () => {} });
   ok("通常ストーリーの敗北は撃破の一手と再挑戦を示す", lost.includes('class="story-loss-note"') && lost.includes("4♦ の e1 → e3 が、王に届いた。") && lost.includes('class="btn btn-primary go-again"'));
-  const waiting = renderView(s, tut, { story: { ...story, ready: false }, onGate: () => {} });
-  ok("記録が済むまでは「門へ進む」を出さない(ready)", !/門へ進む/.test(waiting));
+  const waiting = renderView(s, tut, { story: null, introReady: false, onGate: () => {} });
+  ok("記録が済むまでは「初勝利の報酬を受け取る」を出さない(ready)", !/初勝利の報酬を受け取る/.test(waiting));
   {
     // 背の低い画面(375×667)では、はじめの一局の結果だけを詰めて、締めの一行まで送らずに見せる(2026-10-05 見直し)。
     // 描いて測るのは tools/check-intro-fit.mjs
@@ -372,7 +380,7 @@ console.log("\nC. 結果画面");
       /\.gameover-panel:has\(\.gameover-gate\) \.tutorial-reveal-pair \.card-face,\s*\.gameover-panel:has\(\.gameover-gate\) \.gameover-sub \{\s*display: none;/.test(shorter) && !/\.gameover-panel \{/.test(shorter),
       shorter,
     );
-    ok("「対戦の振り返り」は1行(門へ進む結果の1つだけの釦)", /\.gameover-grid-single \.go-review \{\s*white-space: nowrap;/.test(css));
+    ok("「対戦の振り返り」は1行(初勝利の報酬を受け取る結果の1つだけの釦)", /\.gameover-grid-single \.go-review \{\s*white-space: nowrap;/.test(css));
   }
   // 第1話はいままでどおり
   const ep1 = TUTORIALS[0];
@@ -404,20 +412,20 @@ console.log("\nD. 配線");
   ok("待つ札は「つづき」を光らせる", /nextLabel=\{tutActive\.nextLabel \|\| null\}/.test(game) && /lit=\{!!tutActive\.holdFoe\}/.test(game));
   ok("「前の説明へ」は canStepBack のときだけ", /onBack=\{canStepBack\(tutorial, tutIdx, a\) \? \(\) => setTutStep\(tutIdx - 1\) : null\}/.test(game));
   ok("待つ札の ▼ の代わりに光の筋", /tutThreat = \(\(\) => \{/.test(game) && /className="tutorial-threat"/.test(game));
-  ok("ストーリーの台本は札の「この話を飛ばす」「中断」を出さない", /onSkip=\{\s*tutorial\.storyAxis\s*\? null/.test(game) && /onInterrupt=\{tutorial\.storyAxis \? null : onHome \? goHome : onExit\}/.test(game));
-  ok("上のバーは「飛ばす」でなくストーリーの「中断」", /const skipMenu = tutorial && !tutorial\.storyAxis \? \(/.test(game));
+  ok("ストーリーの台本は札の「この話を飛ばす」「中断」を出さない", /onSkip=\{\s*tutorial\.intro\s*\? null/.test(game) && /onInterrupt=\{tutorial\.intro \? null : onHome \? goHome : onExit\}/.test(game));
+  ok("上のバーは「飛ばす」でなくストーリーの「中断」", /const skipMenu = tutorial && !tutorial\.intro \? \(/.test(game));
   ok("王を選ぶ画面に quiet・lockPlacement・showFoe", /quiet=\{!!tutorial\?\.opening\?\.stopAt\}/.test(game) && (game.match(/lockPlacement=\{!!tutorial\?\.opening\?\.lockPlacement\}/g) || []).length === 2 && /showFoe=\{!!tutorial\?\.opening\?\.stopAt\}/.test(game));
-  ok("story も受けたら story として記録(チュートリアルの xp・クリア・チケットなし)", /const asLesson = !!tutorial && !story;\s*const freshTutorial =\s*asLesson && won/.test(game) && /\.\.\.\(asLesson\s*\? \{\s*xp: won \? tutorial\.xp : 0,\s*tutorial: !0,/.test(game));
-  ok("結果の「門へ進む」は呼ぶ側の onGate", /onGate=\{onGate\}/.test(game) && /onClick=\{onGate\}/.test(game));
-  ok("席の名前: 相手は story.title を先に・自分は名前が無ければ「あなた」", /me \|\| \(story \? "あなた" : null\),/.test(screens) && /story\s*\? story\.title\s*: tut\s*\? null/.test(screens));
+  ok("story も受けたら story として記録(チュートリアルの xp・クリア・チケットなし)", /const asLesson = !!tutorial && !story && !asIntro;\s*const freshTutorial =\s*asLesson && won/.test(game) && /\.\.\.\(asLesson\s*\? \{\s*xp: won \? tutorial\.xp : 0,\s*tutorial: !0,/.test(game));
+  ok("結果の「初勝利の報酬を受け取る」は呼ぶ側の onGate", /onGate=\{onGate\}/.test(game) && /onClick=\{onGate\}/.test(game));
+  ok("導入の相手は練習相手、自分はあなた", screens.includes('me || (story || firstGame ? "あなた" : null)') && screens.includes('? "練習相手"'));
   // 待ちの帯(2026-10-05 見直し)。はじめの一局は、撃破の札・取る確認のあいだは出さず、相手の番は台本の一行
   ok(
     "待ちの帯: はじめの一局は撃破の札・取る確認のあいだ出さず、相手の番は台本の一行(決まり文句を出さない)",
-    /tutHold =\s*tutorial && !tutActive && tutIdx < tutorial\.steps\.length\s*\? tutorial\.storyAxis\s*\? (\/\/[^\n]*\n\s*)*a\.captureReveal \|\| pendingCapture\s*\? null\s*: a\.phase === "play" && a\.currentTurn === 1 && tutorial\.foeTurn\s*\? \{ hold: !0, text: tutorial\.foeTurn \}\s*: null\s*: \{/.test(game),
+    /tutHold =\s*tutorial && !tutActive && tutIdx < tutorial\.steps\.length\s*\? tutorial\.intro\s*\? (\/\/[^\n]*\n\s*)*a\.captureReveal \|\| pendingCapture\s*\? null\s*: a\.phase === "play" && a\.currentTurn === 1 && tutorial\.foeTurn\s*\? \{ hold: !0, text: tutorial\.foeTurn \}\s*: null\s*: \{/.test(game),
   );
   ok("待ちの帯: 第1〜13話の文はいままでどおり", /"相手の番です。少し待ってください。"\s*: "▼ の付いたボタンを押して進めてください。"/.test(game));
-  ok("待ちの帯も plain(「最短 N 手」)", /step=\{tutHold\}[\s\S]{0,200}?plain=\{!!tutorial\.storyAxis\}/.test(game));
-  ok("取る確認: はじめの一局は plain", /<CaptureConfirm\s+(\/\/[^\n]*\n\s*)*plain=\{!!tutorial\?\.storyAxis\}/.test(game));
+  ok("待ちの帯も plain(「最短 N 手」)", /step=\{tutHold\}[\s\S]{0,200}?plain=\{!!tutorial\.intro\}/.test(game));
+  ok("取る確認: はじめの一局は plain", /<CaptureConfirm\s+(\/\/[^\n]*\n\s*)*plain=\{!!tutorial\?\.intro\}/.test(game));
   // 勝負がついたあとの上の「トッタリー」(2026-10-05 見直し)。「対局をやめますか?」「クリアにも負けにもなりません」を出さない
   ok(
     "勝負のあとの上の「トッタリー」は確認を出さず、門があれば門へ・無ければ結果の「戻る」と同じ",
@@ -427,13 +435,13 @@ console.log("\nD. 配線");
   ok("ヒント・一言のたびに ▼ の駒を帯の上へ送る", /if \(!tutorial \|\| !tutHint\) return;[\s\S]{0,1200}?window\.scrollBy\(\{[\s\S]{0,200}?\}, \[tutHint, tutNudge, tutorial\]\);/.test(game));
   ok("ヒントの動きの図は横一列(3列)", /\.tutorial-hint-guide \.move-hint-rows \{\s*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/.test(fs.readFileSync(new URL("../src/styles.css", import.meta.url), "utf8")));
   // ストーリーとして遊ぶ台本には「降参する」を出さない(O。2026-10-01 本人の指示の直しを見張る)
-  ok("はじめの一局に「降参する」を出さない(ほかの対局は出す)", /\{!\(tutorial && tutorial\.storyAxis\) && \(\s*<div className="resign-row">/.test(game) && count(game, /className="resign-row"/g) === 1);
+  ok("はじめの一局に「降参する」を出さない(ほかの対局は出す)", /\{!\(tutorial && tutorial\.intro\) && \(\s*<div className="resign-row">/.test(game) && count(game, /className="resign-row"/g) === 1);
   // 2026-10-06 見直し
-  ok("はじめの一局に「この駒の行動ログを見る」を出さない(ほかの対局は出す)", /\{!Pl && x && a\.selectedId && !\(tutorial && tutorial\.storyAxis\) && \(\s*<div className="action-bar">/.test(game) && count(game, /この駒の行動ログを見る/g) === 1);
+  ok("はじめの一局に「この駒の行動ログを見る」を出さない(ほかの対局は出す)", /\{!Pl && x && a\.selectedId && !\(tutorial && tutorial\.intro\) && \(\s*<div className="action-bar">/.test(game) && count(game, /この駒の行動ログを見る/g) === 1);
   ok("ねらいの筋のある待つ札は下寄せ(盤の真ん中に置くと4段目を隠す)", /low=\{tutHasTarget \|\| !!tutActive\.threat\}/.test(game));
   ok(
     "はじめの一局の盤の上では、盤をまるごと上のバーと帯のあいだへ送る(▼ を真ん中へ送る決まりは使わない)",
-    /const fitPlain = !!\(tutorial && tutorial\.storyAxis && a\.phase === "play"\);/.test(game) &&
+    /const fitPlain = !!\(tutorial && tutorial\.intro && a\.phase === "play"\);/.test(game) &&
       /if \(!tutorial \|\| fitPlain\) return;/.test(game) &&
       /if \(!tutorial \|\| !tutHint\) return;\s*if \(fitPlain\) return;/.test(game) &&
       /if \(!fitPlain\) return;[\s\S]{0,1800}?let want = span\(\[grid\]\);[\s\S]{0,600}?window\.scrollBy\(\{ top: by,[\s\S]{0,120}?\}, \[fitPlain, tutIdx, tutHint, tutNudge, a\.selectedId, !!a\.captureReveal\]\);/.test(game),
@@ -443,13 +451,13 @@ console.log("\nD. 配線");
     "320×568: はじめの一局の帯(plain)を詰め、ヒントの図は小さな盤を外す",
     /@media \(max-height: 600px\) \{\s*\.tutorial-sheet-plain:not\(\.tutorial-sheet-front\) \.tutorial-sheet-inner \{[\s\S]*?\.tutorial-sheet-plain \.tutorial-hint-guide \.move-hint-row \.move-diagram \{\s*display: none;/.test(css),
   );
-  // 経験値の知らせ(2026-10-06 見直し)。門へ進む結果では上に出す(下に出すと「門へ進む」を覆った)
+  // 経験値の知らせ(2026-10-06 見直し)。初勝利の報酬を受け取る結果では上に出す(下に出すと「初勝利の報酬を受け取る」を覆った)
   ok(
-    "門へ進む結果では経験値の知らせを上の帯の下に出す(根の data-xp-at)",
+    "初勝利の報酬を受け取る結果では経験値の知らせを上の帯の下に出す(根の data-xp-at)",
     /const gateResult = !!onGate && won;[\s\S]{0,300}?root\.setAttribute\("data-xp-at", "top"\);\s*return \(\) => root\.removeAttribute\("data-xp-at"\);\s*\}, \[gateResult\]\);/.test(game) &&
       /:root\[data-xp-at="top"\] \.xp-gain \{\s*top: calc\(var\(--top-bar-h, 0px\) \+ 8px\);\s*bottom: auto;/.test(fs.readFileSync(new URL("../src/ui/xp-gain.css", import.meta.url), "utf8")),
   );
-  ok("門へ進む結果に後日談を出さない(配線)", !/story && won && story\.ready && onGate && <StoryAfterword/.test(game) && /story && won && story\.ready && !onGate && \(/.test(game));
+  ok("初勝利の報酬を受け取る結果に後日談を出さない(配線)", !/story && won && story\.ready && onGate && <StoryAfterword/.test(game) && /story && won && story\.ready && !onGate && \(/.test(game));
 }
 
 console.log(fail ? `\n${fail} 件の失敗` : "\nはじめの一局の画面: すべて通りました");

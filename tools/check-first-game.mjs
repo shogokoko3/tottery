@@ -7,8 +7,8 @@
  *   A. 盤の上の正しさ: 王を選ぶ段で止まる・王の力なし・役なし・初手で取れるのは 4♠ だけ・
  *      相手に取る手が無い・判定にならない
  *   B. 台本の通し: 王5通り × 選び直しのあり・なし × 4♦/5♥ で勝ちまで。holdFoe で相手が止まる・
- *      b4 は関門で止まる・並べ直しは止まる・結果のあなたの王の一行・1手目の空きマスは「そこに、伏せ札は無い。」・
- *      外したあとの取らない手は「取るのは、逃げた一枚。」
+ *      b4 は関門で止まる・並べ直しは止まる・結果のあなたの王の一行・1手目の空きマスは「そのマスには相手の札がありません。」・
+ *      外したあとの取らない手は「逃げた札を狙ってください。」
  *   C. 押せる操作をすべてたどる: 行き止まりが無く、勝ち以外で終わらない。あなたの番に札の無い場面が無い
  *   D. 文: 各行20字まで・行の出し分け・あと N 手・一言に ▼ を数えさせない
  *   E. 第1〜13話は変わらない(王の力あり・一覧に入らない・関門の文・題)
@@ -110,7 +110,7 @@ console.log("A. 盤の上の正しさ");
   const m = start();
   const a = m.a;
   ok("一覧(TUTORIALS・ALL_TUTORIALS)に入らない", !ALL_TUTORIALS.includes(tut) && !tutorialById(tut.id));
-  ok("フェーズ1・ストーリー二と三の王の初回", tut.phase === 1 && tut.storyAxis === "23");
+  ok("導入専用・王の力なし。ストーリーの軸を持たない", tut.phase === 1 && tut.intro === true && !tut.storyAxis);
   ok(
     "opening は王を選ぶ段で止まる(相手は確定済み・あなたは未確定)",
     a.phase === "setup" && a.setupSteps[0] === "king" && a.setupDone[1] && !a.setupDone[0] && a.setupPickKings[0] === null,
@@ -214,7 +214,7 @@ function playThrough(king, repick, finisher, miss = false) {
     want(same(empties.map((mv) => sq(mv.row, mv.col)).sort(), ["b2", "c3", "d2", "e2"]), `4♠ の空きマスが c3・b2・d2・e2 でない(${empties.map((mv) => sq(mv.row, mv.col))})`);
     for (const mv of empties) {
       const direct = press(m, { type: "MOVE_PIECE", pieceId: "t0", row: mv.row, col: mv.col, captures: mv.captures });
-      want(same(direct.blocked, textLines(tut.steps[2].wrongCell)), `4♠→${sq(mv.row, mv.col)} が「そこに、伏せ札は無い。」で止まらない(${JSON.stringify(direct.blocked)})`);
+      want(same(direct.blocked, textLines(tut.steps[2].wrongCell)), `4♠→${sq(mv.row, mv.col)} が「そのマスには相手の札がありません。」で止まらない(${JSON.stringify(direct.blocked)})`);
       // 画面と同じ形: 4♠ を選んでから、pieceId を付けずにマスを押す
       const viaSel = press(sel, { type: "MOVE_PIECE", row: mv.row, col: mv.col, captures: mv.captures });
       want(same(viaSel.blocked, textLines(tut.steps[2].wrongCell)), `選んでから ${sq(mv.row, mv.col)} を押しても台本の一言で止まらない`);
@@ -409,32 +409,48 @@ console.log("\nD. 文");
   ok(`札の文はどれも1行20字まで(${lines.length} 行)`, long.length === 0, long.join(" / "));
   ok("札の文は行の配列で持つ", tut.steps.every((st) => Array.isArray(st.text)));
   ok("文に「将棋」を使わない", !lines.some((l) => l.includes("将棋")));
+  // 数え方は算用数字(2026-10-06 本人の指示「漢数字を算用数字に直して」)。「逃げた一枚」「どの一枚」のように
+  // 数でなく「その札」を指す言い方と、決めた言葉(「どちらが王か考えてみましょう。」・締めの一行)、「もう一度」は漢数字のまま
+  {
+    const literary = /(その|どの|逃げた|残された|外れた|逃がした)一枚|どちらが王か考えてみましょう。|もう一度/g;
+    const counted = lines.filter((l) => /[一二三四五六七八九十]+(手|枚|つ|マス|歩|人|回|度)/.test(l.replace(literary, "")));
+    ok("数え方は算用数字(「五枚」「一枚をタップ」「二枚をねらう」と書かない)", counted.length === 0, counted.join(" / "));
+    ok(
+      "王を選ぶ札・両取りの札は算用数字(5枚から1枚・2枚をねらう)",
+      same(tut.steps[0].text, ["王にする札を選んでください。", "並んだ5枚から1枚をタップします。"]) &&
+        same(tut.steps[0].nudge, ["王にする札をタップしてください。"]) &&
+        same(tut.steps[3].text, ["王以外の札を取っても対局は続きます。", "4♠で取れる相手の札が2枚あります。", "相手がどちらを動かすか見てみましょう。"]) &&
+        same(tut.steps[3].kingAlt.text, ["王以外の札を取っても対局は続きます。", "4♠で取れる相手の札が2枚あります。", "相手がどちらを動かすか見てみましょう。"]),
+      JSON.stringify([tut.steps[0].text, tut.steps[0].nudge, tut.steps[3].text, tut.steps[3].kingAlt.text]),
+    );
+  }
   ok("始めは「あと 2 手」(王を選ぶ・確定は数えない)", movesLeft(tut, 0) === 2);
-  ok("結果の締めの一行", tut.tagline === "一手に、読みを。一枚に、野望を。");
+  ok("結果の締めの一行", tut.tagline === "相手の動きが、王を探す手がかりです。自分の王を守ることも大切です。");
   // 結びの札と決め手の印(2026-10-06 本人の指示)。導入の言葉の調子で
-  ok("結びの札は「相手が逃がした一枚は、王だった。」「動きを読めば、王に届く。」", same(tut.steps[5].text, ["相手が逃がした一枚は、王だった。", "動きを読めば、王に届く。"]), JSON.stringify(tut.steps[5].text));
-  ok("決め手の札の印は「あなたが読む、一手。」", tut.steps[4].need.choose.badge === "あなたが読む、一手。");
+  ok("結びの札は「相手が逃がした札が、王でした。」「相手の動きから、王を見つけました。」", same(tut.steps[5].text, ["相手が逃がした札が、王でした。", "相手の動きから、王を見つけました。"]), JSON.stringify(tut.steps[5].text));
+  ok("決め手の札の印は「どちらが王か考えてみましょう。」", tut.steps[4].need.choose.badge === "どちらが王か考えてみましょう。");
   ok("第1〜13話の決め手は印を持たない(画面の決まりの「自分で考える1手」のまま)", ALL_TUTORIALS.every((t) => t.steps.every((x) => !(x.need && x.need.choose && x.need.choose.badge))));
   const pick = tut.steps[4].need.choose;
-  ok("ヒント: 2 か 3・斜めに一歩なら 3 か 5", same(pick.hint, ["相手の王は、2 か 3。", "斜めに一歩なら、3 か 5。"]));
+  // 2行目は横の図の動き(「斜め 1マス。」)と同じ言い方(2026-10-06。前は「斜めに一歩なら」)
+  ok("ヒント: 2 か 3・斜めに1マスなら 3 か 5", same(pick.hint, ["相手の王は2か3です。", "斜めに1マス動けるのは3か5です。"]));
   ok("ヒントの動きの図は 2・3・5", same(pick.hintGuide.ranks, ["2", "3", "5"]));
   ok("自分で考える1手は、答えの駒を初めから光らせない", !tut.steps[4].focus.pieces.includes(tut.steps[4].need.pieceId));
   ok("自分で考える1手は、二枚(e3・b4)に同じ印", same([...tut.steps[4].focus.pieces].sort(), ["t6", "t9"]));
   const hold = tut.steps[3];
-  ok("待つ札は ▼ を付けず、光の筋と「つづき」", !hold.focus && same(hold.threat.targets, ["t6", "t9"]) && hold.nextLabel === "つづき");
+  ok("待つ札は ▼ を付けず、光の筋と「つづき」", !hold.focus && same(hold.threat.targets, ["t6", "t9"]) && hold.nextLabel === "相手の動きを見る");
   // 盤面を渡さなくても、待つ札とは行き来しない(戻ると関門が開いて行き止まる)
   ok("待つ札と自分で考える1手は「前の説明へ」を出さない", !canStepBack(tut, 3) && !canStepBack(tut, 4));
   ok("文字列はそのまま1行", same(textLines("あ"), ["あ"]) && same(textLines(null), []));
   // 取らない手の一言は ▼ を数えさせない(ヒントを開くと、あなたの 4♦ にも ▼ が付いて三つになる)
   const notCaptures = [...textLines(pick.notCapture), ...textLines(tut.steps[4].afterMiss.notCapture)];
   ok("取らない手の一言に ▼ を使わない(外したあとの一言も)", notCaptures.length === 2 && notCaptures.every((l) => !l.includes("▼")), notCaptures.join(" / "));
-  ok("外したあとの取らない手は、逃げた一枚だけを指す", same(tut.steps[4].afterMiss.notCapture, ["取るのは、逃げた一枚。"]));
-  ok("1手目の空きマスの一言", same(tut.steps[2].wrongCell, ["そこに、伏せ札は無い。"]));
+  ok("外したあとの取らない手は、逃げた一枚だけを指す", same(tut.steps[4].afterMiss.notCapture, ["逃げた札を狙ってください。"]));
+  ok("1手目の空きマスの一言", same(tut.steps[2].wrongCell, ["そのマスには相手の札がありません。"]));
   // 相手の番の帯の一行(game.jsx の tutHold)。決まり文句の「相手の番です。少し待ってください。」を使わない
-  ok("相手の番の一行は台本が持つ(です・ます調の決まり文句でない)", Array.isArray(tut.foeTurn) && tut.foeTurn.length === 1 && !/です|ます|ください/.test(tut.foeTurn.join("")), JSON.stringify(tut.foeTurn));
+  ok("相手の番の一行は台本が持つ(子ども向けの口調を使わない)", Array.isArray(tut.foeTurn) && tut.foeTurn.length === 1 && !/だよ|かな[？?]/.test(tut.foeTurn.join("")), JSON.stringify(tut.foeTurn));
   // 結果のあなたの王の行(2026-10-06 見直し)。行は文字列か句の配列。読点の無い長い行は手で切る
   const notes = [...tut.kingNote.hidden, ...tut.kingNote.struck].map((l) => (Array.isArray(l) ? l.join("") : l));
-  ok("結果のあなたの王の行は20字まで・です/ます調でない", notes.every((l) => [...l].length <= 20 && !/です|ます/.test(l)), notes.join(" / "));
+  ok("結果のあなたの王の行は20字まで・子ども向けの口調を使わない", notes.every((l) => [...l].length <= 20 && !/だよ|だったね/.test(l)), notes.join(" / "));
   ok("「最後まで伏せたまま。」は「最後まで」「伏せたまま。」の句(320 幅の半分の列で語の途中で割れた)", same(tut.kingNote.hidden, ["あなたの王は、", ["最後まで", "伏せたまま。"]]));
 }
 

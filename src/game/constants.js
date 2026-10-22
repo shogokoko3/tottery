@@ -1,3 +1,5 @@
+import { ALICE_SKINS } from "../skins/alice.js";
+
 export const VERSION = "v49";
 /** その版で何が入ったか。設定に添えて出す */
 export const VERSION_NOTE = "アカウント・布陣ボーナス・記録の再生・BGM";
@@ -46,10 +48,10 @@ export const MASTERY_PER_GAME = 3;
  */
 export const MASTERY_POINTS = Object.freeze({ king: 5, piece: 1, move: 1, moveMax: MASTERY_PER_GAME, capture: 1, captureMax: 10, kingCapture: 10 });
 /**
- * 熟練度の対象スキン(17種)。カード画面の並び順と、通しの称号の条件に使う。
+ * 熟練度の対象スキン。シリーズごとに並べ、通しの称号も同じシリーズ内で判定する。
  * base の id(:foil を除いた側)で持つ。所持していないスキンは鎖(ロック)。
  */
-export const MASTERY_SKINS = Object.freeze([
+export const LEGEND_MASTERY_SKINS = Object.freeze([
   "genie-magician", // A
   "zombie-male", // 2
   "zombie-female", // 3
@@ -68,7 +70,16 @@ export const MASTERY_SKINS = Object.freeze([
   "angel-k", // K 天使
   "demon-k", // K 悪魔
 ]);
-/** スキン id → 表示する札(カード画面のカード絵と並び) */
+const wonderlandSkins = [...ALICE_SKINS].sort(
+  (a, b) => RANKS.indexOf(a.rank) - RANKS.indexOf(b.rank),
+);
+export const MASTERY_SERIES = Object.freeze([
+  Object.freeze({ id: "heroes", name: "レジェンド", skins: LEGEND_MASTERY_SKINS }),
+  Object.freeze({ id: "alice", name: "ワンダーランド", skins: Object.freeze(wonderlandSkins.map((s) => s.id)) }),
+]);
+export const MASTERY_SKINS = Object.freeze(MASTERY_SERIES.flatMap((s) => s.skins));
+
+/** スキン id → 現行の札。ID中の数字は変更前の札の場合があるため使わない。 */
 export const MASTERY_SKIN_RANK = Object.freeze({
   "genie-magician": "A",
   "zombie-male": "2",
@@ -87,6 +98,7 @@ export const MASTERY_SKIN_RANK = Object.freeze({
   "demon-q": "Q",
   "angel-k": "K",
   "demon-k": "K",
+  ...Object.fromEntries(wonderlandSkins.map((s) => [s.id, s.rank])),
 });
 /** 称号が出る段と、アイコンが出る段 */
 export const MASTERY_TITLE_STEP = 3;

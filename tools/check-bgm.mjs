@@ -27,7 +27,7 @@ function is(got, want, label) {
 }
 
 // --- 画面ごと ---
-for (const screen of ["home", "matching", "tutorial", "rules"])
+for (const screen of ["home", "matching", "rules"])
   is(trackForScene({ screen }), "title", `${screen} は表題の曲`);
 for (const screen of ["online", "room"])
   is(trackForScene({ screen }), "waiting", `${screen} は待機の曲`);
@@ -57,8 +57,8 @@ is(
 );
 is(
   trackForScene({ screen: "game", phase: "gameover", result: "draw" }),
-  "waiting",
-  "引き分けは勝敗ジングルを鳴らさない",
+  "draw",
+  "引き分けは専用の余韻へ",
 );
 // 1台の端末で交互に指す対戦は勝ち負けを分けない
 is(

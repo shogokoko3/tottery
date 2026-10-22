@@ -2,6 +2,7 @@
 // node tools/check-bgm-playback.mjs
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import {TRACKS} from '../src/audio/tracks.js';
 import {build} from 'esbuild';
 const media=[], timers=new Map(); let clock=0,serial=0;
 const flush=async()=>{await Promise.resolve();await Promise.resolve();};
@@ -22,7 +23,7 @@ class AudioContext {
 const output=await build({entryPoints:['src/audio/player.js'],bundle:true,write:false,format:'iife',globalName:'Bgm',plugins:[{name:'isolate-profile',setup(b){b.onLoad({filter:/src\/game\/profile\.js$/},()=>({contents:'export const isTestPlay=()=>false;'}));}}]});
 const env={Audio,window:{AudioContext},fetch:()=>Promise.reject(new Error('SE not required')),setTimeout:(fn,ms)=>{const id=++serial;timers.set(id,{fn,at:clock+ms});return id;},clearTimeout:id=>timers.delete(id)};
 vm.runInNewContext(output.outputFiles[0].text,env);
-const bgm=env.Bgm,find=id=>media.find(m=>m.url.endsWith(`/${id}.m4a`));
+const bgm=env.Bgm,find=id=>media.find(m=>m.url.endsWith(`/${TRACKS[id].file}`));
 bgm.playTrack('title');bgm.unlockAudio();find('title').start();await flush();
 assert.equal(bgm.currentTrack(),'title');
 bgm.playTrack('setup');advance(2500);

@@ -34,6 +34,7 @@ import {
   readGacha,
   completeBattlePass,
 } from "./session.js";
+import { CONTENT_SEASONS } from "../game/content-seasons.js";
 import {
   isRankedRecord,
   worldGamesOf,
@@ -433,6 +434,7 @@ function AdminTools() {
   };
 
   const [bpUid, setBpUid] = useState("");
+  const [bpSeason, setBpSeason] = useState("heroes");
   const [bpBusy, setBpBusy] = useState(false);
   const [bpMsg, setBpMsg] = useState("");
   const completePass = async () => {
@@ -441,7 +443,7 @@ function AdminTools() {
     if (!uid) return setBpMsg("相手の uid を入れてください。");
     setBpBusy(true);
     try {
-      const r = await completeBattlePass(uid);
+      const r = await completeBattlePass(uid, bpSeason);
       setBpMsg(
         `クリア状態にしました(uid ${r.uid})。その人が次にバトルパスを開くと反映されます。`,
       );
@@ -503,6 +505,18 @@ function AdminTools() {
         value={bpUid}
         onChange={(e) => setBpUid(e.target.value)}
       />
+      <select
+        className="admin-input"
+        aria-label="どのバトルパスか"
+        value={bpSeason}
+        onChange={(e) => setBpSeason(e.target.value)}
+      >
+        {CONTENT_SEASONS.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.passName}
+          </option>
+        ))}
+      </select>
       <button
         className="btn btn-ghost btn-small"
         disabled={bpBusy}
@@ -964,6 +978,7 @@ function AdminDashboard({ onSignOut }) {
             プレイヤーを選ぶと戦績や登録日を確認できます。お知らせは全員または指定した相手に配信できます。
           </p>
           <nav className="admin-nav" aria-label="管理メニュー">
+            <a href="#admin-tools">ツール</a>
             <a href="#admin-players">プレイヤー</a>
             <a href="#admin-ranks">9×9通算</a>
             <a href="#admin-season">月間成績</a>
@@ -981,6 +996,9 @@ function AdminDashboard({ onSignOut }) {
             </p>
           </details>
         </section>
+
+        {/* ツールは一番上(2026-10-15 本人の指示「使いやすく」)。付与・クリア・履歴は日々使う */}
+        <AdminTools />
 
         <section className="admin-card" id="admin-players">
           <div className="admin-head">
@@ -1048,8 +1066,6 @@ function AdminDashboard({ onSignOut }) {
             )}
           </div>
         </section>
-
-        <AdminTools />
 
         <section className="admin-card" id="admin-ranks">
           <h2>9×9オンライン・通算成績</h2>

@@ -110,6 +110,9 @@ const EMPTY = {
   // titles.js が profile から判定するので、ここには持たない
   title: null,
   titles: [],
+  // 称号を手に入れた時刻({ 称号id: ms })。保存のたびに新しく使えるようになった称号へ控える(2026-10-15 本人の指示)。
+  // 対局数などで自動で決まる称号も、使えるようになった保存の時刻が入る
+  titleAt: {},
   // 達成したシークレットミッションの id
   secrets: [],
   // ガチャ称号の実績(collection.gachaStatsOf の写し)。称号判定に使う。獲得した称号は
@@ -141,6 +144,9 @@ const EMPTY = {
   missionProgress: null,
   // 一度クリアしたチュートリアル。2回目からは経験値を配らない
   cleared: [],
+  // 導入の一局の勝利。ストーリーや手引きのクリアとは別に保存する。
+  introFirstGameDone: false,
+  firstStoryRead: false,
   // フェーズ(ストーリーとフェーズ.md)。既定は 1(ストーリー公開 2026-09-30)
   phase: DEFAULT_PHASE,
   // フェーズの世代(phase.js PHASE_EPOCH)。違えばフェーズを最初からやり直す
@@ -362,6 +368,7 @@ export function loadProfile() {
     titles: Array.isArray(saved.titles)
       ? saved.titles.filter((x) => typeof x === "string")
       : [],
+    titleAt: normalizeTitleAt(saved.titleAt),
     secrets: Array.isArray(saved.secrets)
       ? saved.secrets.filter((x) => typeof x === "string")
       : [],
@@ -404,6 +411,12 @@ export function loadProfile() {
     cleared: Array.isArray(saved.cleared)
       ? saved.cleared.filter((x) => Number.isInteger(x))
       : [],
+    // 旧版は導入を第1話と共用していた。既存の進行は保持し、導入だけを再開させない。
+    introFirstGameDone: typeof saved.introFirstGameDone === "boolean"
+      ? saved.introFirstGameDone
+      : normalizeStory(saved.story)[1].includes("23") ||
+        (saved.phaseEpoch === PHASE_EPOCH && normalizePhase(saved.phase) > 1),
+    firstStoryRead: saved.firstStoryRead === true,
     // 世代が違う保存(公開前の端末が保存した phase:3 など)は、フェーズを既定からやり直す
     phase: saved.phaseEpoch === PHASE_EPOCH ? normalizePhase(saved.phase) : DEFAULT_PHASE,
     phaseEpoch: PHASE_EPOCH,
@@ -525,8 +538,35 @@ function announce() {
   }, 0);
 }
 
+/** 保存から読んだ獲得日時。称号id → 正の時刻だけ残す */
+function normalizeTitleAt(raw) {
+  const out = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [id, at] of Object.entries(raw))
+    if (typeof id === "string" && Number.isFinite(at) && at > 0) out[id] = at;
+  return out;
+}
+
+/**
+ * 新しく使えるようになった称号に獲得日時を控える(2026-10-15 本人の指示「獲得日が確認できるように」)。
+ * before から profile で増えた称号だけ。もう控えてあるものは触らない。
+ * 記録が始まる前に取った称号は控えが無いままで、画面では「獲得日の記録なし」と出る
+ */
+function stampTitleDates(before, profile, now = Date.now()) {
+  const earned = newlyEarned(before, profile);
+  if (!earned.length) return profile;
+  const titleAt = { ...(profile.titleAt || {}) };
+  for (const t of earned) if (!titleAt[t.id]) titleAt[t.id] = now;
+  return { ...profile, titleAt };
+}
+
 function saveProfile(profile, { notifyTitles = true } = {}) {
   const before = notifyTitles ? loadProfile() : null;
+  // 呼ぶ側は保存した profile をそのまま返すことが多いので、控えは渡された物に書き足す
+  if (before) {
+    const stamped = stampTitleDates(before, profile);
+    if (stamped !== profile) profile.titleAt = stamped.titleAt;
+  }
   try {
     localStorage.setItem(KEY, JSON.stringify(profile));
   } catch {
@@ -687,6 +727,7 @@ export function adoptServerRating(rating) {
 export function recordGame(won, opts) {
   const profile = loadProfile();
   const draw = won === null;
+  const isIntro = opts?.introFirstGame === true;
   // 呼び出し側はチュートリアルなら必ず opts.tutorial を立てる(tutorialId は勝ったときだけ)
   const isTutorial = !!(opts && opts.tutorial);
   const foeRating = opts && opts.foeRating;
@@ -699,10 +740,9 @@ export function recordGame(won, opts) {
   const after = step ? step.rating : before;
   // チュートリアルは初回だけ経験値が入る。2回目からは0
   const again =
-    opts &&
-    opts.tutorialId != null &&
-    profile.cleared.includes(opts.tutorialId);
-  const tutorialDraw = draw && (opts?.tutorial || opts?.tutorialId != null);
+    isIntro ? profile.introFirstGameDone :
+    opts && opts.tutorialId != null && profile.cleared.includes(opts.tutorialId);
+  const tutorialDraw = draw && (isIntro || opts?.tutorial || opts?.tutorialId != null);
   const gained =
     again || tutorialDraw
       ? 0
@@ -731,8 +771,9 @@ export function recordGame(won, opts) {
     wins: profile.wins + (won ? 1 : 0),
     draws: profile.draws + (draw ? 1 : 0),
     xp: profile.xp + gained,
+    introFirstGameDone: profile.introFirstGameDone || (isIntro && won === true),
     cleared:
-      opts && opts.tutorialId != null && !again && !draw
+      !isIntro && opts && opts.tutorialId != null && !again && !draw
         ? [...profile.cleared, opts.tutorialId]
         : profile.cleared,
     // 昇格の条件「そのフェーズでオンライン5勝」。ランダムマッチ(Bot 含む)・フレンドの勝ちを数える。
@@ -743,15 +784,17 @@ export function recordGame(won, opts) {
       opts.online &&
       won === true &&
       !isTutorial &&
+      !isIntro &&
       (opts.phase == null || opts.phase === normalizePhase(profile.phase))
         ? addPhaseWin(profile).phaseWins
         : profile.phaseWins,
     // ストーリーのステージ(opts.story = { axis, phase })。勝ったときだけ、その軸をクリアに。
     // 対局のフェーズが自分のフェーズと違えば数えない(古い端末との対局など)
     story:
-      opts &&
+      !isIntro && opts &&
       opts.story &&
       won === true &&
+      (normalizePhase(opts.story.phase) !== 1 || opts.story.axis !== "23" || profile.firstStoryRead) &&
       normalizePhase(opts.story.phase) === normalizePhase(profile.phase)
         ? clearAxis(profile, opts.story.axis).story
         : profile.story,
@@ -785,12 +828,21 @@ export function recordGame(won, opts) {
     // 保存の earned(功績値)とは別物なので、返り値ではこちらが優先する
     earned: newTitles,
     gained,
-    firstClear: !!(opts && opts.tutorialId != null) && !again && !draw,
+    firstClear: !isIntro && !!(opts && opts.tutorialId != null) && !again && !draw,
     levelBefore,
     levelAfter,
     leveledUp: levelAfter > levelBefore,
     xpNoticeId,
   };
+}
+
+/** 第1話の物語を読み終えた記録。読了だけではストーリーをクリアにしない。 */
+export function markFirstStoryRead() {
+  const profile = loadProfile();
+  if (profile.firstStoryRead) return profile;
+  const next = { ...profile, firstStoryRead: true };
+  saveProfile(next, { notifyTitles: false });
+  return next;
 }
 
 /** レベル。経験値の総量から決まる */
@@ -862,13 +914,13 @@ export function grantMissionTitle(missionId, titleId) {
     throw new Error("称号報酬が見つかりません。");
   const profile = loadProfile();
   if (profile.missions.includes(missionId)) return profile;
-  const next = {
+  const next = stampTitleDates(profile, {
     ...profile,
     titles: profile.titles.includes(titleId)
       ? profile.titles
       : [...profile.titles, titleId],
     missions: [...profile.missions, missionId],
-  };
+  });
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
   } catch {

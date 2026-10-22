@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ワンダーランド・ゲート · スマホプレビュー</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#08121c;color:#f3e3c9;font-family:serif}body{display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px}header{text-align:center;width:min(860px,100%)}h1{font-size:19px;letter-spacing:.12em;margin:0 0 12px}nav,.options{display:flex;justify-content:center;flex-wrap:wrap;gap:6px}button,select{font:inherit;font-size:12px;color:#efdfc4;background:#152636;border:1px solid #615540;border-radius:7px;padding:8px 12px;cursor:pointer}button[aria-pressed=true]{background:#3f3547;border-color:#d4b888;color:#fff1d0}.options{margin-top:8px}#phone{position:relative;flex:none;border-radius:18px;overflow:hidden;box-shadow:0 0 0 1px #bca37b55,0 18px 60px #0007}iframe{position:absolute;top:0;left:0;width:390px;height:844px;transform-origin:top left;border:0;background:#08121c}footer{font-size:12px;color:#bfae98;text-align:center;margin:0}a{color:#e6cea5}
+</style>
+<header><h1>ワンダーランド・ゲート</h1><nav id="themes" aria-label="門のモチーフ"></nav><div class="options"><select id="mode" aria-label="確認する演出"><option value="flow">ガチャ演出</option><option value="gate">門の開閉を確認</option></select><button id="metal" type="button" aria-pressed="false">通常の門</button><button id="replay" type="button">もう一度再生</button></div></header>
+<div id="phone"><iframe id="preview" title="スマホ版のワンダーランド・ゲート"></iframe></div>
+<footer>門にふれて開くと、カードが現れます。</footer>
+<script>
+const themes=[['alice-tea','お茶会'],['alice-caucus','コーカス・レース'],['alice-quadrille','カドリール'],['alice-maze','迷いの森'],['alice-illusion','幻影'],['alice-croquet','クロッケー大会']];
+const q=new URLSearchParams(location.search);let world=themes.some(t=>t[0]===q.get('world'))?q.get('world'):'alice-tea',gold=q.get('gold')==='1';
+const preview=document.querySelector('#preview'),phone=document.querySelector('#phone'),mode=document.querySelector('#mode'),metal=document.querySelector('#metal');
+mode.value=q.get('mode')==='gate'?'gate':'flow';
+function size(){const scale=Math.max(.2,Math.min(1,(innerWidth-28)/390,(innerHeight-document.querySelector('header').offsetHeight-document.querySelector('footer').offsetHeight-56)/844));phone.style.width=390*scale+'px';phone.style.height=844*scale+'px';preview.style.transform='scale('+scale+')';}
+function show(){for(const b of document.querySelectorAll('[data-world]'))b.setAttribute('aria-pressed',String(b.dataset.world===world));metal.setAttribute('aria-pressed',String(gold));metal.textContent=gold?'フォイルの金の門':'通常の門';const p=new URLSearchParams({world,series:'alice',sample:'alice',count:'10',foil:gold?'1':'0',gold:gold?'1':'0',time:'3000',run:String(Date.now())});preview.src=(mode.value==='flow'?'flow.html':'index.html')+'?'+p;history.replaceState(null,'','?'+new URLSearchParams({world,mode:mode.value,gold:gold?'1':'0'}));size();}
+for(const [id,label] of themes){const b=document.createElement('button');b.type='button';b.textContent=label;b.dataset.world=id;b.onclick=()=>{world=id;show()};document.querySelector('#themes').append(b)}
+metal.onclick=()=>{gold=!gold;show()};mode.onchange=show;document.querySelector('#replay').onclick=show;window.addEventListener('resize',size);show();
+</script>
+</html>

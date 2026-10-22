@@ -3,7 +3,9 @@ export function areaTheme(area) {
   if (!area) return null;
   if (area.type === "palace")
     return String(area.skin || "").startsWith("demon-") ? "hell" : "heaven";
-  return ["earth", "sea", "forest", "ice", "sky"].includes(area.type)
+  return ["earth", "sea", "forest", "ice", "sky",
+    "alice-caucus", "alice-quadrille", "alice-maze",
+    "alice-tea", "alice-illusion", "alice-croquet"].includes(area.type)
     ? area.type
     : null;
 }

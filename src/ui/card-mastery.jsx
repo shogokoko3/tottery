@@ -3,7 +3,7 @@ import { ArrowLeft, Lock } from "../icons.jsx";
  * ホームの「カード」。スキンごとの熟練度を見る画面(2026-09-22 着手。2026-09-24 でスキン制に)。
  *
  * 熟練度は**所持スキンを装備して王にし、貯めた点**(src/game/profile.js)。通常札では貯まらない。
- * 17スキンを A〜K の順に並べ、いまの点・段・次の段までの残り・称号を出す。
+ * シリーズを切り替え、A〜K の順に点・段・次の段までの残り・称号を出す。
  * 所持していないスキンは鎖(ロック)。スキンを1つも持っていなければ、この画面全体がロック。
  *
  * ここは見るだけ。数えるのは対局(src/ui/game.jsx)、貯めるのは recordMastery。
@@ -13,7 +13,7 @@ import { useState } from "react";
 import {
   MASTERY_STEPS,
   MASTERY_TITLE_STEP,
-  MASTERY_SKINS,
+  MASTERY_SERIES,
   MASTERY_SKIN_RANK,
 } from "../game/constants.js";
 import { masteryProgress } from "../game/profile.js";
@@ -39,13 +39,22 @@ const ALL_TITLES = MASTERY_TITLES.filter((t) => t.mastery === "all");
 /** そのスキンを持っているか(通常版・フォイルのどちらかを持っていれば所持) */
 const ownsSkin = (owned, skin) => !!(owned?.[skin] || owned?.[foilId(skin)]);
 
-export function CardMasteryScreen({ onBack }) {
+export function CardMasteryScreen({ onBack, initialSeries = null }) {
   const [profile] = useMissionProfile();
   const collection = useCollection();
   const owned = (collection && collection.owned) || {};
+  // ガチャと同じ流れ(2026-10-16 本人の指示): まず「シリーズ選択」の画面、選ぶといつもの一覧。
+  // 一覧の右上の「シリーズ選択へ」で選択画面に戻る
+  const [seriesId, setSeriesId] = useState(initialSeries);
+  const series = MASTERY_SERIES.find((s) => s.id === seriesId) || MASTERY_SERIES[0];
+  const pickSeries = (id) => {
+    setSeriesId(id);
+    setOpen(null);
+    if (typeof window !== "undefined") window.scrollTo(0, 0);
+  };
   const [open, setOpen] = useState(null);
   const mastery = (profile && profile.mastery) || {};
-  const rows = MASTERY_SKINS.map((skin) => {
+  const rows = series.skins.map((skin) => {
     const p = masteryProgress(mastery[skin] || 0);
     const title = titleFor(skin);
     return {
@@ -58,23 +67,76 @@ export function CardMasteryScreen({ onBack }) {
     };
   });
   const unlocked = rows.filter((r) => r.have);
-  const anyOwned = unlocked.length > 0;
+  const anyOwned = MASTERY_SERIES.some((s) => s.skins.some((skin) => ownsSkin(owned, skin)));
   const total = rows.reduce((s, r) => s + r.p.count, 0);
-  const reached = rows.filter((r) => r.p.step >= 1).length;
   const titled = rows.filter((r) => r.titleOwned).length;
   const mastered = rows.filter((r) => r.p.done).length;
-  // 通しの称号(17スキンすべてが同じ段)
-  const allRows = ALL_TITLES.map((t) => {
-    const need = t.id === "mastery-master" ? MASTERY_STEPS.length : MASTERY_TITLE_STEP;
+  // 通しの称号も表示中のシリーズだけで数える。
+  const allRows = ALL_TITLES.filter((t) => t.masterySeries === series.id).map((t) => {
+    const need = t.id.endsWith("-master") ? MASTERY_STEPS.length : MASTERY_TITLE_STEP;
     const has = rows.filter((r) => r.p.step >= need).length;
     return { title: t, need, has, owned: hasTitle(profile, t.id) };
   });
 
+  if (!seriesId)
+    return (
+      <div className="setup-wrap card-mastery">
+        <h2>カード</h2>
+        <p className="hint">熟練度を見るシリーズを選びます。所持スキンを装備して対局すると、そのスキンに点がたまります。</p>
+        {!anyOwned && (
+          <p className="card-mastery-locked-all">
+            <Lock size={14} /> スキンをまだ持っていません。ガチャやミッションでスキンを手に入れると、そのスキンの熟練度が解放されます。
+          </p>
+        )}
+        <div className="card-mastery-pick-list" role="list" aria-label="シリーズを選ぶ">
+          {MASTERY_SERIES.map((s) => {
+            const have = s.skins.filter((skin) => ownsSkin(owned, skin));
+            const points = s.skins.reduce((n, skin) => n + (mastery[skin] || 0), 0);
+            return (
+              <section className="gacha-pick card-mastery-pick" key={s.id} role="listitem">
+                <div className="gacha-pick-head">
+                  <h2>{s.name}</h2>
+                  <span>所持 {have.length}/{s.skins.length} · 合計 {points}点</span>
+                </div>
+                <div className="card-mastery-pick-art" onClick={() => pickSeries(s.id)} aria-hidden="true">
+                  {s.skins.map((skin) => (
+                    <CardFace
+                      key={skin}
+                      rank={MASTERY_SKIN_RANK[skin]}
+                      suit="spade"
+                      size="sm"
+                      isKing
+                      skinId={ownsSkin(owned, skin) ? (owned[foilId(skin)] ? foilId(skin) : skin) : undefined}
+                      animated={false}
+                    />
+                  ))}
+                </div>
+                <button type="button" className="skin-btn skin-btn-gold gacha-pick-go" onClick={() => pickSeries(s.id)}>
+                  このシリーズの熟練度を見る
+                </button>
+              </section>
+            );
+          })}
+        </div>
+        <button className="btn btn-ghost btn-home" onClick={onBack}>
+          <ArrowLeft size={16} /> ホームに戻る
+        </button>
+      </div>
+    );
+
   return (
     <div className="setup-wrap card-mastery">
-      <h2>カード</h2>
+      <div className="card-mastery-top">
+        <h2>カード</h2>
+        {/* 右上にガチャと同じ「シリーズ選択へ」(2026-10-16 本人の指示) */}
+        <button type="button" className="skins-gacha-back card-mastery-back" onClick={() => { setSeriesId(null); setOpen(null); }}>
+          <ArrowLeft size={14} /> シリーズ選択へ
+        </button>
+      </div>
+      <p className="card-mastery-series-name">{series.name}</p>
       <p className="hint">
-        所持スキンを装備して王にすると、そのスキンに点がたまります。王に選ぶ +5、駒を出す +1(何体でも)、
+        所持スキンを装備して対局すると、そのスキンに点がたまります。通常版とフォイル版は同じ熟練度です。
+        王に選ぶ +5、駒を出す +1(何体でも)、
         王として動かす +1(1局3点まで)、王で相手の駒を取る +1(10点まで)、王で相手の王を討つ +10。
         段に届くと称号が手に入ります。通常札では増えません。盤の有利不利には効きません。
       </p>
@@ -85,19 +147,19 @@ export function CardMasteryScreen({ onBack }) {
       )}
       <div className="card-mastery-summary" aria-label="熟練度のまとめ">
         <span>
-          解放したスキン <b>{unlocked.length}</b>/{MASTERY_SKINS.length}
+          解放したスキン <b>{unlocked.length}</b>/{series.skins.length}
         </span>
         <span>
-          称号 <b>{titled}</b>/{MASTERY_SKINS.length}
+          称号 <b>{titled}</b>/{series.skins.length}
         </span>
         <span>
-          極み <b>{mastered}</b>/{MASTERY_SKINS.length}
+          極み <b>{mastered}</b>/{series.skins.length}
         </span>
         <span>
           合計 <b>{total}</b>点
         </span>
       </div>
-      <ul className="card-mastery-list">
+      <ul className="card-mastery-list" aria-label={`${series.name}シリーズの熟練度`}>
         {rows.map(({ skin, rank, p, title, have, titleOwned }) => {
           const isOpen = open === skin;
           const s = byId(skin);
@@ -150,6 +212,7 @@ export function CardMasteryScreen({ onBack }) {
                 <span className="card-mastery-body">
                   <span className="card-mastery-head">
                     <b className="card-mastery-rank">{rank}</b>
+                    <span className="card-mastery-skin-name">{s?.name || "スキン"}</span>
                     <span className="card-mastery-step">{masteryStepName(p.step)}</span>
                     <span className="card-mastery-count">
                       {p.done ? `${p.count}点` : `${p.count} / ${p.next}点`}
@@ -204,7 +267,7 @@ export function CardMasteryScreen({ onBack }) {
         })}
       </ul>
       <section className="card-mastery-all" aria-label="通しの称号">
-        <h3>すべてのスキンを使い込むと</h3>
+        <h3>{series.name}の全スキンを使い込むと</h3>
         {allRows.map(({ title, need, has, owned: got }) => (
           <div key={title.id} className={`card-mastery-all-row${got ? " is-owned" : ""}`}>
             {got ? (
@@ -213,7 +276,7 @@ export function CardMasteryScreen({ onBack }) {
               <b className="card-mastery-all-name">{title.name}</b>
             )}
             <small>
-              {title.how} · {masteryStepName(need)}に届いたスキン {has}/{MASTERY_SKINS.length}
+              {title.how} · {masteryStepName(need)}に届いたスキン {has}/{series.skins.length}
             </small>
           </div>
         ))}

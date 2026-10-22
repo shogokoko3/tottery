@@ -1,0 +1,404 @@
+{
+  "baseline": {},
+  "kings": {
+    "kingBonus": {
+      "2": 6,
+      "3": 5,
+      "4": 4,
+      "8": 2,
+      "9": 2
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    }
+  },
+  "kings2": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 11,
+      "5": 6,
+      "8": 8,
+      "9": 8,
+      "10": 6
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    }
+  },
+  "kings3": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    }
+  },
+  "kings4": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    }
+  },
+  "guard": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 1
+  },
+  "courage": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "reviveCourage": 1
+  },
+  "tea": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "teaMax": 9,
+    "teaCap": 20
+  },
+  "tealess": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "teaMax": 2,
+    "teaCap": 8
+  },
+  "guard05": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 0.5
+  },
+  "guardK": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 1
+  },
+  "croq": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "soldiersNearKing": 2,
+    "croquetBackBias": 2
+  },
+  "courage2": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "reviveCourage": 1.5
+  },
+  "legacy": {
+    "kingBonus": {},
+    "kinBonus": {},
+    "avoidCaucusKing": 0,
+    "soldiersNearKing": 0,
+    "encircleGuard": 0,
+    "encirclePieceGuard": 0,
+    "reviveCourage": 0,
+    "croquetHint": 0,
+    "croquetBackBias": 0,
+    "teaMax": 5,
+    "teaCap": 12,
+    "mulliganFish": 0,
+    "mulliganFishValue": 3
+  },
+  "best": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 1,
+    "reviveCourage": 1,
+    "soldiersNearKing": 2,
+    "croquetBackBias": 2,
+    "croquetHint": 1,
+    "mulliganFish": 4,
+    "mulliganFishValue": 4
+  },
+  "nohint": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 1,
+    "reviveCourage": 1,
+    "soldiersNearKing": 2,
+    "croquetBackBias": 2,
+    "croquetHint": 0
+  },
+  "fish2v3": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 1,
+    "reviveCourage": 1,
+    "soldiersNearKing": 2,
+    "croquetBackBias": 2,
+    "croquetHint": 1,
+    "mulliganFish": 2,
+    "mulliganFishValue": 3
+  },
+  "fish4v3": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 1,
+    "reviveCourage": 1,
+    "soldiersNearKing": 2,
+    "croquetBackBias": 2,
+    "croquetHint": 1,
+    "mulliganFish": 4,
+    "mulliganFishValue": 3
+  },
+  "fish4v4": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 1,
+    "reviveCourage": 1,
+    "soldiersNearKing": 2,
+    "croquetBackBias": 2,
+    "croquetHint": 1,
+    "mulliganFish": 4,
+    "mulliganFishValue": 4
+  },
+  "fish8v4": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 1,
+    "reviveCourage": 1,
+    "soldiersNearKing": 2,
+    "croquetBackBias": 2,
+    "croquetHint": 1,
+    "mulliganFish": 8,
+    "mulliganFishValue": 4
+  },
+  "nofish": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 1,
+    "reviveCourage": 1,
+    "soldiersNearKing": 2,
+    "croquetBackBias": 2,
+    "croquetHint": 1,
+    "mulliganFish": 0,
+    "mulliganFishValue": 4
+  },
+  "low2": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 1,
+    "reviveCourage": 1,
+    "soldiersNearKing": 2,
+    "croquetBackBias": 2,
+    "croquetHint": 1,
+    "mulliganFish": 4,
+    "mulliganFishValue": 4,
+    "reversalLowBonus": 2
+  },
+  "low4": {
+    "kingBonus": {
+      "2": 14,
+      "3": 12,
+      "4": 12,
+      "8": 14,
+      "9": 12,
+      "10": 7,
+      "K": -4
+    },
+    "kinBonus": {
+      "2": 3,
+      "3": 3
+    },
+    "encircleGuard": 1,
+    "reviveCourage": 1,
+    "soldiersNearKing": 2,
+    "croquetBackBias": 2,
+    "croquetHint": 1,
+    "mulliganFish": 4,
+    "mulliganFishValue": 4,
+    "reversalLowBonus": 4
+  }
+}

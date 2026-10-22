@@ -12,17 +12,20 @@ const FOV = 50,
 const point = ([u, v]) => new T.Vector2((u - 0.5) * W, (1 - v) * H);
 const mix = (a, b, t) => a + (b - a) * t;
 
-function paintedMaterial(texture, gold) {
+function paintedMaterial(texture, gold, motif = 0, accent = "#ffffff") {
   return new T.ShaderMaterial({
     uniforms: {
       uMap: { value: texture },
       uGold: { value: gold ? 1 : 0 },
       uTime: { value: 0 },
+      uMotif: { value: motif },
+      uAccent: { value: new T.Color(accent) },
     },
     side: T.DoubleSide,
     vertexShader: `varying vec2 vUv; void main() { vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
     fragmentShader: `
-      uniform sampler2D uMap; uniform float uGold; uniform float uTime; varying vec2 vUv;
+      uniform sampler2D uMap; uniform float uGold; uniform float uTime;
+      uniform float uMotif; uniform vec3 uAccent; varying vec2 vUv;
       void main() {
         vec3 c=texture2D(uMap,vUv).rgb;
         float value=dot(c,vec3(.2126,.7152,.0722));
@@ -34,6 +37,14 @@ function paintedMaterial(texture, gold) {
         gilded+=vec3(1.25,.91,.34)*sqrt(value)*sweep*(.55+charge*.6);
         gilded+=vec3(.2,.12,.02)*pow(value,.55)*charge;
         c=mix(c,gilded,uGold*.91);
+        // Wonderland's engravings breathe before the touch, then answer the
+        // opening. Keep their painted relief and the original foil sweep intact.
+        if (uMotif > .5) {
+          float pulse=.5+.5*sin(uTime*1.45+uMotif*.7);
+          float edge=exp(-pow(abs(vUv.x-.5)/.012,2.));
+          float glow=(.012+.019*pulse)*smoothstep(.18,.62,value);
+          c+=uAccent*glow+uAccent*edge*.045*(.3+.7*charge);
+        }
         gl_FragColor=vec4(c,1.0);
         #include <colorspace_fragment>
       }`,
@@ -173,7 +184,7 @@ export function createSummonScene(canvas, plan, sharedRenderer = null) {
     });
     scene.add(portal);
 
-    const front = paintedMaterial(texture, plan.gold);
+    const front = paintedMaterial(texture, plan.gold, architecture.motif || 0, world.accent);
     paintedFront = front;
     if (plan.gold) {
       goldLight = makeSummonGoldLight({
@@ -298,12 +309,12 @@ function retirePrepared(entry) {
   if (prepared === entry) prepared = null;
   entry.ready.finally(() => entry.reference.dispose()).catch(() => {});
 }
-export function warmSummonRenderer() {
+export function warmSummonRenderer(world = "heaven") {
   if (!prepared) {
     const canvas = document.createElement("canvas");
     let reference;
     try {
-      reference = createSummonScene(canvas, {world: "heaven", gold: true, count: 10});
+      reference = createSummonScene(canvas, {world, gold: true, count: 10});
     } catch { return () => {}; }
     const entry = { canvas, reference, users: 0, active: false, retired: false };
     prepared = entry;

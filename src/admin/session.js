@@ -78,6 +78,6 @@ export async function readGacha(uid) {
 }
 
 /** 運営: バトルパスをクリア状態にする(権利＋全マス。端末が次に開いたとき埋める) */
-export async function completeBattlePass(uid) {
-  return adminPost("/api/admin/pass-complete", { uid });
+export async function completeBattlePass(uid, season = "heroes") {
+  return adminPost("/api/admin/pass-complete", { uid, season });
 }

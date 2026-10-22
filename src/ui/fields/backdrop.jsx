@@ -7,6 +7,13 @@ const files = typeof __FIELD_FILES__ === "undefined" ? {} : __FIELD_FILES__;
 // 表に無いのは組み立て前の手元だけなので、そのときだけ png を当てる
 export const fieldUrl = (theme) => `fields/${files[theme] || `${theme}.png`}`;
 
+// Render the entire illustration, as with the original fields. Keep artwork
+// and the playable grid independent so the phone keeps its large touch cells.
+export function FieldArtwork({ theme, current = false }) {
+  return <div className={`field-layer${current ? " field-current" : ""}`}
+    style={{ backgroundImage: `url(${fieldUrl(theme)})` }} />;
+}
+
 /**
  * 絵の縁(盤の内側の余白)の割合。以前は 12% で、9×9 の1マスがスマホで 27px ほどになり
  * 駒を触りにくかった(2026-09-11 本人の指摘)。小さな画面ほど縁を削ってマスを残す(5% でもまだ小さいとのことで 3% に)
@@ -59,16 +66,9 @@ export function FieldBackdrop({ theme, areas }) {
       aria-hidden="true"
     >
       {outgoing && outgoing !== theme && (
-        <div
-          className="field-layer"
-          style={{ backgroundImage: `url(${fieldUrl(outgoing)})` }}
-        />
+        <FieldArtwork theme={outgoing} />
       )}
-      <div
-        key={theme}
-        className="field-layer field-current"
-        style={{ backgroundImage: `url(${fieldUrl(theme)})` }}
-      />
+      <FieldArtwork key={theme} theme={theme} current />
       <BackgroundObjects src={fieldUrl(theme)} theme={theme} paused={false} />
     </div>
   );

@@ -140,15 +140,23 @@ is(
 is("鍵が重ならない", new Set(PRIMER_PAGES.map((p) => p.key)).size, PRIMER_PAGES.length);
 
 console.log("\n導入の中身(寿司将棋のように: どんなゲームか → 勝ち方。2026-09-30 本人の指示)");
-is("並び: ようこそ → 一手ずつ → 勝ち方 → 討てなくなったら → 王は伏せたまま → 陣 → あとはストーリーで", PRIMER_PAGES.map((p) => p.key), ["welcome", "turn", "win", "judge", "hidden", "setup", "story"]);
-is("勝ち方のもう1つ(どちらの王も討てなくなったら、はじめに並べた札の合計が小さいほうの勝ち)", PRIMER_PAGES.find((p) => p.key === "judge").lines.map(primerLineText), ["どちらの王も討てなくなったら、", "はじめに並べた札の合計が、小さいほうの勝ち。"]);
+is("並び: ようこそ → 1手ずつ → 勝ち方 → 取れなくなったら → 王は伏せたまま → 陣 → あとはストーリーで", PRIMER_PAGES.map((p) => p.key), ["welcome", "turn", "win", "judge", "hidden", "setup", "story"]);
+// 勝ち方のもう1つ(adjudication.js)。2行目は20字まで(前の「はじめに並べた札の合計が、…」は22字。2026-10-06 本人の指示「よしなに」)。
+// 数えるのは、はじめに並べた札。手引きは予備札に触れないので「並べた札」で足りる
+is("勝ち方のもう1つ(どちらの王も取れなくなったら、並べた札の合計が小さいほうの勝ち)", PRIMER_PAGES.find((p) => p.key === "judge").lines.map(primerLineText), ["どちらの王も取れなくなったら、", "並べた札の合計が、小さいほうの勝ち。"]);
+is("「取れなくなったら」の題", PRIMER_PAGES.find((p) => p.key === "judge").title, "取れなくなったら");
 // 1枚目の本文は語り1枚目(prologue.jsx)に合わせ、読点で行を切る(2026-10-01 本人の指示。
 // 1行の長文だと「ボードゲ/ーム」と語の途中で折り返していた)
 is("どんなゲームかを最初に言う(語り1枚目と同じ言葉)", PRIMER_PAGES[0].lines.join(""), "トランプの札を駒に、伏せて戦う一対一。");
 is("1枚目は読点で行を切る", [...PRIMER_PAGES[0].lines], ["トランプの札を駒に、", "伏せて戦う一対一。"]);
 is("「王は名乗らない」の題は「王は、伏せたまま」に", PRIMER_PAGES.find((p) => p.key === "hidden").title, "王は、伏せたまま");
 is("「名乗らない」の言い回しを使わない", PRIMER_PAGES.some((p) => /名乗らない/.test(p.title + p.lines.map(primerLineText).join(""))), false);
-is("勝ち方を言う(相手の王を討てば勝ち)", PRIMER_PAGES.find((p) => p.key === "win").lines.map(primerLineText), ["相手の王を討てば、勝ち。"]);
+// 勝ち方は「取る」(2026-10-06 本人の指示「よしなに」)。語り2枚目の本文・ステージ前の説明と同じ言い方
+is("勝ち方を言う(相手の王を取れば勝ち)", PRIMER_PAGES.find((p) => p.key === "win").lines.map(primerLineText), ["相手の王を取れば、勝ち。"]);
+{
+  const { stageIntro } = await import("../src/game/story.js");
+  is("勝ち方の言い方は、語り2枚目の本文・ステージ前の説明と同じ「取れば」", [/key: "read",[\s\S]*?note: "相手の王を取れば、あなたの勝ち。"/.test(read("src/ui/prologue.jsx")), stageIntro("23", 1).note[0]], [true, "相手の王を取れば、勝ち。"]);
+}
 is("駒の動きはここでは見せない(ステージの前に盤の図で見せる)", PRIMER_PAGES.some((p) => p.rank), false);
 is("王の力には触れない(フェーズ1 には無い)", PRIMER_PAGES.some((p) => /王の力|力がつき/.test(p.lines.map(primerLineText).join(""))), false);
 {
@@ -163,9 +171,9 @@ is("王の力には触れない(フェーズ1 には無い)", PRIMER_PAGES.some(
   is("句をつなぐと行の文(読点・句点で切った句も、手で切った句も)", allLines.every((line) => primerPhrases(line).join("") === primerLineText(line)), true);
   // 文の欄は 375 幅で 281px・320 幅で 226px ほど(14px)。1つの句は全角15字ぶんまで
   is("1つの句は全角15字ぶんまで(320 幅の文の欄に入る)", allLines.flatMap(primerPhrases).filter((p) => em(p) > 15), []);
-  // 2026-10-06 本人の指示で導入の調子に書き直した。句は読点で切る。読点の無い長い句(「どちらの王も討てなくなったら、」)は手で切る
+  // 2026-10-06 本人の指示で導入の調子に書き直した。句は読点で切る。読点の無い長い句(「どちらの王も取れなくなったら、」)は手で切る
   is(
-    "句は読点で切り、読点の無い長い句は手で切る(討てなくなったら・一手ずつ・あとはストーリーで)",
+    "句は読点で切り、読点の無い長い句は手で切る(取れなくなったら・1手ずつ・あとはストーリーで)",
     [
       primerPhrases(PRIMER_PAGES.find((p) => p.key === "judge").lines[0]),
       primerPhrases(PRIMER_PAGES.find((p) => p.key === "judge").lines[1]),
@@ -173,8 +181,8 @@ is("王の力には触れない(フェーズ1 には無い)", PRIMER_PAGES.some(
       primerPhrases(primerOutroLines({ phase: 1, story: { 1: [], 2: [], 3: [] } })[0]),
     ],
     [
-      ["どちらの王も", "討てなくなったら、"],
-      ["はじめに並べた札の合計が、", "小さいほうの勝ち。"],
+      ["どちらの王も", "取れなくなったら、"],
+      ["並べた札の合計が、", "小さいほうの勝ち。"],
       ["相手の駒へ進めば、", "その一枚を取れる。"],
       ["ステージごとに、", "相手の王の動きを覚える。"],
     ],
@@ -187,9 +195,30 @@ is("王の力には触れない(フェーズ1 には無い)", PRIMER_PAGES.some(
   ];
   is("です・ます調を使わない(題も本文も)", words.filter((w) => /です|ます|ください|でした/.test(w)), []);
   is("「将棋」とほかのゲームの名前を使わない", words.filter((w) => /将棋|チェス|ポーカー|ババ抜き|大富豪/.test(w)), []);
-  is("数は漢数字(「1手」「1枚」「1つ」と書かない)", PRIMER_PAGES.flatMap((p) => [p.title, ...p.lines.map(primerLineText)]).filter((w) => /[0-9０-９]/.test(w)), []);
-  is("題「1手ずつ」は「一手ずつ」", PRIMER_PAGES.find((p) => p.key === "turn").title, "一手ずつ");
-  // 20字を超える行(「はじめに並べた札の合計が、小さいほうの勝ち。」)は、狭い幅で読点のところで折れる
+  // 数え方は算用数字(2026-10-06 本人の指示「漢数字を算用数字に直して」。前は漢数字にそろえていた)。
+  // 「その一枚」「どの一枚」のように数でなく「その札」を指す言い方は漢数字のまま(語り1枚目の「その一枚が、」と同じ)。
+  // 「一対一」「二と三の王」(ステージの名)は数え方でないので見ない
+  const literary = /(その|どの)一枚/g;
+  is(
+    "数え方は算用数字(「一手ずつ」「一枚を動かす」「一枚を、王にする」と書かない)",
+    words.filter((w) => /[一二三四五六七八九十]+(手|枚|つ|マス|歩|人|回|度)/.test(w.replace(literary, ""))),
+    [],
+  );
+  is("題「一手ずつ」は「1手ずつ」", PRIMER_PAGES.find((p) => p.key === "turn").title, "1手ずつ");
+  is(
+    "数える行は算用数字(1枚を動かす・その中の1枚を、王にする)",
+    [PRIMER_PAGES.find((p) => p.key === "turn").lines[0], PRIMER_PAGES.find((p) => p.key === "setup").lines[1]],
+    ["あなたの番に、1枚を動かす。", "その中の1枚を、王にする。"],
+  );
+  // ルールの説明は「取る」。「討つ」は語りの見出し(「隠れた王を討て。」)と演出(「王を討った!」)だけ
+  is("手引きは「討つ」を使わない(題も本文も)", words.filter((w) => /討/.test(w)), []);
+  // 勝ち方の2枚(勝ち方・取れなくなったら)は20字まで(2026-10-06 本人の指示「よしなに」。前は22字の行があった)
+  is(
+    "勝ち方の2枚の行は20字まで",
+    PRIMER_PAGES.filter((p) => p.key === "win" || p.key === "judge").flatMap((p) => p.lines.map(primerLineText)).filter((w) => [...w].length > 20),
+    [],
+  );
+  // 20字を超える行は、狭い幅で読点のところで折れる
   is("1行は20字前後(22字まで)", words.filter((w) => [...w].length > 22), []);
   is("最後の札の差し替えも導入の調子(全部クリアしたら「ステージは、何度でも遊べる。」)", primerOutroLines({ phase: 3, story: { 1: [], 2: [], 3: ["23", "45", "67", "89", "10", "jq", "k"] } })[1], "ステージは、何度でも遊べる。");
   is("文字列の行は読点・句点のあとで切る", [primerPhrases("次は、二と三の王。"), primerPhrases("王はお互いに伏せたまま。"), primerPhrases("")], [["次は、", "二と三の王。"], ["王はお互いに伏せたまま。"], []]);
@@ -204,11 +233,11 @@ is("最後はストーリーへ渡す(一覧の一行と同じ「次は、二と
   reset();
   states[0] = PRIMER_PAGES.findIndex((p) => p.key === "turn");
   const tree = render({ onDone: () => {} });
-  is("「一手ずつ」の絵は自分の駒 ▶ 相手の駒", all(tree, (n) => n.type === "Piece").length, 2);
+  is("「1手ずつ」の絵は自分の駒 ▶ 相手の駒", all(tree, (n) => n.type === "Piece").length, 2);
   reset();
   states[0] = PRIMER_PAGES.findIndex((p) => p.key === "judge");
   const judge = render({ onDone: () => {} });
-  is("「討てなくなったら」の絵は札の組が2つ(合計の小さいほうが勝ち)", [all(judge, (n) => n.type === "CardFace").length, !!cls(judge, "is-win")], [6, true]);
+  is("「取れなくなったら」の絵は札の組が2つ(合計の小さいほうが勝ち)", [all(judge, (n) => n.type === "CardFace").length, !!cls(judge, "is-win")], [6, true]);
   reset();
   states[0] = PRIMER_PAGES.length - 1;
   const out = render({ onDone: () => {}, outro: ["一行目", "次は 六と七の王から。"] });
@@ -284,11 +313,11 @@ console.log("\n配線");
   // ストーリー画面の「遊び方」と早見表の「はじめに」に残す
   is("ホームの案内(10連のあと)で自動に出さない", /offerTutorial|doneLabel="ストーリーを始める"/.test(screens), false);
   is("ストーリーをはじめて開いても自動に出さない", /storyPrimerSeen\(\)|setStoryPrimer\("first"\)|storyAfterPrimer/.test(screens), false);
-  is("手引きを出すのはストーリーの「遊び方」の1か所だけ(screens.jsx)", (screens.match(/<Primer\b/g) || []).length, 1);
-  is("ストーリーの「遊び方」から読み返せる", screens.includes('onGuide={() => setStoryPrimer("guide")}') && /storyPrimer && \(\s*<Primer/.test(screens), true);
-  is("「遊び方」は閉じるだけ(最後の釦も途中でやめる釦も「とじる」)", /<Primer\s+outro=\{primerOutroLines\(loadProfile\(\)\)\}\s+doneLabel="とじる"\s+skipLabel="とじる"\s+onSkip=\{\(\) => setStoryPrimer\(null\)\}\s+onDone=\{\(\) => setStoryPrimer\(null\)\}/.test(screens), true);
+  is("従来の手引きは早見表に残し、ストーリーの入口は漫画にする", (screens.match(/<Primer\b/g) || []).length, 0);
+  is("ストーリーの「遊び方」から読み返せる", screens.includes('onGuide={() => setStoryPrimer("guide")}') && /storyPrimer && \(\s*<WelcomeComic/.test(screens), true);
+  is("読み返しは閉じるだけで対局や報酬を開始しない", screens.includes("<WelcomeComic onDone={() => setStoryPrimer(null)} />"), true);
   is("導入と説明を重ねない", /storyIntro && !storyPrimer && \(/.test(screens), true);
-  is("手引きの最後の文は次に遊ぶステージに合わせる(2か所とも)", (screens.match(/outro=\{primerOutroLines\(loadProfile\(\)\)\}/g) || []).length === 1 && read("src/ui/guides.jsx").includes("outro={primerOutroLines(loadProfile())}"), true);
+  is("早見表の手引きの最後の文は次に遊ぶステージに合わせる", read("src/ui/guides.jsx").includes("outro={primerOutroLines(loadProfile())}"), true);
   const guides = read("src/ui/guides.jsx");
   is("早見表からも読み返せる", /tab === "primer"/.test(guides), true);
   is("早見表に「はじめに」がある", /はじめに/.test(guides), true);

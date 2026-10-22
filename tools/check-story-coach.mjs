@@ -2,7 +2,7 @@
  * ストーリー2つ目の手当て(src/game/story-coach.js。2026-10-01 本人の指示)と、
  * フェーズ1 のストーリーの時間制限なし(src/game/story.js storyUntimed)を確かめる。
  *
- *   はじめの一局のあとの最初の CPU 戦(ふつうは四と五の王)の初回だけ、
+ *   はじめの一局のあとの最初のストーリー対局(ふつうは二と三の王)の初回だけ、
  *   サイコロ・引き直し・陣で一言ずつ。引き直しは「このまま」を光らせ、陣はおすすめの陣を並べた状態から始める。
  *   一度見せた一言は二度と出さない。フェーズ1 のストーリーは毎回、時計を動かさない
  *
@@ -54,7 +54,7 @@ const { COACH_LINES, COACH_SCENES, COACH_WAIT_LINES, KEEP_LABEL, coachArranges, 
   "../src/game/story-coach.js"
 );
 const { STORY_STAGES, stageSetup, storyDeal, storyLesson, storyUntimed, pickStoryKing, storyCpuArea } = await import("../src/game/story.js");
-const { firstGameStory, markPrologueSeen, prologueSeen } = await import("../src/game/intro.js");
+const { markPrologueSeen, prologueSeen } = await import("../src/game/intro.js");
 const { FIRST_GAME, TUTORIALS } = await import("../src/game/tutorial.js");
 const { reducer, autoPickKing } = await import("../src/game/reducer.js");
 const { enrichAction } = await import("../src/game/actions.js");
@@ -74,7 +74,7 @@ console.log("A. 手当てを出す相手(storyCoachPlan)");
   const plan = (o) => storyCoachPlan({ story: stage("45"), introSeen: true, seen: [], ...o });
   is("導入を通った人の四と五の王(フェーズ1): 3つの場面とも", plan({}), all);
   is("ほかのステージを先に選んでも同じ(全7ステージ。二と三の王の2回目も)", STORY_STAGES.every((s) => JSON.stringify(plan({ story: stage(s.axis) })) === JSON.stringify(all)), true);
-  is("はじめの一局(台本つき)には出さない", plan({ story: firstGameStory(), tutorial: FIRST_GAME }), null);
+  is("ストーリーと分けた導入専用の一局には出さない", plan({ story: null, tutorial: FIRST_GAME }), null);
   is("第1〜13話(台本)には出さない", TUTORIALS.every((t) => plan({ story: null, tutorial: t }) === null && plan({ tutorial: t }) === null), true);
   is("ストーリーでない対局(CPU 戦・同じ端末)には出さない", plan({ story: null }), null);
   is("オンラインには出さない", plan({ network: { code: "x" } }), null);
@@ -295,7 +295,7 @@ console.log("\nF. 時計(storyUntimed)");
   is("フェーズ1 のストーリーは時間制限なし(全7ステージ)", STORY_STAGES.every((s) => storyUntimed(stage(s.axis, 1))), true);
   is("フェーズ2・3 は今までどおり", [storyUntimed(stage("45", 2)), storyUntimed(stage("45", 3))], [false, false]);
   is("ストーリーでなければ時計はいつもどおり", [storyUntimed(null), storyUntimed(undefined)], [false, false]);
-  is("はじめの一局(ストーリー1つ目の初回)もフェーズ1", storyUntimed(firstGameStory()), true);
+  is("はじめの一局はストーリーを使わず、自身の設定でフェーズ1", [FIRST_GAME.phase, FIRST_GAME.intro], [1, true]);
 }
 
 /* =====================================================================
@@ -412,9 +412,9 @@ export const clock=(props)=>wrap(<ClockBar clocks={[300000,300000]} currentTurn=
   is("陣: 手当てが無ければ見出しのまま", /カードを盤面に配置してね/.test(place(s, null)), true);
   is("陣: おすすめの陣が並んだ状態(5/5)と「自動配置」「王を選ぶ」", /5<!-- -->\/<!-- -->5|5\/5/.test(p) && /自動配置/.test(p) && /王を選ぶ/.test(p), true);
   is("陣: 時間制限なしなら残り時間の帯なし", /布陣の残り時間/.test(p), false);
-  // 先後の一行(2026-10-06 見直し)。手当ての局は「最初の一手は、あなた。」だけ(札・「サイコロの結果、」・です・ます を出さない)
+  // 先後の一行(2026-10-06 見直し)。手当ての局は「あなたが先に動かします。」だけ(札・「サイコロの結果、」・です・ます を出さない)
   const pp = place(s, COACH_LINES.setup, true).replace(/<[^>]*>/g, "");
-  is("陣(手当ての局): 先後は「最初の一手は、あなた。」の一行だけ", /最初の一手は、あなた。/.test(pp) && !/あなたは先攻|サイコロの結果|先に動きます/.test(pp), true);
+  is("陣(手当ての局): 先後は「あなたが先に動かします。」の一行だけ", /あなたが先に動かします。/.test(pp) && !/あなたは先攻|サイコロの結果|先に動きます/.test(pp), true);
   is("陣(ふつうの対局): 先後はいままでどおり", /あなたは先攻/.test(place(s, null).replace(/<[^>]*>/g, "")) && /サイコロの結果、先に動きます/.test(place(s, null).replace(/<[^>]*>/g, "")), true);
   is("陣: 手当てが無ければ一言なし", /story-coach/.test(place(s, null)), false);
   const timed = clock({ ruleVersion: GAME_RULE_VERSION });
@@ -469,8 +469,8 @@ console.log("\nH. 配線(game.jsx)");
     true,
   );
   is(
-    "引き直し: 手当ての局の先後の札は「最初の一手は、あなた。」(名前の三人称を使わない)",
-    /\{coach \? \(\s*(\/\/[^\n]*\n\s*)*<span>\s*<Phrases text=\{me === a\.firstPlayer \? "最初の一手は、あなた。" : "最初の一手は、相手。"\} \/>\s*<\/span>\s*\) : \(\s*<span>\s*\{playerLabel\(a\.firstPlayer, P, names\)\}が先手・/.test(game),
+    "引き直し: 手当ての局の先後の札は「あなたが先に動かします。」(名前の三人称を使わない)",
+    /\{coach \? \(\s*(\/\/[^\n]*\n\s*)*<span>\s*<Phrases text=\{me === a\.firstPlayer \? "あなたが先に動かします。" : "相手が先に動かします。"\} \/>\s*<\/span>\s*\) : \(\s*<span>\s*\{playerLabel\(a\.firstPlayer, P, names\)\}が先手・/.test(game),
     true,
   );
   is("引き直し: 一言が出ている局は、捨て札の見出しも「捨てた札」", /が捨てた\$\{coachLines \? "札" : "カード"\}`\}/.test(game), true);

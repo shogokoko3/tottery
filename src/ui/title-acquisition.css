@@ -85,6 +85,13 @@
   transform: translateX(-120%);
   animation: title-award-sheen 1300ms 650ms ease-in-out both;
 }
+/* 手に入れた理由。設定の案内より少し目立たせる */
+.title-award-panel .title-award-how {
+  margin: 10px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: #ffe8b0;
+}
 .title-award-panel p {
   margin: 8px 0 0;
   font:

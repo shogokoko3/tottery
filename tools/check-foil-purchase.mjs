@@ -39,7 +39,7 @@ const balances = (uid) => {
 };
 const secret = productOf("foil-a");
 const secretId = foilId("genie-magician");
-const prerequisites = ALL_SKINS.filter((skin) => !skin.secret).map((skin) => skin.id);
+const prerequisites = ALL_SKINS.filter((skin) => skin.series === "heroes" && !skin.secret).map((skin) => skin.id);
 assert.equal(prerequisites.length, 32);
 
 // ID一覧だけを受け付ける。complete=trueだけの申告、未知ID、重複、不正型、過大入力は拒否。
@@ -289,6 +289,25 @@ try {
   else globalThis.__foilPurchaseStore = previousBridge;
 }
 
+// ワンダーランド・ゲートのフォイルも同じ道で買える(2026-10-15 本人の指示)。帯の片方は按分、A は全部そろえるまで買えない
+{
+  fund("wonder");
+  sync("wonder", ["alice-2-dodo", "alice-J-knave:foil"]);
+  assert.throws(() => buy("wonder", "foil-alice-jk", ["alice-J-knave", "alice-K-king"]), /すでに持っています/);
+  const q = buy("wonder", "foil-alice-jk", ["alice-K-king"]);
+  assert.equal(q.price, 2500, "J・K の片方だけなら按分");
+  assert.equal(q.applied, true);
+  assert.equal(balances("wonder")[0], 20000 - 2500, "有償から引く");
+  assert.equal(wallet.collectionOf("wonder").owned["alice-K-king:foil"], 1, "買ったフォイルはサーバーの写しに入る");
+  assert.equal(buy("wonder", "foil-alice-q", ["alice-Q-queen"]).price, 5000, "Q は単体 5,000");
+  assert.throws(() => buy("wonder", "foil-alice-a", ["alice-A-alice"]), /購入条件/, "アリスの A は全部そろえるまで買えない");
+  const set = buy("wonder", "foil-alice-2-3", ["alice-2-dodo", "alice-3-bill"]);
+  assert.equal(set.price, 1500);
+  assert.equal(buy("wonder", "foil-alice-2-3", ["alice-3-bill", "alice-2-dodo"]).applied, false, "同じ要求の再送は復元だけ");
+  assert.equal(balances("wonder")[0], 20000 - 2500 - 5000 - 1500);
+  console.log("フォイル購入: ワンダーランドの商品も同じ道(按分・既所持拒否・A の条件) OK");
+}
+
 db.close();
-console.log("フォイル購入: 所持一覧同期・全32枚照合・有償限定・既所持拒否・永続付与・再送復元・途中失敗の巻戻し・旧購入復元・忘却 OK");
+console.log("フォイル購入: 所持一覧同期・初期シリーズ全32枚照合・有償限定・既所持拒否・永続付与・再送復元・途中失敗の巻戻し・旧購入復元・忘却 OK");
 console.log("フォイル購入の通信: 実client→所持同期→実Wallet→mirror付与・同一要求再送・応答消失・保存失敗・端末消失後の復元 OK");

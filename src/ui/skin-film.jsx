@@ -22,12 +22,19 @@ export function SkinFilm({ skin, short = false, onClose }) {
     };
     // 読み込み失敗や通信切断でも、対局を止め続けない。
     const loadingTimer = setTimeout(finish, 2500);
-    const watchdog = setTimeout(finish, 8500);
+    // 読み込み2.5秒 + アリスの9秒でも切れない長さ。ended でも閉じるので保険。
+    const watchdog = setTimeout(finish, 15000);
     const playing = () => {
       if (started) return;
       started = true;
       clearTimeout(loadingTimer);
-      const duration = short ? 2000 : 5000;
+      // 動画は最後まで流す(2026-10-14 本人の指示。アリスは9秒、他の技は6秒)。
+      // 長さが読めないときだけ従来の5秒。
+      const length =
+        Number.isFinite(el.duration) && el.duration > 0
+          ? (el.duration * 1000) / el.playbackRate + 300
+          : 5000;
+      const duration = short ? 2000 : length;
       playbackTimer = setTimeout(finish, duration);
       if (!el.muted) releaseMusic = duckMusic(duration);
     };

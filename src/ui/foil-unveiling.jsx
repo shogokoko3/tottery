@@ -1,4 +1,6 @@
+import { playSound, useCue } from "../audio/index.js";
 import {
+  useCallback,
   useEffect,
   useInsertionEffect,
   useLayoutEffect,
@@ -114,6 +116,8 @@ export function FoilUnveilingView({
   focusRef,
   fromGrid = false,
   origin = null,
+  onProceed = null,
+  proceedLabel = "結果へ →",
 }) {
   useStyles();
   const visible = ["reveal", "settle", "complete"].includes(phase);
@@ -218,6 +222,19 @@ export function FoilUnveilingView({
           </>
         )}
       </div>
+      {/* 正体を見せ終えたら自動で進まず、まじまじと眺めてから自分で進む
+          (2026-10-15 本人の指示)。ボタンは絵の位置を動かさないよう下に重ねる */}
+      {phase === "complete" && onProceed && (
+        <div className="foil-unveiling-proceed">
+          <button
+            type="button"
+            className="skin-btn skin-btn-gold"
+            onClick={onProceed}
+          >
+            {proceedLabel}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -267,6 +284,7 @@ export function FoilUnveiling({
     focusRef.current?.focus({ preventScroll: true });
   }, []);
   callback.current = onComplete;
+  useCue("foil_open", ["reveal", "settle", "complete"].includes(view.phase), skin.id);
   useEffect(() => {
     let active = true;
     const loader = assets || createFoilUnveilingAssets();
@@ -295,11 +313,19 @@ export function FoilUnveiling({
       if (!assets) loader.dispose();
     };
   }, [skin.id, skin.rarity, reduce, fromGrid, assets]);
-  useEffect(() => {
-    if (view.phase !== "complete" || notified.current) return;
+  // 演出が終わっても自動では進まない。ボタンを押したときだけ一度 onComplete を呼ぶ
+  const proceed = useCallback(() => {
+    if (notified.current) return;
     notified.current = true;
     callback.current?.();
+  }, []);
+  useEffect(() => {
+    if (view.phase !== "complete") return;
+    focusRef.current
+      ?.querySelector(".foil-unveiling-proceed button")
+      ?.focus({ preventScroll: true });
   }, [view.phase]);
+  const last = !(Number.isFinite(position) && Number.isFinite(total)) || position >= total;
   return (
     <FoilUnveilingView
       skin={skin}
@@ -310,6 +336,8 @@ export function FoilUnveiling({
       focusRef={focusRef}
       fromGrid={fromGrid}
       origin={origin}
+      onProceed={proceed}
+      proceedLabel={last ? "結果へ →" : "次のフォイルへ →"}
       {...view}
     />
   );

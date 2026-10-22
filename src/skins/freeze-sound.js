@@ -1,3 +1,4 @@
+import { audioUrl } from "../audio/tracks.js";
 import { audioSettings, connectFilmSound, duckMusic } from "../audio/index.js";
 const urls = new Map();
 function soundUrl(kind) {
@@ -48,7 +49,7 @@ function soundUrl(kind) {
 export function startFreezeSound(kind) {
   const settings = audioSettings();
   if (settings.muted || !settings.se) return () => {};
-  const audio = new Audio(soundUrl(kind)),
+  const audio = new Audio(audioUrl(kind === "collapse" ? "se-thaw.m4a" : "se-summon_freeze.m4a")),
     disconnect = connectFilmSound(audio);
   let stopped = false,
     release = () => {};

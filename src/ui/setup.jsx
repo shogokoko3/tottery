@@ -1,3 +1,4 @@
+import {aliceSkin} from "../game/alice-rules.js";
 import { useEffect, useRef, useState } from "react";
 import {
   emptyBoard,
@@ -264,7 +265,7 @@ export function territoryOwnerOf(e, t, l) {
  * 布陣中に、自分が先攻か後攻かを示す(2026-09-23 本人の指示)。
  * サイコロで決まった順。布陣ボーナス(ストレート)で入れ替わることがあるので「サイコロの結果」と添える。
  * plain は導入の一局(はじめの一局と、ストーリー2つ目の手当ての局)。言葉を導入の調子にそろえ
- * (です・ます調の決まり文句を避ける。2026-10-05 見直し)、「最初の一手は、あなた。」の一行だけにする
+ * (です・ます調の決まり文句を避ける。2026-10-05 見直し)、「あなたが先に動かします。」の一行だけにする
  * (2026-10-06 見直し。札「あなたは先攻」と横の文が同じことを二度言い、サイコロと引き直しの「先手」と
  * 「先攻」が混ざっていた。サイコロは手当ての局でも直前に見ているので、「サイコロの結果、」も要らない)。
  * 札は折り返さない。横の文は句ごとに折り返す(320 幅で「あなたは後/攻」「…先に動き/ます」と割れた)
@@ -277,7 +278,7 @@ export function SetupOrderNote({ state, pIdx, plain = false }) {
     return (
       <p className={`setup-order setup-order-plain ${mine ? "setup-order-first" : "setup-order-second"}`}>
         <span>
-          <Phrases text={mine ? "最初の一手は、あなた。" : "最初の一手は、相手。"} />
+          <Phrases text={mine ? "あなたが先に動かします。" : "相手が先に動かします。"} />
         </span>
       </p>
     );
@@ -835,7 +836,7 @@ export function KingStep({
       : null;
   const flipped = pIdx === 1;
   return (
-    <div className="setup-wrap setup-wrap-compact">
+    <div className={`setup-wrap setup-wrap-compact${quiet ? " first-game-setup" : ""}`}>
       <div className="setup-head">
         {!quiet && (
           <h2 style={{ color: PLAYER_META[pIdx].color }}>
@@ -855,10 +856,17 @@ export function KingStep({
           {revealMode
             ? `相手に公開する駒を${revealWant}枚タップで選んでください(王は選べません)。残り${revealWant - chosenReveals.length}枚`
             : hasK
-              ? "Kを配置しているので、Kが王になります。"
+              ? (state.kingPowers!==false && aliceSkin(state,pIdx,"K") && Object.keys(placement).some(id=>player.hand.find(c=>c.id===id)?.rank==="A") ? "ハートの王はAと一緒に編成できません。配置に戻ってAを外してください。" : "Kを配置しているので、Kが王になります。")
               : forced
                 ? `この話では「${forced}」を王にします。${forced}の駒をタップしてください。`
-                : "配置したカードの中から王にする1枚をタップしてください。"}
+                : (
+                  // 句の塊で出す(2026-10-06 見直し。文は変えない)。行を釣り合わせる折り返し(.hint の balance)で、
+                  // 320 幅だと「…王にす/る1枚を…」と語の途中で割れた。句は1つの span に包む
+                  // (案内の行は flex なので、句を直に並べると句ごとに離れた箱になる)
+                  <span>
+                    <Phrases text={["配置したカードの中から", "王にする1枚を", "タップしてください。"]} />
+                  </span>
+                )}
         </p>
       )}
       <div className="arrange-layout">
@@ -880,7 +888,7 @@ export function KingStep({
                 Object.values(foePlacement).some((at) => at.row === row && at.col === col);
               const selectable =
                 card &&
-                (!hasK || card.rank === "K") &&
+                (!hasK || card.rank === "K") && !(state.kingPowers!==false && aliceSkin(state,pIdx,card.rank) && ["J","Q","K"].includes(card.rank) && Object.keys(placement).some(id=>player.hand.find(c=>c.id===id)?.rank==="A")) &&
                 (!forced || card.rank === forced);
               return (
                 <div
@@ -1004,12 +1012,34 @@ function scrollParentOf(el) {
   return null;
 }
 
-export function ReservePlacer({ state, dispatch, size, focus }) {
-  let n = state.kPlacement.owner,
+/**
+ * 自陣の空きマスに札を1枚置く画面。
+ * もとは K の王が引いた予備札の置き場(kPlacement)。ハートの J・Q・K で撃破した駒を仲間にする
+ * 置き場も、同じ画面・同じ決まり(自陣の空きマス)にする(2026-10-15 本人の指示)。
+ *   placement … { owner, cards }。無ければ state.kPlacement
+ *   onPlace(card, row, col) / onSkip … 置く・見送るの手。無ければ予備札の手(PLACE_RESERVE_CARD / SKIP_RESERVE_PLACEMENT)
+ *   title / hint / skipLabel … 見出し・説明・見送る釦の言葉
+ *   addsCount … 置くと採用枚数が増える(予備札)。仲間にした駒は増えない
+ */
+export function ReservePlacer({
+  state,
+  dispatch,
+  size,
+  focus,
+  placement = null,
+  onPlace = null,
+  onSkip = null,
+  title = "予備札を配置",
+  hint = null,
+  skipLabel = "今回は見送る",
+  addsCount = true,
+}) {
+  const slot = placement || state.kPlacement;
+  let n = slot.owner,
     [a, u] = territoryRows(size, n),
     i = n === 1;
   // JとQが同じ手で倒れると2枚めくれる。どちらから置くかを選べるようにする
-  const cards = state.kPlacement.cards;
+  const cards = slot.cards;
   const [pick, setPick] = (0, useState)(0);
   // 仮置きの升。確定するまで盤には出ない
   const [target, setTarget] = (0, useState)(null);
@@ -1128,12 +1158,14 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
   }
   const confirm = () => {
     if (!target || !open(target.row, target.col)) return;
-    dispatch({
-      type: "PLACE_RESERVE_CARD",
-      row: target.row,
-      col: target.col,
-      cardId: chosen.id,
-    });
+    if (onPlace) onPlace(chosen, target.row, target.col);
+    else
+      dispatch({
+        type: "PLACE_RESERVE_CARD",
+        row: target.row,
+        col: target.col,
+        cardId: chosen.id,
+      });
     setTarget(null);
   };
   const focusCell = (row, col) =>
@@ -1162,7 +1194,8 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
     // 置くと採用枚数が1枚増える(4・5 の王なら同じ数字の射程が伸びる)
     const counts = {
       ...state.players[n].armyRankCounts,
-      [chosen.rank]: (state.players[n].armyRankCounts[chosen.rank] || 0) + 1,
+      [chosen.rank]:
+        (state.players[n].armyRankCounts[chosen.rank] || 0) + (addsCount ? 1 : 0),
     };
     for (const m of getLegalMoves(
       piece,
@@ -1179,11 +1212,12 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
         {/* 釦の帯は下に固定し、盤と説明だけを送る。貼り付け(sticky)だと帯が盤の下の段を
             覆って、置きたいマスに触れないことがあった(2026-09-18) */}
         <div className="reserve-scroll">
-        <h3>予備札を配置</h3>
+        <h3>{title}</h3>
         <p className="hint">
-          {cards.length > 1
-            ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスをタップして置き場所を決めます。`
-            : "Kの効果で引いた1枚。自陣の空きマスをタップして置き場所を決めます。"}
+          {hint ||
+            (cards.length > 1
+              ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスをタップして置き場所を決めます。`
+              : "Kの効果で引いた1枚。自陣の空きマスをタップして置き場所を決めます。")}
           置いた駒はドラッグで動かせます。置き場所を決めてから「ここに置く」で確定します。
           <span className="legend-dot" aria-hidden="true" />
           はその駒が動ける先です。
@@ -1320,12 +1354,14 @@ export function ReservePlacer({ state, dispatch, size, focus }) {
           <button
             className="btn btn-ghost"
             onClick={() =>
-              dispatch({
-                type: "SKIP_RESERVE_PLACEMENT",
-              })
+              onSkip
+                ? onSkip()
+                : dispatch({
+                    type: "SKIP_RESERVE_PLACEMENT",
+                  })
             }
           >
-            今回は見送る
+            {skipLabel}
           </button>
         </div>
       </div>

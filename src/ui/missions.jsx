@@ -1,3 +1,4 @@
+import { playSound, useCue } from "../audio/index.js";
 import { GemAmount } from "./gem.jsx";
 /**
  * 通常ミッションの画面。
@@ -95,6 +96,7 @@ export function MissionsScreen({ onBack, embedded = false }) {
     setMessage("");
     try {
       setProfile(await give(mission));
+      playSound("mission");
       setMessage(`${rewardLabel(mission.reward)}を受け取りました。`);
     } catch (e) {
       setMessage((e && e.message) || "受け取れませんでした。");
@@ -128,6 +130,7 @@ export function MissionsScreen({ onBack, embedded = false }) {
           : (e && e.message) || "受け取れませんでした。",
       );
     } finally {
+      if (got > 0) playSound("claim_all");
       setProfile(last);
       claiming.current = false;
       setBusy(false);

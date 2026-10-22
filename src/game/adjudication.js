@@ -1,3 +1,4 @@
+import {hasAliceRules,aliceKing,aliceSkin,aliceBoard,emptyCells} from "./alice-rules.js";
 import { RANKS, ORTH, DIAG, KNIGHT_OFFSETS } from "./constants.js";
 import { getLegalMoves, inBounds, kingRankOf } from "./board.js";
 
@@ -33,7 +34,7 @@ export function isAdjudicationBoundary(state) {
     !state.extraMoveFor &&
     !state.extraUsed &&
     !state.pendingKingChoice &&
-    !state.kPlacement
+    !state.kPlacement && !state.aliceRevive && !state.aliceRecruit?.length
   );
 }
 
@@ -42,17 +43,19 @@ export function isAdjudicationBoundary(state) {
  * 追加行動の途中にはスキップがあるため、呼び出し側で通常手番に限る。
  */
 export function hasLegalAction(state) {
+  const k=aliceKing(state,state.currentTurn);
+  if(k && ["8","9"].includes(k.rank) && emptyCells(state,state.currentTurn).length)return true;
   const living = Object.values(state.pieces).filter((piece) => piece.alive);
   return living.some((piece) => {
     if (piece.owner !== state.currentTurn) return false;
     // 氷のエリアで凍った駒は指せない(src/game/areas.js)
     if (piece.frozenUntil != null && (state.turnNo || 0) < piece.frozenUntil)
       return false;
-    if (piece.rank === "A") return living.length >= 3;
+    if (piece.rank === "A" && !piece.movementRank) return piece.aliceSkin ? false : living.length >= 3;
     return (
       getLegalMoves(
         piece,
-        state.board,
+        aliceBoard(state,state.currentTurn),
         state.boardSize,
         state.players[piece.owner].armyRankCounts,
         kingRankOf(state, piece.owner),
@@ -122,6 +125,7 @@ export function futureReach(piece, size) {
  * Aの入れ替えとKの召喚にはこの証明を使わず、判定しない。
  */
 export function isDeadPosition(state) {
+  if (hasAliceRules(state) && ([0,1].some(o=>aliceKing(state,o)) || Object.values(state.pieces).some(p=>p.alive && p.rank==="A" && aliceSkin(state,p.owner,"A")))) return false;
   const living = Object.values(state.pieces).filter((piece) => piece.alive);
   const kings = state.players.map((player, owner) => {
     const king = state.pieces[player.kingId];

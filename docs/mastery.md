@@ -18,7 +18,7 @@
 **自分が持っているスキンを盤に出すと、そのスキンごとに点がたまる**。
 たまると**称号・アイコン・アイコンフレーム**が解放される。
 
-対象は `MASTERY_SKINS`(17種)。**通常札(スキン未所持)では増えない。**
+対象は `MASTERY_SKINS`(レジェンド17種＋ワンダーランド13種)。**通常札(スキン未所持)では増えない。**
 J・Q・K は天使／悪魔の2系統、10 は竜騎士／天馬騎士の2系統があり、それぞれ別に貯まる。
 
 点の決まり(2026-09-24 本人の指示):
@@ -51,16 +51,16 @@ J・Q・K は天使／悪魔の2系統、10 は竜騎士／天馬騎士の2系�
 
 | 中身 | 場所 |
 |---|---|
-| スキンの一覧・rank 対応 | `src/game/constants.js` `MASTERY_SKINS`(17) / `MASTERY_SKIN_RANK`(id→rank) |
+| スキンの一覧・rank 対応 | `src/game/constants.js` `MASTERY_SERIES`(シリーズ別) / `MASTERY_SKINS`(30) / `MASTERY_SKIN_RANK`(id→現行rank) |
 | 数える入口(装備の解決・王/駒) | `src/ui/game.jsx`(`equippedSkinKey` / `masteryTrack`、対局開始の useEffect と `y()`) |
 | 1局ぶんを貯める箱 | `game.jsx` `masteryRef`(`{skin: {king,pieces,moves,captures,kingCapture}}`) |
 | 終局時の書き込み | `game.jsx` `recordMastery(masteryRef.current)` |
 | 貯める・段を出す | `src/game/profile.js` `recordMastery` / `masteryProgress` / `masteryStep` / `masteryAll` / `normalizeMastery` |
 | 保存の形 | `profile.mastery = { "angel-j": 120, ... }`(鍵はスキン id) |
-| 称号17種＋通し2種 | `src/game/titles.js` `MASTERY_NAMES` / `MASTERY_TITLES`(全体の表に合流) |
+| 称号30種＋各シリーズの通し2種 | `src/game/titles.js` `MASTERY_NAMES` / `MASTERY_TITLES`(全体の表に合流) |
 | 額縁の意匠 | `src/ui/title-design.js`(`mastery-<skinId>` を17種＋通し) |
 | 終局画面のメーター | `src/ui/mastery.jsx`(スキン名・段・内訳を出す)、置き場所は `game.jsx` の終局 |
-| ホームの「カード」(スキン一覧) | `src/ui/card-mastery.jsx`。画面 id `cards`。所持スキンだけ解放、未所持は鎖でロック |
+| ホームの「カード」(スキン一覧) | `src/ui/card-mastery.jsx`。画面 id `cards`。シリーズを切り替え、所持数・合計点・称号・極みをシリーズ内だけで表示。所持スキンだけ解放、未所持は鎖でロック |
 | ホームの「カード」タイルの鎖 | `src/ui/screens.jsx` `HomeTile locked`。スキンを1つも持たないとロック(`hasAnySkin`) |
 | メーターの見た目 | `src/styles.css` の `.mastery-*` |
 | 検査 | `tools/check-mastery.mjs`。カード画面は `check-home-layout.mjs`、称号の意匠は `check-title-notices.mjs` |
@@ -69,8 +69,11 @@ J・Q・K は天使／悪魔の2系統、10 は竜騎士／天馬騎士の2系�
 
 2026-09-24 本人の指示で、**スキンのイラストの人物**から付けた。id は `mastery-<skinId>`。
 
-`MASTERY_NAMES`(`src/game/titles.js`)を正とする。17種＋通し:
-- 通し: **十七英雄の主**(17種すべて80点=段3) / **盤上無双**(すべて500点=段5)
+`MASTERY_NAMES`(`src/game/titles.js`)を正とする。30種＋シリーズごとの通し:
+- レジェンド: **十七英雄の主**(17種すべて80点=段3) / **盤上無双**(同じ17種すべて500点=段5)。従来の取得条件・保存IDを維持する。
+- ワンダーランド: **不思議の国の主**(13種すべて80点=段3) / **ワンダーランド・マスター**(同じ13種すべて500点=段5)。
+- アリス(A・バトルパス)も対象。通常版とフォイル版は同じ基底IDに加算・保存する。
+- ワンダーランドのID中の数字は旧rankの場合がある。札と表示順は `ALICE_SKINS[].rank` を使用する。
 
 > J・Q・K・10 は2系統あるので、**天使側と悪魔側(竜騎士と天馬騎士)で別の称号**になる。
 > 称号を増減したら `MASTERY_NAMES`・`title-design.js`・`MASTERY_SKINS` の三つが揃っているか確かめる

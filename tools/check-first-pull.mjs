@@ -164,8 +164,8 @@ console.log("\n配線");
     true,
   );
   is(
-    "10連から戻るとストーリー一覧へ(手引きの誘い・ホームではない)",
-    /if \(firstPullMode\) \{\s*(\/\/[^\n]*\n\s*)*setFirstPullMode\(!1\);\s*setSkinsFrom\("menu"\);\s*setAfterIntro\(!0\);\s*showStory\(\);/.test(screens) && !/shouldOfferFirstTutorial/.test(screens),
+    "10連から戻ると現在のホームへ",
+    /if \(firstPullMode\) \{\s*(\/\/[^\n]*\n\s*)*setFirstPullMode\(!1\);\s*setSkinsFrom\("menu"\);\s*setAfterIntro\(!0\);\s*goMenu\(\);/.test(screens) && !/shouldOfferFirstTutorial/.test(screens),
     true,
   );
   // 10連の画面を開くのは2か所: 門の語りのあとと、結果を閉じる前にやめた人の続き("first-pull"。2026-10-05 見直し)
@@ -194,18 +194,18 @@ console.log("\n配線");
   // はじめての10連の結果(2026-10-01 本人の指示)。導入の最後なので、駒とのつながりと次の一歩を1つだけ
   is("初回の結果だけを見分ける", /const firstResults = firstPull && !!collection\.pending\?\.results;/.test(skins), true);
   is("初回は重複整理を出さない", skins.includes("{!firstResults && collection.pending?.results && ("), true);
-  is("結果のあと、次の相手の説明まで進める", screens.includes("const next = nextStage(loadProfile());\n                  if (next) openStage(next.axis);"), true);
+  is("結果のあと現在のホームへ進む", /if \(firstPullMode\)[\s\S]{0,280}goMenu\(\);/.test(screens), true);
   const state = { pending: { results: [{ id: "angel-j" }, { id: "pirate-male" }] }, owned: { "angel-j": 1, "pirate-male": 1 }, equipped: { J: "angel-j", 4: "pirate-male" } };
   is("次のステージで使える装備を先に見せる", firstPullCompanion(state, ["2", "3", "4", "5"]).skin.id, "pirate-male");
   is("まだ使わない数字は後の登場として伝える", firstPullCompanion({ ...state, equipped: { J: "angel-j" } }, ["2", "3", "4", "5"]).available, false);
   is("未装備の英雄を装備済みとは呼ばない", firstPullCompanion({ ...state, equipped: {} }).equipped, false);
   is("結果が無ければ英雄の紹介を出さない", firstPullCompanion({}), null);
   is(
-    "初回の結果に一行(着せた英雄だけが駒になる)",
-    /\{firstResults && \(\s*<p className="skins-first-pull-note">\s*出会った英雄を、あなたの盤へ。\s*<\/p>/.test(skins),
+    "初回の結果で自動装備と見た目のみの変更を伝える",
+    /\{firstResults && \(\s*<p className="skins-first-pull-note">\s*数字ごとに自動で装備しました。札の見た目が変わり、動きや強さは変わりません。\s*<\/p>/.test(skins),
     true,
   );
-  is("初回は「次の対局へ」、全クリア済みなら一覧へ", skins.includes('{firstResults ? (nextStory ? "次の対局へ" : "ストーリーへ") : "結果を確認"}'), true);
+  is("初回はホームへ進む", skins.includes('{firstResults ? "ホームへ進む" : "結果を確認"}'), true);
   is(
     "閉じたあと呼ぶ側の onBack へ(閉じるのに失敗したら行かない)",
     /const closeFirstResults = async \(\) => \{\s*const next = await closeResults\(\);\s*if \(next && onBack\) onBack\(\);\s*\};/.test(skins),
@@ -256,11 +256,11 @@ console.log("\n配線");
 
 console.log("\n10連の言葉と折り返し(2026-10-06 見直し)");
 {
-  const skins = read("src/ui/skins.jsx");
+  const skins = read("src/ui/skins.jsx") + read("src/ui/summon-results.jsx");
   // 導入の10連(初回の10連)は導入の言葉の調子で。ふつうのガチャはいままでどおり
   is("10連の演出に導入の印(plain)を渡す", /onFinish=\{finishAcquisition\}\s*reduce=\{reduce \|\| collection\.summonMotion === "skip"\}\s*plain=\{firstResults\}/.test(skins), true);
-  const plainCopy = ["すべての札が、現れた。", "輝きが、札に宿っていく…", "札を引き寄せて、めくれ。", "札を引き寄せて、めくれ。指でなぞれば、次々に。"];
-  is("10連の演出の文(導入): です・ます調を使わない", plainCopy.every((t) => skins.includes(`"${t}"`)) && plainCopy.every((t) => !/です|ます|ください/.test(t)), true);
+  const plainCopy = ["すべての札が現れました。", "札の輝きが変わっています。", "札をタップすると、めくれます。", "札をタップすると、めくれます。指でなぞって、続けてめくることもできます。"];
+  is("10連の演出の文(導入): 落ち着いた操作案内", plainCopy.every((t) => skins.includes(`"${t}"`)) && plainCopy.every((t) => !/だよ|めくれ。/.test(t)), true);
   is(
     "ふつうのガチャの演出の文はいままでどおり",
     ["すべての札が現れました。", "札に宿る輝きをお待ちください。", "札を引き寄せてめくるか、指でなぞって次々にめくれます。"].every((t) => skins.includes(`"${t}"`)),
@@ -274,6 +274,18 @@ console.log("\n10連の言葉と折り返し(2026-10-06 見直し)");
   is("札の名の句はどれも全角6字ぶんまで(320 幅の4列に入る)", names.flatMap((n) => namePhrases(n)).filter((p) => em(p) > 6), []);
   is("「黄昏のレヴナント」は「黄昏の」「レヴナント」・「癒天使 ラファエル」は「癒天使 」「ラファエル」", [namePhrases("黄昏のレヴナント"), namePhrases("癒天使 ラファエル")], [["黄昏の", "レヴナント"], ["癒天使 ", "ラファエル"]]);
   is("結果の札の名と、盤上の姿の名は句の塊で出す", (skins.match(/<Phrases text=\{namePhrases\((s|companion\.skin)\.name\)\} \/>/g) || []).length, 2);
+  // めくる演出の札の名も句の塊で、句の間で折り返す(2026-10-06 見直し)。1行に収めて「…」で切っていて、
+  // 4列の札(320 幅で 63px、375 幅で 77px)で「墓守のレヴ…」「黄昏のレヴ…」としか読めなかった。描いた幅は check-summon-fit が見る
+  {
+    const css = read("src/skins/styles.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    const block = (sel) => (css.match(new RegExp(`(^|\\n)${sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{([^}]*)\\}`)) || [])[2] || "";
+    is("演出の札の名は句の塊で出す", /<strong className="reveal-name">\s*<Phrases text=\{namePhrases\(visibleSkin\.name\)\} \/>\s*<\/strong>/.test(skins), true);
+    is("CSS: 演出の札の名は「…」で切らず、1行に縛らない", [/text-overflow/.test(block(".reveal-name")), /white-space: nowrap/.test(block(".reveal-name"))], [false, false]);
+    const narrow = (css.match(/@media \(max-width: 340px\) \{([\s\S]*?)\n\}/g) || []).join("\n");
+    is("CSS: 320 幅では、格(SSR)と NEW の余白を詰める(重なって「SS」としか読めなかった)", /\.reveal-rarity \{[^}]*padding: 1px 2px;/.test(narrow) && /\.reveal-new \{[^}]*padding: 1px 2px;/.test(narrow), true);
+    const tabs = (css.match(/@media \(max-width: 360px\) \{([\s\S]*?)\n\}/g) || []).join("\n");
+    is("CSS: 320 幅では、タブは字の幅を土台に分ける(「所持・装備」が「所持・…」と切れた)", /\.skins-tabs button \{\s*flex: 1 1 auto;/.test(tabs), true);
+  }
   is(
     "盤上の姿の一行は句で折り返す(「3 に装備済み。」「手札に来たら、」「陣に加えよう。」)",
     phrasesOf("3 に装備済み。手札に来たら、陣に加えよう。"),

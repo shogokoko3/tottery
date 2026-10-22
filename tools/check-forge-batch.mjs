@@ -14,10 +14,11 @@ import {
   shatter,
   shatterMany,
   normalize,
+  dismantleAll,
 } from "../src/skins/collection.js";
-import { CRAFT_MAX, craftCheck, craftableCount, costOf } from "../src/skins/ether.js";
+import { CRAFT_MAX, craftCheck, craftableCount, costOf, forgeSummary, dustOf } from "../src/skins/ether.js";
 import { shatterCheck } from "../src/skins/shards.js";
-import { byId, foilId } from "../src/skins/catalog.js";
+import { byId, foilId, SERIES, poolForSeries, rate } from "../src/skins/catalog.js";
 
 const ui = readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
 const picker = readFileSync(
@@ -29,6 +30,27 @@ const never = () => 0.9; // フォイルを出さない
 const always = () => 0.001; // かならずフォイル
 const R = "zombie-male";
 const RCOST = costOf(byId(R));
+
+// シリーズを選んだ一括分解は、他シリーズ・フォイル・最後の1枚を守る。
+for (const { id: series } of SERIES) {
+  const pool = poolForSeries(series);
+  const target = pool[0];
+  const other = poolForSeries(SERIES.find(item => item.id !== series).id)[0];
+  const mixed = normalize({ owned: { [target.id]: 4, [foilId(target.id)]: 3, [other.id]: 5, "alice-A-alice": 2 }, ether: 100 });
+  const broken = dismantleAll(mixed, series);
+  assert.equal(broken.owned[target.id], 1);
+  assert.equal(broken.owned[foilId(target.id)], 3);
+  assert.equal(broken.owned[other.id], 5);
+  assert.equal(broken.owned["alice-A-alice"], 2);
+  assert.equal(broken.ether, 100 + dustOf(target) * 3);
+  assert.equal(mixed.owned[target.id], 4, "元の保存は変更しない");
+  for (const row of forgeSummary(series).rows) {
+    const sample = pool.find(skin => skin.rarity === row.rarity);
+    assert.equal(row.pulls, Math.round(100 / rate(sample)), "錬成の目安は選択中のシリーズの割合");
+  }
+  assert.equal(craftMany(normalize({ ether: costOf(target) }), target.id, 1, never).owned[target.id], 1, "各シリーズを錬成できる");
+}
+assert.throws(() => dismantleAll(normalize({}), "unknown-series"), /シリーズ/);
 
 // --- 1枚版と同じであること(既存の道を変えていない証明) ---
 const one = normalize({ owned: { [R]: 1 }, ether: 1000 });

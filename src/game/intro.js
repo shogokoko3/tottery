@@ -1,14 +1,14 @@
 /**
  * 導入の振り分け(2026-10-01 本人の指示)。起動から導入の終わりまで、次に出すものを1つに決める。
  *
- *   タイトル → 語り2枚 → はじめの一局(ストーリー「二と三の王」の初回)→ 結果 → 名前 → 門の語り → 10連 → 次の相手の紹介
+ *   タイトル → 漫画で遊び方 → はじめの一局 → 結果 → 名前 → 無料10連の案内 → 10連 → 結果 → ホーム
  *
- * 進みは持ち物から読む(二と三の王のクリア・名前・10連の控え)。足した控えは「語りを見た」だけ。
+ * 導入専用の勝利記録・名前・10連の控えで再開先を決める。ストーリーの進行は変更しない。
  * 途中でやめた人は、次の起動で続きへ戻す。画面(screens.jsx)と検査(tools/check-intro.mjs)が同じ関数を呼ぶ。
  *
  * 決まりごと:
  *  - 10連まで済んだ人(いまのテスター)は導入を通さない。名前と10連はくり返さない。
- *    二と三の王が未クリアなら、ストーリー1つ目を開いたときに台本の一局になる(firstGameStage)
+ *    ストーリーは第1話から、物語を読んで通常の対局へ進む。
  *  - 10連の控えが入る前(2026-09-28 より前)に名前を決めて遊んでいた人も、導入を通さない(earlierTester。
  *    2026-10-05 見直し)。控えが無いので、見ないと語りから出直し、門の無料10連まで出ていた
  *  - 初回の10連を引いて、結果を閉じる前にアプリを閉じた人は、次の起動で結果へ戻す("first-pull"。2026-10-05 見直し)
@@ -16,9 +16,6 @@
  *  - 合言葉つき(?room=)で開いた起動は、名前を聞いて部屋へ通すだけ(名前は screens.jsx の名前の壁)。導入は次の起動から
  *  - 称号の知らせは導入と相手の紹介のあいだ止めておく(introHoldsTitles)
  */
-import { FIRST_GAME } from "./tutorial.js";
-import { normalizeStory, phaseOf } from "./phase.js";
-import { stageOf } from "./story.js";
 import { firstPullDone, firstPullOpen } from "../skins/first-pull.js";
 
 /**
@@ -44,37 +41,11 @@ export function earlierTester({ profile, collection, started = false } = {}) {
 }
 
 /**
- * はじめの一局に勝ったか。フェーズ1 の二と三の王のクリアで見る。
- * 昇格した人(フェーズ2 から)はフェーズ1 を全部クリアしているので済んだものとする
- * (台本の一局はフェーズ1 にしか無い。済んだことにしないと、10連のまだな人が行き止まる)
+ * はじめの一局に勝ったか。ストーリー第1話のクリアとは独立した記録を使う。
+ * 旧版の保存は loadProfile が引き継ぐ。
  */
 export function firstGameDone(profile) {
-  if (phaseOf(profile) > FIRST_GAME.phase) return true;
-  return normalizeStory(profile?.story)[FIRST_GAME.phase].includes(FIRST_GAME.storyAxis);
-}
-
-/**
- * ストーリーのこのステージを開くと、台本の一局(はじめの一局)になるか。
- * フェーズ1 で二と三の王が未クリアのときだけ。2回目からは、ステージ前の説明と CPU 戦
- */
-export function firstGameStage(profile, axis) {
-  return axis === FIRST_GAME.storyAxis && phaseOf(profile) === FIRST_GAME.phase && !firstGameDone(profile);
-}
-
-/**
- * はじめの一局を、ストーリーのステージとして GameCore に渡す形(game.jsx は tutorial と story を同時に受ける)。
- * 相手の王は台本の王(3♦)。席の名前は「二と三の王」
- */
-export function firstGameStory() {
-  const stage = stageOf(FIRST_GAME.storyAxis);
-  const king = FIRST_GAME.deck.find((c) => c.id === FIRST_GAME.foe.kingId);
-  return Object.freeze({
-    axis: stage.axis,
-    phase: FIRST_GAME.phase,
-    size: FIRST_GAME.boardSize,
-    king: king ? king.rank : stage.ranks[0],
-    title: `${stage.name}の王`,
-  });
+  return profile?.introFirstGameDone === true;
 }
 
 /**
@@ -91,7 +62,7 @@ export function introStep({ profile, collection, prologueSeen = false, introStar
   // 合言葉つきの起動は部屋へ(名前が無ければ名前の壁が先に聞く)。導入は次の起動から
   if (room || deferred) return null;
   // 10連まで済んだ(いまのテスター)。名前が無くても、ここでは聞かない(人と遊ぶ前に名前の壁が聞く)。
-  // 引いた結果を閉じる前にアプリを閉じていたら、結果から(閉じると次の相手の紹介へ。2026-10-05 見直し)
+  // 引いた結果を閉じる前にアプリを閉じていたら、結果から(閉じると現在のホームへ。2026-10-05 見直し)
   if (firstPullDone(collection)) return firstPullOpen(collection) ? "first-pull" : null;
   // 10連の控えが入る前から遊んでいる人(2026-10-05 見直し)。名前と10連はもう済んだものとみる
   if (earlierTester({ profile, collection, started: introStarted || prologueSeen })) return null;
@@ -101,11 +72,11 @@ export function introStep({ profile, collection, prologueSeen = false, introStar
 }
 
 /**
- * はじめの一局に勝ったら、導入の続き(名前・門の語り → 初回の10連)へ進むか(2026-10-06 見直し)。
+ * はじめの一局に勝ったら、導入の続き(名前・無料10連の案内 → 初回の10連)へ進むか(2026-10-06 見直し)。
  * 結果に光る「門へ進む」を出すかをこれで決める。introStep と同じ決まりで、10連の済んだ人と
  * 前の版のテスター(earlierTester)には出さない。
  * 前は「10連の控えが無い」だけで決めていて、前の版のテスターがストーリーの二と三の王から台本の一局に勝つと、
- * 門の語りから SSR 確定の無料10連まで進めた(タイトルからはホームへ行くのに、ストーリーからは門へ抜けていた)。
+ * 無料10連の案内から SSR 確定の無料10連まで進めた(タイトルからはホームへ行くのに、ストーリーからは門へ抜けていた)。
  * 勝つ前に決める(勝ったあとの記録を待たない)。勝っても変わらないもの(名前・10連の控え・導入を始めた控え)だけで見る
  */
 export function gateAfterFirstGame({ profile, collection, prologueSeen = false, introStarted = false } = {}) {
@@ -114,7 +85,7 @@ export function gateAfterFirstGame({ profile, collection, prologueSeen = false, 
 }
 
 /**
- * 導入のあいだ称号の知らせを止めるか。語り・名前・門の語り(intro)、はじめの一局、初回の10連。
+ * 導入のあいだ称号の知らせを止めるか。語り・名前・無料10連の案内(intro)、はじめの一局、初回の10連。
  * 相手の紹介にも重ねない。閉じるか対局へ進むと再開する。
  * 導入を終えたあと(afterIntro。初回の10連を閉じてから、この起動でホームを開くまで)は、次の対局のあいだも
  * 止める(2026-10-05 見直し。一局と10連で積んだ知らせが、四と五の王のサイコロの上に出ていた)

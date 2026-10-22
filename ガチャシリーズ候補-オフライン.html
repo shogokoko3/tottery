@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>トッタリー ガチャシリーズ候補</title>
+<style>
+  html, body { margin: 0; }
+  :root {
+    color-scheme: dark;
+    --bg: #081120;
+    --panel: #0f1d34;
+    --panel-2: #142642;
+    --line: rgba(212, 175, 55, 0.2);
+    --line-soft: rgba(169, 180, 204, 0.14);
+    --gold: #d4af37;
+    --gold-soft: #f0d98a;
+    --text: #f2ead9;
+    --dim: #a9b4cc;
+    --faint: #7c88a3;
+    --card-face: #f7f3e8;
+    --card-ink: #1a1a1a;
+    --card-red: #b0202f;
+    --r: #97c5b1;
+    --sr: #a5c9f3;
+    --ssr: #f4cc79;
+    --warn: #ef9c8e;
+    --display: "Shippori Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
+    --body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 20px 56px;
+  }
+  header h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1.35;
+    margin: 0 0 6px;
+    text-wrap: balance;
+    color: var(--gold-soft);
+  }
+  header p { margin: 0; color: var(--dim); font-size: 13.5px; }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 6px 14px;
+    margin-top: 14px; padding: 12px 14px;
+    border: 1px solid var(--line); border-radius: 10px;
+    font-size: 12.5px; color: var(--dim);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* series switcher */
+  nav.jump {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    margin: 18px -16px 0;
+    padding: 10px 16px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line-soft);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  nav.jump::-webkit-scrollbar { display: none; }
+  nav.jump ol { display: flex; gap: 8px; margin: 0; padding: 0; list-style: none; width: max-content; }
+  nav.jump a {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px; border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--text); text-decoration: none;
+    font-size: 13px; white-space: nowrap;
+    background: var(--panel);
+  }
+  nav.jump a b { color: var(--gold); font-weight: 700; font-variant-numeric: tabular-nums; }
+  nav.jump a:focus-visible, summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  section.series { margin-top: 34px; scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 64px); }
+  .s-head { display: flex; align-items: baseline; gap: 10px; }
+  .s-order {
+    font-family: var(--display); color: var(--gold);
+    font-size: 13px; font-variant-numeric: tabular-nums; flex: none;
+  }
+  .s-head h2 {
+    font-family: var(--display); font-weight: 700;
+    font-size: 21px; margin: 0; line-height: 1.3; text-wrap: balance;
+  }
+  .s-src { color: var(--faint); font-size: 12.5px; margin: 2px 0 0; }
+  .s-memo { color: var(--dim); font-size: 13.5px; margin: 8px 0 0; }
+
+  .deck {
+    margin-top: 14px;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .grp { padding: 12px 14px; border-top: 1px solid var(--line-soft); }
+  .grp:first-child { border-top: 0; }
+  .grp.is-ace { background: linear-gradient(0deg, transparent, rgba(212,175,55,0.07)); }
+  .grp-tag {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; letter-spacing: 0.06em; color: var(--faint);
+    margin-bottom: 6px;
+  }
+  .pill {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+    padding: 1px 7px; border-radius: 4px;
+    color: var(--bg); background: var(--rar, var(--dim));
+  }
+  .pill.R { --rar: var(--r); }
+  .pill.SR { --rar: var(--sr); }
+  .pill.SSR { --rar: var(--ssr); }
+  .pill.SP { --rar: transparent; color: var(--gold-soft); border: 1px solid var(--gold); }
+
+  .row { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+  .rank {
+    flex: none; width: 34px; height: 44px;
+    border-radius: 5px;
+    background: var(--card-face); color: var(--card-ink);
+    display: grid; place-items: center;
+    font-family: var(--display); font-weight: 700;
+    font-size: 17px; line-height: 1;
+    box-shadow: inset 0 0 0 2px var(--card-face), inset 0 0 0 3px var(--rar, #c9c1ae);
+    font-variant-numeric: tabular-nums;
+  }
+  .rank.red { color: var(--card-red); }
+  .rank.R { --rar: var(--r); }
+  .rank.SR { --rar: var(--sr); }
+  .rank.SSR { --rar: var(--ssr); }
+  .rank.SP { --rar: var(--gold); }
+  .name { font-weight: 700; font-size: 16px; line-height: 1.35; }
+  .note { color: var(--dim); font-size: 13px; margin: 6px 0 0 46px; }
+
+  details {
+    margin-top: 10px;
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    background: var(--bg);
+  }
+  summary {
+    cursor: pointer; list-style: none;
+    padding: 11px 14px;
+    font-size: 13.5px; font-weight: 500;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "＋"; color: var(--faint); flex: none; }
+  details[open] summary::after { content: "−"; }
+  details.avoid summary { color: var(--warn); }
+  details ul { margin: 0; padding: 0 14px 12px 30px; font-size: 13.5px; color: var(--dim); }
+  details li + li { margin-top: 6px; }
+
+  footer { margin-top: 40px; color: var(--faint); font-size: 12px; }
+  footer p { margin: 0 0 6px; }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>トッタリー　新ガチャのシリーズ候補</h1>
+    <p>1作品（または1つの神話）から13キャラ。Aはガチャ外で、2〜Kの12キャラがガチャ対象。上のボタンで作品に移動できます。オフライン保存版。</p>
+    <div class="legend" aria-label="レア度の見方">
+      <span><i class="pill SP">特別</i>A・ガチャ外</span>
+      <span><i class="pill R">R</i>2〜5</span>
+      <span><i class="pill SR">SR</i>6〜9</span>
+      <span><i class="pill SSR">SSR</i>10・J・Q・K</span>
+    </div>
+  </header>
+
+  <nav class="jump" aria-label="シリーズ一覧"><ol id="jump"><li><a href="#alice"><b>1</b>不思議の国のアリス</a></li><li><a href="#greek"><b>2</b>ギリシャ神話</a></li><li><a href="#snowqueen"><b>3</b>雪の女王</a></li><li><a href="#oz"><b>4</b>オズの魔法使い</a></li><li><a href="#norse"><b>5</b>北欧神話</a></li><li><a href="#saiyuki"><b>6</b>西遊記</a></li><li><a href="#arthur"><b>7</b>アーサー王伝説</a></li><li><a href="#arabian"><b>8</b>千夜一夜物語</a></li><li><a href="#pinocchio"><b>9</b>ピノッキオの冒険</a></li><li><a href="#snowwhite"><b>10</b>白雪姫</a></li></ol></nav>
+
+  <main id="list">
+  <section class="series" id="alice" aria-labelledby="h-alice">
+    <div class="s-head"><span class="s-order">No.1</span><h2 id="h-alice">不思議の国のアリス</h2></div>
+    <p class="s-src">キャロル 1865年／テニエル挿絵</p>
+    <p class="s-memo">トランプとの相性が一番よい。原作の挿絵を基準にずらしやすい。</p>
+    <div class="deck">
+      <div class="grp is-ace">
+          <div class="grp-tag"><i class="pill SP">特別・ガチャ外</i>A</div>
+          
+            <div class="row"><span class="rank SP red" aria-label="A">A</span><span class="name">アリス</span></div>
+          <p class="note">主人公</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>2・3</div>
+          
+            <div class="row"><span class="rank R" aria-label="2">2</span><span class="name">ドードー</span></div>
+            <div class="row"><span class="rank R red" aria-label="3">3</span><span class="name">トカゲのビル</span></div>
+          <p class="note">コーカスレースと煙突の騒動</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>4・5</div>
+          
+            <div class="row"><span class="rank R" aria-label="4">4</span><span class="name">帽子屋</span></div>
+            <div class="row"><span class="rank R red" aria-label="5">5</span><span class="name">三月ウサギ</span></div>
+          <p class="note">終わらないお茶会の二人組</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>6・7</div>
+          
+            <div class="row"><span class="rank SR" aria-label="6">6</span><span class="name">グリフォン</span></div>
+            <div class="row"><span class="rank SR red" aria-label="7">7</span><span class="name">ニセウミガメ</span></div>
+          <p class="note">海の学校の思い出話</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>8・9</div>
+          
+            <div class="row"><span class="rank SR" aria-label="8">8</span><span class="name">白ウサギ</span></div>
+            <div class="row"><span class="rank SR red" aria-label="9">9</span><span class="name">イモムシ</span></div>
+          <p class="note">案内役と問いかけ役</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>10</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="10">10</span><span class="name">チェシャ猫</span></div>
+          <p class="note">笑いだけが残る猫</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>J・Q・K</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="J">J</span><span class="name">ハートのジャック</span></div>
+            <div class="row"><span class="rank SSR red" aria-label="Q">Q</span><span class="name">ハートの女王</span></div>
+            <div class="row"><span class="rank SSR" aria-label="K">K</span><span class="name">ハートの王</span></div>
+          <p class="note">原作に出てくるトランプの絵札</p>
+        </div>
+    </div>
+    <details class="avoid" open><summary>避けるデザイン・名前</summary><ul><li>ディズニー版：水色のワンピース＋白エプロン＋黒いリボン＋金髪ストレートの組み合わせ、ピンクと紫の縞の猫、トランプ兵の見た目</li><li>ティム・バートン版：オレンジ髪の帽子屋、頭の大きい女王</li><li>『アリス マッドネス』『シノアリス』</li><li>「マッドハッター」は原作にない呼び名。「帽子屋」を使う</li></ul></details>
+    <details open><summary>予備キャラ</summary><ul><li>眠りネズミ、公爵夫人、料理女</li><li>トランプの庭師（原作ではスペードの2・5・7。数字の札にそのまま使える）</li><li>『鏡の国のアリス』（1871年、これも著作権切れ）のキャラ</li></ul></details>
+  </section>
+  <section class="series" id="greek" aria-labelledby="h-greek">
+    <div class="s-head"><span class="s-order">No.2</span><h2 id="h-greek">ギリシャ神話</h2></div>
+    <p class="s-src">オリュンポス十二神</p>
+    <p class="s-memo">十二神が12枠にぴったり収まる。</p>
+    <div class="deck">
+      <div class="grp is-ace">
+          <div class="grp-tag"><i class="pill SP">特別・ガチャ外</i>A</div>
+          
+            <div class="row"><span class="rank SP red" aria-label="A">A</span><span class="name">ハデス</span></div>
+          <p class="note">十二神に入らない冥界の王</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>2・3</div>
+          
+            <div class="row"><span class="rank R" aria-label="2">2</span><span class="name">ヘルメス</span></div>
+            <div class="row"><span class="rank R red" aria-label="3">3</span><span class="name">ヘスティア</span></div>
+          <p class="note">旅の神とかまどの女神</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>4・5</div>
+          
+            <div class="row"><span class="rank R" aria-label="4">4</span><span class="name">ディオニュソス</span></div>
+            <div class="row"><span class="rank R red" aria-label="5">5</span><span class="name">デメテル</span></div>
+          <p class="note">ぶどう酒と麦の実り</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>6・7</div>
+          
+            <div class="row"><span class="rank SR" aria-label="6">6</span><span class="name">アポロン</span></div>
+            <div class="row"><span class="rank SR red" aria-label="7">7</span><span class="name">アルテミス</span></div>
+          <p class="note">太陽と月の双子。エルフの「矢」の演出とかぶらないように</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>8・9</div>
+          
+            <div class="row"><span class="rank SR" aria-label="8">8</span><span class="name">アレス</span></div>
+            <div class="row"><span class="rank SR red" aria-label="9">9</span><span class="name">アフロディーテ</span></div>
+          <p class="note">戦いと愛の恋人</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>10</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="10">10</span><span class="name">アテナ</span></div>
+          <p class="note">知恵と戦いの女神</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>J・Q・K</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="J">J</span><span class="name">ポセイドン</span></div>
+            <div class="row"><span class="rank SSR red" aria-label="Q">Q</span><span class="name">ヘラ</span></div>
+            <div class="row"><span class="rank SSR" aria-label="K">K</span><span class="name">ゼウス</span></div>
+          <p class="note">海・天の后・天の王</p>
+        </div>
+    </div>
+    <details class="avoid" open><summary>避けるデザイン・名前</summary><ul><li>『Fate』</li><li>ディズニー『ヘラクレス』：青い炎の髪のハデス、光る巨人のゼウス</li><li>ゲーム『Hades』『God of War』</li><li>『終末のワルキューレ』『聖闘士星矢』『パーシー・ジャクソン』</li></ul></details>
+    <details open><summary>予備キャラ</summary><ul><li>ヘパイストス、ペルセポネ、エロス、プロメテウス、メドゥーサ</li></ul></details>
+  </section>
+  <section class="series" id="snowqueen" aria-labelledby="h-snowqueen">
+    <div class="s-head"><span class="s-order">No.3</span><h2 id="h-snowqueen">雪の女王</h2></div>
+    <p class="s-src">アンデルセン 1844年</p>
+    <p class="s-memo">冬に出すと季節に合う。原作の女王は『アナと雪の女王』とまったく別の姿。</p>
+    <div class="deck">
+      <div class="grp is-ace">
+          <div class="grp-tag"><i class="pill SP">特別・ガチャ外</i>A</div>
+          
+            <div class="row"><span class="rank SP red" aria-label="A">A</span><span class="name">ゲルダ</span></div>
+          <p class="note">カイを探す少女</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>2・3</div>
+          
+            <div class="row"><span class="rank R" aria-label="2">2</span><span class="name">森のカラス</span></div>
+            <div class="row"><span class="rank R red" aria-label="3">3</span><span class="name">城のカラス</span></div>
+          <p class="note">ゲルダを案内するカラスの恋人</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>4・5</div>
+          
+            <div class="row"><span class="rank R" aria-label="4">4</span><span class="name">王子</span></div>
+            <div class="row"><span class="rank R red" aria-label="5">5</span><span class="name">王女</span></div>
+          <p class="note">ゲルダに馬車を贈る二人</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>6・7</div>
+          
+            <div class="row"><span class="rank SR" aria-label="6">6</span><span class="name">山賊の娘</span></div>
+            <div class="row"><span class="rank SR red" aria-label="7">7</span><span class="name">トナカイ</span></div>
+          <p class="note">ゲルダを北へ送り出す</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>8・9</div>
+          
+            <div class="row"><span class="rank SR" aria-label="8">8</span><span class="name">北の国の老婆</span></div>
+            <div class="row"><span class="rank SR red" aria-label="9">9</span><span class="name">氷原の賢女</span></div>
+          <p class="note">干し鱈に手紙を書く二人</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>10</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="10">10</span><span class="name">花園の魔女</span></div>
+          <p class="note">ゲルダを引き止める花の魔法</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>J・Q・K</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="J">J</span><span class="name">カイ</span></div>
+            <div class="row"><span class="rank SSR red" aria-label="Q">Q</span><span class="name">雪の女王</span></div>
+            <div class="row"><span class="rank SSR" aria-label="K">K</span><span class="name">鏡の悪魔</span></div>
+          <p class="note">鏡のかけらから始まる物語</p>
+        </div>
+    </div>
+    <details class="avoid" open><summary>避けるデザイン・名前</summary><ul><li>『アナと雪の女王』：エルサの水色のドレスと三つ編み、トナカイのスヴェン、雪だるま</li><li>ソ連のアニメ版（1957年）</li><li>原作の「ラップの女」「フィンの女」は差別的な呼び方と受け取られることがあるため、言い換える</li></ul></details>
+    <details open><summary>予備キャラ</summary><ul><li>おばあさん、山賊の老婆、森の鳩</li></ul></details>
+  </section>
+  <section class="series" id="oz" aria-labelledby="h-oz">
+    <div class="s-head"><span class="s-order">No.4</span><h2 id="h-oz">オズの魔法使い</h2></div>
+    <p class="s-src">ボーム 1900年</p>
+    <p class="s-memo">オズ大王は大きな頭・美しい女・獣・火の玉と姿を変える。スキンの見せ場に使える。</p>
+    <div class="deck">
+      <div class="grp is-ace">
+          <div class="grp-tag"><i class="pill SP">特別・ガチャ外</i>A</div>
+          
+            <div class="row"><span class="rank SP red" aria-label="A">A</span><span class="name">ドロシー（トトと一緒）</span></div>
+          <p class="note">主人公</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>2・3</div>
+          
+            <div class="row"><span class="rank R" aria-label="2">2</span><span class="name">エメラルドの都の門番</span></div>
+            <div class="row"><span class="rank R red" aria-label="3">3</span><span class="name">野ネズミの女王</span></div>
+          <p class="note">緑の眼鏡をかけさせる番人と、ドロシーを助けた女王</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>4・5</div>
+          
+            <div class="row"><span class="rank R" aria-label="4">4</span><span class="name">東の悪い魔女</span></div>
+            <div class="row"><span class="rank R red" aria-label="5">5</span><span class="name">北の良い魔女</span></div>
+          <p class="note">物語の冒頭の二人</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>6・7</div>
+          
+            <div class="row"><span class="rank SR" aria-label="6">6</span><span class="name">かかし</span></div>
+            <div class="row"><span class="rank SR red" aria-label="7">7</span><span class="name">ブリキの木こり</span></div>
+          <p class="note">脳みそと心を求める旅仲間</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>8・9</div>
+          
+            <div class="row"><span class="rank SR" aria-label="8">8</span><span class="name">翼ザルの王</span></div>
+            <div class="row"><span class="rank SR red" aria-label="9">9</span><span class="name">カリダー</span></div>
+          <p class="note">金の帽子に従う猿と、熊の体に虎の頭の怪物</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>10</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="10">10</span><span class="name">臆病なライオン</span></div>
+          <p class="note">勇気を求める百獣の王</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>J・Q・K</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="J">J</span><span class="name">西の悪い魔女</span></div>
+            <div class="row"><span class="rank SSR red" aria-label="Q">Q</span><span class="name">南の良い魔女グリンダ</span></div>
+            <div class="row"><span class="rank SSR" aria-label="K">K</span><span class="name">オズ大王</span></div>
+          <p class="note">物語の中心の三人</p>
+        </div>
+    </div>
+    <details class="avoid" open><summary>避けるデザイン・名前</summary><ul><li>1939年の映画で追加された要素：赤い靴（原作は銀の靴）</li><li>緑の肌でとんがり帽子の魔女（原作の西の魔女は片目で傘を持つ）</li><li>グリンダを北の魔女にする設定（原作では南）</li><li>『ウィキッド』のエルファバ、ネッサローズ、フィエロなどの名前</li></ul></details>
+    <details open><summary>予備キャラ</summary><ul><li>ハンマーヘッド、陶器の国のお姫さま、マンチキンの人</li><li>続編（これも著作権切れ）のオズマ、ジャック・パンプキンヘッド</li></ul></details>
+  </section>
+  <section class="series" id="norse" aria-labelledby="h-norse">
+    <div class="s-head"><span class="s-order">No.5</span><h2 id="h-norse">北欧神話</h2></div>
+    <p class="s-src">エッダほか</p>
+    <p class="s-memo">今のバイキングのスキン（8・9）と見た目がかぶらないようにする。</p>
+    <div class="deck">
+      <div class="grp is-ace">
+          <div class="grp-tag"><i class="pill SP">特別・ガチャ外</i>A</div>
+          
+            <div class="row"><span class="rank SP red" aria-label="A">A</span><span class="name">ロキ</span></div>
+          <p class="note">いたずらの神。今のAのマジシャンと同じトリックスターの枠</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>2・3</div>
+          
+            <div class="row"><span class="rank R" aria-label="2">2</span><span class="name">フギン</span></div>
+            <div class="row"><span class="rank R red" aria-label="3">3</span><span class="name">ムニン</span></div>
+          <p class="note">オーディンの2羽のカラス（思考と記憶）</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>4・5</div>
+          
+            <div class="row"><span class="rank R" aria-label="4">4</span><span class="name">ブラギ</span></div>
+            <div class="row"><span class="rank R red" aria-label="5">5</span><span class="name">イズン</span></div>
+          <p class="note">詩の神と、若返りの黄金のリンゴの女神</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>6・7</div>
+          
+            <div class="row"><span class="rank SR" aria-label="6">6</span><span class="name">フレイ</span></div>
+            <div class="row"><span class="rank SR red" aria-label="7">7</span><span class="name">フレイヤ</span></div>
+          <p class="note">豊穣の双子</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>8・9</div>
+          
+            <div class="row"><span class="rank SR" aria-label="8">8</span><span class="name">トール</span></div>
+            <div class="row"><span class="rank SR red" aria-label="9">9</span><span class="name">シヴ</span></div>
+          <p class="note">雷神と金の髪の妻</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>10</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="10">10</span><span class="name">フェンリル</span></div>
+          <p class="note">神々を呑む狼</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>J・Q・K</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="J">J</span><span class="name">バルドル</span></div>
+            <div class="row"><span class="rank SSR red" aria-label="Q">Q</span><span class="name">フリッグ</span></div>
+            <div class="row"><span class="rank SSR" aria-label="K">K</span><span class="name">オーディン</span></div>
+          <p class="note">光の神・天の后・主神</p>
+        </div>
+    </div>
+    <details class="avoid" open><summary>避けるデザイン・名前</summary><ul><li>マーベル版：金髪で赤いマントのトール、緑と金の角の兜のロキ</li><li>『God of War ラグナロク』『終末のワルキューレ』</li><li>「ベルダンディー」は『ああっ女神さまっ』の表記。「ヴェルザンディ」と書く</li><li>「ワルキューレ」はナムコのキャラ名でもある。「戦乙女」と書くか商標を確認</li></ul></details>
+    <details open><summary>予備キャラ</summary><ul><li>ヘイムダル、テュール、ヘル、ヨルムンガンド、スルト、戦乙女</li><li>J・Q・K を運命の女神（ウルズ／ヴェルザンディ／スクルド）にする案も</li></ul></details>
+  </section>
+  <section class="series" id="saiyuki" aria-labelledby="h-saiyuki">
+    <div class="s-head"><span class="s-order">No.6</span><h2 id="h-saiyuki">西遊記</h2></div>
+    <p class="s-src">明代の長編小説</p>
+    <p class="s-memo">牛魔王・羅刹女・紅孩児は家族。芭蕉扇の話でまとめられる。</p>
+    <div class="deck">
+      <div class="grp is-ace">
+          <div class="grp-tag"><i class="pill SP">特別・ガチャ外</i>A</div>
+          
+            <div class="row"><span class="rank SP red" aria-label="A">A</span><span class="name">孫悟空</span></div>
+          <p class="note">主人公</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>2・3</div>
+          
+            <div class="row"><span class="rank R" aria-label="2">2</span><span class="name">金角</span></div>
+            <div class="row"><span class="rank R red" aria-label="3">3</span><span class="name">銀角</span></div>
+          <p class="note">ひょうたんに吸い込む兄弟の妖怪</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>4・5</div>
+          
+            <div class="row"><span class="rank R" aria-label="4">4</span><span class="name">白骨夫人</span></div>
+            <div class="row"><span class="rank R red" aria-label="5">5</span><span class="name">蜘蛛の精</span></div>
+          <p class="note">三蔵をだます女の妖怪</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>6・7</div>
+          
+            <div class="row"><span class="rank SR" aria-label="6">6</span><span class="name">猪八戒</span></div>
+            <div class="row"><span class="rank SR red" aria-label="7">7</span><span class="name">沙悟浄</span></div>
+          <p class="note">旅の仲間</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>8・9</div>
+          
+            <div class="row"><span class="rank SR" aria-label="8">8</span><span class="name">紅孩児</span></div>
+            <div class="row"><span class="rank SR red" aria-label="9">9</span><span class="name">玉龍</span></div>
+          <p class="note">火を吐く牛魔王の子と、白馬になった竜</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>10</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="10">10</span><span class="name">二郎真君</span></div>
+          <p class="note">悟空と七十二変化で渡り合う神</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>J・Q・K</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="J">J</span><span class="name">三蔵法師</span></div>
+            <div class="row"><span class="rank SSR red" aria-label="Q">Q</span><span class="name">羅刹女</span></div>
+            <div class="row"><span class="rank SSR" aria-label="K">K</span><span class="name">牛魔王</span></div>
+          <p class="note">芭蕉扇をめぐる三人</p>
+        </div>
+    </div>
+    <details class="avoid" open><summary>避けるデザイン・名前</summary><ul><li>『ドラゴンボール』：山吹色の道着、ツンツン髪</li><li>『最遊記』、ゲーム『黒神話：悟空』（2024年）</li><li>テレビドラマで役者が演じた姿</li><li>釈迦如来・観音菩薩は今も信仰されている仏なので、スキンにしない</li></ul></details>
+    <details open><summary>予備キャラ</summary><ul><li>黄風怪、太上老君、嫦娥、哪吒</li></ul></details>
+  </section>
+  <section class="series" id="arthur" aria-labelledby="h-arthur">
+    <div class="s-head"><span class="s-order">No.7</span><h2 id="h-arthur">アーサー王伝説</h2></div>
+    <p class="s-src">マロリー『アーサー王の死』1485年ほか</p>
+    <p class="s-memo">Aのマーリンは、今のランプのマジシャンと同じ魔術師の枠。</p>
+    <div class="deck">
+      <div class="grp is-ace">
+          <div class="grp-tag"><i class="pill SP">特別・ガチャ外</i>A</div>
+          
+            <div class="row"><span class="rank SP red" aria-label="A">A</span><span class="name">マーリン</span></div>
+          <p class="note">魔術師</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>2・3</div>
+          
+            <div class="row"><span class="rank R" aria-label="2">2</span><span class="name">ケイ</span></div>
+            <div class="row"><span class="rank R red" aria-label="3">3</span><span class="name">ベディヴィア</span></div>
+          <p class="note">アーサーの義兄と、最後に剣を返した騎士</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>4・5</div>
+          
+            <div class="row"><span class="rank R" aria-label="4">4</span><span class="name">ガレス</span></div>
+            <div class="row"><span class="rank R red" aria-label="5">5</span><span class="name">リネット</span></div>
+          <p class="note">台所から騎士になった若者と、彼を導いた娘</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>6・7</div>
+          
+            <div class="row"><span class="rank SR" aria-label="6">6</span><span class="name">トリスタン</span></div>
+            <div class="row"><span class="rank SR red" aria-label="7">7</span><span class="name">イゾルデ</span></div>
+          <p class="note">悲恋の二人</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>8・9</div>
+          
+            <div class="row"><span class="rank SR" aria-label="8">8</span><span class="name">ガウェイン</span></div>
+            <div class="row"><span class="rank SR red" aria-label="9">9</span><span class="name">緑の騎士</span></div>
+          <p class="note">首切りの約束</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>10</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="10">10</span><span class="name">湖の乙女</span></div>
+          <p class="note">エクスカリバーを授ける</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>J・Q・K</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="J">J</span><span class="name">ランスロット</span></div>
+            <div class="row"><span class="rank SSR red" aria-label="Q">Q</span><span class="name">グィネヴィア</span></div>
+            <div class="row"><span class="rank SSR" aria-label="K">K</span><span class="name">アーサー</span></div>
+          <p class="note">円卓の中心の三人</p>
+        </div>
+    </div>
+    <details class="avoid" open><summary>避けるデザイン・名前</summary><ul><li>『Fate』：女性のアーサー（青いドレス・銀の鎧・金髪）、同作のモードレッド</li><li>ディズニー『王様の剣』のマーリン</li><li>『七つの大罪』、BBC ドラマ『魔術師マーリン』</li></ul></details>
+    <details open><summary>予備キャラ</summary><ul><li>パーシヴァル、ガラハッド、モードレッド、モルガン・ル・フェイ、ユーサー</li><li>8・9 をモードレッド／モルガンにする案も</li></ul></details>
+  </section>
+  <section class="series" id="arabian" aria-labelledby="h-arabian">
+    <div class="s-head"><span class="s-order">No.8</span><h2 id="h-arabian">千夜一夜物語</h2></div>
+    <p class="s-src">アラビアの説話集</p>
+    <p class="s-memo">今のA（ランプのマジシャン）と題材がかぶる。ランプの魔神は入れず、Aの続きのシリーズとして見せる手もある。</p>
+    <div class="deck">
+      <div class="grp is-ace">
+          <div class="grp-tag"><i class="pill SP">特別・ガチャ外</i>A</div>
+          
+            <div class="row"><span class="rank SP red" aria-label="A">A</span><span class="name">シェヘラザード</span></div>
+          <p class="note">物語の語り手</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>2・3</div>
+          
+            <div class="row"><span class="rank R" aria-label="2">2</span><span class="name">アリババ</span></div>
+            <div class="row"><span class="rank R red" aria-label="3">3</span><span class="name">カシム</span></div>
+          <p class="note">兄弟</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>4・5</div>
+          
+            <div class="row"><span class="rank R" aria-label="4">4</span><span class="name">モルジアナ</span></div>
+            <div class="row"><span class="rank R red" aria-label="5">5</span><span class="name">盗賊の頭</span></div>
+          <p class="note">四十人の盗賊を出し抜く賢い娘と、その宿敵</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>6・7</div>
+          
+            <div class="row"><span class="rank SR" aria-label="6">6</span><span class="name">船乗りシンドバッド</span></div>
+            <div class="row"><span class="rank SR red" aria-label="7">7</span><span class="name">ロック鳥</span></div>
+          <p class="note">七つの航海</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>8・9</div>
+          
+            <div class="row"><span class="rank SR" aria-label="8">8</span><span class="name">アフマド王子</span></div>
+            <div class="row"><span class="rank SR red" aria-label="9">9</span><span class="name">妖精ペリ・バヌー</span></div>
+          <p class="note">空飛ぶ絨毯の物語</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>10</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="10">10</span><span class="name">指輪の魔神</span></div>
+          <p class="note">ランプとは別の魔神</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>J・Q・K</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="J">J</span><span class="name">アラジン</span></div>
+            <div class="row"><span class="rank SSR red" aria-label="Q">Q</span><span class="name">バドルルブドゥール姫</span></div>
+            <div class="row"><span class="rank SSR" aria-label="K">K</span><span class="name">シャハリヤール王</span></div>
+          <p class="note">物語の中心の三人</p>
+        </div>
+    </div>
+    <details class="avoid" open><summary>避けるデザイン・名前</summary><ul><li>ディズニー『アラジン』：ジャスミン、ジャファー、イアーゴ、アブーは原作にない名前。青い肌の魔神</li><li>『マギ』</li><li>中東の人々を型にはめた描き方にしない（原作のアラジンは中国が舞台）</li></ul></details>
+    <details open><summary>予備キャラ</summary><ul><li>ドゥンヤザード（シェヘラザードの妹）、マグリブの魔法使い、黒檀の馬、荷担ぎのシンドバッド</li></ul></details>
+  </section>
+  <section class="series" id="pinocchio" aria-labelledby="h-pinocchio">
+    <div class="s-head"><span class="s-order">No.9</span><h2 id="h-pinocchio">ピノッキオの冒険</h2></div>
+    <p class="s-src">コッローディ 1883年</p>
+    <p class="s-memo">ディズニー色が強いので名前に注意。原作のピノッキオはパンの身の帽子と花柄の紙の服。</p>
+    <div class="deck">
+      <div class="grp is-ace">
+          <div class="grp-tag"><i class="pill SP">特別・ガチャ外</i>A</div>
+          
+            <div class="row"><span class="rank SP red" aria-label="A">A</span><span class="name">ピノッキオ</span></div>
+          <p class="note">主人公</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>2・3</div>
+          
+            <div class="row"><span class="rank R" aria-label="2">2</span><span class="name">さくらんぼ親方</span></div>
+            <div class="row"><span class="rank R red" aria-label="3">3</span><span class="name">カタツムリ</span></div>
+          <p class="note">最初の丸太を拾った大工と、妖精の家ののろまな召使い</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>4・5</div>
+          
+            <div class="row"><span class="rank R" aria-label="4">4</span><span class="name">キツネ</span></div>
+            <div class="row"><span class="rank R red" aria-label="5">5</span><span class="name">ネコ</span></div>
+          <p class="note">ピノッキオをだます二人組</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>6・7</div>
+          
+            <div class="row"><span class="rank SR" aria-label="6">6</span><span class="name">ロウソクの芯（ルチニョーロ）</span></div>
+            <div class="row"><span class="rank SR red" aria-label="7">7</span><span class="name">おもちゃの国の御者</span></div>
+          <p class="note">おもちゃの国へ誘う二人</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>8・9</div>
+          
+            <div class="row"><span class="rank SR" aria-label="8">8</span><span class="name">話すコオロギ</span></div>
+            <div class="row"><span class="rank SR red" aria-label="9">9</span><span class="name">緑の漁師</span></div>
+          <p class="note">忠告役と、ピノッキオを揚げようとする漁師</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>10</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="10">10</span><span class="name">巨大なフカ</span></div>
+          <p class="note">ジェッペットを呑み込んだ海の怪物（クジラではない）</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>J・Q・K</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="J">J</span><span class="name">人形芝居の親方（火喰い）</span></div>
+            <div class="row"><span class="rank SSR red" aria-label="Q">Q</span><span class="name">青い髪の妖精</span></div>
+            <div class="row"><span class="rank SSR" aria-label="K">K</span><span class="name">ジェッペット</span></div>
+          <p class="note">物語の中心の三人</p>
+        </div>
+    </div>
+    <details class="avoid" open><summary>避けるデザイン・名前</summary><ul><li>ディズニーの名前：ジミニー・クリケット、ブルー・フェアリー、ストロンボリ、オネスト・ジョン、ギデオン、モンストロ、ランプウィック</li><li>ネコのフィガロと金魚のクレオ（ディズニーの創作で原作にいない）</li><li>チロル帽のピノッキオ</li><li>デル・トロ版（2022年）</li></ul></details>
+    <details open><summary>予備キャラ</summary><ul><li>ハヤブサ、プードルのメドーロ、ゴリラの裁判官、マグロ</li></ul></details>
+  </section>
+  <section class="series" id="snowwhite" aria-labelledby="h-snowwhite">
+    <div class="s-head"><span class="s-order">No.10</span><h2 id="h-snowwhite">白雪姫</h2></div>
+    <p class="s-src">グリム 1857年版</p>
+    <p class="s-memo">小人が7人いるので、2〜9のペアの形が崩れる。小人7人は見た目が似やすく、デザインの手間が一番大きい。</p>
+    <div class="deck">
+      <div class="grp is-ace">
+          <div class="grp-tag"><i class="pill SP">特別・ガチャ外</i>A</div>
+          
+            <div class="row"><span class="rank SP red" aria-label="A">A</span><span class="name">白雪姫</span></div>
+          <p class="note">主人公</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>2・3</div>
+          
+            <div class="row"><span class="rank R" aria-label="2">2</span><span class="name">小人・一</span></div>
+            <div class="row"><span class="rank R red" aria-label="3">3</span><span class="name">小人・二</span></div>
+          <p class="note">原作の小人には名前がない。自分で付ける（鉱石や曜日から取るなど）</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill R">R</i>4・5</div>
+          
+            <div class="row"><span class="rank R" aria-label="4">4</span><span class="name">小人・三</span></div>
+            <div class="row"><span class="rank R red" aria-label="5">5</span><span class="name">小人・四</span></div>
+          
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>6・7</div>
+          
+            <div class="row"><span class="rank SR" aria-label="6">6</span><span class="name">小人・五</span></div>
+            <div class="row"><span class="rank SR red" aria-label="7">7</span><span class="name">小人・六</span></div>
+          
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SR">SR</i>8・9</div>
+          
+            <div class="row"><span class="rank SR" aria-label="8">8</span><span class="name">小人・七</span></div>
+            <div class="row"><span class="rank SR red" aria-label="9">9</span><span class="name">実の母の王妃</span></div>
+          <p class="note">王妃は雪の窓辺で針を刺した冒頭の場面</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>10</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="10">10</span><span class="name">魔法の鏡</span></div>
+          <p class="note">「世界で一番美しいのは」</p>
+        </div><div class="grp">
+          <div class="grp-tag"><i class="pill SSR">SSR</i>J・Q・K</div>
+          
+            <div class="row"><span class="rank SSR" aria-label="J">J</span><span class="name">狩人</span></div>
+            <div class="row"><span class="rank SSR red" aria-label="Q">Q</span><span class="name">継母の妃</span></div>
+            <div class="row"><span class="rank SSR" aria-label="K">K</span><span class="name">王子</span></div>
+          <p class="note">物語を動かす三人</p>
+        </div>
+    </div>
+    <details class="avoid" open><summary>避けるデザイン・名前</summary><ul><li>小人のディズニー名：ドック、グランピー、ハッピー、スリーピー、バッシュフル、スニージー、ドーピー</li><li>ディズニー版：青い上着と黄色いスカートと赤いパフスリーブ、色とりどりのとんがり帽子の小人</li><li>映画『スノーホワイト』（2012年）</li></ul></details>
+    <details open><summary>予備キャラ</summary><ul><li>王（父）</li><li>物売りの老婆（妃の変装。紐・櫛・りんごの3種類があるので、妃の別スキンにもできる）</li></ul></details>
+  </section></main>
+
+  <footer>
+    <p>番号は出す順番の案です。ディズニーの影響が少なく、見た目をずらしやすい作品を前にしています。</p>
+    <p>これは法律の助言ではありません。最終デザインはリリース前に弁理士・弁護士に見てもらってください。</p>
+    <p>元のメモ: tottery/ガチャシリーズ候補.md（2026-09-25）</p>
+  </footer>
+</div>
+
+</body>
+</html>

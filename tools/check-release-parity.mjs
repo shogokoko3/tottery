@@ -82,9 +82,9 @@ is(
 
 // 束ねた表と、実際に置いた絵が食い違っていないか(組み立て済みのときだけ)
 if (fs.existsSync("dist/index.html") && fs.existsSync("dist/fields")) {
-  const m = read("dist/index.html").match(/\{earth:"[^"]+"[^}]*\}/);
+  const m = read("dist/index.html").match(/\{earth:"earth\.[a-f0-9]{8}\.(?:png|webp)"[^}]*\}/);
   if (m) {
-    const names = [...m[0].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+    const names = [...m[0].matchAll(/:"([^"]+)"/g)].map((x) => x[1]);
     const ng = names.filter((n) => !fs.existsSync(`dist/fields/${n}`));
     is(
       "盤面エリアの表と、置いた絵が一致する",

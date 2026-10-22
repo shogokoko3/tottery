@@ -1,5 +1,6 @@
 import { armySlots, maxAdopt, territoryRows, getLegalMoves } from "./board.js";
 import { areaForKing, areaSkinOk } from "./areas.js";
+import { aliceFormationBonus, aliceKingBonus, aliceKinBonus, aliceMulliganFish, aliceReversalBonus, knob } from "./cpu-alice.js";
 
 export const CARD_VALUE = {
   A: 5,
@@ -55,12 +56,18 @@ export function chooseArmyPlan(
     let score =
       CARD_VALUE[king.rank] +
       (area === "palace" && king.rank === "K" ? 4 : 0) +
-      ((area && options.areaValue?.[area]) || 0);
+      ((area && options.areaValue?.[area]) || 0) +
+      // シーズン2のスキンの王(帰還・ティーカップなど)の値打ち。調整値は cpu-alice.js
+      aliceKingBonus(state, player, king.rank);
+    const kin = aliceKinBonus(state, player, king.rank);
     const marginal = (c) => {
       let n = CARD_VALUE[c.rank] + (affinity[area]?.[c.rank] || 0);
       // 後継者と王の射程、海賊王と同数字の射程を構成に織り込む。
       if (["2", "3", "4", "5"].includes(king.rank) && c.rank === king.rank)
         n += 3;
+      if (kin && c.rank === king.rank) n += kin;
+      // アリスの A を採用しているなら、逆転で化ける 2〜5 の値打ちを上げる(A を先に取るよう A 自身にも少し)
+      n += aliceReversalBonus(state, player, c.rank, counts.A > 0 || c.rank === "A");
       if (c.rank === "A" && counts.A)
         n -= area === "palace" && counts.A < 2 ? 1 : 4;
       // 一方向・一種類だけに偏るより、代わりに働ける役割を残す。
@@ -101,10 +108,19 @@ export function strategicDiscards(
   const plan = chooseArmyPlan(state, player, preferredKingRank, options);
   if (!plan) return [];
   const keep = new Set(plan.cards.map((c) => c.id));
-  return state.players[player].hand
-    .filter((c) => !keep.has(c.id))
-    .slice(0, 4)
-    .map((c) => c.id);
+  // 構成に入らない札(最大4枚)。決まりの上限は予備札の数(呼ぶ側の capDiscards)
+  const out = state.players[player].hand.filter((c) => !keep.has(c.id));
+  // 釣り(2026-10-16 の検証): 構成に入る札のうち弱いものも捨て、強い札や王と同じ数字を引きに行く。
+  // 王・王と同じ数字・A は残す。捨てた札は相手にも見える
+  const fish = aliceMulliganFish(state, player, plan.kingRank);
+  if (fish > 0) {
+    const limit = knob("mulliganFishValue");
+    const weak = plan.cards
+      .filter((c) => c.id !== plan.kingId && c.rank !== plan.kingRank && c.rank !== "A" && CARD_VALUE[c.rank] <= limit)
+      .sort((a, b) => CARD_VALUE[a.rank] - CARD_VALUE[b.rank]);
+    out.push(...weak.slice(0, fish));
+  }
+  return out.map((c) => c.id);
 }
 
 /** 味方を敵の仮駒に置き換え、そのマスに実際に到達できる味方を数える。
@@ -217,8 +233,10 @@ export function arrangeArmy(state, player, plan) {
       placement[card.id] = cell;
       used.add(`${cell.row}/${cell.col}`);
     }
+  // シーズン2の布陣の加点(王のマス・トランプ兵の近さ)。最初のシリーズでは 0
+  const total = (pl) => formationMetrics(plan, pl, size, player).score + aliceFormationBonus(state, player, plan, pl);
   let best = placement,
-    score = formationMetrics(plan, best, size, player).score;
+    score = total(best);
   // 決定的な局所探索。空きマスへの移動と駒同士の交換を両方試す。
   for (let pass = 0; pass < 2; pass++) {
     let improved = false;
@@ -231,7 +249,7 @@ export function arrangeArmy(state, player, plan) {
         );
         const trial = { ...best, [card.id]: cell };
         if (other) trial[other.id] = from;
-        const next = formationMetrics(plan, trial, size, player).score;
+        const next = total(trial);
         if (next > score + 0.001) {
           best = trial;
           score = next;

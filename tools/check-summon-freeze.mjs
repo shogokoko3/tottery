@@ -8,6 +8,7 @@ import {
   freezeFoilUpgrade,
   freezeLadder,
   summonFoilOrder,
+  summonFoilTotal,
 } from "../src/skins/summon-freeze.js";
 import { normalize, applyPull, pull } from "../src/skins/collection.js";
 import { byId, POOL } from "../src/skins/catalog.js";
@@ -89,6 +90,19 @@ const multi = resolveSummonFreeze(initial, () => .1);
 assert.deepEqual(summonFoilOrder(multi.skins.map(id => ({ id })), multi.freeze), [3, 4, 0, 1]);
 assert.deepEqual(summonFoilOrder(packet.skins.map(id => ({ id })), null), [0, 3, 4]);
 assert.deepEqual(summonFoilOrder(ten().map(id => ({ id })), null), []);
+// 元からのフォイルを見せている間は「n / 全体」に昇格分を含めない(1/2 で昇格が読めてしまう)。
+// 昇格分の番になってから全体に含める
+{
+  const results = packet.skins.map(id => ({ id }));
+  assert.equal(summonFoilTotal(results, packet.freeze, 3), 2);
+  assert.equal(summonFoilTotal(results, packet.freeze, 4), 2);
+  assert.equal(summonFoilTotal(results, packet.freeze, 0), 3);
+  const more = multi.skins.map(id => ({ id }));
+  assert.equal(summonFoilTotal(more, multi.freeze, 3), 2);
+  assert.equal(summonFoilTotal(more, multi.freeze, 0), 4);
+  assert.equal(summonFoilTotal(more, multi.freeze, 1), 4);
+  assert.equal(summonFoilTotal(results, null, 0), 3, "フリーズなしは今までどおり全体の数");
+}
 assert.deepEqual(packet.skins.slice(3, 5), initial.slice(3, 5));
 for (const rarity of ["SR", "SSR"]) {
   const pool = POOL.filter((s) => s.rarity === rarity);

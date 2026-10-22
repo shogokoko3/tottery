@@ -14,7 +14,7 @@ export function loadFoilMasks() {
     const timeout = setTimeout(() => controller.abort(), 8000);
     // Like all skin URLs, resolve next to index.html, including subdirectory hosting.
     masksPromise = fetch(
-      new URL("skins/foils/masks.json?v=ace-foil-2", document.baseURI),
+      new URL("skins/foils/masks.json?v=legend-costume-3", document.baseURI),
       {
         signal: controller.signal,
       },
@@ -180,7 +180,7 @@ function disconnectEnvironment() {
   motion = null;
 }
 
-export function attachFoilMaterial({ canvas, image, skinId }) {
+export function attachFoilMaterial({ canvas, image, skinId, maskEntry = null }) {
   const context = canvas.getContext("2d", { alpha: true });
   if (!context) return { setEnabled() {}, destroy() {} };
   connectEnvironment();
@@ -188,7 +188,7 @@ export function attachFoilMaterial({ canvas, image, skinId }) {
     requested = true,
     visible = !window.IntersectionObserver;
   let pending = false,
-    entry = null,
+    entry = maskEntry,
     mask = null,
     drawnAt = -Infinity;
   let displayWidth = 0,

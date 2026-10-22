@@ -19,7 +19,7 @@
  * - 初回購入特典・特別スキンにフォイルは無い。対象はガチャの15キャラ(POOL)だけ
  * - 交換で得たフォイルも通算獲得に数える(ガチャ・錬成・配布と同じ)
  */
-import { POOL, baseSkinId, byId, foilId } from "./catalog.js";
+import { ALL_POOL as POOL, baseSkinId, byId, foilId } from "./catalog.js";
 import { heldOf } from "./ether.js";
 
 export const SHARD_NAME = "フォイルの欠片";

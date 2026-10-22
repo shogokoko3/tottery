@@ -1,3 +1,4 @@
+import { audioUrl } from "../audio/tracks.js";
 import { audioSettings, connectFilmSound, duckMusic } from "../audio/index.js";
 
 let sourceUrl;
@@ -69,13 +70,13 @@ function soundUrl() {
 
 export function prepareSummonSound() {
   const settings = audioSettings();
-  if (!settings.muted && settings.se) soundUrl();
+  // The bundled audio loads when the summon presentation starts.
 }
 
 export function startSummonSound() {
   const settings = audioSettings();
   if (settings.muted || !settings.se) return () => {};
-  const audio = new Audio(soundUrl());
+  const audio = new Audio(audioUrl("se-summon_bed.m4a"));
   const disconnect = connectFilmSound(audio);
   let release = () => {},
     stopped = false;

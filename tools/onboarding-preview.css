@@ -1,0 +1,168 @@
+html { background: #090e15; }
+body { margin: 0; background: #090e15; color: #eee8dc; font-family: "Hiragino Sans", "Yu Gothic", sans-serif; }
+.jp-shell { box-sizing: border-box; height: 100dvh; overflow: hidden; display: grid; grid-template-columns: minmax(280px, 400px) 420px; justify-content: center; align-items: start; gap: clamp(32px, 7vw, 100px); padding: 34px 26px; background: radial-gradient(ellipse at 75% 40%, #25312755, transparent 65%); }
+.jp-review { box-sizing: border-box; max-height: calc(100dvh - 68px); overflow-y: auto; scrollbar-width: thin; }
+.jp-review { padding: 30px 0; text-align: left; }
+.jp-review-kicker { color: #b8a47b; font-size: 12px; letter-spacing: .13em; }
+.jp-review > h1 { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: clamp(30px, 3.5vw, 42px); line-height: 1.6; font-weight: 500; margin: 22px 0 14px; }
+.jp-review-lead, .jp-review-note p { color: #a9b0b2; line-height: 1.9; font-size: 14px; }
+.jp-timeline { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 30px 0; }
+.jp-timeline button { display: flex; align-items: center; gap: 12px; min-height: 46px; border: 1px solid #a18b5e30; border-radius: 8px; background: #111a22; color: #c5c8c6; font: inherit; font-size: 13px; padding: 10px 14px; cursor: pointer; text-align: left; }
+.jp-timeline button > span { font-size: 11px; color: #92846c; }
+.jp-timeline button[aria-current="step"] { background: #272b26; border-color: #c2a366; color: #f4e0b2; }
+.jp-timeline button[aria-current="step"] i { width: 5px; height: 5px; border-radius: 50%; background: #e5c77f; margin-left: auto; }
+.jp-review-note { padding: 22px 0; border-block: 1px solid #a18b5e30; }
+.jp-review-note > small { color: #b9a171; font-size: 11px; }
+.jp-review-note > h2 { font: 500 18px/1.7 "Hiragino Mincho ProN", serif; padding: 0; margin: 10px 0; }
+.jp-review-note > h2::after { display: none; }
+.jp-reset { background: none; border: 0; border-bottom: 1px solid #a18b5e66; color: #d6bc8b; padding: 0 0 5px; margin-top: 26px; font: inherit; font-size: 13px; cursor: pointer; }
+.jp-review-disclaimer { font-size: 11px; line-height: 1.9; color: #75808b; margin: 20px 0; }
+.jp-device { position: relative; width: 420px; height: min(850px, calc(100dvh - 68px)); min-height: 0; overflow: hidden; border: 1px solid #5e624f; border-radius: 24px; background: #101923; box-shadow: 0 25px 90px #0008; }
+.jp-app-bar { height: 50px; display: flex; align-items: center; justify-content: center; color: #d2bd87; font-family: "Hiragino Mincho ProN", serif; font-size: 14px; background: linear-gradient(#1e2938,#131c2a); border-bottom: 1px solid #a18b5e33; letter-spacing: .15em; position: relative; }
+.jp-app-icon { position: absolute; right: 18px; color: #84919e; }
+.jp-device-body { height: calc(100% - 50px); overflow: auto; position: relative; background: radial-gradient(ellipse at 50% 10%, #28323d88, transparent 65%), #0e1822; scrollbar-width: thin; }
+.jp-page { padding: 22px 22px 30px; min-height: 100%; text-align: center; }
+.jp-page > small { color: #c5ad77; font-size: 11px; line-height: 1.7; }
+.jp-page h1 { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 27px; line-height: 1.65; font-weight: 500; color: #f2e3c0; margin: 14px 0; }
+.jp-page p { font-size: 13px; color: #bec4c4; line-height: 1.9; }
+.jp-primary { width: 100%; min-height: 52px; font-size: 14px; margin-top: 18px; white-space: normal; line-height: 1.6; }
+.jp-text { background: none; border: 0; padding: 5px 0; font: inherit; font-size: 12px; color: #d5bf8c; cursor: pointer; }
+.jp-title { height: 100%; min-height: 580px; position: relative; overflow: hidden; }
+.jp-title > img { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; opacity: .85; }
+.jp-title-foot { position: absolute; bottom: 0; left: 0; right: 0; padding: 80px 28px 34px; background: linear-gradient(transparent,#0b131df0 40%); text-align: center; }
+.jp-title-foot p { font-family: "Hiragino Mincho ProN", serif; color: #e6d2a0; font-size: 17px; }
+.jp-title-foot small { display: block; color: #a0abb2; font-size: 11px; margin-top: 18px; }
+.jp-device .chronicle-overlay { position: absolute; inset: 0; padding: 6px; background: #0c151d; }
+.jp-device .chronicle-reader.chronicle-manga { width: 100%; height: 100%; min-height: 0; max-height: 100%; border-radius: 12px; }
+.jp-device .chronicle-reader .chronicle-reader-head, .jp-device .chronicle-reader .chronicle-reader-controls, .jp-device .chronicle-reader .chronicle-comic-toolbar { flex-shrink: 0; }
+.jp-device .chronicle-reader-head h3 { font-size: 14px; }
+.jp-device .chronicle-reader-controls .btn { font-size: 13px; }
+.jp-device .chronicle-reader-copy p { font-size: 14px; }
+.jp-topline { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #acac9f; }
+.jp-device[data-preview-stage="game"] .jp-device-body { overflow: hidden; }
+.jp-match { box-sizing: border-box; padding: 8px 16px; height: 100%; min-height: 0; display: flex; flex-direction: column; }
+.jp-match > :not(.jp-board-space) { flex-shrink: 0; }
+.jp-match-heading { margin: 4px 0; }
+.jp-match-heading small { color: #c2ae7d; font-size: 10px; }
+.jp-match-heading h1 { margin: 2px 0; font-size: 23px; }
+.jp-coach { box-sizing:border-box; height:84px; min-height:84px; display: flex; justify-content: center; flex-direction: column; gap: 3px; padding: 6px 8px; background: #d2b57111; border: 1px solid #a18b5e55; border-radius: 10px; font-size: 13px; color: #eee5cb; line-height: 1.6; }
+.jp-coach.is-nudge { border-color: #b87951; }
+.jp-side { display: flex; align-items: center; gap: 6px; margin: 6px 0; font-size: 11px; color: #e5ded0; }
+.jp-side > span { margin-left: auto; color: #8c999f; font-size: 10px; }
+.jp-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #b8955a; }
+.jp-dot.enemy { background: #6683a3; }
+.jp-board { display: grid; grid-template-columns: repeat(5,1fr); gap: 2px; padding: 5px; border: 2px solid #947949; background: #29291f; border-radius: 7px; box-shadow: 0 8px 24px #0005; }
+.jp-board-space { flex: 1; min-height: 0; container-type: size; display: grid; place-items: center; }
+.jp-board-space .jp-board { box-sizing: border-box; width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); grid-template-rows: repeat(5,minmax(0,1fr)); }
+.jp-match .jp-primary { margin-top: 4px; min-height: 44px; }
+.jp-match-action { height:52px; min-height:52px; }
+.jp-square { min-width: 0; aspect-ratio: 1; background: #6a5c40; border: 1px solid #d7b56722; position: relative; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 2px; cursor: pointer; }
+.jp-square:nth-child(even) { background: #746448; }
+.jp-square.can-move { background: #ad9254; box-shadow: inset 0 0 0 2px #f5d47e; }
+.jp-square.is-chosen { box-shadow: inset 0 0 0 2px #ffe1a0; background: #aa8f55; }
+.jp-square.is-guided::after { content: ""; position: absolute; inset: 0; border: 1px solid #e9d19b99; pointer-events: none; }
+.jp-square .piece-wrap { margin: 0; pointer-events: none; transform: scale(.92); }
+.jp-square .piece-wrap.piece-enemy { transform: scale(.86); }
+.jp-board-space .jp-square { aspect-ratio: auto; min-height: 0; overflow: hidden; }
+.jp-board-space .piece-wrap { max-width: 100%; max-height: 100%; }
+.jp-move-dot { width: 10px; height: 10px; background: #f8e4af; border-radius: 50%; }
+.jp-muted.jp-help { font-size: 10px; margin: 4px 0 0; color: #8d9aa2; }
+.jp-win { background: radial-gradient(ellipse at 50% 25%,#d3b36e18,transparent 60%); }
+.jp-crown { font-size: 54px; color: #e7c576; line-height: 1; margin: 24px 0 8px; text-shadow: 0 0 40px #d6ae5544; }
+.jp-won-card { display: flex; justify-content: center; margin: 24px 0; }
+.jp-milestone { display: flex; justify-content: space-between; padding: 13px 16px; font-size: 12px; border: 1px solid #c8ab6355; border-radius: 8px; }
+.jp-milestone b { color: #d8bc77; }
+.jp-win-reward { display: grid; gap: 5px; padding: 18px 0 6px; font-size: 13px; }
+.jp-win-reward span { font-size: 10px; color: #a89d81; }
+.jp-name { padding-top: 70px; text-align: left; }
+.jp-name form { display: grid; margin-top: 40px; }
+.jp-name label { font-size: 12px; color: #d6c49d; margin-bottom: 10px; }
+.jp-name input { width: 100%; font: inherit; font-size: 18px; color: #f3e9d3; background: #090f17; border: 1px solid #a18b5e77; padding: 16px; border-radius: 8px; }
+.jp-name form > small { color: #778691; font-size: 10px; margin-top: 10px; }
+.jp-portal { height: 215px; width: 160px; border: 1px solid #d8b86655; border-radius: 90px 90px 8px 8px; margin: 30px auto 12px; display: grid; place-items: center; background: radial-gradient(ellipse, #d4b76e44, #d4b76e0a 60%); box-shadow: 0 0 70px #e1c58212, inset 0 0 40px #d5bd7b1a; }
+.jp-portal img { width: 74px; height: 108px; object-fit: contain; filter: drop-shadow(0 0 18px #f0d69866); }
+.jp-reward-ticket { display: grid; gap: 3px; margin: 25px 0 5px; padding: 15px; border-block: 1px solid #b9a26d44; }
+.jp-reward-ticket b { color: #f1d492; font: 24px "Hiragino Mincho ProN", serif; }
+.jp-reward-ticket span { color: #9eaaac; font-size: 11px; }
+.jp-summoning { padding-top: 45px; }
+.is-summoning { animation: jp-glow 1.5s ease-in-out infinite alternate; }
+@keyframes jp-glow { to { box-shadow: 0 0 90px #f7d78555, inset 0 0 45px #e0c37244; } }
+.jp-results { padding: 22px 16px; }
+.jp-results h1 { font-size: 24px; }
+.jp-results > p { font-size: 11px; }
+.jp-draw-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 7px; margin: 22px 0; }
+.jp-draw-grid button { padding: 0; aspect-ratio: 3/4; overflow: hidden; border: 1px solid #78877e66; border-radius: 5px; position: relative; background: #18252f; cursor: pointer; }
+.jp-draw-grid img { width: 100%; height: 100%; object-fit: cover; }
+.jp-draw-grid small { position: absolute; bottom: 0; left: 0; right: 0; background: #060b12cc; color: #d0c7b8; font-size: 9px; line-height: 19px; }
+.jp-draw-grid b { position: absolute; top: 4px; left: 5px; font-size: 13px; color: #fff0ca; text-shadow: 0 1px 3px black; }
+.jp-draw-grid .is-ssr { border-color: #edc86d; }
+.jp-draw-grid .is-selected { outline: 2px solid #ead69c; outline-offset: 2px; }
+.jp-companion { display: flex; gap: 14px; padding: 15px; border: 1px solid #baa16b44; border-radius: 10px; text-align: left; background: #d3bc7a08; min-height: 160px; }
+.jp-companion > img { width: 80px; height: 112px; object-fit: cover; border-radius: 5px; flex: none; }
+.jp-companion small { font-size: 10px; color: #c2af83; }
+.jp-companion h2 { font: 16px/1.7 "Hiragino Mincho ProN", serif; margin: 4px 0; padding: 0; }
+.jp-companion h2::after { display: none; }
+.jp-companion p { font-size: 11px; margin: 4px 0 9px; }
+.jp-equip { border: 1px solid #c1a66677; color: #f2dca6; background: #ae8d3522; padding: 7px 10px; border-radius: 5px; font-size: 11px; cursor: pointer; }
+.jp-home { text-align: left; padding: 20px 20px 28px; }
+.jp-home-profile { display: flex; gap: 9px; align-items: center; border-bottom: 1px solid #a18b5e33; padding-bottom: 16px; }
+.jp-home-profile > div { width: 38px; height: 42px; border: 1px solid #b89e6655; background: #263126; border-radius: 6px; display: grid; place-items: center; font-size: 26px; color: #d2bb80; }
+.jp-home-profile > span { display: grid; gap: 3px; font-size: 13px; }
+.jp-home-profile small { color: #929d9e; font-size: 10px; }
+.jp-home-profile .jp-home-balance { margin-left: auto; font-size: 9px; color: #b6a37a; }
+.jp-home > header { margin: 24px 0 20px; }
+.jp-home > header > small { color: #b7a983; font-size: 10px; }
+.jp-home > header h1 { margin: 4px 0; font-size: 29px; }
+.jp-current { padding: 18px; border: 1px solid #b29a6055; border-radius: 12px; background: linear-gradient(130deg,#283329,#16212a); }
+.jp-current > div:first-child { display: flex; justify-content: space-between; align-items: center; }
+.jp-current small { color: #a9b2a7; font-size: 10px; line-height: 1.8; }
+.jp-current h2 { color: #e3d2a6; font-size: 15px; margin: 12px 0 17px; padding: 0; line-height: 1.8; }
+.jp-current h2::after { display: none; }
+.jp-current h2 span { color: #f5ead4; font: 21px "Hiragino Mincho ProN", serif; }
+.jp-current p { display: flex; justify-content: space-between; font-size: 11px; }
+.jp-current p > span { color: #b0b9ae; font-size: 10px; }
+.jp-progress { height: 4px; background: #b7b59322; border-radius: 5px; }
+.jp-progress i { display: block; width: 14.2857%; height: 100%; background: #cfb573; border-radius: 5px; }
+.jp-next-main { display: grid; gap: 9px; width: 100%; padding: 19px; text-align: left; border: 1px solid #d6bb75; border-radius: 11px; margin-top: 16px; color: #152124; background: linear-gradient(120deg,#f4df9d,#c29b51); box-shadow: 0 5px 18px #0003; cursor: pointer; }
+.jp-next-main small { font-size: 10px; opacity: .85; }
+.jp-next-main b { font-family: "Hiragino Mincho ProN", serif; font-size: 23px; font-weight: 600; }
+.jp-next-main > span { font-size: 11px; }
+.jp-equipped { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #a18b5e22; }
+.jp-equipped > img { width: 45px; height: 59px; object-fit: cover; border-radius: 5px; }
+.jp-equipped p { display: grid; gap: 2px; margin: 0; font-size: 12px; }
+.jp-equipped small, .jp-equipped p > span { font-size: 10px; color: #acb3ac; }
+.jp-equipped b { color: #dfd0ac; }
+.jp-home-links { display: flex; gap: 8px; margin-top: 16px; }
+.jp-home-links button { flex: 1; padding: 11px 5px; background: #17242b; color: #c8bfaa; border: 1px solid #a18b5e33; border-radius: 7px; cursor: pointer; font-size: 11px; }
+.jp-locked-match { margin-top: 16px; display: flex; justify-content: space-between; font-size: 11px; color: #8f9b9f; }
+.jp-locked-match > small { font-size: 10px; }
+.jp-guide-overlay { position: absolute; z-index: 20; inset: 0; background: #101923; overflow: auto; }
+.jp-guide-overlay .phase-guide { padding: 16px 20px; }
+.jp-next { padding-top: 24px; }
+.jp-next > small { display: block; margin-top: 30px; }
+.jp-next-cards { display: flex; justify-content: center; gap: 25px; margin: 34px 0; }
+.jp-next-diagrams { display: flex; gap: 24px; justify-content: center; margin: 22px 0; }
+.jp-next-diagrams figure { margin: 0; }
+.jp-next-diagrams .move-diagram { width: 110px; }
+.jp-next-diagrams figcaption { font-size: 10px; margin-top: 10px; }
+.jp-next > .jp-text:last-child { margin-top: 22px; }
+.jp-shell button:focus-visible { outline: 2px solid #ffe2a4; outline-offset: 3px; }
+@media (max-width: 780px) {
+  .jp-shell { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px 10px 24px; }
+  .jp-review { width: min(100%,420px); padding: 0; }
+  .jp-review > h1, .jp-review-lead, .jp-review-note, .jp-review-disclaimer { display: none; }
+  .jp-timeline { display: grid; grid-template-columns: repeat(6,1fr); gap: 4px; margin: 12px 0 0; }
+  .jp-timeline button { padding: 8px 2px; justify-content: center; font-size: 10px; min-height: 38px; }
+  .jp-timeline button > span, .jp-timeline button i { display: none; }
+  .jp-reset { position: absolute; top: 14px; right: 15px; font-size: 10px; margin: 0; }
+  .jp-device { width: min(100%,420px); height: calc(100dvh - 120px); max-height: 810px; min-height: 0; border-radius: 15px; }
+}
+@media (prefers-reduced-motion: reduce) { .jp-portal { animation: none; } }
+.jp-guide-marker { position:absolute; z-index:4; top:0; left:50%; transform:translateX(-50%); color:#fff3bd; font-size:13px; line-height:14px; text-shadow:0 1px 3px #000,0 0 7px #000; pointer-events:none; }
+.jp-board { position:relative; }
+.jp-square.is-threatened { box-shadow:inset 0 0 0 3px #ffe3a1; }
+.jp-threat-lines { position:absolute; inset:7px; width:calc(100% - 14px); height:calc(100% - 14px); z-index:5; pointer-events:none; overflow:visible; }
+.jp-threat-lines line { stroke:#ffe3a1; stroke-width:.055; filter:drop-shadow(0 1px 1px #000); }
+.jp-threat-lines polygon { fill:#ffe3a1; }
+.jp-last-move line { stroke:#99d6ff; stroke-dasharray:.12 .08; }
+.jp-last-move circle { fill:none; stroke:#99d6ff; stroke-width:.055; }

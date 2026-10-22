@@ -30,6 +30,12 @@ const atmosphere = {
   sky: { fog: 0.024, count: 5, speed: 0.03, direction: 1, dust: "#deedff" },
   heaven: { fog: 0.016, count: 7, speed: 0.028, direction: 1, dust: "#f3deb0" },
   hell: { fog: 0.014, count: 9, speed: 0.078, direction: 1, dust: "#ff9c55" },
+  "alice-caucus": { fog: .014, count: 7, speed: .035, direction: 1, dust: "#d1e8b0", motif: 1 },
+  "alice-quadrille": { fog: .017, count: 6, speed: .04, direction: 1, dust: "#b2f5ed", motif: 2 },
+  "alice-maze": { fog: .03, count: 9, speed: .024, direction: 1, dust: "#a9d6ff", motif: 3 },
+  "alice-tea": { fog: .022, count: 5, speed: .028, direction: 1, dust: "#ffe0b2", motif: 4 },
+  "alice-illusion": { fog: .026, count: 6, speed: .026, direction: 1, dust: "#d7b8ff", motif: 5 },
+  "alice-croquet": { fog: .012, count: 8, speed: .045, direction: -1, dust: "#f4b5b7", motif: 6 },
 };
 
 const colorValue = (color) =>
@@ -67,6 +73,7 @@ export function makeSummonPortal({
       uParticleCount: { value: theme.count },
       uParticleMotion: { value: new T.Vector2(theme.speed, theme.direction) },
       uEmbers: { value: world === "hell" ? 1 : 0 },
+      uWonderland: { value: theme.motif || 0 },
     },
     depthWrite: true,
     toneMapped: false,
@@ -89,6 +96,7 @@ export function makeSummonPortal({
       uniform float uParticleCount;
       uniform vec2 uParticleMotion;
       uniform float uEmbers;
+      uniform float uWonderland;
       varying vec2 vUv;
       ${noiseGLSL}
 
@@ -147,6 +155,57 @@ export function makeSummonPortal({
         }
         result += uDustColor * motes * activity * (0.16 + 0.1 * uEmbers)
                 * floorMask;
+        // Six area motifs, all driven by the same absolute animation clock.
+        // They appear beyond the opening rather than obscuring the closed gate.
+        float wonder = 0.0;
+        if (uWonderland > .5 && uWonderland < 1.5) {
+          // The circular race keeps running around the garden floor.
+          vec2 race = (vUv-vec2(.5,.11))*vec2(1.,2.8);
+          float radius=length(race);
+          float lap=fract(uTime*.19);
+          float ring=exp(-pow((radius-(.06+lap*.21))/.004,2.));
+          wonder=ring*sin(lap*3.14159)*.11*floorMask;
+        } else if (uWonderland < 2.5 && uWonderland > 1.5) {
+          // Paired bubbles dance across the sea pavilion.
+          for (int j=0;j<4;j++) {
+            float k=float(j), life=fract(uTime*.12+k*.247);
+            vec2 centre=vec2(.22+k*.18+sin(uTime*.7+k)*.035,.08+life*.47);
+            float ring=exp(-pow((length((vUv-centre)*vec2(.67,1.))-.008)/.0018,2.));
+            wonder+=ring*sin(life*3.14159)*.075;
+          }
+        } else if (uWonderland < 3.5 && uWonderland > 2.5) {
+          // Fireflies lead from one hidden forest path to the next.
+          for (int j=0;j<7;j++) {
+            float k=float(j), twinkle=pow(.5+.5*sin(uTime*1.4+k*2.1),5.);
+            vec2 centre=vec2(.16+fract(k*.618)*.68,.14+fract(k*.371)*.43);
+            centre+=vec2(sin(uTime*.24+k),cos(uTime*.19+k))*.012;
+            wonder+=exp(-length((vUv-centre)*vec2(.67,1.))*850.)*twinkle*.30;
+          }
+        } else if (uWonderland < 4.5 && uWonderland > 3.5) {
+          // The endless tea party sends up three fine trails of steam.
+          float height=smoothstep(.22,.34,vUv.y)*(1.-smoothstep(.53,.66,vUv.y));
+          for (int j=0;j<3;j++) {
+            float k=float(j), x=.40+k*.10+sin(vUv.y*19.-uTime*.85+k)*.008;
+            wonder+=exp(-pow((vUv.x-x)/.009,2.))*height*.045;
+          }
+        } else if (uWonderland < 5.5 && uWonderland > 4.5) {
+          // A mirrored crescent briefly appears and vanishes in the mist.
+          vec2 moon=(vUv-vec2(.5,.48))*vec2(.67,1.);
+          float outer=1.-smoothstep(.052,.056,length(moon));
+          float inner=1.-smoothstep(.045,.049,length(moon-vec2(.018,.009)));
+          wonder=max(0.,outer-inner)*pow(.5+.5*sin(uTime*.9),4.)*.09;
+        } else if (uWonderland > 5.5) {
+          // Heart-shaped rose petals drift through the royal croquet garden.
+          for (int j=0;j<5;j++) {
+            float k=float(j), life=fract(uTime*.10+k*.193);
+            vec2 centre=vec2(.15+fract(k*.618)*.70+sin(uTime*.35+k)*.025,.62-life*.54);
+            vec2 p=(vUv-centre)*vec2(.67,1.)/ .006;
+            p.y=-p.y;
+            float shape=length(vec2(p.x, p.y-.45*sqrt(abs(p.x))))-.8;
+            wonder+=(1.-smoothstep(-.05,.22,shape))*sin(life*3.14159)*.20;
+          }
+        }
+        result += uDustColor * wonder * reveal;
         gl_FragColor = vec4(result, 1.0);
         #include <colorspace_fragment>
       }

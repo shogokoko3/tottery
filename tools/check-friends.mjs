@@ -249,5 +249,13 @@ const net = readFileSync(new URL("../src/net/friends.js", import.meta.url), "utf
 assert.ok(/\/api\/friends\/\$\{op\}/.test(net), "端末は /api/friends/<op> を叩く");
 assert.ok(/friendsRequest\("enter-room"/.test(net) && /friendsRequest\("leave-room"/.test(net), "端末に在席の口(enter-room / leave-room)");
 assert.ok(/friendsRequest\("ping"\)/.test(net), "端末にオンラインの印(ping)");
+// ホームの贈り物: 申請の行に混ぜず、残高バーのチケットの横からその場で受け取る(2026-10-16 本人の決め「1」)
+const screens = readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+assert.ok(/className="home-resource-gift"[^>]*onClick=\{claimGifts\}/.test(screens), "残高バーのチケットの横に「受け取る」の印");
+assert.ok(/const list = await claimFriendGifts\(\);[\s\S]*?friendAlertsAll\.reload\(\);/.test(screens), "押すとその場で受け取り、印を読み直す");
+assert.ok(!/`贈り物 \$\{friendAlertsAll\.gifts\}件`/.test(screens), "申請の行には贈り物を混ぜない");
+assert.ok(/const friendAlerts = friendAlertsAll\.requests \+ friendAlertsAll\.invites;/.test(screens), "入口の印の数も申請と招待だけ");
+const fx = readFileSync(new URL("../src/ui/friends.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+assert.ok(/return \{ \.\.\.alerts, reload \};/.test(fx), "useFriendAlerts は reload を返す");
 
 console.log("フレンドとプロフィール: ID・申請と承認・50人・フレンド1人1日1枚の贈り物・招待の期限・写しの見張り・在席と観戦・消去・配線 OK");

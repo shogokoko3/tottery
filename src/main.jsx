@@ -1,5 +1,6 @@
 import { Component, StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { installUiSounds } from "./audio/ui-sounds.js";
 import { armAudioUnlock } from "./audio/index.js";
 import { checkAppVersion } from "./net/app-version.js";
 import { TotteryApp } from "./ui/screens.jsx";
@@ -108,6 +109,7 @@ installNativeInteractionGuard(document);
 // 音は最初に画面を触るまで鳴らせない決まりになっている。
 // 最初のタップを待ち受けて、そこで解錠する
 armAudioUnlock();
+installUiSounds();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

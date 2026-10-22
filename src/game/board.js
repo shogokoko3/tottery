@@ -210,7 +210,7 @@ export function rangeBonus(piece, armyRankCounts, kingRank) {
   const grows =
     rank === "2" || rank === "3"
       ? piece.isKing
-      : (rank === "4" || rank === "5") && !piece.isKing && kingRank === rank;
+      : (rank === "4" || rank === "5") && !piece.isKing && !piece.aliceKingRank && kingRank === rank;
   return grows ? KING_RANGE_PER_CARD * cards : 0;
 }
 
@@ -237,10 +237,21 @@ export function kingRankOf(state, owner) {
  * 4・5 の王は自分ではなく同じ数字を伸ばすので、駒だけを見ても伸び幅が決まらない。
  */
 export function getLegalMoves(piece, board, size, armyRankCounts, kingRank) {
+  const effective = piece.movementRank ? {...piece, rank:piece.movementRank, powers:false, movementRank:null} : piece;
+  const moves = effective.tea && !effective.movementRank && !piece.movementRank
+    ? slideMoves(effective, effective.teaMovement === "diag" ? DIAG : ORTH, board, size, 1, size, null)
+    : legalMoves(effective, board, size, armyRankCounts, kingRank);
+  return moves.filter(m => {
+    if (piece.blockedCell && m.row===piece.blockedCell.row && m.col===piece.blockedCell.col) return false;
+    const targets=m.captures || (m.capture ? [m] : []);
+    return !targets.some(at => board[at.row]?.[at.col]?.barrier && board[at.row][at.col].owner!==piece.owner);
+  });
+}
+function legalMoves(piece, board, size, armyRankCounts, kingRank) {
   const bonus = rangeBonus(piece, armyRankCounts, kingRank);
   // 王としての動き(6〜9 のまとめ取り・J/Q の+1マス)。
   // **王の力なし**(フェーズ1)の対局では、駒に powers:false が付いていて王でも素の動き
-  const asKing = !!piece.isKing && piece.powers !== false;
+  const asKing = !!piece.isKing && piece.powers !== false && !piece.aliceSkin;
   switch (piece.rank) {
     case "A":
       return [];

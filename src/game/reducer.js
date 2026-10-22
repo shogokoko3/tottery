@@ -1,3 +1,4 @@
+import { hasAliceRules, aliceSkin, aliceKing, aliceAction, aliceBoard, syncAlice, aliceAfterTurn, aliceAfterDefeat, revivalAvailable, reverseCandidates, reverseLimit, aliceField} from "./alice-rules.js";
 import { boardFieldTheme } from "./field-presentation.js";
 import { areaEvent } from "./area-presentation.js";
 import { aceFoilOrderOk, useAceFoil } from "./ace-foil.js";
@@ -102,6 +103,7 @@ const RECEIVABLE = {
   GOTO_MULLIGAN: ["dice"],
   CONFIRM_MULLIGAN: ["mulligan"],
   SETUP_CONFIRM: ["setup"],
+  ALICE_ACTION: ["play"],
   MOVE_PIECE: ["play"],
   USE_AREA: ["play"],
   USE_ACE_FOIL: ["play"],
@@ -119,6 +121,8 @@ const RECEIVABLE = {
 /** その手を出してよい席。縛らないものは null */
 function expectedActor(state, type) {
   switch (type) {
+    case "ALICE_ACTION":
+      return state.aliceRecruit?.[0]?.owner ?? state.aliceRevive?.owner ?? state.currentTurn;
     case "MOVE_PIECE":
     case "USE_AREA":
     case "USE_ACE_FOIL":
@@ -153,6 +157,9 @@ function expectedActor(state, type) {
 function actorAllowed(state, action) {
   const phases = RECEIVABLE[action.type];
   if (phases && !phases.includes(state.phase)) return false;
+  if (state.aliceRevive || state.aliceRecruit?.length) {
+    if (!["ALICE_ACTION","RESIGN","CLOCK_TIMEOUT","DISMISS_CAPTURE","DISMISS_INTERSTITIAL","VIEW_LOG","CLOSE_LOG"].includes(action.type)) return false;
+  }
   const who = action.player;
   if (who !== 0 && who !== 1) return true;
   // 王が倒れて跡継ぎを選ぶ場面では、それを選ぶまで他の手を出せない。
@@ -260,6 +267,7 @@ function placementOk(state, idx, placement, kingId) {
   const hand = state.players[idx].hand;
   const king = hand.find((c) => c.id === kingId);
   if (!king || !placement[kingId]) return false;
+  if (hasAliceRules(state) && kingPowersOn(state) && aliceSkin(state,idx,king.rank) && ["J","Q","K"].includes(king.rank) && ids.some(id=>hand.find(c=>c.id===id)?.rank==="A")) return false;
   const size = state.boardSize;
   const [lo, hi] = territoryRows(size, idx);
   const seen = new Set();
@@ -289,6 +297,7 @@ function placementOk(state, idx, placement, kingId) {
  * 好きなだけマスを並べて1手で盤を掃討できる
  */
 function movePermitted(state, mover, action) {
+  if (state.board[action.row]?.[action.col]?.barrier && state.board[action.row][action.col].owner !== mover.owner) return false;
   // 形を確かめるより先に使うと、配列でない captures で例外が出る。
   // 受け取り側だけが手を落とすと、二人の盤が黙って食い違っていく
   if (action.captures !== undefined) {
@@ -304,7 +313,7 @@ function movePermitted(state, mover, action) {
   }
   const moves = getLegalMoves(
     mover,
-    state.board,
+    aliceBoard(state, mover.owner),
     state.board.length,
     state.players[mover.owner].armyRankCounts,
     kingRankOf(state, mover.owner),
@@ -331,14 +340,19 @@ function movePermitted(state, mover, action) {
 function capturesFor(state, mover, action) {
   const moves = getLegalMoves(
     mover,
-    state.board,
+    aliceBoard(state, mover.owner),
     state.board.length,
     state.players[mover.owner].armyRankCounts,
     kingRankOf(state, mover.owner),
   );
   const mv = moves.find((m) => m.row === action.row && m.col === action.col);
   if (!mv) return [];
-  if (mv.captures) return mv.captures.map((c) => ({ row: c.row, col: c.col }));
+  if (!mv.capture && !mv.captures && state.board[action.row][action.col]?.owner === 1-mover.owner) return [{row:action.row,col:action.col}];
+  if (mv.captures) {
+    const cells=mv.captures.map(c=>({row:c.row,col:c.col}));
+    if(state.board[action.row][action.col]?.owner===1-mover.owner && !cells.some(c=>c.row===action.row&&c.col===action.col)) cells.push({row:action.row,col:action.col});
+    return cells;
+  }
   return mv.capture ? [{ row: mv.row, col: mv.col }] : [];
 }
 
@@ -455,6 +469,7 @@ function onBoard(board, row, col) {
 /** 対局の記録に残す出来事かどうか */
 export function isNotableLog(line) {
   return (
+    ["逆転","帰還","バリア","偽の王","持ち時間","正体を隠","盤面効果","召喚","革命の扉","仲間に"].some(word=>line.includes(word)) ||
     line.includes("撃破") ||
     line.includes("回目に移動") ||
     line.includes("王が倒された") ||
@@ -550,6 +565,8 @@ export function initialState() {
     selectedId: null,
     shuffleMode: null,
     kPlacement: null,
+    // 仲間にする待ちのあいだ控えている K の予備札の引き(席の並び)。待ちが片づいたら引く
+    kDeferred: [],
     interstitial: null,
     captureReveal: null,
     pendingKingChoice: null,
@@ -584,7 +601,7 @@ export function initialState() {
 
 export function removePiece(state, pieceId, opts) {
   const dead = state.pieces[pieceId];
-  if (!dead || !dead.alive) return state;
+  if (!dead || !dead.alive || (hasAliceRules(state) && dead.barrier)) return state;
 
   const board = state.board.map((r) => [...r]);
   const pieces = { ...state.pieces };
@@ -601,9 +618,10 @@ export function removePiece(state, pieceId, opts) {
   players[dead.owner].capturedOwn.push(corpse);
 
   let pendingKingChoice = state.pendingKingChoice || null;
+  const aliceRoyal = dead.isKing && !!aliceSkin(state,dead.owner,dead.rank) && kingPowersOn(state);
 
   // 王の2・3が倒れたら、軍内の同ランクが王位を継ぐ(王の力。フェーズ1では起きない)
-  if ((dead.rank === "2" || dead.rank === "3") && dead.isKing && kingPowersOn(state)) {
+  if ((dead.rank === "2" || dead.rank === "3") && dead.isKing && kingPowersOn(state) && !aliceRoyal) {
     const heirs = Object.values(pieces).filter(
       (p) =>
         p.alive &&
@@ -637,7 +655,7 @@ export function removePiece(state, pieceId, opts) {
   if (
     dead.isKing &&
     players[dead.owner].kingId === pieceId &&
-    !pendingKingChoice
+    !pendingKingChoice && !(aliceRoyal && revivalAvailable({...state,board,pieces},dead))
   ) {
     winner = 1 - dead.owner;
     log.push(
@@ -654,7 +672,7 @@ export function removePiece(state, pieceId, opts) {
   //
   // 包囲で討ったときは名乗る駒が定まらないので、誰も表にしない。
   let lastReveal = null;
-  if (dead.isKing && opts.by) {
+  if ((dead.isKing || dead.falseKing) && opts.by) {
     const killer = pieces[opts.by];
     if (killer && killer.alive && !killer.revealed) {
       const shown = {
@@ -697,7 +715,8 @@ export function removePiece(state, pieceId, opts) {
     ],
   };
 
-  next = discardCards(next, [dead]);
+  next = aliceAfterDefeat(next, dead, opts);
+  if(next.aliceRevive?.pieceId!==dead.id && !next.aliceRecruit?.some(e=>e.card.id===dead.id)) next = discardCards(next, [dead]);
 
   // 王が4か5のとき、同ランクの手駒が倒されると倒した相手を道連れにする
   if (
@@ -709,7 +728,7 @@ export function removePiece(state, pieceId, opts) {
   ) {
     const kingId = next.players[dead.owner].kingId;
     const king = kingId ? next.pieces[kingId] : null;
-    if (king && king.rank === dead.rank) {
+    if (king && king.rank === dead.rank && !aliceKing(next,dead.owner)) {
       const killer = next.pieces[opts.by];
       if (killer && killer.alive) {
         log.push(
@@ -746,26 +765,37 @@ export function removePiece(state, pieceId, opts) {
     // まとめ取りで J と Q が同時に倒れると、2枚めくれることがある。
     // 置き場を1枚にしていた頃は、1枚目が上書きされて山にも手札にも
     // 戻らず黙って消えていた。列にして、どちらからでも置けるようにする
-    if (king && king.rank === "K" && king.alive) next = replenishReserve(next);
-    if (king && king.rank === "K" && king.alive && next.reserve.length > 0) {
-      const reserve = [...next.reserve];
-      const card = reserve.pop();
-      const held =
-        next.kPlacement && next.kPlacement.owner === dead.owner
-          ? next.kPlacement.cards
-          : [];
-      next = {
-        ...next,
-        reserve,
-        kPlacement: { owner: dead.owner, cards: [...held, card] },
-      };
-      next.log = [
-        ...next.log,
-        `${PLAYER_META[dead.owner].name}は予備札を1枚引いた(配置できます)`,
-      ];
+    if (king && king.rank === "K" && king.alive && !aliceKing(next,dead.owner)) {
+      // 取った側(ワンダーランドの J・Q・K)がこの駒を仲間にするか決めている最中なら、
+      // 引くのはその配置と映像が終わってから(2026-10-16 本人の指示。駒を動かした側の処理が先)。
+      // 引く権利だけ控えて、仲間の手(ALICE_ACTION の recruit / decline)が片づいたときに引く
+      if (next.aliceRecruit?.some((e) => e.card.id === dead.id)) {
+        next = { ...next, kDeferred: [...(next.kDeferred || []), dead.owner] };
+        next.log = [
+          ...next.log,
+          `${PLAYER_META[dead.owner].name}の予備札は、相手が仲間にするかを決めてから引く`,
+        ];
+      } else next = drawReserveForK(next, dead.owner);
     }
   }
 
+  return next;
+}
+
+/** K の王の見返り。予備札(尽きていれば捨て札を混ぜて補充)から1枚引いて、置き場(kPlacement)に積む */
+function drawReserveForK(state, owner) {
+  let next = replenishReserve(state);
+  if (!next.reserve.length) return next;
+  const reserve = [...next.reserve];
+  const card = reserve.pop();
+  const held =
+    next.kPlacement && next.kPlacement.owner === owner ? next.kPlacement.cards : [];
+  next = {
+    ...next,
+    reserve,
+    kPlacement: { owner, cards: [...held, card] },
+  };
+  next.log = [...next.log, `${PLAYER_META[owner].name}は予備札を1枚引いた(配置できます)`];
   return next;
 }
 
@@ -776,7 +806,7 @@ export function endAction(state, pieceId) {
   const piece = pieceId ? state.pieces[pieceId] : null;
   // 空のエリアを使った軍は、10が全て2回動ける(src/game/areas.js)
   // 王の10・A の2回目は王の力(フェーズ1では無い)。空のエリアの2回目は別の力なのでそのまま
-  const kingTwice = !!piece?.isKing && kingPowersOn(state);
+  const kingTwice = !!piece?.isKing && kingPowersOn(state) && !piece.aliceSkin;
   const extraMove =
     piece &&
     piece.alive &&
@@ -798,7 +828,7 @@ export function endAction(state, pieceId) {
 export function endTurn(state) {
   const next = 1 - state.currentTurn;
   return loseIfFrozen(
-    freezeDeaths({
+    freezeDeaths(aliceAfterTurn({
       ...state,
       currentTurn: next,
       turnNo: (state.turnNo || 0) + 1,
@@ -806,8 +836,10 @@ export function endTurn(state) {
       shuffleMode: null,
       extraMoveFor: null,
       extraUsed: false,
+      aliceCommitted: null,
+      aliceFake: null,
       interstitial: { forPlayer: next, kind: "turn" },
-    }),
+    })),
   );
 }
 
@@ -961,6 +993,7 @@ export function autoArrange(state, idx, cellOrder, handOrder, keep) {
   for (const card of hand) {
     if (Object.keys(placement).length >= slots) break;
     if (takenIds.has(card.id)) continue;
+    if (kingRank==="K" && kingPowersOn(state) && aliceSkin(state,idx,"K") && card.rank==="A") continue;
     // maxAdopt("K", null) は 0 なので、K を入れないと決めた回は K がここで落ちる
     if ((counts[card.rank] || 0) >= maxAdopt(card.rank, kingRank)) continue;
     const at = free[cursor++];
@@ -983,7 +1016,7 @@ export function autoPickKing(state, idx, placement) {
     .filter(Boolean);
   if (cards.length === 0) return null;
   const k = cards.find((c) => c.rank === "K");
-  if (k) return k.id;
+  if (k) return kingPowersOn(state) && aliceSkin(state,idx,"K") && cards.some(c=>c.rank==="A") ? null : k.id;
   const order = [
     "A",
     "2",
@@ -999,7 +1032,8 @@ export function autoPickKing(state, idx, placement) {
     "Q",
     "K",
   ];
-  return cards.reduce((best, c) =>
+  const eligible=cards.filter(c=>!(kingPowersOn(state) && aliceSkin(state,idx,c.rank) && ["J","Q"].includes(c.rank) && cards.some(p=>p.rank==="A")));
+  return eligible.reduce((best, c) =>
     order.indexOf(c.rank) > order.indexOf(best.rank) ? c : best,
   ).id;
 }
@@ -1142,6 +1176,8 @@ export function setupWaiting(state) {
 }
 /** 確認がそろうまで盤に触れさせない手 */
 const WAITS_FOR_ACK = new Set([
+  "ALICE_ACTION",
+  "ALICE_FAKE",
   "MOVE_PIECE",
   "USE_AREA",
   "USE_ACE_FOIL",
@@ -1181,16 +1217,40 @@ export function reducer(state, action) {
     ].includes(action.type)
   )
     return state;
-  const next = settleKingChoice(coreReducer(state, action));
+  const alice = aliceAction(state, action, {removePiece,endAction});
+  let next = syncAlice(settleKingChoice(alice === null ? coreReducer(state, action) : alice));
+  // 相手の効果の一覧(src/ui/alice-areas.jsx FoeEffects)のための公開の記録。
+  // 技の発動(lastAlicePower)と、仲間にする待ちが立ったこと(aliceRecruit の seq)を、誰が・何を・いつ、で積む。
+  // 映像で両者に見えているものだけなので、伏せ札や偽の王の正体は含めない(2026-10-16 本人の指示)
+  {
+    const mark = next.lastAlicePower;
+    const entries = [];
+    if (mark && mark.seq !== state.lastAlicePower?.seq)
+      entries.push({ owner: mark.owner, rank: mark.rank, kind: mark.kind, area: mark.kind === "field" ? aliceField(next, mark.owner) : null, turnNo: next.turnNo || 0 });
+    const seenRecruit = new Set((state.aliceRecruit || []).map((e) => e.seq));
+    for (const e of next.aliceRecruit || [])
+      if (e.seq && !seenRecruit.has(e.seq)) entries.push({ owner: e.owner, rank: e.rank, kind: "recruit", area: null, turnNo: next.turnNo || 0 });
+    if (entries.length) next = { ...next, alicePowerLog: [...(next.alicePowerLog || []), ...entries] };
+  }
+  // 仲間にする待ちが全部片づいたら、控えていた K の予備札を引く(上の removePiece の kDeferred)
+  if (state.aliceRecruit?.length && !next.aliceRecruit?.length && next.kDeferred?.length && next.winner == null) {
+    const owners = next.kDeferred;
+    next = { ...next, kDeferred: [] };
+    for (const owner of owners) next = drawReserveForK(next, owner);
+  }
+  if(state.phase!=="play" && next.phase==="play" && hasAliceRules(next)) next=aliceAfterTurn(next);
+  if(next.aliceRevive && !revivalAvailable(next,next.pieces[next.aliceRevive.pieceId])) next={...next,winner:1-next.aliceRevive.owner,phase:"gameover",aliceRevive:null,log:[...next.log,"王が帰還できず、敗北が確定した"]};
   return afterAction(state, next, action);
 }
 
 /** ローカルの札確認や画面操作を、対局の判定タイミングに使わない。 */
 function completedRuleAction(prev, next, action) {
-  if (prev === next || next.phase !== "play") return false;
+  if (prev === next || next.phase !== "play" || next.aliceRevive || next.aliceRecruit?.length) return false;
   if (action.type === "SETUP_CONFIRM") return prev.phase === "setup";
   if (prev.phase !== "play") return false;
   switch (action.type) {
+    case "ALICE_ACTION":
+      return ["revive","recruit","decline"].includes(action.kind) || prev.currentTurn!==next.currentTurn;
     case "MOVE_PIECE":
     case "CONFIRM_SHUFFLE":
       return true;
@@ -1299,6 +1359,7 @@ function afterAction(prev, next, action) {
                 suit: piece.suit,
                 owner: piece.owner,
                 isKing: !!piece.isKing,
+                ...(hasAliceRules(out) ? {tea:!!piece.tea,teaMovement:piece.teaMovement||null,soldier:!!piece.soldier,ownerHidden:!!piece.ownerHidden,barrier:!!piece.barrier,movementRank:piece.movementRank||null,illusion:piece.illusion||null} : {}),
                 ...(piece.mark ? { mark: piece.mark } : null),
                 ...(frozenNow(piece)
                   ? {
@@ -1741,6 +1802,7 @@ function coreReducer(state, action) {
         (id) => me.hand.find((c) => c.id === id).rank === "K",
       );
       if (hasK && card.rank !== "K") return state;
+      if(kingPowersOn(state) && aliceSkin(state,idx,card.rank) && ["J","Q","K"].includes(card.rank) && Object.keys(placement).some(id=>me.hand.find(c=>c.id===id)?.rank==="A")) return state;
       return {
         ...state,
         setupPickKings: replaceAt(state.setupPickKings, idx, action.cardId),
@@ -1844,7 +1906,10 @@ function coreReducer(state, action) {
     case "ACK_SETUP_EFFECTS": {
       // 「布陣ボーナスを読み終えた」の合図。席は通信なら送り主から決まる
       if (!state.setupAck) return state;
-      const who = action.player;
+      if (state.aliceRevive || state.aliceRecruit?.length) {
+    if (!["ALICE_ACTION","RESIGN","CLOCK_TIMEOUT","DISMISS_CAPTURE","DISMISS_INTERSTITIAL","VIEW_LOG","CLOSE_LOG"].includes(action.type)) return false;
+  }
+  const who = action.player;
       if (who !== 0 && who !== 1) return state;
       if (state.setupAck[who]) return state;
       const setupAck = [...state.setupAck];
@@ -1879,6 +1944,10 @@ function coreReducer(state, action) {
     case "DISMISS_INTERSTITIAL":
       return { ...state, interstitial: null };
 
+    case "ALICE_FAKE": {
+      if (!hasAliceRules(state) || state.phase!=="play" || aliceKing(state,state.currentTurn)?.rank!=="10" || !state.selectedId) return state;
+      return {...state,aliceFake:action.clear?null:{row:action.row,col:action.col}};
+    }
     case "SELECT_PIECE": {
       if (state.winner) return state;
       const piece = state.pieces[action.id];
@@ -1886,29 +1955,34 @@ function coreReducer(state, action) {
         return state;
       // 氷のエリアで凍った駒は選べない
       if (isFrozen(state, piece)) return state;
+      if (state.aliceCommitted && piece.id !== state.aliceCommitted) return state;
+      if (piece.ownerHidden) return state;
       if (state.extraMoveFor && piece.id !== state.extraMoveFor) return state;
-      if (piece.rank === "A") {
+      if (piece.rank === "A" && !piece.movementRank) {
         return {
           ...state,
           selectedId: null,
           shuffleMode: { aId: piece.id, picks: [] },
         };
       }
-      return { ...state, selectedId: action.id, shuffleMode: null };
+      return { ...state, selectedId: action.id, shuffleMode: null, aliceFake:null };
     }
 
     case "CANCEL_SELECTION":
-      return { ...state, selectedId: null, shuffleMode: null };
+      return { ...state, selectedId: null, shuffleMode: null, aliceFake:null };
 
     case "TOGGLE_SHUFFLE_PICK": {
       if (!state.shuffleMode) return state;
       const piece = state.pieces[action.id];
-      if (!piece || !piece.alive || piece.id === state.shuffleMode.aId)
+      if (!piece || !piece.alive || (piece.barrier && piece.owner!==state.currentTurn) || piece.id === state.shuffleMode.aId)
         return state;
+      const ace=state.pieces[state.shuffleMode.aId];
+      const alice=!!aliceSkin(state,ace.owner,"A");
+      if(alice && !reverseCandidates(state,ace).some(p=>p.id===piece.id))return state;
       let picks = [...state.shuffleMode.picks];
       if (picks.includes(action.id))
         picks = picks.filter((id) => id !== action.id);
-      else if (picks.length < 2) picks = [...picks, action.id];
+      else if (picks.length < (alice ? reverseLimit(state,ace) : 2)) picks = [...picks, action.id];
       return { ...state, shuffleMode: { ...state.shuffleMode, picks } };
     }
 
@@ -1917,9 +1991,10 @@ function coreReducer(state, action) {
 
     case "CONFIRM_SHUFFLE": {
       const aId = action.aId || (state.shuffleMode && state.shuffleMode.aId);
+      if (aId && aliceSkin(state,state.pieces[aId]?.owner,"A")) return state;
       const picks =
         action.pickIds || (state.shuffleMode && state.shuffleMode.picks) || [];
-      if (!aId || !Array.isArray(picks) || picks.length !== 2) return state;
+      if (!aId || !Array.isArray(picks) || picks.length !== 2 || picks.some(id=>state.pieces[id]?.barrier && state.pieces[id].owner!==state.currentTurn)) return state;
 
       const ids = [aId, ...picks];
       // 知らない駒idが混ざっていると、ここで落ちて画面が消える
@@ -1993,6 +2068,7 @@ function coreReducer(state, action) {
         log,
         lastMove: null,
         lastSwap: { cells, owner: state.currentTurn },
+        ...(hasAliceRules(state) && Number.isInteger(action.seed) ? {aliceSeed:action.seed} : {}),
       };
 
       // 3つとも味方なら、三角形の内側にいる相手を包囲で取る
@@ -2007,11 +2083,13 @@ function coreReducer(state, action) {
             (p) =>
               p.alive &&
               p.owner !== state.currentTurn &&
+              !p.barrier &&
               pointInTriangle({ row: p.row, col: p.col }, a, b, c),
           )
           // 王は最後に倒す。取ってはじめて正体が分かる見せ方に合わせる
           .sort((x, y) => (x.isKing ? 1 : 0) - (y.isKing ? 1 : 0));
         const defeated = [];
+
         for (const victim of trapped) {
           const piece = next.pieces[victim.id];
           if (!piece || !piece.alive) continue;
@@ -2042,7 +2120,7 @@ function coreReducer(state, action) {
     }
 
     case "MOVE_PIECE": {
-      if (state.winner) return state;
+      if (state.winner != null) return state;
       const mover = state.pieces[action.pieceId || state.selectedId];
       if (!mover || !mover.alive) return state;
       // 手は通信でも届く。届いた手を信じない。
@@ -2051,11 +2129,18 @@ function coreReducer(state, action) {
       if (mover.owner !== state.currentTurn) return state;
       // 氷のエリアで凍った駒は動けない(届いた手にも同じ縛り)
       if (isFrozen(state, mover)) return state;
+      if (mover.ownerHidden || (state.aliceCommitted && mover.id!==state.aliceCommitted)) return state;
       // 王の10とAの「もう一度」の枠は、その駒のためのもの。
       // 手元では SELECT_PIECE が縛っているが、届いた手にも同じ縛りが要る
       if (state.extraMoveFor && state.extraMoveFor !== mover.id) return state;
       if (!onBoard(state.board, action.row, action.col)) return state;
       if (!movePermitted(state, mover, action)) return state;
+      const cheshire=aliceKing(state,mover.owner)?.rank === "10";
+      if(action.fakeRow!==undefined || action.fakeCol!==undefined){
+        if(!cheshire || !onBoard(state.board,action.fakeRow,action.fakeCol) || state.board[action.fakeRow][action.fakeCol])return state;
+        const moves=getLegalMoves(mover,aliceBoard(state,mover.owner),state.boardSize,state.players[mover.owner].armyRankCounts,kingRankOf(state,mover.owner));
+        if(!moves.some(m=>m.row===action.fakeRow && m.col===action.fakeCol))return state;
+      }
       if (
         action.captures &&
         (!Array.isArray(action.captures) ||
@@ -2068,7 +2153,7 @@ function coreReducer(state, action) {
       const secondAction = state.extraMoveFor === mover.id;
       const twiceKing =
         mover.rank === "10" &&
-        (mover.isKing ||
+        ((mover.isKing && !mover.aliceSkin) ||
           !!mover.skyTwice ||
           !!state.players[mover.owner].skyTwice);
       const nth = secondAction ? "2回目" : "1回目";
@@ -2080,12 +2165,19 @@ function coreReducer(state, action) {
         pieces: { ...state.pieces },
         selectedId: null,
         lastReveal: null,
+        ...(hasAliceRules(state) && Number.isInteger(action.seed) ? {aliceSeed:action.seed} : {}),
       };
 
       // 届いた並びではなく、こちらで引き直した並びを使う。
       // 照合を通っていても、並びそのものを盤の操作に使うと細工が効く
       const targets = capturesFor(state, mover, action);
       const defeated = [];
+      const shownBoard=aliceBoard(state,mover.owner);
+      for(const at of targets){const ghost=shownBoard[at.row][at.col];if(ghost?.ghostOf){
+        const real=next.pieces[ghost.ghostOf];const changed={...real,illusion:{...real.illusion,dispelled:true}};
+        next.pieces[real.id]=changed; next.board[real.row][real.col]=changed;
+        const self={...next.pieces[mover.id],revealed:true};next.pieces[mover.id]=self;next.board[self.row][self.col]=self;
+      }}
 
       for (const at of targets) {
         // 道連れで自分が倒れていたら、そこで止める。
@@ -2126,6 +2218,7 @@ function coreReducer(state, action) {
         nextBoard[mover.row][mover.col] = null;
         const updated = {
           ...moved,
+          ...(cheshire && action.fakeRow!==undefined && !defeated.length ? {illusion:{row:action.fakeRow,col:action.fakeCol,until:(state.turnNo||0)+2}} : {illusion:null}),
           row: action.row,
           col: action.col,
           history: [
@@ -2313,6 +2406,7 @@ function coreReducer(state, action) {
       return endTurn(state);
 
     case "VIEW_LOG": {
+      if (state.pieces[action.id]?.ownerHidden && state.pieces[action.id].owner === state.currentTurn) return state;
       const captured =
         [0, 1].includes(action.capturedOwner) &&
         Number.isInteger(action.capturedIndex)
@@ -2331,7 +2425,10 @@ function coreReducer(state, action) {
       return { ...state, logViewerId: null, logViewerSnapshot: null };
 
     case "RESIGN": {
-      const who = action.player;
+      if (state.aliceRevive || state.aliceRecruit?.length) {
+    if (!["ALICE_ACTION","RESIGN","CLOCK_TIMEOUT","DISMISS_CAPTURE","DISMISS_INTERSTITIAL","VIEW_LOG","CLOSE_LOG"].includes(action.type)) return false;
+  }
+  const who = action.player;
       // 文字列の "0" などを通すと 1 - who や配列の添字が思わぬ形になる
       if (who !== 0 && who !== 1) return state;
       return {

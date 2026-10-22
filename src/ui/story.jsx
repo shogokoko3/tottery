@@ -12,10 +12,10 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { typing } from "./key-target.js";
 import { ArrowLeft } from "../icons.jsx";
-import { loadProfile, promotePhase } from "../game/profile.js";
+import { loadProfile, markFirstStoryRead, promotePhase } from "../game/profile.js";
 import { STORY_AXES, canPromote, promotionStatus, stageSize } from "../game/phase.js";
 import { onlineGate } from "../game/online-gate.js";
-import { stageIntro, storyList, nextStage, nextStageLine, ranksLabel, storyLesson, storyRival } from "../game/story.js";
+import { stageIntro, notePhrases, storyList, nextStage, nextStageLine, ranksLabel, storyLesson, storyRival } from "../game/story.js";
 import { CardFace } from "./cards.jsx";
 import { findTitle } from "../game/titles.js";
 import { TitleFrame } from "./title-frame.jsx";
@@ -32,7 +32,7 @@ export const PHASE_LABEL = Object.freeze({
   3: "エリアあり",
 });
 
-export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = false }) {
+export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = null, revealNext = false }) {
   const [profile, setProfile] = useState(() => loadProfile());
   // 導入を終えて一覧へ来たら(revealNext)、「次は、四と五の王。」を画面の真ん中へ送る(2026-10-06 見直し)。
   // 一行は年代記の見出しとフェーズの札の下にあり、375×667 では 712px、320×568 では 832px で、送らないと見えなかった
@@ -63,13 +63,15 @@ export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = fals
   return (
     <div className="setup-wrap story-wrap chronicle-hub">
       <ChronicleStyles />
-      {/* 年代記の短い文は句の塊で出す(語の途中で割らない。2026-10-06 見直し)。長い地の文は段落のまま */}
+      {/* 年代記の短い文は句の塊で出す(語の途中で割らない。2026-10-06 見直し)。長い地の文は段落のまま。
+          数え方は算用数字(「7つの立場、3つの時代」。2026-10-06 本人の指示) */}
       <header className="chronicle-hero">
         <StoryArt axis="k" phase={Math.min(phase, status.phase)} />
         <div className="chronicle-hero-top">
           <span>
-            <Phrases text="ストーリー · 七つの立場、三つの時代" />
+            <Phrases text="ストーリー · 7つの立場、3つの時代" />
           </span>
+          {onPhaseGuide && <button type="button" className="chronicle-text-button" onClick={onPhaseGuide}>フェーズガイド</button>}
           {onGuide && (
             <button
               type="button"
@@ -81,9 +83,6 @@ export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = fals
           )}
         </div>
         <div>
-          <small className="chronicle-kicker">
-            THE CHRONICLE OF THE ASHEN CROWN
-          </small>
           <h2>{CHRONICLE.title}</h2>
           <p>
             <StoryText text={CHRONICLE.subtitle} />
@@ -91,6 +90,9 @@ export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = fals
         </div>
       </header>
       <div className="chronicle-main">
+        <button type="button" className="btn btn-ghost btn-wide chronicle-opening" onClick={() => setReading("prologue")}>
+          旅のはじまり · ニノの物語を読む
+        </button>
         <nav className="chronicle-phases" aria-label="物語のフェーズ">
           {[1, 2, 3].map((p) => (
             <button
@@ -119,7 +121,7 @@ export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = fals
           <h3>{act.label}</h3>
           <p>{act.summary}</p>
           <div className="chronicle-journey">
-            <b>{phase === 1 ? "あなたが戦う理由" : "あなたが引き受けるもの"}</b>
+            <b>{phase === 1 ? "ニノが旅に出た理由" : "ニノが向き合うもの"}</b>
             {/* フェーズ1 はあなたが戦う理由(段落)。2・3 は短い目的なので句で */}
             <p>{phase === 1 ? CHRONICLE.player : <StoryText text={act.purpose} />}</p>
           </div>
@@ -178,7 +180,7 @@ export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = fals
                 {list.filter((s) => s.cleared).length} / {list.length} クリア
               </small>
             </div>
-            <ol className="story-list" aria-label="七つの物語">
+            <ol className="story-list" aria-label="7つの物語">
               {list.map((s) => {
                 const arc = storyArc(s.axis),
                   chapter = storyEpisode(s.axis, phase);
@@ -187,6 +189,7 @@ export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = fals
                   <li key={s.axis} className="chronicle-chapter">
                     <button
                       type="button"
+                      disabled={!s.available}
                       className={`story-stage ${s.cleared ? "is-cleared" : ""} ${next?.axis === s.axis ? "is-next" : ""}`}
                       onClick={() =>
                         replayOnly ? setReading(s.axis) : onStart(s.axis)
@@ -215,12 +218,13 @@ export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = fals
                         {s.cleared ? (
                           <JoinedPhrases head="✓ クリア済み" sep="·" tail="後日談を解放" />
                         ) : (
-                          <JoinedPhrases head="初回クリア" sep="·" tail={`チケット ${s.tickets}枚`} />
+                          <JoinedPhrases head="初回クリア" sep="·" tail={s.available ? `チケット ${s.tickets}枚` : "6つのF3を終えると開く"} />
                         )}
                       </small>
                       <button
                         type="button"
                         className="chronicle-text-button"
+                        disabled={!s.available}
                         onClick={() => setReading(s.axis)}
                       >
                         {s.cleared ? "回想を読む" : "物語を読む"}
@@ -255,6 +259,7 @@ export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = fals
                   const promoted = promotePhase();
                   setProfile(promoted);
                   setPhase(promotionStatus(promoted).phase);
+                  onPhaseGuide?.();
                 }}
               >
                 フェーズ {status.phase + 1} へ進む
@@ -264,26 +269,37 @@ export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = fals
                 </small>
               </button>
             ) : (
+              // 下の3つの案内は句の塊で(2026-10-06 見直し。文は変えない)。320・375 幅で
+              // 「全部のク/リアと、」「オンラ/イン」「5/勝。」「ステ/ージは」「「対戦/する」」と語の途中で割れていた
               <p className="hint">
-                昇格の条件: {STORY_AXES.length}
-                ステージ全部のクリアと、このフェーズでオンライン対戦に
-                {status.winsNeeded}勝。
-                {status.axesLeft.length > 0 &&
-                  `ステージはあと${status.axesLeft.length}。`}
-                {status.winsLeft > 0 && `勝利はあと${status.winsLeft}。`}
+                <span className="text-phrase">昇格の条件:</span>{" "}
+                <Phrases
+                  text={[
+                    `${STORY_AXES.length}ステージ全部の`,
+                    "クリアと、",
+                    "このフェーズで",
+                    `オンライン対戦に${status.winsNeeded}勝。`,
+                  ]}
+                />
+                {status.axesLeft.length > 0 && (
+                  <Phrases text={`ステージはあと${status.axesLeft.length}。`} />
+                )}
+                {status.winsLeft > 0 && <Phrases text={`勝利はあと${status.winsLeft}。`} />}
               </p>
             )}
           </section>
         )}
         {status.last && (
           <p className="hint">
-            最後のフェーズです。ステージは何度でも遊べます。
+            <Phrases text={["最後のフェーズです。", "ステージは", "何度でも遊べます。"]} />
           </p>
         )}
         {!gate.ok && (
           <p className="hint story-gate">
-            ランダムマッチまで、あと{gate.remaining}ステージ。
-            <span>フレンドとは、ホームの「対戦する」から今すぐ遊べます。</span>
+            <Phrases text={["ランダムマッチまで、", `あと${gate.remaining}ステージ。`]} />
+            <span>
+              <Phrases text={["フレンドとは、", "ホームの「対戦する」から", "今すぐ遊べます。"]} />
+            </span>
           </p>
         )}
         <button className="btn btn-ghost btn-home" onClick={onBack}>
@@ -296,7 +312,10 @@ export function StoryScreen({ onBack, onStart, onGuide = null, revealNext = fals
           axis={reading}
           phase={phase}
           part="all"
-          onDone={() => setReading(null)}
+          onDone={() => {
+            if (reading === "23" && phase === 1) markFirstStoryRead();
+            setReading(null);
+          }}
           onClose={() => setReading(null)}
         />
       )}
@@ -318,6 +337,11 @@ export function introKeyCloses(e) {
 /** ステージの前の1枚。相手の王の特徴を、そのフェーズの中身で */
 export function StoryIntro({ axis, phase, onStart, onBack }) {
   const [reading, setReading] = useState(true);
+  const requireRead = axis === "23" && phase === 1 && !loadProfile().firstStoryRead;
+  const finishReading = () => {
+    if (axis === "23" && phase === 1) markFirstStoryRead();
+    setReading(false);
+  };
   const arc = storyArc(axis);
   const intro = stageIntro(axis, phase);
   const rival = storyRival(axis, phase);
@@ -395,10 +419,13 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
             ))}
           </ul>
         )}
-        {/* 1文1行(2026-10-01 本人の指示。長い1行だと語の途中で割れる) */}
+        {/* 1文1行(2026-10-01 本人の指示。長い1行だと語の途中で割れる)。行の中は句の塊(2026-10-06 見直し。
+            フェーズ3 の2行目が「…その数字のフォイル/を装備して…」と割れた。切り方は story.js の notePhrases) */}
         <p className="hint story-intro-note">
           {intro.note.map((line) => (
-            <span key={line}>{line}</span>
+            <span key={line}>
+              <Phrases text={notePhrases(line)} />
+            </span>
           ))}
         </p>
         <div className="setup-actions">
@@ -411,7 +438,7 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
         </div>
       </div>
     </div>
-    {reading && <StoryReader key={`${axis}-${phase}`} axis={axis} phase={phase} onDone={() => setReading(false)} onClose={onBack} battle />}
+    {reading && <StoryReader key={`${axis}-${phase}`} axis={axis} phase={phase} onDone={finishReading} onClose={onBack} battle requireRead={requireRead} />}
     </>
   );
 }

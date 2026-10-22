@@ -22,7 +22,12 @@ import {
 import { VERSION } from "../game/constants.js";
 
 const when = (at) =>
-  at ? new Date(at).toLocaleString("ja-JP", { dateStyle: "medium", timeStyle: "short" }) : null;
+  at
+    ? new Date(at).toLocaleString("ja-JP", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : null;
 
 /** プレイヤーID・問い合わせ先・記録の削除 */
 function DataManageModal({ onClose }) {
@@ -40,76 +45,95 @@ function DataManageModal({ onClose }) {
   const id = profile.id || "(まだありません)";
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-panel settings-panel" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-panel settings-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-head">
           <h3>データ管理</h3>
           <button className="icon-btn" onClick={onClose} aria-label="閉じる">
             <Close size={18} />
           </button>
         </div>
-        <p className="settings-head">プレイヤーID</p>
-        <div className="settings-list">
-          <div className="settings-row">
-            <code className="player-id">{id}</code>
-            <button
-              className="btn btn-ghost btn-small"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(id);
-                  setCopied(true);
-                } catch {
-                  setCopied(false);
-                }
-              }}
-            >
-              {copied ? "写しました" : "写す"}
-            </button>
+        {/* 見出しと「とじる」は動かさず、中身だけを送る。包まないと背の低い窓で下が切れていた(2026-10-18) */}
+        <div className="settings-body">
+          <p className="settings-head">プレイヤーID</p>
+          <div className="settings-list">
+            <div className="settings-row">
+              <code className="player-id">{id}</code>
+              <button
+                className="btn btn-ghost btn-small"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(id);
+                    setCopied(true);
+                  } catch {
+                    setCopied(false);
+                  }
+                }}
+              >
+                {copied ? "写しました" : "写す"}
+              </button>
+            </div>
           </div>
-        </div>
-        <p className="settings-note">
-          お問い合わせのときに教えてください。この番号から、あなたの記録を探せます。
-        </p>
+          <p className="settings-note">
+            お問い合わせのときに教えてください。この番号から、あなたの記録を探せます。
+          </p>
 
-        <p className="settings-head">問い合わせ先</p>
-        <div className="settings-list">
-          <div className="settings-row">
-            <span>お問い合わせ</span>
-            {hasSupportContact() ? (
-              <a className="settings-link" href={supportMailto(VERSION)} target="_blank" rel="noopener noreferrer">
-                {SUPPORT_EMAIL}
-              </a>
-            ) : (
-              <b className="settings-todo">未設定</b>
-            )}
+          <p className="settings-head">問い合わせ先</p>
+          <div className="settings-list">
+            <div className="settings-row">
+              <span>お問い合わせ</span>
+              {hasSupportContact() ? (
+                <a
+                  className="settings-link"
+                  href={supportMailto(VERSION)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {SUPPORT_EMAIL}
+                </a>
+              ) : (
+                <b className="settings-todo">未設定</b>
+              )}
+            </div>
+            <div className="settings-row">
+              <span>プライバシーポリシー</span>
+              {hasPrivacyUrl() ? (
+                <a
+                  className="settings-link"
+                  href={PRIVACY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  開く
+                </a>
+              ) : (
+                <b className="settings-todo">未設定</b>
+              )}
+            </div>
+            <div className="settings-row">
+              <span>ゲームの版</span>
+              <b>{VERSION}</b>
+            </div>
           </div>
-          <div className="settings-row">
-            <span>プライバシーポリシー</span>
-            {hasPrivacyUrl() ? (
-              <a className="settings-link" href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">
-                開く
-              </a>
-            ) : (
-              <b className="settings-todo">未設定</b>
-            )}
-          </div>
-          <div className="settings-row">
-            <span>ゲームの版</span>
-            <b>{VERSION}</b>
-          </div>
-        </div>
 
-        <p className="settings-head">アカウント削除</p>
-        <div className="settings-list">
-          <div className="settings-row">
-            <span>この端末の記録を消す</span>
-            <button className="btn btn-ghost btn-small btn-danger" onClick={() => setDeleting(true)}>
-              消す
-            </button>
+          <p className="settings-head">アカウント削除</p>
+          <div className="settings-list">
+            <div className="settings-row">
+              <span>この端末の記録を消す</span>
+              <button
+                className="btn btn-ghost btn-small btn-danger"
+                onClick={() => setDeleting(true)}
+              >
+                消す
+              </button>
+            </div>
           </div>
+          <p className="settings-note">
+            名前・戦績・レートと、公開ランキングのあなたの行を消します。元には戻せません。
+          </p>
         </div>
-        <p className="settings-note">
-          名前・戦績・レートと、公開ランキングのあなたの行を消します。元には戻せません。
-        </p>
         <button className="btn btn-primary btn-wide" onClick={onClose}>
           とじる
         </button>
@@ -154,7 +178,9 @@ function DataTransferModal({ onClose }) {
       await backupNow();
       const s = await backupStatus();
       setStatus(s);
-      setMessage("この端末の記録を預けました。新しい端末では、同じ Apple ID でサインインしてください。");
+      setMessage(
+        "この端末の記録を預けました。新しい端末では、同じ Apple ID でサインインしてください。",
+      );
     } catch (e) {
       setError(e.message || "設定できませんでした。");
     }
@@ -195,7 +221,10 @@ function DataTransferModal({ onClose }) {
 
   return (
     <div className="modal-overlay" onClick={busy ? undefined : onClose}>
-      <div className="modal-panel settings-panel" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-panel settings-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-head">
           <h3>データ引き継ぎ</h3>
           {!busy && (
@@ -204,62 +233,75 @@ function DataTransferModal({ onClose }) {
             </button>
           )}
         </div>
-        <p className="hint">
-          Apple ID にこの記録を結びつけます。新しい端末で同じ Apple ID からサインインすると、
-          名前・レベル・戦績・レート・持っているスキンとジェムを引き継げます。
-        </p>
-        <div className="settings-list">
-          <div className="settings-row">
-            <span>いまの状態</span>
-            <b>{verified ? "Apple ID と結びつき済み" : "この端末だけ"}</b>
-          </div>
-          {verified && (
+        <div className="settings-body">
+          <p className="hint">
+            Apple ID にこの記録を結びつけます。新しい端末で同じ Apple ID
+            からサインインすると、
+            名前・レベル・戦績・レート・持っているスキンとジェムを引き継げます。
+          </p>
+          <div className="settings-list">
             <div className="settings-row">
-              <span>最後に預けた日時</span>
-              <b>{status ? when(status.at) || "まだ預けていません" : "確認しています…"}</b>
+              <span>いまの状態</span>
+              <b>{verified ? "Apple ID と結びつき済み" : "この端末だけ"}</b>
             </div>
+            {verified && (
+              <div className="settings-row">
+                <span>最後に預けた日時</span>
+                <b>
+                  {status
+                    ? when(status.at) || "まだ預けていません"
+                    : "確認しています…"}
+                </b>
+              </div>
+            )}
+          </div>
+          {!canApple && (
+            <p className="settings-note">
+              引き継ぎの設定は、iPhone・iPad のアプリで行えます。
+            </p>
           )}
-        </div>
-        {!canApple && (
+          {error && (
+            <p className="mission-message" role="status" aria-live="polite">
+              {error}
+            </p>
+          )}
+          {message && (
+            <p className="mission-message" role="status" aria-live="polite">
+              {message}
+            </p>
+          )}
+          <div className="settings-list">
+            <button
+              className="btn btn-primary btn-wide"
+              disabled={!canApple || !!busy}
+              onClick={setUp}
+            >
+              {busy === "setup"
+                ? "預けています…"
+                : verified
+                  ? "いまの記録を預け直す"
+                  : "Apple ID で引き継ぎを設定する"}
+            </button>
+            <button
+              className="btn btn-ghost btn-wide"
+              disabled={!canApple || !!busy}
+              onClick={takeOver}
+            >
+              {busy === "restore"
+                ? "引き継いでいます…"
+                : "別の端末から引き継ぐ"}
+            </button>
+          </div>
           <p className="settings-note">
-            引き継ぎの設定は、iPhone・iPad のアプリで行えます。
+            引き継ぐと、この端末にいまある記録は、預けてあった記録で置き換わります。
+            ジェムとチケットの残高はサーバーの台帳が正なので、引き継いだあとにそろいます。
           </p>
-        )}
-        {error && (
-          <p className="mission-message" role="status" aria-live="polite">
-            {error}
-          </p>
-        )}
-        {message && (
-          <p className="mission-message" role="status" aria-live="polite">
-            {message}
-          </p>
-        )}
-        <div className="settings-list">
-          <button
-            className="btn btn-primary btn-wide"
-            disabled={!canApple || !!busy}
-            onClick={setUp}
-          >
-            {busy === "setup"
-              ? "預けています…"
-              : verified
-                ? "いまの記録を預け直す"
-                : "Apple ID で引き継ぎを設定する"}
-          </button>
-          <button
-            className="btn btn-ghost btn-wide"
-            disabled={!canApple || !!busy}
-            onClick={takeOver}
-          >
-            {busy === "restore" ? "引き継いでいます…" : "別の端末から引き継ぐ"}
-          </button>
         </div>
-        <p className="settings-note">
-          引き継ぐと、この端末にいまある記録は、預けてあった記録で置き換わります。
-          ジェムとチケットの残高はサーバーの台帳が正なので、引き継いだあとにそろいます。
-        </p>
-        <button className="btn btn-ghost btn-wide" onClick={onClose} disabled={!!busy}>
+        <button
+          className="btn btn-ghost btn-wide"
+          onClick={onClose}
+          disabled={!!busy}
+        >
           とじる
         </button>
       </div>
@@ -283,7 +325,9 @@ export function TitleDataBar() {
         </button>
       </div>
       {open === "manage" && <DataManageModal onClose={() => setOpen(null)} />}
-      {open === "transfer" && <DataTransferModal onClose={() => setOpen(null)} />}
+      {open === "transfer" && (
+        <DataTransferModal onClose={() => setOpen(null)} />
+      )}
     </>
   );
 }

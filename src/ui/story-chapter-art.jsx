@@ -1,4 +1,5 @@
 /** 一覧専用の縦長イラスト。紙芝居の場面とは別の21枚を使う。 */
+import { CHRONICLE, storyEpisode, storyComicUrl } from "../game/story-narrative.js";
 import art23_1 from "../../assets/story/chapter-portraits/23-phase-1.webp";
 import art23_2 from "../../assets/story/chapter-portraits/23-phase-2.webp";
 import art23_3 from "../../assets/story/chapter-portraits/23-phase-3.webp";
@@ -32,6 +33,16 @@ export const STORY_CHAPTER_ART = {
 };
 
 export function StoryChapterArt({ axis, phase = 1 }) {
+  if (CHRONICLE.presentation === "text") return null;
+  if (CHRONICLE.presentation === "manga-atlas") {
+    const page = storyEpisode(axis, phase)?.mangaPages?.find(p => p.stage === "before");
+    if (!page?.art) return null;
+    const art = page.art.cover || page.art, crop = art.cells[0], id = `ouhiroi-cover-${axis}-${phase}`;
+    return <svg className="chronicle-chapter-portrait" viewBox={crop.join(" ")} aria-hidden="true" data-axis={axis} data-phase={phase}>
+      <defs><clipPath id={id}><rect x={crop[0]} y={crop[1]} width={crop[2]} height={crop[3]} /></clipPath></defs>
+      <image clipPath={`url(#${id})`} href={storyComicUrl(art.sheet)} width={art.width} height={art.height} />
+    </svg>;
+  }
   const src = STORY_CHAPTER_ART[axis]?.[phase];
   return src ? (
     <img

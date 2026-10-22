@@ -640,6 +640,10 @@ h3 {
 }
 .card-face {
   position: relative;
+  /* 札の中の重なり(角の数字・王の縁・王の印は z-index: 2)を札の中に閉じる(2026-10-06 見直し)。
+     閉じていないと、それが札の外の重なりの順に出る。320 幅の対局説明で送ると、貼り付いた釦の帯
+     (.story-intro .setup-actions。z-index: 1)の上に、下の段の札(4♠ など)の角の数字だけが乗っていた */
+  isolation: isolate;
   border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
@@ -1746,22 +1750,67 @@ body:has(.skin-overlay) {
   align-items: center;
   justify-content: flex-end;
 }
+/* 絵を敷く場所。上の帯とデータの帯のあいだを全部使う(2026-10-19 本人の指示
+   「黒い余白をイラストで埋めたい」)。以前は絵を丸ごと見せるため高さから幅を決めて
+   いたので、iPhone では左右と下が黒く余っていた */
 .title-hero-visual {
   position: relative;
   width: 100%;
-  /* 背の低い画面でも1画面に収める(スクロールさせない。2026-09-18 本人の指示)。
-     絵は 660×1173 なので、使える高さから幅を決めれば、絵の中の「ゲームスタート」の
-     当たり判定(割合で置いてある)もそのまま合う。92px は下のデータの帯と余白のぶん */
-  max-width: min(
-    430px,
-    calc((100dvh - var(--top-bar-h, 56px) - 122px) * 0.5627)
-  );
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  container-type: size;
+}
+/* 絵の下端を地の色へなじませ、データの帯との境に線が出ないようにする */
+.title-hero-visual::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 28px;
+  background: linear-gradient(to bottom, transparent, #071120);
+  pointer-events: none;
+}
+/* 絵そのものの箱(660×1173)。場所を覆う大きさにして真ん中に置き、はみ出した端を切る。
+   切りすぎると下の「ゲームスタート」(絵の 82〜94%)が欠けるので、縦は 4% ずつまでに
+   とどめる。幅の広い画面(iPad・PC)ではそこで止まり、左右に地が残る */
+.title-hero-art {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  width: min(max(100cqw, 100cqh * 0.5627), 100cqh * 0.5627 / 0.92);
+  aspect-ratio: 660 / 1173;
+}
+/* 起動画面(タイトル)はスクロールさせない(2026-10-17 本人の指示)。
+   画面の高さに固定して引っ張っても動かないようにする。
+   データ管理・引き継ぎの窓が開いているあいだは、その中をスクロールできるよう外す */
+html:has(.stage > .title-hero),
+body:has(.stage > .title-hero) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.tottery-root:has(.stage > .title-hero) {
+  height: 100dvh;
+  min-height: 0;
+}
+/* 舞台の余白(20px)を外し、絵を画面の端まで届かせる */
+.stage:has(> .title-hero) {
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.stage > .title-hero {
+  height: 100%;
+}
+.tottery-root:has(.stage > .title-hero):not(:has(.modal-overlay)) {
+  touch-action: none;
 }
 .title-bg {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
-  border-radius: 10px;
 }
 /* The 660 × 1173 artwork already paints the start button.
  * Keep its hit area on the same image coordinates at every screen width. */
@@ -1797,7 +1846,8 @@ body:has(.skin-overlay) {
   gap: 10px;
   width: 100%;
   max-width: 430px;
-  margin: 8px 0 calc(6px + env(safe-area-inset-bottom));
+  /* 下の安全域は .tottery-root の padding-bottom で空いている。ここでも足すと二重になる */
+  margin: 8px 0 6px;
 }
 .title-data-btn {
   display: flex;
@@ -3137,6 +3187,35 @@ body:has(.skin-overlay) {
 .title-choice-locked small {
   white-space: pre-line;
 }
+/* 獲得日(2026-10-15)。手に入れ方の下に小さく */
+.title-choice-date {
+  color: var(--gold-soft);
+  opacity: 0.85;
+}
+/* 使える称号の並び: 一覧順／獲得順(2026-10-15) */
+.title-order {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 0 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.title-order-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(9, 20, 38, 0.6);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.title-order-btn.is-on {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.18);
+  color: var(--gold-soft);
+}
 /* --- 終局画面の熟練度メーター(2026-09-22 本人の指示) ---
    プレイヤーレベルのゲージとは別の欄。その局で使った札だけを並べ、
    「何がどれだけ上がったか」を出す */
@@ -3853,8 +3932,9 @@ body:has(.skin-overlay) {
 .name-note-bad {
   color: #ffb3b7;
 }
-/* 本文は1文1行で積む。文の途中で折り返すなら語の切れ目で(「出ま/す」と割らない) */
-.name-lines span {
+/* 本文は1文1行で積む。文の途中で折り返すなら句の切れ目で(「出ま/す」と割らない)。
+   行の中の句は .text-phrase の塊(iPhone の WebKit は auto-phrase を知らない。2026-10-06) */
+.name-lines > span {
   display: block;
   word-break: auto-phrase;
 }
@@ -4951,6 +5031,178 @@ body:has(.skin-overlay) {
 .pass-counts b {
   color: var(--gold-soft);
   font-size: 15px;
+}
+/* シリーズを選ぶ札とシート(2026-10-15 本人の決め「1」)。ふだんは札1枚、押すと下から縦一覧のシート。
+   シリーズが何十個に増えても場所を取らない。所持・錬成・加工・バトルパスで同じ部品(src/ui/series-select.jsx) */
+.series-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 12px 0 14px;
+  padding: 10px 14px;
+  border: 1px solid #bca57480;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #16263c, #0b1627);
+  color: #f5e5be;
+  font-family: "Shippori Mincho", serif;
+  text-align: left;
+  cursor: pointer;
+}
+.series-select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.series-select:focus-visible,
+.series-select-row:focus-visible {
+  outline: 2px solid #f1da98;
+  outline-offset: 2px;
+}
+.series-select-current,
+.series-select-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.series-select-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.series-select-note {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: #acb9c7;
+}
+.series-select-open {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #e3c57a;
+  white-space: nowrap;
+}
+.skin-overlay.series-select-overlay {
+  align-items: flex-end;
+  padding: 0;
+}
+.skin-overlay.series-select-overlay .skin-dialog {
+  width: min(680px, 100%);
+  max-height: min(72dvh, 640px);
+  border-radius: 14px 14px 0 0;
+  padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+}
+.skin-overlay.series-select-overlay .skin-dialog h2 {
+  font-size: 18px;
+}
+.series-select-list {
+  display: grid;
+  gap: 6px;
+}
+.series-select-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #bca57455;
+  border-radius: 6px;
+  background: #0f1b2c;
+  color: #f5e5be;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.series-select-row.is-active {
+  border-color: #f1da98;
+  background: #2b2a1d;
+  box-shadow: 0 0 12px #d5b57644;
+}
+.series-select-row.is-active .series-select-note {
+  color: #d9c392;
+}
+.series-select-art {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  object-fit: cover;
+  object-position: center top;
+  background: #1d2d44;
+}
+.series-select-art.is-blank {
+  display: block;
+}
+.series-select-mark {
+  margin-left: auto;
+  color: #e3c57a;
+  font-size: 11px;
+  text-shadow: 0 0 6px #d5b576;
+}
+.pass-seasons {
+  margin-top: 0;
+}
+.pass-active-note {
+  margin: 0 0 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--gold-soft);
+}
+.pass-active-note svg {
+  vertical-align: middle;
+}
+.pass-active-switch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.pass-active-switch .hint {
+  margin: 0;
+}
+.quests-screen.is-pass > .setup-wrap > .pass-seasons:first-child {
+  margin-top: 0;
+}
+.shop-pass-season + .shop-pass-season {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--btn-edge);
+}
+.shop-pass-season h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--gold-soft);
+}
+/* フォイルの欄はシリーズごとの釦(2026-10-15)。押すとその下に商品が並ぶ。72時間の外でも釦は置く */
+.shop-foil-series {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.shop-foil-series-btn {
+  padding: 12px 14px;
+  gap: 12px;
+}
+.shop-foil-series-btn .choice-label {
+  font-size: 15px;
+}
+.shop-foil-series-btn.is-closed {
+  opacity: 0.8;
+}
+.shop-foil-series-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 2px 4px;
+}
+.foil-offer.is-locked {
+  cursor: default;
+}
+.foil-offer-series {
+  margin: 0 0 6px;
+  color: var(--gold-soft);
 }
 .pass-grid {
   display: grid;
@@ -6523,6 +6775,28 @@ body:has(.skin-overlay) {
 .area-chip-palace { border-color: rgba(212, 175, 55, 0.7); }
 /* Aフォイルの魔法(ランプのマジシャンの色)。エリアの帯と同じ作りで、盤とは間を空ける */
 .area-chip-ace { border-color: rgba(211, 167, 235, 0.75); }
+/* 革命の扉(アリスのAのフォイル効果)。魔術師と同じ帯で、色だけアリスの青 */
+.area-chip-alice-ace { border-color: rgba(120, 190, 235, 0.75); }
+/* 相手の選択(仲間にする・王の帰還先)を待つ帯。帯の中は縦に積む */
+.alice-wait-bar { margin: 0 0 8px; }
+.alice-wait-bar .area-chip { flex: 1; flex-direction: column; justify-content: center; text-align: center; gap: 2px; }
+.alice-wait-bar .area-chip small { white-space: normal; }
+/* 王の力の帯(小窓の代わり。2026-10-16 本人の指示)。選ぶ欄は帯の中に */
+.area-bar.alice-king-bar { flex-wrap: wrap; row-gap: 6px; }
+/* 名札は1行まるごと。選ぶ欄と釦はその下の行(ace-foil-bar の nowrap より後に書いて勝たせる) */
+.area-bar.alice-king-bar .area-chip { flex: 1 1 100%; justify-content: flex-start; text-align: left; }
+.area-bar.alice-king-bar .area-chip small { white-space: normal; }
+.area-bar.alice-king-bar > .btn { flex: 1 1 auto; }
+.alice-king-bar select {
+  flex: 1 1 140px;
+  min-height: 36px;
+  border: 1px solid var(--btn-edge);
+  border-radius: 8px;
+  background: rgba(9, 20, 38, 0.8);
+  color: var(--ink);
+  font-size: 12px;
+  padding: 4px 8px;
+}
 .ace-foil-bar { margin: 0 0 12px; }
 .area-why {
   width: 100%;
@@ -6586,6 +6860,17 @@ body:has(.skin-overlay) {
   line-height: 1;
   color: #cbefff;
   text-shadow: 0 0 6px rgba(120, 200, 255, 0.9);
+}
+/* アリスの逆転の縛り中: 左上に ⇅ と残りターン(氷の印と同じ作り。2026-10-16 本人の指示で盤で分かるように) */
+.reverse-badge {
+  position: absolute;
+  top: -8px;
+  left: -6px;
+  font-size: 12px;
+  line-height: 1;
+  color: #f0c8ff;
+  text-shadow: 0 0 6px rgba(200, 120, 255, 0.9);
+  z-index: 5;
 }
 /* 見抜いた駒(自分にだけ表向き) */
 .known-badge {
@@ -6738,7 +7023,7 @@ body:has(.skin-overlay) {
 }
 .area-preview-grid {
   position: absolute;
-  inset: 12%;
+  inset: 3%;
   display: grid;
   grid-template-columns: repeat(9, 1fr);
   grid-template-rows: repeat(9, 1fr);
@@ -7019,6 +7304,34 @@ p.hint > span.gem-shop-diag {
 .foil-offer-balance b {
   color: var(--gold-soft);
 }
+/* ショップでは獲得済みの商品も残す(2026-10-15 本人の指示)。薄くして「獲得済み」の印 */
+.foil-offer.is-owned {
+  opacity: 0.75;
+  cursor: default;
+}
+.foil-offer-done {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.foil-offer-art-wrap {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+}
+.foil-offer-art-wrap.is-owned .foil-offer-art {
+  opacity: 0.45;
+}
+.foil-offer-art-wrap.is-owned small {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  text-align: center;
+  font-size: 9px;
+  line-height: 1.2;
+  color: var(--gold-soft);
+  text-shadow: 0 0 3px #000;
+}
 .foil-offer-confirm {
   display: grid;
   gap: 12px;
@@ -7176,6 +7489,57 @@ p.hint > span.gem-shop-diag {
 /* =========================================================================
    カード(札ごとの熟練度 src/ui/card-mastery.jsx、2026-09-22 本人の指示)
    ========================================================================= */
+/* 熟練度のシリーズ選択画面(ガチャの選択画面と同じ作り。2026-10-16 本人の指示)と、一覧の右上の戻る釦 */
+.card-mastery-pick-list { display: grid; gap: 18px; margin: 0 0 16px; }
+.card-mastery-pick-art {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 12px 4px;
+  cursor: pointer;
+}
+.card-mastery-pick-art .card-face { width: 44px; }
+/* 選択画面の見出しは札の中。全体の見出し(❖つき)の飾りは付けない */
+.card-mastery-pick .gacha-pick-head h2 { padding-bottom: 0; margin-bottom: 0; }
+.card-mastery-pick .gacha-pick-head h2::after { content: none; }
+.card-mastery-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.card-mastery-top h2 { flex: 1; }
+.card-mastery-back { flex: none; margin-top: 4px; }
+.card-mastery-series-name {
+  margin: -4px 0 10px;
+  text-align: center;
+  font-family: "Shippori Mincho", serif;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--gold-soft);
+}
+.card-mastery-series {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.card-mastery-series button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(9, 20, 38, 0.55);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.card-mastery-series button[aria-pressed="true"] {
+  border-color: var(--gold-soft);
+  color: var(--gold-soft);
+  background: rgba(212, 175, 55, 0.12);
+}
+.card-mastery-series small { font-size: 11px; }
 .card-mastery-summary {
   display: flex;
   flex-wrap: wrap;
@@ -7228,6 +7592,15 @@ p.hint > span.gem-shop-diag {
 }
 .card-mastery-main:active {
   background: rgba(255, 255, 255, 0.04);
+}
+.card-mastery-skin-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-dim);
 }
 .card-mastery-body {
   display: flex;
@@ -7573,6 +7946,22 @@ p.hint > span.gem-shop-diag {
   width: 100%;
   max-width: 420px;
 }
+/* 両方の目がそろったあと。高さだけ残して見えなくする(消すと下の並びが上に跳ぶ。2026-10-15 本人の指摘) */
+.dice-duo .setup-timer-done {
+  visibility: hidden;
+}
+/* 釦・待ちの一言・結果の枠。釦と同じ高さをいつも確保して、入れ替わっても上が動かない */
+.dice-duo-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  margin-top: 14px;
+}
+.dice-duo-foot p,
+.dice-duo-foot .hint {
+  margin: 0;
+}
 .dice-duo-sides {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -7745,6 +8134,73 @@ p.hint > span.gem-shop-diag {
 .area-bar .btn-small {
   min-height: 32px;
   padding: 4px 12px;
+}
+/* ワンダーランドも既存のエリアと同じ位置で発動・対象選択を行う。 */
+.alice-area-bar {
+  min-height: 44px;
+  flex-wrap: nowrap;
+}
+.alice-area-bar > .area-chip {
+  align-content: center;
+  min-height: 38px;
+  padding: 4px 7px;
+  gap: 2px 4px;
+}
+.alice-area-name { overflow-wrap: anywhere; }
+.alice-area-bar > .btn-small {
+  flex: none;
+  min-height: 40px;
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+.alice-area-bar > .area-help { flex: none; min-width: 28px; min-height: 40px; }
+.alice-area-picking {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+.alice-area-instruction {
+  min-width: 0;
+  text-align: left;
+  color: var(--gold-soft);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.alice-area-instruction small { display: block; color: var(--text-dim); font-size: 10px; }
+/* 盤面効果の対象選び(クロッケーなど)。選んだ駒は太い白金の枠で脈打ち、選べる駒は細い枠、
+   着地点は的の印つきの枠。どれを選んでいるかが分かりにくかった(2026-10-16 本人の指摘) */
+.cell.alice-area-candidate { box-shadow: inset 0 0 0 2px rgba(239, 197, 116, 0.6); }
+.cell.alice-area-selected,
+.cell.alice-area-aim {
+  z-index: 2;
+  animation: alice-area-chosen 0.9s ease-in-out infinite alternate;
+}
+.cell.alice-area-selected .piece-wrap { transform: scale(1.1); z-index: 3; }
+.cell.alice-area-aim::after {
+  content: "◎";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #fff3ba;
+  text-shadow: 0 0 8px rgba(255, 230, 150, 0.9);
+  pointer-events: none;
+}
+.cell.alice-area-landing { box-shadow: inset 0 0 0 2px #efc57488; background-color: rgba(239, 197, 116, 0.18); }
+@keyframes alice-area-chosen {
+  from { box-shadow: inset 0 0 0 3px #fff3ba, 0 0 6px 1px rgba(255, 230, 150, 0.5); }
+  to { box-shadow: inset 0 0 0 4px #fff3ba, 0 0 16px 4px rgba(255, 230, 150, 0.95); }
+}
+.alice-area-help p { font: 14px/1.9 sans-serif; text-align: left; letter-spacing: normal; }
+/* 相手の効果の一覧(相手の横の「?」。2026-10-16 本人の指示) */
+.foe-effects h3 { margin: 14px 0 4px; font-size: 13px; color: var(--gold-soft); text-align: left; }
+.foe-effects-log { list-style: none; margin: 0; padding: 0; text-align: left; font-size: 13px; line-height: 1.8; }
+.foe-effects-log small { color: var(--text-dim); margin-right: 6px; }
+@media (max-width: 767px) {
+  .play-wrap.has-alice-area .board-frame {
+    width: min(98vw, 500px, calc(100dvh - var(--top-bar-h, 56px) - 190px));
+  }
 }
 .area-help {
   width: 24px;
@@ -9062,7 +9518,7 @@ svg {
 .prologue-next {
   width: 100%;
 }
-/* 絵の下の一言(「一枚、取ってみて。」→「外れ。王は、残りの四枚の中。」)。
+/* 絵の下の一言(「1枚、取ってみて。」→「外れ。王は、残りの4枚の中。」)。
    取ったあとの一言は、めくれ終わるころに出す */
 .prologue-cue {
   position: relative;
@@ -9476,7 +9932,8 @@ svg {
 .story-rival small { color: var(--text-dim); font-size: 12px; line-height: 1.6; }
 .story-rival-quote { margin: 5px 0; font-size: 14px; line-height: 1.7; color: var(--gold-soft); }
 .story-lesson { margin: 0; color: var(--text); font-size: 12px; line-height: 1.7; }
-.story-lesson span, .story-gate span { display: block; color: var(--text-dim); }
+/* .story-gate の文は句の塊(2026-10-06 見直し)。2行目の行(句の塊ではない span)だけを block にする */
+.story-lesson span, .story-gate > span:not(.text-phrase) { display: block; color: var(--text-dim); }
 .story-loss-note { padding: 12px; border: 1px solid var(--line); border-radius: 12px; text-align: left; }
 .story-loss-note b { font-size: 14px; line-height: 1.7; font-weight: 500; }
 .story-loss-note p { margin: 6px 0 0; color: var(--text-dim); font-size: 13px; line-height: 1.7; }
@@ -9629,11 +10086,17 @@ svg {
   color: var(--gold);
   font-size: 15px;
 }
+/* フェーズ2・3 の王の力・エリアの文は3〜4行の段落。行頭をそろえる(2026-10-06 見直し)。
+   画面(.modal-panel)の中寄せを受けて、行ごとに中寄せの段落になり、行頭がずれて読みにくかった */
+.story-intro-items li > span {
+  text-align: left;
+}
 .story-intro .hint {
   margin: 0;
 }
-/* 一文ずつ積む(2026-10-01。長い1行だと語の途中で割れていた) */
-.story-intro-note span {
+/* 一文ずつ積む(2026-10-01。長い1行だと語の途中で割れていた)。行の中は句の塊(2026-10-06 見直し。
+   「あなたの王も、その数字のフォイル/を装備して…」と割れていた)なので、直下の行だけを block にする */
+.story-intro-note > span {
   display: block;
   word-break: auto-phrase;
 }
@@ -9740,7 +10203,7 @@ svg {
   font-size: 12px;
 }
 
-/* 導入の「討てなくなったら」: 札の組を2つ並べ、合計の小さいほうを光らせる */
+/* 導入の「取れなくなったら」: 札の組を2つ並べ、合計の小さいほうを光らせる */
 .primer-judge {
   display: flex;
   align-items: flex-start;
@@ -10235,4 +10698,136 @@ svg {
 
 .cell .piece-faction > .card-back {
   background: linear-gradient(to right, var(--faction-ink) 0 var(--piece-rail), #111b28 var(--piece-rail));
+}
+
+/* 遊び方は既存ヘッダーの左枠へ。ホーム本体・着せ替えの寸法は変えない。 */
+.home-learning-nav {
+  position: relative;
+}
+.home-learning-trigger {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 72px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--btn-edge);
+  border-radius: 8px;
+  background: var(--btn-face);
+  color: var(--gold-soft);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-learning-trigger small {
+  font-size: 10px;
+  line-height: 1.1;
+}
+/* 見た目の高さを既存のヘッダーに合わせ、タップ領域は44px確保する。 */
+.home-learning-trigger::after {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
+}
+.home-learning-trigger:hover,
+.home-learning-trigger[aria-expanded="true"] {
+  border-color: var(--gold);
+  background: var(--btn-face-hi);
+}
+.home-learning-panel {
+  position: fixed;
+  top: calc(var(--top-bar-h, 60px) + 8px);
+  left: max(12px, env(safe-area-inset-left));
+  width: min(300px, calc(100vw - 24px));
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #101e30;
+  color: var(--text);
+  box-shadow: 0 10px 32px #0009;
+}
+.home-learning-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 6px 12px;
+  font-size: 12px;
+  color: var(--gold-soft);
+}
+.home-learning-steps {
+  display: flex;
+  gap: 4px;
+}
+.home-learning-steps i {
+  width: 18px;
+  height: 4px;
+  border-radius: 3px;
+  background: #ffffff25;
+}
+.home-learning-steps i.is-reached {
+  background: var(--gold);
+}
+.home-learning-panel button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--btn-face);
+  color: var(--gold-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.home-learning-panel button + button {
+  margin-top: 8px;
+}
+.home-learning-panel button > span {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.home-learning-panel b {
+  font-size: 14px;
+}
+.home-learning-panel small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.home-learning-panel button:hover {
+  background: var(--btn-face-hi);
+  border-color: var(--gold);
+}
+.home-learning-nav button:focus-visible {
+  outline: 2px solid #f5d78e;
+  outline-offset: 3px;
+}
+/* Keep the first game's board size identical during king selection and play.
+   Reserve space for the largest guide, independent of the current message. */
+.first-game-setup, .first-game-board {
+  --first-game-board-size: min(82vw, 360px, calc(100dvh - 340px));
+}
+.setup-wrap.first-game-setup .mini-board {
+  box-sizing: border-box;
+  width: var(--first-game-board-size);
+  min-width: 0;
+  aspect-ratio: 1;
+}
+.board-frame.first-game-board {
+  width: calc(var(--first-game-board-size) + 26px);
+  grid-template-columns: 22px var(--first-game-board-size);
+}
+.board-frame.first-game-board .board-grid {
+  box-sizing: border-box;
+  width: var(--first-game-board-size);
 }

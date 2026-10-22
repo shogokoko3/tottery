@@ -5,8 +5,8 @@ import { SUMMON_ARCHITECTURE } from "./summon-architecture.js";
 const files = new Map(), decoded = new Map();
 export function summonAssetUrls(world) {
   return [
-    `skins/summon/art-v3/${SUMMON_ARCHITECTURE[world].asset || `${world}.webp`}`,
-    `skins/summon/interior-v4/${world}.webp`,
+    SUMMON_ARCHITECTURE[world].exterior || `skins/summon/art-v3/${SUMMON_ARCHITECTURE[world].asset || `${world}.webp`}`,
+    SUMMON_ARCHITECTURE[world].interior || `skins/summon/interior-v4/${world}.webp`,
   ];
 }
 function loadFile(url, priority) {
@@ -48,17 +48,19 @@ export function loadSummonImage(url) {
 }
 
 /** Start while browsing gacha, without playing audio or drawing any cards. */
-export function warmSummonIntro() {
+export function warmSummonIntro(series = "heroes") {
   let cancelled = false, releaseRenderer = () => {};
   const start = () => {
     if (cancelled) return;
     import("./summon-scene.js").then(({ warmSummonRenderer }) => {
-      if (!cancelled) releaseRenderer = warmSummonRenderer();
+      if (!cancelled) releaseRenderer = warmSummonRenderer(series === "alice" ? "alice-tea" : "heaven");
     }).catch(() => {});
     import("./summon-sound.js").then(({ prepareSummonSound }) => {
       if (!cancelled) prepareSummonSound();
     }).catch(() => {});
-    const queue = Object.keys(SUMMON_ARCHITECTURE).flatMap(summonAssetUrls);
+    const queue = Object.keys(SUMMON_ARCHITECTURE)
+      .filter(world => (world.startsWith("alice-") ? "alice" : "heroes") === series)
+      .flatMap(summonAssetUrls);
     // Background traffic is bounded; a requested world's load is deduplicated.
     const worker = async () => {
       while (!cancelled && queue.length) {

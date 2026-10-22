@@ -647,7 +647,7 @@ try {
   const s2 = completeCycle(np({ cycle: 2, claimed: true, rewardId: "genie-magician" }), 2000);
   is("2周目: 盤は埋まり、スキンの印は保つ", [ac(s2), s2.claimed, s2.cycle], [true, true, 2]);
   const src = (await import("node:fs")).readFileSync(new URL("../src/ui/battlepass.jsx", import.meta.url), "utf8");
-  is("画面: サーバーの passComplete を見て埋める", /if \(!at \|\| pass\.grantedAt === at\) return;\s*updatePass\(\(s\) => completeCycle\(s, at\)\);/.test(src), true);
+  is("画面: サーバーの passComplete を見て埋める", /if \(!at \|\| pass\.grantedAt === at\) return;\s*updatePass\(\(s\) => completeCycle\(s, at\), season\);/.test(src), true);
 }
 
 console.log(`\n${ok} ok / ${fails.length} fail`);

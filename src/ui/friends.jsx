@@ -1,3 +1,4 @@
+import { playSound, useCue } from "../audio/index.js";
 /**
  * フレンド(2026-09-23 本人の指示)。
  *
@@ -70,11 +71,14 @@ export function usePublishProfileCard(profile, collection) {
 /**
  * ホームの印。届いている申請・贈り物・招待の数。
  * 開いている間は 30 秒ごと、画面に戻ったときにも読み直す(申請が来たら気づけるように。2026-09-24 本人の指示)。
- * 数(合計)としても、内訳(requests / gifts / invites)としても読める
+ * 数(合計)としても、内訳(requests / gifts / invites)としても読める。
+ * reload() で今すぐ読み直す(ホームの残高バーで贈り物を受け取った直後に印を消すため。2026-10-16)
  */
 export const FRIEND_ALERT_POLL_MS = 30000;
 export function useFriendAlerts() {
   const [alerts, setAlerts] = useState({ total: 0, requests: 0, gifts: 0, invites: 0 });
+  const [tick, setTick] = useState(0);
+  const reload = useCallback(() => setTick((n) => n + 1), []);
   useEffect(() => {
     let gone = false;
     if (!myUid()) return undefined;
@@ -99,8 +103,8 @@ export function useFriendAlerts() {
       clearInterval(timer);
       if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onShow);
     };
-  }, []);
-  return alerts;
+  }, [tick]);
+  return { ...alerts, reload };
 }
 
 /** 名札。brief なら アイコン・称号・名前だけ(申請の行。2026-09-24 本人の指示でレートとレベルは出さない) */
@@ -162,6 +166,7 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
     setError("");
     try {
       const r = await fn();
+      if (key.startsWith("accept:")) playSound("friend");
       if (done) setNotice(typeof done === "function" ? done(r) : done);
       await refresh();
     } catch (e) {

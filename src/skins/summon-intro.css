@@ -201,3 +201,15 @@
     animation: none;
   }
 }
+.summon-intro[data-world="first-victory"] .summon-world-name,
+.summon-intro[data-world="first-victory"] .summon-gate-label,
+.summon-intro[data-world="first-victory"] .summon-gate-hint {
+  text-shadow: 0 2px 5px #000, 0 0 12px #000, 0 0 24px #000;
+}
+.summon-intro[data-world="first-victory"] .summon-gate-hint,
+.summon-intro[data-world="first-victory"] .summon-gate-label {
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: #09131dcc;
+  color: #fff3d4;
+}

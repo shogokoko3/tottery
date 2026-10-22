@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-// 対局後のボタン配置(2026-09-17 本人の指示): 左上 振り返り / 右上 マッチングへ / 左下 ホームへ / 右下 もう一度遊ぶ
+// 対局後のボタン配置(2026-09-17 本人の指示): 左上 振り返り / 右上 マッチングへ(連戦)・対戦相手を選ぶ(手元) / 左下 ホームへ / 右下 もう一度遊ぶ
 const game = fs.readFileSync("src/ui/game.jsx", "utf8");
 const screens = fs.readFileSync("src/ui/screens.jsx", "utf8");
 const css = fs.readFileSync("src/styles.css", "utf8");
 const grid = game.slice(game.indexOf('className="gameover-grid"'), game.indexOf("</div>\n", game.indexOf("go-again")));
 assert.match(grid, /go-review[`"][\s\S]*?対戦の振り返り/, "左上: 対戦の振り返り");
 assert.match(grid, /go-match" onClick=\{onNextMatch\}[\s\S]*?マッチングへ/, "右上: 連戦はマッチングへ");
-assert.match(grid, /go-match" onClick=\{onExit\}[\s\S]*?マッチングへ/, "右上: 手元の対局は対戦相手を選ぶ画面へ");
+assert.match(grid, /go-match" onClick=\{onExit\}[\s\S]*?対戦相手を選ぶ/, "右上: 手元の対局(CPU・同じ端末・フレンド)は「対戦相手を選ぶ」(2026-10-15 本人の指示)");
 assert.match(grid, /go-home" onClick=\{onHome\}[\s\S]*?ホームへ/, "左下: ホームへ");
 assert.match(grid, /go-again"[\s\S]*?onClick=\{rematch\.ask\}[\s\S]*?もう一度遊ぶ/, "右下: オンラインの再戦");
 assert.match(grid, /go-again"[\s\S]*?NEW_GAME[\s\S]*?もう一度遊ぶ/, "右下: 手元の再戦");

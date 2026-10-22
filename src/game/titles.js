@@ -18,6 +18,7 @@ import {
   MASTERY_TITLE_STEP,
   MASTERY_SKINS,
   MASTERY_SKIN_RANK,
+  MASTERY_SERIES,
 } from "./constants.js";
 
 // ガチャの結果で自動解放される称号(2026-09-21 本人の指示)。
@@ -197,6 +198,19 @@ const MASTERY_NAMES = {
   "demon-q": "夜を統べる魔后", // Q 夜后 リリス
   "angel-k": "熾天の大天使", // K 熾天使 ミカエル
   "demon-k": "奈落の堕天王", // K 堕天王 ルシファー
+  "alice-A-alice": "扉を拓く少女",
+  "alice-2-dodo": "帰還の先導者",
+  "alice-3-bill": "不屈の小さな使者",
+  "alice-4-hatter": "永遠の茶会の主",
+  "alice-5-march-hare": "奇想の茶会の客人",
+  "alice-6-gryphon": "海辺の舞踏家",
+  "alice-7-mock-turtle": "涙のカドリール",
+  "alice-8-white-rabbit": "時を駆ける案内人",
+  "alice-9-caterpillar": "迷いの森の賢者",
+  "alice-10-cheshire-cat": "幻影の微笑み",
+  "alice-J-knave": "紅心の近衛",
+  "alice-Q-queen": "紅心の女帝",
+  "alice-K-king": "紅心の君主",
 };
 
 const masteryNeed = MASTERY_STEPS[MASTERY_TITLE_STEP - 1];
@@ -206,27 +220,29 @@ export const MASTERY_TITLES = [
   ...MASTERY_SKINS.map((skin) => ({
     id: `mastery-${skin}`,
     name: MASTERY_NAMES[skin],
-    how: `${MASTERY_SKIN_RANK[skin]}のスキンを王にして${masteryNeed}点ためる`,
+    how: `${MASTERY_SKIN_RANK[skin]}のスキンを使って${masteryNeed}点ためる`,
     mastery: skin,
     unlocked: (p) => (p?.mastery?.[skin] ?? 0) >= masteryNeed,
   })),
-  // 通しの褒美。17スキンすべてを同じ段まで使い込んだ人にだけ出る(2026-09-24 で 13札→17スキン)
-  {
-    id: "mastery-all",
-    name: "十七英雄の主",
-    how: `すべてのスキンを王にして${masteryNeed}点ためる`,
-    mastery: "all",
-    unlocked: (p) =>
-      MASTERY_SKINS.every((skin) => (p?.mastery?.[skin] ?? 0) >= masteryNeed),
-  },
-  {
-    id: "mastery-master",
-    name: "盤上無双",
-    how: `すべてのスキンを王にして${masteryTop}点ためる`,
-    mastery: "all",
-    unlocked: (p) =>
-      MASTERY_SKINS.every((skin) => (p?.mastery?.[skin] ?? 0) >= masteryTop),
-  },
+  // 既存の17英雄の条件・IDは保ち、新シリーズ追加で取得条件を増やさない。
+  ...MASTERY_SERIES.flatMap((series) => [
+    {
+      id: series.id === "heroes" ? "mastery-all" : `mastery-${series.id}-all`,
+      name: series.id === "heroes" ? "十七英雄の主" : "不思議の国の主",
+      how: `${series.name}の全${series.skins.length}種類で${masteryNeed}点ずつためる`,
+      mastery: "all",
+      masterySeries: series.id,
+      unlocked: (p) => series.skins.every((skin) => (p?.mastery?.[skin] ?? 0) >= masteryNeed),
+    },
+    {
+      id: series.id === "heroes" ? "mastery-master" : `mastery-${series.id}-master`,
+      name: series.id === "heroes" ? "盤上無双" : "ワンダーランド・マスター",
+      how: `${series.name}の全${series.skins.length}種類で${masteryTop}点ずつためる`,
+      mastery: "all",
+      masterySeries: series.id,
+      unlocked: (p) => series.skins.every((skin) => (p?.mastery?.[skin] ?? 0) >= masteryTop),
+    },
+  ]),
 ];
 
 export const TITLES = [
@@ -390,6 +406,48 @@ export function titleNameOf(id) {
 export function newlyEarned(before, after) {
   const had = new Set(ownedTitles(before).map((t) => t.id));
   return ownedTitles(after).filter((t) => !had.has(t.id));
+}
+
+/**
+ * 獲得日時(2026-10-15 本人の指示「称号の獲得日が確認できるように」)。
+ * profile.titleAt に { 称号id: 時刻(ms) } で持つ(src/game/profile.js が保存のたびに控える)。
+ * 記録が始まる前に取った称号には無い(null)。最初から使えるもの(free)も無い
+ */
+export function titleEarnedAt(profile, id) {
+  const at = profile?.titleAt?.[id];
+  return Number.isFinite(at) && at > 0 ? at : null;
+}
+
+/** 獲得日の言い方。「2026/10/15 に獲得」「最初から」「獲得日の記録なし」 */
+export function titleEarnedLabel(profile, title) {
+  if (!title) return "";
+  if (title.free) return "最初から";
+  const at = titleEarnedAt(profile, title.id);
+  if (!at) return "獲得日の記録なし";
+  const d = new Date(at);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} に獲得`;
+}
+
+/**
+ * 獲得した順(古い順)に並べ替える(2026-10-15 本人の指示)。
+ * 最初から使えるもの・記録が始まる前に取ったものは、どれより先に取っているので先頭(一覧の順のまま)。
+ * 同じ時刻なら一覧の順を保つ
+ */
+/**
+ * 獲得順に並べる。古い順が基本(記録なし・最初からが先頭、同時刻は一覧の順)。
+ * newestFirst で新しい順(記録なし・最初からが末尾。同時刻は一覧の順のまま。2026-10-16 本人の指示)
+ */
+export function sortTitlesByEarned(list, profile, { newestFirst = false } = {}) {
+  return list
+    .map((t, i) => ({ t, i, at: t.free ? 0 : titleEarnedAt(profile, t.id) || 0 }))
+    .sort((a, b) => (newestFirst ? b.at - a.at : a.at - b.at) || a.i - b.i)
+    .map((x) => x.t);
+}
+/** 並びの設定(useTitleOrder の値)で称号を並べる。"list" はそのまま */
+export function orderTitles(list, profile, order) {
+  if (order === "earned") return sortTitlesByEarned(list, profile);
+  if (order === "newest") return sortTitlesByEarned(list, profile, { newestFirst: true });
+  return list;
 }
 
 export function availableTitles(profile) {

@@ -69,13 +69,15 @@ export function setupFromRoom(act, roomSkins, opts = {}) {
     next.loadouts = loadoutsForCustom(custom, pair);
   } else {
     delete next.areas;
-    delete next.loadouts;
+    if (ruleVersion >= 19 && pair.some(l=>Object.values(l).some(id=>String(id).startsWith("alice-")))) next.loadouts = pair;
+    else delete next.loadouts;
   }
   return next;
 }
 
 /** 手元の表示が変わるだけで、盤面には影響しないアクション */
 export const LOCAL_ONLY_ACTIONS = new Set([
+  "ALICE_FAKE",
   "VIEW_LOG",
   "CLOSE_LOG",
   "SELECT_PIECE",
@@ -102,6 +104,7 @@ export const LOCAL_ONLY_ACTIONS = new Set([
  * ので、届いたなら細工されている。
  */
 export const NET_ACTIONS = new Set([
+  "ALICE_ACTION",
   "START_SETUP",
   "ROLL_DICE_SINGLE",
   "NEXT_DICE_STEP",
@@ -238,7 +241,7 @@ export function withLocalContext(action, state) {
         pickIds: state.shuffleMode ? [...state.shuffleMode.picks] : [],
       };
     case "MOVE_PIECE":
-      return { ...action, pieceId: state.selectedId };
+      return { ...action, pieceId: state.selectedId, ...(state.aliceFake ? {fakeRow:state.aliceFake.row,fakeCol:state.aliceFake.col} : {}) };
     default:
       return action;
   }

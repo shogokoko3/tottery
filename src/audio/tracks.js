@@ -1,3 +1,4 @@
+import { MUSIC_LAYOUTS } from "./music-layouts.js";
 /**
  * どの場面でどの曲を鳴らすか。
  *
@@ -37,39 +38,34 @@ export function audioUrl(file) {
  * gain は「その場面をどれだけ静かにしたいか」だけを表す。
  * 出どころの違う曲を足して大きさが合わないときは、音源を作り直すより
  * まずここを直すほうが早い。
- * loop が false の曲は鳴り終わったら無音になる(勝敗のジングル)。
+ * 勝敗後も結果画面の曲をループし、短い決着音はSEのバスで重ねる。
  */
 export const TRACKS = {
-  /** タイトル・相手の選択・ルール設定 —— 古の碑石 / 甘茶の音楽工房 */
-  title: { file: "title.m4a", loop: true, gain: 0.9 },
-  /** 相手を待つあいだ —— ジェーン・グレイの肖像 / 甘茶の音楽工房 */
-  waiting: { file: "waiting.m4a", loop: true, gain: 0.6 },
-  /** 開始からサイコロ・引き直し・布陣まで —— 深い闇の奥で / 甘茶の音楽工房 */
-  setup: { file: "setup.m4a", loop: true, gain: 0.8 },
-  /** 対局本編。いちばん長く鳴るので控えめに —— 斜塔 / 甘茶の音楽工房 */
-  battle: { file: "battle.m4a", loop: true, gain: 0.7 },
-  /** 終盤。ここだけ一段上げる —— 騎兵戦 / 甘茶の音楽工房 */
-  endgame: { file: "endgame.m4a", loop: true, gain: 0.9 },
-  /** 決着(勝ち)。ループしない —— ジングル01 / 魔王魂 */
-  win: { file: "win.m4a", loop: false, gain: 1 },
-  /** 決着(負け)。ループしない —— ジングル07 / 魔王魂 */
-  lose: { file: "lose.m4a", loop: false, gain: 1 },
+  title: { ...MUSIC_LAYOUTS.title, file: "title.m4a", loop: true, gain: 0.75 },
+  waiting: { ...MUSIC_LAYOUTS.waiting, file: "waiting.m4a", loop: true, gain: 0.6 },
+  setup: { ...MUSIC_LAYOUTS.setup, file: "setup.m4a", loop: true, gain: 0.65 },
+  battle: { ...MUSIC_LAYOUTS.battle, file: "battle.m4a", loop: true, gain: 0.6 },
+  endgame: { ...MUSIC_LAYOUTS.endgame, file: "endgame.m4a", loop: true, gain: 0.65 },
+  tutorial: { ...MUSIC_LAYOUTS.tutorial, file: "tutorial.m4a", loop: true, gain: 0.55 },
+  puzzle: { ...MUSIC_LAYOUTS.puzzle, file: "puzzle.m4a", loop: true, gain: 0.6 },
+  story: { ...MUSIC_LAYOUTS.story, file: "story.m4a", loop: true, gain: 0.7 },
+  collection: { ...MUSIC_LAYOUTS.collection, file: "collection.m4a", loop: true, gain: 0.6 },
+  shop: { ...MUSIC_LAYOUTS.shop, file: "shop.m4a", loop: true, gain: 0.6 },
+  summon: { ...MUSIC_LAYOUTS.summon, file: "summon.m4a", loop: true, gain: 0.65 },
+  rewards: { ...MUSIC_LAYOUTS.rewards, file: "rewards.m4a", loop: true, gain: 0.6 },
+  ranking: { ...MUSIC_LAYOUTS.ranking, file: "ranking.m4a", loop: true, gain: 0.65 },
+  win: { ...MUSIC_LAYOUTS.resultWin, file: "resultWin.m4a", loop: true, restart: true, gain: 0.65 },
+  lose: { ...MUSIC_LAYOUTS.resultLose, file: "resultLose.m4a", loop: true, restart: true, gain: 0.6 },
+  draw: { ...MUSIC_LAYOUTS.resultDraw, file: "resultDraw.m4a", loop: true, restart: true, gain: 0.6 },
 };
 
-/**
- * 曲の出どころ。設定画面に出す。
- *
- * **魔王魂は「音楽：魔王魂」の表記が規約で必須。** 消さないこと。
- * 甘茶の音楽工房(https://amachamusic.chagasi.com/)は任意だが、揃えて出す。
- * リンクにはしていない。アプリに包んだとき、外部を開く導線が
- * WebView の設定しだいで死ぬので、文字で出しておくほうが確実。
- */
-export const MUSIC_CREDIT = "甘茶の音楽工房 / 魔王魂";
+/** 採用音源の制作記録は docs/selected-audio.json。アプリ同梱の音を使う。 */
+export const MUSIC_CREDIT = "トッタリー オリジナルBGM";
 
 /**
  * 効果音の出どころ。効果音ラボは表記が要らないが、揃えて出しておく。
  */
-export const SE_CREDIT = "効果音ラボ";
+export const SE_CREDIT = "トッタリー オリジナルSE";
 
 /** チュートリアル中の音量の倍率。考える邪魔をしないよう一段下げる */
 export const TUTORIAL_VOLUME = 0.55;
@@ -89,7 +85,7 @@ export const ENDGAME_ALIVE_RATIO = 0.4;
  * どちらも両者が画面で見えているものなので、音にしても何も漏れない。
  */
 export function isEndgame(state, clocks) {
-  const cs = clocks || (state && state.clocks) || [];
+  const cs = state?.clocksHidden ? [] : clocks || (state && state.clocks) || [];
   for (const ms of cs)
     if (typeof ms === "number" && ms <= ENDGAME_CLOCK_MS) return true;
 
@@ -111,28 +107,30 @@ export function isEndgame(state, clocks) {
 export const SCREEN_TRACK = {
   home: "title",
   matching: "title",
-  ranking: "title",
-  tutorial: "title",
+  ranking: "ranking",
+  tutorial: "tutorial",
   // ストーリー(一覧とステージ前の説明)。チュートリアルの場所に置いたので同じ曲
-  story: "title",
+  story: "story",
+  phaseGuide: "tutorial",
+  welcomeComic: "tutorial",
   rules: "title",
   // 対局の外の画面(メニュー・スキン・ミッション・バトルパス・手紙)は
   // タイトルと同じ曲のまま続ける。画面を行き来しても曲が切れない
   menu: "title",
-  skins: "title",
-  missions: "title",
-  battlepass: "title",
+  skins: "summon",
+  missions: "rewards",
+  battlepass: "rewards",
   // 札ごとの熟練度を見る「カード」。ホームの一部なので同じ曲
-  cards: "title",
+  cards: "collection",
   letters: "title",
-  shop: "title",
+  shop: "shop",
   // フレンドとプロフィール(2026-09-23)。ホームの続きなので同じ曲
   friends: "title",
   profile: "title",
   // 観戦(2026-09-24)。対局を見るので対局と同じ曲
   spectate: "battle",
   // 詰めトッタリーは考える場面なので、布陣と同じ落ち着いた曲
-  tsume: "setup",
+  tsume: "puzzle",
   // 相手を待っているあいだは、数分続いても飽きない薄い曲にする
   online: "waiting",
   room: "waiting",
@@ -163,7 +161,7 @@ export const PHASE_TRACK = {
  * 上の2つの表には出てこないが、場面によって差し替わる曲。
  * ここに挙げていない曲が TRACKS にあると、鳴らす道がないので検査が知らせる。
  */
-export const EXTRA_TRACKS = ["endgame", "lose"];
+export const EXTRA_TRACKS = ["endgame", "lose", "draw", "tutorial"];
 
 /**
  * いまの場面で鳴らす曲。鳴らさないときは null。
@@ -185,9 +183,10 @@ export function trackForScene(scene) {
     return screen in SCREEN_TRACK ? SCREEN_TRACK[screen] : "title";
 
   if (phase === "gameover") {
-    if (scene.result === "draw") return "waiting";
+    if (scene.result === "draw") return "draw";
     return scene.result === "lose" ? "lose" : "win";
   }
+  if (scene.tutorial) return "tutorial";
   if (phase === "play") return scene.endgame ? "endgame" : "battle";
   return phase in PHASE_TRACK ? PHASE_TRACK[phase] : "setup";
 }

@@ -1,3 +1,4 @@
+import {ALICE_SKINS} from "../skins/alice.js";
 import { useState } from "react";
 import { emptyBoard, getLegalMoves } from "../game/board.js";
 import {
@@ -116,6 +117,8 @@ export function CardGuide({
   placing = !1,
   mark,
   originalRank,
+  alice = false,
+  movementRank = null,
 }) {
   return (
     <div className={`card-guide ${compact ? "card-guide-compact" : ""}`}>
@@ -125,12 +128,13 @@ export function CardGuide({
         ) : (
           <div className="cg-rank">{rank}</div>
         )}
-        {isKing ? <KingMoveFigure rank={rank} /> : <MoveDiagram rank={rank} />}
+        {alice && rank==="A" ? <p className="hint">数字逆転<br/>2↔K・3↔Q・4↔J<br/>5↔10・6↔9・7↔8</p> : isKing && (!alice || ["2","3"].includes(rank)) ? <KingMoveFigure rank={rank} /> : <MoveDiagram rank={movementRank || rank} />}
       </div>
       <p className="cg-text">
         {placing ? moveOnlyText(rank) : MOVE_TEXT[rank]}
       </p>
-      {isKing && <p className="cg-king">王の効果: {KING_TEXT[rank]}</p>}
+      {isKing && <p className="cg-king">王の効果: {alice ? ALICE_SKINS.find(s=>s.rank===rank)?.description : KING_TEXT[rank]}</p>}
+      {movementRank && <p className="hint">カドリール：現在は{movementRank}と同じ動きです。</p>}
     </div>
   );
 }

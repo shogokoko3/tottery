@@ -6,6 +6,9 @@ import { GemAmount } from "./gem.jsx";
  * マスだけを埋めていく。各マスをクリアするとガチャチケットが1枚(1周=24枚)。
  * 1周目は全25マスを開くと魔法で並び替わり、完成でスキンを獲得。2周目以降は
  * チケットだけで、盤をリセットしてまた遊べる(周回は1週間に3回まで)。
+ *
+ * シーズンごとに別のパス(2026-10-15 本人の指示)。上のタブで魔術師／アリスを切り替える。
+ * 進めるのは1つだけ(「このバトルパスを進める」で選ぶ。対局で取った駒はそちらに数える)。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, Sparkle } from "../icons.jsx";
@@ -24,7 +27,8 @@ import {
   statusOf,
   toggleFlip,
 } from "../game/battlepass.js";
-import { getPass, updatePass, usePass } from "../game/battlepass-store.js";
+import { getPass, updatePass, usePass, useActivePassId, setActivePassId } from "../game/battlepass-store.js";
+import { DEFAULT_SEASON, contentSeason, openSeasons } from "../game/content-seasons.js";
 import { claimSpecial } from "../skins/collection.js";
 import { useCollection } from "../skins/store.js";
 import {
@@ -39,14 +43,33 @@ import { GemShop } from "./gem-shop.jsx";
 import { updateCollection } from "../skins/store.js";
 import { unlockAudio } from "../audio/index.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
-import { useBattlePassUnlocked } from "./battlepass-access.js";
+import { useUnlockedPassSeasons } from "./battlepass-access.js";
 import { BattlePassMagic } from "./battlepass-magic.jsx";
+import { SeriesSelect } from "./series-select.jsx";
 
-/** embedded: ミッション・バトルパスのタブ画面(quests.jsx)の中。見出しは向こうが出す */
-export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
-  const pass = usePass();
+/** embedded: ミッション・バトルパスのタブ画面(quests.jsx)の中。見出しは向こうが出す。initialSeason: 最初に出すシーズン */
+// onSkins は受けるが使わない(クリア後に装備を促す釦は出さない。2026-10-16 本人の指示)
+export function BattlePassScreen({ onBack, onSkins = null, embedded = false, initialSeason = null }) {
+  const seasons = openSeasons();
+  const activeId = useActivePassId();
+  // 最初に出すパス：指定があればそれ、なければ進めているもの、それも無ければいちばん新しいシーズン
+  const [season, setSeason] = useState(() =>
+    initialSeason && seasons.some((s) => s.id === initialSeason)
+      ? initialSeason
+      : seasons.some((s) => s.id === activeId)
+        ? activeId
+        : (seasons.at(-1) || { id: DEFAULT_SEASON }).id,
+  );
+  useEffect(() => {
+    if (initialSeason && openSeasons().some((s) => s.id === initialSeason)) setSeason(initialSeason);
+  }, [initialSeason]);
+  const info = contentSeason(season) || contentSeason(DEFAULT_SEASON);
+  const isActive = activeId === season;
+  const pass = usePass(season);
   const collection = useCollection();
-  const owned = useBattlePassUnlocked();
+  const unlocked = useUnlockedPassSeasons();
+  const owned = unlocked.includes(season);
+  const activeOwned = unlocked.includes(activeId);
   const [shopOk, setShopOk] = useState(false);
   const [shop, setShop] = useState(false);
   const [buying, setBuying] = useState(false);
@@ -60,7 +83,7 @@ export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
   const claiming = useRef(false);
   const attempted = useRef(false);
   const mounted = useRef(false);
-  const skin = rewardSkin();
+  const skin = rewardSkin(season);
   const imageSrc = skin.boardCard || skin.card;
   const rows = CELLS.map((c) => statusOf(c, pass));
   const done = rows.filter((c) => c.cleared).length;
@@ -100,13 +123,19 @@ export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
 
   // 運営が「クリア状態」にした印(サーバーの passComplete)を見て、盤を埋めてスキンを受け取る。
   // 同じ印は二度当てない(pass.grantedAt に控える)
+  const grantAt = season === DEFAULT_SEASON ? collection.passComplete : collection.passCompleteBySeason?.[season];
   useEffect(() => {
-    const at = collection.passComplete;
+    const at = grantAt;
     if (!at || pass.grantedAt === at) return;
-    updatePass((s) => completeCycle(s, at));
+    updatePass((s) => completeCycle(s, at), season);
     updateCollection((s) => claimSpecial(s, skin.id)).catch(() => {});
     setMessage("運営がバトルパスをクリア状態にしました。");
-  }, [collection.passComplete, pass.grantedAt, skin.id]);
+  }, [grantAt, pass.grantedAt, skin.id, season]);
+
+  // 進めているパスを持っていない(未購入)のに、このパスは持っている → こちらを進める
+  useEffect(() => {
+    if (owned && !isActive && !activeOwned) setActivePassId(season);
+  }, [owned, isActive, activeOwned, season]);
 
   // ジェムでバトルパスを買う(サーバーで減らして権利をつける)。足りなければ店を開く
   const purchase = useCallback(async () => {
@@ -114,14 +143,14 @@ export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
     setBuying(true);
     setMessage("");
     // 決済の呼び出しは src/ui/buy.js の1本に寄せてある(ショップと同じ道)
-    const r = await buyPassFor();
+    const r = await buyPassFor(season);
     if (mounted.current) {
       setMessage(r.message);
       if (r.needGems && shopOk) setShop(true);
       setBuying(false);
     }
     return r.ok;
-  }, [buying, shopOk]);
+  }, [buying, shopOk, season]);
 
   // 次の周へ。今週の残枠(サーバーが正)を確かめてから盤をリセットする
   const nextCycle = useCallback(async () => {
@@ -140,11 +169,11 @@ export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
           setMessage("今週の周回(3回)を使い切りました。来週また挑戦できます。");
         return;
       }
-      updatePass(startNewCycle);
+      updatePass(startNewCycle, season);
     } finally {
       if (mounted.current) setSwitching(false);
     }
-  }, [switching]);
+  }, [switching, season]);
 
   // 最後の札のめくりを見せてから、同じ25片の並び替えへつなぐ。
   useEffect(() => {
@@ -160,14 +189,14 @@ export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
   }, [pending, owned]);
 
   const claim = useCallback(async () => {
-    if (claiming.current || !canClaim(getPass()) || !owned) return;
+    if (claiming.current || !canClaim(getPass(season)) || !owned) return;
     claiming.current = true;
     setBusy(true);
     setMessage("");
     try {
       // 先行受取済みの場合や保存の再試行でも、特別スキンは1枚だけ。
       await updateCollection((s) => claimSpecial(s, skin.id));
-      updatePass((s) => (canClaim(s) ? { ...s, claimed: true } : s));
+      updatePass((s) => (canClaim(s) ? { ...s, claimed: true } : s), season);
       if (mounted.current) setMessage(`「${skin.name}」を手に入れました。`);
     } catch (e) {
       if (mounted.current)
@@ -178,7 +207,7 @@ export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
       claiming.current = false;
       if (mounted.current) setBusy(false);
     }
-  }, [skin.id, skin.name, owned]);
+  }, [skin.id, skin.name, owned, season]);
 
   // 完成後だけ自動付与(権利があるとき)。保存失敗時には完成状態を保ち、明示的に再試行できる。
   useEffect(() => {
@@ -188,24 +217,50 @@ export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
   }, [pass, claim, owned]);
 
   const finishMagic = useCallback(() => {
-    updatePass(markAssembled);
-  }, []);
+    updatePass(markAssembled, season);
+  }, [season]);
 
   function flip(id) {
     if (!owned || pending || assembled || !firstCycle) return;
     unlockAudio();
-    updatePass((s) => toggleFlip(s, id));
+    updatePass((s) => toggleFlip(s, id), season);
   }
 
   function flipCompleted() {
     if (!owned || pending || assembled || !firstCycle) return;
     unlockAudio();
-    updatePass((s) => flipAll(s, turned < done));
+    updatePass((s) => flipAll(s, turned < done), season);
   }
 
   return (
     <div className="setup-wrap">
       {!embedded && <h2>バトルパス</h2>}
+      {seasons.length > 1 && (
+        /* 札1枚＋押すと縦一覧のシート(src/ui/series-select.jsx。2026-10-15 本人の決め「1」。どこも同じ部品) */
+        <SeriesSelect
+          className="pass-seasons"
+          items={seasons.map((s) => ({ id: s.id, name: s.passName, note: activeId === s.id ? "進行中" : undefined, art: rewardSkin(s.id)?.card }))}
+          value={season}
+          onChange={setSeason}
+          label="バトルパスを選ぶ"
+          hint="パスを選ぶ"
+        />
+      )}
+      {owned &&
+        (isActive ? (
+          <p className="pass-active-note" role="status">
+            <Check size={14} /> このバトルパスを進めています（対局で取った駒を数えます）
+          </p>
+        ) : (
+          <div className="pass-active-switch">
+            <p className="hint">
+              いま進めているのは「{contentSeason(activeId)?.passName || "魔術師のバトルパス"}」です。対局で取った駒はそちらに数えます。
+            </p>
+            <button className="btn btn-ghost btn-small" type="button" onClick={() => setActivePassId(season)}>
+              このバトルパスを進める
+            </button>
+          </div>
+        ))}
       {owned && (
         <p className="hint">
           相手の駒を取ると、真ん中のとなりのマスから埋まっていきます。
@@ -244,8 +299,8 @@ export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
         >
           <BattlePassSkinLock className="pass-locked-art" />
           <div className="pass-locked-caption">
-            <strong>購入して解放</strong>
-            <span>マスを埋めるとチケット。1周目の完成で限定Aスキン</span>
+            <strong>{info.passName}を購入して解放</strong>
+            <span>マスを埋めるとチケット。1周目の完成でA専用「{skin.name}」</span>
           </div>
         </div>
       ) : pending && animationReady ? (
@@ -369,7 +424,7 @@ export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
               "購入を確認しています…"
             ) : (
               <>
-                バトルパスを購入（
+                {info.passName}を購入（
                 <GemAmount amount={BATTLEPASS_GEMS} />）
               </>
             )}
@@ -433,11 +488,7 @@ export function BattlePassScreen({ onBack, onSkins, embedded = false }) {
           )}
         </div>
       )}
-      {pass.claimed && onSkins && (
-        <button className="btn btn-primary btn-wide" onClick={onSkins}>
-          スキン画面でAに装備する
-        </button>
-      )}
+      {/* クリア後に装備を促す釦は出さない(2026-10-16 本人の指示) */}
       <button className="btn btn-ghost btn-home" onClick={onBack}>
         <ArrowLeft size={16} /> ホームに戻る
       </button>

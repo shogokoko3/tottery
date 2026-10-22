@@ -656,6 +656,26 @@ CPU戦のルール設定で 9×9 を選ぶと「CPUのエリア」が出て、�
 `node tools/check-areas.mjs`、強さの目安は `node tools/area-lab.mjs`。効果の数字は
 `src/game/areas.js` の `AREA_TUNING` で変える。
 
+### シーズン2(不思議の国のアリス)の CPU と、戦い方の検証(2026-10-16)
+
+CPU のシーズン2の判断は `src/game/cpu-alice.js`。王の選び方・布陣・相手に合わせた指し方の**調整値は同じファイルの `KNOB_DEFAULTS`**
+(検証の道具が `globalThis.TOTTERY_ALICE_CPU` で差し替える。画面では既定のまま)。公開情報と見抜いた情報だけで決める決まりは変えていない。
+
+- **王の選び方**: アリスのスキンの数字ごとに加点(`kingBonus`。固定の王で測った勝率の順で 2・8 > 3・4・9 > 10、K は減点)。
+  2・3 の王は同じ数字をもう1枚採用する加点(`kinBonus`。帰還が1回増え、射程も2マス伸びる)
+- **相手に合わせた指し方**(`aliceAdaptScore`。`cpu-informed.js` の手の点数に足す):
+  相手の A の包囲(3駒の三角形の内側)に**王**を置かない(`encircleGuard`。駒まで避けると攻めが鈍って逆に負けた)、
+  帰還の残る 2・3 の王は危ないマスへも踏み込む(`reviveCourage`)、
+  相手がクロッケーで飛ばした元の位置(王の5×5の中)から相手の王の候補を絞る(`croquetHint`。`alice-rules.js` が `lastAlicePower.presentation.from` を残す)
+- **ハートの王の布陣**: 王の5×5にトランプ兵を集める(`soldiersNearKing`。クロッケーの弾)。狙いは相手の後列の伏せ駒に重み(`croquetBackBias`)
+- **引き直しの釣り**(`mulliganFish`/`mulliganFishValue`。`cpu-strategy.js` の `strategicDiscards`): 構成に入らない札に加えて、構成の弱い札(値打ち4以下。王・王と同じ数字・A は残す)を4枚まで捨てて引き直す。
+  決まりの上限は予備札の数(`reducer` の `TOGGLE_MULLIGAN_CARD`)で、以前の CPU は最大4枚しか捨てていなかった(2026-10-16 本人の指摘。シリーズ全体 68.5→71.2%。釣るのはアリスのスキンの王のときだけ)
+- **検証の道具**: `tools/alice-arena.mjs`(サイコロ・引き直し・布陣・王まで CPU に任せる闘技場。`MODES=series,alice-king,hero-king,matrix,amatrix`、`PROFILE=` で `tools/alice-arena-profiles.json` の調整値、`OUT=` で1局1行の記録)、
+  `tools/alice-arena-report.mjs`(記録の集計。王×王・エリア×エリア・決着の形)、`tools/alice-arena-replay.mjs <seed> <席> [mode] [王] [相手の王]`(1局の再生)、
+  `tools/alice-arena-matrix.mjs`(総当たりの表)。結果と振り返りは `reports/alice-tactics/検証レポート.md`。
+  王の効果ごとの比較(以前の道具)は `tools/alice-lab.mjs`(`reports/alice-balance`)
+- 検査: `tools/check-cpu-alice.mjs`(調整の既定・包囲の回避・相手の A がアリスなら避けない)
+
 ## v49 で入れたもの
 
 - **予備札の配置に確認を挟む（2026-09-11）**: Kの効果で予備札を出すとき、自陣の空きマスをタップするか札をドラッグすると
@@ -1393,7 +1413,7 @@ Bot も人物として見せるので、持ち点に応じた称号を名乗る(
 - **正はサーバー**(Worker の Durable Object、src/server/friends.js)。Firebase のルールは触っていない(公開の作業なし)。
   端末は src/net/friends.js で `/api/friends/<op>` を叩く(state / request / accept / decline / cancel / remove / gift / claim / invite / cancel-invite / profile-set / profile-get)
 - フレンド登録: 8文字のフレンド ID(サーバーが uid ごとに作る。0/O・1/I/L は使わない)で申請 → 相手が承認。互いに申請していればその場で結ぶ。50人まで(両側で見る)
-- 贈り物: **1日1回(日本時間)、フレンド1人にガチャチケット1枚**。送る側は減らない(サーバーが作る)。受け取る側は「まとめて受け取る」で財布へ(出来事 id `gift:<from>:<day>` で二度は足さない。`kind: "friend-gift"` なので `earn` の 1日30枚の上限には数えない)
+- 贈り物: **1日1回(日本時間)、フレンド1人にガチャチケット1枚**。送る側は減らない(サーバーが作る)。受け取る側は、ホームの残高バーのチケットの横に出る「贈り物 +N 受け取る」(2026-10-16 本人の決め「1」。申請の行には混ぜない)か、フレンド画面の「まとめて受け取る」で財布へ(出来事 id `gift:<from>:<day>` で二度は足さない。`kind: "friend-gift"` なので `earn` の 1日30枚の上限には数えない)
 - 招待: フレンド画面(かプロフィール)の「招待」→ ルール設定 → 部屋を作る → できた合言葉を相手に届ける(`RoomScreen` の `onRoomCreated`)。相手はフレンド画面の「参加する」で、リンクから開いたときと同じ道(`pendingRoom`)で入る。招待は3分で古くなる
 - プロフィール: 写し(名前・アイコン・称号・レベル・記録・背景・アピール・固定の称号)を端末が `profile-set` で送る(フレンド・プロフィール画面を開いたとき、編集したとき)。**フレンドだけ**が `profile-get` で読める。持ち点・月間の順位はサーバーの台帳から足す(端末の言い値は読まない)
 - カスタマイズ(src/game/profile-card.js、profile.card に保存): 背景=標準＋ホームの着せ替えと同じ7エリア(同じフォイルの対応で解放)、記録のアピール=12種から3つまで、プロフィールの称号=持っている称号から1つ(対局で見せる称号とは別。ふだんの称号はプロフィールに出さない)。画面の「持ち点」は全て「レート」と呼ぶ(2026-09-24 本人の指示)
@@ -1887,7 +1907,8 @@ CPU・オンライン9×9で布陣称号を獲得した本人に、土・海・�
   1ジェム=1円なので有償ガチャは 1回 ¥150 / 10連 ¥1,200(`ガチャ価格の目安.md` の結論どおり)。以前は 10 ジェム=1枚で 1回 ¥10 になっていた
 - **120 ジェムのパックを 150 に**(`gems.150`)。ガチャ1回をちょうど買える最小のパック。App Store Connect の商品は `node tools/asc-iap-create.mjs 150`
   で作り、審査用スクリーンショットは `tools/asc-iap-screenshots.mjs`。旧 120 の商品は残すがアプリからは出さない
-- **無償ジェムをエーテルに**: 10 → 20(`ETHER_EXCHANGE`、`/api/wallet/ether`、錬成タブ)。**無償だけ**で払う(有償は溶かさない)。
+- **ジェムをエーテルに**: 10 → 20(`ETHER_EXCHANGE`、`/api/wallet/ether`、錬成タブ)。無償→有償の順で払う
+  (2026-10-16 本人の指示。それまでは無償だけ)。端末は使う前に必ず確認を出し、有償を使うときはその数を明記する。
   ガチャ1回を崩した分(約24)よりやや不利にして、ガチャの価値を守る。無償ジェムの役割は「錬成とバトルパス」に寄せる
 
 ### プラグインの Swift パッケージの直し(postinstall、2026-09-16)

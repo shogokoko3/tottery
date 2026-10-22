@@ -1,7 +1,7 @@
 /**
  * 導入の振り分け(src/game/intro.js。2026-10-01 本人の指示)を確かめる。
  *
- *   タイトル → 語り2枚 → はじめの一局 → 結果 → 名前 → 門の語り → 10連 → ストーリー一覧
+ *   タイトル → 漫画 → はじめの一局 → 結果 → 名前 → 初勝利の祝福 → 無料10連 → 結果 → ホーム
  *
  * 見ること:
  *   A. 次に出す段(introStep)の表。いまのテスター・前の版のテスター(10連の控えなし)・合言葉つき・中断・
@@ -9,7 +9,7 @@
  *   B. 本物の記録(profile.js の recordGame・saveName、collection の markFirstPull)で導入を通す。
  *      どこでやめても、次の起動で続きへ戻る(前へ戻らない・名前と10連をくり返さない)。
  *      10連の結果を閉じる前にやめた人は、結果へ戻る("first-pull")
- *   C. はじめの一局をストーリーとして渡す形(firstGameStory)と、ストーリー1つ目の行き先(firstGameStage)
+ *   C. 導入専用の完了記録と、第1話の読了・勝利によるクリアを分ける
  *   D. 称号の知らせを止める場面(introHoldsTitles)・導入のあとの件数(introTitleQuota)と、語り・導入を始めた控え
  *   E. 画面(screens.jsx)の配線: タイトル・語り・名前(結果の上・戻る)・門の語り・10連・一覧・はじめの一局の出入り・
  *      ガチャの戻り先
@@ -47,8 +47,6 @@ const {
   INTRO_STEPS,
   earlierTester,
   firstGameDone,
-  firstGameStage,
-  firstGameStory,
   gateAfterFirstGame,
   introHoldsTitles,
   introStarted,
@@ -63,10 +61,11 @@ const { STORY_AXES, stageSize } = await import("../src/game/phase.js");
 const { STORY_XP, stageOf } = await import("../src/game/story.js");
 const { firstPullDone, firstPullOpen, firstPullResult, markFirstPull } = await import("../src/skins/first-pull.js");
 const { applyPull, normalize: normalizeCollection } = await import("../src/skins/collection.js");
-const { loadProfile, recordGame, resetAccount, saveName } = await import("../src/game/profile.js");
+const { loadProfile, markFirstStoryRead, recordGame, resetAccount, restoreProfile, saveName } = await import("../src/game/profile.js");
 const { isRewardChapter } = await import("../src/game/tutorial-reward.js");
 
-const story = (p1 = [], extra = {}) => ({ name: "", phase: 1, story: { 1: p1, 2: [], 3: [] }, ...extra });
+const story = (p1 = [], extra = {}) => ({ name: "", phase: 1, story: { 1: p1, 2: [], 3: [] }, introFirstGameDone: false, ...extra });
+const introDone = (extra = {}) => story([], { introFirstGameDone: true, ...extra });
 const pulled = { firstPullDone: true };
 const fresh = {};
 
@@ -74,9 +73,9 @@ console.log("A. 次に出す段");
 is("段は5つ(語り・一局・名前・門の語り・10連の結果の続き)", [...INTRO_STEPS], ["prologue", "first-game", "name", "gate", "first-pull"]);
 is("はじめての人は語りから", introStep({ profile: story(), collection: fresh }), "prologue");
 is("語りを見たら、はじめの一局", introStep({ profile: story(), collection: fresh, prologueSeen: true }), "first-game");
-is("一局に勝って名前が無ければ、名前", introStep({ profile: story(["23"]), collection: fresh, prologueSeen: true }), "name");
-is("名前を決めたら、門の語り", introStep({ profile: story(["23"], { name: "しょうご" }), collection: fresh, prologueSeen: true }), "gate");
-is("10連まで済めば導入は終わり", introStep({ profile: story(["23"], { name: "しょうご" }), collection: pulled, prologueSeen: true }), null);
+is("一局に勝って名前が無ければ、名前", introStep({ profile: introDone(), collection: fresh, prologueSeen: true }), "name");
+is("名前を決めたら、門の語り", introStep({ profile: introDone({ name: "しょうご" }), collection: fresh, prologueSeen: true }), "gate");
+is("10連まで済めば導入は終わり", introStep({ profile: introDone({ name: "しょうご" }), collection: pulled, prologueSeen: true }), null);
 is(
   "いまのテスター(名前あり・10連済み・二と三の王は未クリア)は導入を通さない",
   introStep({ profile: story([], { name: "テスター" }), collection: pulled }),
@@ -88,7 +87,7 @@ is(
   [
     introStep({ profile: story([], { name: "前の版" }), collection: fresh }),
     introStep({ profile: story([], { name: "前の版" }), collection: fresh, prologueSeen: true }),
-    introStep({ profile: story(["23"], { name: "前の版" }), collection: fresh, prologueSeen: true }),
+    introStep({ profile: introDone({ name: "前の版" }), collection: fresh, prologueSeen: true }),
   ],
   ["prologue", "first-game", "gate"],
 );
@@ -114,7 +113,7 @@ is(
   is(
     "この端末で導入を始めた人(語りを見た・合言葉で来た)は、遊んだ跡が付いても導入の続きへ",
     [
-      introStep({ profile: story(["23"], { name: "新しい人", plays: 1 }), collection: fresh, prologueSeen: true }),
+      introStep({ profile: introDone({ name: "新しい人", plays: 1 }), collection: fresh, prologueSeen: true }),
       introStep({ profile: story([], { name: "合言葉の人", plays: 3 }), collection: fresh, introStarted: true }),
     ],
     ["gate", "prologue"],
@@ -143,11 +142,11 @@ is(
   );
   is(
     "前の版のテスターは、タイトルからも(introStep)、ストーリーの一局からも(gateAfterFirstGame)門へ行かない",
-    [introStep({ profile: story(["23"], { ...old }), collection: fresh }), gateAfterFirstGame({ profile: old, collection: fresh })],
+    [introStep({ profile: introDone({ ...old }), collection: fresh }), gateAfterFirstGame({ profile: old, collection: fresh })],
     [null, false],
   );
 }
-for (const p of [story(), story(["23"]), story(["23"], { name: "x" }), story([], { name: "x" })])
+for (const p of [story(), introDone(), introDone({ name: "x" }), story([], { name: "x" })])
   is(
     `合言葉つきの起動・中断した起動は押し付けない(${JSON.stringify([p.name, p.story[1]])})`,
     [introStep({ profile: p, collection: fresh, room: true }), introStep({ profile: p, collection: fresh, deferred: true })],
@@ -156,8 +155,8 @@ for (const p of [story(), story(["23"]), story(["23"], { name: "x" }), story([],
 is(
   "フェーズ2 の人(フェーズ1 を全部クリア済み)は一局を済んだものとする(台本の一局はフェーズ1 だけ)",
   [
-    introStep({ profile: { name: "", phase: 2, story: { 1: [], 2: [], 3: [] } }, collection: fresh }),
-    introStep({ profile: { name: "x", phase: 2, story: { 1: [], 2: [], 3: [] } }, collection: fresh }),
+    introStep({ profile: { name: "", phase: 2, introFirstGameDone: true, story: { 1: [], 2: [], 3: [] } }, collection: fresh }),
+    introStep({ profile: { name: "x", phase: 2, introFirstGameDone: true, story: { 1: [], 2: [], 3: [] } }, collection: fresh }),
   ],
   ["name", "gate"],
 );
@@ -171,13 +170,14 @@ is("フェーズ2 の二と三の王のクリアは、はじめの一局に数�
   for (const name of ["", "x"])
     for (const p1 of [[], ["23"], ["45"], [...STORY_AXES]])
       for (const phase of [1, 2, 3])
+        for (const introFirstGameDone of [false, true])
         for (const col of [fresh, pulled, opened, { draws: 3 }])
           for (const plays of [0, 4])
             for (const pr of [false, true])
               for (const started of [false, true])
                 for (const room of [false, true])
                   for (const deferred of [false, true])
-                    seen.add(introStep({ profile: { name, phase, plays, story: { 1: p1, 2: [], 3: [] } }, collection: col, prologueSeen: pr, introStarted: started, room, deferred }));
+                    seen.add(introStep({ profile: { name, phase, plays, introFirstGameDone, story: { 1: p1, 2: [], 3: [] } }, collection: col, prologueSeen: pr, introStarted: started, room, deferred }));
   is("返すのは5つの段か null だけ(全組)", [...seen].every((s) => s === null || INTRO_STEPS.includes(s)), true);
   is("5つの段がどれも起こりうる", INTRO_STEPS.every((s) => seen.has(s)), true);
 }
@@ -201,8 +201,7 @@ console.log("\nB. 本物の記録で導入を通す(どこでやめても続き�
     if (step === "prologue") seenPrologue = true;
     else if (step === "first-game") {
       // game.jsx と同じ形で記録する(台本とストーリーを同時に受けたら、ストーリーとして。チュートリアルは付けない)
-      const s = firstGameStory();
-      recordGame(true, { online: false, matchId: null, kingRank: "4", deferXpNotice: true, xp: STORY_XP, story: { axis: s.axis, phase: s.phase } });
+      recordGame(true, { online: false, matchId: null, kingRank: "4", deferXpNotice: true, xp: FIRST_GAME.xp, introFirstGame: true });
     } else if (step === "name") saveName("しょうご");
     else if (step === "gate") collection = markFirstPull(collection);
   }
@@ -210,10 +209,11 @@ console.log("\nB. 本物の記録で導入を通す(どこでやめても続き�
   is("どこでやめても、開き直すと同じ段(続き)に戻る", points.every(([a, b]) => a === b), true);
   is("終えたあとは何度開いても導入は出ない", [launch(), launch()], [null, null]);
   const after = loadProfile();
-  is("一局はストーリー「二と三の王」のクリアとして残る", after.story[1], ["23"]);
+  is("導入の勝利は専用の記録に残る", after.introFirstGameDone, true);
+  is("ストーリー第1話は未クリアのまま", after.story[1], []);
   is("チュートリアルの話としては残らない(話のチケットの道に乗らない)", after.cleared, []);
   is("台本の id は話の番号ではない(チュートリアルの褒美の道に送れない)", isRewardChapter(FIRST_GAME.id), false);
-  is("一局の経験値はステージのもの(STORY_XP)", after.xp, STORY_XP);
+  is("一局の経験値はステージのもの(STORY_XP)", after.xp, FIRST_GAME.xp);
   is("名前と10連の控えが残る", [after.name, firstPullDone(collection)], ["しょうご", true]);
 }
 {
@@ -244,7 +244,7 @@ console.log("\nB. 本物の記録で導入を通す(どこでやめても続き�
     if (!step) break;
     steps.push(step);
     if (step === "prologue") seen = true;
-    if (step === "first-game") recordGame(true, { deferXpNotice: true, xp: STORY_XP, story: { axis: "23", phase: 1 } });
+    if (step === "first-game") recordGame(true, { deferXpNotice: true, xp: FIRST_GAME.xp, introFirstGame: true });
     if (step === "gate") collection = markFirstPull(collection);
   }
   is("次の起動の導入は 語り → 一局 → 門の語り(名前は飛ばす)", steps, ["prologue", "first-game", "gate"]);
@@ -255,7 +255,7 @@ console.log("\nB. 本物の記録で導入を通す(どこでやめても続き�
 {
   // 10連の結果を閉じる前にアプリを閉じた人(2026-10-05 見直し)。skins.jsx の rollFirst と同じ形で引く
   // (markFirstPull(applyPull(...)) を1回の更新で保存する)。保存の形は normalizeCollection を通す
-  const profile = story(["23"], { name: "しょうご", plays: 1 });
+  const profile = introDone({ name: "しょうご", plays: 1 });
   let col = normalizeCollection(markFirstPull(applyPull(normalizeCollection({}), firstPullResult(() => 0.5), { free: true })));
   is("引いた直後に閉じて開き直すと、10連の結果へ戻る", [introStep({ profile, collection: col, prologueSeen: true }), firstPullOpen(col)], ["first-pull", true]);
   is("結果へ戻る段は、合言葉つき・中断の起動では出さない", [introStep({ profile, collection: col, room: true }), introStep({ profile, collection: col, deferred: true })], [null, null]);
@@ -281,35 +281,53 @@ console.log("\nB. 本物の記録で導入を通す(どこでやめても続き�
   // 上の合言葉の通しの影響を受けないよう、値で渡す
   const real = () => ({ profile: loadProfile(), collection: col, prologueSeen: false, introStarted: false });
   is("前の版のテスター: タイトルからはホームへ", introStep(real()), null);
-  is("前の版のテスター: ストーリー1つ目は台本の一局", firstGameStage(loadProfile(), "23"), true);
   const before = gateAfterFirstGame(real());
-  const s = firstGameStory();
-  recordGame(true, { online: false, matchId: null, kingRank: "4", deferXpNotice: true, xp: STORY_XP, story: { axis: s.axis, phase: s.phase } });
+  recordGame(true, { online: false, matchId: null, kingRank: "4", deferXpNotice: true, xp: FIRST_GAME.xp, introFirstGame: true });
   is("前の版のテスター: 始めるときも勝ったあとも、門へ進まない", [before, gateAfterFirstGame(real()), introStep(real())], [false, false, null]);
   // はじめての人は、勝つ前に決めた答えのまま門へ(勝って遊んだ跡が付いても変わらない)
   resetAccount();
   mem.clear();
   const fresh1 = () => ({ profile: loadProfile(), collection: {}, prologueSeen: true, introStarted: true });
   const start = gateAfterFirstGame(fresh1());
-  recordGame(true, { online: false, matchId: null, kingRank: "4", deferXpNotice: true, xp: STORY_XP, story: { axis: s.axis, phase: s.phase } });
+  recordGame(true, { online: false, matchId: null, kingRank: "4", deferXpNotice: true, xp: FIRST_GAME.xp, introFirstGame: true });
   is("はじめての人: 始めるときも勝ったあとも門へ進む(名前 → 門の語り)", [start, gateAfterFirstGame(fresh1()), introStep(fresh1())], [true, true, "name"]);
 }
 
-console.log("\nC. はじめの一局をストーリーとして渡す・ストーリー1つ目の行き先");
+console.log("\nC. 導入とストーリーの記録を独立させる");
 {
-  const s = firstGameStory();
-  const king = FIRST_GAME.deck.find((c) => c.id === FIRST_GAME.foe.kingId);
-  is("軸は台本の storyAxis(二と三)", s.axis, FIRST_GAME.storyAxis);
-  is("フェーズは台本のもの(1)", s.phase, FIRST_GAME.phase);
-  is("盤は台本の 5×5(フェーズ1 のステージと同じ)", [s.size, s.size === stageSize(1)], [FIRST_GAME.boardSize, true]);
-  is("相手の王は台本の王(3♦)", [s.king, `${king.rank}${king.suit}`], ["3", "3diamond"]);
-  is("席の名前はステージの名", s.title, `${stageOf("23").name}の王`);
-  is("渡す形は凍らせてある", Object.isFrozen(s), true);
-  is("フェーズ1 で二と三の王が未クリアなら、ストーリー1つ目は台本の一局", firstGameStage(story(), "23"), true);
-  is("ほかのステージはいつもどおり", STORY_AXES.filter((a) => a !== "23").some((a) => firstGameStage(story(), a)), false);
-  is("2回目(クリア済み)からは説明と CPU 戦", firstGameStage(story(["23"]), "23"), false);
-  is("いまのテスター(10連済み)でも未クリアなら台本の一局", firstGameStage(story([], { name: "テスター" }), "23"), true);
-  is("フェーズ2・3 の二と三の王は台本にしない", [firstGameStage({ phase: 2, story: { 1: [], 2: [], 3: [] } }, "23"), firstGameStage({ phase: 3, story: { 1: [], 2: [], 3: [] } }, "23")], [false, false]);
+  resetAccount(); mem.clear();
+  is("新規プロフィールは導入未完了", firstGameDone(loadProfile()), false);
+  recordGame(false, { introFirstGame: true, xp: 0, deferXpNotice: true });
+  is("負けでは導入を完了しない", firstGameDone(loadProfile()), false);
+  recordGame(null, { introFirstGame: true, xp: 0, deferXpNotice: true });
+  is("引き分けでも導入を完了しない", firstGameDone(loadProfile()), false);
+  recordGame(true, { introFirstGame: true, xp: FIRST_GAME.xp, story: { axis: "23", phase: 1 }, deferXpNotice: true });
+  const won = loadProfile();
+  is("勝利と再読み込みで導入を完了", firstGameDone(won), true);
+  is("古い呼び出しにstoryが混在しても第1話は未クリア", won.story[1], []);
+  is("オンライン昇格の勝利には加算しない", won.phaseWins[1], 0);
+  is("手引きもクリアしない", won.cleared, []);
+  is("次に遊ぶストーリーは第1話", (await import("../src/game/story.js")).nextStage(won).axis, "23");
+  recordGame(true, { introFirstGame: true, xp: FIRST_GAME.xp, deferXpNotice: true });
+  is("再度記録しても導入の経験値を増やさない", loadProfile().xp, won.xp);
+  recordGame(true, { story: { axis: "23", phase: 1 }, xp: STORY_XP, deferXpNotice: true });
+  is("物語を読んでいなければ通常対局でも第1話をクリアしない", loadProfile().story[1], []);
+  markFirstStoryRead();
+  is("読了を保存しても対局に勝つまでは未クリア", [loadProfile().firstStoryRead, loadProfile().story[1]], [true, []]);
+  const readBackup = loadProfile();
+  resetAccount();
+  restoreProfile(readBackup);
+  is("導入完了と第1話の読了はバックアップから別々に復元できる", [loadProfile().introFirstGameDone, loadProfile().firstStoryRead, loadProfile().story[1]], [true, true, []]);
+  recordGame(true, { story: { axis: "23", phase: 1 }, xp: STORY_XP, deferXpNotice: true });
+  is("ストーリーの対局を勝ったときに初めて第1話をクリア", loadProfile().story[1], ["23"]);
+  is("第1話の対局後に次の相手が四と五へ進む", (await import("../src/game/story.js")).nextStage(loadProfile()).axis, "45");
+  const old = { ...loadProfile() }; delete old.introFirstGameDone; delete old.firstStoryRead;
+  restoreProfile(old);
+  is("旧版のクリア済み保存で導入をやり直させない", firstGameDone(loadProfile()), true);
+  is("既存のストーリー進行は保持する", loadProfile().story[1], ["23"]);
+  is("既存のクリアを読了した記録として推測しない", loadProfile().firstStoryRead, false);
+  restoreProfile({ ...old, introFirstGameDone: false });
+  is("分離後はストーリーのクリアで導入完了を推測しない", firstGameDone(loadProfile()), false);
 }
 
 console.log("\nD. 称号の知らせを止める場面・語りを見たかの控え");
@@ -363,8 +381,8 @@ console.log("\nE. 画面の配線(screens.jsx)");
   is("合言葉つきで開いたらすぐ部屋へ(名前が無ければ名前の壁が先)", /useEffect\(\(\) => \{\s*if \(pendingRoom\) t\("room"\);\s*\}, \[pendingRoom\]\);/.test(screens), true);
   is("合言葉つきで開いた名前のまだ無い人には、導入を始めた控えを残す(起動で一度)", /useEffect\(\(\) => \{\s*if \(pendingRoom && !hasName\(\)\) markIntroStarted\(\);\s*\}, \[\]\);/.test(screens), true);
   is(
-    "語りを読み終えたら(読み飛ばしても)控えを残して、はじめの一局へ",
-    /if \(intro === "prologue"\)[\s\S]{0,200}<Prologue\s+kind="intro"\s+onDone=\{\(\) => \{\s*markPrologueSeen\(\);\s*startFirstGame\(\);/.test(screens),
+    "初回の漫画から控えを残して、はじめの一局へ",
+    /if \(intro === "prologue"\)[\s\S]{0,200}<WelcomeComic\s+firstRun\s+onDone=\{\(\) => \{\s*markPrologueSeen\(\);\s*startFirstGame\(\);/.test(screens),
     true,
   );
   is(
@@ -385,13 +403,13 @@ console.log("\nE. 画面の配線(screens.jsx)");
   );
   is("対局は結果の上に cover を出す(GameShell の中。色の決まりが付く)", /\{a\.phase === "gameover" && cover\}\s*<\/div>\s*<\/GameShell>/.test(read("src/ui/game.jsx")), true);
   is(
-    "門の語りのあとは初回の10連(戻り先はストーリー)",
-    /if \(intro === "gate"\)[\s\S]{0,200}<Prologue\s+kind="gate"\s+onDone=\{\(\) => \{\s*setIntro\(null\);\s*setFirstPullMode\(!0\);\s*setSkinsTab\("gacha"\);\s*setSkinsFrom\("story"\);\s*t\("skins"\);/.test(screens),
+    "専用門の案内から初回の10連へ(戻り先はホーム)",
+    /if \(intro === "gate"\)[\s\S]{0,200}<FirstSummonLobby\s+name=\{loadProfile\(\)\.name \|\| "旅人"\}\s+onStart=\{\(\) => \{\s*setIntro\(null\);\s*setFirstPullMode\(!0\);\s*setSkinsTab\("gacha"\);\s*setSkinsFrom\("menu"\);\s*t\("skins"\);/.test(screens),
     true,
   );
   is(
-    "10連の結果を閉じたら、次の相手を紹介。未クリアがなければ一覧へ(ガチャの戻り先は menu に戻し、称号は1件だけに)",
-    /if \(firstPullMode\) \{\s*(\/\/[^\n]*\n\s*)*setFirstPullMode\(!1\);\s*setSkinsFrom\("menu"\);\s*setAfterIntro\(!0\);\s*showStory\(\);\s*const next = nextStage\(loadProfile\(\)\);\s*if \(next\) openStage\(next.axis\);\s*return;\s*\}/.test(screens),
+    "10連の結果を閉じたら、現在のホームへ戻る",
+    /if \(firstPullMode\) \{\s*(\/\/[^\n]*\n\s*)*setFirstPullMode\(!1\);\s*setSkinsFrom\("menu"\);\s*setAfterIntro\(!0\);\s*goMenu\(\);\s*return;\s*\}/.test(screens),
     true,
   );
   is(
@@ -400,8 +418,8 @@ console.log("\nE. 画面の配線(screens.jsx)");
     true,
   );
   is(
-    "ホーム・ミッション・バトルパスからのガチャは、戻り先を決めてから開く(ストーリー・ショップを引きずらない)",
-    (screens.match(/onSkins=\{\(\) => \(setSkinsFrom\("menu"\), t\("skins"\)\)\}/g) || []).length === 3 && !/onSkins=\{\(\) => t\("skins"\)\}/.test(screens),
+    "ホーム・ミッション・バトルパスからは、ガチャのタブとホームへの戻り先を決めて開く",
+    (screens.match(/onSkins=\{\(\) => \(setSkinsTab\("gacha"\), setSkinsFrom\("menu"\), t\("skins"\)\)\}/g) || []).length === 3 && !/onSkins=\{\(\) => t\("skins"\)\}/.test(screens),
     true,
   );
   {
@@ -411,13 +429,13 @@ console.log("\nE. 画面の配線(screens.jsx)");
   }
   is("ストーリー一覧から開くステージは openStage", /<StoryScreen\s+onBack=\{\(\) => t\("menu"\)\}\s+onStart=\{openStage\}/.test(screens), true);
   is(
-    "物語を読んだあとの初回2・3は、これまでどおり台本の一局",
-    /if \(firstGameStage\(loadProfile\(\), axis\)\) \{\s*startFirstGame\(\);\s*return;\s*\}/.test(fn("startStory")),
+    "物語を読んだ第1話も通常のストーリー対局へ進む",
+    !/startFirstGame|FIRST_GAME/.test(fn("startStory")) && /setTut\(null\)/.test(fn("startStory")),
     true,
   );
   is(
-    "はじめの一局は台本と story を同時に渡す(相手の装備・エリアは持ち越さない)",
-    /setCpuSkins\(\{\}\), setCpuArea\(null\), setRound\(0\), setIntro\(null\),\s*setTut\(FIRST_GAME\), setStory\(firstGameStory\(\)\), m\(!0\), r\("game"\), t\("game"\)/.test(fn("startFirstGame")),
+    "はじめの一局はstoryを渡さない(相手の装備・エリアは持ち越さない)",
+    /setCpuSkins\(\{\}\), setCpuArea\(null\), setRound\(0\), setIntro\(null\),\s*setTut\(FIRST_GAME\), setStory\(null\), m\(!0\), r\("game"\), t\("game"\)/.test(fn("startFirstGame")),
     true,
   );
   is(
@@ -426,7 +444,7 @@ console.log("\nE. 画面の配線(screens.jsx)");
     true,
   );
   is("導入の段へ出るときは対局の後片付けをする", /\(u\(null\), m\(!1\), setTut\(null\), setStory\(null\), setStoryIntro\(null\), setIntro\(step\), t\("home"\)\)/.test(fn("goIntro")), true);
-  is("一局の段は台本の一局を始める", /if \(step === "first-game"\) \{\s*startFirstGame\(\);/.test(fn("goIntro")), true);
+  is("漫画を読んだあとの再開は台本の一局へ進む", /if \(step === "first-game"\) \{\s*startFirstGame\(\);/.test(fn("goIntro")), true);
   is("はじめの一局を見分ける", screens.includes("const firstGame = tut === FIRST_GAME;"), true);
   is(
     "結果のどの釦・中断・上の「トッタリー」でも leaveFirstGame を通す",
@@ -466,7 +484,7 @@ console.log("\nE. 画面の配線(screens.jsx)");
     true,
   );
   is("手引きを自動で出さない(ホームの案内・ストーリーの初回)", /offerTutorial|storyPrimerSeen|setStoryPrimer\("first"\)|doneLabel="ストーリーを始める"/.test(screens), false);
-  is("ストーリーの「遊び方」からは読める", screens.includes('onGuide={() => setStoryPrimer("guide")}') && /storyPrimer && \(\s*<Primer/.test(screens), true);
+  is("ストーリーの「遊び方」からは読める", screens.includes('onGuide={() => setStoryPrimer("guide")}') && /storyPrimer && \(\s*<WelcomeComic/.test(screens), true);
   is("語りの控えは導入のモジュールから", /markPrologueSeen,\s*prologueSeen,\s*\} from "\.\.\/game\/intro\.js";/.test(screens), true);
   // 初回の10連のあいだの「ホームに戻る」も onBack(skins.jsx)。前の段の約束
   is("10連の画面は firstPull を受けて、閉じたら onBack(skins.jsx)", /const closeFirstResults = async \(\) => \{\s*const next = await closeResults\(\);\s*if \(next && onBack\) onBack\(\);/.test(read("src/ui/skins.jsx")), true);

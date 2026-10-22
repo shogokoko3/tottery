@@ -268,6 +268,19 @@ try {
         "unveil directly as foil; no normal-to-foil coating",
       );
     }
+    // 正体を見せ終えた画面にだけ「結果へ」のボタンがあり、押すまで自動では進まない
+    for (const phase of ["gather", "seal", "hush", "reveal", "settle"])
+      assert.ok(!render({ skin, phase, onProceed() {} }).includes("foil-unveiling-proceed"),
+        `${phase} ではまだボタンを出さない`);
+    const done = render({ skin, phase: "complete", onProceed() {} });
+    assert.match(done, /foil-unveiling-proceed[\s\S]*skin-btn skin-btn-gold[\s\S]*結果へ/,
+      "正体を見せ終えたら「結果へ」のボタンを出す");
+    assert.ok(
+      render({ skin, phase: "complete", onProceed() {}, proceedLabel: "次のフォイルへ →" }).includes("次のフォイルへ"),
+      "続きのフォイルがあるときは文言を変えられる",
+    );
+    assert.ok(!render({ skin, phase: "complete" }).includes("foil-unveiling-proceed"),
+      "進む先がなければボタンを出さない");
     const failed = render({ skin, phase: "complete", missing: true });
     assert.ok(!failed.includes("foil-unveiling-cover is-opening"), "画像がない場合は封印を消さない");
     assert.ok(

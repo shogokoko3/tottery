@@ -77,6 +77,11 @@ async function mirror(data) {
       passComplete: Number.isSafeInteger(data.passComplete)
         ? data.passComplete
         : s.passComplete || null,
+      // シーズンごとのクリア印(heroes 以外)。サーバーが無ければ前のまま
+      passCompleteBySeason:
+        data.passCompleteBySeason && typeof data.passCompleteBySeason === "object"
+          ? data.passCompleteBySeason
+          : s.passCompleteBySeason || {},
     };
   });
   return data;
@@ -297,10 +302,14 @@ export async function claimCampaign(campaignId) {
  * (所持の正は端末にある)。未対応の404だけは呼び出し側で旧経路へ戻す。
  * 成功応答が不正・通信失敗の場合は同じ要求を再確認し、抽選し直さない。
  */
-export async function pullFromServer(id, n) {
+export async function pullFromServer(id, n, series = "heroes") {
   return orderedWallet(async () => {
-  const data = await walletRequest("pull", { id, n });
-  if (!(Array.isArray(data?.skins) && data.skins.length === n && data.skins.every(id => byId(id))))
+  if (series !== "heroes") {
+    const capabilities = await walletRequest("summary");
+    if (!capabilities.gachaSeries?.includes(series)) throw new Error("このシリーズの召喚は準備中です。サーバー更新後にご利用ください。");
+  }
+  const data = await walletRequest("pull", { id, n, series });
+  if (!(Array.isArray(data?.skins) && data.skins.length === n && data.skins.every(id => byId(id)?.series === series && ["R", "SR", "SSR"].includes(byId(id)?.rarity))))
     throw new Error("抽選結果を読み込めませんでした。同じ召喚をもう一度確認してください。");
   await mirror(data);
   return { skins: data.skins, freeze: data.freeze || null, receipt: id };
@@ -324,7 +333,7 @@ export async function earnGems(id, n) {
   await flushPending().catch(() => {});
 }
 
-/** 無償ジェムをエーテルに。通れば { ether } を含む新しい残高、足りなければ投げる */
+/** ジェムをエーテルに(無償→有償の順)。通れば { ether } を含む新しい残高、足りなければ投げる */
 export async function buyEther(id, gems) {
   return requestAndMirror("ether", { id, gems });
 }
@@ -372,9 +381,9 @@ export async function exchangeGems(id, tickets) {
   return requestAndMirror("exchange", { id, tickets });
 }
 
-/** ジェムでバトルパス(買い切りの権利)を買う。足りなければ投げる */
-export async function buyPassWithGems(id) {
-  return requestAndMirror("buy-pass", { id });
+/** ジェムでバトルパス(買い切りの権利)を買う。シーズンごと(省略は魔術師)。足りなければ投げる */
+export async function buyPassWithGems(id, season = "heroes") {
+  return requestAndMirror("buy-pass", { id, season });
 }
 
 /** ガチャの結果を運営の履歴に残す。残高は動かさない。記録が落ちても遊びは止めない */

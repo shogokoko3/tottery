@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { applyStoryReviewGrant } from "../src/game/story-review-grant.js";
 import { PHASE_EPOCH, PHASES, STORY_AXES } from "../src/game/phase.js";
-import { episodeAccess, storyPages } from "../src/game/story-narrative.js";
+import { episodeAccess, storyPages, storyEpisode, storyComicPages, storyReadingPages } from "../src/game/story-narrative.js";
 import { storyList } from "../src/game/story.js";
 
 const uid = "4jAiZRTJdQTtSJI39JrnpRLtSrB2";
@@ -46,8 +46,13 @@ for (const phase of PHASES) {
   assert.equal(storyList({ ...profile, phase }).filter(s => s.cleared).length, 7);
   for (const axis of STORY_AXES) {
     assert.deepEqual(episodeAccess(profile, axis, phase), { available: true, cleared: true });
-    assert.equal(storyPages(profile, axis, phase, "before").length, 4);
-    assert.equal(storyPages(profile, axis, phase, "after").length, 2);
+    assert.deepEqual(storyPages(profile, axis, phase, "before"), storyEpisode(axis, phase).before);
+    const episode = storyEpisode(axis, phase);
+    assert.deepEqual(storyComicPages(profile, axis, phase), episode.comicPages.filter(p => p.stage === "before"));
+    assert.equal(storyReadingPages(profile, axis, phase, "all").length, episode.mangaPages.length);
+    assert.deepEqual(storyPages(profile, axis, phase, "after"), storyEpisode(axis, phase).after);
+    assert.deepEqual(storyComicPages(profile, axis, phase, "after"), episode.comicPages.filter(p => p.stage === "after"));
+    assert.equal(storyReadingPages(profile, axis, phase, "after").length, episode.mangaPages.filter(p => p.stage === "after").length);
   }
 }
 for (const k of Object.keys(original)) {

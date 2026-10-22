@@ -1,3 +1,4 @@
+import { playSound, useCue } from "../audio/index.js";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { progressOfXp } from "../game/level.js";
@@ -61,6 +62,7 @@ function XpGain({ notice }) {
     };
   }, [notice.id, notice.afterXp, reduce]);
 
+  useCue("levelup", frame.leveled, notice.id);
   const { progress, leveled } = frame;
   const label =
     notice.source === "tutorial"

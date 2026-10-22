@@ -16,7 +16,11 @@
 import { build } from "esbuild";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
+import { TRACKS } from "./src/audio/tracks.js";
+import { SOUNDS } from "./src/audio/sounds.js";
+import { TONAL_ASSETS } from "./src/audio/tonal-cues.js";
 import { SUPPORT_EMAIL } from "./src/game/support.js";
+import { WONDERLAND_HOME_THEMES } from "./src/skins/home-wonderland-themes.js";
 import { execFileSync } from "node:child_process";
 
 const dev = process.argv.includes("--dev");
@@ -79,6 +83,7 @@ function image(png, why) {
 // 音。index.html からは audio/ という相対の場所として見えている。
 // 束ねる前に写して、元の名前 → ハッシュ付きの名前 の表を作っておく
 const audioFiles = {};
+const selectedAudio = new Set([...Object.values(TRACKS), ...Object.values(SOUNDS), ...TONAL_ASSETS].map(sound => sound.file));
 let audioKb = 0;
 for (const dir of ["audio", "dist/audio"]) {
   fs.rmSync(dir, { recursive: true, force: true });
@@ -86,7 +91,7 @@ for (const dir of ["audio", "dist/audio"]) {
 }
 if (fs.existsSync("assets/audio"))
   for (const name of fs.readdirSync("assets/audio")) {
-    if (!name.endsWith(".m4a")) continue;
+    if (!name.endsWith(".m4a") || !selectedAudio.has(name)) continue;
     const data = fs.readFileSync(`assets/audio/${name}`);
     audioKb += data.length;
     const hash = createHash("sha256").update(data).digest("hex").slice(0, 8);
@@ -95,6 +100,24 @@ if (fs.existsSync("assets/audio"))
     for (const dir of ["audio", "dist/audio"])
       fs.writeFileSync(`${dir}/${hashed}`, data);
   }
+
+// 表示する漫画画像を外部ファイルとして配信し、iOSにも同じ画像を同梱する。
+const comicSource = JSON.parse(fs.readFileSync("src/game/story-comics.json", "utf8"));
+const welcomeComicSource = JSON.parse(fs.readFileSync("src/game/welcome-comic.json", "utf8"));
+const usedComicSheets = new Set([...welcomeComicSource.pages, ...(comicSource.prologue.mangaPages || comicSource.prologue.pages), ...comicSource.episodes.flatMap(e => e.mangaPages || e.comicPages)].flatMap(p => [p.art?.sheet || p.sheet, p.art?.cover?.sheet]).filter(Boolean));
+const storyComicFiles = {};
+for (const dir of ["story-comics", "dist/story-comics"]) {
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+}
+for (const name of fs.readdirSync("assets/story/comics")) {
+  if (!name.endsWith(".webp") || !usedComicSheets.has(name.slice(0, -5))) continue;
+  const data = fs.readFileSync(`assets/story/comics/${name}`);
+  const hash = createHash("sha256").update(data).digest("hex").slice(0, 8);
+  const hashed = name.replace(".webp", `.${hash}.webp`);
+  storyComicFiles[name.slice(0, -5)] = hashed;
+  for (const dir of ["story-comics", "dist/story-comics"]) fs.writeFileSync(`${dir}/${hashed}`, data);
+}
 
 // 盤面画像は使うエリアだけ読み込む。画像更新時はハッシュでキャッシュを更新。
 const fieldFiles = {};
@@ -201,6 +224,7 @@ const bundleOptions = {
     // App Store 配信ビルドだけ ADMOB_TESTING=false で本物の広告に
     __ADMOB_TESTING__: JSON.stringify(process.env.ADMOB_TESTING !== "false"),
     __AUDIO_FILES__: JSON.stringify(audioFiles),
+    __STORY_COMIC_FILES__: JSON.stringify(storyComicFiles),
     __HONOR_VERSION__: JSON.stringify(honorVersion),
     __FIELD_FILES__: JSON.stringify(fieldFiles),
     // 称号のアイコンの拡張子。compact では webp になる(src/game/formation-honors.js が使う)
@@ -228,9 +252,19 @@ fs.mkdirSync("dist", { recursive: true });
 fs.writeFileSync("dist/index.html", html);
 
 // スキンの画像と映像は別ファイルで必要な場面だけ読み込む。
+// 制作時のPNG・生成スクリプト・見本ページは配らず、使用する65素材だけを同梱する。
+const wonderlandHomeRoot = "assets/skins/home-wonderland-characters-v1";
+const wonderlandHomeAssets = new Set(
+  WONDERLAND_HOME_THEMES.flatMap((theme) => Object.values(theme.assets))
+    .map((file) => `assets/${file}`),
+);
 for (const dir of ["skins", "dist/skins"]) {
   fs.rmSync(dir, { recursive: true, force: true });
-  fs.cpSync("assets/skins", dir, { recursive: true });
+  fs.cpSync("assets/skins", dir, {
+    recursive: true,
+    filter: (source) => !source.startsWith(`${wonderlandHomeRoot}/`) ||
+      fs.statSync(source).isDirectory() || wonderlandHomeAssets.has(source),
+  });
 }
 
 // 公開するのはログイン画面。運営データはサーバー照合後にのみ読み込む。

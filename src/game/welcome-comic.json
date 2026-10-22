@@ -1,0 +1,250 @@
+{
+  "title": "はじめてのトッタリー",
+  "pages": [
+    {
+      "id": "welcome-v2-setup",
+      "label": "札を選んで、王を隠す",
+      "art": {
+        "sheet": "tottery-welcome-v2-01",
+        "source": "assets/story/welcome-v2/01.png",
+        "width": 1024,
+        "height": 1536,
+        "layout": "printed-manga",
+        "lettering": "printed-in-scene",
+        "sha256": "80d9e92f744f6669d9a5596fef0ba05e5f973d0de884240ec946cb16053ce518",
+        "pngSHA256": "992bc36cb957cafa0b8a2efbf94b539b20424e8b50394b92a155d3171d23fedb"
+      },
+      "panels": [
+        {
+          "lines": [
+            {
+              "speaker": "旅人",
+              "text": "どんなゲーム？",
+              "kind": "dialogue",
+              "placement": "top-right"
+            },
+            {
+              "speaker": "案内役",
+              "text": "相手の王を探して、取るゲームだよ。",
+              "kind": "dialogue",
+              "placement": "lower-left"
+            }
+          ]
+        },
+        {
+          "lines": [
+            {
+              "speaker": "案内役",
+              "text": "5枚を選んで、その中の1枚を王にする。",
+              "kind": "dialogue",
+              "placement": "top-right"
+            },
+            {
+              "speaker": "旅人",
+              "text": "じゃあ、私はこの札！",
+              "kind": "dialogue",
+              "placement": "lower-left"
+            }
+          ]
+        },
+        {
+          "lines": [
+            {
+              "speaker": "案内役",
+              "text": "王も、ほかの札も、伏せて並べよう。",
+              "kind": "dialogue",
+              "placement": "top-right"
+            }
+          ]
+        },
+        {
+          "lines": [
+            {
+              "speaker": "旅人",
+              "text": "どれが王か、相手には秘密なんだね！",
+              "kind": "dialogue",
+              "placement": "top-right"
+            },
+            {
+              "speaker": "案内役",
+              "text": "そう。動きを見て、探してみよう。",
+              "kind": "dialogue",
+              "placement": "lower-left"
+            }
+          ]
+        }
+      ],
+      "topic": "setup"
+    },
+    {
+      "id": "welcome-v3-movement",
+      "label": "カードごとに違う動き",
+      "topic": "movement",
+      "art": {
+        "sheet": "tottery-welcome-v3-02",
+        "source": "assets/story/welcome-v3/02.png",
+        "width": 1024,
+        "height": 1536,
+        "layout": "printed-manga",
+        "lettering": "printed-in-scene",
+        "sha256": "8715e6089091d027caf38b4b8a01902b43a155adbbc71a87dad0c23d96a72cf5",
+        "pngSHA256": "a16134234a82fbec4600913d863f97a0e85f79e141a742704768484e0e95662d"
+      },
+      "panels": [
+        {
+          "lines": [
+            {
+              "speaker": "旅人",
+              "text": "札は、どれも同じ動き？",
+              "kind": "dialogue",
+              "placement": "top-right"
+            },
+            {
+              "speaker": "案内役",
+              "text": "動き方は、カードごとに決まっているんだ。",
+              "kind": "dialogue",
+              "placement": "lower-left"
+            }
+          ]
+        },
+        {
+          "lines": [
+            {
+              "speaker": "案内役",
+              "text": "2は縦横に1マス。",
+              "kind": "dialogue",
+              "placement": "top-right"
+            },
+            {
+              "speaker": "旅人",
+              "text": "前も横も動けるんだね。",
+              "kind": "dialogue",
+              "placement": "lower-left"
+            }
+          ]
+        },
+        {
+          "lines": [
+            {
+              "speaker": "案内役",
+              "text": "3は斜めに1マス。",
+              "kind": "dialogue",
+              "placement": "top-right"
+            },
+            {
+              "speaker": "旅人",
+              "text": "同じ1マスでも、向きが違うんだ！",
+              "kind": "dialogue",
+              "placement": "lower-left"
+            }
+          ]
+        },
+        {
+          "lines": [
+            {
+              "speaker": "案内役",
+              "text": "交互に、自分の札を1枚ずつ動かそう。",
+              "kind": "dialogue",
+              "placement": "top-right"
+            },
+            {
+              "speaker": "旅人",
+              "text": "動かせる場所を見ながら、やってみる！",
+              "kind": "dialogue",
+              "placement": "lower-left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "welcome-v3-victory",
+      "label": "相手の王を取れば勝ち",
+      "topic": "victory",
+      "art": {
+        "sheet": "tottery-welcome-v3-03",
+        "source": "assets/story/welcome-v3/03.png",
+        "width": 1024,
+        "height": 1536,
+        "layout": "printed-manga",
+        "lettering": "printed-in-scene",
+        "sha256": "9ca9d6b7b1ebdd7daae258a9597bab0ad4c05fbbb90ebfc61a6eb2a9c27494c1",
+        "pngSHA256": "b8d8a31969416658b7d11415e98d2cee9dc355bd9877e69445a352a43fce38e9"
+      },
+      "panels": [
+        {
+          "lines": [
+            {
+              "speaker": "旅人",
+              "text": "相手の札を取るには？",
+              "kind": "dialogue",
+              "placement": "top-right"
+            },
+            {
+              "speaker": "案内役",
+              "text": "動かせる先に相手の札があれば、取れるよ。",
+              "kind": "dialogue",
+              "placement": "lower-left"
+            }
+          ]
+        },
+        {
+          "lines": [
+            {
+              "speaker": "旅人",
+              "text": "取れた！ でも、王じゃないみたい。",
+              "kind": "dialogue",
+              "placement": "top-right"
+            },
+            {
+              "speaker": "案内役",
+              "text": "王以外なら、対局は続くよ。次は僕の番。",
+              "kind": "dialogue",
+              "placement": "lower-left"
+            }
+          ]
+        },
+        {
+          "lines": [
+            {
+              "speaker": "語り",
+              "text": "しばらくして——",
+              "kind": "scene-setting-caption",
+              "placement": "top-left"
+            },
+            {
+              "speaker": "旅人",
+              "text": "この一枚……取ってみる！",
+              "kind": "dialogue",
+              "placement": "top-right"
+            }
+          ]
+        },
+        {
+          "lines": [
+            {
+              "speaker": "旅人",
+              "text": "見つけた！ 相手の王だ！",
+              "kind": "dialogue",
+              "placement": "top-right"
+            },
+            {
+              "speaker": "案内役",
+              "text": "君の勝ち！ 相手の王を取れば勝ちだよ。",
+              "kind": "dialogue",
+              "placement": "lower-left"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "production": {
+    "method": "docs/manga-production.md",
+    "dialogueStart": "top-right",
+    "direction": "right-to-left-then-down",
+    "leftStartAllowedFor": "scene-setting-caption-only",
+    "review": "reports/welcome-separated-v3/review.json"
+  },
+  "version": "welcome-v3-separated-pages"
+}

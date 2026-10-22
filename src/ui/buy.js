@@ -1,3 +1,4 @@
+import { playSound, useCue } from "../audio/index.js";
 /**
  * 買う操作の呼び出し口(画面側の唯一の窓)。
  *
@@ -19,6 +20,8 @@ import {
   exchangeGems,
   newEventId,
 } from "../net/wallet.js";
+import { getActivePassId, setActivePassId } from "../game/battlepass-store.js";
+import { passUnlockedFor } from "./battlepass-access.js";
 
 /** 有償ジェムだけで買う商品の、残高不足の言い方 */
 const PAID_SHORT = /有償ジェムが足りません/;
@@ -34,6 +37,7 @@ function failed(e, short) {
 export async function buyTicketsFor(n) {
   try {
     await exchangeGems(newEventId("xchg"), n);
+    playSound("purchase");
     return { ok: true, message: `ガチャチケットを${n}枚受け取りました。`, needGems: false };
   } catch (e) {
     return failed(e, ANY_SHORT);
@@ -44,6 +48,7 @@ export async function buyTicketsFor(n) {
 export async function buyFoilFor(offer) {
   try {
     await buyFoil(offer.product.id, offer.skins);
+    playSound("purchase");
     return {
       ok: true,
       message: `「${offer.product.name}」のフォイルを受け取りました。`,
@@ -54,10 +59,13 @@ export async function buyFoilFor(offer) {
   }
 }
 
-/** バトルパスを有償ジェムで解放する(買い切り) */
-export async function buyPassFor() {
+/** バトルパスをジェムで解放する(買い切り、シーズンごと。省略は魔術師) */
+export async function buyPassFor(season = "heroes") {
   try {
-    await buyPassWithGems(newEventId("pass"));
+    await buyPassWithGems(newEventId("pass"), season);
+    playSound("purchase");
+    // 進めているパスを持っていなければ、買ったこのパスを進める(持っていれば本人が選ぶ)
+    if (!passUnlockedFor(getActivePassId())) setActivePassId(season);
     return { ok: true, message: "バトルパスを手に入れました。", needGems: false };
   } catch (e) {
     return failed(e, ANY_SHORT);

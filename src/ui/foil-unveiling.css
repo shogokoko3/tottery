@@ -739,6 +739,32 @@
   text-shadow: 0 0 18px #d4b26277;
   animation: foil-name-arrive 0.6s 0.2s both;
 }
+.foil-unveiling-proceed {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(26px, calc(env(safe-area-inset-bottom) + 14px));
+  z-index: 4;
+  display: flex;
+  justify-content: center;
+  animation: foil-proceed-arrive 0.5s ease-out both;
+}
+.foil-unveiling-proceed .skin-btn {
+  min-width: 164px;
+  padding: 13px 28px;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+@keyframes foil-proceed-arrive {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
 .foil-unveiling-motes {
   position: absolute;
   inset: 0;

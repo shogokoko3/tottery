@@ -73,6 +73,7 @@ fi
 # ~/Library/MobileDevice/Provisioning Profiles/ に入れておく。未指定ならローカルの自動署名。
 if [ "$step" = "archive" ] || [ "$step" = "all" ]; then
   npm run ios:sync
+  node tools/check-ios-sync.mjs
   # 同期でできた控え(「config 10.xml」)をアプリに入れない。
   # cap copy が置いた直後に複製されるので、写したあとに落とす
   node tools/drop-dupes.mjs ios/App/App
@@ -111,11 +112,11 @@ if [ "$step" = "upload" ] || [ "$step" = "all" ]; then
     # ExportOptions の destination:upload によるアップロードの認証に API キーは要る。
     # shellcheck disable=SC2086
     xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$EXPORT" \
-      -exportOptionsPlist ios/ExportOptions-ci.plist $AUTH_ARGS
+      -exportOptionsPlist "${EXPORT_OPTIONS_PLIST:-ios/ExportOptions-ci.plist}" $AUTH_ARGS
   else
     # shellcheck disable=SC2086
     xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$EXPORT" \
-      -exportOptionsPlist ios/ExportOptions.plist -allowProvisioningUpdates $AUTH_ARGS
+      -exportOptionsPlist "${EXPORT_OPTIONS_PLIST:-ios/ExportOptions.plist}" -allowProvisioningUpdates $AUTH_ARGS
   fi
   echo "TestFlight へ送りました。App Store Connect の TestFlight で処理が終わるのを待ってください(10〜30分)"
   echo "このビルドの番号: $BUILD_NUMBER  ← 旧版を強制アップデートさせるには、Worker の環境変数 MIN_APP_BUILD をこの番号にする"

@@ -293,7 +293,7 @@ export function CaptureConfirm({ count, squares, onCancel, onConfirm, plain = fa
 
 export function LogViewer({ piece, viewer, onClose, revealAll, onMemo }) {
   let a = PLAYER_META[piece.owner],
-    u = piece.owner === viewer || !piece.alive || revealAll,
+    u = (piece.owner === viewer && !piece.ownerHidden) || !piece.alive || revealAll,
     i = sanitizeHistory(piece, viewer, revealAll);
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -323,6 +323,8 @@ export function LogViewer({ piece, viewer, onClose, revealAll, onMemo }) {
         )}
         {u && (
           <CardGuide
+            alice={!!piece.aliceSkin}
+            movementRank={piece.movementRank}
             rank={piece.rank}
             suit={piece.suit}
             mark={piece.mark}

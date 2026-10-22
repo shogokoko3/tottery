@@ -422,6 +422,18 @@
                   }
                 }
               }
+            },
+            "kind": {
+              ".validate": "newData.isString() && newData.val().length <= 24"
+            },
+            "seed": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4294967295"
+            },
+            "fakeRow": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 8"
+            },
+            "fakeCol": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 8"
             }
           },
           ".write": "auth != null && !root.child('bans').hasChild(auth.uid) && (root.child('rooms').child($code).child('seats').child('host').val() === auth.uid || root.child('rooms').child($code).child('seats').child('guest').val() === auth.uid) && !newData.exists()"

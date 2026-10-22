@@ -26,7 +26,7 @@ export function captureFilm(before, after, loadouts, viewer = null) {
   )
     return null;
   // 2〜5 は取っても流さない。この4つの見せ場は効果のほう
-  if (ABILITY_RANKS.has(actor.rank)) return null;
+  if (ABILITY_RANKS.has(actor.rank) && !actor.aliceSkin) return null;
   // 裏向きの相手駒の正体を、専用映像から推測できないようにする。
   //
   // この手で公開される/倒れる駒も映像の対象にする。
@@ -42,7 +42,8 @@ export function captureFilm(before, after, loadouts, viewer = null) {
   );
   if (!defeated) return null;
   const skin = byId(sanitizeLoadout(loadouts?.[actor.owner])[actor.rank]);
-  return skin?.video ? skin : null;
+  const video = skin?.videos?.capture || skin?.video;
+  return video ? { ...skin, video } : null;
 }
 
 /**
@@ -76,7 +77,8 @@ export function successionFilm(before, after, loadouts) {
   const choosing = after?.pendingKingChoice?.owner === fallen.owner;
   if (!crowned && !choosing) return null;
   const skin = byId(sanitizeLoadout(loadouts?.[fallen.owner])[fallen.rank]);
-  return skin?.video ? skin : null;
+  const video = skin?.videos?.capture || skin?.video;
+  return video ? { ...skin, video } : null;
 }
 
 /**
@@ -94,7 +96,83 @@ export function revengeFilm(before, after, loadouts) {
   // 同じ印のままなら、この手では起きていない(前の手の印が残っているだけ)
   if (!mark || mark === before?.lastRevenge) return null;
   const skin = byId(sanitizeLoadout(loadouts?.[mark.owner])[mark.rank]);
-  return skin?.video ? skin : null;
+  const video = skin?.videos?.capture || skin?.video;
+  return video ? { ...skin, video } : null;
+}
+
+/**
+ * シーズン2(アリス)の技の映像。
+ *
+ * 発動の記録(lastAlicePower)の kind が、そのまま skin.videos の枠の名前。
+ *   king: 王の技(4〜9)  reverse: Aの数字逆転  revive: 2・3の帰還
+ *   field: 盤面効果      revolution: Aのフォイル効果  recruit: 撃破した駒を仲間にした(J/Q/K)
+ * A の数字逆転だけは、王の力として使った(royal)なら3体版(king)、
+ * 王以外なら1体版(reverse)を流す。
+ *
+ * 誰の画面でも流す(2026-10-14 本人の指示)。映像は使った札の技を見せるだけで、
+ * 相手の伏せ札や偽の王に選んだ駒は映らない。
+ */
+export function powerFilm(before, after, loadouts) {
+  const mark = after?.lastAlicePower;
+  if (!mark || mark.seq === before?.lastAlicePower?.seq) return null;
+  const skin = byId(sanitizeLoadout(loadouts?.[mark.owner])[mark.rank]);
+  const slot = mark.kind === "reverse" && mark.royal ? "king" : mark.kind;
+  // クロッケー大会の映像は「兵をぶつけて撃破」なので、飛ばした兵が相手の駒を倒した手だけ流す。
+  // 外れた手や味方に当てた手では流さない(2026-10-14)。
+  if (slot === "field" && skin?.fieldEffect?.type === "alice-croquet") {
+    const hit = Object.values(before?.pieces || {}).some(
+      (p) =>
+        p.alive &&
+        p.owner !== mark.owner &&
+        after.pieces?.[p.id]?.alive === false,
+    );
+    if (!hit) return null;
+  }
+  const video = skin?.videos?.[slot];
+  return video ? { ...skin, video } : null;
+}
+
+/**
+ * 幻影が倒された映像(チェシャ猫)。
+ *
+ * 相手が騙す位置へ攻め込むと、本体の illusion.dispelled が立つ(reducer)。
+ * 攻めた側にも攻められた側にも同じものを流す(2026-10-14 本人の指示)。
+ * 本体の数字は映らないので、正体は漏れない。
+ */
+export function phantomFilm(before, after, loadouts) {
+  const move = after?.lastMove;
+  const moved = !!move && move.seq !== before?.lastMove?.seq;
+  // 騙す位置へ相手が動いた(ふつうの手)か、クロッケーなどで dispelled が立った手
+  const hit = Object.values(before?.pieces || {}).find((p) => {
+    const was = p.illusion, now = after?.pieces?.[p.id];
+    if (!p.alive || !was || was.dispelled || !now?.alive) return null;
+    const stepped =
+      moved &&
+      move.owner !== p.owner &&
+      move.to?.row === was.row &&
+      move.to?.col === was.col;
+    return stepped || now.illusion?.dispelled;
+  });
+  if (!hit) return null;
+  const skin = byId(sanitizeLoadout(loadouts?.[hit.owner])["10"]);
+  const video = skin?.videos?.phantom;
+  return video ? { ...skin, video } : null;
+}
+
+/**
+ * 仲間にする映像(ハートの J・Q・K)。
+ *
+ * 相手の駒を取って「仲間にする待ち(aliceRecruit)」が新しく立った手で流す。
+ * 配置より先に流し、動画のあとで置き場を開く(2026-10-16 本人の指示。それまでは配置のあとに流していた)。
+ * 誰の画面でも流す。断っても、動画はすでに流れている
+ */
+export function recruitFilm(before, after, loadouts) {
+  const seen = new Set((before?.aliceRecruit || []).map((e) => e.seq));
+  const fresh = (after?.aliceRecruit || []).find((e) => e.seq && !seen.has(e.seq));
+  if (!fresh) return null;
+  const skin = byId(sanitizeLoadout(loadouts?.[fresh.owner])[fresh.rank]);
+  const video = skin?.videos?.recruit;
+  return video ? { ...skin, video } : null;
 }
 
 /**
@@ -103,6 +181,9 @@ export function revengeFilm(before, after, loadouts) {
  *   1. 取った側の映像
  *   2. 道連れの映像(4・5の効果)
  *   3. 王位継承の映像(2・3の効果)
+ *   4. 幻影が倒された映像(チェシャ猫)
+ *   5. 技の映像(シーズン2)
+ *   6. 仲間にする映像(ハートの J・Q・K。配置はこのあと)
  *
  * 起きたものだけが、この順で続けて流れる。
  */
@@ -120,6 +201,9 @@ export function filmPlanFor(before, after, loadouts, viewer = null) {
   const attack = captureFilm(before, after, loadouts, viewer);
   const revenge = revengeFilm(before, after, loadouts);
   const succession = successionFilm(before, after, loadouts);
+  const phantom = phantomFilm(before, after, loadouts);
+  const power = powerFilm(before, after, loadouts);
+  const recruit = recruitFilm(before, after, loadouts);
   const revealPending = !!after?.captureReveal;
   const move = after?.lastMove;
   const actor = attack
@@ -137,6 +221,9 @@ export function filmPlanFor(before, after, loadouts, viewer = null) {
     [attack, attackAfterReveal],
     [revenge, revealPending],
     [succession, revealPending],
+    [phantom, revealPending],
+    [power, revealPending],
+    [recruit, revealPending],
   ]) {
     if (!skin) continue;
     // 先行する映像が公開待ちなら、後続も追い越させない。

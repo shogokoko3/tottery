@@ -1,9 +1,10 @@
 import { areaRewardsFor } from "./area-rewards.js";
 import { byId, foilId } from "./catalog.js";
+import { WONDERLAND_HOME_THEMES } from "./home-wonderland-themes.js";
 
 export const DEFAULT_HOME_THEME = "default";
 
-// 承認されたホーム装飾。盤面と同じフォイルの対応で解放する。
+// 初期シリーズは領域ごと、ワンダーランドはキャラごとのセットを解放する。
 export const HOME_THEMES = Object.freeze(
   [
     {
@@ -69,8 +70,24 @@ export const HOME_THEMES = Object.freeze(
       title: "黒炎の王座",
       condition: "悪魔のJ・Q・Kのいずれかのフォイルを獲得",
     },
-  ].map((theme) => Object.freeze({ ...theme, area: theme.id })),
+  ]
+    .map((theme) => Object.freeze({ ...theme, area: theme.id }))
+    .concat(WONDERLAND_HOME_THEMES),
 );
+
+/** 背景・装飾・枠は同じテーマからまとめて参照する。 */
+export function homeThemeAssets(theme) {
+  if (!theme) return null;
+  return (
+    theme.assets || {
+      scene: `skins/home-v1/${theme.id}-king.webp`,
+      decoration: `skins/home-v1/${theme.id}-home-decor.webp`,
+      corner: `skins/home-v1/frames/${theme.id}-corner.svg`,
+      crest: `skins/home-v1/frames/${theme.id}-crest.svg`,
+      rail: `skins/home-v1/frames/${theme.id}-rail.svg`,
+    }
+  );
+}
 
 function ownedHomeRewards(collection) {
   const held = Object.entries(collection?.owned || {})
@@ -86,9 +103,11 @@ export function unlockedHomeThemes(collection) {
   );
   return [
     DEFAULT_HOME_THEME,
-    ...HOME_THEMES.filter((theme) => unlocked.has(theme.id)).map(
-      (theme) => theme.id,
-    ),
+    ...HOME_THEMES.filter((theme) => {
+      if (!theme.unlockFoil) return unlocked.has(theme.id);
+      const count = collection?.owned?.[theme.unlockFoil];
+      return Number.isSafeInteger(count) && count > 0;
+    }).map((theme) => theme.id),
   ];
 }
 

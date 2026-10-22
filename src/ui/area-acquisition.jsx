@@ -1,3 +1,4 @@
+import { playSound, useCue } from "../audio/index.js";
 import { useEffect, useRef, useState } from "react";
 import { AREA_INFO } from "../game/areas.js";
 import { areaRewardName } from "../skins/area-rewards.js";
@@ -7,6 +8,7 @@ import { SkinModal } from "./skin-modal.jsx";
 import styles from "./area-acquisition.css";
 
 function AcquiredField({ reward, reduce }) {
+  useCue("foil_acquire", true, reward.theme);
   const [ready, setReady] = useState(reduce);
   const heading = useRef(null);
   useEffect(() => {
@@ -72,7 +74,7 @@ function AcquiredField({ reward, reduce }) {
         </p>
         <p className="area-acquisition-condition">
           <b>ホームの着せ替え</b>
-          このエリアのホーム装飾も使えます。ホームの「着せ替え」から選べます。
+          このフォイルに対応するキャラ入り背景と装飾も使えます。ホームの「着せ替え」からセットで選べます。
         </p>
       </div>
     </div>

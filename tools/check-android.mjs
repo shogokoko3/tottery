@@ -93,7 +93,7 @@ is(
 );
 for (const p of ["src/ui/battlepass-access.js", "src/ui/battlepass-track.jsx"]) {
   const s = read(p);
-  is(`${p}: バトルパスの解放も hasStore で見る`, s.includes("hasStore()"), true);
+  is(`${p}: バトルパスの解放も hasStore で見る`, s.includes("hasStore()") || (s.includes("passUnlockedFor(") && s.includes("./battlepass-access.js")), true);
   is(
     `${p}: 素の isNativePlatform で閉じていない(店の無い Android で行き止まりになる)`,
     /Capacitor\.isNativePlatform\(\)/.test(s),

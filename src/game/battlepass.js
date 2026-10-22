@@ -11,14 +11,17 @@
  * オンライン限定のマスは実際の通信対戦での撃破だけを追加する。
  */
 import { byId } from "../skins/catalog.js";
+import { contentSeason, DEFAULT_SEASON } from "./content-seasons.js";
 
 /** 盤の一辺。奇数にすること(真ん中が1マスに決まる) */
 export const SIZE = 5;
 export const CENTER = (SIZE - 1) / 2;
 export const centerId = `${CENTER}-${CENTER}`;
 
-/** 全部そろえたときに手に入るスキン。差し替えるならここだけ */
+/** 魔術師のパス(heroes)で手に入るスキン。シーズンごとの報酬は content-seasons.js の passReward */
 export const REWARD_SKIN = "genie-magician";
+/** そのシーズンのパスの報酬スキンの id */
+export const rewardIdOf = (seasonId = DEFAULT_SEASON) => contentSeason(seasonId)?.passReward || REWARD_SKIN;
 
 /**
  * 進みの数え方。
@@ -132,8 +135,8 @@ const validPuzzleOrder = (order) =>
       piece !== i,
   );
 
-/** 保存の形をそろえる。知らない id や壊れた数は落とす */
-export function normalize(raw) {
+/** 保存の形をそろえる。知らない id や壊れた数は落とす。rewardId はそのパスの報酬(シーズンごと) */
+export function normalize(raw, rewardId = REWARD_SKIN) {
   const v = raw && typeof raw === "object" ? raw : {};
   const known = new Set(CELLS.map((c) => c.id));
   const progress = {};
@@ -149,7 +152,7 @@ export function normalize(raw) {
     keep(v.ticketed).filter((id) => id !== centerId && cleared.has(id)),
   );
   // 旧報酬(報酬IDの無いv1はKの天使)の受取済みでは、新報酬を塞がない。
-  const claimed = v.rewardId === REWARD_SKIN && v.claimed === true;
+  const claimed = v.rewardId === rewardId && v.claimed === true;
   // 何周目か(周回制、1始まり)。壊れていれば1
   const cycle = Number.isSafeInteger(v.cycle) && v.cycle >= 1 ? v.cycle : 1;
   // 運営が「クリア状態」にした印(サーバーの passComplete の時刻)。同じ印は二度当てない
@@ -157,7 +160,7 @@ export function normalize(raw) {
     Number.isSafeInteger(v.grantedAt) && v.grantedAt > 0 ? v.grantedAt : null;
   return {
     version: 4,
-    rewardId: REWARD_SKIN,
+    rewardId,
     cycle,
     grantedAt,
     progress,
@@ -318,7 +321,7 @@ export const canClaim = (state) =>
   allFlipped(state) && state.assembled === true && !state.claimed;
 
 /** 褒美のスキン。台帳に無ければ null */
-export const rewardSkin = () => byId(REWARD_SKIN);
+export const rewardSkin = (seasonId = DEFAULT_SEASON) => byId(rewardIdOf(seasonId));
 
 /**
  * その1手で、自分が取った相手の駒。

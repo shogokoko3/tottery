@@ -25,3 +25,15 @@ ios/build/
 
 # 署名のキーチェーンの合言葉(置くなら)。git には入れない
 ios/.signing.env
+
+# 漫画画像の配信用コピー（原本は assets/story/comics）
+/story-comics/
+
+# 漫画の元画像(PNG)と見本の絵。重いので git には入れず Mac に残す(2026-10-22)
+assets/story/ouhiroi-*/
+assets/cards/redesign-*/
+# iCloud の競合コピー(「skins 8」「config 2.xml」など)
+* [0-9]
+* [0-9][0-9]
+* [0-9].*
+* [0-9][0-9].*

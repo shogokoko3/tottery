@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import {build} from 'esbuild';
+const root=new URL('../assets/skins/alice-extra-foils-v1/',import.meta.url);
+const entries=JSON.parse(fs.readFileSync(new URL('masks.json',root),'utf8'));
+const items=JSON.parse(fs.readFileSync(new URL('prompts.json',root),'utf8'));
+const script=`import {attachFoilMaterial} from './src/skins/foil-material.js';
+const entries=${JSON.stringify(entries)};
+const players=[...document.querySelectorAll('.moving')].map(wrapper=>attachFoilMaterial({canvas:wrapper.querySelector('canvas'),image:wrapper.querySelector('img'),skinId:wrapper.dataset.id,maskEntry:entries[wrapper.dataset.id]}));
+let enabled=true;document.querySelector('#toggle').onclick=e=>{enabled=!enabled;players.forEach(p=>p.setEnabled(enabled));e.target.textContent=enabled?'反射を止める':'反射を動かす';e.target.setAttribute('aria-pressed',String(enabled));};
+window.addEventListener('pagehide',()=>players.forEach(p=>p.destroy()),{once:true});`;
+const result=await build({stdin:{contents:script,resolveDir:process.cwd()},bundle:true,write:false,format:'iife',minify:true});
+const moving=(x,cls='')=>`<span class="moving ${cls}" data-id="alice-extra-${x.file.replace('.png','')}"><img src="${x.file}" alt="${x.name} フォイル"><canvas aria-hidden="true"></canvas></span>`;
+const cards=items.map(x=>`<article><h2>${x.name}</h2><div class="compare"><div><img src="${x.source}"><p>通常版</p></div><div>${moving(x)}<p>動くフォイル版</p></div></div><div class="sizes">${moving(x,'small')}${moving(x,'medium')}${moving(x,'large')}</div></article>`).join('');
+const html=`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>アリス・動くフォイル反射</title><style>body{margin:0;padding:24px;background:#081120;color:#f2ead9;font-family:system-ui}h1{font-size:25px;color:#f0d98a}h2{font-size:17px}p{color:#a9b4cc}button{background:#142642;color:#f0d98a;padding:12px 20px;border:1px solid #d4af37;border-radius:8px;cursor:pointer}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px}article{padding:16px;background:#0f1d34;border-radius:12px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}.compare img{width:100%;aspect-ratio:3/4;object-fit:cover}.moving{display:block;position:relative;overflow:hidden;line-height:0;border-radius:6px;aspect-ratio:3/4}.moving>img{display:block;width:100%;height:100%;object-fit:cover}.moving>canvas{position:absolute;pointer-events:none}.sizes{display:flex;align-items:flex-end;gap:24px}.small{width:36px;height:48px}.medium{width:48px;height:64px}.large{width:72px;height:96px}.board{display:flex;flex-wrap:wrap;gap:8px;padding:16px;background:#263548;margin:20px 0}.board .moving{width:48px;height:64px}@media(prefers-reduced-motion:reduce){canvas{display:none}}</style><h1>トランプ兵とティーカップ — 動くフォイル反射</h1><p>ゲームと同じ反射処理で箔の色が流れ、背景の光片がきらめきます。鎧・カップの箔部分と背景の光片に反射を付けています。</p><button id="toggle" aria-pressed="true">反射を止める</button><p>盤面サイズの確認用仮配置</p><div class="board">${items.map(x=>moving(x)).join('')}</div><main class="grid">${cards}</main><script>${result.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></html>`;
+fs.writeFileSync(new URL('animated.html',root),html);
+console.log('Offline animated preview built for',items.length,'characters');

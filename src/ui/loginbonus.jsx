@@ -1,3 +1,4 @@
+import { playSound, useCue } from "../audio/index.js";
 /** ログイン報酬の資格・枚数・受取済み判定は、サーバーの記録を使う。 */
 import { useEffect, useRef, useState } from "react";
 import { Check, Ticket } from "../icons.jsx";
@@ -48,7 +49,7 @@ export function LoginBonus() {
     setError("");
     try {
       const data = await claimLoginBonus(offer.login.day, offer.uid);
-      if (mounted.current) { setOffer(data); setDone(true); }
+      if (mounted.current) { setOffer(data); setDone(true); playSound("login"); }
     } catch {
       if (mounted.current) setError("受け取りを確認できませんでした。次に確認するときに再送します。今すぐもう一度試すこともできます。");
     } finally {

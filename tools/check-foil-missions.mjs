@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { FOIL_SKINS, POOL, foilId, rate } from "../src/skins/catalog.js";
+import { FOIL_SKINS, ALL_POOL, foilId, rate } from "../src/skins/catalog.js";
 import {
   claimFoilMilestone,
   craft,
@@ -51,17 +51,17 @@ const sequence = (values) => {
 };
 const foilMissions = MISSIONS.filter((mission) => mission.kind === "foil");
 assert.ok(KINDS.foil);
-assert.equal(FOIL_MISSION_DEFS.length, 15);
-assert.equal(foilMissions.length, 15);
-assert.equal(new Set(foilMissions.map((m) => m.id)).size, 15);
-assert.equal(new Set(foilMissions.map((m) => m.reward.id)).size, 15);
+assert.equal(FOIL_MISSION_DEFS.length, 27);
+assert.equal(foilMissions.length, 27);
+assert.equal(new Set(foilMissions.map((m) => m.id)).size, 27);
+assert.equal(new Set(foilMissions.map((m) => m.reward.id)).size, 27);
 assert.deepEqual(
   foilMissions.map((m) => m.skinId).sort(),
   FOIL_SKINS.map((s) => s.id).sort(),
 );
 assert.deepEqual(
   FOIL_MISSION_DEFS.map((d) => d.baseId).sort(),
-  POOL.map((s) => s.id).sort(),
+  ALL_POOL.map((s) => s.id).sort(),
 );
 assert.equal(
   foilMissions.some((m) =>
@@ -71,10 +71,10 @@ assert.equal(
 );
 
 const normalOnly = normalize({
-  owned: Object.fromEntries(POOL.map((skin) => [skin.id, 1000])),
+  owned: Object.fromEntries(ALL_POOL.map((skin) => [skin.id, 1000])),
 });
-let threshold = 0;
-for (const skin of POOL) {
+const thresholds = new Map();
+for (const skin of ALL_POOL) {
   const mission = foilMissions.find((m) => m.baseId === skin.id);
   const definition = FOIL_MISSION_DEFS.find((d) => d.baseId === skin.id);
   assert.ok(mission && definition);
@@ -138,9 +138,10 @@ for (const skin of POOL) {
   );
 
   // The actual acquisition functions determine the same status through all routes.
+  const threshold = thresholds.get(skin.series) || 0;
   const baseRoll = (threshold + rate(skin) / 2) / 100;
-  threshold += rate(skin);
-  const fromPull = pull(normalize(null), 1, sequence([baseRoll, 0.005]), { free: true });
+  thresholds.set(skin.series, threshold + rate(skin));
+  const fromPull = pull(normalize(null), 1, sequence([baseRoll, 0.005]), { free: true, series: skin.series });
   const fromCraft = craft(
     normalize({ ether: CRAFT[skin.rarity] }),
     skin.id,
@@ -161,7 +162,7 @@ for (const skin of POOL) {
       true,
     );
   }
-  const ordinaryPull = pull(normalize(null), 1, sequence([baseRoll, 0.5]), { free: true });
+  const ordinaryPull = pull(normalize(null), 1, sequence([baseRoll, 0.5]), { free: true, series: skin.series });
   const ordinaryCraft = craft(
     normalize({ ether: CRAFT[skin.rarity] }),
     skin.id,
@@ -206,23 +207,23 @@ for (const skin of POOL) {
   assert.equal(hasTitle(reread, title.id), true);
 }
 console.log(
-  "フォイル称号: 15キャラ1対1・既所持・通常/別キャラ除外・3獲得経路・称号受取/装備/復元: OK",
+  "フォイル称号: 27キャラ1対1・既所持・通常/別キャラ除外・3獲得経路・称号受取/装備/復元: OK",
 );
 
 resetProfile();
 const all = normalize({
   owned: Object.fromEntries(FOIL_SKINS.map((skin) => [skin.id, 1])),
 });
-assert.equal(claimableCount(fresh, all), claimableCount(fresh) + 15);
+assert.equal(claimableCount(fresh, all), claimableCount(fresh) + 27);
 assert.equal(
   listMissions(fresh, all)
-    .slice(0, 15)
+    .slice(0, 27)
     .every((m) => m.kind === "foil" && m.done && !m.claimed),
   true,
 );
 const first = foilMissions[0];
 grantMissionTitle(first.id, first.reward.id);
-assert.equal(claimableCount(loadProfile(), all), 14);
+assert.equal(claimableCount(loadProfile(), all), 26);
 assert.equal(listMissions(loadProfile(), all).at(-1).id, first.id);
 
 // A failed profile write must not leave just the claimed marker or just the title.

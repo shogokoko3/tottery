@@ -5,10 +5,11 @@
  *   perl -e 'alarm 300; exec @ARGV' node tools/check-intro-fit.mjs
  *
  * 見ること:
- *   A. はじめの一局の結果(王5通りのうち 3♣ で 4♦ が討つ形): 9機種で「ガチャチケット 10枚」と「門へ進む」が
+ *   A. はじめの一局の結果(王5通りのうち 3♣ で 4♦ が討つ形): 9機種で「初勝利の報酬を受け取る」が
  *      最初の画面に見える。375×667 でも締めの一行(「一手に、読みを。一枚に、野望を。」)が送らずに見える
  *   B. 句ごとに折り返す文(.text-phrase)がどの句も1行に収まり、列からはみ出さない:
- *      ヒントの動きの図(2・3・5)・ストーリーの対局説明(フェーズ1 の7ステージ)・手引き(7枚)。
+ *      ヒントの動きの図(2・3・5)・ストーリーの対局説明(フェーズ1 の7ステージ)・手引き(7枚)・
+ *      名前の画面の本文(2026-10-06。「インターネット上のランキングに、」「名前が出る。」)。
  *      320 幅(SE 第1世代)も見る
  *   C. 結果のあなたの王の一行(「あなたの王は、」「最後まで伏せたまま。」)が 375 幅から1行ずつ。
  *      320 幅では句の間で折れる(句の中では折れない)
@@ -77,7 +78,6 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { GameShell } from "./src/ui/screens.jsx";
 import { GameView, GameCore } from "./src/ui/game.jsx";
-import { firstGameStory } from "./src/game/intro.js";
 import { SeatsProvider } from "./src/ui/names.jsx";
 import { TutorialSheet } from "./src/ui/tutorial.jsx";
 import { StoryIntro } from "./src/ui/story.jsx";
@@ -111,15 +111,14 @@ function finished(king, by) {
 }
 const q = new URLSearchParams(location.search.slice(1));
 const view = q.get("view");
-const seats = { names: ["あなた", "二と三の王"], icons: [null, null], titles: [null, null], skins: [{}, {}] };
-const story = { axis: "23", phase: 1, size: 5, king: "3", title: "二と三の王", fresh: true, next: { axis: "45", title: "四と五の王" }, allCleared: false, ready: true };
+const seats = { names: ["あなた", "練習相手"], icons: [null, null], titles: [null, null], skins: [{}, {}] };
 const noop = () => {};
 function App() {
   // 本物の対局の部品で、はじめの一局を通す(D)。席の名前は screens.jsx と同じ形
   if (view === "game")
     return (
       <SeatsProvider value={seats}>
-        <GameCore key="first-game" round={0} network={null} boardSize={tut.boardSize} cpu tutorial={tut} story={firstGameStory()}
+        <GameCore key="first-game" round={0} network={null} boardSize={tut.boardSize} cpu tutorial={tut} story={null}
           nextTutorial={null} onNextTutorial={null} onExit={noop} onHome={noop} onTutorialList={noop} onGate={noop}
           onNextStory={noop} onRetryStory={null} exitLabel="ストーリーに戻る" />
       </SeatsProvider>
@@ -153,7 +152,7 @@ function App() {
       <SeatsProvider value={seats}>
         <GameView state={s} size={5} viewer={0} youAre={0} dispatch={noop} onExit={noop} onHome={noop}
           tutorial={tut} nextTutorial={null} onNextTutorial={null} onTutorialList={noop} rating={null} rematch={null}
-          seasonResult={{ active: false }} story={story} onGate={noop} onNextStory={noop} />
+          seasonResult={{ active: false }} story={null} introReady onGate={noop} onNextStory={noop} />
         {view === "name" && (
           <div className="modal-overlay intro-name-cover"><NameSetupScreen afterWin onDone={noop} onCancel={noop} /></div>
         )}
@@ -304,7 +303,7 @@ for (const dev of [...NARROW, ...IPHONES]) {
     const rows = [...document.querySelectorAll(".tutorial-reveal-mine .tutorial-line-row")].map((el) => { const tops = new Set(); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); while (w.nextNode()) { const n = w.currentNode; for (let i = 0; i < n.length; i++) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + 1); const rs = r.getClientRects(); if (rs.length) tops.add(Math.round(rs[0].top)); } } return tops.size; });
     return { tag: seen(tag), reward: seen(reward), gate: seen(gate), rows, scroll: body.scrollHeight - body.clientHeight };
   })()`);
-  ok(`${dev[0]}: 「ガチャチケット 10枚」と「門へ進む」が最初の画面に見える`, m.reward && m.gate, JSON.stringify(m));
+  ok(`${dev[0]}: ストーリー報酬を出さず、初勝利の報酬を受け取るボタンが見える`, !m.reward && m.gate, JSON.stringify(m));
   ok(`${dev[0]}: 締めの一行が送らずに見える`, m.tag, JSON.stringify(m));
   if (dev[1] >= 375) ok(`${dev[0]}: あなたの王の一行は1行ずつ`, m.rows.length === 2 && m.rows.every((n) => n === 1), JSON.stringify(m.rows));
   else {
@@ -323,7 +322,7 @@ for (const dev of [...NARROW, ...IPHONES]) {
 }
 
 console.log("\nB. 句ごとに折り返す文");
-const phraseViews = [["view=hint", "ヒントの動きの図"], ...["23", "45", "67", "89", "10", "jq", "k"].map((axis) => [`view=story&axis=${axis}`, `対局説明 ${axis}`]), ["view=primer", "手引き"]];
+const phraseViews = [["view=hint", "ヒントの動きの図"], ...["23", "45", "67", "89", "10", "jq", "k"].map((axis) => [`view=story&axis=${axis}`, `対局説明 ${axis}`]), ["view=primer", "手引き"], ["view=name", "名前の画面"]];
 for (const [query, label] of phraseViews)
   for (const dev of [...NARROW, ...IPHONES]) {
     await open(query, dev);
@@ -339,7 +338,15 @@ for (const [query, label] of phraseViews)
         await js(`(() => { document.querySelector(".primer-next").click(); return true; })()`);
         await js(`new Promise((r) => setTimeout(r, 120))`);
         pages.push(await js(PHRASES));
+        // 320 幅の「1手ずつ」(2枚目)と「取れなくなったら」(4枚目)を残す(2026-10-06 の言葉の直し)
+        if (dev[0].startsWith("SE1") && (i === 1 || i === 3)) await shot(`primer-${i + 1}-SE1.png`);
       }
+    if (query === "view=name") {
+      // 名前の本文は2行(読点・句点のあとの句で折れる)。句の塊は .name-lines の中にある
+      const m = await js(`(() => [...document.querySelectorAll(".name-lines > span")].map((row) => [...row.querySelectorAll(".text-phrase")].map((el) => el.textContent)))()`);
+      ok(`名前の画面 ${dev[0]}: 本文の行は句の塊で出る`, JSON.stringify(m) === JSON.stringify([["インターネット上のランキングに、", "名前が出る。"], ["本名は避けて。", "あとから変えられる。"]]), JSON.stringify(m));
+      if (dev[0].startsWith("SE1")) await shot("name-cover-SE1.png");
+    }
     const count = pages.reduce((n, p) => n + p.count, 0);
     const bad = pages.flatMap((p) => p.bad);
     ok(`${label} ${dev[0]}: 句(${count})がどれも1行に収まる`, count > 0 && bad.length === 0, bad.join(" / "));

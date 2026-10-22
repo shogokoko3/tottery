@@ -20,18 +20,20 @@ import {
   showcaseText,
   unlockedBackgrounds,
 } from "../game/profile-card.js";
-import { availableTitles, findTitle, hasTitle } from "../game/titles.js";
+import { availableTitles, findTitle, hasTitle, orderTitles, titleEarnedLabel } from "../game/titles.js";
 import { foilRevealed } from "../skins/collection.js";
 import { readFriendProfile, giftFriend, removeFriend, publishProfileCard } from "../net/friends.js";
 import { myUid } from "../net/auth.js";
 import { PlayerIcon } from "./playericon.jsx";
 import { TitleFrame } from "./title-frame.jsx";
-import { TitleChoice } from "./account.jsx";
+import { TitleChoice, TitleOrderToggle, useTitleOrder } from "./account.jsx";
 import { agoText, usePublishProfileCard } from "./friends.jsx";
 import { useOpenSettings } from "./open-settings.js";
 import { ArrowLeft, Check, Close, DoorIn, Settings, Ticket, Users, Lock } from "../icons.jsx";
 
-const bgImage = (bg) => (bg && bg !== STANDARD_BG ? `skins/home-v1/${bg}-home-decor.webp` : null);
+import { HOME_THEMES, homeThemeAssets } from "../skins/home-themes.js";
+
+const bgImage = (bg) => homeThemeAssets(HOME_THEMES.find((theme) => theme.id === bg))?.decoration || null;
 
 /** プロフィールの札。view = { card, rating, place, best, rated, seen } */
 export function ProfileCard({ view, name, mine }) {
@@ -102,7 +104,9 @@ function PinnedTitlePicker({ profile, collection, picked, onPick, onClose }) {
     if (t.family && t.tier > 3 && !owned) return false;
     return true;
   });
-  const mine = visible.filter((t) => hasTitle(profile, t.id));
+  const [order, setOrder] = useTitleOrder();
+  const owned = visible.filter((t) => hasTitle(profile, t.id));
+  const mine = orderTitles(owned, profile, order);
   const locked = visible.filter((t) => !hasTitle(profile, t.id));
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -127,8 +131,9 @@ function PinnedTitlePicker({ profile, collection, picked, onPick, onClose }) {
             <p className="title-group-head title-group-head-mine">
               <Check size={13} /> 使える称号 <b>{mine.length}</b>
             </p>
+            <TitleOrderToggle value={order} onChange={setOrder} />
             {mine.map((t) => (
-              <TitleChoice key={t.id} title={t} owned picked={cur === t.id} onPick={setCur} />
+              <TitleChoice key={t.id} title={t} owned picked={cur === t.id} onPick={setCur} earned={titleEarnedLabel(profile, t)} />
             ))}
             {locked.length > 0 && (
               <p className="title-group-head">

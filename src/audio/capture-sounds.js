@@ -24,7 +24,10 @@ export function captureSoundOnBus(audioCtx, output, hit) {
     nodes.clear();
   }
   function tone(freq, endFreq, dur, gain, type = "sine", delay = 0) {
-    if (!audioCtx) return;
+    if (!audioCtx || freq > 700 || endFreq > 900) return;
+    // Remove the old glassy high notes; keep a short, low wooden body only.
+    dur = Math.min(dur, 0.28);
+    gain *= 0.7;
     const start = audioCtx.currentTime + delay,
       osc = audioCtx.createOscillator(),
       g = audioCtx.createGain();
@@ -48,6 +51,8 @@ export function captureSoundOnBus(audioCtx, output, hit) {
 
   function noise(dur, gain, freq, band = "bandpass", delay = 0) {
     if (!audioCtx) return;
+    freq = Math.min(freq, 1500);
+    if (band === "highpass") band = "bandpass";
     const n = Math.floor(audioCtx.sampleRate * dur),
       buffer = audioCtx.createBuffer(1, n, audioCtx.sampleRate),
       data = buffer.getChannelData(0);

@@ -10,7 +10,11 @@
  *   B. 物語の頁(StoryReader。21話の全部の頁): 章の名・頁の小見出し・あなたの目的・次へ続く一言
  *   C. 対局説明(StoryIntro。21話): 章の名・登場人物の一言・あなたの目的・対立する理由の見出し・信念・この局のねらい
  *   どれも句の塊(.text-phrase)だけで書き、句が1行に収まり列からはみ出さないこと。
- *   長い地の文(語り・台詞・あらすじ・対立する理由の本文・世界の説明)は段落のまま自然に折れてよいので見ない。
+ *   一覧の下の案内(昇格の条件・最後のフェーズ・ランダムマッチまで)と対局説明の結びの行も句の塊で(2026-10-06)。
+ *   長い地の文(語り・台詞・あらすじ・対立する理由の本文・世界の説明)は段落のまま自然に折れてよいので見ない
+ *   (2026-10-06 に 320・375 幅で撮って見直し、読みにくくないのでそのままにした)。
+ *   D. 対局説明の見た目: 送っても札の角の数字が釦の帯の上に乗らない・登場人物の札が潰れない・
+ *      フェーズ2・3 の段落は行頭をそろえる(2026-10-06)
  *   --audit は、見る欄と段落の行の切れ目を全部書き出す(確かめ用。失敗にはしない)
  *
  * iPhone の WebKit は word-break: auto-phrase を知らない。ここではその宣言を消して描く(WebKit の代わり)。
@@ -101,7 +105,7 @@ function App({ view }) {
   if (view.kind === "reader")
     return (
       <GameShell showRules={false} setShowRules={noop} onHome={noop}>
-        <StoryReader key={key} axis={view.axis} phase={view.phase} part="all" onDone={noop} onClose={noop} />
+        <StoryReader key={key} axis={view.axis} phase={view.phase} part={view.opening ? "before" : "all"} battle={Boolean(view.opening)} onDone={noop} onClose={noop} />
       </GameShell>
     );
   return (
@@ -138,6 +142,7 @@ const bundled = await build({
   },
 });
 const tpl = fs.readFileSync(path.join(repo, "index.template.html"), "utf8").replace(`media="print" onload="this.media='all'" `, "");
+fs.cpSync(path.join(repo, "assets/story/comics"), path.join(dir, "story-comics"), {recursive:true});
 const page = path.join(dir, "page.html");
 fs.writeFileSync(page, tpl.replace("__BUNDLE__", () => bundled.outputFiles[0].text));
 
@@ -244,7 +249,7 @@ async function shot(file) {
  */
 const SLOTS = {
   screen: [
-    [".chronicle-hero-top > span", "見出しの一言(七つの立場)"],
+    [".chronicle-hero-top > span", "見出しの一言(7つの立場)"],
     [".chronicle-hero > div > p", "年代記の一言"],
     [".chronicle-phases b", "フェーズの札の名"],
     [".chronicle-locked > b", "閉じた頁の一言"],
@@ -252,6 +257,9 @@ const SLOTS = {
     [".story-stage-body > b", "章の名"],
     [".story-stage-body > small", "ステージの一行"],
     [".chronicle-chapter-tail small", "札の下の一行"],
+    // 一覧の下の案内(2026-10-06 見直し。320・375 幅で「全部のク/リアと、」「ステ/ージは」と割れた)
+    [".story-promotion .hint", "昇格の条件"],
+    [".chronicle-main > p.hint", "最後のフェーズ・ランダムマッチまでの案内"],
   ],
   reader: [
     [".chronicle-reader-head h3", "章の名"],
@@ -266,11 +274,13 @@ const SLOTS = {
     [".story-intro .chronicle-purpose summary", "対立する理由の見出し"],
     [".story-intro .chronicle-purpose dd", "信念"],
     [".story-intro .story-rival small", "この局のねらい"],
+    // 結びの行(2026-10-06 見直し。フェーズ3 の2行目が「…その数字のフォイル/を装備して…」と割れた)
+    [".story-intro-note > span", "結びの行"],
   ],
 };
 // 段落(自然に折れてよい)。--audit で書き出すだけ
 // (対局説明のフェーズ2・3 の王の力・エリアの文と、結びの行も、ここで書き出すだけ)
-const PARAS = [".story-intro-items li > span", ".story-intro-note > span", ".story-lesson", ".chronicle-phase-intro > p:not(.story-phase)", ".chronicle-reader-copy > div > p:not(.chronicle-next-voice)", ".chronicle-purpose details > p", ".story-rival-quote", ".chronicle-recap p"];
+const PARAS = [".story-intro-items li > span", ".story-lesson", ".chronicle-phase-intro > p:not(.story-phase)", ".chronicle-reader-copy > div > p:not(.chronicle-next-voice)", ".chronicle-purpose details > p", ".story-rival-quote", ".chronicle-recap p"];
 
 // 句(.text-phrase)が1行に収まり、列からはみ出さないか(check-intro-fit と同じ測り方)。欄の中で句の外にある字も拾う
 const MEASURE = (slots) => `(() => {
@@ -333,10 +343,95 @@ const LINES = (sels) => `(() => {
   return out;
 })()`;
 
+/*
+ * D. 対局説明の見た目(2026-10-06 見直し)。320 幅で送ると、下の段の札(4♠ など)の角の数字が、貼り付いた釦の帯
+ *    (戻る・はじめる。.setup-actions)の上に乗っていた(札の中の z-index: 2 が札の外の重なりの順に出ていた)。
+ *    札の角の数字を1つずつ帯の高さまで送り、その点でいちばん上に描かれているのが帯かを見る(角の数字は
+ *    pointer-events: none なので、測るあいだだけ auto にする)。
+ *    あわせて、登場人物の札は縮まない(38×51。横の一言が長いと 22px まで潰れた)。
+ *    フェーズ2・3 の王の力・エリアの段落は行頭をそろえる(中寄せの段落で行頭がずれていた)
+ */
+const LOOKS = `(async () => {
+  const box = document.querySelector(".story-intro");
+  const bar = box.querySelector(".setup-actions");
+  const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const covered = [];
+  let probes = 0;
+  for (const idx of box.querySelectorAll(".card-face .card-index")) {
+    const b0 = bar.getBoundingClientRect(), r0 = idx.getBoundingClientRect();
+    box.scrollTop += (r0.top + r0.height / 2) - (b0.top + b0.height / 2);
+    await wait();
+    const b = bar.getBoundingClientRect(), r = idx.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    // 送りきれず帯の高さに来ない札(帯より下の段の終わり近く)は見ない
+    if (y < b.top + 1 || y > b.bottom - 1) continue;
+    probes++;
+    const keep = idx.style.pointerEvents;
+    idx.style.pointerEvents = "auto";
+    const top = document.elementFromPoint(x, y);
+    idx.style.pointerEvents = keep;
+    if (!top || !top.closest(".setup-actions")) covered.push(idx.textContent + "(上に " + (top ? top.className || top.tagName : "なし") + ")");
+  }
+  box.scrollTop = 0;
+  await wait();
+  const cards = [...box.querySelectorAll(".chronicle-roster .card-face")].map((c) => { const r = c.getBoundingClientRect(); return Math.round(r.width) + "x" + Math.round(r.height); });
+  const aligns = [...box.querySelectorAll(".story-intro-items li > span")].map((el) => getComputedStyle(el).textAlign);
+  return { probes, covered, cards, aligns };
+})()`;
+let barProbes = 0;
+async function looks(label, phase) {
+  const m = await js(LOOKS);
+  const name = `${device[0]} ${label}`;
+  barProbes += m.probes;
+  ok(`${name}: 送っても札の角の数字が釦の帯の上に乗らない(帯の高さで ${m.probes} か所)`, m.covered.length === 0, m.covered.join(" / "));
+  ok(`${name}: 登場人物の札は 38x51 のまま`, m.cards.length > 0 && m.cards.every((c) => c === "38x51"), m.cards.join(" "));
+  if (phase > 1) ok(`${name}: 王の力・エリアの段落は行頭をそろえる`, m.aligns.length > 0 && m.aligns.every((a) => a === "left"), m.aligns.join(" "));
+}
+
 const report = [];
 // フェーズの目的(.chronicle-journey p)はフェーズ2・3 だけ句で書く(フェーズ1 は「あなたが戦う理由」の段落)
 const JOURNEY = [".chronicle-journey p", "フェーズの目的"];
 async function measure(kind, label, extra = []) {
+  if (kind === "reader") {
+    const loaded = await js(`Promise.all([...document.querySelectorAll('.chronicle-comic-image image')].map(el=>{const i=new Image();i.src=el.getAttribute('href');return i.decode().then(()=>i.naturalWidth>0).catch(()=>false)}))`);
+    ok(`${device[0]} ${label}: 完成ページの画像を読める`, loaded.length === 1 && loaded.every(Boolean));
+  }
+  if (kind === "reader") {
+    const layout = await js(`(() => {
+      const failures=[];
+      const reader=document.querySelector('.chronicle-reader'),page=reader.querySelector('[data-comic-page]');
+      const body=reader.querySelector('.chronicle-comic-copy');
+      if(body.scrollHeight>body.clientHeight+1)failures.push('一画面の漫画が縦スクロールを必要とする');
+      if(page.querySelectorAll('.chronicle-comic-panel').length!==1)failures.push('一画面に複数ページを縦積みしている');
+      if(page.scrollWidth>page.clientWidth+1)failures.push('標準表示のページが画面幅を超えた');
+      for(const figure of document.querySelectorAll('.chronicle-comic-panel')) {
+        const art=figure.querySelector('.chronicle-comic-image').getBoundingClientRect();
+        const image=figure.getBoundingClientRect();
+        const printed=figure.classList.contains('has-printed-lettering');
+        if(printed) {
+          const transcript=figure.querySelector('.printed-comic-transcript');
+          if(!transcript || getComputedStyle(transcript).clipPath!=='inset(50%)') failures.push('画像内の台詞と別に字幕欄が表示されている');
+          if(art.width<200 || art.height<art.width) failures.push('完成ページの構図が潰れている');
+        }
+        for(const letter of figure.querySelectorAll('.comic-letter')) {
+          const box=letter.getBoundingClientRect(),p=letter.querySelector('p');
+          if(printed) {
+            if(letter.classList.contains('comic-balloon')&&letter.getAttribute('aria-label')!==letter.dataset.speaker) failures.push('読み上げ用の話者名なし');
+            if(letter.querySelector('.comic-speaker')) failures.push('削除した名前の見出しが残っている');
+            continue;
+          }
+          if(box.top<art.bottom-1) failures.push('絵への重なり：'+p.textContent);
+          if(letter.classList.contains('comic-balloon')&&letter.getAttribute('aria-label')!==letter.dataset.speaker)failures.push('読み上げ用の話者名なし：'+p.textContent);
+          if(letter.querySelector('.comic-speaker')) failures.push('削除した名前の見出しが残っている');
+          if(box.left<image.left-1||box.right>image.right+1||box.top<image.top-1||box.bottom>image.bottom+1) failures.push('枠外：'+p.textContent);
+          if(p.scrollHeight>p.clientHeight+1||p.scrollWidth>p.clientWidth+1) failures.push('切れ：'+p.textContent);
+        }
+      }
+      if(reader.querySelector('.chronicle-comic-toolbar button'))failures.push('削除した文字拡大ボタンが残っている');
+      return failures;
+    })()`);
+    ok(`${device[0]} ${label}: 漫画ページが画面幅に収まり、名前の見出しと独立した字幕欄が出ない`, layout.length===0, layout.join(' / '));
+  }
   const slots = [...SLOTS[kind], ...extra];
   const m = await js(MEASURE(slots));
   const name = `${device[0]} ${label}`;
@@ -348,7 +443,7 @@ async function measure(kind, label, extra = []) {
   }
 }
 
-const AXES = ["23", "45", "67", "89", "10", "jq", "k"];
+const AXES = ["prologue", "23", "45", "67", "89", "10", "jq", "k"];
 // ONLY=320,375x667 のように機種を絞れる(確かめ用)
 const devices = process.env.ONLY ? IPHONES.filter((d) => process.env.ONLY.split(",").some((k) => d[0].includes(k))) : IPHONES;
 for (const dev of devices) {
@@ -378,8 +473,8 @@ for (const dev of devices) {
     }
   }
   // B. 物語の頁(全部の頁)・C. 対局説明
-  for (const axis of AXES)
-    for (const p of [1, 2, 3]) {
+  for (const axis of AXES.filter(a => !process.env.AXIS || process.env.AXIS.split(",").includes(a)))
+    for (const p of (axis === "prologue" ? [1] : [1, 2, 3]).filter(p => !process.env.PHASE || p === Number(process.env.PHASE))) {
       await show({ kind: "reader", axis, phase: p });
       const pages = await js(`(() => { const s = document.querySelector(".chronicle-reader-controls span"); return s ? Number(s.textContent.split("/")[1]) : 0; })()`);
       for (let i = 0; i < pages; i++) {
@@ -389,7 +484,19 @@ for (const dev of devices) {
         }
         // 目的と次へ続く一言は送る箱の中にある。見えていなくても字の位置は測れる
         await measure("reader", `物語 ${axis}/${p} 頁${i + 1}`);
+        if ((axis === "prologue" && [0,1,2].includes(i)) || ((axis === "k" && p===3 && i>=4) || (axis === "23" && p===1))) await shot(`${dev[0].split(" ")[0].replaceAll("/", "-")}-${axis}-${p}-page${i+1}.png`);
         if ((dev[1] === 320 || dev[1] === 375) && axis === "45" && p === 1 && i === 0) await shot(`${dev[0].split(" ")[0]}-reader-45-1.png`);
+      }
+      if (axis === "prologue") continue;
+      if (axis === "23" && p === 1) {
+        await show({kind:"reader",axis,phase:p,opening:true});
+        const count=await js(`Number(document.querySelector('.chronicle-reader-controls span').textContent.split('/')[1])`);
+        ok(`${dev[0]} 最初の対局まで導入を含め6ページ`,count===6);
+        for(let i=0;i<count;i++) {
+          if(i) {await js(`document.querySelector('.chronicle-reader-controls .btn-primary').click()`);await settle(30);}
+          await measure("reader",`初回対局前 ${i+1}/6`);
+          if(shots)await shot(`${dev[0].split(" ")[0].replaceAll("/", "-")}-opening-page${i+1}.png`);
+        }
       }
       await show({ kind: "intro", axis, phase: p });
       await js(`(() => { const b = document.querySelector(".chronicle-reader-head .chronicle-text-button"); if (b) b.click(); return true; })()`);
@@ -397,6 +504,7 @@ for (const dev of devices) {
       await js(`(() => { for (const d of document.querySelectorAll(".story-intro details")) d.open = true; return true; })()`);
       await settle();
       await measure("intro", `対局説明 ${axis}/${p}`);
+      await looks(`対局説明 ${axis}/${p}`, p);
       if ((dev[1] === 320 || dev[1] === 375) && axis === "45" && p === 1) await shot(`${dev[0].split(" ")[0]}-intro-45-1.png`);
       if ((dev[1] === 320 || dev[1] === 375) && axis === "89" && p === 3) {
         await js(`(() => { document.querySelector(".story-intro .chronicle-purpose dl").scrollIntoView({ block: "center" }); return true; })()`);
@@ -406,6 +514,8 @@ for (const dev of devices) {
     }
 }
 
+// 320 幅では、どこかで札が帯の高さまで送れる(帯の下を通る札が無いと、上の見方は何も見ていない)
+if (!process.env.ONLY || /320/.test(process.env.ONLY)) ok(`対局説明: 札の角の数字を帯の高さで ${barProbes} か所見た`, barProbes > 0);
 clearTimeout(guard);
 ws.close();
 cleanup();

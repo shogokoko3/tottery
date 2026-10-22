@@ -16,15 +16,34 @@ import {
 import { opponentKingBelief } from "./king-belief.js";
 // 公開情報と自分だけが見抜いた情報を使うCPU。伏せ札の数字・王かどうかは評価に使わない。
 import { cpuAction, bestShuffle, capDiscards } from "./cpu.js";
-import { getLegalMoves, kingRankOf, territoryRows } from "./board.js";
+import {
+  armySlots,
+  getLegalMoves,
+  kingRankOf,
+  territoryRows,
+} from "./board.js";
 import { canUseArea, isFrozen, isKnownTo, skyCandidates } from "./areas.js";
 import { automaticAreaAction } from "./area-presentation.js";
 import { shouldUseSea } from "./cpu-sea.js";
+import { hasAliceRules } from "./alice-rules.js";
+import {
+  aliceAdaptScore,
+  aliceFreeAction,
+  alicePendingAction,
+  aliceSetupFix,
+  aliceView,
+  finishAliceMove,
+  teaSummon,
+  withoutAliceAceShuffle,
+} from "./cpu-alice.js";
 /**
  * options.unknownWeight(0〜1): 正体の分からない敵の駒も、その見込みぶんだけ脅威として扱う。
  * 省略時は 0 で従来どおり(正体の分かった駒だけを脅威にする)。検証ツールが渡す。
  */
 export function cpuInformedAction(state, player, options = {}) {
+  // シーズン2: 仲間にする駒・王の帰還は、手番に関係なく待っている側が選ぶ
+  if (hasAliceRules(state) && (state.aliceRecruit?.length || state.aliceRevive))
+    return alicePendingAction(state, player);
   // 相手の予備札は相手の手番まで待機。こちらの10の2回目は続けられる。
   if (state.kPlacement && state.kPlacement.owner !== state.currentTurn)
     state = { ...state, kPlacement: null };
@@ -51,13 +70,33 @@ export function cpuInformedAction(state, player, options = {}) {
     !state.setupDone[player] &&
     (state.setupMode === "simultaneous" || state.setupIdx === player)
   ) {
-    const plan = chooseArmyPlan(state, player);
-    if (plan)
+    // シーズン2: ハートの王(J・Q・K)ではAを採用できない。Aを外して埋まらなければ、別の数字を王にする
+    const tryPlan = (rank) => {
+      const plan = chooseArmyPlan(state, player, rank);
+      if (!plan) return null;
+      const placement = aliceSetupFix(
+        state,
+        player,
+        plan.kingId,
+        arrangeArmy(state, player, plan),
+      );
+      return Object.keys(placement).length >= armySlots(state)
+        ? { plan, placement }
+        : null;
+    };
+    let chosen = tryPlan(null);
+    if (!chosen && hasAliceRules(state)) {
+      const ranks = [
+        ...new Set(state.players[player].hand.map((c) => c.rank)),
+      ].filter((r) => r !== "A");
+      for (const rank of ranks) if ((chosen = tryPlan(rank))) break;
+    }
+    if (chosen)
       return {
         type: "SETUP_CONFIRM",
         player,
-        kingId: plan.kingId,
-        placement: arrangeArmy(state, player, plan),
+        kingId: chosen.plan.kingId,
+        placement: chosen.placement,
       };
   }
   if (
@@ -68,7 +107,21 @@ export function cpuInformedAction(state, player, options = {}) {
   )
     return cpuAction(state, player);
   if (state.currentTurn !== player) return null;
-  return automaticAreaAction(state) || informedPlay(state, options);
+  if (!hasAliceRules(state))
+    return automaticAreaAction(state) || informedPlay(state, options);
+  // シーズン2: 手番を使わない能力を先に1つずつ使い、それから指す
+  const free = aliceFreeAction(state, player);
+  if (free) return free;
+  const auto = automaticAreaAction(state);
+  if (auto) return auto;
+  const view = withoutAliceAceShuffle(aliceView(state, player), player);
+  const out = informedPlay(view, options);
+  const capture =
+    out?.type === "MOVE_PIECE" &&
+    view.board[out.row]?.[out.col]?.owner === 1 - player;
+  const tea = teaSummon(state, player, out ? { score: capture ? 12 : 0 } : null);
+  if (tea) return tea;
+  return finishAliceMove(state, player, out);
 }
 const value = {
   A: 5,
@@ -84,6 +137,7 @@ const value = {
   J: 6,
   Q: 6,
   K: 7,
+  tea: 4,
 };
 export function informedPlay(s, options = {}) {
   const player = s.currentTurn;
@@ -106,7 +160,8 @@ export function informedPlay(s, options = {}) {
       p.owner !== player ||
       p.rank === "A" ||
       isFrozen(s, p) ||
-      (s.extraMoveFor && s.extraMoveFor !== p.id)
+      (s.extraMoveFor && s.extraMoveFor !== p.id) ||
+      (s.aliceCommitted && s.aliceCommitted !== p.id)
     )
       continue;
     for (const m of getLegalMoves(
@@ -118,6 +173,8 @@ export function informedPlay(s, options = {}) {
     )) {
       const target = s.board[m.row][m.col],
         goal = player === 0 ? lo : hi;
+      // バリア(グリフォン)を張った相手の駒は取りに行けない
+      if (target?.barrier && target.owner !== player) continue;
       let score =
         Math.random() * 0.8 +
         (Math.abs(m.row - goal) < Math.abs(p.row - goal) ? 1.2 : 0) -
@@ -168,6 +225,8 @@ export function informedPlay(s, options = {}) {
         }
       }
       score += moveSafety(s, player, p, m, capturedIds, safety);
+      // 相手の技・盤面効果に合わせた足し引き(包囲の回避など。調整値は cpu-alice.js)
+      score += aliceAdaptScore(s, player, p, m, capturedIds);
       if (
         p.rank === "10" &&
         !s.extraMoveFor &&

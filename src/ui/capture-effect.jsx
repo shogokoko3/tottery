@@ -361,7 +361,7 @@ export function CaptureEffect({
   const royal = view.royal && shown.some((c) => c.isKing);
   const title = !mine
     ? royal
-      ? "自分の王が取られた"
+      ? "王が撃破された"
       : "自分の駒が取られた"
     : royal
       ? "王を討った"
@@ -373,7 +373,8 @@ export function CaptureEffect({
       label={mine ? "撃破したカードの公開" : "自分が失ったカードの確認"}
       className={`capture-scene ${mine ? "is-capture" : "is-loss"}`}
       onClose={() => {
-        if (doneRef.current) onClose();
+        // 終局した王の撃破は、Escでは閉じず「対戦結果へ」で進む。
+        if (doneRef.current && !(final && cards.some((card) => card.isKing))) onClose();
       }}
     >
       <style>{styles}</style>
@@ -432,9 +433,7 @@ export function CaptureEffect({
         >
           {view.done
             ? final && royal
-              ? mine
-                ? "勝利を見る"
-                : "結果を見る"
+              ? "対戦結果へ"
               : "確認した"
             : "正体を公開中…"}
         </button>

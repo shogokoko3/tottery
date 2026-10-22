@@ -72,11 +72,12 @@ export function ticketsPrice(n) {
   );
 }
 /**
- * 無償ジェムをエーテルに(2026-09-16 本人の決め: 10 → 20)。**無償だけ**で払う。
+ * ジェムをエーテルに(2026-09-16 本人の決め: 10 → 20)。無償→有償の順で払う
+ * (2026-10-16 本人の指示で有償も使えるようにした。端末は使う前に必ず確認を出す)。
  * ガチャ1回(10 ジェム相当だった頃の崩し分 ≒ 24)よりやや不利にして、ガチャの価値を守る
  */
 export const ETHER_EXCHANGE = Object.freeze({ gems: 10, ether: 20, max: 1000 });
-/** gems(無償)をエーテルにするとき得られる量。10 の倍数でなければ null */
+/** gems をエーテルにするとき得られる量。10 の倍数でなければ null */
 export function etherFor(gems) {
   if (
     !Number.isSafeInteger(gems) ||

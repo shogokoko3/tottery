@@ -22,7 +22,7 @@ globalThis.addEventListener = () => {};
 const { BACKUP_MAX, BACKUP_VERSION, exportLocalData, importLocalData } = await import("../src/net/backup.js");
 const { BACKUP_MAX: SERVER_MAX, Wallet } = await import("../src/server/wallet.js");
 const { BACKUP_BODY_MAX } = await import("../src/server/worker.js");
-const { loadProfile, saveName, recordGame } = await import("../src/game/profile.js");
+const { loadProfile, saveName, recordGame, recordMastery } = await import("../src/game/profile.js");
 const { getCollection, updateCollection } = await import("../src/skins/store.js");
 
 // 2. 上限
@@ -33,6 +33,7 @@ assert.ok(BACKUP_BODY_MAX > BACKUP_MAX, "本文の上限は控えより広い(JS
 {
   saveName("ひきつぎ");
   recordGame(true, { foeRating: 1500, kingRank: "2" });
+  recordMastery({ "elf-male": { moves: 2 }, "alice-10-cheshire-cat": { king: true, pieces: 2, moves: 3 } });
   await updateCollection((s) => ({ ...s, tickets: 7, ether: 30 }));
   const before = loadProfile();
   const blob = exportLocalData();
@@ -50,6 +51,7 @@ assert.ok(BACKUP_BODY_MAX > BACKUP_MAX, "本文の上限は控えより広い(JS
   assert.equal(after.xp, before.xp, "経験値(レベル)も戻る");
   assert.equal(after.rating, before.rating, "持ち点も戻る");
   assert.equal(after.plays, before.plays);
+  assert.deepEqual(after.mastery, before.mastery, "ワンダーランドとレジェンドの熟練度を両方引き継ぐ");
   assert.equal(after.id, "uid-new", "口座の id はいまのものにそろえる");
   assert.equal(getCollection().tickets, 7, "持ち物も戻る");
   // 壊れた控え・知らない版は読まない

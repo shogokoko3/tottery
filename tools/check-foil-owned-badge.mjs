@@ -14,7 +14,8 @@ import { ALL_SKINS, POOL, byId, foilId } from "../src/skins/catalog.js";
 import { foilRevealed } from "../src/skins/collection.js";
 import { skinVisibleInCollection } from "../src/skins/foil-shop.js";
 
-const ui = readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
+const ui = ["../src/ui/skins.jsx", "../src/ui/summon-results.jsx"]
+  .map(file => readFileSync(new URL(file, import.meta.url), "utf8")).join("\n");
 const css = readFileSync(
   new URL("../src/skins/styles.css", import.meta.url),
   "utf8",

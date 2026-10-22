@@ -1,5 +1,5 @@
 import { byId } from "./catalog.js";
-import { AREA_BY_RANK, AREA_INFO } from "../game/areas.js";
+import { areaForSkin, AREA_INFO } from "../game/areas.js";
 import { areaTheme } from "../game/field-presentation.js";
 
 export function areaRewardName(reward) {
@@ -14,11 +14,12 @@ export function areaRewardsFor(results = []) {
   const rewards = new Map();
   for (const result of results) {
     const skin = byId(result.id);
-    const type = skin?.foil && AREA_BY_RANK[skin.rank];
+    const type = skin?.foil && areaForSkin(skin.rank, skin.id);
     if (!type) continue;
     const theme = areaTheme({ type, skin: skin.id });
-    if (!rewards.has(theme)) rewards.set(theme, { type, theme, skins: [] });
-    const reward = rewards.get(theme);
+    const key=theme || type;
+    if (!rewards.has(key)) rewards.set(key, { type, theme, skins: [] });
+    const reward = rewards.get(key);
     if (!reward.skins.some((s) => s.id === skin.id)) reward.skins.push(skin);
   }
   return [...rewards.values()];

@@ -7,27 +7,42 @@ import { areaSkinOk } from "../game/areas.js";
 const CPU_EXCLUDED = new Set(SPECIAL_FOIL_SKINS.map((skin) => skin.id));
 const cpuFoilFor = (skin) =>
   FOIL_SKINS.find((foil) => foil.baseId === skin.id && !CPU_EXCLUDED.has(foil.id))?.id || skin.id;
-export function createCpuLoadout(random = Math.random) {
+
+/** CPU が装備できるシリーズ。heroes = 最初のシリーズ、alice = シーズン2(不思議の国のアリス) */
+export const CPU_SERIES = ["heroes", "alice"];
+
+/**
+ * 1局ぶんの装備。シリーズは1局の中でそろえる(王の効果と盤面効果がシリーズで決まるため)。
+ * series を省くと、シリーズも均等に選ぶ。
+ */
+export function createCpuLoadout(random = Math.random, series = null) {
+  const pick = series || CPU_SERIES[Math.floor(random() * CPU_SERIES.length)];
   const groups = new Map();
-  for (const skin of SKINS) {
+  for (const skin of SKINS.filter((s) => s.series === pick)) {
     if (!groups.has(skin.rank)) groups.set(skin.rank, []);
     groups.get(skin.rank).push(skin);
   }
   return Object.fromEntries(
     [...groups].map(([rank, skins]) => {
       const skin = skins[Math.floor(random() * skins.length)];
-      // CPUは通常の15種だけフォイル化する。A・天馬騎士は通常版を使う。
+      // CPUは通常のフォイルだけ使う。A・天馬騎士は通常版を使う。
       return [rank, cpuFoilFor(skin)];
     }),
   );
 }
 
+const seriesOf = (id) =>
+  SKINS.find((skin) => skin.id === String(id || "").replace(/:foil$/, ""))?.series || null;
+
 /**
  * その数字にフォイルを必ず持たせる。エリアを選んだCPU戦で、王の数字のエリアが立つように。
  * (10 の天馬騎士のように、フォイル版の無いスキンを引くとエリアが立たない)
+ * いまの装備と同じシリーズのフォイルを優先する。
  */
 export function ensureCpuFoil(loadout, rank) {
   if (!rank || areaSkinOk(loadout?.[rank])) return loadout;
-  const foil = FOIL_SKINS.find((skin) => skin.rank === rank && !CPU_EXCLUDED.has(skin.id));
+  const series = seriesOf(loadout?.[rank]);
+  const usable = FOIL_SKINS.filter((skin) => skin.rank === rank && !CPU_EXCLUDED.has(skin.id));
+  const foil = usable.find((skin) => series && skin.series === series) || usable[0];
   return foil ? { ...loadout, [rank]: foil.id } : loadout;
 }

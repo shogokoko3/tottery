@@ -5,35 +5,22 @@
  * reducer の seq を目印にする。チュートリアルでは進めない。
  * バトルパスを買っていない人は進めない(購入で解放)。新しくクリアしたマスは
  * その周・そのマスで冪等なチケット1枚を財布へ送る(周72枚まではサーバーが数える)。
+ * 進めるのは「進めるパス」(battlepass-store.js の active)だけ(2026-10-15 本人の指示。併用はしない)。
  */
 import { useEffect, useRef } from "react";
-import { hasStore } from "../net/platform.js";
 import { applyCaptures, capturedIn, untickedCells, markTicketed } from "../game/battlepass.js";
-import { getPass, updatePass } from "../game/battlepass-store.js";
-import { getCollection } from "../skins/store.js";
-import { WALLET_SERVER, earnPassTicket } from "../net/wallet.js";
-import { BATTLEPASS_ENTITLEMENT } from "../iap/catalog.js";
-
-/**
- * バトルパスを持っているか。battlepass-access.js の useBattlePassUnlocked と同じ判定。
- * 店の無い環境(Web)は今まで通り解放。1周目を受け取り済み(claimed)なら以後も解放
- */
-function passOwned() {
-  return (
-    !WALLET_SERVER ||
-    !hasStore() ||
-    getPass().claimed === true ||
-    (getCollection().entitlements || []).includes(BATTLEPASS_ENTITLEMENT)
-  );
-}
+import { getActivePassId, setActivePassId, updatePass } from "../game/battlepass-store.js";
+import { earnPassTicket } from "../net/wallet.js";
+import { passTicketId } from "../game/content-seasons.js";
+import { passUnlockedFor, progressablePassSeason } from "./battlepass-access.js";
 
 /** 新しくクリアしたマスのチケットを財布へ送り、印を付ける */
-function awardTickets(state) {
+function awardTickets(state, seasonId) {
   const ids = untickedCells(state);
   if (!ids.length) return;
   for (const cellId of ids)
-    earnPassTicket(`bp:pass:${state.cycle}:${cellId}`).catch(() => {});
-  updatePass((s) => markTicketed(s, ids));
+    earnPassTicket(passTicketId(seasonId, state.cycle, cellId)).catch(() => {});
+  updatePass((s) => markTicketed(s, ids), seasonId);
 }
 
 export function useBattlePass(state, viewer, disabled, online = false) {
@@ -47,9 +34,12 @@ export function useBattlePass(state, viewer, disabled, online = false) {
     const taken = capturedIn(prev, state, viewer);
     if (!taken) return;
     seen.current = state.seq;
-    // 買っていない人は進めない(購入で解放)
-    if (!passOwned()) return;
-    const next = updatePass((s) => applyCaptures(s, taken, { online }));
-    awardTickets(next);
+    // 進めるパスを1つ選ぶ。買っていない人は進めない(購入で解放)。
+    // 選んだパスを持っていなければ、持っているパスのいちばん新しいものへ(ショップで買って盤を開かずに対局したとき)
+    const seasonId = progressablePassSeason(getActivePassId());
+    if (!passUnlockedFor(seasonId)) return;
+    if (seasonId !== getActivePassId()) setActivePassId(seasonId);
+    const next = updatePass((s) => applyCaptures(s, taken, { online }), seasonId);
+    awardTickets(next, seasonId);
   }, [state, viewer, disabled, online]);
 }

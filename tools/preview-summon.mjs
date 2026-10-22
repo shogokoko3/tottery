@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { createHash } from "node:crypto";
 const out = process.argv[2] || "/tmp/tottery-summon-preview";
 fs.mkdirSync(out, { recursive: true });
+fs.copyFileSync("tools/wonderland-preview.html", `${out}/wonderland.html`);
 fs.mkdirSync(`${out}/skins/summon`, { recursive: true });
 fs.cpSync("assets/skins/summon", `${out}/skins/summon`, { recursive: true });
 const r = await build({
@@ -79,7 +80,7 @@ fs.writeFileSync(
     `src="flow.js?v=${flowVersion}"`,
   ),
 );
-for (const dir of ["cards", "foils"])
+for (const dir of ["cards", "foils", "alice-concepts-v1", "alice-board-anime-v1", "alice-foils-v1"])
   fs.cpSync(`assets/skins/${dir}`, `${out}/skins/${dir}`, { recursive: true });
 fs.writeFileSync(
   `${out}/index.html`,

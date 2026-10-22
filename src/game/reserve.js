@@ -32,7 +32,7 @@ export function seededShuffle(list, seed) {
 export function discardCards(state, cards) {
   if (!recyclesReserve(state) || !cards.length) return state;
   const pool = new Map((state.discardPile || []).map((c) => [c.id, c]));
-  for (const c of cards)
+  for (const c of cards.filter(c=>!c.tea))
     pool.set(c.id, { id: c.id, rank: c.originalRank || c.rank, suit: c.suit });
   return { ...state, discardPile: [...pool.values()] };
 }

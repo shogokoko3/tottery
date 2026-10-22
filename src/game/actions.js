@@ -9,6 +9,8 @@ import { normalizeRanks } from "./custom-rules.js";
  * 乱数の結果はここで確定させ、reducer は決定的に動かす。
  */
 export function enrichAction(action, state) {
+  if (state.ruleVersion >= 19 && action.seed == null && (action.type === "ALICE_ACTION" || action.type === "MOVE_PIECE" || action.type === "CONFIRM_SHUFFLE"))
+    action = {...action,seed:Math.floor(Math.random()*4294967296)};
   switch (action.type) {
     case "START_SETUP":
       return {

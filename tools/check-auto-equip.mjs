@@ -30,10 +30,10 @@ const st = (owned, equipped = {}) => ({
 });
 
 console.log("2種類以上のキャラがある段");
-// 台帳から数える。いまは 10(竜騎士・天馬騎士)と J・Q・K(天使・悪魔)
+// アリスのシリーズ追加で、全ての数字に複数のキャラがある。
 const ranks = [...new Set(ALL_SKINS.map((s) => s.rank))];
-is("台帳から数えた段", ranks.filter(rankHasChoice).sort(), ["10", "J", "K", "Q"]);
-is("2〜9 と A は1キャラだけ", ["2", "5", "9", "A"].some(rankHasChoice), false);
+is("台帳から数えた段", ranks.filter(rankHasChoice).sort(), ["10", "2", "3", "4", "5", "6", "7", "8", "9", "A", "J", "K", "Q"]);
+is("2〜9 と A も複数キャラ", ["2", "5", "9", "A"].every(rankHasChoice), true);
 
 console.log("\n空いている段");
 is("持っていれば着せる", autoEquip(st(["zombie-male"])).equipped["2"], "zombie-male");
@@ -51,9 +51,9 @@ is("持っていない段は空のまま", "K" in autoEquip(st(["zombie-male"]))
 
 console.log("\nすでに装備している段");
 is(
-  "1キャラの段: 同じキャラのフォイルが来たら差し替える",
+  "6: 複数キャラの段では同じキャラのフォイルも勝手に差し替えない",
   autoEquip(st(["elf-male", "elf-male:foil"], { 6: "elf-male" })).equipped["6"],
-  "elf-male:foil",
+  "elf-male",
 );
 is(
   "J: 天使を着ているところへ悪魔を引いても触らない",
@@ -159,7 +159,8 @@ console.log("\n着せた札の控え");
   const again = applyPull(seen, pulled, { free: true });
   is("二度目は着せ替えないので控えは空", again.pending?.equipped ?? [], []);
 
-  const skins = fs.readFileSync(new URL("../src/ui/skins.jsx", import.meta.url), "utf8");
+  const skins = ["../src/ui/skins.jsx", "../src/ui/summon-results.jsx"]
+    .map(file => fs.readFileSync(new URL(file, import.meta.url), "utf8")).join("\n");
   // 印を出すのは**「新たな出会い」の結果の並び**(2026-09-28 本人の指示)。
   // めくっている最中には出さない
   is("結果の並びに「装備しました」を出す", /skins-result-equipped"/.test(skins), true);

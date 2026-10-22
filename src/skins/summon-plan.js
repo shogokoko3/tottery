@@ -21,6 +21,10 @@ export const SUMMON_TIMING = Object.freeze({
 export const SUMMON_HOLD_AT = SUMMON_TIMING.ascent + SUMMON_TIMING.gate;
 
 export const SUMMON_WORLDS = Object.freeze({
+  "first-victory": {
+    name: "初勝利の祝福",
+    sky: "#172437", stone: "#c8bd9d", accent: "#f6d38a", fog: "#807052", crest: "♛",
+  },
   earth: {
     name: "忘却の墓廟",
     sky: "#101b24",
@@ -77,10 +81,38 @@ export const SUMMON_WORLDS = Object.freeze({
     fog: "#351e31",
     crest: "♜",
   },
+  "alice-caucus": {
+    name: "コーカス・レースの門", series: "alice",
+    sky: "#152b23", stone: "#63533b", accent: "#cfe4a0", fog: "#26362b", crest: "◉",
+  },
+  "alice-quadrille": {
+    name: "カドリールの門", series: "alice",
+    sky: "#10333e", stone: "#b6bcab", accent: "#9ae9e0", fog: "#234b50", crest: "❧",
+  },
+  "alice-maze": {
+    name: "迷いの森の門", series: "alice",
+    sky: "#111f2a", stone: "#35463e", accent: "#aacded", fog: "#1b3538", crest: "⌛",
+  },
+  "alice-tea": {
+    name: "終わらないお茶会の門", series: "alice",
+    sky: "#302331", stone: "#c9aa86", accent: "#ffd1ac", fog: "#473545", crest: "♧",
+  },
+  "alice-illusion": {
+    name: "幻影の門", series: "alice",
+    sky: "#18152e", stone: "#6c6381", accent: "#c8afff", fog: "#352744", crest: "☾",
+  },
+  "alice-croquet": {
+    name: "クロッケー大会の門", series: "alice",
+    sky: "#231921", stone: "#754b41", accent: "#f6b8ad", fog: "#452632", crest: "♥",
+  },
 });
 
 export function summonWorldForSkin(skin) {
   if (!skin) return "earth";
+  if (skin.series === "alice") {
+    const effect = skin.fieldEffect?.type;
+    return SUMMON_WORLDS[effect]?.series === "alice" ? effect : "alice-maze";
+  }
   if (skin.family === "demon" || skin.id.startsWith("demon-")) return "hell";
   if (skin.family === "angel" || skin.id.startsWith("angel-")) return "heaven";
   if (["2", "3"].includes(skin.rank)) return "earth";

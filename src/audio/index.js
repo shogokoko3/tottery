@@ -8,7 +8,7 @@
 import { useEffect, useRef } from "react";
 import { TUTORIAL_VOLUME, isEndgame, trackForScene } from "./tracks.js";
 import { CAPTURE_DUCK_MS, warnLevel } from "./sounds.js";
-import { duckMusic, playSound, playTrack, setVolumeScale } from "./player.js";
+import { duckMusic, playSound, playTrack, playResultTrack, setVolumeScale } from "./player.js";
 
 export { MUSIC_CREDIT, SE_CREDIT } from "./tracks.js";
 
@@ -48,7 +48,7 @@ export function useScreenBgm(screen) {
  * CPU戦なら 0。1台の端末で交互に指す対戦は、どちらも自分なので null を渡す
  * (この場合は誰かが勝ったということで、いつも勝利のジングルを鳴らす)。
  */
-export function useGameBgm({ state, clocks, self, tutorial }) {
+export function useGameBgm({ state, clocks, self, tutorial, clocksHidden = false }) {
   const phase = state ? state.phase : null;
 
   // 終盤に入ったら戻らない。持ち時間は残り30秒以下の手番開始時に10秒足されるので、
@@ -56,7 +56,7 @@ export function useGameBgm({ state, clocks, self, tutorial }) {
   const late = (0, useRef)(false);
   if (phase === "intro" || phase === "dice" || phase === "mulligan")
     late.current = false;
-  if (phase === "play" && !late.current && isEndgame(state, clocks))
+  if (phase === "play" && !late.current && isEndgame({ ...state, clocksHidden }, clocks))
     late.current = true;
 
   const finished = phase === "gameover";
@@ -73,7 +73,9 @@ export function useGameBgm({ state, clocks, self, tutorial }) {
     phase,
     endgame: late.current,
     result,
+    tutorial,
   });
+  useCue(phase === "mulligan" ? "deal" : phase === "play" ? "start" : null);
   const scale = tutorial ? TUTORIAL_VOLUME : 1;
 
   (0, useEffect)(() => {
@@ -81,8 +83,12 @@ export function useGameBgm({ state, clocks, self, tutorial }) {
   }, [scale]);
 
   (0, useEffect)(() => {
-    playTrack(id);
-  }, [id]);
+    if (!finished) { playTrack(id, {restart: phase === "play"}); return; }
+    let cancel;
+    // StrictMode setup/cleanup must not play the same result twice.
+    const timer = setTimeout(() => { cancel = playResultTrack(result); }, 0);
+    return () => { clearTimeout(timer); cancel?.(); };
+  }, [id, finished, result]);
 }
 
 /**
@@ -105,6 +111,7 @@ export function useGameSounds({ state, self, warnMs, captureHandled = false }) {
     ? Object.keys((state.setupPlacements && state.setupPlacements[side]) || {})
         .length
     : 0;
+  const king = state?.setupPickKings?.[side] || null;
   const moves = state && state.lastMove ? state.lastMove.seq || 0 : 0;
   const dead = state
     ? Object.values(state.pieces).filter((p) => !p.alive).length
@@ -113,9 +120,10 @@ export function useGameSounds({ state, self, warnMs, captureHandled = false }) {
   const seen = (0, useRef)(null);
   (0, useEffect)(() => {
     const before = seen.current;
-    seen.current = { placed, moves, dead };
+    seen.current = { placed, moves, dead, king, side };
     // 対局に入った最初の描画では鳴らさない
     if (!before) return;
+    if (king && king !== before.king && side === before.side && state.phase === "setup") playSound("king_select");
     if (dead > before.dead) {
       if (captureHandled) return;
       // 効果音とぶつからないよう、BGM を一瞬下げる
@@ -124,7 +132,7 @@ export function useGameSounds({ state, self, warnMs, captureHandled = false }) {
       return;
     }
     if (placed > before.placed || moves > before.moves) playSound("place");
-  }, [placed, moves, dead, captureHandled]);
+  }, [placed, moves, dead, king, side, captureHandled]);
 
   // 時計が動いていない場面(段の切り替わり・チュートリアル)では null になる。
   // そのあいだは触らない。0 として扱うと、次に始まった段が
@@ -134,7 +142,17 @@ export function useGameSounds({ state, self, warnMs, captureHandled = false }) {
   const warned = (0, useRef)(0);
   (0, useEffect)(() => {
     if (level == null) return;
-    if (level > warned.current) playSound("tick");
+    if (level > warned.current) playSound(level === 2 ? "time10" : "tick");
     warned.current = level;
   }, [level]);
+}
+
+/** Play only when this mounted presentation becomes visible; ignore redraws. */
+export function useCue(id, active = true, identity = id) {
+  (0, useEffect)(() => {
+    if (!active || !id) return;
+    let stop;
+    const timer = setTimeout(() => { stop = playSound(id); }, 0);
+    return () => { clearTimeout(timer); stop?.(); };
+  }, [id, !!active, identity]);
 }

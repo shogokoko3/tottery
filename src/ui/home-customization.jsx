@@ -1,10 +1,12 @@
-import { useRef, useState } from "react";
+import { playSound, useCue } from "../audio/index.js";
+import { Fragment, useRef, useState } from "react";
 import { ArrowLeft, Check, Close, Crown, Lock, Sparkle } from "../icons.jsx";
 import { SkinModal } from "./skin-modal.jsx";
 import { useCollection, updateCollection } from "../skins/store.js";
 import { byId } from "../skins/catalog.js";
 import {
   HOME_THEMES,
+  homeThemeAssets,
   DEFAULT_HOME_THEME,
   homeThemeOf,
   setHomeTheme,
@@ -46,7 +48,7 @@ function portraitView(theme, id) {
   const character = HOME_PORTRAITS[theme.id]?.includes(id) ? skin : null;
   return {
     name: character?.name || theme.name,
-    image: asset(character ? HOME_SCENES[id] : `${theme.id}-king.webp`),
+    image: character ? asset(HOME_SCENES[id]) : homeThemeAssets(theme).scene,
     position: "50% 50%",
   };
 }
@@ -57,7 +59,8 @@ export function homeThemeStyle(theme) {
     ? {
         "--home-accent": theme.accent,
         "--home-surface": theme.panel,
-        "--home-decoration": `url("${asset(`${theme.id}-home-decor.webp`)}")`,
+        ...(theme.secondary ? { "--home-frame": theme.secondary } : {}),
+        "--home-decoration": `url("${homeThemeAssets(theme).decoration}")`,
       }
     : undefined;
 }
@@ -73,7 +76,7 @@ export function HomeFrameCorners({ theme, small = false }) {
         <img
           key={corner}
           className={`home-frame-corner is-${corner}`}
-          src={asset(`frames/${theme.id}-corner.svg`)}
+          src={homeThemeAssets(theme).corner}
           alt=""
           draggable="false"
         />
@@ -91,20 +94,20 @@ export function HomeRealmDecoration({ theme }) {
         <HomeFrameCorners theme={theme} />
         <img
           className="home-frame-crest"
-          src={asset(`frames/${theme.id}-crest.svg`)}
+          src={homeThemeAssets(theme).crest}
           alt=""
         />
         {["left", "right"].map((side) => (
           <img
             key={side}
             className={`home-frame-rail is-${side}`}
-            src={asset(`frames/${theme.id}-rail.svg`)}
+            src={homeThemeAssets(theme).rail}
             alt=""
           />
         ))}
         <img
           className="home-frame-crest is-bottom"
-          src={asset(`frames/${theme.id}-crest.svg`)}
+          src={homeThemeAssets(theme).crest}
           alt=""
         />
       </div>
@@ -134,7 +137,7 @@ export function HomeRealmPortrait({ theme }) {
       <HomeFrameCorners theme={theme} />
       <img
         className="home-frame-crest"
-        src={asset(`frames/${theme.id}-crest.svg`)}
+        src={homeThemeAssets(theme).crest}
         alt=""
         aria-hidden="true"
       />
@@ -191,6 +194,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
         const next = setHomeTheme(state, choice.id);
         return characters ? setHomePortrait(next, choice.id, portraitId) : next;
       });
+      playSound("equip");
       (onApplied || onClose)();
     } catch (err) {
       setError(err.message || "着せ替えを保存できませんでした。");
@@ -220,29 +224,32 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
       </header>
       <div className="home-customize-scroll" ref={scroller}>
         <p className="home-customize-guide">
-          各エリアに対応するフォイルを獲得すると解放されます。
+          対応するフォイルで解放。キャラ入り背景と装飾をセットで着せ替えます。
         </p>
         <div
-          className="home-customize-preview"
+          className={`home-customize-set-preview${theme ? " has-theme" : ""}`}
           style={homeThemeStyle(theme)}
           data-home-area={choice.id}
         >
-          {theme ? (
-            <img
-              src={portrait.image}
-              alt={`${theme.label}のホーム装飾の見本・${portrait.name}`}
-              style={{ objectPosition: portrait.position }}
-            />
-          ) : (
-            <div className="home-original-art">
-              <Crown size={48} />
-              <span>トッタリー</span>
-            </div>
-          )}
-          <HomeFrameCorners theme={theme} />
-          <span className="home-preview-label">
-            {choice.label} · {characters ? portrait.name : choice.title}
-          </span>
+          <HomeRealmDecoration theme={theme} />
+          <div className="home-customize-preview">
+            {theme ? (
+              <img
+                src={portrait.image}
+                alt={`${theme.label}のホーム装飾の見本・${portrait.name}`}
+                style={{ objectPosition: portrait.position }}
+              />
+            ) : (
+              <div className="home-original-art">
+                <Crown size={48} />
+                <span>トッタリー</span>
+              </div>
+            )}
+            <HomeFrameCorners theme={theme} />
+            <span className="home-preview-label">
+              {choice.label} · {characters ? portrait.name : choice.title}
+            </span>
+          </div>
         </div>
         <div
           className={`home-customize-condition${available ? " is-unlocked" : ""}`}
@@ -302,67 +309,75 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
           role="group"
           aria-label="ホーム装飾を選ぶ"
         >
-          {choices.map((item) => {
+          {choices.map((item, index) => {
             const open = unlocked.includes(item.id);
             const active = item.id === selected;
             return (
-              <button
-                key={item.id}
-                className={`home-theme-option${active ? " is-selected" : ""}${open ? "" : " is-locked"}`}
-                aria-pressed={active}
-                aria-label={`${item.label}のホーム ${open ? (item.id === current ? "使用中" : "解放済み") : `未解放・${item.condition}`}`}
-                onClick={() => {
-                  setSelected(item.id);
-                  setError("");
-                  if (scroller.current) scroller.current.scrollTop = 0;
-                }}
-                disabled={saving}
-              >
-                <span className="home-theme-thumbnail">
-                  {item.id === DEFAULT_HOME_THEME ? (
-                    <span className="home-original-thumbnail">
-                      <Crown size={27} />
-                    </span>
-                  ) : (
-                    <img
-                      src={
-                        portraitView(
-                          item,
-                          portraits[item.id] ||
-                            homePortraitOf(collection, item.id),
-                        ).image
-                      }
-                      alt=""
-                      loading="lazy"
-                      style={{
-                        objectPosition: portraitView(
-                          item,
-                          portraits[item.id] ||
-                            homePortraitOf(collection, item.id),
-                        ).position,
-                      }}
-                    />
-                  )}
-                  {!open && (
-                    <span className="home-theme-lock">
-                      <Lock size={20} />
-                    </span>
-                  )}
-                  {item.id === current && (
-                    <span className="home-theme-current">
-                      <Check size={12} />
-                      使用中
-                    </span>
-                  )}
-                </span>
-                <span className="home-theme-name">
-                  {item.label}
-                  <small>{open ? item.title : "フォイルで解放"}</small>
-                </span>
-                {active && (
-                  <Check className="home-theme-selected-mark" size={16} />
+              <Fragment key={item.id}>
+                {(index === 0 || item.series !== choices[index - 1].series) && (
+                  <h3 className="home-theme-series">
+                    {item.series === "alice"
+                      ? "ワンダーランド"
+                      : "初期シリーズ・標準"}
+                  </h3>
                 )}
-              </button>
+                <button
+                  className={`home-theme-option${active ? " is-selected" : ""}${open ? "" : " is-locked"}`}
+                  aria-pressed={active}
+                  aria-label={`${item.label}のホーム ${open ? (item.id === current ? "使用中" : "解放済み") : `未解放・${item.condition}`}`}
+                  onClick={() => {
+                    setSelected(item.id);
+                    setError("");
+                    if (scroller.current) scroller.current.scrollTop = 0;
+                  }}
+                  disabled={saving}
+                >
+                  <span className="home-theme-thumbnail">
+                    {item.id === DEFAULT_HOME_THEME ? (
+                      <span className="home-original-thumbnail">
+                        <Crown size={27} />
+                      </span>
+                    ) : (
+                      <img
+                        src={
+                          portraitView(
+                            item,
+                            portraits[item.id] ||
+                              homePortraitOf(collection, item.id),
+                          ).image
+                        }
+                        alt=""
+                        loading="lazy"
+                        style={{
+                          objectPosition: portraitView(
+                            item,
+                            portraits[item.id] ||
+                              homePortraitOf(collection, item.id),
+                          ).position,
+                        }}
+                      />
+                    )}
+                    {!open && (
+                      <span className="home-theme-lock">
+                        <Lock size={20} />
+                      </span>
+                    )}
+                    {item.id === current && (
+                      <span className="home-theme-current">
+                        <Check size={12} />
+                        使用中
+                      </span>
+                    )}
+                  </span>
+                  <span className="home-theme-name">
+                    {item.label}
+                    <small>{open ? item.title : "フォイルで解放"}</small>
+                  </span>
+                  {active && (
+                    <Check className="home-theme-selected-mark" size={16} />
+                  )}
+                </button>
+              </Fragment>
             );
           })}
         </div>
@@ -391,7 +406,10 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
   );
 }
 
-export function HomeCustomizationButton({ settings = false, onApplied = null }) {
+export function HomeCustomizationButton({
+  settings = false,
+  onApplied = null,
+}) {
   const collection = useCollection();
   const [open, setOpen] = useState(false);
   const theme = findHomeTheme(homeThemeOf(collection));

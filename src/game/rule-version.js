@@ -30,7 +30,7 @@
 //     両方そろった時点で先手が決まる(NEXT_DICE_STEP は要らない)。引き直しは両者が同時に選び(1分で自動確定)、
 //     予備札は GOTO_MULLIGAN で決定的に並べ替え、先手は前から・後手は後ろから引く(適用順に依らない)。
 //     通信の手の形式は変わらない(ROLL_DICE_SINGLE / CONFIRM_MULLIGAN に player が付くだけ)。
-export const GAME_RULE_VERSION = 18;
+export const GAME_RULE_VERSION = 19;
 export const SIMULTANEOUS_PREP_RULE_VERSION = 18;
 
 /** サイコロと引き直しを同時に進める版か */
@@ -73,3 +73,6 @@ export function hasCustomRules(version) {
 export function hasBonusAckRules(version) {
   return hasAdjudicationRules(version) && version >= BONUS_ACK_RULE_VERSION;
 }
+
+// 19: シーズン2の王の力・盤面効果。旧対局には適用しない。
+export const ALICE_RULE_VERSION = 19;

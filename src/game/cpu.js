@@ -1,3 +1,5 @@
+import {aliceBoard,aliceSkin,hasAliceRules} from "./alice-rules.js";
+import {aliceKingPickOk,alicePendingAction,aliceRepairSetup,finishAliceMove} from "./cpu-alice.js";
 import {
   armySlots,
   territoryRows,
@@ -30,6 +32,7 @@ const RANK_VALUE = {
   J: 6,
   Q: 6,
   K: 7,
+  tea: 4,
 };
 
 /** 布陣済みのカードから王を選ぶ。Kがあれば必ずK */
@@ -105,7 +108,8 @@ export function bestMove(state, player) {
 
   const candidates = [];
   for (const piece of mine) {
-    if (piece.rank === "A") continue;
+    if (piece.rank === "A" && !piece.movementRank) continue;
+    if (state.aliceCommitted && piece.id!==state.aliceCommitted) continue;
     if (state.extraMoveFor && piece.id !== state.extraMoveFor) continue;
     // 氷のエリアで凍った駒は動かせない
     if (isFrozen(state, piece)) continue;
@@ -119,6 +123,8 @@ export function bestMove(state, player) {
     )) {
       let score = Math.random() * 0.8;
       const target = state.board[move.row][move.col];
+      // バリア(グリフォン)を張った相手の駒は取りに行けない
+      if (target?.barrier && target.owner !== player) continue;
       if (target && target.owner !== player) {
         score += 12;
         if (move.captures) score += (move.captures.length - 1) * 10;
@@ -189,6 +195,9 @@ export function bestShuffle(state, player) {
       p.owner === player &&
       p.rank === "A" &&
       !isFrozen(state, p) &&
+      // アリスのAは入れ替えの代わりに数字の逆転を使う
+      !(hasAliceRules(state) && aliceSkin(state, player, "A")) &&
+      (!state.aliceCommitted || state.aliceCommitted===p.id) && !p.movementRank &&
       (!state.extraMoveFor || state.extraMoveFor === p.id),
   );
   if (!ace) return null;
@@ -242,6 +251,7 @@ export function bestShuffle(state, player) {
 export function cpuAction(state, player) {
   if (state.phase === "gameover" || state.captureReveal) return null;
 
+  if(hasAliceRules(state) && (state.aliceRecruit?.length || state.aliceRevive)) return alicePendingAction(state, player);
   if (state.pendingKingChoice) {
     const pending = state.pendingKingChoice;
     if (pending.owner !== player) return null;
@@ -284,9 +294,18 @@ export function cpuAction(state, player) {
         ? { type: "SETUP_AUTO_ARRANGE", player }
         : { type: "SETUP_GOTO_KING_STEP", player };
     }
-    return state.setupPickKings[player]
-      ? { type: "SETUP_CONFIRM", player }
-      : { type: "SETUP_PICK_KING", player, cardId: pickKing(state, player) };
+    if (state.setupPickKings[player]) return { type: "SETUP_CONFIRM", player };
+    const kingId = pickKing(state, player);
+    if (hasAliceRules(state)) {
+      // ハートの王(J・Q・K)ではAを採用できない。選べる王が無ければ布陣を作り直す
+      const placement = state.setupPlacements[player];
+      const card = state.players[player].hand.find((c) => c.id === kingId);
+      if (!card || !aliceKingPickOk(state, player, card, placement)) {
+        const fixed = aliceRepairSetup(state, player, placement, armySlots(state));
+        if (fixed) return { type: "SETUP_CONFIRM", player, ...fixed };
+      }
+    }
+    return { type: "SETUP_PICK_KING", player, cardId: kingId };
   }
 
   if (state.phase === "play") {
@@ -310,6 +329,8 @@ export function cpuAction(state, player) {
       return { type: "SKIP_RESERVE_PLACEMENT" };
     }
 
+    if(hasAliceRules(state) && !state.aliceCommitted){const hidden=Object.values(state.pieces).filter(p=>p.alive&&p.owner===player&&p.ownerHidden&&!isFrozen(state,p));if(hidden.length)return {type:"ALICE_ACTION",kind:"unmask",player,pickIds:[hidden[Math.floor(Math.random()*hidden.length)].id]};}
+    if(hasAliceRules(state)) state={...state,board:aliceBoard(state,player)};
     const move = bestMove(state, player);
     const area = bestAreaUse(state, player, move);
     if (area) return area;
@@ -317,13 +338,13 @@ export function cpuAction(state, player) {
     if (swap && swap.promising && (!move || move.score < 12))
       return { type: "__CPU_SHUFFLE", ...swap };
     if (move) {
-      return {
+      return finishAliceMove(state, player, {
         type: "MOVE_PIECE",
         pieceId: move.pieceId,
         row: move.row,
         col: move.col,
         captures: move.captures,
-      };
+      });
     }
     if (swap) return { type: "__CPU_SHUFFLE", ...swap };
     if (state.extraMoveFor || !hasAdjudicationRules(state.ruleVersion))

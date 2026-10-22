@@ -32,7 +32,7 @@
  *   特典なので、抽選で手に入る札とは別に保管する
  * - 生成は通常版からキャラを選ぶ。完成時に独立した1%でフォイルになる
  */
-import { ODDS, POOL, byId, rate } from "./catalog.js";
+import { ODDS, poolForSeries, byId, rate } from "./catalog.js";
 
 /** 分解でもらえる量 */
 export const DUST = Object.freeze({ R: 10, SR: 20, SSR: 375 });
@@ -201,11 +201,12 @@ export function sparesNeeded(target, source) {
  * 手で書いておくと、抽選の顔ぶれを変えたときに片方だけ古いまま残る。
  * (実際に竜騎士を SSR に移したとき、表の1か所が取り残された)
  */
-export function forgeSummary() {
+export function forgeSummary(series = "heroes") {
+  const pool = poolForSeries(series);
   const ranks = ["R", "SR", "SSR"];
   const perPull = (r) => (ODDS[r] / 100) * DUST[r];
   const rows = ranks.map((rarity) => {
-    const sample = POOL.find((s) => s.rarity === rarity);
+    const sample = pool.find((s) => s.rarity === rarity);
     return {
       rarity,
       dust: DUST[rarity],

@@ -1,10 +1,18 @@
 /** ホーム装飾の解放条件と保存。通貨・スキン装備・獲得待ちを変えない。 */
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import { ALICE_SKINS } from "../src/skins/alice.js";
+import { WONDERLAND_HOME_THEMES } from "../src/skins/home-wonderland-themes.js";
+import {
+  buildProfileCard,
+  unlockedBackgrounds,
+} from "../src/game/profile-card.js";
 import { ALL_FOIL_SKINS, SKINS, foilId } from "../src/skins/catalog.js";
 import { grantSkin, normalize, shatter } from "../src/skins/collection.js";
 import {
   DEFAULT_HOME_THEME,
   HOME_THEMES,
+  homeThemeAssets,
   homePortraitOf,
   homePortraitsOf,
   homeThemeOf,
@@ -15,7 +23,16 @@ import {
 } from "../src/skins/home-themes.js";
 
 const defaults = ["default"];
-const ids = ["earth", "sea", "forest", "ice", "sky", "heaven", "hell"];
+const ids = [
+  "earth",
+  "sea",
+  "forest",
+  "ice",
+  "sky",
+  "heaven",
+  "hell",
+  ...WONDERLAND_HOME_THEMES.map((theme) => theme.id),
+];
 assert.equal(DEFAULT_HOME_THEME, "default");
 assert.deepEqual(
   HOME_THEMES.map((theme) => theme.id),
@@ -43,6 +60,7 @@ const expected = {
   "demon-j": "hell",
   "demon-q": "hell",
   "demon-k": "hell",
+  ...Object.fromEntries(ALICE_SKINS.map((skin) => [skin.id, skin.id])),
 };
 assert.deepEqual(
   ALL_FOIL_SKINS.map((skin) => skin.baseId).sort(),
@@ -61,7 +79,7 @@ for (const [base, theme] of Object.entries(expected)) {
     assert.throws(() => setHomeTheme(acquired, other), /フォイル/, other);
 }
 
-// 通常版・A・未知の「:foil」名では解放しない。装備の有無は条件にしない。
+// 通常版・初期シリーズのA・未知の「:foil」名では解放しない。
 const normals = normalize({
   owned: Object.fromEntries(SKINS.map((skin) => [skin.id, 100])),
 });
@@ -97,6 +115,68 @@ const all = normalize({
   owned: Object.fromEntries(ALL_FOIL_SKINS.map((skin) => [skin.id, 1])),
 });
 assert.deepEqual(unlockedHomeThemes(all), ["default", ...ids]);
+
+// ワンダーランドは同じ盤面を持つキャラでも個別解放。Aと10も専用セットを持つ。
+assert.equal(WONDERLAND_HOME_THEMES.length, 13);
+assert.deepEqual(
+  WONDERLAND_HOME_THEMES.map((theme) => theme.rank),
+  ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"],
+);
+const manifest = JSON.parse(
+  fs.readFileSync(
+    new URL(
+      "../assets/skins/home-wonderland-characters-v1/sets.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
+for (const theme of WONDERLAND_HOME_THEMES) {
+  const single = grantSkin(normalize(null), theme.unlockFoil);
+  const chosen = setHomeTheme(single, theme.id);
+  assert.deepEqual(
+    chosen,
+    { ...single, homeTheme: theme.id },
+    "背景と装飾を1つの選択として保存し、他の状態は変えない",
+  );
+  assert.equal(homeThemeOf(normalize(chosen)), theme.id);
+  assert.deepEqual(unlockedBackgrounds(single), ["standard", theme.id]);
+  assert.equal(
+    buildProfileCard({ card: { bg: theme.id } }, single).bg,
+    theme.id,
+  );
+  assert.equal(
+    buildProfileCard({ card: { bg: theme.id } }, normalize(null)).bg,
+    "standard",
+  );
+  const design = manifest.sets.find((set) => set.id === theme.id);
+  const root = "skins/home-wonderland-characters-v1/";
+  assert.deepEqual(
+    homeThemeAssets(theme),
+    {
+      scene: root + design.scene,
+      decoration: root + design.decoration,
+      ...Object.fromEntries(
+        Object.entries(design.frames).map(([key, file]) => [key, root + file]),
+      ),
+    },
+    "承認済みのキャラ入り背景と装飾の組み合わせを保つ",
+  );
+  for (const file of Object.values(homeThemeAssets(theme)))
+    assert.ok(
+      fs.statSync(new URL(`../assets/${file}`, import.meta.url)).size > 0,
+      file,
+    );
+  for (const count of [0, -1, 1.5, "1", true, null, NaN, Infinity, 2 ** 53]) {
+    const raw = { owned: { [theme.unlockFoil]: count }, homeTheme: theme.id };
+    assert.deepEqual(unlockedHomeThemes(raw), defaults);
+    assert.equal(normalize(raw).homeTheme, "default");
+  }
+  const extra = grantSkin(chosen, theme.unlockFoil);
+  const after = shatter(extra, theme.unlockFoil);
+  assert.equal(homeThemeOf(after), theme.id);
+  assert.throws(() => shatter(after, theme.unlockFoil), /最後の1枚/);
+}
 
 // 不正な所持数や選択は外から渡されても表示・保存に通さない。
 for (const count of [0, -1, 1.5, "1", true, null, NaN, Infinity, 2 ** 53]) {

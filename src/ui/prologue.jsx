@@ -241,10 +241,11 @@ export function Prologue({ kind = "intro", onDone }) {
           onTake={card.touch ? setTaken : null}
         />
       )}
-      {/* 絵の下の一言。二列の札では、一言の無い2枚目でも同じ高さを取る(絵が上下に跳ねない) */}
+      {/* 絵の下の一言。二列の札では、一言の無い2枚目でも同じ高さを取る(絵が上下に跳ねない)。
+          数え方は算用数字(「1枚」「4枚」。2026-10-06 本人の指示)。見出しの「その一枚が、」は決めた言葉なので漢数字のまま */}
       {card.art !== "gate" && (
         <p className="prologue-cue" aria-live="polite" key={card.touch ? (taken === null ? "ask" : "miss") : "none"}>
-          {card.touch ? (taken === null ? "一枚、取ってみて。" : "外れ。王は、残りの四枚の中。") : null}
+          {card.touch ? (taken === null ? "1枚、取ってみて。" : "外れ。王は、残りの4枚の中。") : null}
         </p>
       )}
       <div className="prologue-foot">

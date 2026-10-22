@@ -1,5 +1,7 @@
 import { useInsertionEffect, useLayoutEffect, useRef } from "react";
 import { attachFoilMaterial } from "../skins/foil-material.js";
+import aliceMasks from "../skins/alice-foil-masks.js";
+import aliceExtraMasks from "../skins/alice-extra-foil-masks.js";
 import styles from "./foil-artwork.css";
 
 // The app bundles CSS as text. Install this stylesheet once even when a full
@@ -19,6 +21,7 @@ export function FoilArtwork({
   loading,
   animated = true,
   src,
+  maskEntry,
   style,
   ...imageProps
 }) {
@@ -27,6 +30,7 @@ export function FoilArtwork({
   const foil = !!skin?.foil;
   const source = src || skin?.image || skin?.card;
   const baseId = skin?.baseId || skin?.id?.replace(/:foil$/, "");
+  maskEntry = maskEntry || aliceExtraMasks[baseId] || aliceMasks[baseId];
   const { objectFit, objectPosition, ...wrapperStyle } = style || {};
 
   useInsertionEffect(() => {
@@ -38,9 +42,10 @@ export function FoilArtwork({
       canvas: canvas.current,
       image: image.current,
       skinId: baseId,
+      maskEntry,
     });
     return () => player.destroy();
-  }, [foil, animated, source, baseId]);
+  }, [foil, animated, source, baseId, maskEntry]);
 
   const artwork = (
     <img

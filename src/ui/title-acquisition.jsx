@@ -1,3 +1,4 @@
+import { playSound, useCue } from "../audio/index.js";
 import {
   useEffect,
   useLayoutEffect,
@@ -32,6 +33,7 @@ export function useTitleNoticeLimit(count) {
 }
 
 function Award({ notice, count }) {
+  useCue("title", true, notice.id);
   const [leaving, setLeaving] = useState(false);
   useEffect(() => {
     const fade = setTimeout(() => setLeaving(true), 5100);
@@ -54,7 +56,7 @@ function Award({ notice, count }) {
         aria-live="polite"
         aria-atomic="true"
       >
-        称号「{notice.name}」を手に入れた。設定で、装備できる。
+        称号「{notice.name}」を手に入れた。{notice.how ? `${notice.how}。` : ""}設定で、装備できる。
       </span>
       <div className="title-award-glow" aria-hidden="true" />
       <div className="title-award-rays" aria-hidden="true" />
@@ -68,6 +70,12 @@ function Award({ notice, count }) {
           <TitleFrame id={notice.titleId} size="showcase" />
           <i className="title-award-sheen" />
         </div>
+        {/* どういう理由で手に入れたか(2026-10-15 本人の指示。簡易でよい) */}
+        {notice.how && (
+          <p className="title-award-how" aria-hidden="true">
+            {notice.how}
+          </p>
+        )}
         <p>設定で、装備できる。</p>
         {count > 1 && (
           <span className="title-award-count">あと{count - 1}件</span>

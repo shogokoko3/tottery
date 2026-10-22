@@ -122,7 +122,8 @@ assert.deepEqual(normalize({ dismantleRarities: "R" }).dismantleRarities, ["R", 
 const css = fs.readFileSync("src/skins/styles.css", "utf8");
 assert.match(css, /\.skins-result-dismantle \{/);
 assert.match(css, /\.skins-auto-dismantle input \{[\s\S]*?width: 20px/, "触れる大きさのチェック");
-const ui = fs.readFileSync("src/ui/skins.jsx", "utf8");
+const ui = ["src/ui/skins.jsx", "src/ui/summon-results.jsx"]
+  .map(file => fs.readFileSync(file, "utf8")).join("\n");
 assert.match(ui, /function ResultDismantle\(/, "結果画面の欄");
 assert.match(ui, /collection\.pending\?\.results && \(\s*<ResultDismantle/, "ガチャの結果にだけ出す(錬成・交換・加工には出さない)");
 assert.match(ui, /dismantleResults\(s, results, s\.dismantleRarities\)\.state/, "崩すのは台帳の更新の中で行う");

@@ -1,4 +1,6 @@
-import { normalizeSummonFreeze, freezeLadder, freezeFoilUpgrade, summonFoilOrder } from "../skins/summon-freeze.js";
+import { SummonResultCard, FoilBadge } from "./summon-results.jsx";
+import { playSound, useCue } from "../audio/index.js";
+import { normalizeSummonFreeze, freezeLadder, freezeFoilUpgrade, summonFoilOrder, summonFoilTotal } from "../skins/summon-freeze.js";
 import { SummonFreeze, useSummonFreeze } from "./summon-freeze.jsx";
 import { GemIcon, GemAmount } from "./gem.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -8,7 +10,9 @@ import {
   ALL_SKINS,
   ALL_FOIL_SKINS,
   FOIL_SKINS,
-  POOL,
+  ALL_POOL as POOL,
+  SERIES,
+  poolForSeries,
   ODDS,
   FOIL_CHANCE,
   byId,
@@ -86,12 +90,40 @@ import {
 import { GemShop } from "./gem-shop.jsx";
 import { CardFace } from "./cards.jsx";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
-import { AREA_BY_RANK, AREA_INFO } from "../game/areas.js";
+import { areaForSkin, AREA_INFO } from "../game/areas.js";
 import { AreaPreview } from "./area-preview.jsx";
 import { AreaAcquisition } from "./area-acquisition.jsx";
 import { areaRewardName, areaRewardsFor } from "../skins/area-rewards.js";
 import { SkinFilm } from "./skin-film.jsx";
-import { ArrowLeft, Ether, Shard } from "../icons.jsx";
+
+// 数字の順(A→K)。ガチャの抽選の並び(ALL_POOL)はレア度ごとなので、一覧に出すときはこれで並べ直す
+const RANK_ORDER = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+const byRank = (a, b) => RANK_ORDER.indexOf(a.rank) - RANK_ORDER.indexOf(b.rank);
+// 試写ボタンの並び。alice.js の videos の枠と同じ名前(2026-10-14 本人の指示で全部の技を試写できるようにした)
+const FILM_SLOTS = ["king", "reverse", "revive", "field", "recruit", "phantom", "capture", "swap", "revolution"];
+function filmLabel(skin, slot) {
+  switch (slot) {
+    case "king":
+      return `${skin.move}（王のとき）`;
+    case "reverse":
+      return `${skin.move}（王以外）`;
+    case "revive":
+      return "帰還";
+    case "field":
+      return skin.fieldEffect?.name || "盤面効果";
+    case "recruit":
+      return "仲間にしたとき";
+    case "phantom":
+      return "幻影が倒されたとき";
+    case "capture":
+      return skin.id === "genie-magician" ? "包囲撃破" : "撃破";
+    case "swap":
+      return "入れ替え";
+    default:
+      return "フォイル効果";
+  }
+}
+import { ArrowLeft, ArrowRight, Cards, Ether, Home, Shard, Sparkle } from "../icons.jsx";
 import { OMEN_TEXT, ladderFor, omenOf, seedOf, foilRevealRoute } from "../skins/reveal.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
@@ -108,6 +140,8 @@ import {
 } from "../skins/foil-shop.js";
 import { addEther } from "../skins/collection.js";
 import { buyEther } from "../net/wallet.js";
+import { isSeriesOpen, latestOpenSeason, seasonOfSeries } from "../game/content-seasons.js";
+import { SeriesSelect } from "./series-select.jsx";
 import { FoilAcquisition } from "./foil-acquisition.jsx";
 import { FoilSeal, FoilUnveiling } from "./foil-unveiling.jsx";
 import { createFoilUnveilingAssets } from "../skins/foil-unveiling-assets.js";
@@ -133,6 +167,13 @@ const foilPct = FOIL_CHANCE * 100;
  * 「フォイル版を手に入れると開く」ことを伝える
  */
 function SkinAreaNote({ skin, owned, equipped }) {
+  if (skin.series === "alice" && skin.rank === "A")
+    return skin.foil ? (
+      <div className="skins-area-note">
+        <b>フォイル効果</b>
+        <p>自分のターンに1回、任意で発動できます。自軍の王とAを除く駒、および相手の王からランダムな1体の数字を逆転します。Aが王でなくても使え、手番は消費しません。</p>
+      </div>
+    ) : <p className="skins-area-note skins-area-note-plain">フォイル版を手に入れると、ランダムに1体の数字を逆転する追加効果が使えます。</p>;
   if (skin.id === "genie-magician:foil")
     return (
       <div className="skins-area-note">
@@ -140,7 +181,8 @@ function SkinAreaNote({ skin, owned, equipped }) {
         <p>Aが王でなくても、毎回の自分のターンに任意で1回発動。自軍のAと王を除く駒からランダムな3体の位置を入れ替えます。相手の王も対象です。発動後も通常の移動ができます。</p>
       </div>
     );
-  const type = AREA_BY_RANK[skin.rank];
+  if (skin.series === "alice" && !skin.fieldEffect) return <p className="skins-area-note">盤面効果は準備中です。</p>;
+  const type = areaForSkin(skin.rank, skin.id);
   if (!type) return null;
   const info = AREA_INFO[type];
   if (!skin.foil)return (
@@ -183,9 +225,6 @@ function visibleFoilOf(collection, foilKnown, skin) {
   return skinVisibleInCollection(collection, candidate) ? candidate : null;
 }
 
-function FoilBadge({ className = "" }) {
-  return <span className={`skins-foil-badge ${className}`}>FOIL</span>;
-}
 
 const isBattlePassLocked = (skin, owned) =>
   skin?.acquisition === "battlepass" && !owned[skin.id];
@@ -315,6 +354,7 @@ function RevealCard({
   const shown = stage >= 0 ? ladder[stage] : null;
   const next = stage >= 0 ? ladder[stage + 1] : null;
   const final = flipped && stage === ladder.length - 1;
+  useCue(ladder[stage] === "SSR" ? "reveal_ssr" : ladder[stage] === "SR" ? "reveal_sr" : "reveal_r", flipped && stage >= 0 && !spinning, `${skin.id}:${stage}`);
   // Complete the final rarity landing before starting the separate foil change.
   useEffect(() => {
     if (!final) return;
@@ -428,7 +468,13 @@ function RevealCard({
             <FoilBadge className="reveal-foil" />
           )}
           {spinning && <span className="reveal-promoting">{skin.foil && !foilUpgrade ? "覚醒" : "昇格"}</span>}
-          {final && !identityHidden && <strong className="reveal-name">{visibleSkin.name}</strong>}
+          {/* 名は「の」と空白のあとで句に切り、句の間で折り返す(10連の結果と同じ。2026-10-06 見直し)。
+              1行で「…」と切っていて、4列の札で「墓守のレヴ…」「黄昏のレヴ…」としか読めなかった */}
+          {final && !identityHidden && (
+            <strong className="reveal-name">
+              <Phrases text={namePhrases(visibleSkin.name)} />
+            </strong>
+          )}
           {final && !identityHidden && !(foilUpgrade && !foilRevealed && !reduce) && result.isNew && (
             <span className="reveal-new">NEW</span>
           )}
@@ -454,7 +500,14 @@ function RevealCard({
  * 束に SSR がいれば伏せた時点で前兆を出す。めくると R→SR→SSR と昇格して見せる。
  * 結果は先に保存してあるので、途中で閉じても失わない。
  */
-function SummonReveal({
+function SummonReveal(props) {
+  const ownedNow = useCollection().owned;
+  return <SummonRevealPresentation {...props} ownedNow={ownedNow} />;
+}
+
+// Drawing/debit stays with the caller. The first-run preview can share the
+// actual Legend Gate presentation with memory-only results and ownership.
+export function SummonRevealPresentation({
   results,
   onFinish,
   reduce,
@@ -462,10 +515,12 @@ function SummonReveal({
   freeze: freezeInput = null,
   // 導入の10連(初回の10連)。案内の文を導入の言葉の調子にする(です・ます調の決まり文句を避ける。2026-10-06 見直し)
   plain = false,
+  ownedNow = {},
+  Modal = SkinModal,
+  gateWorld = null,
 }) {
   const freeze = useMemo(() => normalizeSummonFreeze(freezeInput, results.map(r => r.id)), [freezeInput, results]);
   // 引いた札ごとに、そのキャラの通常とフォイルを何枚持っているか(結果に出す)
-  const ownedNow = useCollection().owned;
   const ownedOf = (id) => {
     const base = baseSkinId(id);
     return {
@@ -568,7 +623,7 @@ function SummonReveal({
     sweep.current = null;
   };
   return (
-    <SkinModal
+    <Modal
       label="スキン召喚"
       onClose={intro ? finishIntro : freeze && !allComplete ? () => {} : onFinish}
       className={`skin-summon-overlay ${intro ? introReady ? "summon-playing" : "summon-awaiting-frame" : ""} ${freeze && !intro ? `freeze-phase-${freezePhase}` : ""}`}
@@ -578,13 +633,13 @@ function SummonReveal({
         <p className="reveal-caption" role="status">
           {allComplete
             ? plain
-              ? "すべての札が、現れた。"
+              ? "すべての札が現れました。"
               : "すべての札が現れました。"
             : all
               ? foilIndexes.length
                 ? "まだ、輝きは終わらない。"
                 : plain
-                  ? "輝きが、札に宿っていく…"
+                  ? "札の輝きが変わっています。"
                   : "札に宿る輝きをお待ちください。"
               : freeze ? "" : OMEN_TEXT[omen]}
         </p>
@@ -621,10 +676,10 @@ function SummonReveal({
             ? ""
             : results.length === 1
               ? plain
-                ? "札を引き寄せて、めくれ。"
+                ? "札をタップすると、めくれます。"
                 : "札を引き寄せて、めくってください。"
               : plain
-                ? "札を引き寄せて、めくれ。指でなぞれば、次々に。"
+                ? "札をタップすると、めくれます。指でなぞって、続けてめくることもできます。"
                 : "札を引き寄せてめくるか、指でなぞって次々にめくれます。"}
         </p>
         <div className="reveal-actions">
@@ -648,21 +703,21 @@ function SummonReveal({
         releaseFreeze();
         setFlipped(results.map(() => true));
       }} />}
-      {intro && <SummonIntro results={results} targetRef={revealRef} onFinish={finishIntro} onReady={readyIntro} />}
+      {intro && <SummonIntro results={results} targetRef={revealRef} onFinish={finishIntro} onReady={readyIntro} gateWorld={gateWorld} />}
       {activeFoil !== undefined && <FoilUnveiling
         key={activeFoil}
         skin={byId(results[activeFoil].id)}
         route={foilRoutes[activeFoil]}
         upgradedFromNormal={freezeFoilUpgrade(freeze, activeFoil, results[activeFoil].id)}
         position={foilIndexes.indexOf(activeFoil) + 1}
-        total={foilIndexes.length}
+        total={summonFoilTotal(results, freeze, activeFoil)}
         fromGrid={results.length > 1}
         sourceRef={revealRef}
         sourceIndex={activeFoil}
         assets={foilAssets.current}
         onComplete={() => unveilAt(activeFoil)}
       />}
-    </SkinModal>
+    </Modal>
   );
 }
 
@@ -711,8 +766,34 @@ function CraftedFoilReveal({ result, reduce, onFinish }) {
  * 錬成。ダブった札を崩してエーテルにし、狙った1枚を作る。
  * 値づけの根拠は src/skins/ether.js に書いてある。
  */
+/** シートの行に出す小さな絵。シリーズごとの看板の右の札。表に無ければバトルパスの A */
+const SERIES_ART = { alice: "alice-Q-queen", heroes: "angel-k" };
+function seriesArt(id) {
+  const base = SERIES_ART[id];
+  const skin = base ? byId(foilId(base)) : byId(SERIES.find((s) => s.id === id)?.battlepassSkin);
+  return skin?.card || skin?.image || null;
+}
+
+function SeriesPicker({ series, onChange, label, disabled = false, allowAll = false, notes = {}, allNote = "" }) {
+  // 札1枚＋押すと縦一覧のシート(src/ui/series-select.jsx。2026-10-15 本人の決め「1」。どこも同じ部品)。
+  // 始まっていないシーズンは出さない(2026-10-15 本人の指示)
+  return (
+    <SeriesSelect
+      items={SERIES.filter((item) => isSeriesOpen(item.id)).map((item) => ({ id: item.id, name: item.name, note: notes[item.id], art: seriesArt(item.id) }))}
+      value={series}
+      onChange={onChange}
+      label={label}
+      disabled={disabled}
+      allowAll={allowAll}
+      allNote={allNote}
+    />
+  );
+}
+
 function ForgePanel({
   collection,
+  series,
+  onSeriesChange,
   run,
   acquire,
   working,
@@ -722,7 +803,7 @@ function ForgePanel({
   foilKnown = true,
   // "ether": 崩す・作る・目安。"foil": 欠片と交換・フォイル加工。画面を分けて情報を絞る
   view = "ether",
-  // 無償ジェムをエーテルに(サーバーの財布があるときだけ)
+  // ジェムをエーテルに(サーバーの財布があるときだけ)。無償→有償の順
   onEther = null,
 }) {
   const [pick, setPick] = useState("SSR");
@@ -754,17 +835,30 @@ function ForgePanel({
   // エーテルの一括分解(崩す)。錬成で作った分をまとめて崩せる(本人の指示 2026-09-21)
   const [confirmDust, setConfirmDust] = useState(null);
   const [dustN, setDustN] = useState(1);
+  // ジェム→エーテルは必ず確認を挟む(2026-10-16 本人の指示。有償ジェムも使えるようにしたので)
+  const [confirmEther, setConfirmEther] = useState(null);
+  const gemsAll = collection.gems || 0;
+  const gemsFree = Math.min(collection.gemsFree || 0, gemsAll);
+  const etherSplit = (gems) => {
+    const free = Math.min(gemsFree, gems);
+    return { free, paid: gems - free };
+  };
   // 目安の数字は抽選の中身から引き直す。手で書くと片方だけ古くなる
-  const summary = forgeSummary();
+  const seriesPool = poolForSeries(series);
+  const seriesSkins = SKINS.filter(skin => skin.series === series);
+  const summary = forgeSummary(series);
   const top = summary.byId("SSR");
   const ether = etherOf(collection);
   const shards = shardsOf(collection);
   // 崩す一覧は通常版だけ。フォイルのダブりは「フォイルの交換」で欠片にする
-  const rows = spares(collection, SKINS);
-  const foilRows = foilSpares(collection);
-  const bulk = totalOfSpares(collection, SKINS);
-  const targets = SKINS.filter((s) => !isKeepsake(s) && s.rarity === pick);
-  const milestones = POOL.map((skin) => ({
+  const rows = spares(collection, seriesSkins);
+  const foilRows = foilSpares(collection).filter(row => row.skin.series === series);
+  const bulk = totalOfSpares(collection, seriesSkins);
+  // 加工・交換・作る一覧は数字の順(2026-10-16 本人の指示。ワンダーランドの抽選の並びは 2・3・8・9・4… だった)
+  const seriesByRank = [...seriesPool].sort(byRank);
+  // 作る一覧も数字の順(2026-10-16 本人の指示)
+  const targets = seriesByRank.filter((s) => !isKeepsake(s) && s.rarity === pick);
+  const milestones = seriesByRank.map((skin) => ({
     skin,
     check: foilMilestoneCheck(collection, skin.id),
   }));
@@ -773,6 +867,7 @@ function ForgePanel({
 
   const dustSome = async (skin, n) => {
     if (await run((c) => dismantleMany(c, skin.id, n))) {
+      playSound("dismantle");
       setConfirmDust(null);
       setMessage(
         `「${skin.name}」を ${n}枚崩して ${ETHER_NAME}を ${dustOf(skin) * n} 得ました。`,
@@ -781,6 +876,7 @@ function ForgePanel({
   };
   const shatterSome = async (skin, n) => {
     if (await run((c) => shatterMany(c, skin.id, n))) {
+      playSound("dismantle");
       setConfirmBreak(null);
       setMessage(
         `「${skin.name}」を ${n}枚崩して ${SHARD_NAME}を ${SHARD_VALUE[skin.rarity] * n} 得ました。`,
@@ -796,14 +892,15 @@ function ForgePanel({
       );
   };
   const breakAll = async () => {
-    if (await run((c) => dismantleAll(c)))
+    if (await run((c) => dismantleAll(c, series)))
       setMessage(
-        `通常版のダブりを崩して ${ETHER_NAME}を ${bulk} 得ました。フォイルは残しています。`,
+        `選択中のシリーズの通常版のダブりを崩して ${ETHER_NAME}を ${bulk} 得ました。フォイルは残しています。`,
       );
   };
   const make = async (skin, n = 1) => {
     const next = await acquire((c) => craftMany(c, skin.id, n));
     if (next) {
+      playSound("forge");
       setConfirmCraft(null);
       setMessage(
         `${ETHER_NAME}を ${(costOf(skin) * n).toLocaleString()} 使って、${n}枚を錬成しました。`,
@@ -821,6 +918,7 @@ function ForgePanel({
 
   return (
     <div role="tabpanel" aria-label={foilView ? "加工" : "錬成"}>
+      <SeriesPicker series={series} onChange={onSeriesChange} label={foilView ? "加工シリーズ" : "錬成シリーズ"} disabled={working || !!confirmBreak || !!confirmCraft || !!confirmDust} />
       <div className="forge-banks">
         {foilView ? (
           <div className="forge-bank forge-bank-shards">
@@ -844,40 +942,88 @@ function ForgePanel({
       </div>
       {/* 崩した・作った結果の返事。確認の窓を閉じたあとも読めるように、ここに出す
           (2026-09-19。それまでは窓の中にしか無く、閉じた瞬間に消えていた) */}
-      {message && !confirmBreak && !confirmCraft && (
+      {message && !confirmBreak && !confirmCraft && !confirmEther && (
         <p className="skins-message forge-message" role="status">
           {message}
         </p>
       )}
+      {/* ジェム→エーテルは1行に収める(2026-10-16 本人の指示: 枠を取りすぎていた)。
+          無償から先に使い、足りない分は有償。押すと必ず確認 */}
       {!foilView && onEther && (
         <section
           className="forge-section forge-ether-exchange"
-          aria-label="無償ジェムをエーテルに"
+          aria-label="ジェムをエーテルに"
         >
-          <div className="forge-head">
-            <h3>無償ジェムを{ETHER_NAME}に</h3>
-            <p className="skins-note">
-              無償ジェム {ETHER_EXCHANGE.gems} → {ETHER_NAME}{" "}
-              {ETHER_EXCHANGE.ether}。有償ジェムは使いません。いま無償ジェム{" "}
-              <b>{(collection.gemsFree || 0).toLocaleString()}</b>
-            </p>
+          <div className="forge-ether-text">
+            <h3>ジェムを{ETHER_NAME}に</h3>
+            <small>
+              ジェム {ETHER_EXCHANGE.gems} → {ETHER_NAME} {ETHER_EXCHANGE.ether}。無償から先に使います。いま{" "}
+              <b>{gemsAll.toLocaleString()}</b>(無償 {gemsFree.toLocaleString()})
+            </small>
           </div>
-          <div className="skins-pull-buttons">
+          <div className="forge-ether-buttons">
             {[10, 50, 100].map((g) => (
               <button
                 key={g}
                 className="skin-btn"
-                disabled={working || (collection.gemsFree || 0) < g}
-                onClick={() => onEther(g)}
+                disabled={working || gemsAll < g}
+                onClick={() => setConfirmEther(g)}
               >
                 ジェム{g}
-                <span>
-                  → {ETHER_NAME} {etherFor(g)}
-                </span>
+                <span>→ {etherFor(g)}</span>
               </button>
             ))}
           </div>
         </section>
+      )}
+      {confirmEther && (
+        <SkinModal label="ジェムを使う確認" onClose={() => setConfirmEther(null)}>
+          <div className="skin-modal-head">
+            <h2>
+              ジェム{confirmEther}を{ETHER_NAME} {etherFor(confirmEther)}にしますか？
+            </h2>
+            <button
+              className="skin-close"
+              aria-label="確認を閉じる"
+              disabled={working}
+              onClick={() => setConfirmEther(null)}
+            >
+              ×
+            </button>
+          </div>
+          <p>
+            無償ジェム {etherSplit(confirmEther).free}
+            {etherSplit(confirmEther).paid > 0 && (
+              <>
+                {" "}と <b>有償ジェム {etherSplit(confirmEther).paid}</b>
+              </>
+            )}{" "}
+            を使います。
+            {etherSplit(confirmEther).paid > 0 && "有償ジェムは戻せません。"}
+          </p>
+          <div className="skins-confirm-actions">
+            <button
+              className="skin-btn"
+              disabled={working}
+              onClick={() => setConfirmEther(null)}
+            >
+              やめる
+            </button>
+            <button
+              className="skin-btn skin-btn-gold"
+              disabled={working || gemsAll < confirmEther}
+              onClick={async () => {
+                const ok = await onEther(confirmEther);
+                if (ok) setConfirmEther(null);
+              }}
+            >
+              使う（{ETHER_NAME} +{etherFor(confirmEther)}）
+            </button>
+          </div>
+          <p className="skins-message" role="status">
+            {message}
+          </p>
+        </SkinModal>
       )}
 
       {/* どちらの作業をするかを先に選ぶ。選んだほうの一覧だけを出す */}
@@ -918,7 +1064,7 @@ function ForgePanel({
             </h3>
             <span>
               {readyCount > 0 ? `受取可能 ${readyCount}種 · ` : ""}受取済み{" "}
-              {claimedCount}/{POOL.length}種
+              {claimedCount}/{seriesPool.length}種
             </span>
           </div>
           <p className="forge-milestone-intro">
@@ -956,14 +1102,14 @@ function ForgePanel({
                   </span>
                   <h4>{skin.name}</h4>
                   {/* このフォイルで立つ効果盤面。押すとフォイル版の詳細(効果・発動の条件)へ */}
-                  {AREA_BY_RANK[skin.rank] && (
+                  {areaForSkin(skin.rank, skin.id) && (
                     <button
                       type="button"
                       className="forge-milestone-area"
                       onClick={() => onPick(byId(foilId(skin.id)))}
-                      aria-label={`${skin.name}のフォイルで立つ効果盤面「${AREA_INFO[AREA_BY_RANK[skin.rank]].name}」の詳細`}
+                      aria-label={`${skin.name}のフォイルで立つ効果盤面「${AREA_INFO[areaForSkin(skin.rank, skin.id)].name}」の詳細`}
                     >
-                      効果盤面: {AREA_INFO[AREA_BY_RANK[skin.rank]].name} ›
+                      効果盤面: {AREA_INFO[areaForSkin(skin.rank, skin.id)].name} ›
                     </button>
                   )}
                 </div>
@@ -1075,7 +1221,7 @@ function ForgePanel({
             </ul>
           )}
           <div className="forge-grid forge-exchange-grid">
-            {POOL.map((base) => {
+            {seriesByRank.map((base) => {
               const skin = byId(foilId(base.id));
               const check = exchangeCheck(collection, base.id);
               const owned = (collection.owned[skin.id] || 0) > 0;
@@ -1101,8 +1247,8 @@ function ForgePanel({
                   <b>{base.name}</b>
                   <small>
                     {rarityLabel(base)}
-                    {AREA_BY_RANK[base.rank]
-                      ? ` ・ ${AREA_INFO[AREA_BY_RANK[base.rank]].name}`
+                    {areaForSkin(base.rank, base.id)
+                      ? ` ・ ${AREA_INFO[areaForSkin(base.rank, base.id)].name}`
                       : ""}
                   </small>
                   <small className="forge-foil-held">
@@ -1179,7 +1325,7 @@ function ForgePanel({
                 disabled={working || !bulk}
                 onClick={breakAll}
               >
-                <Ether size={16} /> 通常版のダブりを全部崩す（+{bulk}）
+                <Ether size={16} /> このシリーズのダブりを全部崩す（+{bulk}）
               </button>
             </>
           ) : (
@@ -1264,7 +1410,7 @@ function ForgePanel({
           <div className="forge-head">
             <h3>交換の目安</h3>
           </div>
-          <p className="skins-note">召喚回数の目安は通常抽選の割合で計算しています。10回召喚のフリーズ昇格は含みません。</p>
+          <p className="skins-note">選択中のシリーズの通常抽選の割合で計算しています。10回召喚のフリーズ昇格は含みません。</p>
           <table className="skins-rate-table">
             <thead>
               <tr>
@@ -1577,9 +1723,56 @@ function ResultDismantle({
   );
 }
 
+/**
+ * ガチャの看板(シリーズごとの絵と言葉)。ガチャの選択画面の各見出しの下と、
+ * 選んだあとのガチャ画面の上で同じものを使う(2026-10-15)
+ */
+function SeriesBanner({ series, shine, foilKnown }) {
+  const name = SERIES.find((item) => item.id === series)?.name || "";
+  const pool = poolForSeries(series);
+  return (
+    <section className={`skins-banner${series === "alice" ? " skins-banner-alice" : ""}`}>
+      <div className="skins-banner-art" aria-hidden="true">
+        <FoilArtwork
+          className="banner-left"
+          skin={byId(foilId(series === "alice" ? "alice-10-cheshire-cat" : "demon-q"))}
+          alt=""
+          animated={shine}
+        />
+        <FoilArtwork
+          className="banner-right"
+          skin={byId(foilId(series === "alice" ? "alice-Q-queen" : "angel-k"))}
+          alt=""
+          animated={shine}
+        />
+      </div>
+      <div className="skins-banner-copy">
+        <span className="skins-eyebrow">{name} / キャラクター召喚</span>
+        <h2>
+          {series === "alice" ? <>不思議の国へ、<br />ようこそ。</> : <>運命の一枚を、<br />この手に。</>}
+        </h2>
+        <p>カードに宿る、新たな姿。</p>
+        {foilKnown && (
+          <>
+            <FoilBadge />
+            <p className="skins-banner-foil">
+              箔がきらめく、特別な一枚。
+            </p>
+          </>
+        )}
+        <span className="skins-banner-label">
+          {pool.length}キャラ{foilKnown ? " · 各キャラにフォイル版" : ""}
+        </span>
+      </div>
+    </section>
+  );
+}
+
 export function SkinsScreen({
   onBack,
   onBattlePass,
+  // 下のメニュー左端の戻る釦の名前。戻り先(ホーム・ショップ・次の相手)に合わせる
+  backLabel = "ホーム",
   initialTab = "gacha",
   // はじめての10連(2026-09-28 本人の指示)。導入の最後、はじめの一局に勝って名前を決め、
   // 門の語りを通ったあとに一度だけ真で入る(2026-10-01 本人の指示で、一局のあとへ移した)。
@@ -1592,7 +1785,29 @@ export function SkinsScreen({
   const [tab, setTab] = useState(initialTab),
     // 所持・装備は最初から「所持」だけを出す。未所持が混ざると装備しづらい(本人の指示 2026-09-21)
     [filter, setFilter] = useState("owned");
-  const [finish, setFinish] = useState("all");
+  // ガチャは、ホームから開くとまず「ガチャの選択画面」(見出しつきの一覧)。選ぶとそのガチャの画面になり、
+  // 右上の釦で一覧へ戻る(2026-10-15 本人の指示。シリーズの切り替え釦はやめた)。
+  // はじめての10連(firstPull)は台本どおりレジェンド・ゲートなので一覧を飛ばす。未受取の召喚があれば、そのシリーズを開く
+  const [pickedSeries, setPickedSeries] = useState(() =>
+    firstPull ? "heroes" : collection.pendingPull?.series || null,
+  );
+  // 計算用のシリーズ。一覧を出しているあいだは、いちばん新しく開いたシーズンのもので埋めておく
+  const series = pickedSeries || latestOpenSeason().series;
+  const seriesName = SERIES.find(item => item.id === series)?.name || "";
+  // 選択画面に並べるガチャ。始まっていないシーズンは出さない
+  const gachaSeriesList = SERIES.filter((item) => isSeriesOpen(item.id));
+  // 錬成・加工のシリーズ(ガチャで選んだものとは別に持つ)
+  const [forgeSeries, setForgeSeries] = useState(latestOpenSeason().series);
+  const pickGacha = (id) => {
+    setPickedSeries(id);
+    if (typeof window !== "undefined") window.scrollTo(0, 0);
+  };
+  const backToGachaPick = () => {
+    setPickedSeries(null);
+    if (typeof window !== "undefined") window.scrollTo(0, 0);
+  };
+  const [collectionSeries, setCollectionSeries] = useState("all");
+  const selectedPool = poolForSeries(series);
   const [selected, setSelected] = useState(null),
     [odds, setOdds] = useState(false);
   const [acquisitionMode, setAcquisitionMode] = useState(null),
@@ -1600,10 +1815,26 @@ export function SkinsScreen({
   const [working, setWorking] = useState(false),
     [message, setMessage] = useState("");
   const busy = useRef(false);
+  const bottomDockRef = useRef(null);
+  // 下部メニューと安全領域に本文が隠れないよう、占有する高さを測る。
   useEffect(() => {
-    if (tab === "gacha" && !reduce && collection.summonMotion !== "skip")
-      return warmSummonIntro();
-  }, [tab, reduce, collection.summonMotion]);
+    const panel = bottomDockRef.current;
+    const page = panel?.closest(".skins-page");
+    if (!page) return;
+    const sync = () => page.style.setProperty("--skins-dock-height", `${Math.ceil(window.innerHeight - panel.getBoundingClientRect().top)}px`);
+    sync();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(sync) : null;
+    observer?.observe(panel, { box: "border-box" });
+    window.addEventListener("resize", sync);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", sync);
+    };
+  }, [tab]);
+  useEffect(() => {
+    if (tab === "gacha" && pickedSeries && !reduce && collection.summonMotion !== "skip")
+      return warmSummonIntro(series);
+  }, [tab, pickedSeries, reduce, collection.summonMotion, series]);
   // 開いた時点の所持・実績で、ガチャ称号を同期する(他の入手経路の分も拾う)。
   // profile を書くだけなので collection は再描画しない(2026-09-21)
   useEffect(() => {
@@ -1676,30 +1907,65 @@ export function SkinsScreen({
     setBuying(false);
     return r.ok;
   };
-  // 無償ジェムをエーテルに(無償だけ。サーバーで減らし、通ったら端末のエーテルを足す)
+  // ジェムをエーテルに(無償→有償の順。2026-10-16 本人の指示で有償も使えるようにした)。
+  // サーバーで減らし、通ったら端末のエーテルを足す。通れば true(確認の窓を閉じる)
   const buyEtherWith = async (gems) => {
-    if (buying || busy.current) return;
+    if (buying || busy.current) return false;
     setBuying(true);
     setMessage("");
+    const free = Math.min(collection.gemsFree || 0, gems);
+    const paid = gems - free;
     try {
       const d = await buyEther(newEventId("ether"), gems);
       const got = Number.isSafeInteger(d && d.ether)
         ? d.ether
         : etherFor(gems) || 0;
       if (got > 0) await updateCollection((s) => addEther(s, got));
-      setMessage(`無償ジェム ${gems} を ${ETHER_NAME} ${got} にしました。`);
+      setMessage(
+        `ジェム ${gems}(無償 ${free}${paid > 0 ? `・有償 ${paid}` : ""})を ${ETHER_NAME} ${got} にしました。`,
+      );
+      return true;
     } catch (e) {
       setMessage((e && e.message) || "両替できませんでした。");
+      return false;
     } finally {
       setBuying(false);
     }
   };
+  const foilKnown = foilRevealed(collection);
   const visibleSkins = ALL_SKINS.filter((s) => skinVisibleInCollection(collection, s));
   const visibleFoils = ALL_FOIL_SKINS.filter((s) => skinVisibleInCollection(collection, s));
   const ownedCount = visibleSkins.filter((s) => collection.owned[s.id]).length;
   const foilOwnedCount = visibleFoils.filter(
     (s) => collection.owned[s.id],
   ).length;
+  // シリーズごとに「何種類持っているか」を、通常版とフォイルで別々に数える
+  // (2026-10-16 本人の指示。枚数は錬成の「崩す」で分かるので、ここでは出さない)
+  const seriesOwned = SERIES.filter((item) => isSeriesOpen(item.id)).map(item => {
+    const normals = SKINS.filter(skin => skin.series === item.id);
+    const foils = foilKnown ? visibleFoils.filter(skin => skin.series === item.id) : [];
+    const kinds = skins => skins.filter(skin => collection.owned[skin.id]).length;
+    return {
+      ...item,
+      normalOwned: kinds(normals),
+      normalTotal: normals.length,
+      foilOwned: kinds(foils),
+      foilTotal: foils.length,
+    };
+  });
+  const seriesCountNote = (item) =>
+    `通常 ${item.normalOwned}/${item.normalTotal}種${foilKnown ? ` · フォイル ${item.foilOwned}/${item.foilTotal}種` : ""}`;
+  const allSeriesCount = seriesCountNote(
+    seriesOwned.reduce(
+      (sum, item) => ({
+        normalOwned: sum.normalOwned + item.normalOwned,
+        normalTotal: sum.normalTotal + item.normalTotal,
+        foilOwned: sum.foilOwned + item.foilOwned,
+        foilTotal: sum.foilTotal + item.foilTotal,
+      }),
+      { normalOwned: 0, normalTotal: 0, foilOwned: 0, foilTotal: 0 },
+    ),
+  );
   const shine = !reduce;
   const craftResult = !collection.pending && collection.lastCraft;
   const milestoneResult = craftResult?.source === "milestone";
@@ -1728,8 +1994,9 @@ export function SkinsScreen({
         (acquisitionMode === "area" && areaRewards.length > 0)),
   );
   const finishAcquisition = useCallback(() => setAcquisitionMode("area"), []);
+  const seriesAce = byId(SERIES.find(s => s.id === series).battlepassSkin);
   const magicianLocked = isBattlePassLocked(
-    byId("genie-magician"),
+    seriesAce,
     collection.owned,
   );
   const selectedLocked = isBattlePassLocked(selected, collection.owned);
@@ -1778,22 +2045,23 @@ export function SkinsScreen({
         // まずサーバーに引いてもらう(2026-09-18)。チケットの消費と抽選が1つの要求になり、
         // 「何を引いたか」をサーバーが知る = 所持の検証の正になる。
         // 旧サーバーの404だけは従来経路へ。通信失敗・不正な成功応答では抽選し直さない。
-        const requested = await updateCollection(s => s.pendingPull ? s : { ...s, pendingPull: { id: newEventId("pull"), amount } });
+        const requested = await updateCollection(s => s.pendingPull ? s : { ...s, pendingPull: { id: newEventId("pull"), amount, series } });
         const eventId = requested.pendingPull.id;
         amount = requested.pendingPull.amount;
+        const requestedSeries = requested.pendingPull.series || "heroes";
         let drawn = null;
         try {
-          drawn = await pullFromServer(eventId, amount);
+          drawn = await pullFromServer(eventId, amount, requestedSeries);
         } catch (e) {
           // 残高不足など、サーバーがはっきり断ったものはそのまま伝える
-          if (/足りません|他の人の抽選|前の抽選と枚数/.test(e?.message || ""))
+          if (/足りません|他の人の抽選|前の抽選と枚数|このシリーズの召喚は準備中/.test(e?.message || ""))
             await updateCollection(s => ({ ...s, pendingPull: null }));
-          if (!/見つかりません|not found|404/i.test((e && e.message) || "")) throw e;
+          if (requestedSeries !== "heroes" || !/見つかりません|not found|404/i.test((e && e.message) || "")) throw e;
         }
         if (!drawn) await debitTickets(eventId, amount * PULL_COST);
         setAcquisitionMode(reduce || collection.summonMotion === "skip" ? "area" : "summon");
         const next = await updateCollection((s) =>
-          drawn ? applyPull(s, drawn, { free: true }) : { ...pull(s, amount, undefined, { free: true }), pendingPull: null, lastPullId: eventId },
+          drawn ? applyPull(s, drawn, { free: true }) : { ...pull(s, amount, undefined, { free: true, series: requestedSeries }), pendingPull: null, lastPullId: eventId },
         );
         // ガチャの実績を写し、達成した称号を焼き付ける(2026-09-21)
         if (next) recordGachaStats(gachaStatsOf(next));
@@ -1811,7 +2079,7 @@ export function SkinsScreen({
       }
       return;
     }
-    const next = await acquire((s) => pull(s, amount), "summon");
+    const next = await acquire((s) => pull(s, amount, undefined, { series }), "summon");
     if (next?.pending?.results) logPull(next.pending.results);
     // 引いた札をサーバーの記録にも残す(所持の検証の土台。best-effort)
     noteCollection();
@@ -1839,8 +2107,10 @@ export function SkinsScreen({
     // 一度だけ。結果を見ているあいだに二度目を始めない
   }, [firstPull]);
   const equipSkin = async (skin) => {
-    if (await run((s) => equip(s, skin.id)))
+    if (await run((s) => equip(s, skin.id))) {
+      playSound("equip");
       setMessage(`${skin.rank}のカードに「${skin.name}」を装備しました。`);
+    }
   };
   // この抽選で自動装備した札(2026-09-28 本人の指示。印は「新たな出会い」に出す)。
   // 同じ札を2枚引いたときは着せた1枚だけなので、**id ではなく何枚目か**で覚える
@@ -1904,17 +2174,20 @@ export function SkinsScreen({
     // 時間切れで消えたあとの次のフォイルでだけ、新しく始めてポップアップを出す
     // (2026-09-22 本人の指示。「しばらく表示しない」を押していれば出さない)
     const before = collection;
+    // 引いたフォイルのシリーズ(召喚は1シリーズずつ)。そのシリーズの欄だけ始め、そのシリーズの商品だけ勧める
+    // (2026-10-15 本人の指示「レジェンド・ゲートと同じ仕組みをワンダーランドにも」)
+    const foilSeries = pulledFoils.length ? byId(pulledFoils[0].id)?.series || "heroes" : null;
     const next = await run((s) => {
       // 召喚の結果を閉じたら、初回の10連の「まだ閉じていない」控えも下ろす(2026-10-05 見直し)
       const base = craftResult ? { ...s, lastCraft: null } : { ...s, pending: null, firstPullOpen: false };
-      return pulledFoils.length ? startFoilWindow(base) : base;
+      return foilSeries ? startFoilWindow(base, Date.now(), foilSeries) : base;
     });
     // 有償ジェムはサーバーの財布にあるので、Web でも(iOS で買った分を)使える。店の釦だけ iOS 限定
-    if (next && pulledFoils.length && WALLET_SERVER && shouldOfferFoils(before, next)) {
+    if (next && foilSeries && WALLET_SERVER && shouldOfferFoils(before, next, Date.now(), foilSeries)) {
       const exclude = [
         ...new Set(pulledFoils.map((r) => bandOf(r.id)?.id).filter(Boolean)),
       ];
-      if (foilOffers(next, { exclude }).length) setFoilOffer({ exclude });
+      if (foilOffers(next, { exclude, series: foilSeries }).length) setFoilOffer({ exclude, series: foilSeries });
     }
     return next;
   };
@@ -1945,152 +2218,118 @@ export function SkinsScreen({
     }
   };
   // フォイルを1枚も持たないうちは、フォイル関連を画面に出さない(確率の明記は除く)
-  const foilKnown = foilRevealed(collection);
-  const shown = SKINS.flatMap((s) => {
-    const foil = visibleFoilOf(collection, foilKnown, s);
-    return foil ? [s, foil] : [s];
-  }).filter(
-    (s) =>
-      (finish === "all" || (finish === "foil" ? s.foil : !s.foil)) &&
-      (filter === "all" ||
-        (filter === "owned" ? collection.owned[s.id] : s.rarity === filter)),
-  );
+  // 各キャラは1枚だけ出す。フォイルを持っていればフォイル、持っていなければ通常版
+  // (2026-10-16 本人の指示。通常/フォイルの切り替え釦と仕上げの絞り込みはやめた)
+  const collectionSkins = SKINS.filter(s => collectionSeries === "all" || s.series === collectionSeries);
+  const shown = collectionSkins
+    .map(s => {
+      const foil = visibleFoilOf(collection, foilKnown, s);
+      return foil && collection.owned[foil.id] ? foil : s;
+    }).filter(s => filter === "all" || (filter === "owned" ? collection.owned[s.id] || collection.owned[foilId(s.id)] || collection.owned[baseSkinId(s.id)] : s.rarity === filter))
+    .sort(byRank);
   return (
-    <div className="skins-page">
+    <div className={`skins-page${tab === "gacha" ? " is-gacha" : ""}`}>
       <div className="skins-heading">
-        <div>
+        <div className="skins-heading-top">
           <span className="skins-eyebrow">トッタリー / CARD SKINS</span>
-          <h1>英雄の召喚</h1>
-        </div>
-        <p>
-          所持 <strong>{ownedCount}</strong>
-          <span> / {foilKnown ? visibleSkins.length : SKINS.length}</span>
-          {foilKnown && (
-            <small className="skins-owned-breakdown">
-              通常 {ownedCount - foilOwnedCount}/{SKINS.length} · フォイル{" "}
-              {foilOwnedCount}/{visibleFoils.length}
-            </small>
+          {/* 右上の空きに、ガチャの選択画面へ戻る釦(2026-10-15 本人の指示)。はじめての10連のあいだは出さない */}
+          {tab === "gacha" && pickedSeries && !firstPull && (
+            <button type="button" className="skins-gacha-back" disabled={working} onClick={backToGachaPick}>
+              <ArrowLeft size={14} /> ガチャ選択へ
+            </button>
           )}
-        </p>
-      </div>
-      <div className="skins-tabs" role="tablist" aria-label="スキンメニュー">
-        <button
-          role="tab"
-          aria-selected={tab === "gacha"}
-          onClick={() => setTab("gacha")}
-        >
-          ガチャ
-        </button>
-        <button
-          role="tab"
-          aria-selected={tab === "collection"}
-          onClick={() => setTab("collection")}
-        >
-          所持・装備
-        </button>
-        <button
-          role="tab"
-          aria-selected={tab === "forge"}
-          onClick={() => setTab("forge")}
-        >
-          錬成
-        </button>
-        {/* 欠片と交換・フォイル加工はこちら。錬成と対の名前。
-            フォイルを持たないうちも開ける(通算獲得の進み具合を見せ、手に入れる道筋を知らせる)。
-            交換と所持の一覧は、フォイルを1枚持つまで中で伏せる */}
-        <button
-          role="tab"
-          aria-selected={tab === "foil"}
-          onClick={() => setTab("foil")}
-        >
-          加工
-        </button>
-      </div>
-      {tab === "gacha" ? (
-        <div className="skins-gacha" role="tabpanel" aria-label="ガチャ">
-          <section className="skins-banner">
-            <div className="skins-banner-art" aria-hidden="true">
-              <FoilArtwork
-                className="banner-left"
-                skin={byId(foilId("demon-q"))}
-                alt=""
-                animated={shine}
-              />
-              <FoilArtwork
-                className="banner-right"
-                skin={byId(foilId("angel-k"))}
-                alt=""
-                animated={shine}
-              />
-            </div>
-            <div className="skins-banner-copy">
-              <span className="skins-eyebrow">天使か、悪魔か。</span>
-              <h2>
-                運命の一枚を、
-                <br />
-                この手に。
-              </h2>
-              <p>カードに宿る、新たな姿。</p>
-              {foilKnown && (
-                <>
-                  <FoilBadge />
-                  <p className="skins-banner-foil">
-                    箔がきらめく、特別な一枚。
-                  </p>
-                </>
-              )}
-              <span className="skins-banner-label">
-                {POOL.length}キャラ{foilKnown ? " · 各キャラにフォイル版" : ""}
-              </span>
-            </div>
-          </section>
-          <div className="skins-summon-controls">
-            {FREE_GACHA ? (
-              <div className="skins-free">
-                <span>TEST PLAY</span>無料・回数制限なし
-              </div>
-            ) : (
-              <div className="skins-balances">
-                <div className="skins-free">
-                  <span>TICKETS</span>チケット {collection.tickets}枚
-                </div>
-                <div className="skins-free">
-                  <GemAmount amount={collection.gems || 0} size={28} />
-                </div>
-              </div>
+        </div>
+        <div className="skins-heading-meta">
+          <p>
+            所持 <strong>{ownedCount}</strong>
+            <span> / {foilKnown ? visibleSkins.length : SKINS.length}</span>
+            {foilKnown && (
+              <small className="skins-owned-breakdown">
+                通常 {ownedCount - foilOwnedCount}/{SKINS.length} · フォイル{" "}
+                {foilOwnedCount}/{visibleFoils.length}
+              </small>
             )}
-            {collection.pendingPull && <button className="skin-btn skin-btn-gold" disabled={working || !!results} onClick={() => roll(collection.pendingPull.amount)}>
-              未受取の{collection.pendingPull.amount}回召喚を確認
-            </button>}
-            <div className="skins-pull-buttons">
-              <button
-                disabled={
-                  working ||
-                  !!collection.pendingPull ||
-                  !!results ||
-                  (!FREE_GACHA && collection.tickets < PULL_COST)
-                }
-                className="skin-btn"
-                onClick={() => roll(1)}
-              >
-                1回召喚
-                <span>{FREE_GACHA ? "無料" : `チケット${PULL_COST}枚`}</span>
+          </p>
+        </div>
+      </div>
+      {tab === "gacha" && !pickedSeries ? (
+        /* ガチャの選択画面(2026-10-15 本人の指示)。見出し(シリーズ名)＋看板＋「ガチャを選ぶ」をシリーズごとに */
+        <div className="skins-gacha skins-gacha-select" role="tabpanel" aria-label="ガチャを選ぶ">
+          {/* ガチャの項目(見出し＋看板＋「ガチャを選ぶ」)を縦に並べ、スクロールして選ぶ(2026-10-15 本人の指示。上の札は置かない) */}
+          {gachaSeriesList.map((item) => (
+            <section className="gacha-pick" key={item.id}>
+              <div className="gacha-pick-head">
+                <h2>{item.name}</h2>
+                <span>{poolForSeries(item.id).length}キャラ</span>
+              </div>
+              <div className="gacha-pick-banner" onClick={() => pickGacha(item.id)}>
+                <SeriesBanner series={item.id} shine={shine} foilKnown={foilKnown} />
+              </div>
+              <button type="button" className="skin-btn skin-btn-gold gacha-pick-go" disabled={working} onClick={() => pickGacha(item.id)}>
+                ガチャを選ぶ
               </button>
-              <button
-                disabled={
-                  working ||
-                  !!collection.pendingPull ||
-                  !!results ||
-                  (!FREE_GACHA && collection.tickets < PULL_COST * 10)
-                }
-                className="skin-btn skin-btn-gold"
-                onClick={() => roll(10)}
-              >
-                10回召喚
-                <span>
-                  {FREE_GACHA ? "無料" : `チケット${PULL_COST * 10}枚`}
-                </span>
-              </button>
+            </section>
+          ))}
+        </div>
+      ) : tab === "gacha" ? (
+        <div className="skins-gacha" role="tabpanel" aria-label="ガチャ">
+          <SeriesBanner series={series} shine={shine} foilKnown={foilKnown} />
+          <div className="skins-summon-controls">
+            <div className="skins-summon-primary" role="group" aria-label={`${seriesName}の召喚`}>
+              <div className="skins-pull-context">
+                <div className="skins-pull-summary">
+                  <strong>{seriesName}</strong>
+                  {FREE_GACHA ? (
+                    <div className="skins-free">
+                      <span>TEST PLAY</span>無料・回数制限なし
+                    </div>
+                  ) : (
+                    <div className="skins-balances">
+                      <div className="skins-free">
+                        チケット {collection.tickets.toLocaleString("ja-JP")}枚
+                      </div>
+                      <div className="skins-free">
+                        <GemAmount amount={collection.gems || 0} size={20} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {collection.pendingPull && <button className="skin-btn skin-btn-gold" disabled={working || !!results} onClick={() => roll(collection.pendingPull.amount)}>
+                未受取の{collection.pendingPull.amount}回召喚を確認
+              </button>}
+              <div className="skins-pull-buttons">
+                <button
+                  data-pull-count="1"
+                  disabled={
+                    working ||
+                    !!collection.pendingPull ||
+                    !!results ||
+                    (!FREE_GACHA && collection.tickets < PULL_COST)
+                  }
+                  className="skin-btn"
+                  onClick={() => roll(1)}
+                >
+                  1回召喚
+                  <span>{FREE_GACHA ? "無料" : `チケット${PULL_COST}枚`}</span>
+                </button>
+                <button
+                  data-pull-count="10"
+                  disabled={
+                    working ||
+                    !!collection.pendingPull ||
+                    !!results ||
+                    (!FREE_GACHA && collection.tickets < PULL_COST * 10)
+                  }
+                  className="skin-btn skin-btn-gold"
+                  onClick={() => roll(10)}
+                >
+                  10連召喚
+                  <span>
+                    {FREE_GACHA ? "無料" : `チケット${PULL_COST * 10}枚`}
+                  </span>
+                </button>
+              </div>
             </div>
             {/* 召喚の釦を先に、演出の設定はその下へ(開いてすぐ引けるように。2026-09-18 本人の指示) */}
             {/* 説明の文は label の外に出す。中に入れていると、説明を読もうとして
@@ -2171,30 +2410,31 @@ export function SkinsScreen({
               各キャラ獲得時に{foilPct}
               %でフォイル。フリーズ時は、最初に出た通常SSRがそれぞれ30%でフォイルへ昇格します。
             </p>
+            {series === "alice" && <p className="skins-note">アリス（A）はバトルパス報酬です。ガチャの排出対象は2〜Kです。</p>}
           </div>
           <section className="skins-special">
             <button
               className="skins-special-art"
-              aria-label="A ランプのマジシャンの詳細"
-              onClick={() => setSelected(byId("genie-magician"))}
+              aria-label={`A ${seriesAce.name}の詳細`}
+              onClick={() => setSelected(seriesAce)}
             >
               {magicianLocked ? (
                 <BattlePassSkinLock />
               ) : (
                 <img
-                  src={byId("genie-magician").image}
-                  alt="ランプのマジシャン"
+                  src={seriesAce.image}
+                  alt={seriesAce.name}
                 />
               )}
             </button>
             <div>
               <span className="skins-eyebrow">BATTLE PASS REWARD / A</span>
-              <h3>ランプのマジシャン</h3>
+              <h3>{seriesAce.name}</h3>
               {magicianLocked && (
                 <p className="skins-pass-hint">バトルパスクリアで獲得可能</p>
               )}
               <p>
-                3つの帽子で入れ替え、包囲した相手は大きな帽子の中へ。
+                {seriesAce.description}
                 <br />
                 バトルパスを完成させて手に入る特別スキンです。
               </p>
@@ -2202,18 +2442,18 @@ export function SkinsScreen({
                 className="skin-btn skin-btn-gold"
                 disabled={
                   working ||
-                  collection.equipped.A === "genie-magician" ||
-                  (!collection.owned["genie-magician"] && !onBattlePass)
+                  collection.equipped.A === seriesAce.id ||
+                  (!collection.owned[seriesAce.id] && !onBattlePass)
                 }
                 onClick={() =>
-                  collection.owned["genie-magician"]
-                    ? equipSkin(byId("genie-magician"))
-                    : onBattlePass()
+                  collection.owned[seriesAce.id]
+                    ? equipSkin(seriesAce)
+                    : onBattlePass(seasonOfSeries(series)?.id)
                 }
               >
-                {collection.equipped.A === "genie-magician"
+                {collection.equipped.A === seriesAce.id
                   ? "Aに装備中"
-                  : collection.owned["genie-magician"]
+                  : collection.owned[seriesAce.id]
                     ? "Aに装備"
                     : "バトルパスで獲得"}
               </button>
@@ -2260,6 +2500,8 @@ export function SkinsScreen({
       ) : tab === "forge" || tab === "foil" ? (
         <ForgePanel
           collection={collection}
+          series={forgeSeries}
+          onSeriesChange={setForgeSeries}
           foilKnown={foilKnown}
           view={tab === "foil" ? "foil" : "ether"}
           run={run}
@@ -2272,6 +2514,24 @@ export function SkinsScreen({
         />
       ) : (
         <div role="tabpanel" aria-label="所持・装備">
+          <SeriesPicker
+            series={collectionSeries}
+            onChange={setCollectionSeries}
+            label="カードシリーズ"
+            allowAll
+            notes={Object.fromEntries(seriesOwned.map((item) => [item.id, seriesCountNote(item)]))}
+            allNote={allSeriesCount}
+          />
+          {/* シリーズの札は小さく。通常版とフォイルの「何種類/何種類」だけ(2026-10-16 本人の指示) */}
+          <div className="skins-series-owned" aria-label="シリーズ別の所持数">
+            {seriesOwned.map(item => (
+              <button key={item.id} className="skins-series-owned-card" aria-pressed={collectionSeries === item.id} onClick={() => setCollectionSeries(item.id)}>
+                <span className="skins-series-owned-name">{item.name}</span>
+                <span className="skins-series-owned-count">通常 <b>{item.normalOwned}</b>/{item.normalTotal}種</span>
+                {foilKnown && <span className="skins-series-owned-count is-foil">フォイル <b>{item.foilOwned}</b>/{item.foilTotal}種</span>}
+              </button>
+            ))}
+          </div>
           <div className="skins-loadout">
             <div>
               <span className="skins-eyebrow">YOUR DECK</span>
@@ -2323,30 +2583,12 @@ export function SkinsScreen({
               </button>
             ))}
           </div>
-          {foilKnown && (
-            <div
-              className="skins-filters skins-finish-filters"
-              aria-label="仕上げの絞り込み"
-            >
-              {[
-                ["all", "すべての仕上げ"],
-                ["normal", `通常版 ${SKINS.length}種`],
-                ["foil", `フォイル ${visibleFoils.length}種`],
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  aria-pressed={finish === id}
-                  onClick={() => setFinish(id)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
           <div className="skins-grid">
             {shown.map((skin) => {
               const locked = isBattlePassLocked(skin, collection.owned);
+              const base = byId(baseSkinId(skin.id));
               return (
+                <div key={base.id} className="skins-character">
                 <button
                   className={`skins-tile rarity-${skin.rarity}${locked ? " is-pass-locked" : ""}${skin.foil ? " is-foil" : ""}`}
                   key={skin.id}
@@ -2383,6 +2625,7 @@ export function SkinsScreen({
                         : "未所持"}
                   </span>
                 </button>
+                </div>
               );
             })}
           </div>
@@ -2437,7 +2680,7 @@ export function SkinsScreen({
               </tr>
             </thead>
             <tbody>
-              {POOL.map((s) => (
+              {selectedPool.map((s) => (
                 <tr key={s.id}>
                   <td>
                     {s.rank} · {s.name}
@@ -2466,6 +2709,7 @@ export function SkinsScreen({
             onFinish={finishAcquisition}
             reduce={reduce || collection.summonMotion === "skip"}
             plain={firstResults}
+            gateWorld={firstResults ? "first-victory" : null}
           />
         ) : acquisitionMode === "foil" && craftedFoil ? (
           <CraftedFoilReveal
@@ -2519,7 +2763,12 @@ export function SkinsScreen({
                 {/* 着せた札(「装備しました」の印)だけが駒の姿になる。10枚全部とは読ませない */}
                 {firstResults && (
                   <p className="skins-first-pull-note">
-                    出会った英雄を、あなたの盤へ。
+                    数字ごとに自動で装備しました。札の見た目が変わり、動きや強さは変わりません。
+                  </p>
+                )}
+                {firstResults && (
+                  <p className="skins-note">
+                    次の対局では2〜5の札を使います。ほかの数字の英雄は、後の対局で使えます。
                   </p>
                 )}
                 {results.some((r) => byId(r.id).foil) && (
@@ -2551,9 +2800,9 @@ export function SkinsScreen({
                       text={
                         companion.equipped
                           ? companion.available
-                            ? `${companion.skin.rank} に装備済み。手札に来たら、陣に加えよう。`
-                            : `${companion.skin.rank} に装備済み。この数字が登場するステージで活躍する。`
-                          : `${companion.skin.rank} に装備すると、同じ数字の札がこの姿に。`
+                            ? `${companion.skin.rank}の札に装備中です。次の対局でも使えます。`
+                            : `${companion.skin.rank}の札に装備中です。この数字が登場する対局で使えます。`
+                          : `${companion.skin.rank}の札に装備すると、見た目がこの姿に変わります。`
                       }
                     />
                   </p>
@@ -2572,84 +2821,7 @@ export function SkinsScreen({
                 const foil = visibleFoilOf(collection, foilKnown, s);
                 const foilHeld = foil ? collection.owned[foil.id] || 0 : 0;
                 return (
-                  <article
-                    key={index}
-                    className={`skins-result rarity-${s.rarity}${s.foil ? " is-foil" : ""}${crushed ? " is-dismantled" : ""}`}
-                  >
-                    <div className="skins-result-art">
-                      <FoilArtwork
-                        skin={s}
-                        src={s.card}
-                        alt={s.role}
-                        animated={shine}
-                      />
-                      <span className="skins-tile-rank">{s.rank}</span>
-                      <span className="skins-tile-rarity">{s.rarity}</span>
-                      {s.foil && <FoilBadge className="skins-art-foil" />}
-                      <span
-                        className={
-                          crushed
-                            ? "skin-dismantled"
-                            : result.isNew
-                              ? "skin-new"
-                              : "skin-duplicate"
-                        }
-                      >
-                        {crushed
-                          ? `崩した +${dismantledAt.get(index)}`
-                          : result.isNew
-                            ? "NEW"
-                            : "重複"}
-                      </span>
-                      {/* このキャラのフォイルを持っているか。1行の文で出すと枠を取りすぎるので、
-                          絵の右下に小さな印で(2026-09-24 本人の指示) */}
-                      {foilKnown && foil && (
-                        <small
-                          className={`skins-result-foil${foilHeld ? " is-owned" : ""}`}
-                          title={foilHeld ? "このキャラのフォイルを持っています" : "このキャラのフォイルは未所持"}
-                        >
-                          箔
-                        </small>
-                      )}
-                    </div>
-                    {/* 名は「の」と空白のあとで句に切る(4列の狭い列で「黄昏のレヴナン/ト」と割れた。2026-10-06 見直し) */}
-                    <strong>
-                      <Phrases text={namePhrases(s.name)} />
-                    </strong>
-                    {/* このキャラのフォイルを所持・装備しているときは、通常版の装備釦を出さない。
-                        上位のフォイルが付いているのに通常版へ戻す操作は紛らわしい(2026-09-21 本人の指示) */}
-                    {/* 手で着せなくてよかったことが分かるように、この抽選で
-                        自動装備した札には金の印を出す(2026-09-28 本人の指示)。
-                        あとから別の札に着せ替えたら、ふつうの釦に戻る */}
-                    {autoEquippedAt.has(index) &&
-                    collection.equipped[s.rank] === s.id ? (
-                      <small
-                        className="skins-result-equipped"
-                        aria-label={`${s.rank}に「${s.name}」を装備${firstResults ? "した" : "しました"}`}
-                      >
-                        <i aria-hidden="true" />
-                        {/* 導入の10連は導入の言葉の調子で(2026-10-06 見直し) */}
-                        {firstResults ? "装備した" : "装備しました"}
-                      </small>
-                    ) : !s.foil &&
-                    foil &&
-                    foilHeld &&
-                    collection.equipped[s.rank] === foil.id ? (
-                      <small className="skins-result-equipped-foil">
-                        フォイル装備中
-                      </small>
-                    ) : (
-                      <button
-                        className="skin-btn"
-                        disabled={working || collection.equipped[s.rank] === s.id}
-                        onClick={() => equipSkin(s)}
-                      >
-                        {collection.equipped[s.rank] === s.id
-                          ? "装備中"
-                          : `${s.rank}に装備`}
-                      </button>
-                    )}
-                  </article>
+                  <SummonResultCard skin={s} result={result} index={index} collection={collection} foil={foil} foilKnown={foilKnown} foilHeld={foilHeld} crushed={crushed} dismantledAt={dismantledAt} autoEquippedAt={autoEquippedAt} firstResults={firstResults} working={working} shine={shine} onEquip={equipSkin} />
                 );
               })}
             </div>
@@ -2663,6 +2835,7 @@ export function SkinsScreen({
                   {areaRewards.map((reward) => (
                     <li key={reward.theme}>
                       <b>{areaRewardName(reward)}</b>
+                      <p>{AREA_INFO[reward.type].text}</p>
                       <span>
                         {reward.skins.map((skin) => (
                           <small key={skin.id}>
@@ -2706,7 +2879,7 @@ export function SkinsScreen({
                 disabled={working}
                 onClick={closeShown}
               >
-                {firstResults ? (nextStory ? "次の対局へ" : "ストーリーへ") : "結果を確認"}
+                {firstResults ? "ホームへ進む" : "結果を確認"}
               </button>
             </div>
           </SkinModal>
@@ -2716,9 +2889,10 @@ export function SkinsScreen({
         <FoilOfferSheet
           offers={
             foilOffer
-              ? foilOffers(collection, { exclude: foilOffer.exclude })
+              ? foilOffers(collection, { exclude: foilOffer.exclude, series: foilOffer.series })
               : []
           }
+          series={foilOffer.series}
           gemsPaid={collection.gemsPaid || 0}
           working={working}
           onBuy={buyFoilOffer}
@@ -2755,17 +2929,8 @@ export function SkinsScreen({
             >
               <ArrowLeft size={18} /> もどる
             </button>
-            {!selectedLocked && selected.video ? (
-              <button
-                type="button"
-                className="skin-btn skin-btn-gold skins-detail-play"
-                onClick={() => setFilm(selected)}
-              >
-                ▶ バトル演出を見る
-              </button>
-            ) : (
-              <span>スキン詳細</span>
-            )}
+            {/* 右上の「バトル演出を見る」はやめ、動画の釦は下(ワンダーランドと同じ場所)に置く(2026-10-16 本人の指示) */}
+            <span>スキン詳細</span>
           </div>
           <div className="skins-detail">
             {selectedLocked ? (
@@ -2913,10 +3078,10 @@ export function SkinsScreen({
               ) : selected.secret ? (
                 <button
                   className="skin-btn skin-btn-gold"
-                  disabled={working || !foilOffers(collection).some(o => o.product.secret)}
+                  disabled={working || !foilOffers(collection).some(o => o.product.secret && o.skins.includes(baseSkinId(selected.id)))}
                   onClick={() => {
                     setSelected(null);
-                    setFoilOffer({ exclude: [] });
+                    setFoilOffer({ exclude: [], series: selected.series });
                   }}
                 >
                   有償ジェム2,000で購入
@@ -2925,7 +3090,7 @@ export function SkinsScreen({
                 <button
                   className="skin-btn skin-btn-gold"
                   disabled={working || !onBattlePass}
-                  onClick={onBattlePass}
+                  onClick={() => onBattlePass(seasonOfSeries(selected.series)?.id)}
                 >
                   バトルパスを見る
                 </button>
@@ -2938,25 +3103,27 @@ export function SkinsScreen({
                       : "ガチャ・錬成から獲得できます"}
                 </p>
               )}
-              {!selectedLocked && selected.videos && (
+              {!selectedLocked && (selected.video || Object.values(selected.videos || {}).some(Boolean)) && (
                 <>
-                  <p>{selected.description}</p>
-                  <button
-                    className="skin-btn"
-                    onClick={() =>
-                      setFilm({ ...selected, video: selected.videos.swap })
-                    }
-                  >
-                    ▶ 入れ替えの動画を見る
-                  </button>
-                  <button
-                    className="skin-btn"
-                    onClick={() =>
-                      setFilm({ ...selected, video: selected.videos.capture })
-                    }
-                  >
-                    ▶ 包囲撃破の動画を見る
-                  </button>
+                  {selected.description && <p>{selected.description}</p>}
+                  {/* 技ごとの動画を試写する(2026-10-14 本人の指示)。枠の名前は alice.js の videos と同じ */}
+                  {FILM_SLOTS.filter((slot) => selected.videos?.[slot]).map((slot) => (
+                    <button
+                      key={slot}
+                      className="skin-btn"
+                      onClick={() =>
+                        setFilm({ ...selected, video: selected.videos[slot] })
+                      }
+                    >
+                      ▶ {filmLabel(selected, slot)}の動画を見る
+                    </button>
+                  ))}
+                  {/* レジェンドのように動画が1本だけの札は、同じ場所に1つの釦(2026-10-16 本人の指示) */}
+                  {!Object.values(selected.videos || {}).some(Boolean) && selected.video && (
+                    <button className="skin-btn" onClick={() => setFilm(selected)}>
+                      ▶ バトル演出の動画を見る
+                    </button>
+                  )}
                 </>
               )}
               <p className="skins-message" role="status">
@@ -2967,11 +3134,52 @@ export function SkinsScreen({
         </SkinModal>
       )}
       {film && <SkinFilm skin={film} onClose={() => setFilm(null)} />}
-      {onBack && (
-        <button className="btn btn-ghost btn-home" onClick={onBack}>
-          <ArrowLeft size={16} /> ホームに戻る
-        </button>
-      )}
+      {/* ホームへの戻りは親指の届く下のメニューの左端に置く。見出しの横は届きにくく見落とした(本人の指示 2026-10-12) */}
+      <div className={`skins-bottom-dock${onBack ? " has-home" : ""}`} ref={bottomDockRef}>
+        {onBack && (
+          <button className="skins-dock-home" onClick={onBack} aria-label={backLabel === "つぎへ" ? "つぎへ進む" : `${backLabel}に戻る`}>
+            {backLabel === "ホーム" ? <Home size={20} /> : backLabel === "つぎへ" ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
+            <span>{backLabel}</span>
+          </button>
+        )}
+        <div className="skins-tabs" role="tablist" aria-label="スキンメニュー">
+          <button
+            role="tab"
+            aria-selected={tab === "gacha"}
+            onClick={() => { setTab("gacha"); window.scrollTo(0, 0); }}
+          >
+            <Sparkle size={20} />
+            <span>ガチャ</span>
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === "collection"}
+            onClick={() => { setTab("collection"); window.scrollTo(0, 0); }}
+          >
+            <Cards size={20} />
+            <span>所持・装備</span>
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === "forge"}
+            onClick={() => { setTab("forge"); window.scrollTo(0, 0); }}
+          >
+            <Ether size={20} />
+            <span>錬成</span>
+          </button>
+          {/* 欠片と交換・フォイル加工はこちら。錬成と対の名前。
+              フォイルを持たないうちも開ける(通算獲得の進み具合を見せ、手に入れる道筋を知らせる)。
+              交換と所持の一覧は、フォイルを1枚持つまで中で伏せる */}
+          <button
+            role="tab"
+            aria-selected={tab === "foil"}
+            onClick={() => { setTab("foil"); window.scrollTo(0, 0); }}
+          >
+            <Shard size={20} />
+            <span>加工</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

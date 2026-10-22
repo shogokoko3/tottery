@@ -43,6 +43,8 @@ export function publishTitleNotices(before, after) {
         id: `title-${++sequence}`,
         titleId: title.id,
         name: title.name,
+        // どういう理由で手に入れたか(手に入れ方の1行目)。獲得画面に出す(2026-10-15 本人の指示)
+        how: typeof title.how === "string" ? title.how.split("\n")[0] : "",
       }),
     ),
   ]);

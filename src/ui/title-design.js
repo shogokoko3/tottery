@@ -75,8 +75,23 @@ const DESIGNS = {
   "mastery-demon-q": ["horn", "blood"], // Q 夜后
   "mastery-angel-k": ["wing", "gold"], // K 熾天使
   "mastery-demon-k": ["horn", "flame"], // K 堕天王
+  "mastery-alice-A-alice": ["portal", "sky"],
+  "mastery-alice-2-dodo": ["laurel", "earth"],
+  "mastery-alice-3-bill": ["leaf", "forest"],
+  "mastery-alice-4-hatter": ["sun", "gold"],
+  "mastery-alice-5-march-hare": ["star", "rose"],
+  "mastery-alice-6-gryphon": ["wing", "tide"],
+  "mastery-alice-7-mock-turtle": ["wave", "tide"],
+  "mastery-alice-8-white-rabbit": ["star", "sky"],
+  "mastery-alice-9-caterpillar": ["leaf", "astral"],
+  "mastery-alice-10-cheshire-cat": ["portal", "shadow"],
+  "mastery-alice-J-knave": ["cards", "blood"],
+  "mastery-alice-Q-queen": ["crown", "rose"],
+  "mastery-alice-K-king": ["crown", "royal"],
   "mastery-all": ["book", "royal"],
   "mastery-master": ["dragon", "gold"],
+  "mastery-alice-all": ["book", "astral"],
+  "mastery-alice-master": ["portal", "gold"],
 };
 const FAMILIES = {
   "all-r": ["moon", "shadow"],
@@ -138,6 +153,8 @@ const ACHIEVEMENT_LEVELS = {
   // すべて500回まで使い込む = 極煌(6)。札の位(J/Q/K)は段に使わない
   "mastery-all": 5,
   "mastery-master": 6,
+  "mastery-alice-all": 5,
+  "mastery-alice-master": 6,
 };
 // Counts differ by family: e.g. pulling 10 times is not equivalent to 10 freezes.
 // Repeated grades still advance through the family's engraved progress jewels.

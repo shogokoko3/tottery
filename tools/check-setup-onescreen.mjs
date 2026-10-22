@@ -18,7 +18,7 @@ const game = read("src/ui/game.jsx");
 const css = read("src/styles.css");
 
 // 布陣・王選び: 見出し＋先攻後攻＋残り時間を1つの帯に
-assert.equal((setup.match(/className="setup-wrap setup-wrap-compact"/g) || []).length, 2, "配置と王選びの両方が圧縮版の枠");
+assert.equal((setup.match(/setup-wrap setup-wrap-compact/g) || []).length, 2, "配置と王選びの両方が圧縮版の枠");
 assert.equal((setup.match(/<div className="setup-head">/g) || []).length, 2, "帯は2か所");
 for (const label of ["布陣の残り時間", "王を選ぶ残り時間"]) {
   const i = setup.indexOf(`label="${label}"`);

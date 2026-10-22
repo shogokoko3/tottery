@@ -35,7 +35,10 @@ const {
 const { MASTERY_TITLES } = await import("../src/game/titles.js");
 const { hasTitle, findTitle } = await import("../src/game/titles.js");
 const { titleDesign } = await import("../src/ui/title-design.js");
-const { MASTERY_SKINS } = await import("../src/game/constants.js");
+const { MASTERY_SKINS, MASTERY_SERIES, MASTERY_SKIN_RANK } = await import("../src/game/constants.js");
+const { ALICE_SKINS } = await import("../src/skins/alice.js");
+const { baseSkinId, foilId } = await import("../src/skins/catalog.js");
+const { masteryTotal } = await import("../src/game/profile-card.js");
 
 let ok = 0;
 const fails = [];
@@ -145,8 +148,9 @@ is("頭打ちは500点", MASTERY_STEPS[MASTERY_STEPS.length - 1], 500);
 
 console.log("\n称号");
 reset();
-is("17スキンぶん＋通し2つ", MASTERY_TITLES.length, MASTERY_SKINS.length + 2);
-is("対象スキンは17種", MASTERY_SKINS.length, 17);
+is("全スキンぶん＋各シリーズの通し2つ", MASTERY_TITLES.length, MASTERY_SKINS.length + MASTERY_SERIES.length * 2);
+is("レジェンド17種とワンダーランド13種", MASTERY_SERIES.map((s) => s.skins.length), [17, 13]);
+is("対象スキンは重複なく30種", new Set(MASTERY_SKINS).size, 30);
 for (const skin of MASTERY_SKINS)
   yes(`${skin} の称号がある`, MASTERY_TITLES.some((t) => t.mastery === skin));
 yes("J は天使・悪魔で別の称号", MASTERY_TITLES.some((t) => t.mastery === "angel-j") && MASTERY_TITLES.some((t) => t.mastery === "demon-j"));
@@ -162,9 +166,34 @@ yes(
 no("通しの称号はまだ出ない", hasTitle(loadProfile(), "mastery-all"));
 reset();
 for (const skin of MASTERY_SKINS) bump(skin, MASTERY_STEPS[2]);
-yes("17スキンすべてで通しの称号が出る", hasTitle(loadProfile(), "mastery-all"));
+yes("全スキンを育ててもレジェンドの通しの称号が出る", hasTitle(loadProfile(), "mastery-all"));
 yes("masteryAll が段3を認める", masteryAll(loadProfile(), 3));
 no("最上位はまだ出ない", hasTitle(loadProfile(), "mastery-master"));
+
+console.log("\nワンダーランドの加算・保存とシリーズ別の称号");
+for (const skin of ALICE_SKINS) {
+  reset();
+  const normal = recordMastery({ [skin.id]: { king: true, pieces: 2, moves: 9, captures: 4, kingCapture: true } });
+  is(`${skin.name}にも同じ点数を加算`, normal.gains[0]?.added, 24);
+  recordMastery({ [baseSkinId(foilId(skin.id))]: { pieces: 1 } });
+  is(`${skin.name}のフォイルも同じ枠に保存`, loadProfile().mastery, { [skin.id]: 25 });
+  is(`${skin.name}の集計に使う札は現行のrank`, MASTERY_SKIN_RANK[skin.id], skin.rank);
+  is(`${skin.name}をプロフィールの合計にも加算`, masteryTotal(loadProfile()), 25);
+  recordMastery({ [skin.id]: { pieces: 55 } });
+  yes(`${skin.name}の80点称号が解放・保存される`, loadProfile().titles.includes(`mastery-${skin.id}`));
+  is(`${skin.name}の称号を再読込できる`, hasTitle(loadProfile(), `mastery-${skin.id}`), true);
+}
+reset();
+for (const skin of MASTERY_SERIES[0].skins) recordMastery({ [skin]: { pieces: 80 } });
+yes("既存の17英雄だけで従来の称号を獲得", hasTitle(loadProfile(), "mastery-all"));
+no("レジェンドの点をワンダーランドの称号に合算しない", hasTitle(loadProfile(), "mastery-alice-all"));
+reset();
+for (const skin of MASTERY_SERIES[1].skins) recordMastery({ [skin]: { pieces: 80 } });
+yes("ワンダーランド13種だけでそのシリーズの称号を獲得", hasTitle(loadProfile(), "mastery-alice-all"));
+no("ワンダーランドの点を17英雄の称号に合算しない", hasTitle(loadProfile(), "mastery-all"));
+for (const skin of MASTERY_SERIES[1].skins) recordMastery({ [skin]: { pieces: 420 } });
+yes("ワンダーランド13種の500点称号を獲得", hasTitle(loadProfile(), "mastery-alice-master"));
+no("ワンダーランドだけで盤上無双を獲得しない", hasTitle(loadProfile(), "mastery-master"));
 
 console.log("\n額縁");
 for (const t of MASTERY_TITLES) {

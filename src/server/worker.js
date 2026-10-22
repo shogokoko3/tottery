@@ -162,7 +162,7 @@ async function handleApi(request, env, url) {
       if (adminPurchases) return call("admin-purchases", { targetUid: body.uid });
       if (adminGacha) return call("admin-gacha", { targetUid: body.uid });
       if (adminDiag) return call("admin-diag");
-      if (adminPass) return call("admin-pass-complete", { targetUid: body.uid });
+      if (adminPass) return call("admin-pass-complete", { targetUid: body.uid, season: typeof body.season === "string" && /^[a-z]{1,16}$/.test(body.season) ? body.season : "heroes" });
       // ---- 財布(サーバー側のチケット残高)と課金 ----
       // 出来事の id は端末が作る(やり直しで二重にならない)。形だけここで見る
       const eventId = (x) => (typeof x === "string" && /^[\w:.-]{1,128}$/.test(x) ? x : null);
@@ -190,7 +190,7 @@ async function handleApi(request, env, url) {
           return call("wallet-debit", { id: body.id, n: body.n, kind: "pull" });
         // サーバーが引く(2026-09-18)。debit は配布済みのビルドが使うので残す
         if (wop === "pull" && eventId(body.id) && (body.n === 1 || body.n === 10))
-          return call("wallet-pull", { id: body.id, n: body.n });
+          return call("wallet-pull", { id: body.id, n: body.n, series: body.series });
         if (wop === "win-chance-reward")
           return validWinChanceReward(body.day, body.done)
             ? call("wallet-win-chance-reward", { day: body.day, done: body.done })
@@ -251,7 +251,7 @@ async function handleApi(request, env, url) {
           return call("wallet-migrate", { tickets: body.tickets });
         if (wop === "exchange" && eventId(body.id) && Number.isSafeInteger(body.tickets) && body.tickets > 0 && body.tickets <= 100)
           return call("wallet-exchange", { id: body.id, tickets: body.tickets });
-        // 無償ジェムをエーテルに(無償だけ)。量はカタログの決まり
+        // ジェムをエーテルに(無償→有償の順)。量はカタログの決まり
         if (wop === "ether" && eventId(body.id) && Number.isSafeInteger(body.gems) && body.gems > 0 && body.gems <= 1000)
           return call("wallet-ether", { id: body.id, gems: body.gems });
         // フォイルの直接購入(有償ジェムだけ)。値段は財布がカタログから決める
@@ -263,7 +263,7 @@ async function handleApi(request, env, url) {
         )
           return call("wallet-foil", { product: body.product, skins: body.skins });
         if (wop === "buy-pass" && eventId(body.id))
-          return call("wallet-buypass", { id: body.id });
+          return call("wallet-buypass", { id: body.id, season: typeof body.season === "string" && /^[a-z]{1,16}$/.test(body.season) ? body.season : "heroes" });
         // バトルパスのマスをクリアした報酬(チケット1枚)。所持者だけ・週の上限はサーバーが数える
         if (wop === "pass-reward" && eventId(body.id))
           return call("wallet-pass-reward", { id: body.id });
@@ -514,7 +514,7 @@ export class SeasonLedger {
         if (op === "wallet-backup-save") return w.saveBackup(uid, args.blob, now);
         if (op === "wallet-backup-load") return w.loadBackup(uid);
         if (op === "wallet-debit") return w.debit(uid, args.id, args.n, args.kind, now);
-        if (op === "wallet-pull") return w.pull(uid, args.id, args.n, now);
+        if (op === "wallet-pull") return w.pull(uid, args.id, args.n, now, args.series);
         if (op === "wallet-credit") return w.credit(uid, args.id, args.n, args.kind, now);
         if (op === "wallet-win-chance-reward") return w.winChanceReward(uid, args.day, args.done, now);
         if (op === "wallet-tutorial-reward") return w.tutorialReward(uid, args.chapter, now);
@@ -527,13 +527,13 @@ export class SeasonLedger {
         if (op === "wallet-foil") return w.buyFoil(uid, args.product, args.skins, now);
         if (op === "wallet-collection") return w.syncCollection(uid, args.ownedIds, now);
         if (op === "wallet-ether") return w.buyEther(uid, args.id, args.gems, now);
-        if (op === "wallet-buypass") return w.buyPass(uid, args.id, now);
+        if (op === "wallet-buypass") return w.buyPass(uid, args.id, now, args.season || "heroes");
         if (op === "wallet-pass-reward") return w.passReward(uid, args.id, now);
         if (op === "wallet-ad-reward") return w.adReward(uid, args.id, now);
         if (op === "wallet-log-pull") return w.logGacha(uid, args.items, now);
         if (op === "wallet-diag") return w.logDiag(uid, args.diag, now);
         if (op === "admin-diag" && uid === OPERATOR_UID) return w.diagList();
-        if (op === "admin-pass-complete" && uid === OPERATOR_UID) return w.adminPassComplete(args.targetUid, now);
+        if (op === "admin-pass-complete" && uid === OPERATOR_UID) return w.adminPassComplete(args.targetUid, now, args.season || "heroes");
         if (op === "admin-unused" && uid === OPERATOR_UID) return w.unused();
         if (op === "admin-grant" && uid === OPERATOR_UID)
           return w.adminGrant(args.targetUid, { tickets: args.tickets, gemsFree: args.gemsFree }, args.id, now);

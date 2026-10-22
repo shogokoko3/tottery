@@ -186,7 +186,7 @@ console.log("\n配線(screens / nearby / verify-match / spectate)");
   is("観戦: 部屋の phase を写している", /\{ phase: d\.phase \}/.test(spectate), true);
   const profile = read("src/game/profile.js");
   is("昇格の5勝: 対局のフェーズが自分と違えば数えない", /opts\.phase == null \|\| opts\.phase === normalizePhase\(profile\.phase\)/.test(profile), true);
-  is("ルール版は上げていない(旧端末除けは guestPhase で行う)", GAME_RULE_VERSION, 18);
+  is("シーズン2に合わせたルール版", GAME_RULE_VERSION, 19);
 }
 
 console.log(`\n${ok} ok / ${fail.length} NG`);

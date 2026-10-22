@@ -184,6 +184,7 @@ function PuzzleAttempt({ q, receipt, onClear, onRetry }) {
   }, []);
 
   async function complete(evidence) {
+    if (!solved) playSound("puzzle_correct");
     setSolved(true);
     setShowAnswer(true);
     setPending(evidence);
@@ -205,6 +206,7 @@ function PuzzleAttempt({ q, receipt, onClear, onRetry }) {
   function submitAnswer() {
     if (guard.current || answer === null || solved) return;
     if (answer !== q.correctOption) {
+      playSound("puzzle_retry");
       setFeedback("もう一度、移動と公開情報を確認してみましょう。");
       return;
     }

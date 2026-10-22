@@ -18,7 +18,13 @@ import {
   saveName,
   levelProgress,
 } from "../game/profile.js";
-import { availableTitles, hasTitle, titleOf } from "../game/titles.js";
+import {
+  availableTitles,
+  hasTitle,
+  orderTitles,
+  titleEarnedLabel,
+  titleOf,
+} from "../game/titles.js";
 import { foilRevealed } from "../skins/collection.js";
 import { getCollection } from "../skins/store.js";
 import { publishPlayer, registerPlayer } from "../net/players.js";
@@ -26,15 +32,33 @@ import { ICONS, hasIcon } from "../game/icons.js";
 import { Check, Close, Lock, Sparkle } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
 import { TitleFrame } from "./title-frame.jsx";
+import { phrasesOf } from "./phrase-split.js";
 
 /**
  * 名前を決める画面の本文(2026-10-01 本人の指示)。1文1行。
- * 「インターネット上のランキング」は法務メモ (C) で明記すると決めた語なので残す
+ * 「インターネット上のランキング」は法務メモ (C) で明記すると決めた語なので残す。
+ * 言葉は導入(語り・はじめの一局)の調子にそろえる(2026-10-06 本人の指示「訂正します」)。です・ますを使わない。
+ * 行の中は読点・句点のあとの句で折り返す(320 幅で1行目が2行になる。語の途中で割らない)
  */
 export const NAME_LINES = Object.freeze([
-  "インターネット上のランキングに出ます。",
-  "本名は避けて。あとから変えられます。",
+  "インターネット上のランキングに、名前が出る。",
+  "本名は避けて。あとから変えられる。",
 ]);
+
+/**
+ * 名前を決める画面(導入の「はじめての勝利」・名前の壁)で断るときの一言。本文と同じく、です・ますを使わない
+ * (2026-10-06 本人の指示「訂正します」。空のまま「決める」を押すと「名前を入力してください」が出ていた)。
+ * 断る決まりは nameError のまま。設定の「名前を変える」(NameEditModal)は、です・ます調の画面なので nameError の文を出す
+ */
+const SETUP_NAME_ERRORS = Object.freeze({
+  名前を入力してください: "名前を入れて。",
+  [`名前は${MAX_NAME_LEN}文字までです`]: `名前は${MAX_NAME_LEN}文字まで。`,
+  "その名前は使えません。別の名前にしてください": "その名前は使えない。別の名前にして。",
+});
+export function setupNameError(raw) {
+  const bad = nameError(raw);
+  return bad && (SETUP_NAME_ERRORS[bad] || bad);
+}
 
 /** 名前を入れてもらう欄。登録画面と変更画面で共通に使う */
 function NameField({ value, onChange, error }) {
@@ -79,7 +103,7 @@ export function NameSetupScreen({ onDone, notice, afterWin = false, reason = nul
   const [busy, setBusy] = useState(false);
 
   async function submit() {
-    const bad = nameError(value);
+    const bad = setupNameError(value);
     if (bad) {
       setError(bad);
       return;
@@ -100,10 +124,17 @@ export function NameSetupScreen({ onDone, notice, afterWin = false, reason = nul
         <h2>あなたの名前は?</h2>
         {reason && <p className="name-reason">{reason}</p>}
         {notice && <p className="name-notice">{notice}</p>}
-        {/* 1文1行。長い3行で「出ま/す」と割れていた(2026-10-01 本人の指示で2行に) */}
+        {/* 1文1行。長い3行で「出ま/す」と割れていた(2026-10-01 本人の指示で2行に)。
+            行の中は句の塊(iPhone の WebKit は auto-phrase を知らず、狭い幅で「名前が出/る。」と割れる) */}
         <p className="hint name-lines">
           {NAME_LINES.map((line) => (
-            <span key={line}>{line}</span>
+            <span key={line}>
+              {phrasesOf(line).map((phrase, i) => (
+                <span className="text-phrase" key={i}>
+                  {phrase}
+                </span>
+              ))}
+            </span>
           ))}
         </p>
         <NameField
@@ -350,7 +381,56 @@ export function IconPickModal({ onClose, onSaved }) {
  * 額縁を入れたときに「薄くする」指定が打ち消され、どちらも同じ濃さで並んでいた。
  * いまは 色(未取得は灰色)・錠前・枠線・並ぶ場所 の4つで分けている。
  */
-export function TitleChoice({ title: t, owned, picked, onPick }) {
+/**
+ * 使える称号の並び(2026-10-15 本人の指示「獲得した順でソートがかけれるように」)。
+ * "list" は一覧の順(台帳の順)、"earned" は獲得した順(古い順)。選びは端末に覚える
+ */
+const TITLE_ORDER_KEY = "tottery.titleOrder";
+export function useTitleOrder() {
+  const [order, setOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem(TITLE_ORDER_KEY);
+      return saved === "earned" || saved === "newest" ? saved : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const change = (next) => {
+    setOrder(next);
+    try {
+      localStorage.setItem(TITLE_ORDER_KEY, next);
+    } catch {
+      // 覚えられなくても、この画面の間は効く
+    }
+  };
+  return [order, change];
+}
+
+/** 「一覧順／古い順／新しい順」の切り替え(新しい順は 2026-10-16 本人の指示) */
+export function TitleOrderToggle({ value, onChange }) {
+  return (
+    <div className="title-order" role="group" aria-label="使える称号の並び">
+      <span>並び</span>
+      {[
+        ["list", "一覧順"],
+        ["earned", "獲得が古い順"],
+        ["newest", "獲得が新しい順"],
+      ].map(([id, label]) => (
+        <button
+          key={id}
+          type="button"
+          className={`title-order-btn${value === id ? " is-on" : ""}`}
+          aria-pressed={value === id}
+          onClick={() => value !== id && onChange(id)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function TitleChoice({ title: t, owned, picked, onPick, earned = "" }) {
   return (
     <button
       className={`title-choice ${picked ? "title-choice-on" : ""} ${
@@ -388,6 +468,8 @@ export function TitleChoice({ title: t, owned, picked, onPick }) {
               ? "手に入れた"
               : ""}
       </small>
+      {/* 獲得日(2026-10-15 本人の指示)。記録が始まる前に取ったものは「記録なし」 */}
+      {owned && !t.free && earned && <small className="title-choice-date">{earned}</small>}
     </button>
   );
 }
@@ -414,7 +496,9 @@ export function TitlePickModal({ onClose, onSaved }) {
     if (t.family && t.tier > 3 && !owned) return false;
     return true;
   });
-  const mine = visible.filter((t) => hasTitle(profile, t.id));
+  const [order, setOrder] = useTitleOrder();
+  const owned = visible.filter((t) => hasTitle(profile, t.id));
+  const mine = orderTitles(owned, profile, order);
   const locked = visible.filter((t) => !hasTitle(profile, t.id));
 
   function submit() {
@@ -454,6 +538,7 @@ export function TitlePickModal({ onClose, onSaved }) {
               <Check size={13} />
               使える称号 <b>{mine.length}</b>
             </p>
+            <TitleOrderToggle value={order} onChange={setOrder} />
             {mine.map((t) => (
               <TitleChoice
                 key={t.id}
@@ -461,6 +546,7 @@ export function TitlePickModal({ onClose, onSaved }) {
                 owned
                 picked={picked === t.id}
                 onPick={setPicked}
+                earned={titleEarnedLabel(profile, t)}
               />
             ))}
             {locked.length > 0 && (

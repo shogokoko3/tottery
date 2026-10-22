@@ -3,13 +3,14 @@ import { sanitizeSeasonCache } from "../game/season.js";
 import {
   SKINS,
   ALL_SKINS,
-  POOL,
+  ALL_POOL as POOL,
   FOIL_SKINS,
   FOIL_CHANCE,
   baseSkinId,
   byId,
   draw,
   foilId,
+  poolForSeries,
   sanitizeLoadout,
 } from "./catalog.js";
 import {
@@ -115,8 +116,9 @@ export function normalize(raw) {
       : count(value.owned?.[skin.id]);
     if (n) owned[skin.id] = n;
   }
+  const migratedEquipment = Object.fromEntries(Object.entries(value.equipped || {}).map(([rank,id])=>[byId(id)?.series==="alice" ? byId(id).rank : rank,id]));
   const equipped = Object.fromEntries(
-    Object.entries(sanitizeLoadout(value.equipped)).filter(
+    Object.entries(sanitizeLoadout(migratedEquipment)).filter(
       ([, id]) => owned[id],
     ),
   );
@@ -158,6 +160,11 @@ export function normalize(raw) {
       Number.isSafeInteger(value.passComplete) && value.passComplete > 0
         ? value.passComplete
         : null,
+    // シーズンごとのクリア印(サーバーの写し。heroes 以外)
+    passCompleteBySeason: Object.fromEntries(
+      Object.entries(value.passCompleteBySeason && typeof value.passCompleteBySeason === "object" ? value.passCompleteBySeason : {})
+        .filter(([k, v]) => typeof k === "string" && k.length <= 32 && Number.isSafeInteger(v) && v > 0),
+    ),
     season: sanitizeSeasonCache(value.season),
     tsume: sanitizeTsumeProgress(value.tsume),
     missionClaims: sanitizeMissionClaims(value.missionClaims),
@@ -199,6 +206,12 @@ export function normalize(raw) {
       Number.isFinite(value.foilOfferAt) && value.foilOfferAt > 0
         ? Math.floor(value.foilOfferAt)
         : null,
+    // シリーズごとの欄の時刻(2026-10-15 本人の指示でワンダーランドにも同じ仕組み)。heroes は上の foilOfferAt
+    foilOfferAtBySeries: Object.fromEntries(
+      Object.entries(value.foilOfferAtBySeries || {})
+        .filter(([k, v]) => k !== "heroes" && /^[a-z]{1,16}$/.test(k) && Number.isFinite(v) && v > 0)
+        .map(([k, v]) => [k, Math.floor(v)]),
+    ),
     // 「しばらく表示しない」を押した人には、この時刻までポップアップを出さない(2026-09-22 本人の指示)
     foilOfferSnoozeUntil:
       Number.isFinite(value.foilOfferSnoozeUntil) && value.foilOfferSnoozeUntil > 0
@@ -227,7 +240,7 @@ export function normalize(raw) {
           ? "skip"
           : "full",
     pendingPull: value.pendingPull && typeof value.pendingPull.id === "string" && /^pull:[\w:-]{1,150}$/.test(value.pendingPull.id) && [1, 10].includes(value.pendingPull.amount)
-      ? { id: value.pendingPull.id, amount: value.pendingPull.amount } : null,
+      ? { id: value.pendingPull.id, amount: value.pendingPull.amount, series: value.pendingPull.series === "alice" ? "alice" : "heroes" } : null,
     lastPullId: typeof value.lastPullId === "string" ? value.lastPullId.slice(0, 160) : null,
     // はじめての10連を引いたか(2026-09-28 本人の指示)。
     // ここに並べないと normalize が落としてしまい、開き直すたびに初回の10連が出る
@@ -290,8 +303,8 @@ export const FREE_GACHA = false;
 export const PULL_COST = 1;
 
 /** 1回の抽選(キャラを決めてから、独立した1%で仕上げを決める)。サーバーも同じ順で引く */
-export function drawOne(random = Math.random) {
-  return finishedId(draw(random).id, random);
+export function drawOne(random = Math.random, series = "heroes") {
+  return finishedId(draw(random, series).id, random);
 }
 
 /**
@@ -371,7 +384,7 @@ export function pull(
   state,
   amount,
   random = Math.random,
-  { free = FREE_GACHA } = {},
+  { free = FREE_GACHA, series = "heroes" } = {},
 ) {
   if (amount !== 1 && amount !== 10)
     throw new Error("1回または10回を選んでください");
@@ -381,7 +394,7 @@ export function pull(
   const tickets = count(state.tickets);
   if (cost > tickets)
     throw new Error(`ガチャチケットが足りません(あと${cost - tickets}枚)`);
-  const initial = Array.from({ length: amount }, () => drawOne(random));
+  const initial = Array.from({ length: amount }, () => drawOne(random, series));
   return applyPull(state, resolveSummonFreeze(initial, random), { free });
 }
 
@@ -600,10 +613,10 @@ export function dismantledIndexes(results, done) {
   return marked;
 }
 
-/** 通常版のダブりをまとめて崩す。フォイルは欠片にするので含めない。 */
-export function dismantleAll(state) {
+/** 通常版のダブりをまとめて崩す。シリーズ指定時はそのシリーズだけを対象にする。 */
+export function dismantleAll(state, series = null) {
   let next = state;
-  for (const skin of SKINS) {
+  for (const skin of series === null ? SKINS : poolForSeries(series)) {
     // 1枚ずつ減らす。途中で崩せなくなったら、その札はそこで止める
     while (dismantleCheck(next, skin.id).ok) next = dismantle(next, skin.id);
   }

@@ -20,7 +20,7 @@ export const QUEST_TABS = [
   { id: "battlepass", label: "バトルパス" },
 ];
 
-export function QuestsScreen({ tab = "missions", onTab, onBack, onSkins }) {
+export function QuestsScreen({ tab = "missions", onTab, onBack, onSkins, passSeason = null }) {
   const [profile] = useMissionProfile();
   const collection = useCollection();
   // 受け取れるミッションの数。バトルパスを開いているときも、切り替えに印を出す
@@ -53,7 +53,7 @@ export function QuestsScreen({ tab = "missions", onTab, onBack, onSkins }) {
         ))}
       </div>
       {current === "battlepass" ? (
-        <BattlePassScreen embedded onBack={onBack} onSkins={onSkins} />
+        <BattlePassScreen embedded onBack={onBack} onSkins={onSkins} initialSeason={passSeason} />
       ) : (
         <MissionsScreen embedded onBack={onBack} />
       )}

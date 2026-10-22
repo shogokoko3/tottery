@@ -14,7 +14,7 @@
  *
  * 決めごとの控え(未定): ステージごとの xp の量。いまは STORY_XP で仮置き
  */
-import { storyArc, storyEpisode } from "./story-narrative.js";
+import { storyArc, storyEpisode, episodeAccess } from "./story-narrative.js";
 import { MOVE_TEXT, KING_TEXT, SUIT_SYMBOL, movePhrases } from "./constants.js";
 import { AREA_BY_RANK, AREA_INFO } from "./areas.js";
 import { buildDeck, shuffle, squareName } from "./board.js";
@@ -48,12 +48,16 @@ export function storyLesson(axis, phase = 1) {
   return { pool, handSize };
 }
 
-/** 一言の挑戦状と、その局で意識すること。長い会話を挟まず盤につなぐ。 */
+/**
+ * 一言の挑戦状と、その局で意識すること。長い会話を挟まず盤につなぐ。
+ * aim(この局のねらい。対局説明に出る)の数え方は算用数字(「1枚」「2マス」。2026-10-06 本人の指示)。
+ * 「一直線」は言葉なので漢数字のまま
+ */
 const RIVALS = Object.freeze({
   "23": { name: "門前の番人", quote: "逃げた一枚を、どう読む？", aim: "相手の動きから、王を探そう。", after: "読みは届いた。門の先へ進め。" },
-  "45": { name: "双歩の衛士", quote: "今度は、君の王を探そう。", aim: "自分の王に、味方を一枚添えよう。", after: "その陣なら、先へ進める。" },
-  "67": { name: "飛び石の旅人", quote: "届かないと思った、その先へ。", aim: "二マス先から届く手に注目しよう。", after: "距離を読めたな。次はもっと遠くだ。" },
-  "89": { name: "遠見の狩人", quote: "遠くにいるから、安心かい？", aim: "一・三マス先への動きを見よう。", after: "遠くの一手まで、見えてきたね。" },
+  "45": { name: "双歩の衛士", quote: "今度は、君の王を探そう。", aim: "自分の王に、味方を1枚添えよう。", after: "その陣なら、先へ進める。" },
+  "67": { name: "飛び石の旅人", quote: "届かないと思った、その先へ。", aim: "2マス先から届く手に注目しよう。", after: "距離を読めたな。次はもっと遠くだ。" },
+  "89": { name: "遠見の狩人", quote: "遠くにいるから、安心かい？", aim: "1・3マス先への動きを見よう。", after: "遠くの一手まで、見えてきたね。" },
   "10": { name: "空渡りの騎士", quote: "その壁を、越えてみせよう。", aim: "駒を飛び越える行き先を見よう。", after: "壁の向こうまで、読まれたか。" },
   "jq": { name: "二筋の宰相", quote: "縦横か、斜めか。道を見よ。", aim: "一直線に届く道を探そう。", after: "道は開いた。玉座で待つ者のもとへ。" },
   "k": { name: "玉座の主", quote: "ここまでの読みを、見せてみよ。", aim: "動きと逃げ方から、王を絞ろう。", after: "見事だ。その読みを、次の相手へ。" },
@@ -63,7 +67,8 @@ export function storyRival(axis, phase = 1) {
   if (!RIVALS[axis]) return null;
   const p = normalizePhase(phase);
   const arc = storyArc(axis), episode = storyEpisode(axis, p);
-  const voice = episode.before.filter(page => page.speaker !== "語り" && page.speaker !== "あなた").at(-1);
+  const voice = episode.before.filter(line => arc.characters.some(c => c.name === line.speaker)).at(-1)
+    || episode.before.filter(line => line.speaker !== "語り").at(-1) || episode.before[0];
   return {
     ...RIVALS[axis],
     name: arc.cast,
@@ -151,7 +156,8 @@ export function stageIntro(axis, phase) {
       title: `${stage.name}の王の力`,
       lead,
       items: stage.ranks.map((rank) => Object.freeze({ rank, text: KING_TEXT[rank] })),
-      note: Object.freeze(["王にした駒だけに付く力。", "相手の王の力を読んで討つ。"]),
+      // ルールの説明は「取る」(手引き・フェーズ1 の説明と同じ。2026-10-06 本人の指示)
+      note: Object.freeze(["王にした駒だけに付く力。", "相手の王の力を読んで取る。"]),
     });
   const type = AREA_BY_RANK[stage.ranks[0]];
   const area = AREA_INFO[type];
@@ -162,6 +168,21 @@ export function stageIntro(axis, phase) {
     // フェーズ3のステージは 9×9。相手(CPU)の王にはフォイルが付くので、相手のエリアは必ず立つ
     note: Object.freeze(["相手の王のエリアが立つ。", "あなたの王も、その数字のフォイルを装備していればエリアが立つ。"]),
   });
+}
+
+/**
+ * 結びの行(stageIntro の note)を句に切ったもの(2026-10-06 見直し)。画面は句の塊(phrases.jsx の Phrases)で出し、
+ * 塊の間でだけ折り返す。読点・句点で切っただけで 320 幅の列に入る行はここに書かない(Phrases がそう切る)。
+ * 「あなたの王も、その数字のフォイルを装備していればエリアが立つ。」は 320・375 幅で
+ * 「…その数字のフォイル/を装備していれば…」と語の途中で割れていた。文は note のまま(ここは切り方だけ)
+ */
+const NOTE_PHRASES = new Map(
+  [["あなたの王も、", "その数字の", "フォイルを", "装備していれば", "エリアが立つ。"]].map((phrases) => [phrases.join(""), Object.freeze(phrases)]),
+);
+
+/** 結びの1行を句の並びに。手で切った並びが無ければ行のまま返す(Phrases が読点・句点で切る) */
+export function notePhrases(line) {
+  return NOTE_PHRASES.get(line) || line;
 }
 
 /**
@@ -251,7 +272,7 @@ export function storyDeckFor(axis, king, size) {
 export function storyList(profile) {
   const phase = phaseOf(profile);
   const cleared = normalizeStory(profile?.story)[phase];
-  return STORY_STAGES.map((s) => Object.freeze({ ...s, phase, cleared: cleared.includes(s.axis), tickets: STORY_TICKETS, xp: STORY_XP }));
+  return STORY_STAGES.map((s) => Object.freeze({ ...s, phase, available: episodeAccess(profile, s.axis, phase).available, cleared: cleared.includes(s.axis), tickets: STORY_TICKETS, xp: STORY_XP }));
 }
 
 /** 次に遊ぶステージ(いまのフェーズで最初の未クリア)。全部済んでいれば null */

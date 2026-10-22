@@ -2,7 +2,8 @@
  * ストーリー(src/game/story.js)の決まりを確かめる。設計は ストーリーとフェーズ.md
  */
 import assert from "node:assert/strict";
-import { STORY_STAGES, STORY_XP, stageOf, stageIntro, stageSetup, storyList, nextStage, nextStageLine, ranksLabel, storyFreshClear, pickStoryKing, storyCpuArea, storyDeck, storyDeckFor, stageAfter, nextStageAfter, storyPrimerSeen, markStoryPrimerSeen, primerOutroLines } from "../src/game/story.js";
+import { phrasesOf } from "../src/ui/phrase-split.js";
+import { STORY_STAGES, STORY_XP, stageOf, stageIntro, notePhrases, stageSetup, storyList, nextStage, nextStageLine, ranksLabel, storyFreshClear, pickStoryKing, storyCpuArea, storyDeck, storyDeckFor, stageAfter, nextStageAfter, storyPrimerSeen, markStoryPrimerSeen, primerOutroLines } from "../src/game/story.js";
 import { reducer } from "../src/game/reducer.js";
 import { enrichAction } from "../src/game/actions.js";
 import { kingRankOf } from "../src/game/board.js";
@@ -73,6 +74,34 @@ is(
 }
 is("結びはどのフェーズも行の配列", STORY_STAGES.every((s) => [1, 2, 3].every((p) => Array.isArray(stageIntro(s.axis, p).note) && stageIntro(s.axis, p).note.length >= 1)), true);
 is("「名乗らない」を使わない", STORY_STAGES.some((s) => [1, 2, 3].some((p) => /名乗らない/.test(stageIntro(s.axis, p).note.join("")))), false);
+// ルールの説明は「取る」(2026-10-06 本人の指示。手引き・語り2枚目の本文と同じ)。「討つ」は語りの見出しと演出だけ
+is("フェーズ2 の結び: 王の力と、読んで取る", [...stageIntro("23", 2).note], ["王にした駒だけに付く力。", "相手の王の力を読んで取る。"]);
+is("説明の結びは「討つ」を使わない(どのフェーズも)", STORY_STAGES.flatMap((s) => [1, 2, 3].flatMap((p) => stageIntro(s.axis, p).note)).filter((l) => /討/.test(l)), []);
+{
+  // 結びの行は句の塊で出す(2026-10-06 見直し。フェーズ3 の2行目が 320・375 幅で「…その数字のフォイル/を装備して…」
+  // と割れた)。句をつなぐと行のまま。どの句も 320 幅の結びの列(全角15字。描いた幅は check-story-fit が見る)に入る
+  const em = (s) => [...s].reduce((n, c) => n + (/[\x20-\x7e]/.test(c) ? 0.6 : 1), 0);
+  const notes = [...new Set(STORY_STAGES.flatMap((s) => [1, 2, 3].flatMap((p) => stageIntro(s.axis, p).note)))];
+  is("結びの句をつなぐと行のまま", notes.filter((l) => phrasesOf(notePhrases(l)).join("") !== l), []);
+  is("結びの句はどれも全角15字まで(320 幅の列に入る)", notes.flatMap((l) => phrasesOf(notePhrases(l))).filter((p) => em(p) > 15), []);
+  is("手で切るのは、読点・句点で切るだけでは列に入らない行だけ", notes.filter((l) => notePhrases(l) !== l && phrasesOf(l).every((p) => em(p) <= 15)), []);
+  is(
+    "フェーズ3 の2行目は「その数字の」「フォイルを」「装備していれば」で切る(文は変えない)",
+    [stageIntro("k", 3).note[1], phrasesOf(notePhrases(stageIntro("k", 3).note[1]))],
+    ["あなたの王も、その数字のフォイルを装備していればエリアが立つ。", ["あなたの王も、", "その数字の", "フォイルを", "装備していれば", "エリアが立つ。"]],
+  );
+}
+{
+  // この局のねらい(対局説明に出る)の数え方は算用数字(2026-10-06 本人の指示「漢数字を算用数字に直して」)。
+  // 「一直線」は言葉なので漢数字のまま
+  const aims = STORY_STAGES.flatMap((s) => [1, 2, 3].map((p) => storyRival(s.axis, p).aim));
+  is("ねらいの数え方は算用数字", aims.filter((l) => /[一二三四五六七八九十]+(手|枚|つ|マス|歩|人|回|度)/.test(l)), []);
+  is(
+    "ねらい: 4・5 は味方を1枚、6・7 は2マス先、8・9 は1・3マス先",
+    ["45", "67", "89"].map((axis) => storyRival(axis, 1).aim),
+    ["自分の王に、味方を1枚添えよう。", "2マス先から届く手に注目しよう。", "1・3マス先への動きを見よう。"],
+  );
+}
 is("知らない軸の説明は null", stageIntro("xx", 1), null);
 is("変なフェーズは既定(1)の説明", stageIntro("23", 9).title, stageIntro("23", 1).title);
 
@@ -140,12 +169,13 @@ console.log("\n対局の終わり(recordGame の story)");
   if (!globalThis.window) globalThis.window = globalThis;
   if (!globalThis.window.dispatchEvent) globalThis.window.dispatchEvent = () => true;
   if (!globalThis.window.addEventListener) globalThis.window.addEventListener = () => {};
-  const { loadProfile, recordGame } = await import("../src/game/profile.js");
+  const { loadProfile, markFirstStoryRead, recordGame } = await import("../src/game/profile.js");
   const save = (p) => mem.set("tottery.account.v1", JSON.stringify(p));
   save({ ...loadProfile(), phase: 1 });
   is("はじめは 2・3 が未クリア", storyFreshClear(loadProfile(), "23"), true);
   recordGame(false, { story: { axis: "23", phase: 1 }, xp: 0 });
   is("負けたらクリアにならない", loadProfile().story[1], []);
+  markFirstStoryRead();
   recordGame(true, { story: { axis: "23", phase: 1 }, xp: STORY_XP });
   is("勝ったらその軸がクリアに", loadProfile().story[1], ["23"]);
   is("もう一度勝っても増えない", (recordGame(true, { story: { axis: "23", phase: 1 }, xp: 0 }), loadProfile().story[1]), ["23"]);
@@ -344,12 +374,25 @@ export { storyTileNote, introKeyCloses };`,
     const save = (p) => mem.set("tottery.account.v1", JSON.stringify(p));
     save(base);
     let h = screen();
-    is("見出しとフェーズ", h.includes("灰冠の年代記") && h.includes("フェーズ <!-- -->1") || h.includes("フェーズ 1"), true);
+    is("見出しとフェーズ", h.includes("誰がための王印") && h.includes("フェーズ <!-- -->1") || h.includes("フェーズ 1"), true);
     is("7 ステージが並ぶ", (h.match(/class="story-stage /g) || []).length, 7);
     is("最初は 2・3 が次のステージ", /story-stage[^"]*is-next[^>]*>(?:(?!<\/button>).)*二と三の王/s.test(h), true);
     is("見出しの下に次のステージの一行", h.includes('<p class="story-next">次は、二と三の王。</p>'), true);
     is("未クリアの段には褒美(チケット 10枚)", (h.match(/チケット <!-- -->10<!-- -->枚|チケット 10枚/g) || []).length, 7);
-    is("昇格の条件が書いてある", h.includes("昇格の条件") && /7(<!-- -->)?ステージ全部のクリア/.test(h), true);
+    // 昇格の条件・最後のフェーズ・ランダムマッチまでの案内は句の塊で出す(2026-10-06 見直し。320・375 幅で
+    // 「全部のク/リアと、」「オンラ/イン」「5/勝。」「ステ/ージは」と語の途中で割れた)。文は変えない
+    const plain = (x) => x.replace(/<[^>]*>/g, "");
+    const chunks = (x) => [...x.matchAll(/<span class="text-phrase">([^<]*)<\/span>/g)].map((m) => m[1]);
+    const bare = (x) => plain(x.replace(/<span class="text-phrase">[^<]*<\/span>/g, "")).trim();
+    is("昇格の条件が書いてある", plain(h).includes("昇格の条件: 7ステージ全部のクリアと、このフェーズでオンライン対戦に5勝。"), true);
+    {
+      const promo = (h.match(/<p class="hint">(?:(?!<\/p>)[\s\S])*?昇格の条件[\s\S]*?<\/p>/) || [""])[0];
+      is(
+        "昇格の条件は句の塊だけで出す",
+        [chunks(promo), bare(promo)],
+        [["昇格の条件:", "7ステージ全部の", "クリアと、", "このフェーズで", "オンライン対戦に5勝。", "ステージはあと7。", "勝利はあと5。"], ""],
+      );
+    }
     is("ホームに戻る", h.includes("ホームに戻る"), true);
     save({ ...base, story: { 1: ["23", "45"], 2: [], 3: [] } });
     h = screen();
@@ -365,6 +408,10 @@ export { storyTileNote, introKeyCloses };`,
     save({ ...base, phase: 3, story: { 1: [], 2: [], 3: [...STORY_AXES] } });
     h = screen();
     is("最後のフェーズでは昇格の欄が無い", !h.includes("昇格の条件") && h.includes("最後のフェーズ"), true);
+    {
+      const last = (h.match(/<p class="hint">(?:(?!<\/p>)[\s\S])*?最後のフェーズ[\s\S]*?<\/p>/) || [""])[0];
+      is("最後のフェーズの案内は句の塊だけで出す", [chunks(last), bare(last)], [["最後のフェーズです。", "ステージは", "何度でも遊べます。"], ""]);
+    }
     const diagrams = {};
     for (const st of STORY_STAGES) {
       const i1 = intro(st.axis, 1), i2 = intro(st.axis, 2), i3 = intro(st.axis, 3);
@@ -389,15 +436,37 @@ export { storyTileNote, introKeyCloses };`,
       is(`${st.axis}: フェーズ2は王の力`, st.ranks.every((r) => i2.includes(KING_TEXT[r].slice(0, 12))), true);
       is(`${st.axis}: フェーズ3はエリア`, i3.includes(AREA_INFO[AREA_BY_RANK[st.ranks[0]]].name), true);
       is(`${st.axis}: 「はじめる」と「戻る」`, i1.includes("はじめる") && i1.includes("戻る"), true);
-      is(`${st.axis}: 結びは1文ずつ行に分けて出す`, [1, 2, 3].every((p) => [i1, i2, i3][p - 1].includes(`<p class="hint story-intro-note">${stageIntro(st.axis, p).note.map((l) => `<span>${l}</span>`).join("")}</p>`)), true);
+      // 行の中は句の塊(2026-10-06 見直し。切り方は story.js の notePhrases)
+      const noteHtml = (p) => `<p class="hint story-intro-note">${stageIntro(st.axis, p).note.map((l) => `<span>${phrasesOf(notePhrases(l)).map((x) => `<span class="text-phrase">${x}</span>`).join("")}</span>`).join("")}</p>`;
+      is(`${st.axis}: 結びは1文ずつ行に分け、行の中は句の塊で出す`, [1, 2, 3].every((p) => [i1, i2, i3][p - 1].includes(noteHtml(p))), true);
     }
     // 5×5 の図だと 8 と 2・9 と 3・J と 4・Q と 5 が同じ絵になっていた(2026-09-30 レビュー)。12 段とも違う絵
     is("フェーズ1 の図は駒ごとに違う(12 段)", [Object.keys(diagrams).length, new Set(Object.values(diagrams)).size], [12, 12]);
     is("図は 9×9 で描く", /<MoveDiagram rank=\{it\.rank\} gridSize=\{9\} \/>/.test(fs.readFileSync(new URL("../src/ui/story.jsx", import.meta.url), "utf8")), true);
     is("CSS: 句は折り返さない塊(inline-block)", /\.text-phrase \{\s*display: inline-block;\s*\}/.test(fs.readFileSync(new URL("../src/styles.css", import.meta.url), "utf8")), true);
+    {
+      // 対局説明の見た目(2026-10-06 見直し)。描いた絵は check-story-fit(頭なしの Chrome)が見る
+      const css = fs.readFileSync(new URL("../src/styles.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      const chronicle = fs.readFileSync(new URL("../src/ui/story-chronicle.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      const block = (src, sel) => (src.match(new RegExp(`(^|\\n)${sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{([^}]*)\\}`)) || [])[2] || "";
+      is("CSS: 札の中の重なり(角の数字 z-index: 2)は札の中に閉じる(貼り付いた釦の帯の上に角が乗らない)", /isolation: isolate;/.test(block(css, ".card-face")), true);
+      is("CSS: 対局説明の釦の帯は貼り付いたまま(z-index: 1)", /position: sticky;[^}]*z-index: 1;/.test(block(css, ".story-intro .setup-actions")), true);
+      is("CSS: フェーズ2・3 の王の力・エリアの段落は行頭をそろえる", /text-align: left;/.test(block(css, ".story-intro-items li > span")), true);
+      is("CSS: 結びは直下の行だけを block に(中の句の塊まで block にしない)", [/display: block;/.test(block(css, ".story-intro-note > span")), /\.story-intro-note span \{/.test(css)], [true, false]);
+      is("CSS: ランダムマッチまでの案内は2行目の行だけを block に", /\.story-gate > span:not\(\.text-phrase\) \{ display: block;/.test(css) && !/\.story-gate span[ ,{]/.test(css), true);
+      is("CSS: 登場人物の札は縮めない(横の一言が長いと 22px まで潰れた)", /flex: none;/.test(block(chronicle, ".chronicle-roster > div > .card-face")), true);
+    }
     save(base);
-    is("一覧にランダムマッチまでの残り(7ステージ)", /ランダムマッチまで、あと(<!-- -->)?7(<!-- -->)?ステージ/.test(screen()), true);
-    is("既に遊べるフレンド対戦も案内", screen().includes("フレンドとは、ホームの「対戦する」から今すぐ遊べます。"), true);
+    is("一覧にランダムマッチまでの残り(7ステージ)", plain(screen()).includes("ランダムマッチまで、あと7ステージ。"), true);
+    is("既に遊べるフレンド対戦も案内", plain(screen()).includes("フレンドとは、ホームの「対戦する」から今すぐ遊べます。"), true);
+    {
+      const gate = (screen().match(/<p class="hint story-gate">[\s\S]*?<\/p>/) || [""])[0];
+      is(
+        "ランダムマッチまでの案内は句の塊だけで出す(2行目は行の span の中)",
+        [chunks(gate), bare(gate), /<\/span><span><span class="text-phrase">フレンドとは、/.test(gate)],
+        [["ランダムマッチまで、", "あと7ステージ。", "フレンドとは、", "ホームの「対戦する」から", "今すぐ遊べます。"], "", true],
+      );
+    }
     is("称号を条件とフレーム付きで見せる", screen().includes('data-title-id="win10"') && screen().includes("10勝する"), true);
     // ステージの中断(2026-10-01 本人の指示)
     is("上のバーに「中断」の釦(開く前は確認を出さない)", interruptMenu().includes(">中断</button>") && !interruptMenu().includes("ステージを中断しますか"), true);
@@ -444,22 +513,22 @@ console.log("\n配線(game.jsx / screens.jsx)");
   is("ゲストは部屋のフェーズで決め直す", game.includes("phase: onlinePhase(network.phase),"), true);
   is("勝てばクリアの記録(profile.story)。xp ははじめてのクリアだけ", /\.\.\.\(story\s*\? \{ \.\.\.\(won && freshStory \? \{ xp: STORY_XP \} : null\), story: \{ axis: story\.axis, phase: story\.phase \} \}/.test(game), true);
   is("fresh は recordGame より先に取る(あとだと一度も配られない)", game.indexOf("const freshStory =") > 0 && game.indexOf("const freshStory =") < game.indexOf("const after = recordGame("), true);
-  is("はじめてのクリアだけ褒美(先に fresh を取る。基準は recordGame と同じ)", /const freshStory =\s*!!story && won === true && phaseOf\(loadProfile\(\)\) === story\.phase && storyFreshClear\(loadProfile\(\), story\.axis\);/.test(game) && game.includes("if (freshStory) grantStoryReward(story.phase, story.axis).catch(() => {});"), true);
+  is("はじめてのクリアだけ褒美(先に fresh を取る。基準は recordGame と同じ)", /const freshStory =\s*!!story && won === true && phaseOf\(loadProfile\(\)\) === story\.phase && storyFreshClear\(loadProfile\(\), story\.axis\) &&[\s\S]{0,160}firstStoryRead\);/.test(game) && game.includes("if (freshStory) grantStoryReward(story.phase, story.axis).catch(() => {});"), true);
   is("次のステージは未クリアの中から、全部済みなら allCleared", game.includes("const next = nextStageAfter(afterProfile, story.axis);") && game.includes("allCleared: !nextStage(afterProfile),"), true);
   is("前の局の結果を持ち越さない", /if \(a\.phase !== "gameover"\) \{\s*recordedRef\.current = false;\s*\/\/[^\n]*\n\s*setStoryResult\(null\);/.test(game), true);
   // 行き先は openStage(二と三の王の初回なら台本の一局。2026-10-01)。はじめの一局(tut つき)にもう一度は出さない
   is("もう一度遊ぶ・次のステージへ は説明から(onRetryStory / onNextStory)", game.includes("onClick={onRetryStory}") && game.includes("onClick={() => onNextStory(story.next.axis)}") && screens.includes("onRetryStory={story && !tut ? () => (showStory(), openStage(story.axis)) : null}") && screens.includes("onNextStory={(axis) => (showStory(), openStage(axis))}"), true);
-  is("ストーリー一覧からは全軸で物語と対局説明を通る", /function openStage\(axis\) \{\s*setStoryIntro\(axis\);/.test(screens), true);
-  is("ストーリーを始めるとき相手の装備を作り直し、紹介の姿を使う", screens.includes("setCpuSkins({ ...createCpuLoadout(), [stage.ranks[0]]: storyRival(axis).skin }), setCpuArea(null), setRound(0),"), true);
+  is("ストーリー一覧からは全軸で物語と対局説明を通る", /function openStage\(axis\) \{\s*if \(\!episodeAccess\(loadProfile\(\), axis, phaseOf\(loadProfile\(\)\)\)\.available\) return;\s*setStoryIntro\(axis\);/.test(screens), true);
+  is("ストーリーを始めるとき相手の装備を作り直し、紹介の姿を使う", screens.includes("setCpuSkins({ ...createCpuLoadout(Math.random, \"heroes\"), [stage.ranks[0]]: storyRival(axis).skin }), setCpuArea(null), setRound(0),"), true);
   is("ランダムのホストは相手を断るとき部屋も消す", /guestPhaseOf\(g\.data\) !== myPhase[\s\S]{0,300}deleteRoom\(d\);/.test(screens), true);
   is("オンラインの勝ちは部屋のフェーズを添えて数える", game.includes("...(network ? { phase: onlinePhase(network.phase) } : null),"), true);
-  is("ストーリーの欄は記録が済んでから(ready)", game.includes("{story && won && story.ready && !onGate && (") && game.includes("{story && won && story.ready && onGate && (") && game.includes("ready: !!storyResult"), true);
+  is("ストーリーと導入はそれぞれの記録が済んでから結果を出す", game.includes("{story && won && story.ready && !onGate && (") && game.includes("{tutorial?.intro && won && introReady && onGate && (") && game.includes("ready: !!storyResult"), true);
   is("手元のエリア(詳細設定・CPUのエリア・席名・定石)はフェーズ3だけ", screens.includes("const localAreas = rulesForPhase(phaseOf(loadProfile())).areas;") && /onCpuArea=\{\s*d && !tut && foilRevealed\(collection\) && !localPool && localAreas/.test(screens) && screens.includes("localAreas && cpuArea && cpuArea.king && i === 9"), true);
-  is("中断の釦はストーリーの対局の上のバーに(決着したあとは出さない)", /\) : story && a\.phase !== "gameover" \? \(\s*(\/\/[^\n]*\n\s*)*<StoryInterruptMenu onInterrupt=\{\(\) => \(onTutorialList \|\| onExit\)\(\)\} \/>/.test(game), true);
+  is("中断の釦はストーリーの対局の上のバーに(決着したあとは出さない)", /\) : \(story \|\| tutorial\?\.intro\) && a\.phase !== "gameover" \? \(\s*(\/\/[^\n]*\n\s*)*<StoryInterruptMenu onInterrupt=\{\(\) => \(onTutorialList \|\| onExit\)\(\)\} \/>/.test(game), true);
   is("やめる確認にストーリーを渡す", /story=\{!!story\}\s*onCancel=\{\(\) => r\(!1\)\}/.test(game), true);
   is("対局後の見出しは「ステージクリア!」", game.includes('"ステージクリア!"') && game.includes("次のステージへ") && game.includes("ストーリーへ"), true);
   is("ホームのタイルはストーリー(チュートリアルの場所)", /tone="story"[\s\S]*?label="ストーリー"[\s\S]*?note=\{storyTileNote\(profile\)\}[\s\S]*?onClick=\{onStory\}/.test(screens) && !/tone="tutorial"/.test(screens), true);
-  is("ストーリーの画面とステージ前の1枚", /<StoryScreen\s+onBack=\{\(\) => t\("menu"\)\}\s+onStart=\{openStage\}\s+onGuide=\{\(\) => setStoryPrimer\("guide"\)\}\s*(\/\/[^\n]*\n\s*)*revealNext=\{afterIntro && !storyIntro\}\s*\/>/.test(screens) && screens.includes("<StoryIntro"), true);
+  is("ストーリーの画面とステージ前の1枚", /<StoryScreen\s+onBack=\{\(\) => t\("menu"\)\}\s+onStart=\{openStage\}\s+onGuide=\{\(\) => setStoryPrimer\("guide"\)\}\s+onPhaseGuide=\{\(\) => \(setPhaseGuideFrom\("story"\), t\("phaseGuide"\)\)\}\s*(\/\/[^\n]*\n\s*)*revealNext=\{afterIntro && !storyIntro\}\s*\/>/.test(screens) && screens.includes("<StoryIntro"), true);
   // 導入を終えて一覧へ来たら「次は、四と五の王。」を見える所へ送る(2026-10-06 見直し。375×667 では画面の下に外れていた)
   {
     const storyUi = fs.readFileSync(new URL("../src/ui/story.jsx", import.meta.url), "utf8");

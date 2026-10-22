@@ -1,3 +1,4 @@
+import { ALICE_SKINS } from "./alice.js";
 export const SKINS = [
   [
     "genie-magician",
@@ -196,6 +197,7 @@ export const SKINS = [
   color,
   move,
   description,
+  series: "heroes",
   acquisition: id === "genie-magician" ? "battlepass" : null,
   image: `skins/portraits/${id}.webp`,
   card: `skins/cards/${id}.webp`,
@@ -216,9 +218,15 @@ export const SKINS = [
           capture: "skins/videos/ace-genie-capture.mp4",
         }
       : null,
-}));
+})).concat(ALICE_SKINS);
 
-export const POOL = SKINS.filter((s) => ["R", "SR", "SSR"].includes(s.rarity));
+export const SERIES = Object.freeze([{ id: "alice", name: "ワンダーランド・ゲート", englishName: "Wonderland Gate", battlepassSkin: "alice-A-alice" }, { id: "heroes", name: "レジェンド・ゲート", englishName: "Legend Gate", battlepassSkin: "genie-magician" }]);
+export const ALL_POOL = SKINS.filter(s => ["R", "SR", "SSR"].includes(s.rarity));
+export function poolForSeries(series = "heroes") {
+  if (!SERIES.some(s => s.id === series)) throw new Error("ガチャシリーズが不正です。");
+  return ALL_POOL.filter(s => s.series === series);
+}
+export const POOL = poolForSeries("heroes");
 // キャラクターを決めた後、ガチャ・錬成で独立して仕上げを抽選する。
 export const FOIL_SUFFIX = ":foil";
 export const FOIL_CHANCE = 0.01;
@@ -233,14 +241,16 @@ const makeFoil = (skin) => ({
   baseId: skin.id,
   foil: true,
   name: `${skin.name}（フォイル）`,
-  image: `skins/foils/${skin.id}.webp`,
-  card: `skins/foils/${skin.id}.webp`,
-  boardCard: `skins/foils/${skin.id}.webp`,
+  image: skin.foilImage || `skins/foils/${skin.id}.webp`,
+  card: skin.foilImage || `skins/foils/${skin.id}.webp`,
+  boardCard: skin.foilImage || `skins/foils/${skin.id}.webp`,
 });
-// 通常のフォイルはガチャ・錬成・獲得ミッションの対象15種に限定する。
-export const FOIL_SKINS = POOL.map(makeFoil);
+// シリーズごとのガチャ・錬成・獲得ミッション対象。A・購入特典は含めない。
+export const FOIL_SKINS = ALL_POOL.map(makeFoil);
 // Aは全カード収集後の有償商品。通常版のバトルパスとは別の入手経路。
 export const SPECIAL_FOIL_SKINS = [
+  // アリスのフォイルも魔術師と同じく、ワンダーランドの全カードをそろえた人だけの有償商品(2026-10-15 本人の指示)
+  {...makeFoil(SKINS.find(s=>s.id==="alice-A-alice")), secret: true, acquisition: "foil-shop"},
   {
     ...makeFoil(SKINS.find((skin) => skin.id === "genie-magician")),
     secret: true,
@@ -254,17 +264,18 @@ export const ODDS = Object.freeze({ R: 65, SR: 32, SSR: 3 });
 // フォイルも同じキャラクターとしての割合。仕上げの1%は別に示す。
 export const rate = (s) =>
   (ODDS[s.rarity] || 0) /
-  (POOL.filter((p) => p.rarity === s.rarity).length || 1);
-export function draw(random = Math.random) {
+  (poolForSeries(s.series).filter((p) => p.rarity === s.rarity).length || 1);
+export function draw(random = Math.random, series = "heroes") {
+  const pool = poolForSeries(series);
   const n = random();
   if (!Number.isFinite(n) || n < 0 || n >= 1)
     throw new Error("乱数の範囲が不正です");
   let threshold = n * 100;
-  for (const skin of POOL) {
+  for (const skin of pool) {
     threshold -= rate(skin);
     if (threshold < 0) return skin;
   }
-  return POOL[POOL.length - 1];
+  return pool[pool.length - 1];
 }
 // 通信相手の装備からも、既知の同じ数字のスキンだけを通す。
 export function sanitizeLoadout(raw) {

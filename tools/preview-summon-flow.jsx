@@ -1,5 +1,6 @@
 import { warmSummonIntro } from "../src/skins/summon-preload.js";
 import { resolveSummonFreeze } from "../src/skins/summon-freeze.js";
+import { ALL_POOL } from "../src/skins/catalog.js";
 import { useEffect, useState, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { SummonReveal } from "../src/ui/skins.jsx";
@@ -7,6 +8,8 @@ import STYLES from "../src/skins/styles.css";
 const q = new URLSearchParams(location.search),
   foil = q.get("foil") === "1",
   count = q.get("count") === "1" ? 1 : 10;
+const series = q.get("series") === "alice" || q.get("sample") === "alice" ? "alice" : "heroes";
+const aliceSamples = ALL_POOL.filter(s => s.series === "alice" && (!q.get("world") || s.fieldEffect?.type === q.get("world")));
 const mixed = [
   "angel-k",
   "demon-q",
@@ -21,7 +24,9 @@ const mixed = [
 ];
 const original = Array.from({ length: count }, (_, i) => ({
   id:
-    q.get("sample") === "mixed"
+    series === "alice"
+      ? `${(aliceSamples.length ? aliceSamples : ALL_POOL.filter(s => s.series === "alice"))[i % (aliceSamples.length || 12)].id}${foil && i === 0 ? ":foil" : ""}`
+      : q.get("sample") === "mixed"
       ? mixed[i]
       : q.get("sample") === "foil-grid"
         ? i === 8
@@ -47,7 +52,7 @@ const results = packet ? packet.skins.map(id => ({ id, isNew: true })) : origina
 function Preview() {
   const [run, setRun] = useState(q.get("manual") !== "1"),
     [key, setKey] = useState(0);
-  useEffect(() => warmSummonIntro(), []);
+  useEffect(() => warmSummonIntro(series), []);
   useEffect(() => {
     const delay = Number(q.get("autostart"));
     if (!delay) return;

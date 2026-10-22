@@ -223,7 +223,8 @@ console.log("\n1枚目の触り(伏せ札を1枚取る)");
   reset();
   let done = 0;
   let tree = render({ onDone: () => done++ });
-  is("はじめの一言は「一枚、取ってみて。」", texts(cls(tree, "prologue-cue")).join(""), "一枚、取ってみて。");
+  // 数え方は算用数字(2026-10-06 本人の指示「漢数字を算用数字に直して」)。見出しの「その一枚が、」は決めた言葉なので漢数字のまま
+  is("はじめの一言は「1枚、取ってみて。」", texts(cls(tree, "prologue-cue")).join(""), "1枚、取ってみて。");
   is("一言は読み上げで追える", cls(tree, "prologue-cue").props["aria-live"], "polite");
   const foes = clsAll(tree, "prologue-foe");
   is("押せる伏せ札が5枚", foes.map((b) => [b.type, b.props.disabled]), Array(5).fill(["button", false]));
@@ -242,7 +243,7 @@ console.log("\n1枚目の触り(伏せ札を1枚取る)");
   is("押した列だけ、真正面の駒が取りに行く", cols.map((c) => hasCls(c, "is-struck")), [false, false, false, true, false]);
   const taken = find(cls(cols[3], "prologue-taken"), (n) => n.type === "Piece");
   is("めくれるのは 9♦(王冠なし)", [taken?.props.piece.rank, taken?.props.piece.suit, taken?.props.piece.isKing, taken?.props.revealAll], ["9", "diamond", false, true]);
-  is("一言が「外れ。王は、残りの四枚の中。」に変わる", texts(cls(tree, "prologue-cue")).join(""), "外れ。王は、残りの四枚の中。");
+  is("一言が「外れ。王は、残りの4枚の中。」に変わる", texts(cls(tree, "prologue-cue")).join(""), "外れ。王は、残りの4枚の中。");
   is("取っても札は進まない", texts(cls(tree, "prologue-title")), ["その一枚が、", "王かもしれない。"]);
   is("取ったあとは脈打たない", hasCls(cls(tree, "prologue-rows"), "is-inviting"), false);
   const after = clsAll(tree, "prologue-foe");
@@ -358,9 +359,9 @@ console.log("\n配線");
   // 振り分けは src/game/intro.js の introStep(2026-10-01。検査は tools/check-intro.mjs)。
   // 語り → はじめの一局 → 名前 → 門の語り → 10連 → ストーリー一覧
   const screens = read("src/ui/screens.jsx");
-  is("語りはタイトルのあと(導入の段 prologue)。読み終えたら、はじめの一局", /if \(intro === "prologue"\)[\s\S]{0,200}<Prologue\s+kind="intro"\s+onDone=\{\(\) => \{\s*markPrologueSeen\(\);\s*startFirstGame\(\);/.test(screens), true);
-  is("門の語りは名前のあと(導入の段 gate)。読み終えたら10連", /if \(intro === "gate"\)[\s\S]{0,200}<Prologue\s+kind="gate"\s+onDone=\{\(\) => \{\s*setIntro\(null\);\s*setFirstPullMode\(!0\);/.test(screens), true);
-  is("語りは2か所だけ(名前の直後に語りを出していた古い配線は無い)", [(screens.match(/<Prologue\b/g) || []).length, /setPrologue\(/.test(screens)], [2, false]);
+  is("タイトルのあとに初回漫画。読んだら、はじめの一局", /if \(intro === "prologue"\)[\s\S]{0,200}<WelcomeComic\s+firstRun\s+onDone=\{\(\) => \{\s*markPrologueSeen\(\);\s*startFirstGame\(\);/.test(screens), true);
+  is("無料10連の案内は名前のあと(導入の段 gate)。開始すると10連", /if \(intro === "gate"\)[\s\S]{0,250}<FirstSummonLobby[\s\S]{0,150}onStart=\{\(\) => \{\s*setIntro\(null\);\s*setFirstPullMode\(!0\);/.test(screens), true);
+  is("初回は漫画と無料10連の案内を使い、旧語りを起動しない", [(screens.match(/<Prologue\b/g) || []).length, /setPrologue\(/.test(screens)], [0, false]);
   is("合言葉つきで開いた起動は語りも10連も通さず部屋へ(導入は次の起動から)", /\[pendingRoom, setPendingRoom\] = \(0, useState\)\(\(\) => roomFromLocation\(\)\),\s*(\/\/[^\n]*\n\s*)*\[introDeferred, setIntroDeferred\] = \(0, useState\)\(\(\) => !!pendingRoom\)/.test(screens) && !/t\(pendingRoom \? "room" : "home"\)/.test(screens), true);
 }
 

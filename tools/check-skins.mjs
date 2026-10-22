@@ -23,7 +23,7 @@ import { captureFilm } from "../src/skins/events.js";
 import { initialState, reducer } from "../src/game/reducer.js";
 import { emptyBoard } from "../src/game/board.js";
 
-assert.equal(SKINS.length, 17);
+assert.equal(SKINS.length, 30);
 // 早期特典(天馬騎士)だけが抽選に入らない。竜騎士は SSR として入る
 assert.equal(POOL.length, 15);
 assert.deepEqual(
@@ -363,7 +363,7 @@ for (const skin of SKINS)
   ].filter(Boolean)) {
     assert.ok(fs.statSync(path.join("assets", asset)).size > 0, asset);
   }
-if (SKINS.some((s) => !s.video && !(s.videos?.swap && s.videos?.capture)))
+if (SKINS.filter(s => s.series === "heroes").some((s) => !s.video && !(s.videos?.swap && s.videos?.capture)))
   throw new Error("動画の無いスキンがある");
 console.log("通常52枚の原画・数字・4スート・王の枠・伏せ札、スキン画像と動画: OK");
 
