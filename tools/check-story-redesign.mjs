@@ -5,7 +5,10 @@ const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
 const source=read('src/game/story-comics.json');
 const ref=fs.readFileSync('../漫画原作/王拾い_台本_全話.md','utf8');
 const titles=[...ref.matchAll(/^# 第\d+話「([^」]+)」/gm)].map(m=>m[1]);
-assert.equal(titles.length,21);assert.deepEqual(source.episodes.map(e=>e.title),titles);
+assert.equal(titles.length,21);
+// 2026-10-23 本人承認: TestFlightの第1話見出しをゲーム版の正とする。
+const gameTitles=titles.map((title,index)=>index===0?'とある印を拾った日':title);
+assert.deepEqual(source.episodes.map(e=>e.title),gameTitles);
 assert.deepEqual(source.episodes.map(e=>e.sequence),Array.from({length:21},(_,i)=>i+1));
 const text=e=>e.comicPages.flatMap(p=>p.panels.flatMap(p=>p.lines.map(l=>l.text))).join('');
 assert.match(text(source.episodes[13]),/届かない/,'大河の敗走を勝利に変えない');

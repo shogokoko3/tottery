@@ -8,7 +8,11 @@ import {TONAL_ASSETS,tonalSound} from '../src/audio/tonal-cues.js';
 assert.equal(TONAL_ASSETS.length,108);
 for(const tone of TONAL_ASSETS)assert.ok(fs.existsSync(`assets/audio/${tone.file}`));
 for(const track of Object.values(TRACKS)) {
- assert.ok(track.loopStart>0 && track.loopEnd>track.loopStart+30);
+ assert.ok(track.loopStart>=0 && track.loopEnd-track.loopStart>=16*track.beatSeconds, '少なくとも4小節のループ本体を保持');
+ if(track.playbackMode==='full-track-loop') {
+  assert.equal(track.loopStart,0,'採用したフル版は先頭から繰り返す');
+  assert.equal(track.loopEnd,track.duration,'採用したフル版の最後まで再生');
+ } else assert.ok(track.loopStart>0,'導入つきの曲はループ本体を分ける');
  assert.ok(track.harmony.length>10);
 }
 let clock=100000,serial=0;
@@ -66,6 +70,22 @@ document.hidden=true;listeners.visibilitychange();
 assert.ok(sources.filter(s=>s.buffer?.tag?.endsWith('.m4a')).every(s=>s.stopped),'背景で予約中の音源も停止');
 advance(5000);await flush();assert.equal(p.currentTrack(),null);
 document.hidden=false;listeners.visibilitychange();await flush();assert.equal(p.currentTrack(),'endgame');
+// Actual buffer-backed home music must resume at its saved position even
+// when native inactive, visibility and context interruption overlap.
+p.playTrack('title',{restart:true});await flush();advance(42345);
+windowListeners['tottery-audio-state']({status:'inactive'});
+windowListeners['tottery-audio-state']({status:'inactive'});
+document.hidden=true;listeners.visibilitychange();
+contexts[0].state='interrupted';contexts[0].events.statechange();
+advance(30000);await flush();
+assert.ok(sources.filter(s=>s.buffer?.tag?.endsWith('.m4a')).every(s=>s.stopped),'背景では全BGMソースを停止');
+document.hidden=false;listeners.visibilitychange();await flush();
+assert.equal(p.currentTrack(),null,'ネイティブ停止の解除を待つ');
+windowListeners['tottery-audio-state']({status:'active'});await flush();
+assert.equal(p.currentTrack(),'title');
+const resumedHome=sources.filter(s=>s.buffer?.tag?.endsWith('/title.m4a')).at(-1);
+assert.ok(Math.abs(resumedHome.offset-42.345)<.001,'ホームBGMは背景に移動した位置から再開');
+assert.equal(sources.filter(s=>s.buffer?.tag?.endsWith('.m4a')&&!s.stopped).length,1,'復帰時のBGMは一本だけ');
 p.setMuted(true);assert.equal(p.currentTrack(),null);p.stopMusic();
 // Check several cycles directly, without advancing hundreds of timer callbacks.
 const realFetch=globalThis.fetch;globalThis.fetch=fetch;
@@ -73,7 +93,7 @@ try {
  const c=new AudioContext(),track=TRACKS.title,voice=new MusicVoice(c,track,'audio/title.m4a',node(),new Audio('audio/title.m4a'));
  await voice.play();const began=c.currentTime;
  clock+=(track.loopEnd+2)*1000;
- assert.ok(Math.abs(voice.currentTime-track.loopStart-2)<.001,'2周目は導入へ戻らない');
+ assert.ok(Math.abs(voice.currentTime-track.loopStart-2)<.001,'2周目は指定したループ開始位置に戻る');
  const pos=voice.currentTime;voice.pause();clock+=3000;await voice.play();
  assert.ok(Math.abs(voice.currentTime-pos)<.001,'中断復帰で位置を保つ');
  voice.pause();

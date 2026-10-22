@@ -1,0 +1,17 @@
+{
+  "title": {
+    "revision": "approved-home-soft-loop-20261023",
+    "source": "assets/audio/masters/home-soft-loop-20261023.m4a",
+    "approvedFrom": "reports/home-bgm-32s-20261023/02_soft_full.m4a",
+    "sha256": "52b83ca12190fbbd87e5906490bfa08eaa80e756a6206ba8a526bf04de685f95",
+    "playbackMode": "authored-intro-loop",
+    "bpm": 78.3,
+    "beatsPerBar": 4,
+    "loopStart": 4.12,
+    "loopEnd": 96.03401360544218,
+    "loopCrossfade": 0.55,
+    "reportDirectory": "reports/home-bgm-loop-20261023",
+    "editVerification": "reports/home-bgm-loop-20261023/edit-verification.json",
+    "reason": "採用した②を維持し、最後の550msを同じ和音の戻り前フレーズへ接続。導入は初回だけ再生し、AAC境界外の約92秒を繰り返す。"
+  }
+}

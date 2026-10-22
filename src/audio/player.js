@@ -268,7 +268,10 @@ function apply() {
     fade(node, node.track.gain, FADE_MS);
     if (from) stopNode(from);
     startPaletteUpdates();
-    for(const [id,n] of nodes)if(id!==target)n.el.releasePrepared?.();
+    for(const [id,n] of nodes)if(id!==target) {
+      n.el.releasePrepared?.();
+      n.resumePosition=false;
+    }
     if(target === "battle") {
       const next=nodeFor("endgame");next?.el.prepare?.().then(()=>{
         if(current!=="battle" && pendingTrack?.id!=="endgame")next.el.releasePrepared?.();
@@ -730,7 +733,9 @@ function pauseApplicationAudio() {
   if (pendingTrack) { clearTimeout(pendingTrack.commitTimer); pendingTrack.node.el.pause(); pendingTrack = null; }
   for (const [id,node] of nodes) {
     clearTimeout(node.stopTimer);
-    node.resumePosition=id===current && !node.el.paused;
+    // Native inactive, visibilitychange and interruption can pause the same
+    // music repeatedly. Keep the first position until it is resumed/left.
+    if (id===current && !node.el.paused) node.resumePosition=true;
     node.el.pause();
     fade(node, 0, 0);
   }

@@ -117,6 +117,25 @@ windowListeners['tottery-audio-state']({status:'ended'});await flush();
 assert.equal(p.currentTrack(),null,'ネイティブ非アクティブ中は再開しない');
 windowListeners['tottery-audio-state']({status:'active'});await flush();
 assert.equal(p.currentTrack(),'battle');
+// Native inactive, page hidden and context interrupted can all report the
+// same pause. Result music must retain its position despite restart-on-entry.
+p.playTrack('win');await flush();result.currentTime=37.25;
+windowListeners['tottery-audio-state']({status:'inactive'});
+document.hidden=true;listeners.visibilitychange();
+context.state='interrupted';context.events.statechange();
+windowListeners['tottery-audio-state']({status:'inactive'});
+assert.equal(result.paused,true);
+document.hidden=false;listeners.visibilitychange();await flush();
+assert.equal(p.currentTrack(),null,'ネイティブの停止解除前には鳴らさない');
+windowListeners['tottery-audio-state']({status:'active'});await flush();
+assert.equal(p.currentTrack(),'win');
+assert.equal(result.currentTime,37.25,'停止通知が重なっても結果BGMを途中から再開');
+// A scene change during suspension should still start the next result anew.
+windowListeners['tottery-audio-state']({status:'inactive'});
+p.playTrack('title');
+windowListeners['tottery-audio-state']({status:'active'});await flush();
+p.playTrack('win');await flush();
+assert.equal(result.currentTime,0,'別の画面へ移った後の結果BGMは通常どおり冒頭から');
 // A rejected automatic resume must remain retryable on the next gesture.
 const resume=context.resume.bind(context);
 context.state='suspended';context.resume=()=>Promise.reject(new Error('gesture required'));

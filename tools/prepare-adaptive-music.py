@@ -117,3 +117,8 @@ with tempfile.TemporaryDirectory() as temp:
  (ROOT/'docs/selected-audio.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
  (OUT/'layouts.json').write_text(json.dumps(layouts,indent=2))
  (OUT/'asset-check.json').write_text(json.dumps(details,indent=2))
+
+# Preserve explicit source choices when rebuilding the music library.
+overrides=ROOT/'docs/audio-source-overrides.json'
+if overrides.exists() and json.loads(overrides.read_text()).get('title'):
+ subprocess.run(['python3',str(ROOT/'tools/apply-home-bgm-choice.py')],cwd=ROOT,check=True)

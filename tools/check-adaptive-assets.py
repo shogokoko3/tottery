@@ -1,5 +1,5 @@
 from pathlib import Path
-import json,subprocess,tempfile,warnings
+import json,subprocess,tempfile,warnings,hashlib
 import numpy as np
 from scipy.io import wavfile
 from scipy import signal
@@ -18,10 +18,39 @@ with tempfile.TemporaryDirectory() as temp:
   body=x[start:round(layout["loopEnd"]*44100)];half=22050
   db=lambda a:20*np.log10(max(np.sqrt(np.mean(a*a)),1e-12))
   level=abs(db(body[:half])-db(body[-half:]));jump=float(max(abs(body[-1]-body[0])))
-  assert level<1.5,(id,'level step',level)
+  approved_full=layout.get('playbackMode')=='full-track-loop'
+  authored_home=layout.get('playbackMode')=='authored-intro-loop'
+  if approved_full or authored_home:
+   choice=json.loads((ROOT/'docs/audio-source-overrides.json').read_text())[id]
+   assert hashlib.sha256((ROOT/'assets/audio'/(id+'.m4a')).read_bytes()).hexdigest()==choice['sha256']==layout['sourceSha256']
+   assert (ROOT/choice['source']).read_bytes()==(ROOT/'assets/audio'/(id+'.m4a')).read_bytes()
+   if approved_full:assert layout['loopStart']==0 and layout['loopEnd']==layout['duration']
+   else:
+    assert 0<layout['loopStart']<layout['loopEnd']<layout['duration']-.2
+    end=round(layout['loopEnd']*44100);span=round(.15*44100)
+    reference=x[start-span:start+span];returned=x[end-span:end+span]
+    error=np.sqrt(np.mean((reference-returned)**2))/np.sqrt(np.mean(reference**2))
+    assert error<.08,(id,'encoded return context',error)
+    assert level<1.5,(id,'loop loudness step',level)
+    edit=json.loads((ROOT/layout['editVerification']).read_text())
+    assert edit['focus32SecondsPcmUnchanged'] and edit['unchangedBeforeTail']
+    assert edit['harmonicSimilarity']>.90
+   assert abs(db(x*layout['normalizationGain'])-(-23))<.05,(id,'playback loudness')
+  elif layout.get('sourceRevision')=='first-demo-20261019':
+   # The authored A→Dm change has a natural accent. Compare it with the same
+   # transition inside the source, rather than flattening the musical dynamics.
+   expected=abs(db(x[start:start+half])-db(x[start-half:start]))
+   assert abs(level-expected)<.4,(id,'changed source dynamics',level,expected)
+   before=x[round(layout['loopEnd']*44100)-44100:round(layout['loopEnd']*44100)]
+   reference=x[start-44100:start]
+   error=np.sqrt(np.mean((before-reference)**2))/max(np.sqrt(np.mean(reference**2)),1e-9)
+   assert error<.06,(id,'phrase transition differs from original',error)
+   bars=(layout['loopEnd']-layout['loopStart'])/(4*layout['beatSeconds'])
+   assert abs(bars-round(bars))<1e-4,(id,'incomplete bar',bars)
+  else:assert level<1.5,(id,'level step',level)
   assert jump<.045,(id,'loop click',jump)
   assert max(abs(x[start]-x[start-1]))<.045,(id,'intro click')
-  assert np.max(abs(x))<.86
+  assert np.max(abs(x))*layout.get('normalizationGain',1)<.86
   for h in layout['harmony']:assert 0<=h['root']<12 and h['mode'] in ['major','minor','open']
   checks.append({'id':id,'loopLevelDifferenceDb':level,'loopSampleJump':jump})
   if id in ['title','battle','endgame','summon']:audio[id]=x

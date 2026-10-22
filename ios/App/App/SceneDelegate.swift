@@ -2,9 +2,34 @@ import UIKit
 import Capacitor
 import AVFAudio
 
+// WKWebView counts suspension requests; repeated lifecycle notifications must
+// share one suspension and one matching resume, rather than nesting them.
+struct GameMediaLifecycle {
+    private(set) var revision = 0
+    private(set) var isSuspended = false
+
+    mutating func suspend() -> Bool {
+        revision += 1
+        guard !isSuspended else { return false }
+        isSuspended = true
+        return true
+    }
+
+    mutating func resume() -> Int? {
+        revision += 1
+        guard isSuspended else { return nil }
+        isSuspended = false
+        return revision
+    }
+
+    func acceptsResume(_ revision: Int) -> Bool {
+        !isSuspended && self.revision == revision
+    }
+}
+
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
-    private var mediaStateRevision = 0
+    private var mediaLifecycle = GameMediaLifecycle()
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
@@ -41,8 +66,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     private func suspendGameMedia() {
-        mediaStateRevision += 1
+        let shouldSuspend = mediaLifecycle.suspend()
         audioState("inactive")
+        guard shouldSuspend else { return }
         // Native suspension also covers transitions where web visibility arrives late.
         let controller = window?.rootViewController as? CAPBridgeViewController
         controller?.webView?.setAllMediaPlaybackSuspended(true, completionHandler: nil)
@@ -51,14 +77,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneWillResignActive(_ scene: UIScene) { suspendGameMedia() }
     func sceneDidEnterBackground(_ scene: UIScene) { suspendGameMedia() }
     func sceneDidBecomeActive(_ scene: UIScene) {
-        mediaStateRevision += 1
-        let revision = mediaStateRevision
+        guard let revision = mediaLifecycle.resume() else {
+            audioState("active")
+            return
+        }
         guard let webView = (window?.rootViewController as? CAPBridgeViewController)?.webView else {
             audioState("active")
             return
         }
         webView.setAllMediaPlaybackSuspended(false) { [weak self, weak scene] in
-            guard let self = self, self.mediaStateRevision == revision,
+            guard let self = self, self.mediaLifecycle.acceptsResume(revision),
                   scene?.activationState == .foregroundActive else { return }
             self.audioState("active")
         }

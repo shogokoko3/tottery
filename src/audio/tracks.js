@@ -41,7 +41,7 @@ export function audioUrl(file) {
  * 勝敗後も結果画面の曲をループし、短い決着音はSEのバスで重ねる。
  */
 export const TRACKS = {
-  title: { ...MUSIC_LAYOUTS.title, file: "title.m4a", loop: true, gain: 0.75 },
+  title: { ...MUSIC_LAYOUTS.title, file: "title.m4a", loop: true, gain: 0.75 * (MUSIC_LAYOUTS.title.normalizationGain ?? 1) },
   waiting: { ...MUSIC_LAYOUTS.waiting, file: "waiting.m4a", loop: true, gain: 0.6 },
   setup: { ...MUSIC_LAYOUTS.setup, file: "setup.m4a", loop: true, gain: 0.65 },
   battle: { ...MUSIC_LAYOUTS.battle, file: "battle.m4a", loop: true, gain: 0.6 },

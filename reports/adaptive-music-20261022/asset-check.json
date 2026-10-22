@@ -1,0 +1,131 @@
+[
+  {
+    "id": "title",
+    "introSeconds": 4.12,
+    "loopSeconds": 91.91401360544218,
+    "loopJoinJump": 0.0010986328125,
+    "peak": 0.711639404296875,
+    "sourceRevision": "approved-home-soft-loop-20261023",
+    "normalizationGain": 0.504389431337821
+  },
+  {
+    "id": "battle",
+    "introSeconds": 3.887891156462585,
+    "loopSeconds": 166.41387755102042,
+    "introJoinJump": 0.00054931640625,
+    "loopJoinJump": 0.000701904296875,
+    "peak": 0.43328857421875
+  },
+  {
+    "id": "endgame",
+    "introSeconds": 5.350430839002268,
+    "loopSeconds": 111.80931972789115,
+    "introJoinJump": 0.00933837890625,
+    "loopJoinJump": 0.003448486328125,
+    "peak": 0.4051513671875
+  },
+  {
+    "id": "waiting",
+    "introSeconds": 6.8259410430839,
+    "loopSeconds": 126.84285714285716,
+    "introJoinJump": 0.001495361328125,
+    "loopJoinJump": 0.00726318359375,
+    "peak": 0.394805908203125
+  },
+  {
+    "id": "setup",
+    "introSeconds": 5.905396825396825,
+    "loopSeconds": 138.12952380952382,
+    "introJoinJump": 0.00738525390625,
+    "loopJoinJump": 0.006866455078125,
+    "peak": 0.404205322265625
+  },
+  {
+    "id": "tutorial",
+    "introSeconds": 3.3078911564625852,
+    "loopSeconds": 164.72820861678005,
+    "introJoinJump": 0.000335693359375,
+    "loopJoinJump": 0.00323486328125,
+    "peak": 0.387115478515625
+  },
+  {
+    "id": "puzzle",
+    "introSeconds": 6.7739229024943315,
+    "loopSeconds": 164.5828344671202,
+    "introJoinJump": 0.0006103515625,
+    "loopJoinJump": 0.002197265625,
+    "peak": 0.39068603515625
+  },
+  {
+    "id": "story",
+    "introSeconds": 6.09795918367347,
+    "loopSeconds": 133.82902494331066,
+    "introJoinJump": 0.001556396484375,
+    "loopJoinJump": 0.003936767578125,
+    "peak": 0.38427734375
+  },
+  {
+    "id": "collection",
+    "introSeconds": 6.241360544217687,
+    "loopSeconds": 143.14721088435374,
+    "introJoinJump": 0.00030517578125,
+    "loopJoinJump": 0.0003662109375,
+    "peak": 0.37158203125
+  },
+  {
+    "id": "shop",
+    "introSeconds": 5.724920634920635,
+    "loopSeconds": 122.64807256235827,
+    "introJoinJump": 0.007080078125,
+    "loopJoinJump": 0.00677490234375,
+    "peak": 0.42333984375
+  },
+  {
+    "id": "summon",
+    "introSeconds": 6.46578231292517,
+    "loopSeconds": 129.4736961451247,
+    "introJoinJump": 0.00067138671875,
+    "loopJoinJump": 0.002197265625,
+    "peak": 0.38726806640625
+  },
+  {
+    "id": "rewards",
+    "introSeconds": 6.090589569160998,
+    "loopSeconds": 148.51485260770974,
+    "introJoinJump": 0.000823974609375,
+    "loopJoinJump": 0.004486083984375,
+    "peak": 0.3990478515625
+  },
+  {
+    "id": "ranking",
+    "introSeconds": 3.123968253968254,
+    "loopSeconds": 139.77392290249432,
+    "introJoinJump": 0.00079345703125,
+    "loopJoinJump": 0.011474609375,
+    "peak": 0.403778076171875
+  },
+  {
+    "id": "resultWin",
+    "introSeconds": 6.233582766439909,
+    "loopSeconds": 132.63158730158727,
+    "introJoinJump": 0.00054931640625,
+    "loopJoinJump": 0.00146484375,
+    "peak": 0.37921142578125
+  },
+  {
+    "id": "resultLose",
+    "introSeconds": 6.977891156462585,
+    "loopSeconds": 129.72972789115647,
+    "introJoinJump": 0.0009765625,
+    "loopJoinJump": 0.009368896484375,
+    "peak": 0.366302490234375
+  },
+  {
+    "id": "resultDraw",
+    "introSeconds": 6.6540589569161,
+    "loopSeconds": 126.82925170068027,
+    "introJoinJump": 0.003326416015625,
+    "loopJoinJump": 0.004180908203125,
+    "peak": 0.392486572265625
+  }
+]

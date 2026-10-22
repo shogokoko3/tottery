@@ -1,5 +1,64 @@
 # アプリ内BGM・SE（2026-10-19）
 
+## 2026-10-23 バックグラウンドからのBGM復帰
+
+`sceneWillResignActive` と `sceneDidEnterBackground` の両方からネイティブ停止を
+呼ぶため、WebKitの停止カウンターが2回増えて復帰時の解除1回では足りなかった。
+`GameMediaLifecycle` で一度のバックグラウンド移行につき停止・解除を一対にし、
+古い解除完了通知でバックグラウンド中に鳴り出さないよう世代の確認も維持した。
+WebKit実装: https://github.com/WebKit/WebKit/blob/main/Source/WebKit/UIProcess/WebPageProxy.cpp#L12143-L12179
+
+JS側も停止通知の重複で復帰位置の印を消さず、停止した曲の続きから再開する。
+別の画面へ移った場合は従来の選曲と結果曲の冒頭再生を維持する。
+BGM・SEの音源、音量とホームのループ範囲は変更しない。
+`check-app-audio.mjs`、`check-adaptive-music.mjs` に重複通知の再現ケースを追加。
+Swift側は `node tools/check-ios-audio-lifecycle.mjs`（macOS/Xcode）で
+実際の状態管理をコンパイルし、50回の復帰と素早い再切り替えを検証する。
+修正前の再現ログと修正後の検証は `reports/audio-background-resume-20261023/`。
+iOS 1.0（202610230836）へ反映し、内部テスト用としてTestFlightへ送信成功。
+実機での再生位置と聴感の最終確認は未実施。自動検証と署名付きiOSビルドは通過。
+
+## 2026-10-23 ホームBGMの最終採用
+
+### 自然な繰り返しへの調整（最新）
+
+採用した②の音源を元に、末尾が減衰する前の95.284〜95.834秒だけを
+冒頭の同じ和音に向かうフレーズへ550msで接続した。32秒付近を含む
+それ以前の演奏は変更しない。エンコード時のみ3dBの余裕を確保し、
+アプリ再生時の基準音量はこれまでと同じ -23 dBFS RMS に保つ。
+導入は初回だけ。AAC境界を避けた4.12〜96.034秒を約91.914秒で繰り返す。
+元の②とループ用マスターの両方を `assets/audio/masters/` に保持する。
+再作成は `python3 tools/loop-home-bgm.py`、反映は `python3 tools/apply-home-bgm-choice.py`。
+作成記録と試聴音源は `reports/home-bgm-loop-20261023/`。
+新しいRunway生成は行っていない。
+2026-10-23、ループ調整版を含む iOS 1.0（202610230823）を内部テスト用として
+TestFlightへ送信成功。配布記録は `reports/home-bgm-loop-testflight-20261023/`。
+
+### 採用時の記録（下記の単純な先頭戻しは上記で置き換え済み）
+
+本人が試聴して選んだ `reports/home-bgm-32s-20261023/02_soft_full.m4a`
+（約1分43秒、32秒付近の響きを柔らかく整えた②）をホームBGMに採用した。
+新規Runway3案の②ではない。採用マスターは
+`assets/audio/masters/home-soft-approved-20261023.m4a` に保存し、
+`assets/audio/title.m4a` へ再エンコードせず同一バイトでコピーする。
+曲の先頭から最後まで再生して先頭へ戻る。追加のフレーズ合成やクロスフェードは行わない。
+既存BGMと音量をそろえるため、再生時のみ基準 -23 dBFS RMS となるゲインを適用する。
+設定は `audio-source-overrides.json`、再反映は `python3 tools/apply-home-bgm-choice.py`。
+音源生成ツールからの再処理でも、この選択を最後に適用する。
+照合記録は `reports/home-bgm-adoption-20261023/verification.json`。
+iOS同梱データへの同期と採用ファイルの完全一致を確認済み。
+再生・背景停止/復帰・ループ・音源検証は通過。採用直後の時点ではTestFlight再送信は未実施だった。
+
+### 先行した差し戻し（上記の採用で置き換え済み）
+
+本人指定で、ホームの「王のいない宮廷」を最初に出力した打ち込みデモ
+`../BGM試聴デモ/01_王のいない宮廷.wav` に戻した。
+元の旋律・音色・78 BPMを維持し、音量だけをアプリ内の基準にそろえる。
+別のフレーズを重ねるクロスフェードは使わない。最初の4小節を一度流し、
+元から反復している続きの8小節をループする。ほかのBGMとSEは変更しない。
+再生成時にもこの選択を維持する設定は `audio-source-overrides.json`。
+単独の差し戻しは `python3 tools/restore-first-home-bgm.py`。
+
 BGM16曲・SE60種類を候補集から選定して同梱。Runwayの生成音源を採用し、追加生成はしていない。
 再生URLはすべてアプリ相対パス。音声のための外部接続やOS通知音は使わない。
 
