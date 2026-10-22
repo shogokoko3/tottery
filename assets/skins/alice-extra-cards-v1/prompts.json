@@ -1,0 +1,32 @@
+[
+  {
+    "slug": "card-soldier",
+    "name": "トランプ兵",
+    "prompt": "Use case: style-transfer. Create one vertical 3:4 illustration for a Tottery game card. Image 1 is the design identity reference; image 2 is STYLE ONLY. Match image 2's mature anime fantasy, crisp outlines, angular cel shading, broad clean color shapes, deep navy flat backdrop and restrained antique gold accents. Preserve image 1's design and colors but simplify fine decoration for readability at 48px. No photorealism, no scenic background, no card frame, no numbers, no rank, no typography, no watermark. Show the original heart playing-card soldier from image 1 in a tight helmet-and-upper-torso portrait. Include the closed dark-steel helmet and ruby heart crest, burgundy scarf, ivory rectangular card armor with large red heart, gold edging and one heart-tipped polearm beside the shoulder. Strong graphic silhouette. Armor and heart occupy lower half; helmet large in upper half. No human face, do not copy the Hatter.",
+    "tool": "built-in imagegen",
+    "references": [
+      "../alice-extra-designs-v1/card-soldier.png",
+      "../alice-board-anime-v1/4-hatter.png"
+    ]
+  },
+  {
+    "slug": "teacup-blue-gold",
+    "name": "ティーカップ・青と金",
+    "prompt": "Use case: style-transfer. Create one vertical 3:4 illustration for a Tottery game card. Image 1 is the design identity reference; image 2 is STYLE ONLY. Match image 2's mature anime fantasy, crisp outlines, angular cel shading, broad clean color shapes, deep navy flat backdrop and restrained antique gold accents. Preserve image 1's design and colors but simplify fine decoration for readability at 48px. No photorealism, no scenic background, no card frame, no numbers, no rank, no typography, no watermark. Show only the ivory porcelain teacup and saucer from image 1, no character or hands. Three-quarter elevated view, large central cup occupying most of width and middle height; preserve distinctive fluted rim, cobalt rose motif, gold curled handle on right, gold foot and matching saucer, amber tea. Simplify roses into a few large readable blue motifs. Small elegant steam curl against navy background. Leave dark space at upper left for game's external rank overlay. Entire handle and saucer fit with a little margin.",
+    "tool": "built-in imagegen",
+    "references": [
+      "../alice-extra-designs-v1/teacup-blue-gold.png",
+      "../alice-board-anime-v1/4-hatter.png"
+    ]
+  },
+  {
+    "slug": "teacup-green-copper",
+    "name": "ティーカップ・深緑と銅",
+    "prompt": "Use case: style-transfer. Create one vertical 3:4 illustration for a Tottery game card. Image 1 is the design identity reference; image 2 is STYLE ONLY. Match image 2's mature anime fantasy, crisp outlines, angular cel shading, broad clean color shapes, deep navy flat backdrop and restrained antique gold accents. Preserve image 1's design and colors but simplify fine decoration for readability at 48px. No photorealism, no scenic background, no card frame, no numbers, no rank, no typography, no watermark. Show only the deep forest green teacup and saucer from image 1, no character or hands. Three-quarter elevated view, large rounded cup occupying most of width and middle height; preserve bronze curled handle on right, ivory interior, amber tea, copper rim, matching green saucer and two large simple bronze hare motifs. Clear green vs copper planes, no fine texture. Small elegant steam curl. Leave dark space at upper left for game's external rank overlay. Entire handle and saucer fit with a little margin.",
+    "tool": "built-in imagegen",
+    "references": [
+      "../alice-extra-designs-v1/teacup-green-copper.png",
+      "../alice-board-anime-v1/4-hatter.png"
+    ]
+  }
+]

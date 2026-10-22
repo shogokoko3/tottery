@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "tool": "built-in image_gen",
+  "purpose": "初期ガチャのHomeRealmPortraitと同じ、キャラと風景を一体に描いた横長ホーム装飾。デザイン素材のみ。",
+  "reference": "assets/skins/home-v1/forest-king.webp",
+  "common": "Create ONE landscape 16:9 illustration (1792x1024 or 1536x864 approximate, prefer exact 16:9), a CHARACTER-IN-SCENERY HOME REWARD ART for the Japanese fantasy card game Tottery. Image 1 is the mandatory CHARACTER IDENTITY reference: preserve that exact character's species, face, age, distinctive anatomy, hairstyle, wardrobe and signature prop. Image 2 is an existing FIRST-GACHA HOME REWARD and is STYLE / COMPOSITION reference ONLY, do not copy its elf character or forest setting. Match its premium detailed semi-realistic painted fantasy rendering and luxurious environmental depth. The character MUST be visibly present, large, roughly 55-85% of image height and 35-50% of width; create a cohesive scene rather than pasting a portrait over scenery. Its face and signature prop must remain in the safe area x=15%-85%, y=12%-65% so modest center cropping will preserve them. Landscape environment occupies the rest of image and tells the character's story. Leave the bottom 18% relatively dark/low-detail for game title overlay. Keep character's eyes/face strongly readable at about 400x210 display. The landscape ratio is essential, no portrait layout. No typography, name captions, interface, card borders, rank symbols, watermark, collage, blank cutout background or holographic foil texture. Generate natural detailed scene lighting, keep identity from input. Specific scene: ",
+  "designs": [
+    {
+      "file": "A-alice.png",
+      "skinId": "alice-A-alice",
+      "name": "アリス",
+      "title": "金の鍵の庭",
+      "area": "alice-revolution",
+      "identityReference": "assets/skins/alice-concepts-v1/A-alice.png",
+      "prompt": "Alice, the young chestnut-haired girl from image 1, stands large in the RIGHT half, from waist upward, holding her ornate brass key upright next to her face. Preserve youthful face, hair, dark green gold-embroidered cloak, ivory high-collared embroidered dress and burgundy bow. She is opening an ancient ornate keyhole garden gate; left half reveals a beautiful moonlit rose maze and far ivory palace. Warm gold glow from the lock lights her curious face. No additional people."
+    },
+    {
+      "file": "2-dodo.png",
+      "skinId": "alice-2-dodo",
+      "name": "ドードー",
+      "title": "コーカス・レース",
+      "area": "alice-caucus",
+      "identityReference": "assets/skins/alice-concepts-v1/2-dodo.png",
+      "prompt": "The grey-feathered Dodo from image 1, with exactly its large pale hooked beak, burgundy gold-brocade waistcoat and dark coat, stands large in the LEFT half as master of the caucus race, one wing resting on a gold-handled cane. Natural feathered wing anatomy. The RIGHT half shows an expansive tidal shore with a circular race course, little pennants, wet rocks and glowing coastal pavilions. Late golden light and blue sea atmosphere. No other large characters."
+    },
+    {
+      "file": "3-bill.png",
+      "skinId": "alice-3-bill",
+      "name": "トカゲのビル",
+      "title": "煙突屋根の街",
+      "area": "alice-caucus",
+      "identityReference": "assets/skins/alice-concepts-v1/3-bill.png",
+      "prompt": "Bill the green lizard chimney sweep from image 1 sits prominently on a chimney at the RIGHT third, shown from knees upward, holding his long chimney brush. Preserve reptilian green face, big amber eyes, flat cap, patched brown vest, pale shirt, red neckerchief and curved lizard tail. LEFT half reveals crooked slate rooftops, countless brick chimneys and whimsical distant towers at blue hour. Warm window light catches his face. No human face."
+    },
+    {
+      "file": "4-hatter.png",
+      "skinId": "alice-4-hatter",
+      "name": "帽子屋",
+      "title": "終わらないお茶会",
+      "area": "alice-tea",
+      "identityReference": "assets/skins/alice-concepts-v1/4-hatter.png",
+      "prompt": "The Hatter from image 1 occupies the RIGHT half in a close three-quarter seated portrait at a luxurious outdoor tea table, raising the small blue-and-gold porcelain cup to invite the viewer. Preserve his exact face, tousled dark hair, tall plum hat with sewing pins, burgundy brocade coat, bow and striped trousers. LEFT half is the long mismatched tea service leading into a beautiful eccentric garden with flowering trees and suspended lanterns, deep blue dusk with warm amber highlights. Large readable face; keep full hat in frame. Only the Hatter, no hare."
+    },
+    {
+      "file": "5-march-hare.png",
+      "skinId": "alice-5-march-hare",
+      "name": "三月ウサギ",
+      "title": "春霞のお茶会",
+      "area": "alice-tea",
+      "identityReference": "assets/skins/alice-concepts-v1/5-march-hare.png",
+      "prompt": "The brown March Hare from image 1 is large in the LEFT half, seated at a garden tea table, pouring tea from a copper-accented green teapot. Preserve long brown ears with straw between them, expressive hare face, green coat and rust waistcoat. Keep tips of both long ears within the image. RIGHT half shows flowering apple trees, a crooked cottage, warm lanterns, mismatched chairs and porcelain on a table. Spring evening green, copper and blossom pink. Only this hare, no humans."
+    },
+    {
+      "file": "6-gryphon.png",
+      "skinId": "alice-6-gryphon",
+      "name": "グリフォン",
+      "title": "金翼の断崖",
+      "area": "alice-quadrille",
+      "identityReference": "assets/skins/alice-concepts-v1/6-gryphon.png",
+      "prompt": "The magnificent Gryphon from image 1 occupies the RIGHT half, golden eagle head turned toward viewer, foreclaws planted on a sea-cliff ledge, lion body and enormous feathered wing partly spread naturally. Preserve precise eagle-lion hybrid design, feather colors and harness; no human body. The LEFT half reveals a breathtaking bright turquoise coast, ancient stone arches and ocean mist. Golden feather highlights, noble protective stance, face very clear and large. One gryphon only."
+    },
+    {
+      "file": "7-mock-turtle.png",
+      "skinId": "alice-7-mock-turtle",
+      "name": "ニセウミガメ",
+      "title": "追憶の海辺",
+      "area": "alice-quadrille",
+      "identityReference": "assets/skins/alice-concepts-v1/7-mock-turtle.png",
+      "prompt": "The Mock Turtle from image 1 sits prominently in the LEFT half on a worn seaside stone, head large and readable, contemplating the ocean. Preserve the specific calf head with little horns, ears, gentle melancholy eyes, hooves, and sea-green turtle shell as seen in the reference; not an ordinary sea turtle. RIGHT half is a beautiful pearlescent seaside dance terrace, quiet tide pools, shells and distant coastal arches in pale blue evening light. Soft warm rim light on character, wistful elegant atmosphere."
+    },
+    {
+      "file": "8-white-rabbit.png",
+      "skinId": "alice-8-white-rabbit",
+      "name": "白ウサギ",
+      "title": "時を追う回廊",
+      "area": "alice-maze",
+      "identityReference": "assets/skins/alice-concepts-v1/8-white-rabbit.png",
+      "prompt": "The White Rabbit from image 1 is large in the RIGHT half, holding its open gold pocket watch near its face with an anxious alert expression, looking back while hurrying through a gate. Preserve white fur, tall ears, burgundy waistcoat, dark coat and precise costume. BOTH ears fit within the image. LEFT half reveals an enchanted hedge maze, old clock tower and gently curving paths fading into cool mist, warm brass clockwork details. Ivory, burgundy, antique gold and moonlit teal."
+    },
+    {
+      "file": "9-caterpillar.png",
+      "skinId": "alice-9-caterpillar",
+      "name": "イモムシ",
+      "title": "蒼いキノコの聖域",
+      "area": "alice-maze",
+      "identityReference": "assets/skins/alice-concepts-v1/9-caterpillar.png",
+      "prompt": "The blue-green Caterpillar from image 1 fills the LEFT half in a large dignified portrait, sitting on a giant mushroom, segmented body curved elegantly, holding the mouthpiece of its ornate brass hookah. Preserve stern wise face, antennae, blue-green segments and purple gold-embroidered shawl exactly from reference. RIGHT half reveals a deep enchanted forest of luminous mushrooms, fern roots, turquoise and violet mist, delicate curling hookah smoke. Face clearly visible, no human body or face."
+    },
+    {
+      "file": "10-cheshire-cat.png",
+      "skinId": "alice-10-cheshire-cat",
+      "name": "チェシャ猫",
+      "title": "消える月影の森",
+      "area": "alice-illusion",
+      "identityReference": "assets/skins/alice-concepts-v1/10-cheshire-cat.png",
+      "prompt": "The charcoal-grey Cheshire Cat from image 1 lounges large across a thick branch in the RIGHT half, huge amber eyes and mischievous broad feline smile clearly visible, dense fur detailed. Preserve its identity, no colored stripes. Its tail gradually dissolves into silver mist towards the edge. LEFT half shows a mysterious moonlit woodland of twisted trees and impossible branching paths, mirrored stone archways and cool silver fog. One cat, clear solid face with playful uncanny expression."
+    },
+    {
+      "file": "J-knave.png",
+      "skinId": "alice-J-knave",
+      "name": "ハートのジャック",
+      "title": "秘密のタルト庭園",
+      "area": "alice-croquet",
+      "identityReference": "assets/skins/alice-concepts-v1/J-knave.png",
+      "prompt": "The dark-haired adult Knave of Hearts from image 1 occupies the LEFT half, waist-up, with exactly his sly confident face, crimson-black-gold court clothes and heart clasp; holding a small heart-shaped jam tart near his chest. The RIGHT half shows a luxurious palace rose garden and croquet lawn through ivy-covered arcades, silver tart tray at foreground edge, distant palace kitchen warmly lit. Crimson and emerald with antique gold. Keep face clear; no other characters."
+    },
+    {
+      "file": "Q-queen.png",
+      "skinId": "alice-Q-queen",
+      "name": "ハートの女王",
+      "title": "紅薔薇の女王庭園",
+      "area": "alice-croquet",
+      "identityReference": "assets/skins/alice-concepts-v1/Q-queen.png",
+      "prompt": "The Queen of Hearts from image 1 commands the RIGHT half, shown from waist upward with exact mature commanding face, dark braided hair, ruby heart crown and elaborate crimson-and-black gold-embroidered gown; holding her heart sceptre. LEFT half shows a magnificent royal croquet garden with red roses, sculpted hedges, ivory balustrades and distant palace. Full crown and face fit inside safe region. Rich crimson, emerald and gold under dramatic warm daylight. Powerful regal figure, no caricature, no other characters."
+    },
+    {
+      "file": "K-king.png",
+      "skinId": "alice-K-king",
+      "name": "ハートの王",
+      "title": "ハート宮殿の王座",
+      "area": "alice-croquet",
+      "identityReference": "assets/skins/alice-concepts-v1/K-king.png",
+      "prompt": "The King of Hearts from image 1 sits prominently in the LEFT half on a carved gold throne, shown knees upward, exact elderly wary face and silver beard, ruby heart crown, crimson ermine mantle and sceptre. RIGHT half opens into an immense ivory-and-gold royal hall with burgundy banners, tall arched windows and gardens beyond. Face and full crown easily readable, expressive but dignified. Warm royal light, crimson, antique gold, ivory. No other characters."
+    }
+  ]
+}

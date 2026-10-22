@@ -1,0 +1,190 @@
+{
+  "sets": 13,
+  "webpFiles": 26,
+  "svgFiles": 39,
+  "webpBytes": 10541288,
+  "images": [
+    {
+      "file": "A-alice.webp",
+      "source": "A-alice.png",
+      "sourceWidth": 1659,
+      "sourceHeight": 948,
+      "bytes": 344356
+    },
+    {
+      "file": "A-alice-decor.webp",
+      "source": "A-alice-decor-v2.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 370882
+    },
+    {
+      "file": "2-dodo.webp",
+      "source": "2-dodo.png",
+      "sourceWidth": 1659,
+      "sourceHeight": 948,
+      "bytes": 379386
+    },
+    {
+      "file": "2-dodo-decor.webp",
+      "source": "2-dodo-decor-v2.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 492760
+    },
+    {
+      "file": "3-bill.webp",
+      "source": "3-bill.png",
+      "sourceWidth": 1672,
+      "sourceHeight": 941,
+      "bytes": 356546
+    },
+    {
+      "file": "3-bill-decor.webp",
+      "source": "3-bill-decor-v2.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 285276
+    },
+    {
+      "file": "4-hatter.webp",
+      "source": "4-hatter-v2.png",
+      "sourceWidth": 1672,
+      "sourceHeight": 941,
+      "bytes": 409968
+    },
+    {
+      "file": "4-hatter-decor.webp",
+      "source": "4-hatter-decor.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 407954
+    },
+    {
+      "file": "5-march-hare.webp",
+      "source": "5-march-hare-v2.png",
+      "sourceWidth": 1672,
+      "sourceHeight": 941,
+      "bytes": 513522
+    },
+    {
+      "file": "5-march-hare-decor.webp",
+      "source": "5-march-hare-decor.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 513936
+    },
+    {
+      "file": "6-gryphon.webp",
+      "source": "6-gryphon.png",
+      "sourceWidth": 1659,
+      "sourceHeight": 948,
+      "bytes": 351586
+    },
+    {
+      "file": "6-gryphon-decor.webp",
+      "source": "6-gryphon-decor.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 435712
+    },
+    {
+      "file": "7-mock-turtle.webp",
+      "source": "7-mock-turtle.png",
+      "sourceWidth": 1659,
+      "sourceHeight": 948,
+      "bytes": 412584
+    },
+    {
+      "file": "7-mock-turtle-decor.webp",
+      "source": "7-mock-turtle-decor.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 441148
+    },
+    {
+      "file": "8-white-rabbit.webp",
+      "source": "8-white-rabbit-v3.png",
+      "sourceWidth": 1672,
+      "sourceHeight": 941,
+      "bytes": 345724
+    },
+    {
+      "file": "8-white-rabbit-decor.webp",
+      "source": "8-white-rabbit-decor.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 449710
+    },
+    {
+      "file": "9-caterpillar.webp",
+      "source": "9-caterpillar.png",
+      "sourceWidth": 1659,
+      "sourceHeight": 948,
+      "bytes": 403746
+    },
+    {
+      "file": "9-caterpillar-decor.webp",
+      "source": "9-caterpillar-decor.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 428178
+    },
+    {
+      "file": "10-cheshire-cat.webp",
+      "source": "10-cheshire-cat.png",
+      "sourceWidth": 1659,
+      "sourceHeight": 948,
+      "bytes": 297968
+    },
+    {
+      "file": "10-cheshire-cat-decor.webp",
+      "source": "10-cheshire-cat-decor.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 366404
+    },
+    {
+      "file": "J-knave.webp",
+      "source": "J-knave.png",
+      "sourceWidth": 1672,
+      "sourceHeight": 941,
+      "bytes": 450764
+    },
+    {
+      "file": "J-knave-decor.webp",
+      "source": "J-knave-decor.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 432732
+    },
+    {
+      "file": "Q-queen.webp",
+      "source": "Q-queen-v2.png",
+      "sourceWidth": 1672,
+      "sourceHeight": 941,
+      "bytes": 423848
+    },
+    {
+      "file": "Q-queen-decor.webp",
+      "source": "Q-queen-decor.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 430904
+    },
+    {
+      "file": "K-king.webp",
+      "source": "K-king.png",
+      "sourceWidth": 1659,
+      "sourceHeight": 948,
+      "bytes": 361336
+    },
+    {
+      "file": "K-king-decor.webp",
+      "source": "K-king-decor.png",
+      "sourceWidth": 941,
+      "sourceHeight": 1672,
+      "bytes": 434358
+    }
+  ]
+}

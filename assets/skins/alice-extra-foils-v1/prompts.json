@@ -1,0 +1,23 @@
+[
+  {
+    "slug": "card-soldier",
+    "name": "トランプ兵",
+    "file": "card-soldier.png",
+    "source": "../alice-extra-cards-v1/card-soldier.png",
+    "prompt": "Use case: lighting-weather. Asset: vertical 3:4 anime game card foil variant. Input image 1 is the EDIT TARGET; input image 2 is FOIL FINISH STYLE ONLY. Preserve image 1 exactly in silhouette, composition, subject, pose, decorative motifs, original main colors and angular anime rendering. Apply luxurious holographic foil: selective cyan magenta violet rainbow glints on metal and glossy surfaces, luminous antique-gold edges and restrained fine foil grain. Deep navy background gains scattered tiny prism flakes like image 2. Keep main heart symbols / rose motifs / hare motifs clearly readable at 48px. No new objects, people, words, numbers, borders or watermark. Do not copy the person in image 2. Retain contrast and dark planes; avoid an overall washed-out rainbow tint."
+  },
+  {
+    "slug": "teacup-blue-gold",
+    "name": "ティーカップ・青と金",
+    "file": "teacup-blue-gold.png",
+    "source": "../alice-extra-cards-v1/teacup-blue-gold.png",
+    "prompt": "Use case: lighting-weather. Asset: vertical 3:4 anime game card foil variant. Input image 1 is the EDIT TARGET; input image 2 is FOIL FINISH STYLE ONLY. Preserve image 1 exactly in silhouette, composition, subject, pose, decorative motifs, original main colors and angular anime rendering. Apply luxurious holographic foil: selective cyan magenta violet rainbow glints on metal and glossy surfaces, luminous antique-gold edges and restrained fine foil grain. Deep navy background gains scattered tiny prism flakes like image 2. Keep main heart symbols / rose motifs / hare motifs clearly readable at 48px. No new objects, people, words, numbers, borders or watermark. Do not copy the person in image 2. Retain contrast and dark planes; avoid an overall washed-out rainbow tint."
+  },
+  {
+    "slug": "teacup-green-copper",
+    "name": "ティーカップ・深緑と銅",
+    "file": "teacup-green-copper.png",
+    "source": "../alice-extra-cards-v1/teacup-green-copper.png",
+    "prompt": "Use case: lighting-weather. Asset: vertical 3:4 anime game card foil variant. Input image 1 is the EDIT TARGET; input image 2 is FOIL FINISH STYLE ONLY. Preserve image 1 exactly in silhouette, composition, subject, pose, decorative motifs, original main colors and angular anime rendering. Apply luxurious holographic foil: selective cyan magenta violet rainbow glints on metal and glossy surfaces, luminous antique-gold edges and restrained fine foil grain. Deep navy background gains scattered tiny prism flakes like image 2. Keep main heart symbols / rose motifs / hare motifs clearly readable at 48px. No new objects, people, words, numbers, borders or watermark. Do not copy the person in image 2. Retain contrast and dark planes; avoid an overall washed-out rainbow tint."
+  }
+]

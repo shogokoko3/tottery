@@ -1,0 +1,85 @@
+{
+  "tool": "built-in image_gen",
+  "common": "Create ONE PORTRAIT 9:16 decorative environment background for a fantasy game's full mobile home screen. Reference 1 is the matching CHARACTER SCENE: faithfully keep its environment, architecture, time of day, palette and painting style, but REMOVE ALL CHARACTERS and recompose into a portrait environment. Reference 2 is the first-gacha HOME DECORATION COMPOSITION reference only: narrow rich environmental framing at outer edges, distance in upper quarter, spacious shaded low-contrast center for menu panels. This portrait background belongs to a set with reference 1 and must look like the same place and moment. Keep decorative detail mainly in outer 12-18% on either side and upper/lower edges; center x=20%-80%, y=25%-90% has calm shaded scenery or fog with no bright focal object. Premium semi-realistic fantasy painting, naturally integrated ornaments, detailed materials, full bleed, no UI, text, labels, card borders, people, animals or character silhouettes. No giant central props. Character-related ornaments, subtle and confined to outer edges: ",
+  "reference": "assets/skins/home-v1/forest-home-decor.webp",
+  "designs": [
+    {
+      "file": "A-alice-decor.png",
+      "sceneReference": "A-alice.png",
+      "motifs": "ornate key, ivory roses and green gold vines",
+      "source": "earlier character-themed environment draft"
+    },
+    {
+      "file": "2-dodo-decor.png",
+      "sceneReference": "2-dodo.png",
+      "motifs": "golden feathers, burgundy pennants and cane handle",
+      "source": "earlier character-themed environment draft"
+    },
+    {
+      "file": "3-bill-decor.png",
+      "sceneReference": "3-bill.png",
+      "motifs": "brick chimney edges, chimney brushes, copper gutters",
+      "source": "earlier character-themed environment draft"
+    },
+    {
+      "file": "4-hatter-decor.png",
+      "sceneReference": "4-hatter.png",
+      "motifs": "plum velvet top-hat, sewing pins, ribbons and blue-gold porcelain tea service",
+      "source": "new matching decoration"
+    },
+    {
+      "file": "5-march-hare-decor.png",
+      "sceneReference": "5-march-hare.png",
+      "motifs": "straw, spring blossoms, green-and-copper teapot and porcelain cups",
+      "source": "new matching decoration"
+    },
+    {
+      "file": "6-gryphon-decor.png",
+      "sceneReference": "6-gryphon.png",
+      "motifs": "gold feather reliefs, weathered ivory arches and coastal plants",
+      "source": "new matching decoration"
+    },
+    {
+      "file": "7-mock-turtle-decor.png",
+      "sceneReference": "7-mock-turtle.png",
+      "motifs": "pearlescent shells, turtle-shell carved stone and sea glass",
+      "source": "new matching decoration"
+    },
+    {
+      "file": "8-white-rabbit-decor.png",
+      "sceneReference": "8-white-rabbit.png",
+      "motifs": "brass pocket watches, ivory roses and clockwork",
+      "source": "new matching decoration"
+    },
+    {
+      "file": "9-caterpillar-decor.png",
+      "sceneReference": "9-caterpillar.png",
+      "motifs": "violet mushroom canopies, wisps of silver smoke and brass hookah",
+      "source": "new matching decoration"
+    },
+    {
+      "file": "10-cheshire-cat-decor.png",
+      "sceneReference": "10-cheshire-cat.png",
+      "motifs": "silver curling root filigree, amber gemstones and mirror fragments",
+      "source": "new matching decoration"
+    },
+    {
+      "file": "J-knave-decor.png",
+      "sceneReference": "J-knave.png",
+      "motifs": "ruby heart jam tarts, crimson satin and gold heart ironwork",
+      "source": "new matching decoration"
+    },
+    {
+      "file": "Q-queen-decor.png",
+      "sceneReference": "Q-queen.png",
+      "motifs": "red roses, ruby heart ornaments, gold croquet wickets and ivory columns",
+      "source": "new matching decoration"
+    },
+    {
+      "file": "K-king-decor.png",
+      "sceneReference": "K-king.png",
+      "motifs": "ruby crown, ermine-lined burgundy velvet and royal gold heart carvings",
+      "source": "new matching decoration"
+    }
+  ]
+}

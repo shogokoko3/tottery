@@ -1,0 +1,300 @@
+{
+  "version": 1,
+  "status": "integrated",
+  "description": "キャラ入り横長背景・縦長装飾・角飾り・紋章・側面飾り・配色を一括で選ぶ13セット。対応するフォイルの所持で解放し、ホームの着せ替えに反映。",
+  "referenceMechanism": {
+    "logic": "src/skins/home-themes.js",
+    "view": "src/ui/home-customization.jsx",
+    "styles": "src/ui/home-customization.css",
+    "rule": "初期ガチャは対応フォイルの所持でエリアとキャラを解放し、キャラを描いた横長画像とエリア装飾を組み合わせる。今回は各キャラの素材セットにまとめて同時反映できるようにした。",
+    "note": "アリスAを含む13キャラを個別のフォイル所持で解放。src/skins/home-wonderland-themes.jsで素材をセットとして定義。"
+  },
+  "sets": [
+    {
+      "id": "alice-A-alice",
+      "slug": "A-alice",
+      "name": "アリス",
+      "title": "金の鍵の庭",
+      "sourceArea": "alice-revolution",
+      "unlockFoil": "alice-A-alice:foil",
+      "scene": "A-alice.webp",
+      "decoration": "A-alice-decor.webp",
+      "frames": {
+        "corner": "frames/A-alice-corner.svg",
+        "crest": "frames/A-alice-crest.svg",
+        "rail": "frames/A-alice-rail.svg"
+      },
+      "accent": "#d9c38e",
+      "panel": "#142d2a",
+      "secondary": "#8ca890",
+      "motif": "key",
+      "position": "50% 50%",
+      "sceneSource": "A-alice.png",
+      "decorationSource": "A-alice-decor-v2.png"
+    },
+    {
+      "id": "alice-2-dodo",
+      "slug": "2-dodo",
+      "name": "ドードー",
+      "title": "コーカス・レース",
+      "sourceArea": "alice-caucus",
+      "unlockFoil": "alice-2-dodo:foil",
+      "scene": "2-dodo.webp",
+      "decoration": "2-dodo-decor.webp",
+      "frames": {
+        "corner": "frames/2-dodo-corner.svg",
+        "crest": "frames/2-dodo-crest.svg",
+        "rail": "frames/2-dodo-rail.svg"
+      },
+      "accent": "#e1bf83",
+      "panel": "#242b31",
+      "secondary": "#9c764b",
+      "motif": "feather",
+      "position": "50% 50%",
+      "sceneSource": "2-dodo.png",
+      "decorationSource": "2-dodo-decor-v2.png"
+    },
+    {
+      "id": "alice-3-bill",
+      "slug": "3-bill",
+      "name": "トカゲのビル",
+      "title": "煙突屋根の街",
+      "sourceArea": "alice-caucus",
+      "unlockFoil": "alice-3-bill:foil",
+      "scene": "3-bill.webp",
+      "decoration": "3-bill-decor.webp",
+      "frames": {
+        "corner": "frames/3-bill-corner.svg",
+        "crest": "frames/3-bill-crest.svg",
+        "rail": "frames/3-bill-rail.svg"
+      },
+      "accent": "#d8b086",
+      "panel": "#202b36",
+      "secondary": "#977356",
+      "motif": "brush",
+      "position": "50% 50%",
+      "sceneSource": "3-bill.png",
+      "decorationSource": "3-bill-decor-v2.png"
+    },
+    {
+      "id": "alice-4-hatter",
+      "slug": "4-hatter",
+      "name": "帽子屋",
+      "title": "終わらないお茶会",
+      "sourceArea": "alice-tea",
+      "unlockFoil": "alice-4-hatter:foil",
+      "scene": "4-hatter.webp",
+      "decoration": "4-hatter-decor.webp",
+      "frames": {
+        "corner": "frames/4-hatter-corner.svg",
+        "crest": "frames/4-hatter-crest.svg",
+        "rail": "frames/4-hatter-rail.svg"
+      },
+      "accent": "#dab891",
+      "panel": "#302236",
+      "secondary": "#956782",
+      "motif": "hat",
+      "position": "50% 50%",
+      "sceneSource": "4-hatter-v2.png",
+      "decorationSource": "4-hatter-decor.png"
+    },
+    {
+      "id": "alice-5-march-hare",
+      "slug": "5-march-hare",
+      "name": "三月ウサギ",
+      "title": "春霞のお茶会",
+      "sourceArea": "alice-tea",
+      "unlockFoil": "alice-5-march-hare:foil",
+      "scene": "5-march-hare.webp",
+      "decoration": "5-march-hare-decor.webp",
+      "frames": {
+        "corner": "frames/5-march-hare-corner.svg",
+        "crest": "frames/5-march-hare-crest.svg",
+        "rail": "frames/5-march-hare-rail.svg"
+      },
+      "accent": "#d2bf8b",
+      "panel": "#1f3128",
+      "secondary": "#82a176",
+      "motif": "teapot",
+      "position": "50% 50%",
+      "sceneSource": "5-march-hare-v2.png",
+      "decorationSource": "5-march-hare-decor.png"
+    },
+    {
+      "id": "alice-6-gryphon",
+      "slug": "6-gryphon",
+      "name": "グリフォン",
+      "title": "金翼の断崖",
+      "sourceArea": "alice-quadrille",
+      "unlockFoil": "alice-6-gryphon:foil",
+      "scene": "6-gryphon.webp",
+      "decoration": "6-gryphon-decor.webp",
+      "frames": {
+        "corner": "frames/6-gryphon-corner.svg",
+        "crest": "frames/6-gryphon-crest.svg",
+        "rail": "frames/6-gryphon-rail.svg"
+      },
+      "accent": "#f0d191",
+      "panel": "#172e3a",
+      "secondary": "#6ab6c4",
+      "motif": "wing",
+      "position": "50% 50%",
+      "sceneSource": "6-gryphon.png",
+      "decorationSource": "6-gryphon-decor.png"
+    },
+    {
+      "id": "alice-7-mock-turtle",
+      "slug": "7-mock-turtle",
+      "name": "ニセウミガメ",
+      "title": "追憶の海辺",
+      "sourceArea": "alice-quadrille",
+      "unlockFoil": "alice-7-mock-turtle:foil",
+      "scene": "7-mock-turtle.webp",
+      "decoration": "7-mock-turtle-decor.webp",
+      "frames": {
+        "corner": "frames/7-mock-turtle-corner.svg",
+        "crest": "frames/7-mock-turtle-crest.svg",
+        "rail": "frames/7-mock-turtle-rail.svg"
+      },
+      "accent": "#c7dfd6",
+      "panel": "#17303b",
+      "secondary": "#88bab3",
+      "motif": "shell",
+      "position": "50% 50%",
+      "sceneSource": "7-mock-turtle.png",
+      "decorationSource": "7-mock-turtle-decor.png"
+    },
+    {
+      "id": "alice-8-white-rabbit",
+      "slug": "8-white-rabbit",
+      "name": "白ウサギ",
+      "title": "時を追う回廊",
+      "sourceArea": "alice-maze",
+      "unlockFoil": "alice-8-white-rabbit:foil",
+      "scene": "8-white-rabbit.webp",
+      "decoration": "8-white-rabbit-decor.webp",
+      "frames": {
+        "corner": "frames/8-white-rabbit-corner.svg",
+        "crest": "frames/8-white-rabbit-crest.svg",
+        "rail": "frames/8-white-rabbit-rail.svg"
+      },
+      "accent": "#ead5a3",
+      "panel": "#26303c",
+      "secondary": "#c0b8a0",
+      "motif": "clock",
+      "position": "50% 50%",
+      "sceneSource": "8-white-rabbit-v3.png",
+      "decorationSource": "8-white-rabbit-decor.png"
+    },
+    {
+      "id": "alice-9-caterpillar",
+      "slug": "9-caterpillar",
+      "name": "イモムシ",
+      "title": "蒼いキノコの聖域",
+      "sourceArea": "alice-maze",
+      "unlockFoil": "alice-9-caterpillar:foil",
+      "scene": "9-caterpillar.webp",
+      "decoration": "9-caterpillar-decor.webp",
+      "frames": {
+        "corner": "frames/9-caterpillar-corner.svg",
+        "crest": "frames/9-caterpillar-crest.svg",
+        "rail": "frames/9-caterpillar-rail.svg"
+      },
+      "accent": "#bfc6ef",
+      "panel": "#202139",
+      "secondary": "#849ac7",
+      "motif": "mushroom",
+      "position": "50% 50%",
+      "sceneSource": "9-caterpillar.png",
+      "decorationSource": "9-caterpillar-decor.png"
+    },
+    {
+      "id": "alice-10-cheshire-cat",
+      "slug": "10-cheshire-cat",
+      "name": "チェシャ猫",
+      "title": "消える月影の森",
+      "sourceArea": "alice-illusion",
+      "unlockFoil": "alice-10-cheshire-cat:foil",
+      "scene": "10-cheshire-cat.webp",
+      "decoration": "10-cheshire-cat-decor.webp",
+      "frames": {
+        "corner": "frames/10-cheshire-cat-corner.svg",
+        "crest": "frames/10-cheshire-cat-crest.svg",
+        "rail": "frames/10-cheshire-cat-rail.svg"
+      },
+      "accent": "#d8c596",
+      "panel": "#152b31",
+      "secondary": "#96b7be",
+      "motif": "cat",
+      "position": "50% 50%",
+      "sceneSource": "10-cheshire-cat.png",
+      "decorationSource": "10-cheshire-cat-decor.png"
+    },
+    {
+      "id": "alice-J-knave",
+      "slug": "J-knave",
+      "name": "ハートのジャック",
+      "title": "秘密のタルト庭園",
+      "sourceArea": "alice-croquet",
+      "unlockFoil": "alice-J-knave:foil",
+      "scene": "J-knave.webp",
+      "decoration": "J-knave-decor.webp",
+      "frames": {
+        "corner": "frames/J-knave-corner.svg",
+        "crest": "frames/J-knave-crest.svg",
+        "rail": "frames/J-knave-rail.svg"
+      },
+      "accent": "#edb99a",
+      "panel": "#302027",
+      "secondary": "#b1666c",
+      "motif": "tart",
+      "position": "50% 50%",
+      "sceneSource": "J-knave.png",
+      "decorationSource": "J-knave-decor.png"
+    },
+    {
+      "id": "alice-Q-queen",
+      "slug": "Q-queen",
+      "name": "ハートの女王",
+      "title": "紅薔薇の女王庭園",
+      "sourceArea": "alice-croquet",
+      "unlockFoil": "alice-Q-queen:foil",
+      "scene": "Q-queen.webp",
+      "decoration": "Q-queen-decor.webp",
+      "frames": {
+        "corner": "frames/Q-queen-corner.svg",
+        "crest": "frames/Q-queen-crest.svg",
+        "rail": "frames/Q-queen-rail.svg"
+      },
+      "accent": "#e7bb8b",
+      "panel": "#2b1722",
+      "secondary": "#af4956",
+      "motif": "heart",
+      "position": "50% 50%",
+      "sceneSource": "Q-queen-v2.png",
+      "decorationSource": "Q-queen-decor.png"
+    },
+    {
+      "id": "alice-K-king",
+      "slug": "K-king",
+      "name": "ハートの王",
+      "title": "ハート宮殿の王座",
+      "sourceArea": "alice-croquet",
+      "unlockFoil": "alice-K-king:foil",
+      "scene": "K-king.webp",
+      "decoration": "K-king-decor.webp",
+      "frames": {
+        "corner": "frames/K-king-corner.svg",
+        "crest": "frames/K-king-crest.svg",
+        "rail": "frames/K-king-rail.svg"
+      },
+      "accent": "#e8d2a8",
+      "panel": "#2c2026",
+      "secondary": "#bb8b63",
+      "motif": "crown",
+      "position": "50% 50%",
+      "sceneSource": "K-king.png",
+      "decorationSource": "K-king-decor.png"
+    }
+  ]
+}

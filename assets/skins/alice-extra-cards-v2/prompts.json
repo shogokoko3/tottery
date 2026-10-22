@@ -1,0 +1,12 @@
+[
+  {
+    "slug": "teacup-blue-gold",
+    "name": "ティーカップ・青と金",
+    "prompt": "Use case: precise-object-edit. Edit target image 1. Revise this vertical 3:4 anime game illustration so the CUP instantly reads as a cup at 36–48px, clearly separated from its saucer. Retain mature angular cel shading, navy background, amber tea, steam and right-side curled metal handle. Cup fills most of the image, raised visibly above a SMALLER THIN low-profile elliptical saucer at bottom. Add strong dark contact shadow under cup foot; continuous contrasting outline. Reduce saucer height and decorative complexity; NO matching repeated cup motifs on saucer. Keep entire handle visible with dark negative space inside. No words, card frame, people, extra objects or watermark. Preserve ivory cup with bold cobalt rose motifs and gold rim/handle. CHANGE saucer to plain MATTE DEEP COBALT BLUE, almost no decoration, only a restrained thin gold rim. Ivory cup against dark blue saucer must form distinct light-vs-dark planes. Saucer is subordinate, never a second ornate bowl."
+  },
+  {
+    "slug": "teacup-green-copper",
+    "name": "ティーカップ・深緑と銅",
+    "prompt": "Use case: precise-object-edit. Edit target image 1. Revise this vertical 3:4 anime game illustration so the CUP instantly reads as a cup at 36–48px, clearly separated from its saucer. Retain mature angular cel shading, navy background, amber tea, steam and right-side curled metal handle. Cup fills most of the image, raised visibly above a SMALLER THIN low-profile elliptical saucer at bottom. Add strong dark contact shadow under cup foot; continuous contrasting outline. Reduce saucer height and decorative complexity; NO matching repeated cup motifs on saucer. Keep entire handle visible with dark negative space inside. No words, card frame, people, extra objects or watermark. Preserve deep forest green cup with large copper hare motifs and copper rim/handle. CHANGE saucer to plain LIGHT WARM IVORY porcelain, almost no decoration, only a restrained thin copper rim. Dark green cup against light ivory saucer must form distinct dark-vs-light planes. Saucer is subordinate, never a second ornate bowl."
+  }
+]

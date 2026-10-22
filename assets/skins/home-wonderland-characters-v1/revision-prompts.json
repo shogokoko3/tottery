@@ -1,0 +1,30 @@
+{
+  "tool": "built-in image_gen",
+  "sceneRepairs": {
+    "common": "Edit this exact landscape game home illustration. Preserve the identity, face, costume, color palette, action, props, environmental composition and painting style. Fix ONLY the character's framing/headroom: ensure the entire tall hat / both rabbit ears / crown is fully visible with a generous 10% image height clear margin above it. Recompose the character 15-20% smaller, keeping it on the same side and its face still prominent; reconstruct scenery naturally around it. Nothing touches the top image edge. Retain a landscape 16:9 frame, same recognizable character, no text.",
+    "files": [
+      "4-hatter-v2.png",
+      "5-march-hare-v2.png",
+      "8-white-rabbit-v2.png",
+      "Q-queen-v2.png"
+    ]
+  },
+  "whiteRabbitFinal": {
+    "file": "8-white-rabbit-v3.png",
+    "prompt": "Remove only the small white signature-like scribble in the extreme bottom-left corner of 8-white-rabbit-v2.png. Replace with matching ground. Preserve everything else."
+  },
+  "decorationRevisions": {
+    "files": [
+      "A-alice-decor-v2.png",
+      "2-dodo-decor-v2.png",
+      "3-bill-decor-v2.png"
+    ],
+    "prompt": "Create ONE PORTRAIT 9:16 decorative environment background for a fantasy game's full mobile home screen. Reference 1 is the matching CHARACTER SCENE: faithfully keep its environment, architecture, time of day, palette and painting style, but REMOVE ALL CHARACTERS and recompose into a portrait environment. Reference 2 is the first-gacha HOME DECORATION COMPOSITION reference only: narrow rich environmental framing at outer edges, distance in upper quarter, spacious shaded low-contrast center for menu panels. This portrait background belongs to a set with reference 1 and must look like the same place and moment. Keep decorative detail mainly in outer 12-18% on either side and upper/lower edges; center x=20%-80%, y=25%-90% has calm shaded scenery or fog with no bright focal object. Premium semi-realistic fantasy painting, naturally integrated ornaments, detailed materials, full bleed, no UI, text, labels, card borders, people, animals or character silhouettes. No giant central props. Character-related ornaments, subtle and confined to outer edges: ",
+    "motifs": [
+      "ornate key, ivory roses and green gold vines",
+      "golden feathers, burgundy pennants and cane handle",
+      "brick chimney edges, chimney brushes, copper gutters"
+    ],
+    "reason": "キャラ入り背景と同じ風景・時間帯に揃えるため、共通案からの派生を再生成。"
+  }
+}

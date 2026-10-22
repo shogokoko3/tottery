@@ -1,0 +1,16 @@
+[
+  {
+    "slug": "teacup-blue-gold",
+    "name": "ティーカップ・青と金",
+    "prompt": "Use case: lighting-weather. Image 1 EDIT TARGET, image 2 foil finish STYLE ONLY. Make vertical 3:4 anime foil variant preserving image 1's EXACT cup and saucer design, outlines, geometry, rose/hare motifs and composition. Selective holographic cyan magenta violet glints concentrated on cup rim, handle, motifs and cup body, antique gold/copper edges. Navy backdrop with fine scattered prism flakes. CRITICAL: retain clear light/dark contrast between cup and saucer: ivory rose cup over plain deep cobalt saucer OR deep green hare cup over plain ivory saucer, as in image 1. Saucer remains simple and subdued with only thin metallic rim, NO large rainbow sheen across saucer and NO added patterns. Maintain strong contact shadow at cup foot and dark opening inside handle. Cup must remain readable at 36px. No text, frame, people or extra objects.",
+    "file": "teacup-blue-gold.png",
+    "source": "../alice-extra-cards-v2/teacup-blue-gold.png"
+  },
+  {
+    "slug": "teacup-green-copper",
+    "name": "ティーカップ・深緑と銅",
+    "prompt": "Use case: lighting-weather. Image 1 EDIT TARGET, image 2 foil finish STYLE ONLY. Make vertical 3:4 anime foil variant preserving image 1's EXACT cup and saucer design, outlines, geometry, rose/hare motifs and composition. Selective holographic cyan magenta violet glints concentrated on cup rim, handle, motifs and cup body, antique gold/copper edges. Navy backdrop with fine scattered prism flakes. CRITICAL: retain clear light/dark contrast between cup and saucer: ivory rose cup over plain deep cobalt saucer OR deep green hare cup over plain ivory saucer, as in image 1. Saucer remains simple and subdued with only thin metallic rim, NO large rainbow sheen across saucer and NO added patterns. Maintain strong contact shadow at cup foot and dark opening inside handle. Cup must remain readable at 36px. No text, frame, people or extra objects.",
+    "file": "teacup-green-copper.png",
+    "source": "../alice-extra-cards-v2/teacup-green-copper.png"
+  }
+]
