@@ -1,4 +1,4 @@
-import { storyHomeProgress, storyHomeTheme } from "../skins/home-story-themes.js";
+import { STORY_HOME_THEMES, storyHomeProgress, storyHomeTheme, storyHomeThemeById } from "../skins/home-story-themes.js";
 import { phaseOf } from "../game/phase.js";
 import { useMissionProfile } from "./mission-profile.js";
 import { playSound } from "../audio/index.js";
@@ -57,7 +57,7 @@ function portraitView(theme, id) {
   };
 }
 export const findHomeTheme = (id) =>
-  HOME_THEMES.find((theme) => theme.id === id);
+  HOME_THEMES.find((theme) => theme.id === id) || storyHomeThemeById(id);
 export function homeThemeStyle(theme) {
   return theme
     ? {
@@ -179,9 +179,11 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
   const progress = storyHomeProgress({ ...profile, phase });
   const autoTheme = storyHomeTheme({ ...profile, phase });
   const choices = HOME_THEMES;
+  const storyChoices = STORY_HOME_THEMES.filter((item) => item.phase === phase);
   const automatic = selected === DEFAULT_HOME_THEME;
   const unlocked = unlockedHomeThemes(collection);
-  const choice = choices.find((item) => item.id === selected) || { ...ORIGINAL, title: autoTheme.name };
+  const choice = findHomeTheme(selected) || { ...ORIGINAL, title: autoTheme.name };
+  const fixedStory = choice.series === "story";
   const theme = findHomeTheme(choice.id) || autoTheme;
   const characters = HOME_PORTRAITS[choice.id];
   const portraitId =
@@ -284,6 +286,27 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
             {!automatic && <Check size={15} className="home-background-mode-check" />}
           </button>
         </div>
+        <section className="home-story-picker" aria-label={`フェーズ${phase}のストーリー背景`}>
+          <h3>ストーリーの背景</h3>
+          <p>第1話〜第7話から選ぶと、その背景に固定できます。</p>
+          <div className="home-story-chapters" role="group" aria-label="ストーリーの話数を選ぶ">
+            {storyChoices.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`home-story-chapter${selected === item.id ? " is-selected" : ""}`}
+                aria-label={`ストーリー${item.chapter}・${item.name}`}
+                aria-pressed={selected === item.id}
+                disabled={saving}
+                onClick={() => selectTheme(item.id)}
+              >
+                <img src={item.assets.scene} alt="" loading="lazy" />
+                <span>第{item.chapter}話</span>
+                {selected === item.id && <Check size={13} />}
+              </button>
+            ))}
+          </div>
+        </section>
         {automatic && (
           <div className="home-story-follow" role="status">
             <span>現在の進行 · フェーズ{phase} / 第{autoTheme.chapter}話</span>
@@ -291,6 +314,13 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
             <p>{progress.complete
               ? "このフェーズは全話クリア済みです。最後の話の背景を表示します。"
               : "話をクリアすると、次の話の背景へ自動で切り替わります。"}</p>
+          </div>
+        )}
+        {fixedStory && (
+          <div className="home-story-follow" role="status">
+            <span>背景を固定 · フェーズ{phase} / 第{choice.chapter}話</span>
+            <b>{choice.name}</b>
+            <p>ストーリーが進んでも、この背景を使い続けます。</p>
           </div>
         )}
         <div
@@ -314,7 +344,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
             )}
             <HomeFrameCorners theme={theme} />
             <span className="home-preview-label">
-              {automatic ? autoTheme.title : `${choice.label} · ${characters ? portrait.name : choice.title}`}
+              {automatic || fixedStory ? theme.title : `${choice.label} · ${characters ? portrait.name : choice.title}`}
             </span>
           </div>
         </div>
@@ -465,7 +495,9 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
                 ? "このまま使う"
                 : automatic
                   ? "ストーリー連動を使う"
-                  : "この装飾に着せ替える"}
+                  : fixedStory
+                    ? "この話の背景を使う"
+                    : "この装飾に着せ替える"}
         </button>
       </footer>
     </SkinModal>

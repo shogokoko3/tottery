@@ -1,5 +1,5 @@
 import { phaseOf } from "../game/phase.js";
-import { storyHomeTheme } from "./home-story-themes.js";
+import { STORY_HOME_THEMES, storyHomeTheme, storyHomeThemeById } from "./home-story-themes.js";
 import { PHASE_HOME_THEMES } from "./home-phase-themes.js";
 import { areaRewardsFor } from "./area-rewards.js";
 import { byId, foilId } from "./catalog.js";
@@ -112,6 +112,7 @@ export function unlockedHomeThemes(collection) {
       const count = collection?.owned?.[theme.unlockFoil];
       return Number.isSafeInteger(count) && count > 0;
     }).map((theme) => theme.id),
+    ...STORY_HOME_THEMES.map((theme) => theme.id),
   ];
 }
 
@@ -127,7 +128,8 @@ export function homeThemeOf(collection) {
 export function setHomeTheme(collection, id) {
   if (
     id !== DEFAULT_HOME_THEME &&
-    !HOME_THEMES.some((theme) => theme.id === id)
+    !HOME_THEMES.some((theme) => theme.id === id) &&
+    !storyHomeThemeById(id)
   )
     throw new Error("そのホーム装飾はありません。");
   if (!unlockedHomeThemes(collection).includes(id))
@@ -239,5 +241,5 @@ export function setPhaseHome(collection, phase, theme, portrait = null) {
 /** 標準は物語の現在地、手動で選んだ装飾はそのフェーズの指定を優先する。 */
 export function homeThemeForProfile(collection, profile) {
   const selected = homeThemeOf(phaseHomeOf(collection, phaseOf(profile)));
-  return HOME_THEMES.find((theme) => theme.id === selected) || storyHomeTheme(profile);
+  return HOME_THEMES.find((theme) => theme.id === selected) || storyHomeThemeById(selected) || storyHomeTheme(profile);
 }

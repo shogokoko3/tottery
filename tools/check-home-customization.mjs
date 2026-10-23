@@ -4,6 +4,7 @@ import { build } from "esbuild";
 import { normalize } from "../src/skins/collection.js";
 import { setPhaseHome, homeThemeForProfile } from "../src/skins/home-themes.js";
 import { STORY_AXES } from "../src/game/phase.js";
+import { STORY_HOME_THEMES } from "../src/skins/home-story-themes.js";
 
 const mocks = {
   react: `export const Fragment="fragment";export const useState=v=>globalThis.homeChooser.state(v);export const useRef=v=>globalThis.homeChooser.ref(v);`,
@@ -109,5 +110,30 @@ const saved = structuredClone(fixture.collection);
 await click("戻る");
 assert.deepEqual(fixture.collection, saved, "Closing without applying keeps the saved background");
 assert.equal(closed, 1);
+// All seven episode buttons remain visible in either mode, and save the selected picture.
+for (const phase of [1, 2, 3]) {
+  fixture.profile = { phase, story: { [phase]: [] } };
+  const phaseThemes = STORY_HOME_THEMES.filter((theme) => theme.phase === phase);
+  for (const theme of phaseThemes) {
+    values = [];
+    assert.equal(nodes(render()).filter((node) => node.type === "button" && /^ストーリー\d・/.test(node.props["aria-label"] || "")).length, 7);
+    const previous = structuredClone(fixture.collection);
+    await click(`ストーリー${theme.chapter}・${theme.name}`);
+    assert.equal(preview(render()), theme.id);
+    assert.equal(button(render(), "背景を選ぶ").props["aria-pressed"], true);
+    assert.deepEqual(fixture.collection, previous, "話数のプレビューでは保存・所持品を変えない");
+    await click("この話の背景を使う");
+    values = [];
+    assert.equal(button(render(), `ストーリー${theme.chapter}・${theme.name}`).props["aria-pressed"], true);
+    assert.equal(homeThemeForProfile(fixture.collection, fixture.profile).id, theme.id);
+    for (const other of [1, 2, 3].filter((value) => value !== phase))
+      assert.deepEqual(fixture.collection.phaseHomes[other], previous.phaseHomes[other]);
+    fixture.profile.story[phase] = [...STORY_AXES];
+    assert.equal(preview(render()), theme.id, "進行が変わっても選んだ話を維持");
+  }
+  await click("ストーリーに連動");
+  await click("ストーリー連動を使う");
+  assert.equal(fixture.collection.phaseHomes[phase].homeTheme, "default", "話数指定から自動連動に戻せる");
+}
 delete globalThis.homeChooser;
 console.log("着せ替え: 連動/固定の切り替え・進行プレビュー・適用/取消・保存復元・フェーズ分離・保存失敗からの再試行を確認");

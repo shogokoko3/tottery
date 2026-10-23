@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { STORY_AXES } from "../src/game/phase.js";
 import { normalize } from "../src/skins/collection.js";
 import { homeThemeForProfile, setPhaseHome } from "../src/skins/home-themes.js";
-import { STORY_HOME_SCENES, storyHomeProgress } from "../src/skins/home-story-themes.js";
+import { STORY_HOME_SCENES, STORY_HOME_THEMES, storyHomeProgress } from "../src/skins/home-story-themes.js";
 
 const manga = JSON.parse(fs.readFileSync("src/game/story-comics.json", "utf8"));
 assert.equal(STORY_HOME_SCENES.length, 21);
@@ -43,4 +43,23 @@ const profile = { phase: 2, story: { 2: ["23", "45"] } };
 assert.equal(homeThemeForProfile(collection, profile).id, "phase-2");
 assert.equal(homeThemeForProfile(setPhaseHome(collection, 2, "default"), profile).axis, "67");
 assert.equal(homeThemeForProfile(collection, { phase: 1 }).axis, "23");
+for (const theme of STORY_HOME_THEMES) {
+  const original = normalize({ tickets: 20, gems: 100, owned: { "elf-male": 1 } });
+  const chosen = normalize(JSON.parse(JSON.stringify(setPhaseHome(original, theme.phase, theme.id))));
+  assert.equal(chosen.phaseHomes[theme.phase].homeTheme, theme.id, "全21話の選択を保存・復元できる");
+  for (const clears of [[], STORY_AXES]) {
+    const progress = { phase: theme.phase, story: { [theme.phase]: clears } };
+    assert.equal(homeThemeForProfile(chosen, progress).id, theme.id, "未クリア・全話クリアとも固定背景を維持");
+    assert.equal(homeThemeForProfile(chosen, progress).assets.scene, theme.assets.scene);
+  }
+  assert.equal(chosen.tickets, original.tickets);
+  assert.equal(chosen.gems, original.gems);
+  assert.deepEqual(chosen.owned, original.owned);
+  assert.deepEqual(original.phaseHomes, {}, "元データを書き換えない");
+}
+for (const invalid of ["phase-1-story-8", "phase-4-story-23", "phase-1-story-unknown"]) {
+  assert.throws(() => setPhaseHome(normalize(null), 1, invalid), /ホーム装飾/);
+  const restored = normalize({ phaseHomes: { 1: { homeTheme: invalid } } });
+  assert.equal(restored.phaseHomes[1].homeTheme, "default");
+}
 console.log("物語ホーム: 全21背景・各話の原稿対応・進行による切り替え・フェーズ移行・手動設定を確認");

@@ -1,3 +1,4 @@
+import { STORY_HOME_THEMES } from "../src/skins/home-story-themes.js";
 import { PHASE_HOME_THEMES } from "../src/skins/home-phase-themes.js";
 /** ホーム装飾の解放条件と保存。通貨・スキン装備・獲得待ちを変えない。 */
 import assert from "node:assert/strict";
@@ -25,7 +26,8 @@ import {
   unlockedHomeThemes,
 } from "../src/skins/home-themes.js";
 
-const defaults = ["default", ...PHASE_HOME_THEMES.map((theme) => theme.id)];
+const storyIds = STORY_HOME_THEMES.map((theme) => theme.id);
+const defaults = ["default", ...PHASE_HOME_THEMES.map((theme) => theme.id), ...storyIds];
 const ids = [
   "earth",
   "sea",
@@ -73,7 +75,7 @@ assert.deepEqual(
 );
 for (const [base, theme] of Object.entries(expected)) {
   const acquired = grantSkin(normalize(null), foilId(base));
-  assert.deepEqual(unlockedHomeThemes(acquired), ["default", theme, ...PHASE_HOME_THEMES.map((item) => item.id)], base);
+  assert.deepEqual(unlockedHomeThemes(acquired), ["default", theme, ...PHASE_HOME_THEMES.map((item) => item.id), ...storyIds], base);
   assert.equal(homeThemeOf(acquired), "default", "入手だけでは選択を変えない");
   const selected = setHomeTheme(acquired, theme);
   const restored = normalize(JSON.parse(JSON.stringify(selected)));
@@ -112,13 +114,13 @@ assert.deepEqual(
       "zombie-male:foil": 7,
     },
   }),
-  ["default", "earth", "heaven", "hell", ...PHASE_HOME_THEMES.map((theme) => theme.id)],
+  ["default", "earth", "heaven", "hell", ...PHASE_HOME_THEMES.map((theme) => theme.id), ...storyIds],
   "同じ領域はまとめ、天界と魔界は分け、表示順を固定する",
 );
 const all = normalize({
   owned: Object.fromEntries(ALL_FOIL_SKINS.map((skin) => [skin.id, 1])),
 });
-assert.deepEqual(unlockedHomeThemes(all), ["default", ...ids]);
+assert.deepEqual(unlockedHomeThemes(all), ["default", ...ids, ...storyIds]);
 
 // ワンダーランドは同じ盤面を持つキャラでも個別解放。Aと10も専用セットを持つ。
 assert.equal(WONDERLAND_HOME_THEMES.length, 13);
@@ -193,7 +195,7 @@ assert.deepEqual(
   unlockedHomeThemes({
     owned: { "pirate-male:foil": Number.MAX_SAFE_INTEGER },
   }),
-  ["default", "sea", ...PHASE_HOME_THEMES.map((theme) => theme.id)],
+  ["default", "sea", ...PHASE_HOME_THEMES.map((theme) => theme.id), ...storyIds],
 );
 for (const id of [
   undefined,

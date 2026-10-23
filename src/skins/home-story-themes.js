@@ -1,7 +1,7 @@
 import { STORY_AXES, normalizeStory, phaseOf } from "../game/phase.js";
 import { phaseHomeTheme } from "./home-phase-themes.js";
 
-/** 原稿の各話と対応したホーム背景。未読の展開を先取りせず、次の未クリア話を表示する。 */
+/** 原稿の各話と対応したホーム背景。自動連動では次の未クリア話を表示する。 */
 export const STORY_HOME_SCENES = Object.freeze([
   {
     "phase": 1,
@@ -182,17 +182,25 @@ export function storyHomeProgress(profile) {
   return { ...scene, complete: next === undefined, cleared: cleared.length };
 }
 
-export function storyHomeTheme(profile) {
-  const scene = storyHomeProgress(profile);
+export const STORY_HOME_THEMES = Object.freeze(STORY_HOME_SCENES.map((scene) => {
   const base = phaseHomeTheme(scene.phase);
-  return {
+  return Object.freeze({
     ...base,
     id: `phase-${scene.phase}-story-${scene.axis}`,
+    series: "story",
+    label: `第${scene.chapter}話`,
     chapter: scene.chapter,
     axis: scene.axis,
     name: scene.title,
     title: scene.location,
     subtitle: `第${scene.chapter}話 · ${scene.location}`,
     assets: { ...base.assets, scene: scene.file, decoration: scene.file },
-  };
+  });
+}));
+
+export const storyHomeThemeById = (id) => STORY_HOME_THEMES.find((theme) => theme.id === id);
+
+export function storyHomeTheme(profile) {
+  const scene = storyHomeProgress(profile);
+  return STORY_HOME_THEMES.find((theme) => theme.phase === scene.phase && theme.axis === scene.axis);
 }
