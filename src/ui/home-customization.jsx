@@ -1,9 +1,9 @@
-import { storyHomeTheme } from "../skins/home-story-themes.js";
+import { storyHomeProgress, storyHomeTheme } from "../skins/home-story-themes.js";
 import { phaseOf } from "../game/phase.js";
 import { useMissionProfile } from "./mission-profile.js";
 import { playSound } from "../audio/index.js";
 import { Fragment, useRef, useState } from "react";
-import { ArrowLeft, Check, Close, Crown, Lock, Sparkle } from "../icons.jsx";
+import { ArrowLeft, Book, Check, Close, Crown, Lock, Sparkle } from "../icons.jsx";
 import { SkinModal } from "./skin-modal.jsx";
 import { useCollection, updateCollection } from "../skins/store.js";
 import { byId } from "../skins/catalog.js";
@@ -154,7 +154,7 @@ export function HomeRealmPortrait({ theme }) {
 
 const ORIGINAL = {
   id: DEFAULT_HOME_THEME,
-  label: "物語に合わせる",
+  label: "ストーリーに連動",
   title: "進行に合わせて背景が変わるホーム",
   condition: "はじめから使用できます",
 };
@@ -175,10 +175,13 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const scroller = useRef(null);
+  const manualSelections = useRef({});
+  const progress = storyHomeProgress({ ...profile, phase });
   const autoTheme = storyHomeTheme({ ...profile, phase });
-  const choices = [{ ...ORIGINAL, title: autoTheme.name }, ...HOME_THEMES];
+  const choices = HOME_THEMES;
+  const automatic = selected === DEFAULT_HOME_THEME;
   const unlocked = unlockedHomeThemes(collection);
-  const choice = choices.find((item) => item.id === selected) || ORIGINAL;
+  const choice = choices.find((item) => item.id === selected) || { ...ORIGINAL, title: autoTheme.name };
   const theme = findHomeTheme(choice.id) || autoTheme;
   const characters = HOME_PORTRAITS[choice.id];
   const portraitId =
@@ -196,6 +199,11 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
   const condition = characters
     ? `${byId(portraitId).rank} ${byId(portraitId).name}のフォイルを獲得`
     : choice.condition;
+  const selectTheme = (id) => {
+    if (id !== DEFAULT_HOME_THEME) manualSelections.current[phase] = id;
+    setSelected(id);
+    setError("");
+  };
   const apply = async () => {
     if (saving || !available) return;
     setSaving(true);
@@ -247,16 +255,48 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
           ))}
         </div>
         <p className="home-customize-guide">
-          フェーズ{phase}専用の着せ替えです。フェーズに合わせて自動で切り替わります。
+          フェーズ{phase}で使う背景の切り替え方を選べます。
         </p>
-        <p className="home-customize-guide">
-          「物語に合わせる」は次の未クリア話に合わせて背景が変わります。
-          領域・キャラの着せ替えは対応するフォイルで解放できます。
-        </p>
+        <div className="home-background-modes" role="group" aria-label="背景の切り替え方">
+          <button
+            type="button"
+            className={`home-background-mode${automatic ? " is-selected" : ""}`}
+            aria-pressed={automatic}
+            disabled={saving}
+            onClick={() => selectTheme(DEFAULT_HOME_THEME)}
+          >
+            <Book size={21} />
+            <b>ストーリーに連動</b>
+            <small>進行に合わせて自動で変わる</small>
+            {automatic && <Check size={15} className="home-background-mode-check" />}
+          </button>
+          <button
+            type="button"
+            className={`home-background-mode${automatic ? "" : " is-selected"}`}
+            aria-pressed={!automatic}
+            disabled={saving}
+            onClick={() => selectTheme(manualSelections.current[phase] ||
+              (current !== DEFAULT_HOME_THEME ? current : `phase-${phase}`))}
+          >
+            <Crown size={21} />
+            <b>背景を選ぶ</b>
+            <small>好きな背景を使い続ける</small>
+            {!automatic && <Check size={15} className="home-background-mode-check" />}
+          </button>
+        </div>
+        {automatic && (
+          <div className="home-story-follow" role="status">
+            <span>現在の進行 · フェーズ{phase} / 第{autoTheme.chapter}話</span>
+            <b>{autoTheme.name}</b>
+            <p>{progress.complete
+              ? "このフェーズは全話クリア済みです。最後の話の背景を表示します。"
+              : "話をクリアすると、次の話の背景へ自動で切り替わります。"}</p>
+          </div>
+        )}
         <div
           className={`home-customize-set-preview${theme ? " has-theme" : ""}`}
           style={homeThemeStyle(theme)}
-          data-home-area={choice.id}
+          data-home-area={theme.id}
         >
           <HomeRealmDecoration theme={theme} />
           <div className="home-customize-preview">
@@ -274,7 +314,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
             )}
             <HomeFrameCorners theme={theme} />
             <span className="home-preview-label">
-              {choice.label} · {characters ? portrait.name : choice.title}
+              {automatic ? autoTheme.title : `${choice.label} · ${characters ? portrait.name : choice.title}`}
             </span>
           </div>
         </div>
@@ -284,7 +324,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
         >
           {available ? <Check size={17} /> : <Lock size={17} />}
           <span>
-            {available ? (isCurrent ? "現在使用中" : "解放済み") : condition}
+            {available ? (isCurrent ? (automatic ? "ストーリー連動を使用中" : "現在使用中") : (automatic ? "適用すると、現在の進行に合わせて切り替わります" : "解放済み")) : condition}
           </span>
         </div>
         {characters && (
@@ -331,7 +371,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
             </div>
           </section>
         )}
-        <div
+        {!automatic && <div
           className="home-theme-grid"
           role="group"
           aria-label="ホーム装飾を選ぶ"
@@ -345,7 +385,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
                   <h3 className="home-theme-series">
                     {item.series === "alice"
                       ? "ワンダーランド"
-                      : item.series === "phase" ? "フェーズ専用ホーム" : "初期シリーズ・標準"}
+                      : item.series === "phase" ? "フェーズ専用ホーム" : "初期シリーズ"}
                   </h3>
                 )}
                 <button
@@ -353,8 +393,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
                   aria-pressed={active}
                   aria-label={`${item.label}のホーム ${open ? (item.id === current ? "使用中" : "解放済み") : `未解放・${item.condition}`}`}
                   onClick={() => {
-                    setSelected(item.id);
-                    setError("");
+                    selectTheme(item.id);
                     if (scroller.current) scroller.current.scrollTop = 0;
                   }}
                   disabled={saving}
@@ -405,7 +444,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
               </Fragment>
             );
           })}
-        </div>
+        </div>}
       </div>
       <footer className="home-customize-footer">
         {error && <p role="alert">{error}</p>}
@@ -424,7 +463,9 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
               ? "未解放"
               : isCurrent
                 ? "このまま使う"
-                : "この装飾に着せ替える"}
+                : automatic
+                  ? "ストーリー連動を使う"
+                  : "この装飾に着せ替える"}
         </button>
       </footer>
     </SkinModal>
