@@ -147,7 +147,7 @@ export const profileCard=(bg)=>renderToStaticMarkup(<ProfileCard view={{card:{bg
     assert.ok(!rendered.includes("skins/home-v1/alice-"), "初期シリーズのパスへ流れない");
     assert.ok(profileCard(theme.id).includes(homeThemeAssets(theme).decoration));
     const locked = await themedHome({ owned: { [theme.id]: 1 }, homeTheme: theme.id });
-    assert.ok(locked.includes('data-home-area="default"'));
+    assert.ok(locked.includes('data-home-area="phase-1-story-23"'));
     assert.ok(!locked.includes(homeThemeAssets(theme).scene));
   }
 } finally {

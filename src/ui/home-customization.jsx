@@ -1,20 +1,24 @@
-import { playSound, useCue } from "../audio/index.js";
+import { storyHomeTheme } from "../skins/home-story-themes.js";
+import { phaseOf } from "../game/phase.js";
+import { useMissionProfile } from "./mission-profile.js";
+import { playSound } from "../audio/index.js";
 import { Fragment, useRef, useState } from "react";
 import { ArrowLeft, Check, Close, Crown, Lock, Sparkle } from "../icons.jsx";
 import { SkinModal } from "./skin-modal.jsx";
 import { useCollection, updateCollection } from "../skins/store.js";
 import { byId } from "../skins/catalog.js";
 import {
+  phaseHomeOf,
+  homeThemeForProfile,
+  setPhaseHome,
   HOME_THEMES,
   homeThemeAssets,
   DEFAULT_HOME_THEME,
   homeThemeOf,
-  setHomeTheme,
   unlockedHomeThemes,
   homePortraitOf,
   homePortraitsOf,
   unlockedHomePortraits,
-  setHomePortrait,
 } from "../skins/home-themes.js";
 
 const asset = (file) => `skins/home-v1/${file}`;
@@ -116,7 +120,9 @@ export function HomeRealmDecoration({ theme }) {
 }
 
 export function HomeRealmPortrait({ theme }) {
-  const collection = useCollection();
+  const source = useCollection();
+  const [profile] = useMissionProfile();
+  const collection = phaseHomeOf(source, phaseOf(profile));
   if (!theme) return null;
   const portrait = portraitView(theme, homePortraitOf(collection, theme.id));
   return (
@@ -128,10 +134,11 @@ export function HomeRealmPortrait({ theme }) {
         className="home-realm-king"
         src={portrait.image}
         alt={portrait.name}
+        key={portrait.image}
         style={{ objectPosition: portrait.position }}
       />
       <div className="home-realm-caption">
-        <span>{theme.title}</span>
+        <span>{theme.phase ? `PHASE ${theme.phase} · ${theme.subtitle}` : theme.title}</span>
         <h2>{portrait.name}</h2>
       </div>
       <HomeFrameCorners theme={theme} />
@@ -147,8 +154,8 @@ export function HomeRealmPortrait({ theme }) {
 
 const ORIGINAL = {
   id: DEFAULT_HOME_THEME,
-  label: "標準",
-  title: "紺と金のホーム",
+  label: "物語に合わせる",
+  title: "進行に合わせて背景が変わるホーム",
   condition: "はじめから使用できます",
 };
 
@@ -158,17 +165,21 @@ const ORIGINAL = {
  * 2026-09-18 本人の指示「着せ替え先を決めたらホーム画面に戻る」)
  */
 export function HomeCustomizationModal({ onClose, onApplied = null }) {
-  const collection = useCollection();
+  const source = useCollection();
+  const [profile] = useMissionProfile();
+  const [phase, setPhase] = useState(() => phaseOf(profile));
+  const collection = phaseHomeOf(source, phase);
   const current = homeThemeOf(collection);
   const [selected, setSelected] = useState(current);
   const [portraits, setPortraits] = useState(() => homePortraitsOf(collection));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const scroller = useRef(null);
-  const choices = [ORIGINAL, ...HOME_THEMES];
+  const autoTheme = storyHomeTheme({ ...profile, phase });
+  const choices = [{ ...ORIGINAL, title: autoTheme.name }, ...HOME_THEMES];
   const unlocked = unlockedHomeThemes(collection);
   const choice = choices.find((item) => item.id === selected) || ORIGINAL;
-  const theme = findHomeTheme(choice.id);
+  const theme = findHomeTheme(choice.id) || autoTheme;
   const characters = HOME_PORTRAITS[choice.id];
   const portraitId =
     portraits[choice.id] ||
@@ -190,10 +201,9 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
     setSaving(true);
     setError("");
     try {
-      await updateCollection((state) => {
-        const next = setHomeTheme(state, choice.id);
-        return characters ? setHomePortrait(next, choice.id, portraitId) : next;
-      });
+      await updateCollection((state) =>
+        setPhaseHome(state, phase, choice.id, characters ? portraitId : null),
+      );
       playSound("equip");
       (onApplied || onClose)();
     } catch (err) {
@@ -223,8 +233,25 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
         </button>
       </header>
       <div className="home-customize-scroll" ref={scroller}>
+        <div className="home-phase-selector" role="group" aria-label="着せ替えるフェーズ">
+          {[1, 2, 3].map((value) => (
+            <button key={value} className={`btn ${phase === value ? "btn-primary" : "btn-ghost"}`}
+              aria-pressed={phase === value} disabled={saving}
+              onClick={() => {
+                const state = phaseHomeOf(source, value);
+                setPhase(value);
+                setSelected(homeThemeOf(state));
+                setPortraits(homePortraitsOf(state));
+                setError("");
+              }}>フェーズ{value}</button>
+          ))}
+        </div>
         <p className="home-customize-guide">
-          対応するフォイルで解放。キャラ入り背景と装飾をセットで着せ替えます。
+          フェーズ{phase}専用の着せ替えです。フェーズに合わせて自動で切り替わります。
+        </p>
+        <p className="home-customize-guide">
+          「物語に合わせる」は次の未クリア話に合わせて背景が変わります。
+          領域・キャラの着せ替えは対応するフォイルで解放できます。
         </p>
         <div
           className={`home-customize-set-preview${theme ? " has-theme" : ""}`}
@@ -318,7 +345,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
                   <h3 className="home-theme-series">
                     {item.series === "alice"
                       ? "ワンダーランド"
-                      : "初期シリーズ・標準"}
+                      : item.series === "phase" ? "フェーズ専用ホーム" : "初期シリーズ・標準"}
                   </h3>
                 )}
                 <button
@@ -334,9 +361,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
                 >
                   <span className="home-theme-thumbnail">
                     {item.id === DEFAULT_HOME_THEME ? (
-                      <span className="home-original-thumbnail">
-                        <Crown size={27} />
-                      </span>
+                      <img src={homeThemeAssets(autoTheme).scene} alt="" loading="lazy" />
                     ) : (
                       <img
                         src={
@@ -412,7 +437,8 @@ export function HomeCustomizationButton({
 }) {
   const collection = useCollection();
   const [open, setOpen] = useState(false);
-  const theme = findHomeTheme(homeThemeOf(collection));
+  const [profile] = useMissionProfile();
+  const theme = homeThemeForProfile(collection, profile);
   return (
     <>
       <div

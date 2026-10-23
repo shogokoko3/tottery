@@ -1,0 +1,80 @@
+<div id="tottery-story-preview">
+  <style>/* PRODUCT_STYLES */</style>
+  <div class="viz-controls">
+    <label class="form-label">フェーズ
+      <select class="form-select" id="tt-story-phase" aria-label="プレビューするフェーズ">
+        <option value="1">フェーズ1 · 印を巡って</option>
+        <option value="2">フェーズ2 · 伏せ王</option>
+        <option value="3">フェーズ3 · 七つの答え</option>
+      </select>
+    </label>
+    <label class="form-label">話
+      <select class="form-select" id="tt-story-chapter" aria-label="プレビューする話">
+        <!-- CHAPTER_OPTIONS -->
+      </select>
+    </label>
+  </div>
+  <div class="tt-story-stage viz-dotted-background">
+    <div class="tt-story-phone" aria-label="トッタリーのホーム完成画面">
+      <!-- PRODUCT_SCREEN -->
+    </div>
+  </div>
+  <script>
+    const storyPreviewRoot = document.getElementById('tottery-story-preview');
+    const previewScenes = /* SCENE_DATA */ [];
+    const previewFrames = /* FRAME_DATA */ {};
+    const phasePicker = storyPreviewRoot.querySelector('#tt-story-phase');
+    const chapterPicker = storyPreviewRoot.querySelector('#tt-story-chapter');
+    const phone = storyPreviewRoot.querySelector('.tt-story-phone');
+    const home = phone.querySelector('.home-wrap');
+    const sceneImage = phone.querySelector('.home-realm-king');
+    const sceneTitle = phone.querySelector('.home-realm-caption h2');
+    const sceneCaption = phone.querySelector('.home-realm-caption span');
+    const storyNote = phone.querySelector('.home-tile-story small');
+    const phaseGuide = phone.querySelector('.home-learning-trigger');
+    function populateChapters() {
+      const phaseScenes = previewScenes.filter((scene) => scene.phase === Number(phasePicker.value));
+      chapterPicker.replaceChildren(...phaseScenes.map((scene) => {
+        const option = document.createElement('option');
+        option.value = String(scene.chapter);
+        option.textContent = `第${scene.chapter}話 · ${scene.title}`;
+        return option;
+      }));
+    }
+    function renderStoryPreview() {
+      const scene = previewScenes.find((item) => item.phase === Number(phasePicker.value) && item.chapter === Number(chapterPicker.value));
+      if (!scene) return;
+      home.dataset.homeArea = `phase-${scene.phase}-story-${scene.axis}`;
+      home.dataset.homePhase = String(scene.phase);
+      home.style.setProperty('--home-accent', scene.accent);
+      home.style.setProperty('--home-surface', scene.panel);
+      home.style.setProperty('--home-frame', scene.secondary);
+      home.style.setProperty('--home-decoration', `url("${scene.image}")`);
+      sceneImage.src = scene.image;
+      sceneImage.alt = `${scene.location} · ${scene.title}`;
+      sceneTitle.textContent = scene.title;
+      sceneCaption.textContent = `PHASE ${scene.phase} · 第${scene.chapter}話 · ${scene.location}`;
+      storyNote.textContent = scene.note;
+      phaseGuide.querySelector('span').textContent = `フェーズ ${scene.phase}`;
+      phaseGuide.setAttribute('aria-label', `フェーズ${scene.phase}：ガイドと遊び方`);
+      phone.querySelectorAll('.home-frame-corner').forEach((element) => { element.src = previewFrames[scene.phase].corner; });
+      phone.querySelectorAll('.home-frame-crest').forEach((element) => { element.src = previewFrames[scene.phase].crest; });
+      phone.querySelectorAll('.home-frame-rail').forEach((element) => { element.src = previewFrames[scene.phase].rail; });
+    }
+    function rememberPreview() {
+      window.openai?.setWidgetState?.({ modelContent: { phase: Number(phasePicker.value), chapter: Number(chapterPicker.value) }, privateContent: null }).catch(() => {});
+    }
+    function restorePreview(saved) {
+      if (![1, 2, 3].includes(saved?.phase)) return;
+      phasePicker.value = String(saved.phase);
+      populateChapters();
+      chapterPicker.value = String(Math.max(1, Math.min(7, saved.chapter || 1)));
+      renderStoryPreview();
+    }
+    phasePicker.addEventListener('change', () => { populateChapters(); renderStoryPreview(); rememberPreview(); });
+    chapterPicker.addEventListener('change', () => { renderStoryPreview(); rememberPreview(); });
+    restorePreview(window.openai?.widgetState?.modelContent);
+    window.addEventListener('openai:set_globals', (event) => restorePreview(event.detail?.globals?.widgetState?.modelContent));
+    renderStoryPreview();
+  </script>
+</div>

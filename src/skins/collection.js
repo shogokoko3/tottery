@@ -20,7 +20,7 @@ import {
   dustOf,
 } from "./ether.js";
 import { exchangeCheck, shatterCheck } from "./shards.js";
-import { homePortraitsOf, homeThemeOf } from "./home-themes.js";
+import { phaseHomesOf, homePortraitsOf, homeThemeOf } from "./home-themes.js";
 import { sanitizeTsumeProgress } from "../game/tsume-daily.js";
 import {
   missionPeriods,
@@ -185,6 +185,7 @@ export function normalize(raw) {
     acquired: acquiredTotals({ ...value, owned, foilMilestones }),
     foilMilestones,
     equipped,
+    phaseHomes: phaseHomesOf({ ...value, owned }),
     homeTheme: homeThemeOf({ owned, homeTheme: value.homeTheme }),
     homePortraits: homePortraitsOf({
       owned,

@@ -46,7 +46,7 @@ export function normalizeSpectate(raw) {
 /** 背景の候補。標準はいつでも。7エリアはホームの着せ替えと同じ解放条件 */
 export const PROFILE_BACKGROUNDS = Object.freeze([
   { id: STANDARD_BG, label: "標準", condition: "いつでも使えます" },
-  ...HOME_THEMES.map((t) => ({ id: t.id, label: t.title, area: t.label, condition: t.condition })),
+  ...HOME_THEMES.filter((t) => t.series !== "phase").map((t) => ({ id: t.id, label: t.title, area: t.label, condition: t.condition })),
 ]);
 
 export function unlockedBackgrounds(collection) {

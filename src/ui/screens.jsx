@@ -3,10 +3,9 @@ import {
   HomeRealmDecoration,
   HomeRealmPortrait,
   HomeFrameCorners,
-  findHomeTheme,
   homeThemeStyle,
 } from "./home-customization.jsx";
-import { homeThemeOf } from "../skins/home-themes.js";
+import { homeThemeForProfile } from "../skins/home-themes.js";
 import HOME_STYLES from "./home-customization.css";
 import { useAnyBattlePassUnlocked } from "./battlepass-access.js";
 import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
@@ -567,8 +566,7 @@ export function MenuScreen({
   };
   const passUnlocked = useAnyBattlePassUnlocked();
   const collection = useCollection();
-  const themeId = homeThemeOf(collection);
-  const theme = findHomeTheme(themeId);
+  const theme = homeThemeForProfile(collection, profile);
   // スキンを1つでも持っていれば「カード」(熟練度)を解放。無ければロック(2026-09-24 本人の指示)
   const skinOwned = (collection && collection.owned) || {};
   const hasAnySkin = MASTERY_SKINS.some((id) => skinOwned[id] || skinOwned[foilId(id)]);
@@ -592,7 +590,7 @@ export function MenuScreen({
       ? "joined"
       : "new";
   return (
-    <div className={`home-wrap${theme ? " has-home-theme" : ""}`} data-home-area={themeId} style={homeThemeStyle(theme)}>
+    <div className={`home-wrap${theme ? " has-home-theme" : ""}`} data-home-area={theme.id} data-home-phase={phaseOf(profile)} style={homeThemeStyle(theme)}>
       <HomeRealmDecoration theme={theme} />
       {/* その日のぶんがまだなら、ここに着いたときに札が出る */}
       <LoginBonus />

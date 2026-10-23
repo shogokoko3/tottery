@@ -1,3 +1,4 @@
+import { PHASE_HOME_THEMES } from "../src/skins/home-phase-themes.js";
 /** ホーム装飾の解放条件と保存。通貨・スキン装備・獲得待ちを変えない。 */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -10,6 +11,8 @@ import {
 import { ALL_FOIL_SKINS, SKINS, foilId } from "../src/skins/catalog.js";
 import { grantSkin, normalize, shatter } from "../src/skins/collection.js";
 import {
+  phaseHomeOf,
+  setPhaseHome,
   DEFAULT_HOME_THEME,
   HOME_THEMES,
   homeThemeAssets,
@@ -22,7 +25,7 @@ import {
   unlockedHomeThemes,
 } from "../src/skins/home-themes.js";
 
-const defaults = ["default"];
+const defaults = ["default", ...PHASE_HOME_THEMES.map((theme) => theme.id)];
 const ids = [
   "earth",
   "sea",
@@ -32,6 +35,7 @@ const ids = [
   "heaven",
   "hell",
   ...WONDERLAND_HOME_THEMES.map((theme) => theme.id),
+  ...PHASE_HOME_THEMES.map((theme) => theme.id),
 ];
 assert.equal(DEFAULT_HOME_THEME, "default");
 assert.deepEqual(
@@ -69,13 +73,13 @@ assert.deepEqual(
 );
 for (const [base, theme] of Object.entries(expected)) {
   const acquired = grantSkin(normalize(null), foilId(base));
-  assert.deepEqual(unlockedHomeThemes(acquired), ["default", theme], base);
+  assert.deepEqual(unlockedHomeThemes(acquired), ["default", theme, ...PHASE_HOME_THEMES.map((item) => item.id)], base);
   assert.equal(homeThemeOf(acquired), "default", "入手だけでは選択を変えない");
   const selected = setHomeTheme(acquired, theme);
   const restored = normalize(JSON.parse(JSON.stringify(selected)));
   assert.equal(homeThemeOf(restored), theme, `${base} の選択が保存される`);
   assert.equal(restored.homeTheme, theme);
-  for (const other of ids.filter((id) => id !== theme))
+  for (const other of ids.filter((id) => id !== theme && !id.startsWith("phase-")))
     assert.throws(() => setHomeTheme(acquired, other), /フォイル/, other);
 }
 
@@ -108,7 +112,7 @@ assert.deepEqual(
       "zombie-male:foil": 7,
     },
   }),
-  ["default", "earth", "heaven", "hell"],
+  ["default", "earth", "heaven", "hell", ...PHASE_HOME_THEMES.map((theme) => theme.id)],
   "同じ領域はまとめ、天界と魔界は分け、表示順を固定する",
 );
 const all = normalize({
@@ -189,7 +193,7 @@ assert.deepEqual(
   unlockedHomeThemes({
     owned: { "pirate-male:foil": Number.MAX_SAFE_INTEGER },
   }),
-  ["default", "sea"],
+  ["default", "sea", ...PHASE_HOME_THEMES.map((theme) => theme.id)],
 );
 for (const id of [
   undefined,
@@ -357,7 +361,7 @@ for (const [theme, characters, canonical] of areaCharacters) {
       homePortraitOf(grantSkin(saved, foilId(baseId)), theme),
       other,
     );
-    for (const wrongTheme of ids.filter((id) => id !== theme))
+    for (const wrongTheme of ids.filter((id) => id !== theme && !id.startsWith("phase-")))
       assert.throws(() => setHomePortrait(all, wrongTheme, baseId), /領域/);
     assert.deepEqual(
       normalize({
@@ -486,3 +490,18 @@ assert.deepEqual(
 console.log(
   "ホーム装飾: フォイルごとの解放・領域とキャラの選択・保存・既存データの保持を確認",
 );
+
+// フェーズ別の保存・移行・正規化を通した分離。
+{
+  let state = normalize({ owned: { [foilId("zombie-male")]: 1, [foilId("zombie-female")]: 1 }, homeTheme: "earth", homePortraits: { earth: "zombie-male" } });
+  for (const phase of [1, 2, 3]) assert.equal(homeThemeOf(phaseHomeOf(state, phase)), "earth");
+  state = normalize(setPhaseHome(state, 2, "default"));
+  state = normalize(setPhaseHome(state, 3, "earth", "zombie-female"));
+  assert.equal(homeThemeOf(phaseHomeOf(state, 1)), "earth");
+  assert.equal(homeThemeOf(phaseHomeOf(state, 2)), "default");
+  assert.equal(homePortraitOf(phaseHomeOf(state, 1), "earth"), "zombie-male");
+  assert.equal(homePortraitOf(phaseHomeOf(state, 3), "earth"), "zombie-female");
+  assert.deepEqual(normalize(JSON.parse(JSON.stringify(state))), state);
+  assert.throws(() => setPhaseHome(state, 4, "default"));
+  assert.throws(() => setPhaseHome(state, 2, "sea"));
+}

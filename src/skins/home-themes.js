@@ -1,3 +1,6 @@
+import { phaseOf } from "../game/phase.js";
+import { storyHomeTheme } from "./home-story-themes.js";
+import { PHASE_HOME_THEMES } from "./home-phase-themes.js";
 import { areaRewardsFor } from "./area-rewards.js";
 import { byId, foilId } from "./catalog.js";
 import { WONDERLAND_HOME_THEMES } from "./home-wonderland-themes.js";
@@ -72,7 +75,7 @@ export const HOME_THEMES = Object.freeze(
     },
   ]
     .map((theme) => Object.freeze({ ...theme, area: theme.id }))
-    .concat(WONDERLAND_HOME_THEMES),
+    .concat(WONDERLAND_HOME_THEMES, PHASE_HOME_THEMES),
 );
 
 /** 背景・装飾・枠は同じテーマからまとめて参照する。 */
@@ -104,6 +107,7 @@ export function unlockedHomeThemes(collection) {
   return [
     DEFAULT_HOME_THEME,
     ...HOME_THEMES.filter((theme) => {
+      if (theme.series === "phase") return true;
       if (!theme.unlockFoil) return unlocked.has(theme.id);
       const count = collection?.owned?.[theme.unlockFoil];
       return Number.isSafeInteger(count) && count > 0;
@@ -200,4 +204,40 @@ export function setHomePortrait(collection, theme, baseId) {
     ...collection,
     homePortraits: { ...homePortraitsOf(collection), [theme]: baseId },
   };
+}
+
+/** フェーズ別の設定。未設定のフェーズには従来の着せ替えを引き継ぐ。 */
+export function phaseHomeOf(collection, phase) {
+  const saved = collection?.phaseHomes?.[phase];
+  return saved && typeof saved === "object" && !Array.isArray(saved)
+    ? { ...collection, homeTheme: saved.homeTheme, homePortraits: saved.homePortraits }
+    : collection;
+}
+
+export function phaseHomesOf(collection) {
+  return Object.fromEntries([1, 2, 3].filter((phase) =>
+    Object.hasOwn(collection?.phaseHomes || {}, phase),
+  ).map((phase) => {
+    const state = phaseHomeOf(collection, phase);
+    return [phase, { homeTheme: homeThemeOf(state), homePortraits: homePortraitsOf(state) }];
+  }));
+}
+
+export function setPhaseHome(collection, phase, theme, portrait = null) {
+  if (![1, 2, 3].includes(phase)) throw new Error("そのフェーズはありません。");
+  let next = setHomeTheme(phaseHomeOf(collection, phase), theme);
+  if (portrait) next = setHomePortrait(next, theme, portrait);
+  return { ...collection, phaseHomes: {
+    ...Object.fromEntries([1, 2, 3].map((value) => {
+      const state = phaseHomeOf(collection, value);
+      return [value, { homeTheme: homeThemeOf(state), homePortraits: homePortraitsOf(state) }];
+    })),
+    [phase]: { homeTheme: homeThemeOf(next), homePortraits: homePortraitsOf(next) },
+  } };
+}
+
+/** 標準は物語の現在地、手動で選んだ装飾はそのフェーズの指定を優先する。 */
+export function homeThemeForProfile(collection, profile) {
+  const selected = homeThemeOf(phaseHomeOf(collection, phaseOf(profile)));
+  return HOME_THEMES.find((theme) => theme.id === selected) || storyHomeTheme(profile);
 }
