@@ -1,0 +1,77 @@
+{
+  "purpose": "User-approved home BGM choices for each story phase",
+  "phases": {
+    "1": {
+      "phaseTitle": "印を巡って",
+      "status": "approved",
+      "candidate": 2,
+      "name": "風と土の道",
+      "source": "reports/phase-home-bgm-five-20261023/phase1_option2_full.m4a",
+      "sourceSha256": "7c3a1681371b6c97d2883b058afb2b44243b4c8d53e049579084d24028bd9d6b",
+      "approvedDate": "2026-10-24",
+      "implementationStatus": "implemented",
+      "loopEdit": {
+        "sourceStart": 32.281316,
+        "sourceEnd": 140.323351,
+        "crossfadeSeconds": 1.25,
+        "bpm": 79.96887459564124,
+        "selectionPriority": "Musical phrase continuity; preserve the chosen composition before the final return edit."
+      },
+      "selectedMaster": "assets/audio/masters/home-phase-1-approved-20261024.m4a",
+      "trackId": "title",
+      "asset": "assets/audio/title.m4a",
+      "assetSha256": "53a96e56e60258437b83ae77b1b56a13a54ff4ec8c69ce18c1924a2f5544dc1b",
+      "loopStart": 32.63131519274376,
+      "loopEnd": 140.6733560090703,
+      "verification": "reports/home-phase-bgm-20261024/phase1/edit-verification.json"
+    },
+    "2": {
+      "phaseTitle": "伏せ王",
+      "status": "approved",
+      "candidate": 4,
+      "name": "息をつく場所",
+      "source": "reports/phase-home-bgm-five-20261023/phase2_option4_full.m4a",
+      "sourceSha256": "d992642b994eaec19d509caf2c9e802ef93357900a16c8424001aef96118c8cd",
+      "approvedDate": "2026-10-24",
+      "implementationStatus": "implemented",
+      "loopEdit": {
+        "sourceStart": 39.749037,
+        "sourceEnd": 128.357268,
+        "crossfadeSeconds": 2.1,
+        "bpm": 65.00524743938591,
+        "selectionPriority": "Musical phrase continuity; preserve the chosen composition before the final return edit."
+      },
+      "selectedMaster": "assets/audio/masters/home-phase-2-approved-20261024.m4a",
+      "trackId": "homePhase2",
+      "asset": "assets/audio/homePhase2.m4a",
+      "assetSha256": "2a8612ff4768056857ad9c9a014255b63e4bff79c2a7e97bed7b8eba8464d78c",
+      "loopStart": 40.09904761904762,
+      "loopEnd": 128.70727891156463,
+      "verification": "reports/home-phase-bgm-20261024/phase2/edit-verification.json"
+    },
+    "3": {
+      "phaseTitle": "七つの答え",
+      "status": "approved",
+      "candidate": 3,
+      "name": "手を重ねた朝",
+      "source": "reports/phase-home-bgm-five-20261023/phase3_option3_full.m4a",
+      "sourceSha256": "0a13960e12ed8e88fa2409040059a5d7dfe605e5e0d6ccda8b0748917c33ab4c",
+      "approvedDate": "2026-10-24",
+      "implementationStatus": "implemented",
+      "loopEdit": {
+        "sourceStart": 35.046264,
+        "sourceEnd": 138.585599,
+        "crossfadeSeconds": 1.25,
+        "bpm": 79.96960822019294,
+        "selectionPriority": "Musical phrase continuity; preserve the chosen composition before the final return edit."
+      },
+      "selectedMaster": "assets/audio/masters/home-phase-3-approved-20261024.m4a",
+      "trackId": "homePhase3",
+      "asset": "assets/audio/homePhase3.m4a",
+      "assetSha256": "c97564883b1bea0eb280d98d1f85cba3dd7f7d1f3984f248fc94ace2ae1894b1",
+      "loopStart": 35.39625850340136,
+      "loopEnd": 138.93560090702948,
+      "verification": "reports/home-phase-bgm-20261024/phase3/edit-verification.json"
+    }
+  }
+}

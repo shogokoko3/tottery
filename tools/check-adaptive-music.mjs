@@ -86,16 +86,29 @@ assert.equal(p.currentTrack(),'title');
 const resumedHome=sources.filter(s=>s.buffer?.tag?.endsWith('/title.m4a')).at(-1);
 assert.ok(Math.abs(resumedHome.offset-42.345)<.001,'ホームBGMは背景に移動した位置から再開');
 assert.equal(sources.filter(s=>s.buffer?.tag?.endsWith('.m4a')&&!s.stopped).length,1,'復帰時のBGMは一本だけ');
+for (const id of ['homePhase2','homePhase3']) {
+ p.playTrack(id,{restart:true});await flush();advance(3210);
+ windowListeners['tottery-audio-state']({status:'inactive'});
+ document.hidden=true;listeners.visibilitychange();advance(12000);await flush();
+ document.hidden=false;listeners.visibilitychange();
+ windowListeners['tottery-audio-state']({status:'active'});await flush();
+ assert.equal(p.currentTrack(),id);
+ const source=sources.filter(s=>s.buffer?.tag?.endsWith('/'+TRACKS[id].file)).at(-1);
+ assert.ok(Math.abs(source.offset-3.210)<.001,id+' は停止位置から再開');
+ assert.equal(sources.filter(s=>s.buffer?.tag?.endsWith('.m4a')&&!s.stopped).length,1,'フェーズ曲も復帰後は一本だけ');
+}
 p.setMuted(true);assert.equal(p.currentTrack(),null);p.stopMusic();
 // Check several cycles directly, without advancing hundreds of timer callbacks.
 const realFetch=globalThis.fetch;globalThis.fetch=fetch;
 try {
- const c=new AudioContext(),track=TRACKS.title,voice=new MusicVoice(c,track,'audio/title.m4a',node(),new Audio('audio/title.m4a'));
+ for (const id of ['title','homePhase2','homePhase3']) {
+ const c=new AudioContext(),track=TRACKS[id],voice=new MusicVoice(c,track,'audio/'+track.file,node(),new Audio('audio/'+track.file));
  await voice.play();const began=c.currentTime;
  clock+=(track.loopEnd+2)*1000;
  assert.ok(Math.abs(voice.currentTime-track.loopStart-2)<.001,'2周目は指定したループ開始位置に戻る');
  const pos=voice.currentTime;voice.pause();clock+=3000;await voice.play();
  assert.ok(Math.abs(voice.currentTime-pos)<.001,'中断復帰で位置を保つ');
  voice.pause();
+ }
 }finally{globalThis.fetch=realFetch;}
 console.log('Adaptive music: intro once, loop range, audio-clock transition, key-matched soft rewards, cancellation, background and resume PASS');

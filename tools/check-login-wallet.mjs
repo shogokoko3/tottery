@@ -182,7 +182,7 @@ console.log('Login wallet regression passed: daily eligibility, 7-day amounts, q
 const uiBundle=await build({entryPoints:['src/ui/loginbonus.jsx'],bundle:true,write:false,platform:'node',format:'esm',jsx:'automatic',logLevel:'silent',plugins:[{name:'ui-boundaries',setup(b){
  b.onResolve({filter:/^(react|react\/jsx-runtime)$|icons\.jsx$|net\/wallet\.js$/},a=>({path:a.path,namespace:'fixture'}));
  b.onLoad({filter:/.*/,namespace:'fixture'},a=>({loader:'js',contents:
-  a.path==='react' ? 'export const useState=(v)=>globalThis.hooks.state(v);export const useRef=(v)=>globalThis.hooks.ref(v);export const useEffect=(f)=>globalThis.hooks.effect(f);' :
+  a.path==='react' ? 'export const useState=(v)=>globalThis.hooks.state(v);export const useRef=(v)=>globalThis.hooks.ref(v);export const useEffect=(f)=>globalThis.hooks.effect(f);export const useSyncExternalStore=(_,snapshot)=>snapshot();' :
   a.path==='react/jsx-runtime' ? 'export const Fragment="fragment";export const jsx=(type,props)=>({type,props});export const jsxs=jsx;' :
   a.path.endsWith('icons.jsx') ? 'export const Ticket="ticket-icon",Check="check-icon";' :
   'export const getLoginBonus=()=>globalThis.uiWallet.getLoginBonus();export const claimLoginBonus=(...a)=>{globalThis.uiClaims++;return globalThis.uiWallet.claimLoginBonus(...a)};'

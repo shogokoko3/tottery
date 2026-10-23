@@ -162,7 +162,7 @@ console.log('Mission wallet regression passed: cross-account legacy IDs, fixed c
 // Real JSX handlers: show success only after confirmation, then retry a partially completed batch.
 const uiBundle=await build({entryPoints:['src/ui/missions.jsx'],bundle:true,write:false,platform:'node',format:'esm',jsx:'automatic',logLevel:'silent',plugins:[{name:'mission-ui-boundaries',setup(b){
   const mocks={
-    react:'export const useState=v=>globalThis.hooks.state(v);export const useRef=v=>globalThis.hooks.ref(v);export const useEffect=f=>globalThis.hooks.effect(f);',
+    react:'export const useState=v=>globalThis.hooks.state(v);export const useRef=v=>globalThis.hooks.ref(v);export const useEffect=f=>globalThis.hooks.effect(f);export const useSyncExternalStore=(_,snapshot)=>snapshot();',
     'react/jsx-runtime':'export const Fragment="fragment";export const jsx=(type,props)=>({type,props});export const jsxs=jsx;',
     './gem.jsx':'export const GemAmount="gem";',
     '../icons.jsx':'export const ArrowLeft="back",Check="check",Crown="crown";',

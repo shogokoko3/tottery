@@ -31,7 +31,8 @@ with tempfile.TemporaryDirectory() as temp:
     reference=x[start-span:start+span];returned=x[end-span:end+span]
     error=np.sqrt(np.mean((reference-returned)**2))/np.sqrt(np.mean(reference**2))
     assert error<.08,(id,'encoded return context',error)
-    assert level<1.5,(id,'loop loudness step',level)
+    natural=abs(db(x[start-half:start])-db(x[start:start+half]))
+    assert abs(level-natural)<.4,(id,'changed natural phrase dynamics',level,natural)
     edit=json.loads((ROOT/layout['editVerification']).read_text())
     assert edit['focus32SecondsPcmUnchanged'] and edit['unchangedBeforeTail']
     assert edit['harmonicSimilarity']>.90
@@ -92,4 +93,4 @@ with tempfile.TemporaryDirectory() as temp:
   x[pos:pos+length]*=.35 if family==3 else .6
   x[pos:pos+length]+=y[:length,None]*.7
  save('召喚BGMと報酬SE_音程合わせ.wav',x)
-print('16 intro/loop assets + 108 soft harmonic variants PASS; previews rendered')
+print(f'{len(layouts)} intro/loop assets + {len(tones)} soft harmonic variants PASS; previews rendered')

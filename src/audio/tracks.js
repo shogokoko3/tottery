@@ -1,4 +1,5 @@
 import { MUSIC_LAYOUTS } from "./music-layouts.js";
+import { normalizePhase } from "../game/phase.js";
 /**
  * どの場面でどの曲を鳴らすか。
  *
@@ -6,7 +7,7 @@ import { MUSIC_LAYOUTS } from "./music-layouts.js";
  * 純粋な対応表にしてあるので、画面を開かずに node で確かめられる。
  *
  * 曲そのものは assets/audio/ に置き、ビルドが dist/audio/ へ写す。
- * カード画像と違って data URI では埋め込まない。7曲ぶんを埋めると
+ * カード画像と違って data URI では埋め込まない。複数曲を埋めると
  * index.html が数MB 太り、1曲も鳴らないうちに全部が落ちてくることになる。
  */
 
@@ -34,7 +35,7 @@ export function audioUrl(file) {
 /**
  * 使う曲。
  *
- * 音源は tools/prepare-bgm.mjs が同じ音量(-20dBFS)に揃えてあるので、
+ * 音源の基準音量を揃え、必要な曲は normalizationGain でも補正するので、
  * gain は「その場面をどれだけ静かにしたいか」だけを表す。
  * 出どころの違う曲を足して大きさが合わないときは、音源を作り直すより
  * まずここを直すほうが早い。
@@ -42,6 +43,8 @@ export function audioUrl(file) {
  */
 export const TRACKS = {
   title: { ...MUSIC_LAYOUTS.title, file: "title.m4a", loop: true, gain: 0.75 * (MUSIC_LAYOUTS.title.normalizationGain ?? 1) },
+  homePhase2: { ...MUSIC_LAYOUTS.homePhase2, file: "homePhase2.m4a", loop: true, gain: 0.75 * (MUSIC_LAYOUTS.homePhase2?.normalizationGain ?? 1) },
+  homePhase3: { ...MUSIC_LAYOUTS.homePhase3, file: "homePhase3.m4a", loop: true, gain: 0.75 * (MUSIC_LAYOUTS.homePhase3?.normalizationGain ?? 1) },
   waiting: { ...MUSIC_LAYOUTS.waiting, file: "waiting.m4a", loop: true, gain: 0.6 },
   setup: { ...MUSIC_LAYOUTS.setup, file: "setup.m4a", loop: true, gain: 0.65 },
   battle: { ...MUSIC_LAYOUTS.battle, file: "battle.m4a", loop: true, gain: 0.6 },
@@ -66,6 +69,9 @@ export const MUSIC_CREDIT = "トッタリー オリジナルBGM";
  * 効果音の出どころ。効果音ラボは表記が要らないが、揃えて出しておく。
  */
 export const SE_CREDIT = "トッタリー オリジナルSE";
+
+/** 現在の進行に対応するホーム曲。過去の話の閲覧や着せ替えとは独立。 */
+export const HOME_PHASE_TRACK = Object.freeze({ 1: "title", 2: "homePhase2", 3: "homePhase3" });
 
 /** チュートリアル中の音量の倍率。考える邪魔をしないよう一段下げる */
 export const TUTORIAL_VOLUME = 0.55;
@@ -161,13 +167,14 @@ export const PHASE_TRACK = {
  * 上の2つの表には出てこないが、場面によって差し替わる曲。
  * ここに挙げていない曲が TRACKS にあると、鳴らす道がないので検査が知らせる。
  */
-export const EXTRA_TRACKS = ["endgame", "lose", "draw", "tutorial"];
+export const EXTRA_TRACKS = ["endgame", "lose", "draw", "tutorial", ...Object.values(HOME_PHASE_TRACK)];
 
 /**
  * いまの場面で鳴らす曲。鳴らさないときは null。
  *
  * scene は次の形:
  *   screen  画面(SCREEN_TRACK の見出し)
+ *   storyPhase 現在のストーリー進行(1〜3)。ホームと同じ曲の画面で使う
  *   phase   対局中の進み具合(PHASE_TRACK の見出し)
  *   endgame 終盤かどうか
  *   result  決着したときだけ "win" / "lose" / "draw"
@@ -179,8 +186,10 @@ export function trackForScene(scene) {
   if (!scene) return null;
   const { screen, phase } = scene;
 
-  if (screen !== "game")
-    return screen in SCREEN_TRACK ? SCREEN_TRACK[screen] : "title";
+  if (screen !== "game") {
+    const id = screen in SCREEN_TRACK ? SCREEN_TRACK[screen] : "title";
+    return id === "title" ? HOME_PHASE_TRACK[normalizePhase(scene.storyPhase)] : id;
+  }
 
   if (phase === "gameover") {
     if (scene.result === "draw") return "draw";

@@ -5,7 +5,9 @@
  * どの曲を鳴らすかは tracks.js が決め、どう鳴らすかは player.js が持つ。
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
+import { phaseOf } from "../game/phase.js";
+import { loadProfile, PROFILE_CHANGED } from "../game/profile.js";
 import { TUTORIAL_VOLUME, isEndgame, trackForScene } from "./tracks.js";
 import { CAPTURE_DUCK_MS, warnLevel } from "./sounds.js";
 import { duckMusic, playSound, playTrack, playResultTrack, setVolumeScale } from "./player.js";
@@ -32,8 +34,24 @@ export {
  * 対局中(screen === "game")は何もしない。曲は useGameBgm のほうが決めるので、
  * ここから触ると布陣の曲を上書きしてしまう。
  */
+function homePhaseSnapshot() {
+  return phaseOf(loadProfile());
+}
+
+function subscribeHomePhase(refresh) {
+  if (typeof window === "undefined") return () => {};
+  const events = [PROFILE_CHANGED, "storage", "focus"];
+  for (const event of events) window.addEventListener(event, refresh);
+  document.addEventListener("visibilitychange", refresh);
+  return () => {
+    for (const event of events) window.removeEventListener(event, refresh);
+    document.removeEventListener("visibilitychange", refresh);
+  };
+}
+
 export function useScreenBgm(screen) {
-  const id = screen === "game" ? null : trackForScene({ screen });
+  const storyPhase = useSyncExternalStore(subscribeHomePhase, homePhaseSnapshot, () => 1);
+  const id = screen === "game" ? null : trackForScene({ screen, storyPhase });
   (0, useEffect)(() => {
     if (!id) return;
     setVolumeScale(1);

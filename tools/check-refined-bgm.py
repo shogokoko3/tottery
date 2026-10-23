@@ -18,7 +18,8 @@ with tempfile.TemporaryDirectory() as temp:
   x=x.astype(float)/32768
   full_rms=float(np.sqrt(np.mean(x*x)))
   meta=next(r for r in manifest if r['kind']=='bgm' and r['file']==file.name)
-  x=x[round(meta.get('loopStart',0)*sr):round(meta.get('loopEnd',len(x)/sr)*sr)];half=round(sr*.5)
+  decoded=x;meta_start=round(meta.get('loopStart',0)*sr)
+  x=x[meta_start:round(meta.get('loopEnd',len(x)/sr)*sr)];half=round(sr*.5)
   db=lambda z:20*np.log10(max(np.sqrt(np.mean(z*z)),1e-12))
   level_difference=abs(db(x[:half])-db(x[-half:]))
   jump=float(np.max(abs(x[-1]-x[0])))
@@ -33,7 +34,8 @@ with tempfile.TemporaryDirectory() as temp:
    if approved_full:assert meta['loopStart']==0 and abs(meta['loopEnd']-len(x)/sr)<.001
    else:
     assert abs(meta['loopStart']-choice['loopStart'])<1/sr and abs(meta['loopEnd']-choice['loopEnd'])<1/sr
-    assert level_difference<.5,(row['id'],'seam level',level_difference)
+    natural_difference=abs(db(decoded[meta_start-half:meta_start])-db(decoded[meta_start:meta_start+half]))
+    assert abs(level_difference-natural_difference)<.4,(row['id'],'changed natural phrase dynamics',level_difference,natural_difference)
    assert abs(20*np.log10(full_rms*meta['normalizationGain'])+23)<.05,(row['id'],'playback loudness')
   elif not restored:assert level_difference<.5,(row['id'],'seam level',level_difference)
   assert np.max(abs(x))*meta.get('normalizationGain',1)<.86,(row['id'],'clipping')
