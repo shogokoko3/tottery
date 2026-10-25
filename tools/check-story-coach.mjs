@@ -440,8 +440,8 @@ console.log("\nH. 配線(game.jsx)");
   is("手当ては対局の始めに一度だけ決める(導入の語り・見せた控え)", /const \[coach\] = useState\(\(\) =>\s*storyCoachPlan\(\{ story, tutorial, network, introSeen: prologueSeen\(\), seen: coachSeen\(\) \}\),\s*\);/.test(game), true);
   is("一言はいまの場面のもの", /const coachLines = coach \? coach\[coachScene\(a, 0\)\] \|\| null : null;/.test(game), true);
   is(
-    "場面に入ったら控えを付け、陣はおすすめの陣を一度だけ並べる",
-    /if \(!scene \|\| !coach\[scene\]\) return;\s*markCoachSeen\(scene\);\s*if \(!coachArrangedRef\.current && coachArranges\(coach, a, 0\)\) \{\s*coachArrangedRef\.current = true;\s*y\(\{ type: "SETUP_AUTO_ARRANGE", player: 0 \}\);/.test(game),
+    "場面に入ったら控えを付け、陣はおすすめの陣(src/game/auto-setup.js)を一度だけ並べる",
+    /if \(!scene \|\| !coach\[scene\]\) return;\s*markCoachSeen\(scene\);\s*if \(!coachArrangedRef\.current && coachArranges\(coach, a, 0\)\) \{\s*coachArrangedRef\.current = true;\s*y\(autoArrangeAction\(a, 0\)\);/.test(game),
     true,
   );
   is("サイコロ(DiceDuo)に一言", /tie=\{a\.diceIdx === 3\}\s*note=\{coachNote\}/.test(game), true);

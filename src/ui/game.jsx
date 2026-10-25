@@ -46,6 +46,7 @@ import {
   hasVisibleSkyBonus,
 } from "../game/area-presentation.js";
 import { getLegalMoves, kingRankOf, squareName } from "../game/board.js";
+import { CHANCE_TELL, kingPowerChance } from "../game/king-power-hint.js";
 import {
   PLAYER_META,
   nameOf,
@@ -65,7 +66,9 @@ import { COACH_WAIT_LINES, KEEP_LABEL, coachArranges, coachScene, coachSeen, mar
 import { prologueSeen } from "../game/intro.js";
 // 句ごとに折り返す文(iPhone の WebKit は auto-phrase を知らない。2026-10-06 見直し)
 import { Phrases } from "./phrases.jsx";
-import { PHASE_MAX, STORY_TICKETS, phaseOf, rankedPhase, rulesForPhase, setupFlagsForPhase } from "../game/phase.js";
+import { PHASE_MAX, STORY_TICKETS, phaseOf, rankedPhase, rulesForPhase, setupFlagsForPhase, storySetupFlags } from "../game/phase.js";
+import { autoArrangeAction } from "../game/auto-setup.js";
+import { REPEAT_LIMIT, quietLimit } from "../game/adjudication.js";
 import { onlinePhase } from "../net/match-settings.js";
 import { noteRandomResult, botAction } from "../game/bot-match.js";
 import { backupIfDue } from "../net/backup.js";
@@ -552,6 +555,25 @@ export function CapturedRow({ players, dispatch, viewer }) {
     </>
   );
 }
+/**
+ * 決着がつかない局面の判定まで、あと何手番か(2026-10-25 本人の指示「試合中にわかるように」)。
+ * 手元の対局(stallRule)だけ。駒が倒れるたびに数え直す。同じ局面が2回目になったら、それも出す。
+ * 残りが10手番以下・同じ局面の2回目は目立たせる
+ */
+export function StallMeter({ state }) {
+  if (!state.stallRule || state.phase !== "play" || !state.stall) return null;
+  const left = Math.max(0, quietLimit(state.boardSize) - state.stall.quiet);
+  const repeat = state.stall.repeat || 0;
+  const near = left <= 10 || repeat >= REPEAT_LIMIT - 1;
+  return (
+    <p className={`stall-meter${near ? " is-near" : ""}`} role="status" aria-live="polite">
+      <span>駒が倒れないまま、あと{left}手番で判定</span>
+      {repeat >= 2 && <span>同じ局面が{repeat}回目。{REPEAT_LIMIT}回目で判定</span>}
+      <small>判定では、最初に並べた札の合計が小さい側の勝ち</small>
+    </p>
+  );
+}
+
 function AdjudicationResult({ state, names }) {
   const result = state.adjudication;
   if (!result) return null;
@@ -560,7 +582,11 @@ function AdjudicationResult({ state, names }) {
       <p>
         {result.reason === "no-legal-action"
           ? "動く側に指せる手がなく、対局を続けられないため判定になりました。"
-          : "駒の動ける範囲から、どちらの王も討てない局面と判定しました。"}
+          : result.reason === "repetition"
+            ? "同じ局面が3回目になったため、判定になりました。"
+            : result.reason === "no-progress"
+              ? "駒が1枚も倒れない手番が続いたため、判定になりました。"
+              : "駒の動ける範囲から、どちらの王も討てない局面と判定しました。"}
       </p>
       <div className="adjudication-scores">
         {result.totals.map((total, side) => (
@@ -1504,7 +1530,7 @@ export function GameCore({
   ).current;
   // レート・シーズンに数えるのはランダムマッチ(network.random)の 9×9 だけ。
   // フレンド対戦(合言葉・近くの端末)はランキングに載らない(本人の指示 2026-09-17)。
-  // フェーズ2 の 9×9 は数えない(持ち点はフェーズ3だけ。2026-09-30)
+  // フェーズ1・2 の対局は数えない(持ち点はフェーズ3だけ。2026-09-30)
   const matchRatings = useMatchRatings(
     network,
     round,
@@ -1646,7 +1672,7 @@ export function GameCore({
     markCoachSeen(scene);
     if (!coachArrangedRef.current && coachArranges(coach, a, 0)) {
       coachArrangedRef.current = true;
-      y({ type: "SETUP_AUTO_ARRANGE", player: 0 });
+      y(autoArrangeAction(a, 0));
     }
   }, [a.phase, a.setupSteps && a.setupSteps[0], a.setupDone && a.setupDone[0]]);
   // 自分が取った駒をバトルパスへ。チュートリアルでは進めない
@@ -1719,6 +1745,8 @@ export function GameCore({
   const fxBusy = cinematic.busy || aceMagic.busy || areaFx.busy || aliceFx.busy || honorBusy;
   const autoArea = automaticAreaAction(a);
   const autoIssued = useRef(null);
+  // 王の力の一言を、その局で何回出したか(種類ごと)。どの番で出したかも覚え、同じ番では数え直さない
+  const kpShown = useRef({ counts: {}, turns: {} });
   // 布陣ボーナスを読んでいるあいだ、相手の確認を待っているあいだは持ち時間を減らさない
   const pauseClock =
     fxBusy || !!a.captureReveal || !!a.setupEffects || !!a.aliceRevive || !!a.aliceRecruit?.length || setupWaiting(a);
@@ -1913,9 +1941,12 @@ export function GameCore({
           ruleVersion: network ? network.ruleVersion : GAME_RULE_VERSION,
           size: boardSize || 5,
           setupMode: network || cpu ? "simultaneous" : "sequential",
-          // フェーズ1は王の力なし(kingPowers:false)。それ以外は旗を載せない(今までどおり)
+          // フェーズ1は王の力なし(kingPowers:false)。それ以外は旗を載せない(今までどおり)。
+          // ストーリーのフェーズ2 は王の力をプレイヤーの席だけに付ける(storySetupFlags。2026-10-25 本人の指示)
           ...(skins ? {loadouts:skins} : {}),
-          ...setupFlagsForPhase(phase),
+          ...(story && cpu && !network && !tutorial ? storySetupFlags(phase) : setupFlagsForPhase(phase)),
+          // 決着がつかない局面の判定(繰り返し・倒れない手番の連続)。手元の対局だけ(2026-10-25 本人の指示)
+          ...(!network && !tutorial ? { stallRule: true } : null),
           // 盤面エリア(試験ルール、src/game/areas.js)。9×9 だけ。
           // 手元の対局(CPU・同じ端末)は常に。オンラインは部屋の版が
           // AREA_RULE_VERSION 以上(両者が新しい端末)のときだけ
@@ -2207,7 +2238,8 @@ export function GameCore({
       if (!setupRunning || setupRemaining === null || setupRemaining > 0)
         return;
       if (setupStep === "place") {
-        y({ type: "SETUP_AUTO_ARRANGE", player: setupSide, keep: !0 });
+        // 時間切れ。まだ1枚も置いていなければおすすめの陣、置いた札があれば残りを埋める(src/game/auto-setup.js)
+        y(autoArrangeAction(a, setupSide, { keep: !0 }));
         y({ type: "SETUP_GOTO_KING_STEP", player: setupSide });
         return;
       }
@@ -3851,6 +3883,26 @@ export function GameCore({
       : [],
     Jl = P === 1,
     Pl = x && a.shuffleMode;
+  // 王の力が使える場面(2026-10-25 本人の指示「対局中、王の力が使える場面になったら、その場で一言と光で知らせる」)。
+  // 力を使える駒をいつも光らせ、選ぶと力でしか行けない先を金色に光らせる。一言は、遠くへ動ける類(2・3・4・5・J・Q)は
+  // その局で種類ごとに最初の2回だけ(毎番出ると邪魔)。まとめて取れる(6〜9)は、出るたびに言う
+  const kpChance = x && !Pl && !(tutorial && tutorial.intro) ? kingPowerChance(a, P, aliceBoard(a, P)) : null;
+  const kpLine = (() => {
+    if (!kpChance) return null;
+    const memo = kpShown.current;
+    const turnKey = `${kpChance.kind}@${a.turnNo || 0}`;
+    if (!memo.turns[turnKey]) {
+      memo.turns[turnKey] = true;
+      memo.counts[kpChance.kind] = (memo.counts[kpChance.kind] || 0) + 1;
+    }
+    // 2回目(10・A)は「もう一度動けます」の帯がすでにあるので、光だけ
+    if (kpChance.kind === "again") return null;
+    if (!(kpChance.kind === "capture" || memo.counts[kpChance.kind] <= 2)) return null;
+    // 光る駒を選んでいれば金色のマスの意味を、まだなら「タップすると光る」を言う
+    return kpChance.pieceIds.includes(a.selectedId) ? kpChance.line : kpChance.prompt;
+  })();
+  // 使うときの注意は、その局で最初の2回だけ(毎回同じ文だと読まれなかった。評価 13回目)
+  const kpTell = !!kpLine && Object.keys(kpShown.current.turns).length <= 2;
   // 盤面エリアで選べる駒(空: 変身、宮殿: 昇格)
   const logPiece = a.logViewerSnapshot || a.pieces[a.logViewerId];
   const areaCands =
@@ -4320,7 +4372,7 @@ export function GameCore({
                               }
                             : void 0
                       }
-                      className={`cell${aliceFx.isMasked(ne, Me) ? " alice-fx-mask" : ""}${aliceArea.cellClass(ne, Me)} ${a.aliceBlocked?.[P]?.row===ne && a.aliceBlocked?.[P]?.col===Me ? "alice-blocked" : ""} ${aceMagic.mask.has(`${ne},${Me}`) ? "ace-magic-masked" : ""} ${Zt ? (Zt.capture ? "cell-capture" : "cell-move") : ""} ${Zo !== null ? `zone-${Zo}` : ""} ${Zo !== null && a.areas && a.areas[Zo] ? `area-${a.areas[Zo].type}` : ""} ${S0} ${focusCell(ne, Me) ? "guide-target" : ""}`}
+                      className={`cell${aliceFx.isMasked(ne, Me) ? " alice-fx-mask" : ""}${aliceArea.cellClass(ne, Me)} ${a.aliceBlocked?.[P]?.row===ne && a.aliceBlocked?.[P]?.col===Me ? "alice-blocked" : ""} ${aceMagic.mask.has(`${ne},${Me}`) ? "ace-magic-masked" : ""} ${Zt ? (Zt.capture ? "cell-capture" : "cell-move") : ""} ${Zo !== null ? `zone-${Zo}` : ""} ${Zo !== null && a.areas && a.areas[Zo] ? `area-${a.areas[Zo].type}` : ""} ${S0} ${focusCell(ne, Me) ? "guide-target" : ""}${kpChance && ze && kpChance.pieceIds.includes(ze.id) ? " cell-kp-ready" : ""}${kpChance && Zt && kpChance.moves[a.selectedId]?.some((m) => m.row === ne && m.col === Me) ? " cell-kp-power" : ""}`}
                       onClick={() => {
                         if (aliceArea.pickCell(ze, ne, Me)) return;
                         Pl ||
@@ -4467,6 +4519,15 @@ export function GameCore({
             </button>
           </div>
         )}
+        {/* 王の力の一言は盤のすぐ下(駒を選んでも「行動ログ」の釦より上に出す) */}
+        {kpLine && (
+          <p className="kp-chance" role="status">
+            {/* 「王の力:」の「:」は式のようで読みにくい(評価 13回目)。見出しの札にする */}
+            <em>王の力</em>
+            <b>{kpLine}</b>
+            {kpTell && <span>{CHANCE_TELL}</span>}
+          </p>
+        )}
         {/* はじめの一局(台本をストーリーとして遊ぶ一局)には出さない(2026-10-06 見直し)。1枚に1つのことを教える札の
             外に、はじめての人には分からない言葉の釦が光り、押すと台本の流れから外れた */}
         {!Pl && x && a.selectedId && !(tutorial && tutorial.intro) && (
@@ -4595,6 +4656,7 @@ export function GameCore({
             )}
           </div>
         )}
+        <StallMeter state={a} />
         <CapturedRow players={displayed.players} dispatch={y} viewer={P} />
         {/* ストーリーとして遊ぶ台本(はじめの一局)には「降参する」を出さない。やめるのは上の「中断」だけ
             (降参すると負けとして記録され、台本の一局の行き先がずれる。2026-10-01 本人の指示) */}

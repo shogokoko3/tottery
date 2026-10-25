@@ -531,6 +531,39 @@ assert.equal(
   "追加行動のスキップは引き続き合法",
 );
 
+// 決着がつかない局面(2026-10-25 本人の指示)。手元の対局(stallRule)だけ、繰り返しと倒れない手番の連続も判定にする
+{
+  const shuttle = [["a", 4, 0, 3, 0], ["b", 0, 4, 1, 4], ["a", 3, 0, 4, 0], ["b", 1, 4, 0, 4]];
+  const kings = () => position([["a", "2", 0, 4, 0, true], ["b", "2", 1, 0, 4, true], ["x", "8", 0, 4, 4]]);
+  const play = (state, plies) => {
+    for (let i = 0; i < plies && state.phase === "play"; i++) {
+      const [id, , , row, col] = shuttle[i % 4];
+      state = move(state, id, row, col);
+    }
+    return state;
+  };
+  assert.equal(isDeadPosition(kings()), false, "王どうしは触れられるので、証明では終わらない");
+  const local = play({ ...kings(), stallRule: true }, 12);
+  assert.equal(local.phase, "gameover", "手元の対局: 同じ局面の3回目で判定");
+  assert.equal(local.adjudication.reason, "repetition");
+  assert.match(local.log.at(-1), /同じ局面が3回目になったため布陣判定/);
+  const online = play(kings(), 12);
+  assert.equal(online.phase, "play", "旗の無い対局(オンライン)は繰り返しだけでは判定しない");
+  // 倒れない手番の連続。5×5 は40手番目で判定
+  const quiet = { ...kings(), stallRule: true, stall: { alive: 3, quiet: 38, seen: {} } };
+  const q1 = move(quiet, "a", 3, 0);
+  assert.equal(q1.phase, "play", "39手番目はまだ続く");
+  const q2 = move(q1, "b", 1, 4);
+  assert.equal(q2.adjudication?.reason, "no-progress", "40手番目で判定");
+  // 駒が倒れたら数え直す
+  const capture = { ...position([["a", "2", 0, 4, 0, true], ["y", "2", 0, 2, 2], ["b", "2", 1, 0, 4, true], ["z", "2", 1, 1, 2]]), stallRule: true, stall: { alive: 4, quiet: 38, seen: {} } };
+  const c1 = move(capture, "y", 1, 2);
+  assert.equal(c1.stall.quiet, 0, "取りのあとは倒れない手番を0から数える");
+  // 通信の START_SETUP に旗を載せても受けない
+  assert.equal(reducer(initialState(), { type: "START_SETUP", size: 5, stallRule: true, __id: "net-1" }).stallRule, false, "通信の手の旗は受けない");
+  assert.equal(reducer(initialState(), { type: "START_SETUP", size: 5, stallRule: true }).stallRule, true, "手元の対局は旗を持つ");
+}
+
 console.log(
-  "布陣判定: 初期採用固定・到達領域/王Q/A/K・行動不能・同点・捕獲/継承/追加手/召喚・通信再生・旧版・反復継続: OK",
+  "布陣判定: 初期採用固定・到達領域/王Q/A/K・行動不能・同点・捕獲/継承/追加手/召喚・通信再生・旧版・反復継続・手元の繰り返し/倒れない手番: OK",
 );

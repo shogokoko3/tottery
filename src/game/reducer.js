@@ -267,7 +267,7 @@ function placementOk(state, idx, placement, kingId) {
   const hand = state.players[idx].hand;
   const king = hand.find((c) => c.id === kingId);
   if (!king || !placement[kingId]) return false;
-  if (hasAliceRules(state) && kingPowersOn(state) && aliceSkin(state,idx,king.rank) && ["J","Q","K"].includes(king.rank) && ids.some(id=>hand.find(c=>c.id===id)?.rank==="A")) return false;
+  if (hasAliceRules(state) && kingPowersOn(state, idx) && aliceSkin(state,idx,king.rank) && ["J","Q","K"].includes(king.rank) && ids.some(id=>hand.find(c=>c.id===id)?.rank==="A")) return false;
   const size = state.boardSize;
   const [lo, hi] = territoryRows(size, idx);
   const seen = new Set();
@@ -498,6 +498,18 @@ export const KING_LIMIT_MS = 15 * 1000;
 export const DICE_LIMIT_MS = 20 * 1000;
 export const MULLIGAN_LIMIT_MS = 60 * 1000;
 
+/**
+ * START_SETUP の王の力の旗を整える。false は「どちらも無し」、[真偽, 真偽] は席ごと(席0, 席1)。
+ * 両方そろった配列は真偽値に戻す(今までの対局・記録と同じ形にする)。それ以外は今までどおり「あり」
+ */
+export function normalizeKingPowers(raw) {
+  if (Array.isArray(raw) && raw.length === 2) {
+    const seats = raw.map((on) => on !== false);
+    return seats[0] === seats[1] ? seats[0] : seats;
+  }
+  return raw !== false;
+}
+
 export function initialState() {
   return {
     phase: "intro",
@@ -528,6 +540,8 @@ export function initialState() {
     /** プレイヤーごとの布陣の進み具合 */
     setupSteps: ["place", "place"],
     setupPickKings: [null, null],
+    /** 自動配置(おすすめの陣)が選んだ王と、その時の配置。配置を変えずに王選びへ進んだら、その王を先に選んでおく */
+    setupSuggest: [null, null],
     setupPlacements: [{}, {}],
     setupDone: [false, false],
     /** 持ち時間(ミリ秒)。対局開始時に5分ずつ */
@@ -618,10 +632,10 @@ export function removePiece(state, pieceId, opts) {
   players[dead.owner].capturedOwn.push(corpse);
 
   let pendingKingChoice = state.pendingKingChoice || null;
-  const aliceRoyal = dead.isKing && !!aliceSkin(state,dead.owner,dead.rank) && kingPowersOn(state);
+  const aliceRoyal = dead.isKing && !!aliceSkin(state,dead.owner,dead.rank) && kingPowersOn(state, dead.owner);
 
   // 王の2・3が倒れたら、軍内の同ランクが王位を継ぐ(王の力。フェーズ1では起きない)
-  if ((dead.rank === "2" || dead.rank === "3") && dead.isKing && kingPowersOn(state) && !aliceRoyal) {
+  if ((dead.rank === "2" || dead.rank === "3") && dead.isKing && kingPowersOn(state, dead.owner) && !aliceRoyal) {
     const heirs = Object.values(pieces).filter(
       (p) =>
         p.alive &&
@@ -724,7 +738,7 @@ export function removePiece(state, pieceId, opts) {
     !dead.isKing &&
     !opts.viaCounter &&
     opts.by &&
-    kingPowersOn(state)
+    kingPowersOn(state, dead.owner)
   ) {
     const kingId = next.players[dead.owner].kingId;
     const king = kingId ? next.pieces[kingId] : null;
@@ -759,7 +773,7 @@ export function removePiece(state, pieceId, opts) {
   // (本人の指示 2026-09-16。海のエリアの道連れに K の見返りまで付くのをやめる)
   const byRevenge =
     !!opts.viaRevenge && state.ruleVersion >= REVENGE_NO_RESERVE_RULE_VERSION;
-  if ((dead.rank === "J" || dead.rank === "Q") && !byRevenge && kingPowersOn(state)) {
+  if ((dead.rank === "J" || dead.rank === "Q") && !byRevenge && kingPowersOn(state, dead.owner)) {
     const owner = next.players[dead.owner];
     const king = owner.kingId ? next.pieces[owner.kingId] : null;
     // まとめ取りで J と Q が同時に倒れると、2枚めくれることがある。
@@ -806,7 +820,7 @@ export function endAction(state, pieceId) {
   const piece = pieceId ? state.pieces[pieceId] : null;
   // 空のエリアを使った軍は、10が全て2回動ける(src/game/areas.js)
   // 王の10・A の2回目は王の力(フェーズ1では無い)。空のエリアの2回目は別の力なのでそのまま
-  const kingTwice = !!piece?.isKing && kingPowersOn(state) && !piece.aliceSkin;
+  const kingTwice = !!piece?.isKing && kingPowersOn(state, piece.owner) && !piece.aliceSkin;
   const extraMove =
     piece &&
     piece.alive &&
@@ -913,6 +927,20 @@ function setupActor(state, action) {
   return state.setupIdx;
 }
 
+/** 配置を比べるための鍵(札の id とマス) */
+function placementKey(placement) {
+  return Object.keys(placement || {})
+    .sort()
+    .map((id) => `${id}@${placement[id].row},${placement[id].col}`)
+    .join(";");
+}
+
+/** おすすめの陣のまま(札もマスも同じ)なら、その陣で選んだ王。並べ替えていたら null */
+export function suggestedKing(state, idx, placement) {
+  const suggest = state.setupSuggest?.[idx];
+  return suggest && suggest.key === placementKey(placement) && placement?.[suggest.kingId] ? suggest.kingId : null;
+}
+
 function withSetupPlacement(state, idx, placement) {
   return {
     ...state,
@@ -993,7 +1021,7 @@ export function autoArrange(state, idx, cellOrder, handOrder, keep) {
   for (const card of hand) {
     if (Object.keys(placement).length >= slots) break;
     if (takenIds.has(card.id)) continue;
-    if (kingRank==="K" && kingPowersOn(state) && aliceSkin(state,idx,"K") && card.rank==="A") continue;
+    if (kingRank==="K" && kingPowersOn(state, idx) && aliceSkin(state,idx,"K") && card.rank==="A") continue;
     // maxAdopt("K", null) は 0 なので、K を入れないと決めた回は K がここで落ちる
     if ((counts[card.rank] || 0) >= maxAdopt(card.rank, kingRank)) continue;
     const at = free[cursor++];
@@ -1009,6 +1037,9 @@ export function autoArrange(state, idx, cellOrder, handOrder, keep) {
  * Kを採用しているならK、いなければ一番強いランク。
  */
 export function autoPickKing(state, idx, placement) {
+  // おすすめの陣のままなら、その陣の王(後列で守りの厚い札。src/game/auto-setup.js)
+  const suggested = suggestedKing(state, idx, placement);
+  if (suggested) return suggested;
   const me = state.players[idx];
   const ids = Object.keys(placement);
   const cards = ids
@@ -1016,7 +1047,7 @@ export function autoPickKing(state, idx, placement) {
     .filter(Boolean);
   if (cards.length === 0) return null;
   const k = cards.find((c) => c.rank === "K");
-  if (k) return kingPowersOn(state) && aliceSkin(state,idx,"K") && cards.some(c=>c.rank==="A") ? null : k.id;
+  if (k) return kingPowersOn(state, idx) && aliceSkin(state,idx,"K") && cards.some(c=>c.rank==="A") ? null : k.id;
   const order = [
     "A",
     "2",
@@ -1032,7 +1063,7 @@ export function autoPickKing(state, idx, placement) {
     "Q",
     "K",
   ];
-  const eligible=cards.filter(c=>!(kingPowersOn(state) && aliceSkin(state,idx,c.rank) && ["J","Q"].includes(c.rank) && cards.some(p=>p.rank==="A")));
+  const eligible=cards.filter(c=>!(kingPowersOn(state, idx) && aliceSkin(state,idx,c.rank) && ["J","Q"].includes(c.rank) && cards.some(p=>p.rank==="A")));
   return eligible.reduce((best, c) =>
     order.indexOf(c.rank) > order.indexOf(best.rank) ? c : best,
   ).id;
@@ -1545,8 +1576,12 @@ function coreReducer(state, action) {
         // 台本どおりに進めるチュートリアルでは布陣ボーナスを出さない。
         // 先手が入れ替わったり駒が公開されたりすると、案内と噛み合わなくなる
         scripted: !!action.scripted,
-        // 王の力。旗が無ければ働く(古い記録・古い端末との互換)
-        kingPowers: action.kingPowers !== false,
+        // 王の力。旗が無ければ働く(古い記録・古い端末との互換)。
+        // 席ごとの旗 [席0, 席1] も受ける(フェーズ2のストーリー。2026-10-25 本人の指示)。両方そろえば真偽値に戻す
+        kingPowers: normalizeKingPowers(action.kingPowers),
+        // 決着がつかない局面(同じ局面の繰り返し・倒れない手番の連続)も判定にするか。手元の対局だけ
+        // (2026-10-25 本人の指示。src/game/adjudication.js trackStall)。通信の手に載っても受けない
+        stallRule: action.stallRule === true && !fromNetwork(action) && typeof action.__id !== "string",
         phase: "dice",
         interstitial: { forPlayer: 0, kind: "dice" },
       };
@@ -1690,6 +1725,7 @@ function coreReducer(state, action) {
         setupIdx: state.firstPlayer,
         setupSteps: ["place", "place"],
         setupPickKings: [null, null],
+        setupSuggest: [null, null],
         setupPlacements: [{}, {}],
         setupDone: [false, false],
         log,
@@ -1758,6 +1794,13 @@ function coreReducer(state, action) {
     case "SETUP_AUTO_ARRANGE": {
       const idx = setupActor(state, action);
       if (idx === null || state.setupDone[idx]) return state;
+      // おすすめの陣(画面が src/game/auto-setup.js で作って載せる。2026-10-25 本人の指示)。
+      // 確定の手と同じ関門(placementOk)を通ったときだけ使う。通らなければ従来の自動配置
+      if (action.placement && placementOk(state, idx, action.placement, action.kingId))
+        return {
+          ...withSetupPlacement(state, idx, { ...action.placement }),
+          setupSuggest: replaceAt(state.setupSuggest || [null, null], idx, { kingId: action.kingId, key: placementKey(action.placement) }),
+        };
       const placement = autoArrange(
         state,
         idx,
@@ -1776,7 +1819,8 @@ function coreReducer(state, action) {
       return {
         ...state,
         setupSteps: replaceAt(state.setupSteps, idx, "king"),
-        setupPickKings: replaceAt(state.setupPickKings, idx, null),
+        // おすすめの陣のまま進んだら、その陣の王を先に選んでおく(ほかの札を押せば選び直せる)
+        setupPickKings: replaceAt(state.setupPickKings, idx, suggestedKing(state, idx, state.setupPlacements[idx])),
       };
     }
 
@@ -1802,7 +1846,7 @@ function coreReducer(state, action) {
         (id) => me.hand.find((c) => c.id === id).rank === "K",
       );
       if (hasK && card.rank !== "K") return state;
-      if(kingPowersOn(state) && aliceSkin(state,idx,card.rank) && ["J","Q","K"].includes(card.rank) && Object.keys(placement).some(id=>me.hand.find(c=>c.id===id)?.rank==="A")) return state;
+      if(kingPowersOn(state, idx) && aliceSkin(state,idx,card.rank) && ["J","Q","K"].includes(card.rank) && Object.keys(placement).some(id=>me.hand.find(c=>c.id===id)?.rank==="A")) return state;
       return {
         ...state,
         setupPickKings: replaceAt(state.setupPickKings, idx, action.cardId),
@@ -1859,7 +1903,7 @@ function coreReducer(state, action) {
           everRevived: false,
           // 王の力なしの対局では、駒そのものに印を付ける。
           // 合法手(board.js)は駒だけを見るので、CPU も画面も同じ手を見る
-          ...(state.kingPowers === false ? { powers: false } : {}),
+          ...(!kingPowersOn(state, idx) ? { powers: false } : {}),
         };
         pieces[piece.id] = piece;
         board[at.row][at.col] = piece;

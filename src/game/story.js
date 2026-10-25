@@ -4,22 +4,22 @@
  * 王の軸で作った 7 ステージ: 2・3 / 4・5 / 6・7 / 8・9 / 10 / J・Q / K(2026-09-30 に J・Q と K を分けた)。
  * 同じ 7 ステージをフェーズごとに一周する(1: 王の力なし / 2: 王の力あり / 3: エリアあり)。
  *
- * 1 ステージ = CPU 戦。盤はフェーズ1 が 5×5、フェーズ2 からは 9×9(phase.js stageSize)。**相手(CPU)の王はその軸の数字**
+ * 1 ステージ = CPU 戦。盤はフェーズ1・2 が 5×5、フェーズ3 は 9×9(phase.js stageSize)。**相手(CPU)の王はその軸の数字**
  * (CPU はその軸の札が王になるように引き直し・王選び・配置をする。cpuAxis で伝える)。
  * 勝てばクリア。褒美はガチャチケット STORY_TICKETS 枚(サーバーの道 kind=story)。
  *
  * 始める前に、相手の王の特徴を毎回説明する(本人の指示)。中身はフェーズで変わる:
- *   1: 駒の動き方だけ(MOVE_TEXT)  2: 王の力(KING_TEXT)  3: エリアの効果(AREA_INFO)
+ *   1・2: 駒の動き方(MOVE_TEXT。フェーズ2 は王の力がプレイヤーの席だけなので、相手の王は動きだけ)  3: エリアの効果(AREA_INFO)
  * 文はルールの持ちものをそのまま引く。ここに書き写すと、ルールを直したとき嘘になる。
  *
  * 決めごとの控え(未定): ステージごとの xp の量。いまは STORY_XP で仮置き
  */
 import { storyArc, storyEpisode, episodeAccess } from "./story-narrative.js";
-import { MOVE_TEXT, KING_TEXT, SUIT_SYMBOL, movePhrases } from "./constants.js";
+import { MOVE_TEXT, SUIT_SYMBOL, movePhrases } from "./constants.js";
 import { AREA_BY_RANK, AREA_INFO } from "./areas.js";
 import { buildDeck, shuffle, squareName } from "./board.js";
 import { josekiDeck } from "./cpu-joseki.js";
-import { STORY_TICKETS, normalizePhase, normalizeStory, phaseOf, rulesForPhase, setupFlagsForPhase, stageSize } from "./phase.js";
+import { STORY_TICKETS, normalizePhase, normalizeStory, phaseOf, rulesForPhase, storySetupFlags, stageSize } from "./phase.js";
 
 /** ステージ。並びは STORY_AXES と同じ */
 export const STORY_STAGES = Object.freeze([
@@ -76,7 +76,8 @@ export function storyRival(axis, phase = 1) {
     quote: voice.text,
     quoteSpeaker: voice.speaker,
     after: episode.after.at(-1).text,
-    aim: p === 1 ? RIVALS[axis].aim : p === 2 ? "王の力で、前の一局との違いを探そう。" : "相手のエリアに合わせて、陣を考えよう。",
+    // フェーズ2 は一言を出さない(すぐ下の「王の力」の欄と同じ話。行を減らして欄を最初の画面に入れる。design-v2)
+    aim: p === 1 ? RIVALS[axis].aim : p === 2 ? "" : "相手のエリアに合わせて、陣を考えよう。",
   };
 }
 
@@ -153,11 +154,40 @@ export function stageIntro(axis, phase) {
     });
   if (p === 2)
     return Object.freeze({
-      title: `${stage.name}の王の力`,
+      title: `${stage.name}の王`,
       lead,
-      items: stage.ranks.map((rank) => Object.freeze({ rank, text: KING_TEXT[rank] })),
-      // ルールの説明は「取る」(手引き・フェーズ1 の説明と同じ。2026-10-06 本人の指示)
-      note: Object.freeze(["王にした駒だけに付く力。", "相手の王の力を読んで取る。"]),
+      // フェーズ2 の CPU の王は力なし(2026-10-25 本人の指示「王の力は、プレイヤー側のみが発動できる」)。
+      // 相手の王について知ることは動き方だけなので、フェーズ1 と同じく MOVE_TEXT を句ごとに出す
+      items: stage.ranks.map((rank) => Object.freeze({ rank, text: MOVE_TEXT[rank], phrases: Object.freeze([...movePhrases(rank)]) })),
+      // 相手の王の動きの欄の見出し(王の力の図と取り違えないように。AI プレイヤーの評価 2026-10-25)
+      itemsTitle: "相手の王の動き(王の力なし)",
+      note: Object.freeze(["王の力は、あなたの王だけが使える。", "相手の王は力を持たない。取れば、勝ち。"]),
+      // フェーズ2 の第1話では、王の力とは何かを先に見せる(2026-10-25 本人の指示)。図は 2 の王の力なし/ありの比べ。
+      // 文は AI プレイヤー3人の評価(1回目 2.0〜2.8)で直した: 「取られても新しい王」を先に言う・1文1つ・用語は「札」「取る」
+      ...(axis === "23"
+        ? {
+            // 一度に覚えられるのは3〜4つ(AI プレイヤーの評価 5回目)。継ぐ話・置く枚数の話は王を選ぶ画面の「この盤では」に任せる
+            // AI プレイヤー3人で話し合って決めた形(design-v2): ここでは仕組みだけを3つ教える
+            // (王の力は数字で決まる/中身は王を選ぶ画面で見られる/力はあなたの王だけ)。図は 2 の「ふつう → 王」。
+            // 動詞は「持つ」(4・5・K は王自身が強くならないので「強くなる」と言わない。「付く」は何に付くか迷う)
+            power: Object.freeze({
+              title: "王の力",
+              // 句の塊で出す(「…特別な力を持/つ。」と割れないように)。つなぐと1文
+              lines: Object.freeze([
+                Object.freeze(["フェーズ2から、", "王にした駒の数字で", "「王の力」が決まる。"]),
+                // 4・5・K は王ではない駒に効く。「王が強くなる」とだけ言うと、王を選ぶ画面の4で食い違って見えた(評価 13回目)
+                Object.freeze(["王が強く動ける数字も、", "ほかの駒が強くなる数字もある。"]),
+              ]),
+              // 「3マスまで」は盤の2が1枚のときの数。条件を言わないと決まった数に読まれた(評価 18回目、誤り探し2人)
+              example: Object.freeze({ rank: "2", label: "例: 盤の2が1枚のとき、2を王にすると" }),
+              // 数字ごとの中身は、対局中に使える場面で光と一言で教える(2026-10-25 本人の指示。説明の画面は短く)
+              after: Object.freeze(["対局中、", "王の力で行けるマスが", "金色に光る。"]),
+              // 「あなたの王だけ」は、ほかの駒に効く4・5・Kと食い違って見えた。「1回」は「2回取る場合もあるのか」と疑われた(評価 7回目)
+              // 使うと王だと気づかれやすい、を選ぶ前にも(対局中だけだと、王を選ぶときに代償が分からなかった。評価 12回目)
+              rules: Object.freeze([Object.freeze(["王の力は、", "あなたの側だけ。"]), Object.freeze(["相手の王には無い。", "相手の王を取れば、", "あなたの勝ち。"]), Object.freeze(["王の力を使うと、", "相手に王を", "読まれやすい。"])]),
+            }),
+          }
+        : null),
     });
   const type = AREA_BY_RANK[stage.ranks[0]];
   const area = AREA_INFO[type];
@@ -196,7 +226,7 @@ export function stageSetup(axis, phase) {
   return Object.freeze({
     size: stageSize(p),
     cpuAxis: [...stage.ranks],
-    ...setupFlagsForPhase(p),
+    ...storySetupFlags(p),
     areas: rulesForPhase(p).areas,
   });
 }

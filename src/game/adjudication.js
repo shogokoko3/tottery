@@ -160,6 +160,44 @@ export function isDeadPosition(state) {
   );
 }
 
+/**
+ * 決着がつかない局面の判定(2026-10-25 本人の指示「判定の仕組みの精度を上げる」)。
+ * 「どちらの王も絶対に討てない」証明(isDeadPosition)だけでは、王や番兵が逃げ回り続ける局面
+ * (AI テストプレイで5人中5人が降参した)を終えられない。手元の対局(state.stallRule)では次も判定にする:
+ *   - 同じ局面(生きている駒の位置・王・手番)が REPEAT_LIMIT 回目になった
+ *   - 駒が1枚も倒れない手番が quietLimit(盤) 続いた(5×5 は両者合わせて40手番、9×9 は60手番)
+ * オンラインは載せない(部屋の両者の版がそろわないと従来ルールに落ちる作りなので、版を上げると旧端末との局が判定ごと消える)
+ */
+export const REPEAT_LIMIT = 3;
+export function quietLimit(boardSize) {
+  return boardSize >= 9 ? 60 : 40;
+}
+
+function positionKey(state) {
+  const pieces = Object.values(state.pieces)
+    .filter((piece) => piece.alive)
+    .map((piece) => `${piece.id}@${piece.row},${piece.col}${piece.isKing ? "*" : ""}`)
+    .sort();
+  return `${state.currentTurn}|${pieces.join(";")}`;
+}
+
+/** 手番の区切りごとに、局面の出現回数と「倒れない手番」を数える。駒が倒れたら数え直す */
+export function trackStall(state) {
+  if (!state.stallRule) return state;
+  const alive = Object.values(state.pieces).filter((piece) => piece.alive).length;
+  const prev = state.stall && state.stall.alive === alive ? state.stall : { alive, quiet: -1, seen: {} };
+  const key = positionKey(state);
+  const seen = { ...prev.seen, [key]: (prev.seen[key] || 0) + 1 };
+  return { ...state, stall: { alive, quiet: prev.quiet + 1, seen, repeat: seen[key] } };
+}
+
+const REASON_LOG = {
+  "dead-position": "互いの王を討てない局面のため",
+  "no-legal-action": "動く側に可能な行動がない局面のため",
+  repetition: `同じ局面が${REPEAT_LIMIT}回目になったため`,
+  "no-progress": "駒が倒れない手番が続いたため",
+};
+
 /** 同期された手が完了したときだけ呼ぶ。表示用dismissには依存しない。 */
 export function adjudicatePosition(state) {
   if (
@@ -171,11 +209,16 @@ export function adjudicatePosition(state) {
     !Array.isArray(state.initialArmyRanks)
   )
     return state;
+  state = trackStall(state);
   const reason = isDeadPosition(state)
     ? "dead-position"
     : !hasLegalAction(state)
       ? "no-legal-action"
-      : null;
+      : state.stall && state.stall.repeat >= REPEAT_LIMIT
+        ? "repetition"
+        : state.stall && state.stall.quiet >= quietLimit(state.boardSize)
+          ? "no-progress"
+          : null;
   if (!reason) return state;
   const totals = [...state.initialArmyTotals];
   const winner = totals[0] === totals[1] ? null : totals[0] < totals[1] ? 0 : 1;
@@ -198,7 +241,7 @@ export function adjudicatePosition(state) {
     interstitial: null,
     log: [
       ...state.log,
-      `${reason === "dead-position" ? "互いの王を討てない局面" : "動く側に可能な行動がない局面"}のため布陣判定: 赤${totals[0]}・青${totals[1]}。${result}`,
+      `${REASON_LOG[reason]}布陣判定: 赤${totals[0]}・青${totals[1]}。${result}`,
     ],
   };
 }

@@ -906,7 +906,7 @@ export function RandomMatchScreen({
   onBotReady: botReady = null,
 }) {
   const loadout = useRef(mySkins()).current;
-  // 自分のフェーズ。相手はフェーズごとに分ける。フェーズ1 は 5×5、フェーズ2 は 9×9、フェーズ3 は選んだ盤
+  // 自分のフェーズ。相手はフェーズごとに分ける。フェーズ1・2 は 5×5(フェーズ2 は 2026-10-25 に 9×9 から)、フェーズ3 は選んだ盤
   // (2026-09-30 本人の指示。持ち点はフェーズ3だけ = game.jsx の ranked がフェーズを見る)
   const myPhase = useRef(phaseOf(loadProfile())).current;
   const phaseSizes = rulesForPhase(myPhase).sizes;
@@ -1535,7 +1535,7 @@ export function RulesSelectScreen({
                   <>
                     <br />
                     <b className="board-choice-lock">
-                      {locked9ByPhase ? "フェーズ2で開きます" : `Lv${BOARD9_LEVEL} で開きます`}
+                      {locked9ByPhase ? "フェーズ3で開きます" : `Lv${BOARD9_LEVEL} で開きます`}
                     </b>
                   </>
                 )}

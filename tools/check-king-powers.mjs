@@ -114,6 +114,58 @@ for (const powers of [true, false]) {
   }
 }
 {
+  // 席ごとの王の力(フェーズ2のストーリー。2026-10-25 本人の指示「王の力は、プレイヤー側のみが発動できる」)。
+  // 席0(プレイヤー)は力あり、席1(CPU)は力なし。駒の印は席ごとに付ける
+  const seats = [true, false];
+  const mixed = (specs, extra) => {
+    const s = fixture(true, specs, extra);
+    const pieces = Object.fromEntries(Object.entries(s.pieces).map(([id, p]) => [id, p.owner === 1 ? { ...p, powers: false } : p]));
+    const board = s.board.map((row) => row.map((p) => (p ? pieces[p.id] : null)));
+    return { ...s, kingPowers: seats, pieces, board };
+  };
+  is("席ごと: 旗の読み(席0 あり・席1 なし・どちらかあり)", [kingPowersOn({ kingPowers: seats }, 0), kingPowersOn({ kingPowers: seats }, 1), kingPowersOn({ kingPowers: seats })], [true, false, true]);
+  {
+    const s = mixed([["k2", "2", 0, 4, 0, true], ["f2", "2", 0, 4, 2, false], ["e", "J", 1, 0, 4, true]]);
+    is("席ごと: プレイヤーの 2 の王は継承する", removePiece(s, "k2", { by: "e" }).players[0].kingId, "f2");
+  }
+  {
+    const s = mixed([["c2", "2", 1, 0, 0, true], ["c2b", "2", 1, 0, 2, false], ["p", "J", 0, 4, 4, true]]);
+    const t = removePiece(s, "c2", { by: "p" });
+    is("席ごと: CPU の 2 の王は継承しない(討てば勝ち)", [t.players[1].kingId, t.winner], ["c2", 0]);
+  }
+  {
+    const s = mixed([["c4", "4", 1, 0, 0, true], ["n4", "4", 1, 1, 1, false], ["pj", "J", 0, 1, 2, false], ["pk", "K", 0, 4, 4, true]]);
+    is("席ごと: CPU の王が 4 でも道連れは起きない", removePiece(s, "n4", { by: "pj" }).pieces.pj.alive, true);
+  }
+  {
+    const s = mixed([["pt", "10", 0, 4, 0, true], ["ek", "K", 1, 0, 4, true]]);
+    is("席ごと: プレイヤーの 10 の王は2回動ける", endAction(s, "pt").extraMoveFor, "pt");
+  }
+  {
+    const s = mixed([["ct", "10", 1, 0, 0, true], ["pk", "K", 0, 4, 4, true]], { currentTurn: 1 });
+    is("席ごと: CPU の 10 の王は2回目が無い", endAction(s, "ct").extraMoveFor ?? null, null);
+  }
+  {
+    // 布陣の確定で、駒の印が席ごとに付く(合法手は駒の印だけを見る)
+    let s = reducer(initialState(), { type: "START_SETUP", size: 5, setupMode: "simultaneous", kingPowers: [true, false], ruleVersion: 15 });
+    is("席ごと: START_SETUP は [席0, 席1] の旗を持つ", s.kingPowers, [true, false]);
+    is("席ごと: 両方そろった配列は真偽値に戻す", [reducer(initialState(), { type: "START_SETUP", size: 5, kingPowers: [false, false] }).kingPowers, reducer(initialState(), { type: "START_SETUP", size: 5, kingPowers: [true, true] }).kingPowers], [false, true]);
+    // 本番の流れ(サイコロ→引き直し→布陣)を通して、布陣の確定で付く駒の印を見る
+    for (let g = 0; s.phase === "dice" && g < 12; g++)
+      s = reducer(s, s.diceIdx <= 1 && s.dice[s.diceIdx] === null ? { type: "ROLL_DICE_SINGLE", value: s.diceIdx === 0 ? 6 : 1 } : s.diceIdx === 2 ? { type: "GOTO_MULLIGAN" } : { type: "NEXT_DICE_STEP" });
+    for (let g = 0; s.phase === "mulligan" && g < 4; g++) s = reducer(s, { type: "CONFIRM_MULLIGAN", reserveOrder: [] });
+    for (const p of [0, 1]) {
+      s = reducer(s, { type: "SETUP_AUTO_ARRANGE", player: p });
+      s = reducer(s, { type: "SETUP_GOTO_KING_STEP", player: p });
+      s = reducer(s, { type: "SETUP_PICK_KING", player: p, cardId: autoPickKing(s, p, s.setupPlacements[p]) });
+      s = reducer(s, { type: "SETUP_CONFIRM", player: p });
+    }
+    is("席ごと: 布陣を終えて対局が始まる", s.phase, "play");
+    const marks = [0, 1].map((o) => Object.values(s.pieces).filter((q) => q.owner === o).every((q) => q.powers === false));
+    is("席ごと: 布陣の駒の印(席0 は力あり・席1 は力なし)", marks, [false, true]);
+  }
+}
+{
   // 空のエリアの2回目は王の力ではない。力なしでも残る
   const s = fixture(false, [["t", "10", 0, 4, 0, false, { skyTwice: true }], ["kk", "K", 0, 4, 4, true], ["ek", "K", 1, 0, 4, true]]);
   is("力なしでも、空の 10 の2回目は残る", endAction(s, "t").extraMoveFor, "t");

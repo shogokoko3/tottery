@@ -7,7 +7,7 @@
  *
  * 昇格は「そのフェーズのストーリー(7軸)を全部クリア」+「そのフェーズでオンライン5勝」。
  * 持ち点(レート)はフェーズ3だけ(rankedPhase。game.jsx の ranked と verify-match がフェーズを見る)。
- * オンラインで選べる盤は rulesForPhase().sizes: フェーズ1 は 5×5、フェーズ2 は 9×9、フェーズ3 は両方(2026-09-30)。
+ * オンラインで選べる盤は rulesForPhase().sizes: フェーズ1・2 は 5×5、フェーズ3 は両方(2026-09-30。フェーズ2 は 2026-10-25 に 9×9 → 5×5)。
  *
  * ここは**決まりごとだけ**を持つ。profile の読み書きは profile.js、対局への反映は
  * START_SETUP(kingPowers / areas)と掲示(phase / size)で行う。
@@ -67,15 +67,22 @@ export function rulesForPhase(phase) {
     kingPowers: p >= 2,
     // 王のエリア効果(フォイルの能力)。9×9 で王のフォイルがあるときだけ立つのは今までどおり
     areas: p >= 3,
-    // オンラインで選べる盤(2026-09-30 本人の指示): フェーズ1 は 5×5、フェーズ2 は 9×9、フェーズ3 は両方。
+    // オンラインで選べる盤(2026-09-30 本人の指示): フェーズ1 は 5×5、フェーズ3 は両方。
+    // フェーズ2 は 2026-10-25 本人の指示で 9×9 → 5×5(ストーリーと同じ。AI テストプレイで 9×9 の段差が大きすぎた)。
+    // 掲示の決まり(firebase-rules.json の lobby/$code/size)は、移行のあいだフェーズ2 に 5 と 9 の両方を許す。
     // 持ち点(レート)はフェーズ3だけ(game.jsx の ranked と verify-match がフェーズを見る)
-    sizes: p >= 3 ? [5, 9] : p === 2 ? [9] : [5],
+    sizes: p >= 3 ? [5, 9] : [5],
   });
 }
 
-/** ストーリーのステージの盤。フェーズ1 は 5×5、フェーズ2 からは 9×9(2026-09-30 本人の指示) */
+/**
+ * ストーリーのステージの盤。フェーズ1・2 は 5×5、フェーズ3 は 9×9。
+ * (2026-09-30 はフェーズ2 から 9×9。2026-10-25 本人の指示でフェーズ2 も 5×5 に。
+ *  AI テストプレイで 9×9・王の力・持ち時間が一度に来て、5人中4人がフェーズ2 の第1話で止まったため)
+ * オンラインのフェーズ2 も 5×5(rulesForPhase().sizes。2026-10-25 本人の指示)
+ */
 export function stageSize(phase) {
-  return normalizePhase(phase) >= 2 ? 9 : 5;
+  return normalizePhase(phase) >= 3 ? 9 : 5;
 }
 
 /** 持ち点(レート)に数えるフェーズか。フェーズ3だけ。通信の部屋のフェーズは onlinePhase で読んでから渡す */
@@ -87,6 +94,17 @@ export function rankedPhase(phase) {
 export function setupFlagsForPhase(phase) {
   const r = rulesForPhase(phase);
   return r.kingPowers ? {} : { kingPowers: false };
+}
+
+/**
+ * ストーリーの対局(CPU 戦)の王の力。フェーズ2 は**プレイヤーの席(0)だけ**に王の力が付く
+ * (2026-10-25 本人の指示「王の力は、プレイヤー側のみが発動できるようにします」)。CPU の王は力なしで動く。
+ * フェーズ1 はどちらも無し、フェーズ3 はどちらも有り(今までどおり)。オンラインは setupFlagsForPhase のまま
+ */
+export function storySetupFlags(phase) {
+  const p = normalizePhase(phase);
+  if (p === 2) return { kingPowers: [true, false] };
+  return setupFlagsForPhase(p);
 }
 
 /** phaseWins の形をそろえる { 1: n, 2: n, 3: n } */

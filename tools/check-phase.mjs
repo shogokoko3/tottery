@@ -26,9 +26,9 @@ is("profile から読む", [phaseOf({ phase: 2 }), phaseOf({}), phaseOf(null)], 
 
 console.log("\nフェーズごとの対局の決まり");
 is("1: 力なし・エリアなし・5×5 だけ", rulesForPhase(1), { kingPowers: false, areas: false, sizes: [5] });
-is("2: 力あり・エリアなし・9×9 だけ(2026-09-30)", rulesForPhase(2), { kingPowers: true, areas: false, sizes: [9] });
+is("2: 力あり・エリアなし・5×5 だけ(2026-10-25 本人の指示で 9×9 → 5×5)", rulesForPhase(2), { kingPowers: true, areas: false, sizes: [5] });
 is("3: 力あり・エリアあり・5×5/9×9", rulesForPhase(3), { kingPowers: true, areas: true, sizes: [5, 9] });
-is("ストーリーのステージの盤: フェーズ1 は 5×5、2 からは 9×9", [stageSize(1), stageSize(2), stageSize(3), stageSize(null)], [5, 9, 9, 5]);
+is("ストーリーのステージの盤: フェーズ1・2 は 5×5、3 は 9×9(2026-10-25 本人の指示でフェーズ2 も 5×5)", [stageSize(1), stageSize(2), stageSize(3), stageSize(null)], [5, 5, 9, 5]);
 is("持ち点はフェーズ3だけ", [rankedPhase(1), rankedPhase(2), rankedPhase(3), rankedPhase(undefined)], [false, false, true, false]);
 is("START_SETUP の旗: 1 だけ kingPowers:false、ほかは旗なし(古い記録と揃える)", [setupFlagsForPhase(1), setupFlagsForPhase(2), setupFlagsForPhase(3)], [{ kingPowers: false }, {}, {}]);
 

@@ -272,13 +272,13 @@ console.log("\nB. 王を選ぶ画面");
 {
   const s = openingState(tut, GAME_RULE_VERSION);
   const quiet = renderKing(s, { terse: true, quiet: true, lockPlacement: true, showFoe: true });
-  ok("見出し「王にするカードを決めてね」を出さない", !/王にするカードを決めてね/.test(quiet));
+  ok("見出し「王にする駒を決めてね」を出さない", !/王にする(札|駒)を決めてね/.test(quiet));
   ok("「配置に戻る」を出さない", !/配置に戻る/.test(quiet));
   ok("「布陣を確定」はある", /布陣を確定/.test(quiet));
   ok("相手の並び(確定済み)を伏せ札5枚で描く", count(quiet, /mini-piece mini-piece-foe/g) === 5, `${count(quiet, /mini-piece mini-piece-foe/g)} 枚`);
   ok("帯(setup-head)と残り時間の場所は残す", /<div class="setup-head">/.test(quiet));
   const plain = renderKing(s, { terse: true });
-  ok("ふつうの王選びは見出しと「配置に戻る」を出す", /王にするカードを決めてね/.test(plain) && /配置に戻る/.test(plain));
+  ok("ふつうの王選びは見出しと「配置に戻る」を出す", /王にする駒を決めてね/.test(plain) && /配置に戻る/.test(plain));
   ok("ふつうの王選びは相手の並びを描かない", !/mini-piece-foe/.test(plain));
   // 先後の一行(2026-10-05 見直し)。はじめの一局は導入の言葉の調子で(です・ます調の決まり文句を避ける)
   // 札「あなたは先攻」と横の文が同じことを二度言っていた。一行だけにする(2026-10-06 見直し)
@@ -286,11 +286,12 @@ console.log("\nB. 王を選ぶ画面");
   ok("先後の札は折り返さない(320 幅で「あなたは後/攻」と割れた)", /\.setup-order b \{\s*white-space: nowrap;\s*\}/.test(fs.readFileSync(new URL("../src/styles.css", import.meta.url), "utf8")));
   ok("ふつうの王選びの先後はいままでどおり(文は句ごとに折り返す)", /あなたは先攻/.test(text(plain)) && /サイコロの結果、先に動きます/.test(text(plain)) && /<span class="text-phrase">先に動きます<\/span>/.test(plain));
   // 案内の一行(2026-10-06 見直し)。.hint の balance の折り返しで、320 幅だと「…王にす/る1枚を…」と語の途中で割れた。
-  // 文は変えずに句の塊にし、1つの span に包む(案内の行は flex なので、句を直に並べると句ごとに離れた箱になる)
+  // 文は変えずに句の塊にし、1つの span に包む(案内の行は flex なので、句を直に並べると句ごとに離れた箱になる)。
+  // 文は王の力の説明の話し合い(design-v2、2026-10-25)で「盤のあなたの駒を1つタップすると、その駒が王になる。何度でも選び直せる。」に
   const full = renderKing(s, {});
   ok(
-    "ふつうの王選びの案内は句の塊(「配置したカードの中から」「王にする1枚を」「タップしてください。」)",
-    /<p class="hint setup-hint-line"><span><span class="text-phrase">配置したカードの中から<\/span><span class="text-phrase">王にする1枚を<\/span><span class="text-phrase">タップしてください。<\/span><\/span><\/p>/.test(full),
+    "ふつうの王選びの案内は句の塊(「盤のあなたの駒を」「1つタップすると、」「その駒が王になる。」「何度でも選び直せる。」)",
+    /<p class="hint setup-hint-line"><span><span class="text-phrase">盤のあなたの駒を<\/span><span class="text-phrase">1つタップすると、<\/span><span class="text-phrase">その駒が王になる。<\/span><span class="text-phrase">何度でも選び直せる。<\/span><\/span><\/p>/.test(full),
     (full.match(/<p class="hint setup-hint-line">[\s\S]*?<\/p>/) || [""])[0],
   );
   // 取る確認(2026-10-05 見直し)。はじめの一局は短い一行、ほかの対局はいままでどおり

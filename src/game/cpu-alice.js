@@ -15,7 +15,7 @@ import {
   reverseCandidates,
   reverseLimit,
 } from "./alice-rules.js";
-import { getLegalMoves, kingRankOf, territoryRows, pointInTriangle } from "./board.js";
+import { getLegalMoves, kingRankOf, territoryRows, pointInTriangle, kingPowersOn } from "./board.js";
 import { isFrozen, isKnownTo } from "./areas.js";
 import { knownThreats } from "./cpu-tactics.js";
 
@@ -566,7 +566,7 @@ export function aliceSetupFix(s, player, kingId, placement) {
   const hand = s.players[player].hand;
   const king = hand.find((c) => c.id === kingId);
   if (!king || !["J", "Q", "K"].includes(king.rank) || !aliceSkin(s, player, king.rank)) return placement;
-  if (s.kingPowers === false) return placement;
+  if (!kingPowersOn(s, player)) return placement;
   const out = { ...placement };
   const used = new Set(Object.keys(out));
   const counts = {};
@@ -600,7 +600,7 @@ export function aliceKingPickOk(s, player, card, placement) {
   const ranks = Object.keys(placement).map((id) => hand.find((c) => c.id === id)?.rank);
   if (card.rank === "A") return false;
   if (ranks.includes("K") && card.rank !== "K") return false;
-  if (hasAliceRules(s) && s.kingPowers !== false && aliceSkin(s, player, card.rank) && ["J", "Q", "K"].includes(card.rank) && ranks.includes("A"))
+  if (hasAliceRules(s) && kingPowersOn(s, player) && aliceSkin(s, player, card.rank) && ["J", "Q", "K"].includes(card.rank) && ranks.includes("A"))
     return false;
   return true;
 }

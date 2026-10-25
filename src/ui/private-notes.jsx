@@ -135,8 +135,8 @@ export function usePrivateNotes(state, viewer, blocked) {
           key={square}
           square={square}
           size={state.boardSize}
-          /* 王の力なしの対局では、伸びも「王だけの動き」も無い前提で絞る */
-          powers={kingPowersOn(state)}
+          /* 王の力なしの対局では、伸びも「王だけの動き」も無い前提で絞る。メモの相手は向かいの席なので、その席の力で見る */
+          powers={kingPowersOn(state, viewer == null ? null : 1 - viewer)}
           /* その駒の、**相手に見せてよい**行動記録だけを渡す。
              正体(rank・isKing)は渡さない(2026-09-28 本人の指示の仕組み) */
           history={visibleHistoryAt(state, square, viewer)}

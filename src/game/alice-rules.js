@@ -11,7 +11,7 @@ export function aliceSkin(s, owner, rank) {
 }
 export function aliceKing(s, owner) {
   const k = s.pieces[s.players[owner].kingId];
-  return k?.alive && kingPowersOn(s) && aliceSkin(s, owner, k.rank) ? k : null;
+  return k?.alive && kingPowersOn(s, owner) && aliceSkin(s, owner, k.rank) ? k : null;
 }
 export function aliceField(s, owner) {
   const k = aliceKing(s, owner);
@@ -46,14 +46,14 @@ function spend(s, owner, key) {
 }
 export function reverseCandidates(s, a) {
   return alive(s).filter(p => !p.tea && p.id !== a.id &&
-    (p.owner !== a.owner || (p.rank !== 'A' && ((a.isKing && kingPowersOn(s)) || !p.isKing))) &&
+    (p.owner !== a.owner || (p.rank !== 'A' && ((a.isKing && kingPowersOn(s, a.owner)) || !p.isKing))) &&
     !(p.reverseUntil > turn(s)) && (p.owner===a.owner || !p.barrier));
 }
 /** 逆転の縛り中(逆転してから3ターンはもう一度選べない)。盤の印(src/ui/cards.jsx)と文言に使う */
 export const reverseLocked = (s, p) => !!p && p.reverseUntil > turn(s);
 /** 残りターン。氷と同じ「手数÷2」だが、縛りの手数(+8/+7)は氷(+6)より長いので、決まりの「3ターン」を上限にする */
 export const reverseTurnsLeft = (s, p) => reverseLocked(s, p) ? Math.min(3, Math.ceil((p.reverseUntil - turn(s)) / 2)) : 0;
-export function reverseLimit(s, a) { return Math.min(a.isKing && kingPowersOn(s) ? 3 : 1, reverseCandidates(s, a).length); }
+export function reverseLimit(s, a) { return Math.min(a.isKing && kingPowersOn(s, a.owner) ? 3 : 1, reverseCandidates(s, a).length); }
 const inverse = {2:'K',3:'Q',4:'J',5:'10',6:'9',7:'8',8:'7',9:'6',10:'5',J:'4',Q:'3',K:'2'};
 function reverse(s, p, reveal) {
   if (!inverse[p.rank]) return s; // 相手のAだけが不発。他の対象には続けて適用する。
@@ -118,7 +118,7 @@ export function aliceAfterTurn(s) {
 }
 export const aliceClocksHidden = s => [0,1].some(o => aliceField(s,o) === 'alice-maze');
 export function revivalAvailable(s, dead) {
-  if (!dead.isKing || !['2','3'].includes(dead.rank) || !aliceSkin(s, dead.owner, dead.rank) || !kingPowersOn(s)) return false;
+  if (!dead.isKing || !['2','3'].includes(dead.rank) || !aliceSkin(s, dead.owner, dead.rank) || !kingPowersOn(s, dead.owner)) return false;
   const total = s.players[dead.owner].armyRankCounts[dead.rank] || 1;
   return (s.aliceRevives?.[dead.id] || 0) < total && emptyCells(s, dead.owner).length > 0;
 }
@@ -214,7 +214,7 @@ export function aliceAction(s, a, hooks) {
     if (!ace?.alive || (!ace.isKing && ace.movementRank) || ace.owner !== owner || ace.rank !== 'A' || !aliceSkin(s,owner,'A') || ace.frozenUntil>turn(s)) return s;
     const candidates=reverseCandidates(s,ace), limit=reverseLimit(s,ace);
     if (!limit || ids.length!==limit || selected.some(p=>!candidates.some(c=>c.id===p.id))) return s;
-    royal=ace.isKing && kingPowersOn(s);
+    royal=ace.isKing && kingPowersOn(s, ace.owner);
     presentation={pickIds:ids};
     // Aが王のときだけ、選んだ駒を自分の駒も相手の駒も公開にする(2026-10-16 本人)。王でなければ公開・非公開はそのまま
     for (const p of selected) next=reverse(next,p,royal);

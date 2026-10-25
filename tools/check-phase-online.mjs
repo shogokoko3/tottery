@@ -69,7 +69,7 @@ console.log("\nFirebase のルール(firebase-rules.json)");
   is("rooms.guestPhase は部屋の phase と同じ(部屋に無ければ 3)", /\('phase'\)\.exists\(\) && newData\.val\(\) === root.*\|\| \(!root.*\('phase'\)\.exists\(\) && newData\.val\(\) === 3\)/.test(rooms.guestPhase[".validate"]), true);
   const lobby = rules.lobby.$code;
   is("lobby.phase は 1・2 だけで、部屋の phase と同じ", /\(newData\.val\(\) === 1 \|\| newData\.val\(\) === 2\).*child\('phase'\)\.val\(\)/.test(lobby.phase[".validate"]), true);
-  is("lobby.size はフェーズ1 が 5・フェーズ2 が 9 で、部屋の matchSize と同じ", /phase.*=== 1 && newData\.val\(\) === 5.*phase.*=== 2 && newData\.val\(\) === 9.*child\('matchSize'\)\.val\(\)/.test(lobby.size[".validate"]), true);
+  is("lobby.size はフェーズ1 が 5・フェーズ2 が 5 か 9(移行のあいだ)で、部屋の matchSize と同じ", /phase.*=== 1 && newData\.val\(\) === 5.*phase.*=== 2 && \(newData\.val\(\) === 5 \|\| newData\.val\(\) === 9\).*child\('matchSize'\)\.val\(\)/.test(lobby.size[".validate"]), true);
   is("lobby.matchSize の決まりは今までどおり(書くときだけ検査)", /=== 5 \|\| newData\.val\(\) === 9/.test(lobby.matchSize[".validate"]), true);
   is("lobby.matchSize はフェーズ<3 の部屋には書けない(改造ホストが旧端末を釣れない)", /&& !root\.child\('rooms'\)\.child\(\$code\)\.child\('phase'\)\.exists\(\)/.test(lobby.matchSize[".validate"]), true);
   is("lobby の必須項目は host と createdAt だけ(matchSize が無くても書ける)", /hasChildren\(\['host','createdAt'\]\)/.test(lobby[".write"]), true);
@@ -112,8 +112,9 @@ console.log("\nFirebase のルールを評価器で確かめる(tools/check-rule
   is("フェーズ1の部屋に matchSize の掲示は出せない(改造ホストが旧端末を釣れない)", post(lobbyDb({ phase: 1 }), { matchSize: 5 }), false);
   is("部屋と違うフェーズの掲示は出せない", post(lobbyDb({ phase: 1 }), { phase: 2, size: 5 }), false);
   is("フェーズ1の掲示に 9×9 は無い", post(lobbyDb({ phase: 1, matchSize: 9 }), { phase: 1, size: 9 }), false);
-  is("フェーズ2の掲示は 9×9(2026-09-30)", post(lobbyDb({ phase: 2, matchSize: 9 }), { phase: 2, size: 9 }), true);
-  is("フェーズ2の掲示に 5×5 は無い", post(lobbyDb({ phase: 2, matchSize: 5 }), { phase: 2, size: 5 }), false);
+  // フェーズ2 は 2026-10-25 に 9×9 → 5×5。更新前の端末(9×9)と新しい端末(5×5)の両方が掲示できるよう、移行のあいだは両方を許す
+  is("フェーズ2の掲示は 5×5(2026-10-25)", post(lobbyDb({ phase: 2, matchSize: 5 }), { phase: 2, size: 5 }), true);
+  is("フェーズ2の掲示は、移行のあいだ 9×9 も出せる(更新前の端末)", post(lobbyDb({ phase: 2, matchSize: 9 }), { phase: 2, size: 9 }), true);
   is("掲示の盤は部屋の matchSize と同じ", post(lobbyDb({ phase: 2, matchSize: 5 }), { phase: 2, size: 9 }), false);
   is("フェーズ3の部屋には今までどおり matchSize の掲示", post(lobbyDb({}), { matchSize: 5 }), true);
   is("phase の無い部屋に phase の掲示は出せない", post(lobbyDb({}), { phase: 1, size: 5 }), false);

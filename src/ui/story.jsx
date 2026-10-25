@@ -19,7 +19,8 @@ import { stageIntro, notePhrases, storyList, nextStage, nextStageLine, ranksLabe
 import { CardFace } from "./cards.jsx";
 import { findTitle } from "../game/titles.js";
 import { TitleFrame } from "./title-frame.jsx";
-import { MoveDiagram } from "./guides.jsx";
+import { MoveDiagram, PowerDiagram, PowerFigure, PowerFigurePair } from "./guides.jsx";
+import { introFigs, plainFig } from "../game/king-power-text.js";
 import { CHRONICLE, STORY_PHASES, storyArc, storyEpisode } from "../game/story-narrative.js";
 import { ChronicleStyles, StoryArt, StoryReader, ChronicleWorld, StoryPurpose, StoryText, JoinedPhrases } from "./story-chronicle.jsx";
 import { StoryChapterArt } from "./story-chapter-art.jsx";
@@ -378,17 +379,36 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
           <p className="chronicle-kicker">対局説明 · {intro.title}</p>
           <p className="story-intro-lead">{intro.lead}</p>
         </div>
+        {/* 王の力の欄は題のすぐ下(図まで最初の画面に入れる。design-v2 の置き場所の決まり) */}
+        {intro.power && (
+          // フェーズ2 の第1話: 王の力とは何か(2026-10-25 本人の指示)。図はルール(getLegalMoves)から描く MoveDiagram
+          <section className="story-power" aria-label={intro.power.title}>
+            <b>{intro.power.title}</b>
+            {intro.power.lines.map((line, i) => (
+              <p key={i}><Phrases text={line} /></p>
+            ))}
+            <p className="story-power-label">{intro.power.example.label}</p>
+            <PowerFigurePair figs={introFigs()} />
+            <p><Phrases text={intro.power.after} /></p>
+            <div className="story-power-rules">
+              {intro.power.rules.map((line, i) => (
+                <p key={i}><Phrases text={line} /></p>
+              ))}
+            </div>
+          </section>
+        )}
         {/* 登場人物の一言・この局のねらいは句の塊で(語の途中で割らない。2026-10-06 見直し)。挑戦状(台詞)は段落のまま */}
         {arc && <div className="chronicle-roster">{arc.characters.map(c => <div key={c.rank}><CardFace rank={c.rank} suit="spade" size="sm" skinId={false} /><span><b>{c.name}</b><small><StoryText text={c.detail} /></small></span></div>)}</div>}
         <StoryPurpose episode={storyEpisode(axis, phase)} />
         {rival && (
           <div className="story-rival">
-            <div><b>{rival.quoteSpeaker || rival.name}</b><p className="story-rival-quote">{rival.quote}</p><small><Phrases text={rival.aim} /></small></div>
+            <div><b>{rival.quoteSpeaker || rival.name}</b><p className="story-rival-quote">{rival.quote}</p>{rival.aim && <small><Phrases text={rival.aim} /></small>}</div>
           </div>
         )}
         {lesson && <p className="story-lesson">手札{lesson.handSize}枚から5枚を並べる。<span>使う札：{lesson.pool.join("・")}／時間制限なし</span></p>}
-        {phase === 1 ? (
-          // フェーズ1 は駒の動き方を盤の図で。図はルール(getLegalMoves)から描く MoveDiagram、文は MOVE_TEXT のまま
+        {intro.itemsTitle && <h4 className="story-intro-items-title">{intro.itemsTitle}</h4>}
+        {phase <= 2 ? (
+          // フェーズ1・2 は相手の王の動き方を盤の図で(フェーズ2 の CPU の王は力なし。2026-10-25)。図はルール(getLegalMoves)から描く MoveDiagram、文は MOVE_TEXT のまま
           // (句に切った MOVE_PHRASES で出す。つなぐと MOVE_TEXT)。
           // 図は 9×9 の中央から描く(5×5 だと 2マス先までしか描けず、8 と 2・J と 4 などが同じ絵になっていた)
           <ul className="story-intro-moves">
@@ -396,7 +416,14 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
               <li key={it.rank}>
                 <div className="story-move-art">
                   <CardFace rank={it.rank} suit="spade" size="sm" skinId={false} />
-                  <MoveDiagram rank={it.rank} gridSize={9} />
+                  {phase === 2 && plainFig(it.rank) ? (
+                    // フェーズ2 は盤が 5×5 なので、実際の盤で描く(駒は左下の角)。上の「ふつうの2」と同じ図の形にそろえる(design-v2)
+                    <PowerFigure spec={plainFig(it.rank)} caption={false} />
+                  ) : phase === 2 ? (
+                    <PowerDiagram rank={it.rank} size={5} origin={{ row: 4, col: 0 }} asKing={false} />
+                  ) : (
+                    <MoveDiagram rank={it.rank} gridSize={9} />
+                  )}
                 </div>
                 {/* 句ごとに折り返す(語の途中で割らない。2026-10-05 見直し) */}
                 <p>
@@ -421,13 +448,13 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
         )}
         {/* 1文1行(2026-10-01 本人の指示。長い1行だと語の途中で割れる)。行の中は句の塊(2026-10-06 見直し。
             フェーズ3 の2行目が「…その数字のフォイル/を装備して…」と割れた。切り方は story.js の notePhrases) */}
-        <p className="hint story-intro-note">
+        {!intro.power && <p className="hint story-intro-note">
           {intro.note.map((line) => (
             <span key={line}>
               <Phrases text={notePhrases(line)} />
             </span>
           ))}
-        </p>
+        </p>}
         <div className="setup-actions">
           <button type="button" className="btn btn-ghost" onClick={onBack}>
             戻る

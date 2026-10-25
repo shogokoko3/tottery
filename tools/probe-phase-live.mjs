@@ -71,7 +71,9 @@ try {
   want("掲示を下ろす", await call(A, `lobby/${P2}`, "DELETE"));
   // 部屋の matchSize と同じ盤でも、フェーズの盤でなければ弾く(フェーズの縛りそのものを見る)
   want("部屋を作れる(phase:2・5×5。部屋の盤は縛らない)", await call(A, `rooms/${P2S}`, "PUT", room({ phase: 2, matchSize: 5 })));
-  want("フェーズ2の掲示に 5×5 は出せない(部屋も 5×5 でも)", await call(A, `lobby/${P2S}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 2, size: 5 }), "弾かれる");
+  // 2026-10-25 本人の指示でフェーズ2 のオンラインは 5×5。移行のあいだ 9×9(更新前の端末)も出せる
+  want("フェーズ2の掲示は 5×5 で出せる(2026-10-25)", await call(A, `lobby/${P2S}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 2, size: 5 }));
+  want("フェーズ2の掲示の盤は部屋の盤と同じ(5×5 の部屋に 9×9 は出せない)", await call(A, `lobby/${P2S}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 2, size: 9 }), "弾かれる");
   want("部屋を作れる(phase:1・9×9)", await call(A, `rooms/${P1L}`, "PUT", room({ phase: 1, matchSize: 9 })));
   want("フェーズ1の掲示に 9×9 は出せない(部屋も 9×9 でも)", await call(A, `lobby/${P1L}`, "PUT", { host: A.uid, createdAt: Date.now(), phase: 1, size: 9 }), "弾かれる");
 

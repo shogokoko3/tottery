@@ -6,7 +6,7 @@ import { phrasesOf } from "../src/ui/phrase-split.js";
 import { STORY_STAGES, STORY_XP, stageOf, stageIntro, notePhrases, stageSetup, storyList, nextStage, nextStageLine, ranksLabel, storyFreshClear, pickStoryKing, storyCpuArea, storyDeck, storyDeckFor, stageAfter, nextStageAfter, storyPrimerSeen, markStoryPrimerSeen, primerOutroLines } from "../src/game/story.js";
 import { reducer } from "../src/game/reducer.js";
 import { enrichAction } from "../src/game/actions.js";
-import { kingRankOf } from "../src/game/board.js";
+import { kingRankOf, kingPowersOn } from "../src/game/board.js";
 import { GAME_RULE_VERSION } from "../src/game/rule-version.js";
 import { cpuInformedAction } from "../src/game/cpu-informed.js";
 import { automaticAreaAction } from "../src/game/area-presentation.js";
@@ -46,7 +46,8 @@ for (const s of STORY_STAGES) {
   const i1 = stageIntro(s.axis, 1), i2 = stageIntro(s.axis, 2), i3 = stageIntro(s.axis, 3);
   is(`${s.axis}: フェーズ1は駒の動き方だけ(MOVE_TEXT をそのまま)`, i1.items.map((x) => x.text), s.ranks.map((r) => MOVE_TEXT[r]));
   is(`${s.axis}: フェーズ1は王の力に触れない`, i1.items.some((x) => KING_TEXT[x.rank] && x.text === KING_TEXT[x.rank]) || /王の力|継承|道連れ|まとめて取|2回/.test(i1.items.map((x) => x.text).join("")), false);
-  is(`${s.axis}: フェーズ2は王の力(KING_TEXT をそのまま)`, i2.items.map((x) => x.text), s.ranks.map((r) => KING_TEXT[r]));
+  // フェーズ2 の CPU の王は力なし(2026-10-25 本人の指示)。相手の王について出すのは動き方だけ
+  is(`${s.axis}: フェーズ2は相手の王の動き方(MOVE_TEXT をそのまま)`, i2.items.map((x) => x.text), s.ranks.map((r) => MOVE_TEXT[r]));
   const area = AREA_INFO[AREA_BY_RANK[s.ranks[0]]];
   is(`${s.axis}: フェーズ3はエリア(AREA_INFO をそのまま)`, i3.items[0].text.includes(area.text) && i3.title.includes(area.name), true);
   is(`${s.axis}: どのフェーズも相手の王の数字を先に言う`, [i1.lead, i2.lead, i3.lead].every((l) => l.includes(ranksLabel(s.ranks))), true);
@@ -70,12 +71,13 @@ is(
   is("句は空でない", Object.values(MOVE_PHRASES).every((ps) => ps.length >= 2 && ps.every((p) => p.length > 0)), true);
   is("表に無い数字は文を1つの句で", movePhrases("xx"), [""]);
   is("フェーズ1 の説明は句も持つ(文は MOVE_TEXT のまま)", STORY_STAGES.every((st) => stageIntro(st.axis, 1).items.every((it) => it.text === MOVE_TEXT[it.rank] && JSON.stringify(it.phrases) === JSON.stringify(MOVE_PHRASES[it.rank]))), true);
-  is("フェーズ2・3 の説明は句を持たない(文のまま)", STORY_STAGES.every((st) => [2, 3].every((p) => stageIntro(st.axis, p).items.every((it) => !it.phrases))), true);
+  is("フェーズ2 の説明は句を持ち、フェーズ3 は文のまま", STORY_STAGES.every((st) => stageIntro(st.axis, 2).items.every((it) => it.phrases?.join("") === MOVE_TEXT[it.rank]) && stageIntro(st.axis, 3).items.every((it) => !it.phrases)), true);
 }
 is("結びはどのフェーズも行の配列", STORY_STAGES.every((s) => [1, 2, 3].every((p) => Array.isArray(stageIntro(s.axis, p).note) && stageIntro(s.axis, p).note.length >= 1)), true);
 is("「名乗らない」を使わない", STORY_STAGES.some((s) => [1, 2, 3].some((p) => /名乗らない/.test(stageIntro(s.axis, p).note.join("")))), false);
 // ルールの説明は「取る」(2026-10-06 本人の指示。手引き・語り2枚目の本文と同じ)。「討つ」は語りの見出しと演出だけ
-is("フェーズ2 の結び: 王の力と、読んで取る", [...stageIntro("23", 2).note], ["王にした駒だけに付く力。", "相手の王の力を読んで取る。"]);
+is("フェーズ2 の結び: 王の力はあなたの王だけ、相手の王は力なしで取れば勝ち", [...stageIntro("23", 2).note], ["王の力は、あなたの王だけが使える。", "相手の王は力を持たない。取れば、勝ち。"]);
+is("フェーズ2 の第1話だけ「王の力とは」を出す", STORY_STAGES.map((st) => !!stageIntro(st.axis, 2).power), STORY_STAGES.map((st) => st.axis === "23"));
 is("説明の結びは「討つ」を使わない(どのフェーズも)", STORY_STAGES.flatMap((s) => [1, 2, 3].flatMap((p) => stageIntro(s.axis, p).note)).filter((l) => /討/.test(l)), []);
 {
   // 結びの行は句の塊で出す(2026-10-06 見直し。フェーズ3 の2行目が 320・375 幅で「…その数字のフォイル/を装備して…」
@@ -107,7 +109,7 @@ is("変なフェーズは既定(1)の説明", stageIntro("23", 9).title, stageIn
 
 console.log("\n対局の設定");
 is("フェーズ1: 5×5・CPU の軸・力なし・エリアなし", stageSetup("23", 1), { size: 5, cpuAxis: ["2", "3"], kingPowers: false, areas: false });
-is("フェーズ2: 9×9・力あり(旗なし)・エリアなし", stageSetup("45", 2), { size: 9, cpuAxis: ["4", "5"], areas: false });
+is("フェーズ2: 5×5・王の力はプレイヤーの席だけ・エリアなし", stageSetup("45", 2), { size: 5, cpuAxis: ["4", "5"], kingPowers: [true, false], areas: false });
 is("フェーズ3: 9×9・エリアあり", stageSetup("jq", 3), { size: 9, cpuAxis: ["J", "Q"], areas: true });
 is("K だけのステージ", stageSetup("k", 1), { size: 5, cpuAxis: ["K"], kingPowers: false, areas: false });
 is("山札: 5×5 は storyDeck、9×9 は定石の山札(CPU の手札に王の数字が 4 枚=土・海)", [storyDeckFor("23", "2", 9).slice(13, 26).filter((c) => c.rank === "2").length >= 4, storyDeckFor("23", "2", 5).slice(13, 15).map((c) => c.rank)], [true, ["2", "2"]]);
@@ -225,7 +227,7 @@ console.log("\n5×5 のステージを回す(CPU の王は必ず軸の数字。�
     const setup = stageSetup(axis, phase);
     // 本番(game.jsx)と同じ形: 山札は storyDeckFor、フェーズ3 の 9×9 はエリアあり(CPU の王にはフォイル。screens.jsx の ensureCpuFoil)
     const areas = setup.areas && setup.size === 9 ? { areas: true, loadouts: [{}, { [k]: "fixture-skin:foil" }] } : null;
-    let s = reducer({ phase: "intro" }, { type: "START_SETUP", size: setup.size, setupMode: "simultaneous", ...storyDeal({ axis, king: k, phase }), ...(setup.kingPowers === false ? { kingPowers: false } : null), ...areas, ruleVersion: GAME_RULE_VERSION });
+    let s = reducer({ phase: "intro" }, { type: "START_SETUP", size: setup.size, setupMode: "simultaneous", ...storyDeal({ axis, king: k, phase }), ...(setup.kingPowers !== undefined ? { kingPowers: setup.kingPowers } : null), ...areas, ruleVersion: GAME_RULE_VERSION });
     if (s.phase !== "dice") throw new Error(`${axis}/${k}: START_SETUP が通らない`);
     const act = (st, p) => (p === 1 ? josekiCpuAction(st, 1, area, k) : cpuInformedAction(st, 0));
     let stalls = 0;
@@ -307,7 +309,8 @@ console.log("\n5×5 のステージを回す(CPU の王は必ず軸の数字。�
           games++;
           if (s.phase === "gameover") { ended++; if (s.winner === 1) wins++; }
           if (phase === 1) is(`${st.axis}/${k} #${i}: 力なしの対局では置いた駒に powers:false`, Object.values(s.pieces).every((q) => q.powers === false), true);
-          if (phase >= 2) is(`${st.axis}/${k} #${i}: フェーズ${phase}は 9×9・力あり`, [s.boardSize, s.kingPowers !== false], [9, true]);
+          if (phase === 2) is(`${st.axis}/${k} #${i}: フェーズ2は 5×5・王の力はプレイヤーの席だけ`, [s.boardSize, kingPowersOn(s, 0), kingPowersOn(s, 1)], [5, true, false]);
+          if (phase === 3) is(`${st.axis}/${k} #${i}: フェーズ3は 9×9・力あり`, [s.boardSize, s.kingPowers !== false], [9, true]);
           if (phase === 2) is(`${st.axis}/${k} #${i}: フェーズ2はエリアなし`, !!s.areasEnabled, false);
           if (phase === 3) is(`${st.axis}/${k} #${i}: フェーズ3は相手の王のエリアが立つ(${storyCpuArea(st.axis, k).type})`, [!!s.areasEnabled, s.areas && s.areas[1] && s.areas[1].type], [true, storyCpuArea(st.axis, k).type]);
         }
@@ -423,7 +426,8 @@ export { storyTileNote, introKeyCloses };`,
       // 図の動ける先の並び(md-reach の位置)を取っておき、あとで駒どうしで比べる
       for (const [j, d] of (i1.match(/<div class="move-diagram"[\s\S]*?<\/div>/g) || []).entries())
         diagrams[st.ranks[j]] = [...d.matchAll(/<span class="md-cell([^"]*)"/g)].map((m, k) => (m[1].includes("md-reach") ? k : -1)).filter((k) => k >= 0).join(",");
-      is(`${st.axis}: フェーズ2・3は図ではなく文`, [(i2.match(/class="move-diagram"/g) || []).length, (i3.match(/class="move-diagram"/g) || []).length], [0, 0]);
+      // 第1話(23)は「王の力」の比べの図(ふつうの2・王の2)が2枚加わる(2026-10-25 本人の指示)。第1話の図は PowerFigure(pf-board。design-v2)
+      is(`${st.axis}: フェーズ2は動きの図、フェーズ3は図ではなく文`, [(i2.match(/class="(move-diagram( power-diagram)?|pf-board)"/g) || []).length, (i3.match(/class="(move-diagram( power-diagram)?|pf-board)"/g) || []).length], [st.ranks.length + (st.axis === "23" ? 2 : 0), 0]);
       // 文は句ごとの塊(2026-10-05 見直し)。塊を外した文で見る
       const moves = i1.split('<ul class="story-intro-moves">')[1].split("</ul>")[0];
       const plain1 = i1.replace(/<[^>]*>/g, "");
@@ -433,12 +437,14 @@ export { storyTileNote, introKeyCloses };`,
         [...moves.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => [[...m[1].matchAll(/<span class="text-phrase">([^<]*)<\/span>/g)].map((x) => x[1]), m[1].replace(/<span class="text-phrase">[^<]*<\/span>/g, "")]),
         st.ranks.map((r) => [MOVE_PHRASES[r], ""]),
       );
-      is(`${st.axis}: フェーズ2は王の力`, st.ranks.every((r) => i2.includes(KING_TEXT[r].slice(0, 12))), true);
+      // 第1話(23)は「王の力とは」の欄が同じ決まりを言うので、結びの文は出さない(2026-10-25。同じ文の3回くり返しをやめた)
+      const sole = st.axis === "23" ? "王の力は、あなたの側だけ。" : "王の力は、あなたの王だけが使える。";
+      is(`${st.axis}: フェーズ2は相手の王の動きと「あなたの王だけ」`, st.ranks.every((r) => i2.replace(/<[^>]*>/g, "").includes(MOVE_TEXT[r])) && i2.replace(/<[^>]*>/g, "").includes(sole), true);
       is(`${st.axis}: フェーズ3はエリア`, i3.includes(AREA_INFO[AREA_BY_RANK[st.ranks[0]]].name), true);
       is(`${st.axis}: 「はじめる」と「戻る」`, i1.includes("はじめる") && i1.includes("戻る"), true);
       // 行の中は句の塊(2026-10-06 見直し。切り方は story.js の notePhrases)
       const noteHtml = (p) => `<p class="hint story-intro-note">${stageIntro(st.axis, p).note.map((l) => `<span>${phrasesOf(notePhrases(l)).map((x) => `<span class="text-phrase">${x}</span>`).join("")}</span>`).join("")}</p>`;
-      is(`${st.axis}: 結びは1文ずつ行に分け、行の中は句の塊で出す`, [1, 2, 3].every((p) => [i1, i2, i3][p - 1].includes(noteHtml(p))), true);
+      is(`${st.axis}: 結びは1文ずつ行に分け、行の中は句の塊で出す(フェーズ2 の第1話は「王の力とは」が代わりに言う)`, [1, 2, 3].every((p) => (p === 2 && st.axis === "23" ? !/story-intro-note/.test(i2) : [i1, i2, i3][p - 1].includes(noteHtml(p)))), true);
     }
     // 5×5 の図だと 8 と 2・9 と 3・J と 4・Q と 5 が同じ絵になっていた(2026-09-30 レビュー)。12 段とも違う絵
     is("フェーズ1 の図は駒ごとに違う(12 段)", [Object.keys(diagrams).length, new Set(Object.values(diagrams)).size], [12, 12]);
@@ -495,7 +501,7 @@ console.log("\n配線(game.jsx / screens.jsx)");
   const screens = fs.readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8");
   is("GameCore に story プロップ(と次へ・やり直しの受け口)", /\n  story = null,\n  onNextStory = null,\n  onRetryStory = null,\n  round = 0,/.test(game), true);
   is("CPU はストーリーなら軸の王の定石CPU", game.includes("const foeArea = story ? storyCpuArea(story.axis, story.king) : cpuArea;") && game.includes("josekiCpuAction(a, T, foeArea.type, foeArea.king)"), true);
-  is("START_SETUP にフェーズの旗(フェーズ1は王の力なし)", game.includes("...setupFlagsForPhase(phase),"), true);
+  is("START_SETUP にフェーズの旗(フェーズ1は王の力なし・ストーリーのフェーズ2はプレイヤーの席だけ)", game.includes("...(story && cpu && !network && !tutorial ? storySetupFlags(phase) : setupFlagsForPhase(phase)),"), true);
   // チュートリアルは台本のフェーズ(はじめの一局は 1。2026-10-01)。第1〜13話は持たないので全部の決まり。
   // ?? PHASE_MAX を落とすと normalizePhase(undefined)=1 になり、第1〜13話の王の力が消える
   is("フェーズは チュートリアル=台本のフェーズ(無ければ全部の決まり) / 通信=部屋 / ストーリー=ステージ / 手元=profile", game.includes("const phase = tutorial ? (tutorial.phase ?? PHASE_MAX) : network ? onlinePhase(network.phase) : story ? story.phase : phaseOf(loadProfile());"), true);

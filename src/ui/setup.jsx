@@ -7,6 +7,7 @@ import {
   squareName,
   territoryRows,
   armySlots,
+  kingPowersOn,
 } from "../game/board.js";
 
 import {
@@ -16,13 +17,16 @@ import {
   SUIT_SYMBOL,
   nameOf,
 } from "../game/constants.js";
+import { CHANCE_TELL } from "../game/king-power-hint.js";
+import { FOE_LEGEND, MOVE_LEGEND, kingPowerCard, kingPowerTag } from "../game/king-power-text.js";
 import { hasAdjudicationRules } from "../game/rule-version.js";
+import { autoArrangeAction } from "../game/auto-setup.js";
 // 予備札の盤で、相手の「分かっている駒」を表で見せる(本編の盤と同じ決まり)
 import { isKnownTo } from "../game/areas.js";
 import { useWindowWidth } from "../hooks.js";
 import { ArrowLeft, Crown, Dice, Grid } from "../icons.jsx";
 import { CardBack, CardFace } from "./cards.jsx";
-import { CardGuide } from "./guides.jsx";
+import { CardGuide, PowerBands, PowerFigure, PowerFigurePair } from "./guides.jsx";
 import { useNames } from "./names.jsx";
 // 句ごとに折り返す文(iPhone の WebKit は auto-phrase を知らない。2026-10-06 見直し)
 import { Phrases } from "./phrases.jsx";
@@ -660,6 +664,10 @@ export function PlaceStep({
           </span>
         )}
       </p>
+      {/* K を置くと王は必ず K(王を選ぶ画面で初めて知ると遅い。置く前に知らせる。AI プレイヤーの評価 12〜15回目) */}
+      {!terse && player.hand.some((c) => c.rank === "K") && (
+        <p className="setup-k-note">Kを置くと、Kが必ず王になる。</p>
+      )}
       <div className="arrange-layout">
         <div
           className="mini-board"
@@ -750,7 +758,7 @@ export function PlaceStep({
       <div className="setup-actions">
         <button
           className="btn btn-ghost"
-          onClick={() => dispatch({ type: "SETUP_AUTO_ARRANGE", player: pIdx })}
+          onClick={() => dispatch(autoArrangeAction(state, pIdx))}
         >
           <Grid size={16} /> 自動配置
         </button>
@@ -775,6 +783,82 @@ export function PlaceStep({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * 王を選ぶ画面の「王の力」(2026-10-25 本人の指示「王の力とはなにか説明が出るように」)。
+ * 王の力がある対局(フェーズ2 以降・その席に力がある)だけ出す。盤のすぐ下に置き、タップで中身が変わっても盤は動かない。
+ * AI プレイヤー3人で話し合って決めた形(design-v2): タップした駒1つ分だけを、どの数字でも同じ形で見せる
+ * (見出し → ふつう/王の図 → 太字の1行 → この盤だけの1行 → 読まれやすさの1行 → くわしく)。
+ * 選ぶ前は、盤の駒ごとの力の一言を並べて比べられるようにする。文と図は src/game/king-power-text.js。
+ * シーズン2 のスキンの王はスキンの力の文
+ */
+function kingPowerBoard(state, pIdx, player, placement) {
+  if (!kingPowersOn(state, pIdx) || state.scripted) return null;
+  const cards = Object.keys(placement || {})
+    .map((id) => findHandCard(player, id))
+    .filter(Boolean);
+  if (!cards.length) return null;
+  const counts = {};
+  for (const c of cards) counts[c.rank] = (counts[c.rank] || 0) + 1;
+  return { counts, hasJQ: !!(counts.J || counts.Q), size: state.boardSize };
+}
+
+function KingPowerCard({ state, pIdx, player, pickedKing, info }) {
+  const picked = pickedKing ? findHandCard(player, pickedKing) : null;
+  if (!picked) {
+    // 選ぶ前から、盤の駒ごとの力の一言を並べる(タップしないと比べられなかった。評価 14・15回目)。
+    // 力の起きない数字は灰色で最後に
+    const rows = Object.keys(info.counts)
+      .sort((a, b) => RANKS.indexOf(a) - RANKS.indexOf(b))
+      .map((rank) => {
+        const skin = aliceSkin(state, pIdx, rank);
+        if (skin) return { rank, text: skin.move || skin.description, active: true, fig: null };
+        // 駒ごとに、王にしたときの小さな図(カードの右の図と同じ。図の無い数字は空き)
+        const fig = kingPowerCard(rank, info.counts[rank], info.size, info.hasJQ).figs?.[1] || null;
+        return { rank, ...kingPowerTag(rank, info.counts[rank], info.size, info.hasJQ), fig };
+      });
+    const ordered = [...rows.filter((r) => r.active), ...rows.filter((r) => !r.active)];
+    return (
+      <section className="kp-card is-empty" role="note" aria-live="polite">
+        <b className="kp-head">王にすると、こうなる</b>
+        {/* 王の力の代償は選ぶ前に一度だけ(王を選ぶときに知りたい、と言われた。評価 12・13回目)。
+            カードのいちばん下だと下に留めた釦に隠れた(評価 18回目)ので、見出しのすぐ下に */}
+        <p className="kp-tell"><Phrases text={CHANCE_TELL} /></p>
+        <ul className="kp-tags">
+          {ordered.map((r) => (
+            <li key={r.rank} className={r.active ? "" : "is-idle"}>
+              <span className="kp-list-rank">{r.rank}</span>
+              {r.fig && r.active ? <PowerFigure spec={r.fig} caption={false} mini /> : <span className="kp-mini-none" aria-hidden="true" />}
+              <span>{r.text}</span>
+            </li>
+          ))}
+        </ul>
+        <p><Phrases text="駒をタップすると、図でくわしく見られる。" /></p>
+      </section>
+    );
+  }
+  const skin = aliceSkin(state, pIdx, picked.rank);
+  if (skin)
+    return (
+      <section className="kp-card" role="note" aria-live="polite">
+        <b className="kp-head">{picked.rank}を王にすると</b>
+        <p className="kp-bold">{skin.description}</p>
+      </section>
+    );
+  const card = kingPowerCard(picked.rank, info.counts[picked.rank], info.size, info.hasJQ);
+  return (
+    <section className="kp-card" role="note" aria-live="polite">
+      <b className="kp-head">{card.head}</b>
+      {card.figs && <p className="kp-legend-short"><Phrases text={card.figs.some((f) => f.foes.length) ? FOE_LEGEND : MOVE_LEGEND} /></p>}
+      {card.figs && <PowerFigurePair figs={card.figs} />}
+      {card.bands && <PowerBands kind={card.bands} />}
+      {card.bold && <p className="kp-bold"><Phrases text={card.bold} /></p>}
+      {card.plain && <p className="kp-plain"><Phrases text={card.plain} /></p>}
+      {card.board && <p className="kp-board"><Phrases text={card.board} /></p>}
+      {/* 細かい決まり・使うときの注意は、対局中に力を使える場面で光と一言で出す(2026-10-25 本人の指示「王を選ぶ画面は短く」) */}
+    </section>
   );
 }
 
@@ -835,12 +919,13 @@ export function KingStep({
       ? forceRank
       : null;
   const flipped = pIdx === 1;
+  const powerInfo = kingPowerBoard(state, pIdx, player, placement);
   return (
-    <div className={`setup-wrap setup-wrap-compact${quiet ? " first-game-setup" : ""}`}>
+    <div className={`setup-wrap setup-wrap-compact${quiet ? " first-game-setup" : ""}${powerInfo ? " has-king-power" : ""}`}>
       <div className="setup-head">
         {!quiet && (
           <h2 style={{ color: PLAYER_META[pIdx].color }}>
-            {nameOf(pIdx, names)}: 王にするカードを決めてね
+            {nameOf(pIdx, names)}: 王にする駒を決めてね
           </h2>
         )}
         <SetupOrderNote state={state} pIdx={pIdx} plain={quiet || orderPlain} />
@@ -856,7 +941,7 @@ export function KingStep({
           {revealMode
             ? `相手に公開する駒を${revealWant}枚タップで選んでください(王は選べません)。残り${revealWant - chosenReveals.length}枚`
             : hasK
-              ? (state.kingPowers!==false && aliceSkin(state,pIdx,"K") && Object.keys(placement).some(id=>player.hand.find(c=>c.id===id)?.rank==="A") ? "ハートの王はAと一緒に編成できません。配置に戻ってAを外してください。" : "Kを配置しているので、Kが王になります。")
+              ? (kingPowersOn(state,pIdx) && aliceSkin(state,pIdx,"K") && Object.keys(placement).some(id=>player.hand.find(c=>c.id===id)?.rank==="A") ? "ハートの王はAと一緒に編成できません。配置に戻ってAを外してください。" : "Kを置いているので、Kが王になる。")
               : forced
                 ? `この話では「${forced}」を王にします。${forced}の駒をタップしてください。`
                 : (
@@ -864,7 +949,7 @@ export function KingStep({
                   // 320 幅だと「…王にす/る1枚を…」と語の途中で割れた。句は1つの span に包む
                   // (案内の行は flex なので、句を直に並べると句ごとに離れた箱になる)
                   <span>
-                    <Phrases text={["配置したカードの中から", "王にする1枚を", "タップしてください。"]} />
+                    <Phrases text={["盤のあなたの駒を", "1つタップすると、", "その駒が王になる。", "何度でも選び直せる。"]} />
                   </span>
                 )}
         </p>
@@ -888,7 +973,7 @@ export function KingStep({
                 Object.values(foePlacement).some((at) => at.row === row && at.col === col);
               const selectable =
                 card &&
-                (!hasK || card.rank === "K") && !(state.kingPowers!==false && aliceSkin(state,pIdx,card.rank) && ["J","Q","K"].includes(card.rank) && Object.keys(placement).some(id=>player.hand.find(c=>c.id===id)?.rank==="A")) &&
+                (!hasK || card.rank === "K") && !(kingPowersOn(state,pIdx) && aliceSkin(state,pIdx,card.rank) && ["J","Q","K"].includes(card.rank) && Object.keys(placement).some(id=>player.hand.find(c=>c.id===id)?.rank==="A")) &&
                 (!forced || card.rank === forced);
               return (
                 <div
@@ -945,7 +1030,11 @@ export function KingStep({
           )}
         </div>
       </div>
-      <div className={`setup-actions ${revealWant > 0 ? "setup-actions-wrap" : ""}`}>
+      {powerInfo && !revealMode && (
+        <KingPowerCard state={state} pIdx={pIdx} player={player} pickedKing={pickedKing} info={powerInfo} />
+      )}
+      {/* 王の力の説明があるときは、釦を画面の下に留める(説明は画面ごと送って読む。欄の中だけを送る形はやめた。design-v2) */}
+      <div className={`setup-actions ${revealWant > 0 ? "setup-actions-wrap" : ""}${powerInfo ? " setup-actions-stick" : ""}`}>
         {!lockPlacement && (
           <button
             className="btn btn-ghost"

@@ -220,8 +220,13 @@ export function rangeBonus(piece, armyRankCounts, kingRank) {
  * 王そのものはいて、伏せたままで、討てば勝ち。力(伸び・継承・道連れ・まとめ取り・
  * 2回行動・J/Q の+1・K の予備札)だけを切る。採用枚数の決まり(maxAdopt)は札の規則なので残す
  */
-export function kingPowersOn(state) {
-  return !state || state.kingPowers !== false;
+export function kingPowersOn(state, owner = null) {
+  if (!state) return true;
+  const powers = state.kingPowers;
+  // 席ごとの旗 [席0, 席1](フェーズ2のストーリー: 王の力はプレイヤーの席だけ。2026-10-25 本人の指示)
+  if (Array.isArray(powers))
+    return owner == null ? powers.some((on) => on !== false) : powers[owner] !== false;
+  return powers !== false;
 }
 
 /** その軍の王の数字。まだ王が決まっていなければ null */

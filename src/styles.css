@@ -1444,6 +1444,8 @@ body:has(.skin-overlay) {
   background: rgba(12, 15, 30, 0.85);
   border-radius: 1px;
 }
+.power-diagram .md-foe { background: #3b2633; box-shadow: inset 0 0 0 2px #9a5a6e; border-radius: 50%; }
+.power-diagram .md-cap { background: #7a2b3c; box-shadow: inset 0 0 0 2px #ff8a8a; }
 .md-reach {
   background: var(--gold);
   opacity: 0.85;
@@ -9934,6 +9936,85 @@ svg {
 .story-lesson { margin: 0; color: var(--text); font-size: 12px; line-height: 1.7; }
 /* .story-gate の文は句の塊(2026-10-06 見直し)。2行目の行(句の塊ではない span)だけを block にする */
 .story-lesson span, .story-gate > span:not(.text-phrase) { display: block; color: var(--text-dim); }
+/* 決着の判定まで、あと何手番か(2026-10-25)。手元の対局だけ */
+.stall-meter { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 4px auto 8px; color: var(--text-dim); font-size: 12px; line-height: 1.6; text-align: center; }
+.stall-meter small { font-size: 11px; opacity: 0.8; }
+.stall-meter.is-near { color: var(--gold); }
+/* フェーズ2 の第1話の「王の力とは」(2026-10-25) */
+.story-power { margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 12px; text-align: left; }
+.story-power > b { display: block; color: var(--gold); font-size: 14px; letter-spacing: 0.08em; margin-bottom: 4px; }
+.story-power > p { margin: 2px 0; color: var(--text); font-size: 13px; line-height: 1.7; }
+.story-power-example { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.story-power-example figure { margin: 0; display: flex; flex-direction: column; align-items: center; }
+.story-power-example .move-diagram { width: 96px; }
+.story-power-example figcaption { margin-top: 6px; color: var(--text-dim); font-size: 12px; text-align: center; }
+.story-power-foot { margin: 8px 0 0; color: var(--text-dim); font-size: 12px; line-height: 1.7; }
+.story-power-label { margin: 8px 0 0; color: var(--text-dim); font-size: 12px; }
+.story-power-rules { margin: 4px 0 10px; padding: 8px 10px; border-radius: 10px; background: rgba(212, 175, 55, 0.12); }
+.story-power-rules p { margin: 2px 0; color: var(--text); font-size: 13px; font-weight: 600; line-height: 1.7; }
+.story-power-example-title { margin: 12px 0 0; color: var(--gold); font-size: 13px; font-weight: 600; }
+.story-power-heir { margin: 12px 0 0; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(212, 175, 55, 0.4); }
+.story-power-heir h5 { margin: 0 0 2px; color: var(--gold); font-size: 13px; font-weight: 600; }
+.story-power-heir p { margin: 0; color: var(--text); font-size: 13px; line-height: 1.7; }
+.story-intro-items-title { margin: 14px 0 6px; color: var(--gold); font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-align: left; }
+/* 王を選ぶ画面の「王の力」(2026-10-25 design-v2)。盤のすぐ下に、タップした駒1つ分の説明のカードと、閉じた一覧 */
+.kp-card { margin: 0 auto 8px; max-width: 520px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; text-align: left; background: rgba(255, 255, 255, 0.03); }
+.kp-card p { margin: 4px 0 0; color: var(--text); font-size: 13px; line-height: 1.7; }
+.kp-card.is-empty p { color: var(--text-dim); }
+.kp-head { display: block; color: var(--gold); font-size: 14px; font-weight: 700; letter-spacing: 0.04em; }
+.kp-card .kp-bold { font-weight: 700; }
+.kp-card .kp-tell { margin-top: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(212, 175, 55, 0.1); color: var(--text); font-size: 12px; line-height: 1.6; }
+.kp-card .kp-legend-short { margin: 6px 0 0; color: var(--text-dim); font-size: 12px; text-align: center; }
+.kp-head-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.kp-card .kp-board { font-weight: 700; color: var(--gold-soft); }
+.kp-more-toggle { flex: 0 0 auto; margin: 0; padding: 4px 0; border: 0; background: none; color: var(--gold); font-size: 12px; cursor: pointer; }
+.kp-more { margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
+.kp-more p { font-size: 12px; line-height: 1.7; }
+.kp-card .kp-legend { color: var(--text-dim); }
+.kp-more-fig { display: flex; justify-content: center; margin: 6px 0; }
+.setup-k-note { margin: -2px 0 6px; color: var(--gold-soft); font-size: 12px; text-align: center; }
+.kp-tags { list-style: none; margin: 6px 0 2px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.kp-tags li { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; line-height: 1.6; }
+.kp-tags .pf.is-mini { flex: 0 0 auto; }
+.kp-tags .kp-mini-none { flex: 0 0 52px; }
+.kp-tags li.is-idle { color: var(--text-dim); opacity: 0.7; }
+.kp-list-rank { flex: 0 0 auto; min-width: 22px; padding: 1px 4px; border-radius: 4px; background: var(--text); color: #111; font-weight: 700; text-align: center; }
+/* 王の力の説明があるときは盤を少し小さくし、説明の大事な行(読まれやすさ)まで最初の画面に入れる(評価 9回目) */
+.setup-wrap-compact.has-king-power .mini-board { width: min(64vw, 250px, calc(100dvh - 480px)); min-width: 200px; }
+/* 説明があるときは釦を画面の下に留める(布陣の枠が送る箱なので sticky で留まる) */
+.setup-actions-stick { position: sticky; bottom: 0; z-index: 5; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); background: rgba(9, 18, 34, 0.94); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+/* 王の力の図(PowerFigure)。5×5、1マス 18px・すき間 1px */
+.pf { margin: 0; display: flex; flex-direction: column; align-items: center; }
+.pf-board { position: relative; display: grid; grid-template-columns: repeat(5, 18px); grid-auto-rows: 18px; gap: 1px; padding: 1px; border-radius: 4px; background: rgba(255, 255, 255, 0.07); }
+.pf-cell { position: relative; display: flex; align-items: center; justify-content: center; background: rgba(12, 15, 30, 0.85); border-radius: 1px; }
+.pf-cell.pf-gold { background: var(--gold); }
+.pf-me { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 2px; background: #f4f1e8; color: #111; font-size: 11px; font-weight: 800; line-height: 1; box-shadow: 0 0 0 1px var(--gold-soft); }
+.pf-me.is-king { box-shadow: 0 0 0 2px var(--gold); }
+.pf-crown { position: absolute; top: -9px; right: -7px; color: var(--gold); filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000); }
+.pf-foe { position: relative; z-index: 1; width: 12px; height: 12px; border-radius: 50%; background: #d0465a; }
+.pf-foe.is-faded { opacity: 0.4; }
+.pf-cell.pf-dot::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--gold-soft); box-shadow: 0 0 4px var(--gold); }
+.pf-cell.pf-frame { box-shadow: inset 0 0 0 2px #d0483a; }
+.pf-arrow { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+/* 王を選ぶ前の一覧に添える小さな図(駒ごとの「王にすると」。評価 16回目) */
+.pf.is-mini .pf-board { grid-template-columns: repeat(5, 9px); grid-auto-rows: 9px; gap: 1px; padding: 1px; border-radius: 2px; }
+.pf.is-mini .pf-me { width: 8px; height: 8px; font-size: 6px; border-radius: 1px; box-shadow: none; }
+.pf.is-mini .pf-me.is-king { box-shadow: 0 0 0 1px var(--gold); }
+.pf.is-mini .pf-crown { top: -6px; right: -5px; }
+.pf.is-mini .pf-foe { width: 6px; height: 6px; }
+.pf.is-mini .pf-cell.pf-dot::after { width: 3px; height: 3px; box-shadow: none; }
+.pf.is-mini .pf-cell.pf-frame { box-shadow: inset 0 0 0 1px #d0483a; }
+.pf figcaption { margin-top: 4px; color: var(--text-dim); font-size: 12px; line-height: 1.4; text-align: center; max-width: 130px; }
+.pf figcaption span { display: block; }
+.pf figcaption span + span { color: var(--text); font-weight: 600; }
+.pf-pair { display: flex; justify-content: center; align-items: flex-start; gap: 8px; margin: 8px 0 4px; }
+.pf-to { align-self: center; margin-top: -18px; color: rgba(212, 175, 55, 0.7); font-size: 14px; }
+.pf-bands { display: flex; flex-direction: column; gap: 6px; margin: 8px auto 4px; max-width: 230px; }
+.pf-band { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); font-size: 12px; }
+.pf-band-who { min-width: 34px; color: var(--text-dim); }
+.pf-band.is-king .pf-band-who { color: var(--gold); font-weight: 700; }
+.pf-band-turn { color: var(--text); }
+.pf-band-marks { margin-left: auto; color: var(--text); letter-spacing: 0.05em; }
 .story-loss-note { padding: 12px; border: 1px solid var(--line); border-radius: 12px; text-align: left; }
 .story-loss-note b { font-size: 14px; line-height: 1.7; font-weight: 500; }
 .story-loss-note p { margin: 6px 0 0; color: var(--text-dim); font-size: 13px; line-height: 1.7; }
@@ -10831,3 +10912,14 @@ svg {
   box-sizing: border-box;
   width: var(--first-game-board-size);
 }
+
+/* 対局中の王の力の知らせ(2026-10-25 本人の指示「王の力が使える場面になったら、その場で一言と光で知らせる」)。
+   力を使える駒は金色の輪で光り、選ぶと力でしか行けない先が金色に脈打つ。一言は盤のすぐ下 */
+.cell-kp-ready { box-shadow: inset 0 0 0 2px rgba(240, 200, 80, 0.9); animation: kp-ready 1.6s ease-in-out infinite; }
+.cell.cell-kp-power, .cell.cell-capture.cell-kp-power { background: rgba(240, 200, 80, 0.55); box-shadow: inset 0 0 0 2px #f0c850; animation: kp-ready 1.2s ease-in-out infinite; }
+@keyframes kp-ready { 0%, 100% { box-shadow: inset 0 0 0 2px rgba(240, 200, 80, 0.5); } 50% { box-shadow: inset 0 0 0 3px rgba(255, 220, 110, 1); } }
+@media (prefers-reduced-motion: reduce) { .cell-kp-ready, .cell.cell-kp-power { animation: none; } }
+.kp-chance { margin: 8px auto 0; max-width: 520px; padding: 8px 12px; border: 1px solid rgba(240, 200, 80, 0.6); border-radius: 10px; background: rgba(240, 200, 80, 0.12); text-align: left; }
+.kp-chance em { display: inline-block; margin-bottom: 2px; padding: 0 6px; border-radius: 4px; background: rgba(240, 200, 80, 0.25); color: var(--gold); font-size: 11px; font-style: normal; font-weight: 700; }
+.kp-chance b { display: block; color: var(--gold-soft); font-size: 13px; line-height: 1.6; }
+.kp-chance span { display: block; color: var(--text); font-size: 12px; line-height: 1.6; }

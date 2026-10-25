@@ -159,7 +159,11 @@ try {
     16,
     "2を1枚採用した王の図は4方向3マスと、比較用の基本4マス",
   );
-  assert.match(second, /9×9/);
+  // 2026-10-25 本人の指示でフェーズ2 はストーリーもオンラインも 5×5。王の力はストーリーではあなたの王だけ
+  assert.match(second, /<dt>ストーリーの盤<\/dt><dd>5×5<\/dd>/);
+  assert.match(second, /<dt>オンラインの盤<\/dt><dd>5×5<\/dd>/);
+  assert.doesNotMatch(second, /9×9/);
+  assert.match(second, /あり\(ストーリーはあなたの王だけ\)/);
   const third = render.phase({ ...fresh, phase: 3 });
   assert.match(third, /5×5ではエリア効果を使いません/);
   assert.match(third, /フォイルを持っているだけでは発動しません/);

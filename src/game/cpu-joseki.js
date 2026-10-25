@@ -18,6 +18,7 @@ import {
   shuffle,
   territoryRows,
   armySlots,
+  kingPowersOn,
 } from "./board.js";
 import {
   AREA_BY_RANK,
@@ -634,7 +635,7 @@ export function skyAct(opts = {}) {
     }
     // 継承者(王と同じ数字の仲間)。王の力なし(フェーズ1)では継承が起きないので 0 = 王は使い捨てにしない
     const heirs =
-      king && s.kingPowers !== false && ["2", "3"].includes(king.rank)
+      king && kingPowersOn(s, me) && ["2", "3"].includes(king.rank)
         ? allMine.filter((q) => q.rank === king.rank && !q.isKing).length
         : 0;
     const kingPenalty =
@@ -726,7 +727,7 @@ export function skyAct(opts = {}) {
       const ids = idsOf(board0, m);
       let score = capValue(ids);
       // 道連れは王の力。力なし(フェーズ1)では起きないので、自分の危険を軽く見ない
-      const kamikaze = kamikazeRank && s.kingPowers !== false && p.rank === kamikazeRank && !p.isKing;
+      const kamikaze = kamikazeRank && kingPowersOn(s, me) && p.rank === kamikazeRank && !p.isKing;
       let safe0 = moveSafety(s, me, p, m, ids, {
         unknownWeight,
         unknownThreats: unknown,
@@ -794,7 +795,7 @@ export function skyAct(opts = {}) {
         !extra &&
         moved.rank === "10" &&
         // 10 の王の 2 回目は王の力。力なし(フェーズ1)では無い
-        ((moved.isKing && s.kingPowers !== false) || moved.skyTwice || s.players[me].skyTwice)
+        ((moved.isKing && kingPowersOn(s, me)) || moved.skyTwice || s.players[me].skyTwice)
       ) {
         let best2 = 0;
         for (const m2 of legal(moved, board, s.boardSize, counts, kr)) {
