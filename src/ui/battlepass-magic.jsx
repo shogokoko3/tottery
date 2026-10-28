@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { audioSettings, connectFilmSound, duckMusic } from "../audio/index.js";
+import { audioSettings, connectFilmSound, duckMusic, playAuxiliarySound } from "../audio/index.js";
+import { nativeHomeMusicAvailable } from "../audio/native-home-music.js";
 import { createBattlePassPainter } from "./battlepass-magic-painter.js";
 import styles from "./battlepass-magic.css";
 
@@ -112,7 +113,7 @@ export function BattlePassMagic({ imageSrc, order, onComplete }) {
       width = 360,
       height = 480,
       phaseNow = "";
-    let painter, observer, sound, soundUrl, disconnect, releaseMusic;
+    let painter, observer, sound, soundUrl, disconnect, releaseMusic, stopNative;
     const image = new Image();
     const reducedQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const reduced = reducedQuery.matches;
@@ -130,6 +131,7 @@ export function BattlePassMagic({ imageSrc, order, onComplete }) {
       disconnect = null;
       releaseMusic?.();
       releaseMusic = null;
+      stopNative?.();
       if (soundUrl) URL.revokeObjectURL(soundUrl);
       soundUrl = null;
     };
@@ -218,12 +220,16 @@ export function BattlePassMagic({ imageSrc, order, onComplete }) {
       try {
         const settings = audioSettings();
         if (!settings.muted && settings.se > 0) {
+          if (nativeHomeMusicAvailable()) {
+            stopNative = playAuxiliarySound(reduced ? "battlepass:reduced" : "battlepass:full");
+          } else {
           soundUrl = chimeUrl(reduced);
           sound = new Audio(soundUrl);
           sound.preload = "auto";
           sound.setAttribute("playsinline", "");
           disconnect = connectFilmSound(sound);
           sound.play().catch(() => {});
+          }
           releaseMusic = duckMusic(duration);
         }
       } catch {

@@ -1051,5 +1051,25 @@
     "sourceSha256": "c97564883b1bea0eb280d98d1f85cba3dd7f7d1f3984f248fc94ace2ae1894b1",
     "normalizationGain": 0.8917304960577088,
     "playbackMode": "authored-intro-loop"
+  },
+  {
+    "id": "homeDefault",
+    "file": "homeDefault.m4a",
+    "kind": "bgm",
+    "name": "標準のホームBGM",
+    "scene": "ホーム（通常背景のおまかせ・自由選曲）",
+    "duration": 96.43401360544217,
+    "bytes": 3053050,
+    "rms": -17.05531956120279,
+    "introDuration": 4.12,
+    "loopStart": 4.12,
+    "loopEnd": 96.03401360544218,
+    "source": "assets/audio/masters/home-soft-loop-20261023.m4a",
+    "sourceRevision": "approved-home-soft-loop-20261023",
+    "loopCrossfade": 0.55,
+    "approvedFrom": "reports/home-bgm-32s-20261023/02_soft_full.m4a",
+    "sourceSha256": "52b83ca12190fbbd87e5906490bfa08eaa80e756a6206ba8a526bf04de685f95",
+    "normalizationGain": 0.504389431337821,
+    "playbackMode": "authored-intro-loop"
   }
 ]

@@ -6,8 +6,10 @@
  */
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { phaseOf } from "../game/phase.js";
 import { loadProfile, PROFILE_CHANGED } from "../game/profile.js";
+import { getCollection, subscribeCollection } from "../skins/store.js";
+import { homeMusicForProfile } from "./home-music.js";
+import { homeMusicChoice, subscribeHomeMusic } from "./home-music-settings.js";
 import { TUTORIAL_VOLUME, isEndgame, trackForScene } from "./tracks.js";
 import { CAPTURE_DUCK_MS, warnLevel } from "./sounds.js";
 import { duckMusic, playSound, playTrack, playResultTrack, setVolumeScale } from "./player.js";
@@ -21,6 +23,7 @@ export {
   duckMusic,
   playSound,
   playAreaSound,
+  playAuxiliarySound,
   setBgmVolume,
   setMuted,
   setSeVolume,
@@ -34,24 +37,28 @@ export {
  * 対局中(screen === "game")は何もしない。曲は useGameBgm のほうが決めるので、
  * ここから触ると布陣の曲を上書きしてしまう。
  */
-function homePhaseSnapshot() {
-  return phaseOf(loadProfile());
+function homeMusicSnapshot() {
+  return homeMusicForProfile(getCollection(), loadProfile(), homeMusicChoice());
 }
 
-function subscribeHomePhase(refresh) {
+function subscribeHomeAudio(refresh) {
   if (typeof window === "undefined") return () => {};
+  const stopCollection = subscribeCollection(refresh);
+  const stopMusic = subscribeHomeMusic(refresh);
   const events = [PROFILE_CHANGED, "storage", "focus"];
   for (const event of events) window.addEventListener(event, refresh);
   document.addEventListener("visibilitychange", refresh);
   return () => {
+    stopCollection();
+    stopMusic();
     for (const event of events) window.removeEventListener(event, refresh);
     document.removeEventListener("visibilitychange", refresh);
   };
 }
 
 export function useScreenBgm(screen) {
-  const storyPhase = useSyncExternalStore(subscribeHomePhase, homePhaseSnapshot, () => 1);
-  const id = screen === "game" ? null : trackForScene({ screen, storyPhase });
+  const homeTrack = useSyncExternalStore(subscribeHomeAudio, homeMusicSnapshot, () => "homeDefault");
+  const id = screen === "game" ? null : trackForScene({ screen, homeTrack });
   (0, useEffect)(() => {
     if (!id) return;
     setVolumeScale(1);

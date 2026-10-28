@@ -1,0 +1,29 @@
+.home-music-settings .home-music-row {
+  align-items: center;
+  flex-wrap: wrap;
+}
+.home-music-row select {
+  flex: 1;
+  min-width: min(100%, 210px);
+  max-width: 100%;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel, #101d2d);
+  color: var(--gold-soft);
+  font: inherit;
+}
+.home-music-row select:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.home-music-settings .home-music-note {
+  margin: 10px 0 6px;
+}
+.home-music-current {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--gold-soft);
+}

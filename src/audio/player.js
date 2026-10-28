@@ -1,10 +1,11 @@
 /**
  * BGM を鳴らす。
  *
- * 音量の上げ下げを Web Audio の GainNode でやっている。iOS では
- * <audio> の volume に代入しても無視されるので、GainNode を挟まないと
- * 音量調整もクロスフェードもできない。音そのものは <audio> のまま流すので、
- * 曲の全体を読み終える前に鳴り始める。
+ * iOSアプリはBGM・SEともAVAudioEngineを使い、同梱音源を標準の
+ * デコーダーで再生する。ループ・対局から終盤への接続・停止位置と
+ * タスク復帰はネイティブ側で管理する。動画も音声だけネイティブへ分離する。
+ * ブラウザー/AndroidはWeb Audioの既存経路を使う。
+ * 以下はWeb版のグラフ。ネイティブ版も同じ音量・duck・SE設定を共有する。
  *
  *   曲ごとの gain ──┐
  *   曲ごとの gain ──┼─ master(BGMの音量) ─ duck(演出中だけ下げる) ─┐
@@ -20,6 +21,10 @@
  */
 
 import { MusicVoice, harmonyAt, endgameBoundary } from "./music-voice.js";
+import { NativeHomeMusicVoice, nativeHomeMusicAvailable } from "./native-home-music.js";
+import { prepareNativeEffect, nativeEffect, stopNativeEffects, nativeEffectsVolume, resumeNativeAudio, connectNativeFilm } from "./native-effects.js";
+import { AUXILIARY_SOUNDS } from "./auxiliary-sounds.js";
+import { decodeAudio, prioritizeDecode } from "./decode-queue.js";
 import { tonalSound } from "./tonal-cues.js";
 import { captureSoundOnBus } from "./capture-sounds.js";
 import { SOUNDS, IMPORTANT_CUES, importantCueGain } from "./sounds.js";
@@ -72,16 +77,24 @@ const lastSoundAt = new Map();
 const loadingSounds = new Map();
 let paletteTimer = null;
 let lastCueDuration = 0;
-const soundReads=[];let soundReadCount=0;
-function readSound(file) {
-  return new Promise((resolve,reject)=>{soundReads.push({file,resolve,reject});pumpSoundReads();});
+const soundReads = [], soundReadJobs = new Map();
+let soundReadCount = 0;
+function readSound(file, priority = 0) {
+  return new Promise((resolve, reject) => {
+    const job = { file, priority, resolve, reject };
+    soundReadJobs.set(file, job);
+    soundReads.push(job);
+    pumpSoundReads();
+  });
 }
 function pumpSoundReads() {
   while(soundReadCount<4 && soundReads.length) {
+    soundReads.sort((a,b)=>b.priority-a.priority);
     const job=soundReads.shift();soundReadCount++;
     fetch(audioUrl(job.file)).then(r=>{if(r.ok===false)throw new Error("Audio unavailable");return r.arrayBuffer();})
-      .then(raw=>ctx.decodeAudioData(raw)).then(job.resolve,job.reject)
-      .finally(()=>{soundReadCount--;pumpSoundReads();});
+      .finally(()=>{soundReadCount--;pumpSoundReads();})
+      .then(raw=>decodeAudio(ctx,raw,job.priority,job.file)).then(job.resolve,job.reject)
+      .finally(()=>{soundReadJobs.delete(job.file);});
   }
 }
 const inBackground = () => nativeInactive || systemInterrupted || (typeof document !== "undefined" && document.hidden);
@@ -116,19 +129,34 @@ function seLevel() {
  * そのときは <audio> の volume でごまかす(iOS 以外なら効く)。
  */
 function ensureGraph() {
+  if (nativeHomeMusicAvailable()) return null;
   if (ctx) return ctx;
   const Ctor =
     typeof window !== "undefined" &&
     (window.AudioContext || window.webkitAudioContext);
   if (!Ctor) return null;
   try {
-    ctx = new Ctor();
+    // A modest buffer gives music rendering more headroom without using the
+    // long, music-only "playback" latency for interactive SE.
+    try { ctx = new Ctor({ latencyHint: "balanced" }); }
+    catch { ctx = new Ctor(); }
   } catch {
     return null;
   }
   ctx.addEventListener?.("statechange", () => {
     if (ctx.state === "interrupted") {
       contextInterrupted = true;
+      if (wanted === "homeDefault" && nativeHomeMusicAvailable() && !inBackground()) {
+        // A WebKit-only interruption must not pause the independent native
+        // music engine. Real app/call interruptions are handled natively and
+        // by tottery-audio-state. Drop old SE rather than replaying them later.
+        for (const el of filmElements) el.pause();
+        for (const source of [...activeSounds]) {
+          try { source.stop(); } catch {}
+          activeSounds.delete(source);
+        }
+        return;
+      }
       pauseApplicationAudio();
     } else if (ctx.state === "running" && contextInterrupted) {
       contextInterrupted = false;
@@ -165,6 +193,14 @@ function nodeFor(id) {
   const track = TRACKS[id];
   if (!track) return null;
 
+  if (nativeHomeMusicAvailable()) {
+    const voice = new NativeHomeMusicVoice(track, audioUrl(track.file));
+    voice.mix({ track: 0, master: masterLevel(), duck: Date.now() < duckUntil ? duckTarget : 1 });
+    const node = { el: voice, gain: null, native: true, track, stopTimer: null };
+    nodes.set(id, node);
+    return node;
+  }
+
   const el = new Audio(audioUrl(track.file));
   el.loop = !!track.loop;
   el.preload = "auto";
@@ -193,6 +229,7 @@ function nodeFor(id) {
 
 /** 曲の音量を to まで ms かけて動かす */
 function fade(node, to, ms) {
+  if (node.native) { node.el.fadeTrack(to, ms); return; }
   if (!node.gain || !ctx) {
     // GainNode が無いときは、段階を踏まずに切り替える
     node.el.volume = Math.min(1, Math.max(0, to * masterLevel()));
@@ -284,6 +321,20 @@ function apply() {
     node.el.pause();
     // 前の曲を維持し、次の再生要求で再試行できるようにする。
   };
+  if (current === "battle" && target === "endgame" && node.native && nodes.get(current)?.native) {
+    const from = current;
+    request.from = from;
+    node.el.transitionFrom(nodes.get(from).el).then(({ delay }) => {
+      if (pendingTrack !== request) return;
+      request.nativeStart = Date.now() + delay * 1000;
+      request.commitTimer = setTimeout(() => {
+        if (pendingTrack !== request) return;
+        pendingTrack = null; current = target; startPaletteUpdates();
+        nodes.get(from)?.el.releasePrepared?.();
+      }, delay * 1000);
+    }, failed);
+    return;
+  }
   if(current === "battle" && target === "endgame" && node.el.canSchedule) {
     const from=current,outgoing=nodes.get(from);
     request.from=from;
@@ -327,16 +378,21 @@ function apply() {
 /**
  * 効果音をまとめて読む。
  *
- * 全部で数十KBしかないので、解錠のときに読んでしまう。
+ * 基本のSEを上限付きで先読みし、報酬音の和音違いは必要な分だけ読む。
  * 押した瞬間に鳴らせないと効果音の意味がないので、
  * BGM のように鳴らすときに取りに行く作りにはしていない。
  */
-function loadSound(id, file = SOUNDS[id]?.file) {
+function loadSound(id, file = (SOUNDS[id] || AUXILIARY_SOUNDS[id])?.file, priority = 3) {
   if (buffers.has(id)) return Promise.resolve(buffers.get(id));
-  if (loadingSounds.has(id)) return loadingSounds.get(id);
-  if (!file || !ctx) return Promise.resolve(null);
-  const task = readSound(file)
-    .then(buf => { buffers.set(id, buf); if (IMPORTANT_CUES[id] || id.startsWith("bloom-")) cueGains.set(id, importantCueGain(buf));
+  if (loadingSounds.has(id)) {
+    const job=soundReadJobs.get(file);
+    if(job)job.priority=Math.max(job.priority,priority);
+    prioritizeDecode(ctx,file,priority);
+    return loadingSounds.get(id);
+  }
+  if (!file || (!ctx && !nativeHomeMusicAvailable())) return Promise.resolve(null);
+  const task = (nativeHomeMusicAvailable() ? prepareNativeEffect(id, audioUrl(file)) : readSound(file, priority))
+    .then(buf => { buffers.set(id, buf); if (IMPORTANT_CUES[id] || id.startsWith("bloom-")) cueGains.set(id, buf.native ? buf.cueGain : importantCueGain(buf));
       const tonalKeys=[...buffers.keys()].filter(key=>key.startsWith("bloom-"));
       while(tonalKeys.length>24){const old=tonalKeys.shift();buffers.delete(old);cueGains.delete(old);}
       return buf; })
@@ -346,11 +402,11 @@ function loadSound(id, file = SOUNDS[id]?.file) {
   return task;
 }
 function ensureSounds() {
-  if (soundsLoading || conf().muted || !ensureGraph()) return;
+  if (soundsLoading || conf().muted || (!nativeHomeMusicAvailable() && !ensureGraph())) return;
   soundsLoading = true;
-  const queue = [...new Set(["tap", "place", "capture", "confirm", "back", "tick", ...Object.keys(SOUNDS)])];
+  const queue = [...new Set(["tap", "place", "capture", "confirm", "back", "tick", ...Object.keys(SOUNDS), ...(nativeHomeMusicAvailable() ? Object.keys(AUXILIARY_SOUNDS) : [])])];
   // Limit local file reads/decodes so the first tap does not start 70 requests.
-  const worker = async () => { while (queue.length) await loadSound(queue.shift()); };
+  const worker = async () => { while (queue.length) { const id=queue.shift(); await loadSound(id,undefined,0); } };
   Promise.all(Array.from({ length: 4 }, worker)).finally(() => { soundsLoading = false; });
 }
 
@@ -360,25 +416,26 @@ function ensureSounds() {
  * まだ読み終わっていなければ何もしない。待って鳴らすと、
  * 操作から遅れて鳴ることになって、かえって気持ちが悪い。
  */
-export function playSound(id, { rate = 1, harmony: preferredHarmony } = {}) {
+export function playSound(id, { rate = 1, harmony: preferredHarmony, presentation = false } = {}) {
   const sound = SOUNDS[id];
   const variant = tonalSound(id, preferredHarmony === undefined ? currentHarmony() : preferredHarmony);
   const bufferKey=variant?.key || id;
   const buf = buffers.get(bufferKey);
-  if (!sound || !ctx || !seBus || conf().muted || inBackground()) return;
+  if (!sound || (!nativeHomeMusicAvailable() && (!ctx || !seBus)) || conf().muted || inBackground() || !unlocked) return;
   if (!buf) {
     const requested = Date.now();
+    let cancelled = false, stop;
     loadSound(bufferKey,variant?.file || sound.file).then(value => {
-      if (value && Date.now() - requested < 180) playSound(id, { rate, harmony: preferredHarmony });
+      if (!cancelled && value && Date.now() - requested < 180) stop = playSound(id, { rate, harmony: preferredHarmony, presentation });
     });
-    return;
+    return () => { cancelled = true; stop?.(); };
   }
   const now = Date.now();
   const cue = IMPORTANT_CUES[id];
-  const priority = cue?.priority || 0;
+  const priority = Math.max(cue?.priority || 0, presentation ? 1 : 0);
   if (now - (lastSoundAt.get(id) || 0) < 100) return;
   if (priority === 0 && now < importantUntil) return;
-  if (ctx.state !== "running") return;
+  if (!nativeHomeMusicAvailable() && ctx.state !== "running") return;
   // A warning/result can replace a less important voice, never the reverse.
   if (activeSounds.size >= 8) {
     const victim = [...activeSounds].find(source => (source.cuePriority || 0) < priority);
@@ -399,18 +456,24 @@ export function playSound(id, { rate = 1, harmony: preferredHarmony } = {}) {
     }
   }
   lastSoundAt.set(id, now);
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
-  src.playbackRate.value = variant ? 1 : Math.max(0.5, Math.min(2, rate));
-  const gain = ctx.createGain();
-  gain.gain.value = sound.gain * (cueGains.get(bufferKey) || 1);
+  const speed = variant ? 1 : Math.max(0.5, Math.min(2, rate));
+  let src, gain;
+  if (buf.native) {
+    src = nativeEffect(buf, { rate: speed, gain: sound.gain * (cueGains.get(bufferKey) || 1), priority, ui: ["tap", "back", "page"].includes(id) });
+  } else {
+    src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = speed;
+    gain = ctx.createGain();
+    gain.gain.value = sound.gain * (cueGains.get(bufferKey) || 1);
+    src.connect(gain).connect(seBus);
+  }
   src.cuePriority = priority;
   src.uiCue = ["tap", "back", "page"].includes(id);
-  src.connect(gain).connect(seBus);
   activeSounds.add(src);
-  src.onended = () => { activeSounds.delete(src); src.disconnect(); gain.disconnect(); };
-  src.start(0);
-  lastCueDuration=buf.duration / src.playbackRate.value;
+  src.onended = () => { activeSounds.delete(src); src.disconnect(); gain?.disconnect(); };
+  if (!buf.native) src.start(0);
+  lastCueDuration=buf.duration / speed;
   if (cue) duckMusic(cue.duckMs, priority === 1 ? 0.6 : DUCK_LEVEL);
   if (played) played.push(id);
   return () => {
@@ -420,7 +483,34 @@ export function playSound(id, { rate = 1, harmony: preferredHarmony } = {}) {
   };
 }
 
+export function playAuxiliarySound(id, { priority = 1 } = {}) {
+  const sound = AUXILIARY_SOUNDS[id];
+  if (!nativeHomeMusicAvailable() || !sound || !unlocked || conf().muted || inBackground() || seLevel() === 0) return;
+  const buffer = buffers.get(id);
+  if (!buffer) {
+    const requested = Date.now();
+    let cancelled = false, stop;
+    loadSound(id).then(value => { if (!cancelled && value && Date.now() - requested < 180) stop = playAuxiliarySound(id, { priority }); });
+    return () => { cancelled = true; stop?.(); };
+  }
+  const source = nativeEffect(buffer, { gain: sound.gain, priority });
+  activeSounds.add(source);
+  source.onended = () => activeSounds.delete(source);
+  if (played) played.push(id);
+  return () => source.stop();
+}
+
 export function createCaptureSound() {
+  if (nativeHomeMusicAvailable()) {
+    const stops = new Set();
+    const stop = () => { for (const stop of stops) stop(); stops.clear(); };
+    return { play(kind) {
+      if (kind === "hush") { stop(); return; }
+      if (kind === "hit") { const halt = playSound("capture"); if (halt) stops.add(halt); }
+      const halt = playAuxiliarySound(`capture:${kind}`, { priority: 2 });
+      if (halt) stops.add(halt);
+    }, stop };
+  }
   if (!unlocked || !ensureGraph() || !seBus || ctx.state !== "running")
     return { play() {}, stop() {} };
   return captureSoundOnBus(ctx, seBus, () => playSound("capture"));
@@ -429,6 +519,10 @@ export function createCaptureSound() {
 export function playAreaSound(type, { hit = true } = {}) {
   const selected = { earth: "earth", sea: "sea", forest: "forest", ice: "ice", sky: "sky", palace: "palace", heaven: "heaven", hell: "hell" }[type];
   if (selected) return playSound(selected);
+  if (nativeHomeMusicAvailable()) {
+    if (type === "thaw") return playSound("thaw");
+    return playAuxiliarySound(type === "birth" ? "area:birth" : "area:default");
+  }
 
   if (
     !unlocked ||
@@ -462,6 +556,11 @@ export function playAreaSound(type, { hit = true } = {}) {
 // Route movie audio through the same SE bus, including on iOS where setting a
 // media element's volume alone is ineffective. Reuse the node in StrictMode.
 export function connectFilmSound(el) {
+  if (nativeHomeMusicAvailable()) {
+    const disconnect = connectNativeFilm(el, { active: () => !inBackground() && !conf().muted && conf().se > 0 });
+    filmElements.add(el);
+    return () => { filmElements.delete(el); disconnect(); };
+  }
   if (ensureGraph()) {
     try {
       let node = filmNodes.get(el);
@@ -490,6 +589,7 @@ export function connectFilmSound(el) {
  * 呼ばれた時点で、待たせていた曲があれば流し始める。
  */
 export function unlockAudio() {
+  if (nativeHomeMusicAvailable()) { resumeNativeAudio(true); nativeEffectsVolume(seLevel()); }
   if (unlocked) { recoverAudio(true); return; }
   const c = ensureGraph();
   if (c) {
@@ -560,10 +660,12 @@ export function audioSettings() {
 }
 
 function pushMaster() {
+  for (const node of nodes.values()) if (node.native)
+    node.el.mix({ master: masterLevel(), durationMs: 80 });
   if (!ctx || !master) {
     // GainNode が無いときは、鳴っている曲の volume を直に動かす
     for (const [id, node] of nodes)
-      if (!node.gain)
+      if (!node.gain && !node.native)
         node.el.volume = id === current ? masterLevel() * node.track.gain : 0;
     return;
   }
@@ -574,6 +676,7 @@ function pushMaster() {
 }
 
 function pushSe() {
+  if (nativeHomeMusicAvailable()) nativeEffectsVolume(seLevel());
   if (!ctx || !seBus) return;
   const now = ctx.currentTime;
   seBus.gain.cancelScheduledValues(now);
@@ -624,24 +727,31 @@ export function setMuted(muted) {
  * 音がぶつかって潰れないようにするための口。
  */
 export function duckMusic(ms, level = DUCK_LEVEL) {
-  if (!ctx || !duck) return;
+  if ((!ctx || !duck) && !nativeHomeMusicAvailable()) return;
   if (Date.now() >= duckUntil) duckTarget = 1;
   duckTarget = Math.min(duckTarget, Math.max(0, Math.min(1, level)));
   duckUntil = Math.max(duckUntil, Date.now() + Math.max(0, Number(ms) || 700));
   const hold = Math.max(0, duckUntil - Date.now());
-  const now = ctx.currentTime;
-  duck.gain.cancelScheduledValues(now);
-  duck.gain.setValueAtTime(duck.gain.value, now);
-  duck.gain.linearRampToValueAtTime(duckTarget, now + 0.08);
+  if (ctx && duck) {
+    const now = ctx.currentTime;
+    duck.gain.cancelScheduledValues(now);
+    duck.gain.setValueAtTime(duck.gain.value, now);
+    duck.gain.linearRampToValueAtTime(duckTarget, now + 0.08);
+  }
+  for (const node of nodes.values()) if (node.native)
+    node.el.mix({ duck: duckTarget, durationMs: 80 });
   clearTimeout(duckTimer);
   const release = () => {
-    if (!ctx || !duck) return;
     duckUntil = 0;
     duckTarget = 1;
-    const t = ctx.currentTime;
-    duck.gain.cancelScheduledValues(t);
-    duck.gain.setValueAtTime(duck.gain.value, t);
-    duck.gain.linearRampToValueAtTime(1, t + 0.35);
+    if (ctx && duck) {
+      const t = ctx.currentTime;
+      duck.gain.cancelScheduledValues(t);
+      duck.gain.setValueAtTime(duck.gain.value, t);
+      duck.gain.linearRampToValueAtTime(1, t + 0.35);
+    }
+    for (const node of nodes.values()) if (node.native)
+      node.el.mix({ duck: 1, durationMs: 350 });
   };
   const timer = setTimeout(release, hold);
   duckTimer = timer;
@@ -689,7 +799,7 @@ export function armAudioUnlock() {
       // 鳴らした効果音の並びと、読み終わっているもの
       sounds: () => ({ 鳴らした: [...played], 読めた: [...buffers.keys()] }),
       // 演出中に BGM が下がっているか。1 なら下がっていない
-      duck: () => (duck ? +duck.gain.value.toFixed(3) : null),
+      duck: () => nativeHomeMusicAvailable() ? (Date.now() < duckUntil ? duckTarget : 1) : (duck ? +duck.gain.value.toFixed(3) : null),
       // 撃破を待たずに、下がって戻るのを確かめる
       duckNow: (ms) => duckMusic(ms),
       clearSounds: () => {
@@ -721,6 +831,7 @@ export function armAudioUnlock() {
 }
 
 function pauseApplicationAudio() {
+  if (nativeHomeMusicAvailable()) stopNativeEffects();
   clearTimeout(paletteTimer);
   recoveryRequest++;
   recovering = false;
@@ -730,14 +841,14 @@ function pauseApplicationAudio() {
     try { source.stop(); } catch {}
     activeSounds.delete(source);
   }
-  if (pendingTrack) { clearTimeout(pendingTrack.commitTimer); pendingTrack.node.el.pause(); pendingTrack = null; }
+  if (pendingTrack) { clearTimeout(pendingTrack.commitTimer); pendingTrack.node.el.pause({ lifecycle: true }); pendingTrack = null; }
   for (const [id,node] of nodes) {
     clearTimeout(node.stopTimer);
     // Native inactive, visibilitychange and interruption can pause the same
     // music repeatedly. Keep the first position until it is resumed/left.
     if (id===current && !node.el.paused) node.resumePosition=true;
-    node.el.pause();
-    fade(node, 0, 0);
+    node.el.pause({ lifecycle: true });
+    if (!node.native) fade(node, 0, 0);
   }
   current = null;
 }
@@ -748,17 +859,34 @@ function recoverAudio(fromGesture = false) {
   if (fromGesture) resumeNeedsGesture = false;
   if (resumeNeedsGesture || (recovering && !fromGesture)) return;
   const request = ++recoveryRequest;
+  const nativeWanted = nativeHomeMusicAvailable();
   const finish = () => {
     if (request !== recoveryRequest) return;
     recovering = false;
     if (inBackground() || conf().muted || resumeNeedsGesture) return;
-    if (ctx && ctx.state !== "running") return;
+    if (ctx && ctx.state !== "running" && !nativeWanted) return;
     contextInterrupted = false;
+    const native = nodes.get(current);
+    if (native?.native) {
+      native.el.refreshState().then(() => {
+        if (request !== recoveryRequest || inBackground() || conf().muted || resumeNeedsGesture) return;
+        if (current && nodes.get(current)?.el.paused) current = null;
+        apply();
+      }).catch(() => {});
+      return;
+    }
     // A media element may be paused by the OS even if the context is running.
     if (current && nodes.get(current)?.el.paused) current = null;
     apply();
   };
-  if (ctx && (ctx.state === "suspended" || ctx.state === "interrupted")) {
+  if (nativeWanted) {
+    resumeNativeAudio(fromGesture);
+    // Music must not depend on the Web Audio SE context recovering.
+    if (ctx && (ctx.state === "suspended" || ctx.state === "interrupted")) {
+      try { ctx.resume()?.catch?.(() => {}); } catch {}
+    }
+    finish();
+  } else if (ctx && (ctx.state === "suspended" || ctx.state === "interrupted")) {
     recovering = true;
     try {
       const resumed = ctx.resume();
@@ -770,7 +898,8 @@ function recoverAudio(fromGesture = false) {
 
 function currentHarmony() {
   if(conf().bgm === 0 || conf().muted || inBackground())return null;
-  const sounding=pendingTrack?.when!=null && ctx?.currentTime>=pendingTrack.when ? pendingTrack.id : current;
+  const transitioned = pendingTrack?.nativeStart != null ? Date.now() >= pendingTrack.nativeStart : pendingTrack?.when != null && ctx?.currentTime >= pendingTrack.when;
+  const sounding = transitioned ? pendingTrack.id : current;
   const node=nodes.get(sounding);
   return node ? harmonyAt(node.track,node.el.currentTime) : null;
 }
@@ -783,7 +912,7 @@ function startPaletteUpdates() {
     const upcoming=harmonyAt(node.track,node.el.currentTime+2);
     const variants=[harmony,upcoming].flatMap(h=>["reveal_r","reveal_sr","reveal_ssr"].map(id=>tonalSound(id,h)));
     const queue=[...new Map(variants.map(v=>[v.key,v])).values()];
-    const work=async()=>{while(queue.length){const v=queue.shift();await loadSound(v.key,v.file);}};
+    const work=async()=>{while(queue.length){const v=queue.shift();await loadSound(v.key,v.file,0);}};
     Promise.all([work(),work()]);
   }
   paletteTimer=setTimeout(startPaletteUpdates,1500);

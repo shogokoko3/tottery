@@ -86,7 +86,7 @@ assert.equal(p.currentTrack(),'title');
 const resumedHome=sources.filter(s=>s.buffer?.tag?.endsWith('/title.m4a')).at(-1);
 assert.ok(Math.abs(resumedHome.offset-42.345)<.001,'ホームBGMは背景に移動した位置から再開');
 assert.equal(sources.filter(s=>s.buffer?.tag?.endsWith('.m4a')&&!s.stopped).length,1,'復帰時のBGMは一本だけ');
-for (const id of ['homePhase2','homePhase3']) {
+for (const id of ['homeDefault','homePhase2','homePhase3']) {
  p.playTrack(id,{restart:true});await flush();advance(3210);
  windowListeners['tottery-audio-state']({status:'inactive'});
  document.hidden=true;listeners.visibilitychange();advance(12000);await flush();
@@ -101,7 +101,7 @@ p.setMuted(true);assert.equal(p.currentTrack(),null);p.stopMusic();
 // Check several cycles directly, without advancing hundreds of timer callbacks.
 const realFetch=globalThis.fetch;globalThis.fetch=fetch;
 try {
- for (const id of ['title','homePhase2','homePhase3']) {
+ for (const id of ['homeDefault','title','homePhase2','homePhase3']) {
  const c=new AudioContext(),track=TRACKS[id],voice=new MusicVoice(c,track,'audio/'+track.file,node(),new Audio('audio/'+track.file));
  await voice.play();const began=c.currentTime;
  clock+=(track.loopEnd+2)*1000;

@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A28B0D001000000000000007 /* NativeGameAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A28B0D001000000000000008 /* NativeGameAudio.swift */; };
+		A28B0D001000000000000005 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A28B0D001000000000000006 /* PrivacyInfo.xcprivacy */; };
+		A28B0D001000000000000001 /* NativeHomeMusicEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A28B0D001000000000000003 /* NativeHomeMusicEngine.swift */; };
+		A28B0D001000000000000002 /* NativeHomeMusicPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A28B0D001000000000000004 /* NativeHomeMusicPlugin.swift */; };
 		054D10C6305597C400A34E96 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 054D10C5305597C400A34E96 /* StoreKit.framework */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
@@ -20,6 +24,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A28B0D001000000000000008 /* NativeGameAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGameAudio.swift; sourceTree = "<group>"; };
+		A28B0D001000000000000006 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A28B0D001000000000000003 /* NativeHomeMusicEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHomeMusicEngine.swift; sourceTree = "<group>"; };
+		A28B0D001000000000000004 /* NativeHomeMusicPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHomeMusicPlugin.swift; sourceTree = "<group>"; };
 		054D10C3305597B500A34E96 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		054D10C5305597C400A34E96 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
@@ -79,6 +87,10 @@
 			children = (
 				054D10C3305597B500A34E96 /* App.entitlements */,
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
+				A28B0D001000000000000003 /* NativeHomeMusicEngine.swift */,
+				A28B0D001000000000000004 /* NativeHomeMusicPlugin.swift */,
+				A28B0D001000000000000008 /* NativeGameAudio.swift */,
+				A28B0D001000000000000006 /* PrivacyInfo.xcprivacy */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -156,6 +168,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A28B0D001000000000000005 /* PrivacyInfo.xcprivacy in Resources */,
 				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
@@ -174,6 +187,9 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				A28B0D001000000000000001 /* NativeHomeMusicEngine.swift in Sources */,
+				A28B0D001000000000000002 /* NativeHomeMusicPlugin.swift in Sources */,
+				A28B0D001000000000000007 /* NativeGameAudio.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -29,6 +29,7 @@ function subscribe(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
 }
+export { subscribe as subscribeCollection };
 if (typeof window !== "undefined")
   window.addEventListener("storage", (e) => {
     if (e.key !== null && e.key !== COLLECTION_KEY) return;

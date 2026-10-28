@@ -35,7 +35,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = CAPBridgeViewController()
+        window?.rootViewController = GameBridgeViewController()
         window?.makeKeyAndVisible()
         NotificationCenter.default.addObserver(self,
             selector: #selector(audioInterruption(_:)),
@@ -66,6 +66,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     private func suspendGameMedia() {
+        (window?.rootViewController as? GameBridgeViewController)?.suspendNativeGameAudio()
         let shouldSuspend = mediaLifecycle.suspend()
         audioState("inactive")
         guard shouldSuspend else { return }
@@ -77,8 +78,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneWillResignActive(_ scene: UIScene) { suspendGameMedia() }
     func sceneDidEnterBackground(_ scene: UIScene) { suspendGameMedia() }
     func sceneDidBecomeActive(_ scene: UIScene) {
+        // Native music must resume even when WebKit's suspension completion
+        // or visibility event is delayed/missing after task switching.
+        (window?.rootViewController as? GameBridgeViewController)?.resumeNativeGameAudio()
+        audioState("active")
         guard let revision = mediaLifecycle.resume() else {
-            audioState("active")
             return
         }
         guard let webView = (window?.rootViewController as? CAPBridgeViewController)?.webView else {

@@ -28,7 +28,7 @@ function is(got, want, label) {
 
 // --- 画面ごと ---
 for (const screen of ["home", "matching", "rules"])
-  is(trackForScene({ screen }), "title", `${screen} は表題の曲`);
+  is(trackForScene({ screen }), "homeDefault", `${screen} は標準のホーム曲`);
 for (const screen of ["online", "room"])
   is(trackForScene({ screen }), "waiting", `${screen} は待機の曲`);
 

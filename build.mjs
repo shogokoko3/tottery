@@ -19,6 +19,7 @@ import fs from "node:fs";
 import { TRACKS } from "./src/audio/tracks.js";
 import { SOUNDS } from "./src/audio/sounds.js";
 import { TONAL_ASSETS } from "./src/audio/tonal-cues.js";
+import { AUXILIARY_SOUNDS } from "./src/audio/auxiliary-sounds.js";
 import { SUPPORT_EMAIL } from "./src/game/support.js";
 import { WONDERLAND_HOME_THEMES } from "./src/skins/home-wonderland-themes.js";
 import { execFileSync } from "node:child_process";
@@ -83,7 +84,7 @@ function image(png, why) {
 // 音。index.html からは audio/ という相対の場所として見えている。
 // 束ねる前に写して、元の名前 → ハッシュ付きの名前 の表を作っておく
 const audioFiles = {};
-const selectedAudio = new Set([...Object.values(TRACKS), ...Object.values(SOUNDS), ...TONAL_ASSETS].map(sound => sound.file));
+const selectedAudio = new Set([...Object.values(TRACKS), ...Object.values(SOUNDS), ...TONAL_ASSETS, ...Object.values(AUXILIARY_SOUNDS)].map(sound => sound.file));
 let audioKb = 0;
 for (const dir of ["audio", "dist/audio"]) {
   fs.rmSync(dir, { recursive: true, force: true });
@@ -91,11 +92,11 @@ for (const dir of ["audio", "dist/audio"]) {
 }
 if (fs.existsSync("assets/audio"))
   for (const name of fs.readdirSync("assets/audio")) {
-    if (!name.endsWith(".m4a") || !selectedAudio.has(name)) continue;
+    if (!/\.(m4a|wav)$/.test(name) || !selectedAudio.has(name)) continue;
     const data = fs.readFileSync(`assets/audio/${name}`);
     audioKb += data.length;
     const hash = createHash("sha256").update(data).digest("hex").slice(0, 8);
-    const hashed = name.replace(/\.m4a$/, `.${hash}.m4a`);
+    const hashed = name.replace(/\.(m4a|wav)$/, `.${hash}.$1`);
     audioFiles[name] = hashed;
     for (const dir of ["audio", "dist/audio"])
       fs.writeFileSync(`${dir}/${hashed}`, data);

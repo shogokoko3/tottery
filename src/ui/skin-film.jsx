@@ -36,7 +36,7 @@ export function SkinFilm({ skin, short = false, onClose }) {
           : 5000;
       const duration = short ? 2000 : length;
       playbackTimer = setTimeout(finish, duration);
-      if (!el.muted) releaseMusic = duckMusic(duration);
+      if (!audioSettings().muted && audioSettings().se > 0) releaseMusic = duckMusic(duration);
     };
     el.playbackRate = short ? 2.5 : 1;
     el.muted = audioSettings().muted || audioSettings().se === 0;

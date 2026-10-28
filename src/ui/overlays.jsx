@@ -1,4 +1,5 @@
 import { HomeCustomizationButton } from "./home-customization.jsx";
+import { HomeMusicSettings } from "./home-music-settings.jsx";
 import { AppearanceSettings } from "./season.jsx";
 import { useCollection, updateCollection } from "../skins/store.js";
 import { useEffect, useState } from "react";
@@ -404,12 +405,7 @@ function SoundSettings() {
           playSound("place");
         }}
       />
-      <div className="settings-row">
-        <span>出どころ</span>
-        <b>
-          {MUSIC_CREDIT} / {SE_CREDIT}
-        </b>
-      </div>
+      <HomeMusicSettings />
     </div>
   );
 }
@@ -779,6 +775,10 @@ export function SettingsModal({ onClose }) {
               <div className="settings-row">
                 <span>この版の内容</span>
                 <b>{VERSION_NOTE}</b>
+              </div>
+              <div className="settings-row">
+                <span>音の出どころ</span>
+                <b>{MUSIC_CREDIT} / {SE_CREDIT}</b>
               </div>
               <div className="settings-row">
                 <span>ルールの確認</span>

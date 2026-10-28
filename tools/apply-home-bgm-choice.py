@@ -106,5 +106,5 @@ def apply_choice(track_id, choice):
 
 
 choices = json.loads((ROOT/'docs/audio-source-overrides.json').read_text())
-for track_id in ['title', 'homePhase2', 'homePhase3']:
+for track_id in ['homeDefault', 'title', 'homePhase2', 'homePhase3']:
     if track_id in choices:apply_choice(track_id, choices[track_id])

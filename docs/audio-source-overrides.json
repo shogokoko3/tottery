@@ -46,5 +46,21 @@
     "reportDirectory": "reports/home-phase-bgm-20261024/phase3",
     "editVerification": "reports/home-phase-bgm-20261024/phase3/edit-verification.json",
     "reason": "採用曲の導入を初回だけ流し、旋律・和音と拍の合うフレーズへ接続。実際の反復点は同一の録音内に置く。"
+  },
+  "homeDefault": {
+    "revision": "approved-home-soft-loop-20261023",
+    "source": "assets/audio/masters/home-soft-loop-20261023.m4a",
+    "approvedFrom": "reports/home-bgm-32s-20261023/02_soft_full.m4a",
+    "sha256": "52b83ca12190fbbd87e5906490bfa08eaa80e756a6206ba8a526bf04de685f95",
+    "playbackMode": "authored-intro-loop",
+    "bpm": 78.3,
+    "beatsPerBar": 4,
+    "loopStart": 4.12,
+    "loopEnd": 96.03401360544218,
+    "loopCrossfade": 0.55,
+    "reportDirectory": "reports/home-music-choice-20261028/default-master",
+    "editVerification": "reports/home-bgm-loop-20261023/edit-verification.json",
+    "reason": "以前採用したホーム曲を通常背景向けと自由選曲用に復帰。承認済みループ原本を無変換で同梱。",
+    "name": "標準のホームBGM"
   }
 }

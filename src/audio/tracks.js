@@ -1,5 +1,6 @@
 import { MUSIC_LAYOUTS } from "./music-layouts.js";
-import { normalizePhase } from "../game/phase.js";
+import { DEFAULT_HOME_MUSIC, HOME_MUSIC_CHOICES } from "./home-music-options.js";
+export { HOME_PHASE_TRACK } from "./home-music-options.js";
 /**
  * どの場面でどの曲を鳴らすか。
  *
@@ -42,6 +43,9 @@ export function audioUrl(file) {
  * 勝敗後も結果画面の曲をループし、短い決着音はSEのバスで重ねる。
  */
 export const TRACKS = {
+  // The selected preview master is the reference for the standard home song.
+  // Keep its recorded level; the user's BGM slider is the only steady gain.
+  homeDefault: { ...MUSIC_LAYOUTS.homeDefault, file: "homeDefault.m4a", loop: true, gain: 1 },
   title: { ...MUSIC_LAYOUTS.title, file: "title.m4a", loop: true, gain: 0.75 * (MUSIC_LAYOUTS.title.normalizationGain ?? 1) },
   homePhase2: { ...MUSIC_LAYOUTS.homePhase2, file: "homePhase2.m4a", loop: true, gain: 0.75 * (MUSIC_LAYOUTS.homePhase2?.normalizationGain ?? 1) },
   homePhase3: { ...MUSIC_LAYOUTS.homePhase3, file: "homePhase3.m4a", loop: true, gain: 0.75 * (MUSIC_LAYOUTS.homePhase3?.normalizationGain ?? 1) },
@@ -69,9 +73,6 @@ export const MUSIC_CREDIT = "トッタリー オリジナルBGM";
  * 効果音の出どころ。効果音ラボは表記が要らないが、揃えて出しておく。
  */
 export const SE_CREDIT = "トッタリー オリジナルSE";
-
-/** 現在の進行に対応するホーム曲。過去の話の閲覧や着せ替えとは独立。 */
-export const HOME_PHASE_TRACK = Object.freeze({ 1: "title", 2: "homePhase2", 3: "homePhase3" });
 
 /** チュートリアル中の音量の倍率。考える邪魔をしないよう一段下げる */
 export const TUTORIAL_VOLUME = 0.55;
@@ -167,14 +168,14 @@ export const PHASE_TRACK = {
  * 上の2つの表には出てこないが、場面によって差し替わる曲。
  * ここに挙げていない曲が TRACKS にあると、鳴らす道がないので検査が知らせる。
  */
-export const EXTRA_TRACKS = ["endgame", "lose", "draw", "tutorial", ...Object.values(HOME_PHASE_TRACK)];
+export const EXTRA_TRACKS = ["endgame", "lose", "draw", "tutorial", ...HOME_MUSIC_CHOICES.filter((choice) => choice.id !== "auto").map((choice) => choice.id)];
 
 /**
  * いまの場面で鳴らす曲。鳴らさないときは null。
  *
  * scene は次の形:
  *   screen  画面(SCREEN_TRACK の見出し)
- *   storyPhase 現在のストーリー進行(1〜3)。ホームと同じ曲の画面で使う
+ *   homeTrack 背景と本人の選択から決めたホーム曲。ホームと同じ曲の画面で使う
  *   phase   対局中の進み具合(PHASE_TRACK の見出し)
  *   endgame 終盤かどうか
  *   result  決着したときだけ "win" / "lose" / "draw"
@@ -188,7 +189,9 @@ export function trackForScene(scene) {
 
   if (screen !== "game") {
     const id = screen in SCREEN_TRACK ? SCREEN_TRACK[screen] : "title";
-    return id === "title" ? HOME_PHASE_TRACK[normalizePhase(scene.storyPhase)] : id;
+    if (id !== "title") return id;
+    return scene.homeTrack !== "auto" && HOME_MUSIC_CHOICES.some((choice) => choice.id === scene.homeTrack)
+      ? scene.homeTrack : DEFAULT_HOME_MUSIC;
   }
 
   if (phase === "gameover") {

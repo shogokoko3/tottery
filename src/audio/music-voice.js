@@ -1,3 +1,5 @@
+import { decodeAudio } from "./decode-queue.js";
+
 /** Bounded decode cache; only current and next music are retained. */
 const decoded = new Map();
 let decodeQueue=Promise.resolve();
@@ -9,7 +11,7 @@ async function musicBuffer(ctx, url) {
   const pending = decodeQueue.then(()=>fetch(url)).then(r => {
     if (r.ok === false) throw new Error('Music unavailable');
     return r.arrayBuffer();
-  }).then(raw => ctx.decodeAudioData(raw));
+  }).then(raw => decodeAudio(ctx, raw, 2));
   decodeQueue=pending.then(()=>{},()=>{});
   decoded.set(url,pending);
   while (decoded.size > 2) decoded.delete(decoded.keys().next().value);
