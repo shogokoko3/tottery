@@ -22,7 +22,7 @@
 
 import { MusicVoice, harmonyAt, endgameBoundary } from "./music-voice.js";
 import { NativeHomeMusicVoice, nativeHomeMusicAvailable } from "./native-home-music.js";
-import { prepareNativeEffect, nativeEffect, stopNativeEffects, nativeEffectsVolume, resumeNativeAudio, connectNativeFilm } from "./native-effects.js";
+import { prepareNativeEffect, nativeEffect, stopNativeEffects, nativeEffectsVolume, resumeNativeAudio, observeNativeAudioState, connectNativeFilm } from "./native-effects.js";
 import { AUXILIARY_SOUNDS } from "./auxiliary-sounds.js";
 import { decodeAudio, prioritizeDecode } from "./decode-queue.js";
 import { tonalSound } from "./tonal-cues.js";
@@ -589,7 +589,13 @@ export function connectFilmSound(el) {
  * 呼ばれた時点で、待たせていた曲があれば流し始める。
  */
 export function unlockAudio() {
-  if (nativeHomeMusicAvailable()) { resumeNativeAudio(true); nativeEffectsVolume(seLevel()); }
+  if (nativeHomeMusicAvailable()) {
+    nativeEffectsVolume(seLevel());
+    unlocked = true;
+    ensureSounds();
+    recoverAudio(true);
+    return;
+  }
   if (unlocked) { recoverAudio(true); return; }
   const c = ensureGraph();
   if (c) {
@@ -769,6 +775,13 @@ export function duckMusic(ms, level = DUCK_LEVEL) {
 export function armAudioUnlock() {
   if (typeof document === "undefined" || lifecycleArmed) return;
   lifecycleArmed = true;
+  if (nativeHomeMusicAvailable()) observeNativeAudioState(state => {
+    if (state.status !== "resumed" || !state.canPlay || document.hidden) return;
+    nativeInactive = false;
+    systemInterrupted = false;
+    resumeNeedsGesture = false;
+    recoverAudio();
+  });
   const kinds = ["pointerdown", "touchend", "mousedown", "keydown", "click"];
   const once = () => {
     unlockAudio();
@@ -809,7 +822,7 @@ export function armAudioUnlock() {
   }
 
   document.addEventListener("visibilitychange", () => {
-    if (inBackground()) {
+    if (nativeHomeMusicAvailable() ? document.hidden : inBackground()) {
       pauseApplicationAudio();
       if (ctx?.suspend) { const r = ctx.suspend(); r?.catch?.(() => {}); }
     } else recoverAudio();
@@ -825,7 +838,9 @@ export function armAudioUnlock() {
       systemInterrupted = false;
       resumeNeedsGesture = status === "manual";
     }
-    if (inBackground() || resumeNeedsGesture) pauseApplicationAudio();
+    if (nativeHomeMusicAvailable() && ["active", "ended"].includes(status) && !document.hidden)
+      recoverAudio();
+    else if (inBackground() || resumeNeedsGesture) pauseApplicationAudio();
     else recoverAudio();
   });
 }
@@ -855,11 +870,13 @@ function pauseApplicationAudio() {
 
 /** Resume the existing graph/position; never replay stale SE from the call. */
 function recoverAudio(fromGesture = false) {
-  if (!unlocked || inBackground() || conf().muted) return;
+  const nativeWanted = nativeHomeMusicAvailable();
+  // Native iOS decides whether the interruption has ended. A stale JS flag
+  // must not prevent asking it after the page becomes visible again.
+  if (!unlocked || (nativeWanted ? document.hidden : inBackground()) || conf().muted) return;
   if (fromGesture) resumeNeedsGesture = false;
   if (resumeNeedsGesture || (recovering && !fromGesture)) return;
   const request = ++recoveryRequest;
-  const nativeWanted = nativeHomeMusicAvailable();
   const finish = () => {
     if (request !== recoveryRequest) return;
     recovering = false;
@@ -880,12 +897,16 @@ function recoverAudio(fromGesture = false) {
     apply();
   };
   if (nativeWanted) {
-    resumeNativeAudio(fromGesture);
-    // Music must not depend on the Web Audio SE context recovering.
-    if (ctx && (ctx.state === "suspended" || ctx.state === "interrupted")) {
-      try { ctx.resume()?.catch?.(() => {}); } catch {}
-    }
-    finish();
+    recovering = true;
+    resumeNativeAudio(fromGesture).then(state => {
+      if (request !== recoveryRequest) return;
+      recovering = false;
+      if (document.hidden || conf().muted || !state?.active || !state.canPlay) return;
+      nativeInactive = false;
+      systemInterrupted = false;
+      resumeNeedsGesture = !!state.needsGesture;
+      finish();
+    });
   } else if (ctx && (ctx.state === "suspended" || ctx.state === "interrupted")) {
     recovering = true;
     try {

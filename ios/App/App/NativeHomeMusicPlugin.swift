@@ -4,6 +4,13 @@ import AVFAudio
 
 final class GameBridgeViewController: CAPBridgeViewController {
     private let gameAudio = NativeHomeMusicPlugin()
+    #if DEBUG
+    override func instanceDescriptor() -> InstanceDescriptor {
+        let descriptor = super.instanceDescriptor()
+        if ProcessInfo.processInfo.arguments.contains("--audio-repro") { descriptor.appStartPath = "audio-repro.html" }
+        return descriptor
+    }
+    #endif
     override func capacitorDidLoad() { bridge?.registerPluginInstance(gameAudio) }
     func suspendNativeGameAudio() { gameAudio.suspendForLifecycle() }
     func resumeNativeGameAudio() { gameAudio.resumeForLifecycle() }
@@ -55,6 +62,26 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         return value
     }()
 
+    private func trace(_ event: String, error: Error? = nil) {
+        #if DEBUG
+        guard ProcessInfo.processInfo.arguments.contains("--audio-repro") else { return }
+        let data: [String: Any] = ["event": event, "uptime": ProcessInfo.processInfo.systemUptime,
+            "application": UIApplication.shared.applicationState.rawValue, "wanted": wanted ?? "",
+            "active": lifecycle.active, "interrupted": lifecycle.interrupted, "gesture": lifecycle.needsGesture,
+            "backgroundInterruption": lifecycle.interruptedInBackground,
+            "secondaryAudioSilenced": AVAudioSession.sharedInstance().secondaryAudioShouldBeSilencedHint,
+            "error": error.map { String(describing: $0) } ?? "",
+            "voices": music.mapValues { value in ["playing": value.engine.isPlaying,
+                "engineRunning": value.engine.engine.isRunning, "nodePlaying": value.engine.player.isPlaying,
+                "position": value.engine.position, "asset": value.engine.asset != nil,
+                "track": value.engine.level("track"), "master": value.engine.level("master"), "duck": value.engine.level("duck")] }]
+        if let json = try? JSONSerialization.data(withJSONObject: data, options: [.sortedKeys]), let text = String(data: json, encoding: .utf8) {
+            print("TOTTERY_AUDIO_TRACE " + text)
+            fflush(stdout)
+        }
+        #endif
+    }
+
     public override func load() {
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(inactive), name: UIApplication.willResignActiveNotification, object: nil)
@@ -73,34 +100,56 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async { self.resumeForLifecycle() }
     }
     func suspendForLifecycle() {
+        trace("suspend-before")
         lifecycle.background()
         cancelTransition(restore: false)
         for value in music.values { pause(value) }
         effects.stopAll()
+        trace("suspend-after")
     }
     func resumeForLifecycle() {
+        trace("foreground-before")
         guard UIApplication.shared.applicationState == .active else { return }
         lifecycle.foreground()
+        if lifecycle.needsForegroundActivation {
+            // On the actual iPhone a background deactivation arrives as a
+            // default interruption with no "ended" notification. Reactivate
+            // through iOS before clearing that background-only hold.
+            guard !AVAudioSession.sharedInstance().secondaryAudioShouldBeSilencedHint else {
+                trace("foreground-primary-audio-active")
+                return
+            }
+            do {
+                try activateSession()
+                lifecycle.foregroundActivationSucceeded()
+            } catch { trace("foreground-activation-error", error: error); return }
+        }
         resumeWanted()
+        trace("foreground-after")
     }
     private func resumeWanted() {
         guard lifecycle.canPlay, UIApplication.shared.applicationState == .active,
               let id = wanted, let value = music[id], value.engine.asset != nil,
-              !value.engine.isPlaying else { return }
+              !(value.engine.isPlaying && value.engine.engine.isRunning && value.engine.player.isPlaying) else { return }
         do {
+            if value.engine.isPlaying { pause(value) }
             try activateSession()
             value.engine.setLevel("track", value: 0)
             try value.engine.play()
             value.engine.setLevel("track", value: value.desiredGain, milliseconds: 350)
-        } catch { notifyListeners("nativeAudioState", data: ["status": "resume-failed"]) }
+            notifyListeners("nativeAudioState", data: ["status": "resumed", "canPlay": true])
+        } catch { trace("resume-error", error: error); notifyListeners("nativeAudioState", data: ["status": "resume-failed"]) }
     }
     @objc private func interrupted(_ event: Notification) {
         let type = event.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
         let options = event.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
         let isSuspension = gameAudioWasSuspended(event)
+        let reason = event.userInfo?[AVAudioSessionInterruptionReasonKey] as? UInt ?? 999
+        let appBackgrounded = UIApplication.shared.applicationState == .background
         DispatchQueue.main.async {
+            self.trace("interruption-\(type ?? 99)-reason-\(reason)-suspension-\(isSuspension)-options-\(options)")
             if type == AVAudioSession.InterruptionType.began.rawValue {
-                self.lifecycle.interruptionBegan(isSuspension: isSuspension)
+                self.lifecycle.interruptionBegan(isSuspension: isSuspension, appBackgrounded: appBackgrounded)
                 self.cancelTransition(restore: false)
                 for value in self.music.values { self.pause(value) }
                 self.effects.stopAll()
@@ -113,6 +162,7 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     @objc private func configurationChanged(_ event: Notification) {
         DispatchQueue.main.async {
+            self.trace("engine-configuration-change")
             if event.object as? AVAudioEngine === self.effects.engine { self.effects.stopAll(); return }
             guard let value = self.music.values.first(where: { event.object as? AVAudioEngine === $0.engine.engine }) else { return }
             // A stopped engine may still have a player timeline. Save it before
@@ -200,14 +250,16 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                 try self.activateSession()
                 try value.engine.play(position: call.getDouble("position"))
                 self.wanted = id
+                self.trace("play-\(id)")
                 call.resolve(self.state(id))
-            } catch { call.reject(error.localizedDescription) }
+            } catch { self.trace("play-error-\(id)", error: error); call.reject(error.localizedDescription) }
         }
     }
     @objc func pause(_ call: CAPPluginCall) {
         let id = id(call)
         let keepingIntent = call.getBool("keepIntent") ?? false
         DispatchQueue.main.async {
+            self.trace("pause-\(id)-keep-\(keepingIntent)")
             guard self.lifecycle.acceptsPause(keepingIntent: keepingIntent) else { call.resolve(self.state(id)); return }
             if self.transitionWork?.to == id { self.cancelTransition(restore: !keepingIntent) }
             if !keepingIntent, self.wanted == id { self.wanted = nil }
@@ -347,7 +399,9 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async {
             if call.getBool("gesture") == true { self.lifecycle.gesture() }
             self.resumeForLifecycle()
-            call.resolve()
+            call.resolve(["active": UIApplication.shared.applicationState == .active,
+                "canPlay": self.lifecycle.canPlay && UIApplication.shared.applicationState == .active,
+                "needsGesture": self.lifecycle.needsGesture, "interrupted": self.lifecycle.interrupted])
         }
     }
     deinit { NotificationCenter.default.removeObserver(self) }

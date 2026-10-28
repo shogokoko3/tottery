@@ -16,15 +16,27 @@ func gameAudioWasSuspended(_ notification: Notification) -> Bool {
 struct NativeGameAudioLifecycle {
     private(set) var active = true
     private(set) var interrupted = false
+    private(set) var interruptedInBackground = false
     private(set) var needsGesture = false
     var canPlay: Bool { active && !interrupted && !needsGesture }
+    var needsForegroundActivation: Bool { active && interrupted && interruptedInBackground && !needsGesture }
     mutating func background() { active = false }
     mutating func foreground() { active = true }
-    mutating func interruptionBegan(isSuspension: Bool = false) {
-        if !isSuspension { interrupted = true }
+    mutating func interruptionBegan(isSuspension: Bool = false, appBackgrounded: Bool = false) {
+        guard !isSuspension else { return }
+        // Preserve a genuine foreground interruption if another notification
+        // follows after the scene is backgrounded.
+        if !interrupted { interruptedInBackground = appBackgrounded }
+        interrupted = true
+    }
+    mutating func foregroundActivationSucceeded() {
+        guard needsForegroundActivation else { return }
+        interrupted = false
+        interruptedInBackground = false
     }
     mutating func interruptionEnded(shouldResume: Bool) {
         interrupted = false
+        interruptedInBackground = false
         needsGesture = !shouldResume
     }
     mutating func gesture() { needsGesture = false }

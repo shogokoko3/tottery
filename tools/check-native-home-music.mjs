@@ -66,7 +66,10 @@ for (const method of ['prepare','play','pause','state','setMix','release','trans
     if (method === 'prepareEffect') return { duration: options.key.startsWith('movie:') ? 6 : .3, cueGain: 2 };
     if (method === 'playEffect') return { played: nativeActive, duration: .3 };
     if (method === 'stopEffect' && options.token) effectListeners.get('effectEnded')?.({ token: options.token });
-    if (method === 'resumeAudio' && nativeActive && nativeWanted) state(nativeWanted).paused = false;
+    if (method === 'resumeAudio') {
+      if (nativeActive && nativeWanted) state(nativeWanted).paused = false;
+      return { active: nativeActive, canPlay: nativeActive, needsGesture: false };
+    }
     return { position: v.position, paused: v.paused };
   };
 }
@@ -119,6 +122,18 @@ document.hidden=true;events.visibilitychange();await settle();
 assert.equal(player.currentTrack(),null);
 nativeActive=true;state(nativeWanted).paused=false;document.hidden=false;events.visibilitychange();await settle();
 assert.equal(player.currentTrack(),'endgame');assert.equal(state('endgame').position,56.013);
+// Recorded iPhone sequence: background receives a default interruption, then
+// foreground arrives without an interruption-ended notification.
+nativeActive=false; document.hidden=true; events.visibilitychange();
+events['tottery-audio-state']({status:'interrupted'}); await settle();
+state('endgame').position=57.125;
+nativeActive=true;document.hidden=false;events.visibilitychange();await settle();
+assert.equal(player.currentTrack(),'endgame','Native acknowledgement releases the stale JS interruption hold');
+assert.equal(state('endgame').position,57.125);
+// Native foreground can notify recovery even if web visibility/focus was lost.
+events['tottery-audio-state']({status:'interrupted'});await settle();
+effectListeners.get('nativeAudioState')({status:'resumed',canPlay:true});await settle();
+assert.equal(player.currentTrack(),'endgame','Native resumed event restores the JS player too');
 // Foreground resumes natively before any web callback. A late web pause keeps intent.
 const independent=new NativeHomeMusicVoice(TRACKS.endgame,'audio/endgame.m4a',{bridge:nativeBridge,now:()=>clock});
 await independent.play();state('endgame').position=64.027;
@@ -154,7 +169,7 @@ assert.ok(swift.includes('registerPluginInstance(gameAudio)'));
 assert.ok(scene.indexOf('resumeNativeGameAudio()') < scene.indexOf('webView.setAllMediaPlaybackSuspended(false)'), 'Native foreground is independent of WebKit completion');
 assert.ok(swift.includes('lifecycle.acceptsPause(keepingIntent: keepingIntent)'));
 assert.ok(swift.includes('resumeWanted()'));
-assert.ok(swift.includes('interruptionBegan(isSuspension: isSuspension)'));
+assert.ok(swift.includes('interruptionBegan(isSuspension: isSuspension, appBackgrounded: appBackgrounded)'));
 assert.ok(scene.includes('if type == .began && gameAudioWasSuspended(notification) { return }'));
 const native=fs.readFileSync('ios/App/App/NativeGameAudio.swift','utf8');
 assert.ok(native.includes('.highShelf') && native.includes('.lowPass') && native.includes('frequency = 3200') && native.includes('gain = -6'));

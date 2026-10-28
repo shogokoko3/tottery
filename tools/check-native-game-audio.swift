@@ -30,6 +30,21 @@ lifecycle.interruptionEnded(shouldResume: false)
 lifecycle.interruptionBegan(isSuspension: true)
 require(!lifecycle.canPlay, "Suspension does not remove the requirement for a post-call gesture")
 lifecycle.gesture()
+// Actual iPhone 17 Pro / iOS 26.6.1: default interruption begins in background;
+// becoming active does not send an interruption-ended event.
+lifecycle.background()
+lifecycle.interruptionBegan(appBackgrounded: true)
+lifecycle.foreground()
+require(!lifecycle.canPlay && lifecycle.needsForegroundActivation, "Background interruption waits for real session reactivation")
+lifecycle.foregroundActivationSucceeded()
+require(lifecycle.canPlay, "Successful iOS activation recovers without an ended notification")
+lifecycle.interruptionBegan()
+lifecycle.background()
+lifecycle.interruptionBegan(appBackgrounded: true)
+lifecycle.foreground()
+lifecycle.foregroundActivationSucceeded()
+require(!lifecycle.canPlay && !lifecycle.needsForegroundActivation, "Foreground call cannot be reclassified by a later background event")
+lifecycle.interruptionEnded(shouldResume: true)
 print("Native lifecycle: 100 background/foreground cycles, missing web events, late pause, call and gesture PASS")
 
 func render(_ engine: AVAudioEngine, format: AVAudioFormat, frames: UInt32) throws -> [[Float]] {

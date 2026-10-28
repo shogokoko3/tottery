@@ -81,6 +81,10 @@ BGM音量・SE音量・消音・演出時のduckを別々に適用する。重�
 停止位置と再開意図はiOS側で保持する。`SceneDelegate`から非アクティブ時の停止と
 復帰時の再開を直接呼び、WebKitのメディア停止解除の完了やJavaScript通知を待たない。
 遅れて届いたWeb側の背景停止要求は、復帰済みのBGMを再び止めない。
+実機では背景中に通常の音声割り込みが入り、復帰時に終了通知が届かない順序も確認した。
+この背景中の割り込みに限り、前面復帰時にiOSの音声セッションを再有効化できた場合に解除する。
+前面で始まった着信や、ほかの音声・手動再開の指定は維持する。JavaScript側もネイティブの
+再開結果を待って停止状態を解除し、古い割り込みフラグで復帰確認を省略しない。
 通常の曲変更・明示停止・消音と、着信中/着信後の再開可否は引き続き尊重する。
 ブラウザー版とAndroid版は従来のWeb Audio経路を使う。
 1:08・1:22付近の旋律調整案は`reports/home-default-melody-20261028/`に比較用として保存し、
@@ -98,6 +102,9 @@ BGM音量・SE音量・消音・演出時のduckを別々に適用する。重�
 `tools/check-native-home-render.mjs`で標準曲の出力と原音を照合する。
 `npm run check:audio:ios`では全19曲のループ・186ファイルのSE・高音抑制・重要SEの優先と
 ネイティブ復帰を本番Swiftコードで検証する（macOS/Xcodeが必要）。
+`node tools/build-ios-audio-repro.mjs`は`ios:sync`後に同じplayerを使う診断HTMLを生成する。
+別のアプリIDで署名したDebug版を`--audio-repro`付きで起動し、端末上のアプリ切り替えと
+`TOTTERY_AUDIO_TRACE`・`AUDIO_REPRO_STATE`で位置と状態を照合できる。診断HTMLは配布同期で除去する。
 
 ## 解放条件
 

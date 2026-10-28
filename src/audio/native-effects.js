@@ -38,7 +38,12 @@ export function stopNativeEffects() {
   nativeAudioBridge().stopEffect({}).catch(() => {});
 }
 export function nativeEffectsVolume(volume) { nativeAudioBridge().setEffectsVolume({ volume }).catch(() => {}); }
-export function resumeNativeAudio(gesture = false) { nativeAudioBridge().resumeAudio({ gesture }).catch(() => {}); }
+export function resumeNativeAudio(gesture = false) {
+  return nativeAudioBridge().resumeAudio({ gesture }).catch(() => ({ active: false, canPlay: false }));
+}
+export function observeNativeAudioState(listener) {
+  nativeAudioBridge().addListener?.("nativeAudioState", listener)?.catch?.(() => {});
+}
 
 export function connectNativeFilm(el, { gain = .7, active = () => true } = {}) {
   const url = new URL(el.currentSrc || el.src, window.location.href);

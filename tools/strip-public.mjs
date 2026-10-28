@@ -25,7 +25,7 @@ if (!PUBLIC_DIR) {
   console.error(`× 知らない配信先: ${platform}(ios か android)`);
   process.exit(1);
 }
-const 落とすもの = ["admin.html", "_headers", "_redirects"];
+const 落とすもの = ["admin.html", "audio-repro.html", "_headers", "_redirects"];
 
 if (!fs.existsSync(PUBLIC_DIR)) {
   console.error(
