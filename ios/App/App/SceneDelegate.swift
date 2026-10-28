@@ -55,6 +55,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let value = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
               let type = AVAudioSession.InterruptionType(rawValue: value) else { return }
         let options = notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+        // Suspension is already covered by the scene lifecycle/native engine;
+        // treating its delayed notification as a call would block JS forever.
+        if type == .began && gameAudioWasSuspended(notification) { return }
         DispatchQueue.main.async { [weak self] in
             if type == .began {
                 self?.audioState("interrupted")

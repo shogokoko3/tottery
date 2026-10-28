@@ -154,6 +154,8 @@ assert.ok(swift.includes('registerPluginInstance(gameAudio)'));
 assert.ok(scene.indexOf('resumeNativeGameAudio()') < scene.indexOf('webView.setAllMediaPlaybackSuspended(false)'), 'Native foreground is independent of WebKit completion');
 assert.ok(swift.includes('lifecycle.acceptsPause(keepingIntent: keepingIntent)'));
 assert.ok(swift.includes('resumeWanted()'));
+assert.ok(swift.includes('interruptionBegan(isSuspension: isSuspension)'));
+assert.ok(scene.includes('if type == .began && gameAudioWasSuspended(notification) { return }'));
 const native=fs.readFileSync('ios/App/App/NativeGameAudio.swift','utf8');
 assert.ok(native.includes('.highShelf') && native.includes('.lowPass') && native.includes('frequency = 3200') && native.includes('gain = -6'));
 assert.ok(native.includes('stretch.pitch = 0'),'Short movies preserve pitch');

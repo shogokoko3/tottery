@@ -97,12 +97,14 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc private func interrupted(_ event: Notification) {
         let type = event.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
         let options = event.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+        let isSuspension = gameAudioWasSuspended(event)
         DispatchQueue.main.async {
             if type == AVAudioSession.InterruptionType.began.rawValue {
-                self.lifecycle.interruptionBegan()
+                self.lifecycle.interruptionBegan(isSuspension: isSuspension)
                 self.cancelTransition(restore: false)
                 for value in self.music.values { self.pause(value) }
                 self.effects.stopAll()
+                if isSuspension { self.resumeForLifecycle() }
             } else if type == AVAudioSession.InterruptionType.ended.rawValue {
                 self.lifecycle.interruptionEnded(shouldResume: AVAudioSession.InterruptionOptions(rawValue: options).contains(.shouldResume))
                 self.resumeWanted()

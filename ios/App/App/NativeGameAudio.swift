@@ -1,6 +1,17 @@
 import Foundation
 import AVFoundation
 
+#if os(iOS)
+// iOS 15 can deliver this deactivation only after the app runs again. It is
+// not an ongoing phone call and has no matching "interruption ended" event.
+// https://developer.apple.com/documentation/avfaudio/avaudiosession/interruptionnotification
+func gameAudioWasSuspended(_ notification: Notification) -> Bool {
+    let reason = notification.userInfo?[AVAudioSessionInterruptionReasonKey] as? UInt
+    let legacy = notification.userInfo?[AVAudioSessionInterruptionWasSuspendedKey] as? Bool ?? false
+    return reason == AVAudioSession.InterruptionReason.appWasSuspended.rawValue || legacy
+}
+#endif
+
 // Independent of WebKit's visibility events and media-suspension completion.
 struct NativeGameAudioLifecycle {
     private(set) var active = true
@@ -9,7 +20,9 @@ struct NativeGameAudioLifecycle {
     var canPlay: Bool { active && !interrupted && !needsGesture }
     mutating func background() { active = false }
     mutating func foreground() { active = true }
-    mutating func interruptionBegan() { interrupted = true }
+    mutating func interruptionBegan(isSuspension: Bool = false) {
+        if !isSuspension { interrupted = true }
+    }
     mutating func interruptionEnded(shouldResume: Bool) {
         interrupted = false
         needsGesture = !shouldResume
