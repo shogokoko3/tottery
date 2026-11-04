@@ -209,7 +209,8 @@ console.log("\n置き場を宛先ごとに分ける");
     "記念配布は期間前には出ない",
     !campaignLetters(camp.at - 1).some((l) => l.id === camp.id),
   );
-  const pre = got.list.find((l) => l.id === "campaign:prerelease-2026-09");
+  // 期限つきなので、今日ではなく期間中(2026-09-20)の時刻で見る。期限を過ぎても検査が落ちないように
+  const pre = campaignLetters(Date.UTC(2026, 8, 20)).find((l) => l.id === "campaign:prerelease-2026-09");
   t(
     "リリース前限定の300枚は期限つきで出る",
     pre && pre.gifts[0].amount === 300 && pre.until > pre.at,

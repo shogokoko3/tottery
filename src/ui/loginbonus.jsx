@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Ticket } from "../icons.jsx";
 import { getLoginBonus, claimLoginBonus } from "../net/wallet.js";
 import { cycleOf, cycleRows, dayOf } from "../game/login-bonus.js";
+import { watchLoginDay } from "../game/login-session.js";
 
 export function LoginBonus() {
   const [offer, setOffer] = useState(null);
@@ -13,9 +14,16 @@ export function LoginBonus() {
   const [error, setError] = useState("");
   const working = useRef(false);
   const mounted = useRef(true);
+  const watch = useRef(null);
+  // 札を出しているあいだは問い合わせ直さない(受け取りの途中で中身が替わらないように)
+  const shown = useRef(false);
+  // 失敗を札で知らせるのは、開いたときと手で押したときだけ。0時の確認や復帰時の確認は黙って次に回す
+  const loud = useRef(true);
+  const show = (on) => { shown.current = on; setVisible(on); };
 
+  /** ログイン処理。サーバー時刻を返す(次の0時を数えるのに使う) */
   async function load() {
-    if (working.current) return;
+    if (working.current) return null;
     working.current = true;
     setBusy(true);
     setError("");
@@ -25,22 +33,38 @@ export function LoginBonus() {
       if (!mounted.current) return;
       setOffer(data);
       setDone(false);
-      setVisible(!data.login.received);
-    } catch {
-      if (mounted.current) {
-        setVisible(true);
+      show(!data.login.received);
+      return data.now;
+    } catch (e) {
+      if (mounted.current && loud.current) {
+        show(true);
         setError("ログイン報酬を確認できませんでした。通信を確認して、もう一度お試しください。");
       }
+      throw e;
     } finally {
+      loud.current = false;
       working.current = false;
       if (mounted.current) setBusy(false);
     }
   }
+  // 開いたとき・裏から戻ったとき・日本時間0時をまたいだときに、ログイン処理をし直す
   useEffect(() => {
     mounted.current = true;
-    load();
-    return () => { mounted.current = false; };
+    watch.current = watchLoginDay((force) => (force || !shown.current ? load() : null));
+    return () => {
+      mounted.current = false;
+      watch.current?.stop();
+    };
   }, []);
+  function retry() {
+    loud.current = true;
+    return watch.current?.check(true);
+  }
+  function close() {
+    show(false);
+    // 札を出している間に0時を過ぎていたら、閉じたところで翌日のぶんを確かめる
+    watch.current?.check();
+  }
 
   async function take() {
     if (working.current || !offer || done) return;
@@ -79,10 +103,10 @@ export function LoginBonus() {
         </>}
         <p className="bonus-sub">毎日0時（日本時間）に更新</p>
         {error && <p className="bonus-sub" role="alert">{error}</p>}
-        {!done && <button className="btn btn-primary btn-wide" disabled={busy} onClick={bonus ? take : load}>
+        {!done && <button className="btn btn-primary btn-wide" disabled={busy} onClick={bonus ? take : retry}>
           <Ticket size={16} /> {busy ? "確認中…" : bonus ? "受け取る" : "もう一度確認する"}
         </button>}
-        {(done || error) && <button className="btn btn-ghost btn-wide" disabled={busy} onClick={() => setVisible(false)}>
+        {(done || error) && <button className="btn btn-ghost btn-wide" disabled={busy} onClick={close}>
           {done ? "ホームへ" : "あとで確認する"}
         </button>}
       </div>
