@@ -200,7 +200,7 @@ export function sanitizeLoadouts(raw) {
 
 /**
  * 対局開始時にエリアを決める。王のランクにスキンを装備していれば立つ。
- * 立たない側は null。
+ * 立たない側は null。ストーリーのフェーズ3 は席の旗(areaSeats)と貸し出し(areaLend)で決める
  */
 export function initAreas(state) {
   const base = {
@@ -210,11 +210,15 @@ export function initAreas(state) {
     turnNo: 0,
     lastArea: null,
   };
-  if (!state.areasEnabled || state.boardSize !== 9) return base;
+  // 9×9 か、席ごとの旗のある対局(ストーリーのフェーズ3 の 5×5。2026-10-26 本人の指示)だけ
+  if (!state.areasEnabled || (state.boardSize !== 9 && !state.areaSeats)) return base;
   const loadouts = state.areaLoadouts;
   const areas = [0, 1].map((i) => {
+    if (state.areaSeats && !state.areaSeats[i]) return null;
     const rank = kingRankOf(state, i);
     const skin = loadouts && loadouts[i] ? loadouts[i][rank] : null;
+    // ストーリーのフェーズ3(貸し出しのある対局)は storyArea の決まり
+    if (state.areaLend) return storyAreaFor(state, i, rank);
     const type = areaForSkin(rank, skin);
     // フォイル以外のスキンでは立たない
     return type && type!=="alice-revolution" && (!type.startsWith("alice-") || state.ruleVersion >= 19) && areaSkinOk(skin)
@@ -228,6 +232,29 @@ export function initAreas(state) {
         `${PLAYER_META[i].name}の盤に${AREA_INFO[areas[i].type].name}が立った`,
       );
   return { ...base, areas, log };
+}
+
+/**
+ * ストーリーのフェーズ3 のエリア(2026-10-26 本人の指示)。
+ *   - 王にした札にフォイルを着けていれば、そのフォイルのエリア(どの数字でも)
+ *   - フォイルが無ければ、その話のおすすめの駒(第1話なら2か3)を王にしたときだけ、話のエリアを貸す(第1話は土)
+ *   - それ以外は無し
+ * シーズン2 のスキンのエリア(alice-*)は 5×5 で試していないので、フォイルでも数字のエリアにそろえる。
+ * 王を選ぶ画面の説明もこれを使う(rank を変えて、王にしたらどうなるかを出す)
+ */
+export function storyAreaFor(state, seat, rank) {
+  if (!state?.areaLend || (state.areaSeats && !state.areaSeats[seat])) return null;
+  const skin = state.areaLoadouts?.[seat]?.[rank] || null;
+  if (areaSkinOk(skin)) {
+    const own = areaForSkin(rank, skin);
+    const type = own && !own.startsWith("alice-") ? own : areaForKing(rank);
+    return type ? { type, used: false, uses: 0, rank, skin: own === type ? skin : null, lent: false } : null;
+  }
+  if (state.areaRanks?.[seat]?.includes(rank)) {
+    const type = state.areaTypes?.[seat] || areaForKing(rank);
+    return type ? { type, used: false, uses: 0, rank, skin: null, lent: true } : null;
+  }
+  return null;
 }
 
 /* ---------------------------- 候補 ---------------------------- */

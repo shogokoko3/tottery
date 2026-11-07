@@ -8,6 +8,8 @@ import { playSound, duckMusic } from '../audio/index.js';
 import {AliceExtraEffects} from './alice-extra-effects.jsx';
 
 export function useAliceEffects(state,viewer=null,blocked=false) {
+  // クロッケーの飛翔と衝突だけは撃破札を開く前。それ以外は従来どおり公開を待つ。
+  blocked = blocked || (!!state.captureReveal && !state.captureReveal.croquet);
   const collection=useCollection(),reduce=useReducedMotion();
   const previous=useRef(state),[running,setRunning]=useState(null);
   const enabled=collection.motion!=='off'&&!reduce;

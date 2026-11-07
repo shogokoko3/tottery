@@ -86,6 +86,23 @@ let resumed = try render(music,count:AVAudioFrameCount(rate))
 _ = compare(resumed,try readFrames(asset.range.frame(at:retained),AVAudioFrameCount(rate)),"Resume from native position")
 music.pause()
 
+// The OS can stop the engine/player while our logical flag remains true.
+// Reproduce both failures without a lifecycle/configuration notification.
+for stopPlayerOnly in [false, true] {
+    let stalled = try configured()
+    try stalled.play(position: 56)
+    _ = try render(stalled, count: 4096)
+    let checkpoint = stalled.position
+    if stopPlayerOnly { stalled.player.stop() } else { stalled.engine.stop() }
+    try stalled.play()
+    require(stalled.engine.isRunning && stalled.player.isPlaying,
+            "Unexpected native stop must restart instead of trusting cached isPlaying")
+    _ = compare(try render(stalled, count: 4096),
+                try readFrames(asset.range.frame(at: checkpoint), 4096),
+                "Recovery after \(stopPlayerOnly ? "player" : "engine") stop")
+    stalled.pause()
+}
+
 let looping = try configured()
 try looping.play(position: Double(end)/rate-1)
 let looped = try render(looping,count:AVAudioFrameCount(3*rate))

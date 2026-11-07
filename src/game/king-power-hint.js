@@ -13,6 +13,9 @@
  * K の予備札は、置く場面の画面(ReservePlacer)がすでにあるので扱わない。
  */
 import { getLegalMoves, kingPowersOn, kingRankOf } from "./board.js";
+import { canUseArea } from "./areas.js";
+import { isAutomaticArea } from "./area-presentation.js";
+import { areaShort } from "./king-power-text.js";
 
 const SIDE = { 2: "縦横", 3: "斜め", 4: "縦横", 5: "斜め" };
 const key = (m) => `${m.row},${m.col}`;
@@ -98,3 +101,32 @@ export function kingPowerChance(state, seat, board = null) {
 // 光は相手にも見えるのかと不安がられた(評価 14回目)
 // 「気づかれやすい」だけでは何に気をつけるか分からなかった(評価 15回目)。起きることを言う
 export const CHANCE_TELL = "金色のマスに動くと、相手に王を読まれやすい。光はあなたにだけ見える。";
+
+/**
+ * 貸し出しのエリア(ストーリーのフェーズ3)の知らせ(2026-10-26 本人の指示「光と一言で知らせる」)。
+ *   自分で使うエリア(海・空・宮殿)が使える番 → { kind: "area-ready", line }(画面は「発動」を光らせる)
+ *   自動で働くエリア(土・森・氷)が、この番の初めに働いた → { kind: "area-fired", line }
+ * 知らせるのは自分のエリアだけ(相手にはエリアが無い)
+ */
+export function areaChance(state, seat) {
+  if (!state || !state.areaLend || state.phase !== "play" || seat == null || state.currentTurn !== seat) return null;
+  const area = state.areas?.[seat];
+  const info = area && areaShort(area.type);
+  if (!info) return null;
+  if (!isAutomaticArea(state, area.type)) {
+    if (!canUseArea(state, seat).ok) return null;
+    return { kind: "area-ready", type: area.type, line: `${info.name}が使える。${info.text.replace(/^毎ターン/, "")}` };
+  }
+  const last = state.lastArea;
+  if (!last || last.player !== seat || last.type !== area.type || area.lastUsedTurn !== (state.turnNo || 0)) return null;
+  const n = Array.isArray(last.pieceIds) ? last.pieceIds.length : 0;
+  const line =
+    area.type === "earth"
+      ? last.hit
+        ? "土のエリアが働いた: 相手が動かした駒の正体を見抜いた(あなたにだけ見える)。"
+        : "土のエリアが働いた: 今回は見抜けなかった。"
+      : area.type === "forest"
+        ? `森のエリアが働いた: 相手の駒を${n || 2}体見抜いた(あなたにだけ見える)。`
+        : "氷のエリアが働いた: 相手の駒を1体凍らせた(3ターン動けない)。";
+  return { kind: "area-fired", type: area.type, line };
+}

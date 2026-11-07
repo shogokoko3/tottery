@@ -23,7 +23,7 @@
 import { MusicVoice, harmonyAt, endgameBoundary } from "./music-voice.js";
 import { NativeHomeMusicVoice, nativeHomeMusicAvailable } from "./native-home-music.js";
 import { prepareNativeEffect, nativeEffect, stopNativeEffects, nativeEffectsVolume, resumeNativeAudio, observeNativeAudioState, connectNativeFilm } from "./native-effects.js";
-import { AUXILIARY_SOUNDS } from "./auxiliary-sounds.js";
+import { AUXILIARY_SOUNDS, capturePresentationGain } from "./auxiliary-sounds.js";
 import { decodeAudio, prioritizeDecode } from "./decode-queue.js";
 import { tonalSound } from "./tonal-cues.js";
 import { captureSoundOnBus } from "./capture-sounds.js";
@@ -513,7 +513,7 @@ export function createCaptureSound() {
   }
   if (!unlocked || !ensureGraph() || !seBus || ctx.state !== "running")
     return { play() {}, stop() {} };
-  return captureSoundOnBus(ctx, seBus, () => playSound("capture"));
+  return captureSoundOnBus(ctx, seBus, () => playSound("capture"), capturePresentationGain);
 }
 
 export function playAreaSound(type, { hit = true } = {}) {

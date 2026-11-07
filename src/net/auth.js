@@ -67,6 +67,7 @@ const EARLY_MS = 5 * 60 * 1000;
 let held = null;
 /** 同時に何度も呼ばれても、取りに行くのは1回だけにする */
 let inflight = null;
+let inflightForced = false;
 /**
  * 失敗したあと、次に試してよくなる時刻。
  *
@@ -182,18 +183,28 @@ async function refresh(refreshToken) {
  * 使える合言葉を用意する。失敗しても投げず null を返す。
  * 通信できないときに対局そのものが止まらないようにするため。
  */
-export async function ensureAuth() {
+export async function ensureAuth({ forceRefresh = false } = {}) {
   if (!API_KEY) return null;
-  if (held && held.expiresAt - EARLY_MS > Date.now()) return held;
-  if (inflight) return inflight;
+  if (!forceRefresh && held && held.expiresAt - EARLY_MS > Date.now()) return held;
+  if (inflight) {
+    if (forceRefresh && !inflightForced) {
+      await inflight;
+      return ensureAuth({ forceRefresh: true });
+    }
+    return inflight;
+  }
+  // Daily re-login must never create a different account if its refresh
+  // credential is unavailable. Keep all saved data and offer a retry.
+  if (forceRefresh && !readSaved()) return null;
   // 運営画面は明示的なサインインだけ。未ログイン時に匿名口座を作らない。
   if (KEY === "tottery.auth.op.v1" && !readSaved()) return null;
   // 直前に失敗しているあいだは、待たずにすぐ諦める。
   // ただし手持ちの合言葉がまだ本当に切れていないなら、それを使う。
   // 早めの取り直し(5分前)にしくじっただけで捨てると、まだ使えるものを
   // 手放して素の通信になり、締めたあとは対局中の手が届かなくなる
-  if (Date.now() < quietUntil) return usable();
+  if (!forceRefresh && Date.now() < quietUntil) return usable();
 
+  inflightForced = forceRefresh;
   inflight = (async () => {
     try {
       const saved = readSaved();
@@ -204,7 +215,7 @@ export async function ensureAuth() {
     } catch (err) {
       // 作り直してよいのは「控えが死んでいる」と Firebase が言ったときだけ。
       // 圏外や 5xx で作り直すと uid が変わり、その人の記録が別人になる
-      if (err && err.__dead && KEY !== "tottery.auth.op.v1") {
+      if (!forceRefresh && err && err.__dead && KEY !== "tottery.auth.op.v1") {
         try {
           held = await signUp();
           quietUntil = 0;
@@ -215,9 +226,10 @@ export async function ensureAuth() {
       }
       quietUntil = Date.now() + RETRY_MS;
       // 手持ちがまだ切れていなければ手放さない
-      return usable();
+      return forceRefresh ? null : usable();
     } finally {
       inflight = null;
+      inflightForced = false;
     }
   })();
   return inflight;

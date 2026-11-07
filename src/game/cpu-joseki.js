@@ -38,7 +38,7 @@ import {
   formationMetrics,
   strategicDiscards,
 } from "./cpu-strategy.js";
-import { cpuInformedAction } from "./cpu-informed.js";
+import { cpuInformedAction, slipAlternative } from "./cpu-informed.js";
 import { reserveDeployment } from "./cpu-palace.js";
 import { automaticAreaAction } from "./area-presentation.js";
 
@@ -1296,8 +1296,9 @@ export function josekiKingRank(state, player, area) {
  * 定石CPUの手。cpuInformedAction と同じ入口で、引き直し・布陣・対局中の手を定石に差し替える。
  * 定石の札が無いなど当てはまらないときは通常のCPUに戻る。wantKing は josekiDeck で積んだ王の数字
  */
-export function josekiCpuAction(state, player, area, wantKing = null) {
-  if (!JOSEKI_KINGS[area]) return cpuInformedAction(state, player);
+// options: cpuInformedAction へそのまま渡す(slip = 手加減。ストーリーの CPU。2026-10-26)
+export function josekiCpuAction(state, player, area, wantKing = null, options = {}) {
+  if (!JOSEKI_KINGS[area]) return cpuInformedAction(state, player, options);
   if (state.kPlacement && state.kPlacement.owner !== state.currentTurn)
     state = { ...state, kPlacement: null };
   if (
@@ -1350,16 +1351,22 @@ export function josekiCpuAction(state, player, area, wantKing = null) {
     state.pendingKingChoice ||
     state.kPlacement
   )
-    return cpuInformedAction(state, player);
+    return cpuInformedAction(state, player, options);
   if (state.currentTurn !== player) return null;
   const auto = automaticAreaAction(state);
   if (auto) return auto;
   const act = side && side.act(state, player);
   if (act) {
     const { forced, ...action } = act;
+    // 手加減(slip。ストーリーの CPU。2026-10-26 本人の指示): 王を追い詰める手(forced)はそのまま。
+    // ほかの手は、ときどき「いちばん良い手」の代わりに 2・3 番目の手(cpu-informed の点で margin 以内)を指す
+    if (!forced && options.slip && action.type === "MOVE_PIECE") {
+      const alt = slipAlternative(state, player, options.slip);
+      if (alt) return alt;
+    }
     return action;
   }
-  return cpuInformedAction(state, player);
+  return cpuInformedAction(state, player, options);
 }
 
 /**

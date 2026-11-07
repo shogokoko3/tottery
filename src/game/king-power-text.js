@@ -241,3 +241,35 @@ export function plainFig(rank) {
   if (rank === "2" || rank === "3") return fig([{ at: "a1", rank }], reachCells(rank, 1), [], "");
   return null;
 }
+
+/**
+ * エリアの短い言い方(ストーリーのフェーズ3。2026-10-26 本人の指示「エリア効果は、自分だけ」「貸し出しが基本」)。
+ * 中身は areas.js の AREA_INFO と同じ決まりを、1文で。王を選ぶ画面・説明の画面・対局中の一言で使う
+ */
+const AREA_SHORT = Object.freeze(
+  Object.fromEntries(
+    [
+      // [種類, 名前, 句(つなぐと1文。説明の札で語の途中で割らないよう手で切る), 自動か]
+      ["earth", "土のエリア", ["毎ターン、", "相手が直前に動かした駒の", "正体を見抜く(王も)。"], true],
+      ["forest", "森のエリア", ["毎ターン、", "相手の駒(王以外)を", "2体まで見抜く。"], true],
+      ["ice", "氷のエリア", ["毎ターン、", "相手の駒を1体凍らせる", "(3ターン動けない。王も)。"], true],
+      ["sea", "海のエリア", ["毎ターン「発動」で、", "相手の駒を中央へ", "1マス引き寄せられる。"], false],
+      ["sky", "空のエリア", ["毎ターン「発動」で、", "自分の駒1体(王・10以外)を", "10に変えられる(表になる)。"], false],
+      ["palace", "宮殿", ["毎ターン「発動」で、", "自分の駒1体(王・A・K以外)を", "1段上の数字にできる", "(表になる)。"], false],
+    ].map(([type, name, phrases, auto]) => [type, Object.freeze({ name, text: phrases.join(""), phrases: Object.freeze(phrases), auto })]),
+  ),
+);
+export function areaShort(type) {
+  return AREA_SHORT[type] || null;
+}
+
+/**
+ * 相手の王の力の一文(フェーズ3 のステージ前の説明。2026-10-26)。王を選ぶ画面のカードの文を、相手の王の話として読める形に。
+ * 4・5・K のカードの文は「○を王にすると」「Kを置くと」とあなたが選ぶ話なので、ここだけ言い換える
+ */
+export function foeKingPowerText(rank) {
+  // 相手が4(5)を何枚置いたかは分からないので、届く距離は言わない
+  if (rank === "4" || rank === "5") return `王の${rank}はふつうのまま。ほかの${rank}が、${SIDE[rank]}に遠くまで動ける。`;
+  if (rank === "K") return "王のKは、JかQが取られると、予備札から1枚を盤に出せる。";
+  return kingPowerCard(rank, 1, 5).bold;
+}

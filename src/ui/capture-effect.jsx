@@ -14,7 +14,7 @@ import {
   capturedCells,
 } from "../game/capture-sequence.js";
 import { captureRate } from "../game/capture-fanfare.js";
-import { vibrateCapture } from "../game/haptics.js";
+import { vibrate, vibrateCapture, captureRevealPattern } from "../game/haptics.js";
 import { createCaptureSound, duckMusic, playSound } from "../audio/player.js";
 import { CardFace } from "./cards.jsx";
 import { byId } from "../skins/catalog.js";
@@ -79,6 +79,7 @@ export function CaptureEffect({
   boardSize,
   viewer,
   final,
+  autoContinue = false,
   onClose,
 }) {
   const reduced = useReducedMotion();
@@ -106,9 +107,13 @@ export function CaptureEffect({
     slots = useRef([]);
   const elapsed = useRef(0),
     finish = useRef(false);
+  const hapticEvents = useRef({ reveal, played: new Set() });
+  if (hapticEvents.current.reveal !== reveal)
+    hapticEvents.current = { reveal, played: new Set() };
   const mine =
     viewer == null || reveal.capturedBy == null || viewer === reveal.capturedBy;
   const doneRef = useRef(false);
+  const continued = useRef(false);
   doneRef.current = view.done;
 
   // Start loading during the back-only charge. Never delay the strike or leave
@@ -197,6 +202,13 @@ export function CaptureEffect({
     const cues = captureCues(q, mine);
     let announced = 0,
       royalPlayed = false;
+    // 効果の再接続でも、同じ撃破の振動を再生し直さない。
+    const hapticOnce = (key, play) => {
+      const played = hapticEvents.current.played;
+      if (played.has(key)) return;
+      played.add(key);
+      play();
+    };
 
     const render = (now) => {
       if (!alive) return;
@@ -296,7 +308,9 @@ export function CaptureEffect({
           if (previous < at && t >= at) {
             audio.play(cue);
             if (cue === "hit" || cue === "loss-hit")
-              vibrateCapture({ mine, king: false, count: 1 });
+              hapticOnce("hit", () => vibrateCapture({ mine, king: false, count: 1 }));
+            if (cue === "break" || cue === "loss-break")
+              hapticOnce("break", () => vibrate("captureBreak"));
           }
         if (
           mine &&
@@ -308,10 +322,16 @@ export function CaptureEffect({
             rate: captureRate({ index: frame.index, total: cards.length }),
           });
           if (frame.index > 0) audio.play("open");
+          hapticOnce(`reveal-${frame.index}`, () => vibrate(captureRevealPattern({
+            index: frame.index,
+            total: cards.length,
+            king: frame.king,
+            mine,
+          })));
         }
         if (frame.royal && !royalPlayed) {
           audio.play(mine ? "royal" : "loss-royal");
-          vibrateCapture({ mine, king: true, count: 1 });
+          hapticOnce("royal", () => vibrateCapture({ mine, king: true, count: 1 }));
           royalPlayed = true;
         }
       }
@@ -355,8 +375,14 @@ export function CaptureEffect({
   }, [view.index]);
 
   useEffect(() => {
-    if (view.done) footer.current?.querySelector("button")?.focus();
-  }, [view.done]);
+    if (!view.done) return;
+    if (autoContinue) {
+      if (!continued.current) {
+        continued.current = true;
+        onClose();
+      }
+    } else footer.current?.querySelector("button")?.focus();
+  }, [view.done, autoContinue, onClose]);
   const shown = cards.slice(0, view.shown);
   const royal = view.royal && shown.some((c) => c.isKing);
   const title = !mine

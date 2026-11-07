@@ -36,7 +36,7 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "resumeAudio", returnType: CAPPluginReturnPromise)
     ]
     private final class Music {
-        let engine = NativeHomeMusicEngine()
+        var engine = NativeHomeMusicEngine()
         var revision = 0
         var position = 0.0
         var desiredGain: Float = 0
@@ -52,7 +52,8 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     private var wanted: String?
     private var lifecycle = NativeGameAudioLifecycle()
     private var transitionWork: Transition?
-    private let effects = NativeEffectsEngine()
+    private var effects = NativeEffectsEngine()
+    private var playbackMonitor: DispatchSourceTimer?
     private var effectAssets: [String: NativeEffectAsset] = [:]
     private var effectOrder: [String] = []
     private let reads: OperationQueue = {
@@ -89,7 +90,28 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         center.addObserver(self, selector: #selector(active), name: UIApplication.didBecomeActiveNotification, object: nil)
         center.addObserver(self, selector: #selector(interrupted(_:)), name: AVAudioSession.interruptionNotification, object: nil)
         center.addObserver(self, selector: #selector(configurationChanged(_:)), name: .AVAudioEngineConfigurationChange, object: nil)
+        center.addObserver(self, selector: #selector(mediaServicesReset), name: AVAudioSession.mediaServicesWereResetNotification, object: nil)
         effects.onEnded = { [weak self] token in self?.notifyListeners("effectEnded", data: ["token": token]) }
+        // Native playback must recover even if WebKit is busy or iOS omits a
+        // configuration/foreground notification. No timer runs the music loop.
+        let monitor = DispatchSource.makeTimerSource(queue: .main)
+        monitor.schedule(deadline: .now() + 1, repeating: .seconds(1), leeway: .milliseconds(150))
+        monitor.setEventHandler { [weak self] in self?.checkPlayback() }
+        playbackMonitor = monitor
+        monitor.resume()
+    }
+
+    private func checkPlayback() {
+        guard UIApplication.shared.applicationState == .active, lifecycle.active,
+              let id = wanted, let value = music[id], value.engine.asset != nil else { return }
+        if lifecycle.canPlay && value.engine.playbackRunning {
+            value.position = value.engine.position
+            return
+        }
+        // Genuine calls and explicit/manual pauses retain their lifecycle hold.
+        guard lifecycle.canPlay || lifecycle.needsForegroundActivation else { return }
+        trace("playback-recovery")
+        resumeForLifecycle()
     }
 
     @objc private func inactive() {
@@ -115,10 +137,10 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
             // On the actual iPhone a background deactivation arrives as a
             // default interruption with no "ended" notification. Reactivate
             // through iOS before clearing that background-only hold.
-            guard !AVAudioSession.sharedInstance().secondaryAudioShouldBeSilencedHint else {
-                trace("foreground-primary-audio-active")
-                return
-            }
+            // secondaryAudioShouldBeSilencedHint is advisory and can remain
+            // true after task switching on the actual iPhone. It is not an
+            // activation error. Let iOS arbitrate priority via setActive;
+            // ongoing foreground calls still retain their lifecycle hold.
             do {
                 try activateSession()
                 lifecycle.foregroundActivationSucceeded()
@@ -130,7 +152,7 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     private func resumeWanted() {
         guard lifecycle.canPlay, UIApplication.shared.applicationState == .active,
               let id = wanted, let value = music[id], value.engine.asset != nil,
-              !(value.engine.isPlaying && value.engine.engine.isRunning && value.engine.player.isPlaying) else { return }
+              !value.engine.playbackRunning else { return }
         do {
             if value.engine.isPlaying { pause(value) }
             try activateSession()
@@ -171,6 +193,44 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
             self.resumeWanted()
         }
     }
+    @objc private func mediaServicesReset() {
+        DispatchQueue.main.async {
+            self.trace("media-services-reset")
+            self.cancelTransition(restore: false)
+            self.effects.stopAll()
+            self.effects = NativeEffectsEngine()
+            self.effects.onEnded = { [weak self] token in self?.notifyListeners("effectEnded", data: ["token": token]) }
+            self.effects.setVolume(self.effectsLevel)
+            for (id, value) in self.music {
+                guard let old = value.engine.asset else { continue }
+                // AVAudioFile and audio units belong to the old media service.
+                // Reopen them; retain only PCM position and mix values.
+                let position = value.position
+                let master = value.engine.level("master"), duck = value.engine.level("duck")
+                self.pause(value)
+                value.engine = NativeHomeMusicEngine()
+                value.revision += 1
+                let revision = value.revision
+                self.reads.addOperation {
+                    do {
+                        let asset = try NativeHomeMusicAsset.load(url: old.url,
+                            loopStart: Double(old.range.start) / old.range.sampleRate,
+                            loopEnd: Double(old.range.end) / old.range.sampleRate)
+                        DispatchQueue.main.async {
+                            guard value.revision == revision else { return }
+                            value.engine.prepare(asset)
+                            value.engine.seek(position)
+                            value.engine.setLevel("master", value: master)
+                            value.engine.setLevel("duck", value: duck)
+                            value.engine.setLevel("track", value: value.desiredGain)
+                            self.resumeForLifecycle()
+                            self.trace("media-services-restored-\(id)")
+                        }
+                    } catch { DispatchQueue.main.async { self.trace("media-services-error", error: error) } }
+                }
+            }
+        }
+    }
     private func activateSession() throws {
         let session = AVAudioSession.sharedInstance()
         if session.category != .ambient || session.mode != .default { try session.setCategory(.ambient, mode: .default) }
@@ -186,7 +246,7 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     private func state(_ id: String) -> [String: Any] {
         guard let value = music[id] else { return ["position": 0, "paused": true] }
         return ["position": value.engine.asset != nil ? value.engine.position : value.position,
-                "paused": !value.engine.isPlaying]
+                "paused": !value.engine.playbackRunning]
     }
     private func pause(_ value: Music) {
         if value.engine.asset != nil { value.position = value.engine.position }
@@ -267,7 +327,20 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve(self.state(id))
         }
     }
-    @objc func state(_ call: CAPPluginCall) { DispatchQueue.main.async { call.resolve(self.state(self.id(call))) } }
+    @objc func state(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--audio-repro"),
+               let fault = call.getString("debugFault"), let value = self.music[self.id(call)] {
+                if fault == "engine" { value.engine.engine.stop() }
+                if fault == "player" { value.engine.player.stop() }
+                if fault == "media-reset" { self.mediaServicesReset() }
+                self.trace("injected-\(fault)")
+            }
+            #endif
+            call.resolve(self.state(self.id(call)))
+        }
+    }
     @objc func setMix(_ call: CAPPluginCall) {
         let id = id(call)
         DispatchQueue.main.async {
@@ -390,6 +463,7 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func setEffectsVolume(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             let level = Float(call.getDouble("volume") ?? 0)
+            self.effectsLevel = min(1, max(0, level.isFinite ? level : 0))
             self.effects.setVolume(level)
             if level <= 0 { self.effects.stopAll() }
             call.resolve()
@@ -404,5 +478,6 @@ public final class NativeHomeMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                 "needsGesture": self.lifecycle.needsGesture, "interrupted": self.lifecycle.interrupted])
         }
     }
-    deinit { NotificationCenter.default.removeObserver(self) }
+    private var effectsLevel: Float = 0.75
+    deinit { playbackMonitor?.cancel(); NotificationCenter.default.removeObserver(self) }
 }

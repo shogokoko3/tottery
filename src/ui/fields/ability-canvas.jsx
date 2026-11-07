@@ -8,17 +8,19 @@ export function FieldAbilityCanvas({
   event,
   startedAt,
   flipped = false,
+  // 盤の大きさ(5×5 のエリアはストーリーのフェーズ3 だけ。2026-10-26)
+  size = 9,
 }) {
   const ref = useRef(),
     live = useRef();
-  live.current = { theme, event, startedAt, flipped };
+  live.current = { theme, event, startedAt, flipped, size };
   useEffect(() => {
     let frame,
       localStart = performance.now();
     const canvas = ref.current,
       ctx = canvas.getContext("2d");
     function draw(now) {
-      const { theme, event, startedAt, flipped } = live.current;
+      const { theme, event, startedAt, flipped, size } = live.current;
       const time = Math.min(
         6,
         Math.max(0, (now - (startedAt ?? localStart)) / 1000),
@@ -167,9 +169,10 @@ export function FieldAbilityCanvas({
           ctx.restore();
         }
         for (const target of targets) {
-          let x = w * ((0.5 + (flipped ? 8 - target.col : target.col)) / 9),
-            y = h * ((0.5 + (flipped ? 8 - target.row : target.row)) / 9),
-            rr = w * 0.059;
+          let x = w * ((0.5 + (flipped ? size - 1 - target.col : target.col)) / size),
+            y = h * ((0.5 + (flipped ? size - 1 - target.row : target.row)) / size),
+            // 駒の輪の大きさはマスに合わせる(9×9 で w*0.059 = マス幅の約半分)
+            rr = w * 0.059 * (9 / size);
           if (theme === "earth") {
             const orbitEnd = 1.75,
               arrival = 3.05,

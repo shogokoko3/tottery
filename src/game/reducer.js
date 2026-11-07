@@ -362,6 +362,31 @@ function capturesFor(state, mover, action) {
  * 届いた手には受け取り側が「送り主の席」を書き込む(acceptAct)ので、
  * 名乗りがあれば通信、無ければ手元の操作。
  */
+/**
+ * エリアを立てる席の旗 [席0, 席1](ストーリーのフェーズ3。2026-10-26 本人の指示「エリア効果は、自分だけ」)。
+ * 手元の手だけ受ける(通信の手に載っても受けない。オンラインはいままでどおり 9×9 で両方の装備しだい)
+ */
+function localAreaSeats(action) {
+  if (fromNetwork(action) || typeof action.__id === "string") return null;
+  const s = action.areaSeats;
+  return Array.isArray(s) && s.length === 2 ? [s[0] === true, s[1] === true] : null;
+}
+
+/** 席ごとのおすすめの駒の数字 [[…], […]]。札の数字だけ受ける。手元の手だけ */
+function localAreaRanks(action) {
+  const r = action.areaRanks;
+  if (!Array.isArray(r) || r.length !== 2) return null;
+  return r.map((x) => (Array.isArray(x) ? x.filter((k) => RANKS.includes(k)).slice(0, 4) : null));
+}
+
+/** 席ごとのエリアの種類 [席0, 席1]。数字のエリア(土・海・森・氷・空・宮殿)だけ受ける。手元の手だけ */
+const LENDABLE_AREAS = new Set(["earth", "sea", "forest", "ice", "sky", "palace"]);
+function localAreaTypes(action) {
+  const t = action.areaTypes;
+  if (!Array.isArray(t) || t.length !== 2) return null;
+  return t.map((x) => (LENDABLE_AREAS.has(x) ? x : null));
+}
+
 function fromNetwork(action) {
   return action.player === 0 || action.player === 1;
 }
@@ -1371,6 +1396,25 @@ function afterAction(prev, next, action) {
     out = replenishReserve(out);
   if (completedRuleAction(prev, out, action)) out = adjudicatePosition(out);
 
+  // クロッケーも、盤面上の衝突を見せてから撃破札を開く。
+  // 飛ばした自軍の兵は既知なので、公開するのは撃破した相手の札だけ。
+  if (
+    action.type === "ALICE_ACTION" && action.kind === "field" &&
+    out.lastAlicePower?.seq !== prev.lastAlicePower?.seq &&
+    aliceField(prev, prev.currentTurn) === "alice-croquet"
+  ) {
+    const defeated = Object.values(prev.pieces).filter(
+      (p) => p.alive && p.owner !== prev.currentTurn && out.pieces[p.id]?.alive === false,
+    ).map((p) => ({
+      rank: p.rank, suit: p.suit, owner: p.owner, isKing: !!p.isKing,
+      ...(p.mark ? { mark: p.mark, originalRank: p.originalRank } : null),
+    }));
+    if (defeated.length) out = {
+      ...out,
+      captureReveal: { defeated, capturedBy: prev.currentTurn, croquet: true },
+    };
+  }
+
   // 記録に残る出来事があったら、その時点の盤面を控えておく。
   // あとから「この時どうなっていたか」を見られるようにするため
   // 対局を組み立てる前は log が無いこともある
@@ -1555,9 +1599,16 @@ function coreReducer(state, action) {
         // 通信の対局か。ホストは自分の手にも __id を付けてから盤に入れるので、
         // 席の名乗り(相手から届いた手)か __id(通信に載せた手)のどちらかで分かる
         online: fromNetwork(action) || typeof action.__id === "string",
-        // 盤面エリアは 9×9 で、始める側が明示したときだけ
-        areasEnabled: action.areas === true && size === 9,
+        // 盤面エリアは 9×9 で、始める側が明示したときだけ。
+        // 5×5 はストーリーのフェーズ3 だけ(手元の手。席ごとの旗 areaSeats と貸し出し areaLend が付く。2026-10-26 本人の指示)
+        areasEnabled: action.areas === true && (size === 9 || !!localAreaSeats(action)),
         areaLoadouts: sanitizeLoadouts(action.loadouts),
+        areaSeats: localAreaSeats(action),
+        areaLend: !!localAreaSeats(action) && action.areaLend === true,
+        // 席ごとのエリアの種類(ストーリーのフェーズ3 は話ごとに決まる。2026-10-26 本人の指示「１話目なら土、２話目なら海」)
+        areaTypes: localAreaSeats(action) ? localAreaTypes(action) : null,
+        // フォイルが無いときにエリアを貸す、おすすめの駒の数字 [席0, 席1](第1話なら 2・3。2026-10-26 本人の指示)
+        areaRanks: localAreaSeats(action) ? localAreaRanks(action) : null,
         players,
         reserve,
         reserveShuffleState: reserveSeed(deck),
@@ -1836,7 +1887,10 @@ function coreReducer(state, action) {
 
     case "SETUP_PICK_KING": {
       const idx = setupActor(state, action);
-      if (idx === null) return state;
+      if (idx === null || state.setupDone[idx]) return state;
+      // 選択済みの駒の再タップ。王が未選択の間は布陣を確定できない。
+      if (action.cardId === null)
+        return { ...state, setupPickKings: replaceAt(state.setupPickKings, idx, null) };
       const me = state.players[idx];
       const placement = state.setupPlacements[idx];
       const card = me.hand.find((c) => c.id === action.cardId);

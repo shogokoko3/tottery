@@ -79,9 +79,11 @@ final class NativeHomeMusicEngine {
     private(set) var asset: NativeHomeMusicAsset?
     private(set) var isPlaying = false
     private var offset: AVAudioFramePosition = 0
+    private var lastRenderedFrame: AVAudioFramePosition = 0
     private var startedAt = 0.0
     private var levels: [String: Float] = ["track": 0, "master": 0.6, "duck": 1]
     private var ramps: [String: DispatchSourceTimer] = [:]
+    var playbackRunning: Bool { isPlaying && engine.isRunning && player.isPlaying }
 
     init() {
         engine.attach(player)
@@ -94,6 +96,7 @@ final class NativeHomeMusicEngine {
         pause()
         asset = value
         offset = 0
+        lastRenderedFrame = 0
         engine.connect(player, to: master, format: value.file.processingFormat)
         engine.connect(master, to: duck, format: value.file.processingFormat)
         engine.connect(duck, to: engine.mainMixerNode, format: value.file.processingFormat)
@@ -104,6 +107,7 @@ final class NativeHomeMusicEngine {
         guard let asset else { return }
         pause()
         offset = asset.range.frame(at: seconds)
+        lastRenderedFrame = offset
     }
 
     func releaseAsset() {
@@ -121,10 +125,12 @@ final class NativeHomeMusicEngine {
             if let time = player.lastRenderTime, let played = player.playerTime(forNodeTime: time),
                played.isSampleTimeValid, played.sampleTime >= 0, played.sampleRate > 0 {
                 frame += AVAudioFramePosition((Double(played.sampleTime) / played.sampleRate * asset.range.sampleRate).rounded())
-            } else {
-                // Used only before the first render quantum / during a route reset.
+                lastRenderedFrame = frame
+            } else if playbackRunning {
+                // Only estimate before the first render quantum. A stopped
+                // renderer must retain its last checkpoint, not advance in silence.
                 frame += AVAudioFramePosition((max(0, ProcessInfo.processInfo.systemUptime - startedAt) * asset.range.sampleRate).rounded())
-            }
+            } else { frame = lastRenderedFrame }
         }
         return Double(asset.range.wrap(frame)) / asset.range.sampleRate
     }
@@ -134,10 +140,12 @@ final class NativeHomeMusicEngine {
             throw NSError(domain: "NativeHomeMusic", code: 4,
                           userInfo: [NSLocalizedDescriptionKey: "Music is not prepared"])
         }
-        if isPlaying && position == nil { return }
+        if playbackRunning && position == nil { return }
+        if isPlaying { pause() }
         let start = position.map { asset.range.frame(at: $0) } ?? offset
         player.stop()
         offset = asset.range.wrap(start)
+        lastRenderedFrame = offset
         // Queue the initial tail and the repeating PCM body in advance. There
         // is no JavaScript timer or completion callback at the repeat boundary.
         player.scheduleSegment(asset.file, startingFrame: offset,

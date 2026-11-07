@@ -9,6 +9,7 @@ import {
 } from "../skins/summon-plan.js";
 import STYLES from "../skins/summon-intro.css";
 import { prepareSummonSound, startSummonSound } from "../skins/summon-sound.js";
+import { vibrate } from "../game/haptics.js";
 
 /** Presentation only. The draw and debit have already been committed. */
 export function SummonIntro({ results, targetRef, onFinish, onReady, gateWorld = null }) {
@@ -31,16 +32,19 @@ export function SummonIntro({ results, targetRef, onFinish, onReady, gateWorld =
   const [pressing, setPressing] = useState(false);
   // 触れた合図。frame から読むので ref に持つ
   const opened = useRef(false);
+  const touched = useRef(false);
   useEffect(() => {
     setLoading(true);
     setWaiting(false);
     setPressing(false);
     opened.current = false;
+    touched.current = false;
     root.current.style.setProperty("--entrance-opacity", "0");
     let scene,
       raf,
       disposed = false,
       finished = false,
+      gatePlayed = false,
       start,
       deadline,
       // 門の前で止めているあいだの合計(ミリ秒)と、止め始めた時刻
@@ -68,6 +72,12 @@ export function SummonIntro({ results, targetRef, onFinish, onReady, gateWorld =
     const cancel = () => finish();
     // 門に触れた合図。釦が投げる(2026-09-28 本人の指示「触れるまで開かない」)
     const open = () => {
+      if (opened.current || !holdFrom || disposed || finished) return;
+      // キーボードで開く場合も、指で触れたときと同じ手応え。
+      if (!touched.current) {
+        touched.current = true;
+        vibrate("gateTouch");
+      }
       opened.current = true;
     };
     // Loading/GPU failure must never hide already-owned cards or ask for another draw.
@@ -135,6 +145,11 @@ export function SummonIntro({ results, targetRef, onFinish, onReady, gateWorld =
             const ms = Math.max(0, Math.min(now - start - held, SUMMON_TIMING.total)),
               f = scene.render(ms),
               bounds = element.getBoundingClientRect();
+            // 門が動き始めてから一度だけ。タッチの振動と少し間を空ける。
+            if (opened.current && !gatePlayed && ms >= SUMMON_HOLD_AT + 180) {
+              gatePlayed = true;
+              vibrate("gateOpen");
+            }
             const targets =
               targetRef.current?.querySelectorAll(".reveal-card") || [];
             const cards = element.querySelectorAll(".summon-flight-card");
@@ -238,7 +253,13 @@ export function SummonIntro({ results, targetRef, onFinish, onReady, gateWorld =
           type="button"
           className={`summon-gate-touch ${pressing ? "is-pressing" : ""}`}
           aria-label="門に触れて開く"
-          onPointerDown={() => setPressing(true)}
+          onPointerDown={() => {
+            setPressing(true);
+            if (!touched.current && !opened.current) {
+              touched.current = true;
+              vibrate("gateTouch");
+            }
+          }}
           onPointerUp={() => {
             setPressing(false);
             root.current?.dispatchEvent(new Event("summon-open"));

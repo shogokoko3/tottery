@@ -40,6 +40,8 @@ export function AreaBar({
   onConfirm = null,
   onUnchoose = null,
   aliceArea = null,
+  // 「発動」を光らせる(貸し出しのエリアが使える番。ストーリーのフェーズ3。2026-10-26)
+  glow = false,
 }) {
   const areas = state.areas || [null, null];
   if (!areas[0] && !areas[1]) return null;
@@ -171,7 +173,7 @@ export function AreaBar({
           盤が上下していた(2026-09-23 本人の指示)。自動のエリア(海など)は釦そのものが無い */}
       {mine && !isAutomaticArea(state, mine.type) && (
         <button
-          className={`btn btn-primary btn-small ${focusFire ? "guide-target" : ""}`}
+          className={`btn btn-primary btn-small ${focusFire ? "guide-target" : ""}${glow && can.ok ? " kp-glow-btn" : ""}`}
           style={!mine.used && myTurn ? undefined : { visibility: "hidden" }}
           disabled={!can.ok || mine.used || !myTurn}
           title={can.ok ? info.text : can.why}

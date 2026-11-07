@@ -148,6 +148,10 @@ clock+=1;player.playSound('reveal_ssr',{harmony:{root:4,mode:'minor'},rate:2});a
 assert.ok(nativeCalls.some(([m,o])=>m==='playEffect' && o.key==='bloom-3-4-minor' && o.rate===1),'Rewards retain the harmonic variant without rate shifting');
 const capture=player.createCaptureSound();capture.play('loss-hit');await settle();
 assert.ok(nativeCalls.some(([m,o])=>m==='playEffect' && o.key==='capture:loss-hit'));
+clock+=1;capture.play('hit');await settle();
+assert.ok(nativeCalls.some(([m,o])=>m==='playEffect' && o.key==='capture' && o.gain===2), 'Main capture cue is louder at the same user volume');
+assert.ok(nativeCalls.some(([m,o])=>m==='playEffect' && o.key==='capture:hit' && o.gain===1.4), 'Capture body gets the shared +3 dB boost');
+assert.ok(nativeCalls.some(([m,o])=>m==='playEffect' && o.key==='capture:loss-hit' && o.gain===1), 'Loss cue is unchanged');
 capture.stop();player.playAreaSound('birth');await settle();
 assert.ok(nativeCalls.some(([m,o])=>m==='playEffect' && o.key==='area:birth'));
 const filmEvents={};
@@ -169,6 +173,7 @@ assert.ok(swift.includes('registerPluginInstance(gameAudio)'));
 assert.ok(scene.indexOf('resumeNativeGameAudio()') < scene.indexOf('webView.setAllMediaPlaybackSuspended(false)'), 'Native foreground is independent of WebKit completion');
 assert.ok(swift.includes('lifecycle.acceptsPause(keepingIntent: keepingIntent)'));
 assert.ok(swift.includes('resumeWanted()'));
+assert.ok(!/guard !AVAudioSession\.sharedInstance\(\)\.secondaryAudioShouldBeSilencedHint/.test(swift), 'Advisory secondary-audio hint cannot permanently block real iOS activation');
 assert.ok(swift.includes('interruptionBegan(isSuspension: isSuspension, appBackgrounded: appBackgrounded)'));
 assert.ok(scene.includes('if type == .began && gameAudioWasSuspended(notification) { return }'));
 const native=fs.readFileSync('ios/App/App/NativeGameAudio.swift','utf8');

@@ -18,11 +18,11 @@ import {
   nameOf,
 } from "../game/constants.js";
 import { CHANCE_TELL } from "../game/king-power-hint.js";
-import { FOE_LEGEND, MOVE_LEGEND, kingPowerCard, kingPowerTag } from "../game/king-power-text.js";
+import { FOE_LEGEND, MOVE_LEGEND, areaShort, kingPowerCard, kingPowerTag } from "../game/king-power-text.js";
 import { hasAdjudicationRules } from "../game/rule-version.js";
 import { autoArrangeAction } from "../game/auto-setup.js";
 // 予備札の盤で、相手の「分かっている駒」を表で見せる(本編の盤と同じ決まり)
-import { isKnownTo } from "../game/areas.js";
+import { isKnownTo, storyAreaFor } from "../game/areas.js";
 import { useWindowWidth } from "../hooks.js";
 import { ArrowLeft, Crown, Dice, Grid } from "../icons.jsx";
 import { CardBack, CardFace } from "./cards.jsx";
@@ -802,7 +802,9 @@ function kingPowerBoard(state, pIdx, player, placement) {
   if (!cards.length) return null;
   const counts = {};
   for (const c of cards) counts[c.rank] = (counts[c.rank] || 0) + 1;
-  return { counts, hasJQ: !!(counts.J || counts.Q), size: state.boardSize };
+  // ストーリーのフェーズ3 のエリア(おすすめの駒か、フォイルを着けた札を王にしたとき。areas.js storyAreaFor。2026-10-26 本人の指示)
+  const storyAreas = !!(state.areaLend && state.areaSeats?.[pIdx]);
+  return { counts, hasJQ: !!(counts.J || counts.Q), size: state.boardSize, storyAreas, storyRanks: state.areaRanks?.[pIdx] || [] };
 }
 
 function KingPowerCard({ state, pIdx, player, pickedKing, info }) {
@@ -814,10 +816,11 @@ function KingPowerCard({ state, pIdx, player, pickedKing, info }) {
       .sort((a, b) => RANKS.indexOf(a) - RANKS.indexOf(b))
       .map((rank) => {
         const skin = aliceSkin(state, pIdx, rank);
-        if (skin) return { rank, text: skin.move || skin.description, active: true, fig: null };
+        const area = info.storyAreas ? storyAreaFor(state, pIdx, rank) : null;
+        if (skin) return { rank, text: skin.move || skin.description, active: true, fig: null, area };
         // 駒ごとに、王にしたときの小さな図(カードの右の図と同じ。図の無い数字は空き)
         const fig = kingPowerCard(rank, info.counts[rank], info.size, info.hasJQ).figs?.[1] || null;
-        return { rank, ...kingPowerTag(rank, info.counts[rank], info.size, info.hasJQ), fig };
+        return { rank, ...kingPowerTag(rank, info.counts[rank], info.size, info.hasJQ), fig, area };
       });
     const ordered = [...rows.filter((r) => r.active), ...rows.filter((r) => !r.active)];
     return (
@@ -831,7 +834,11 @@ function KingPowerCard({ state, pIdx, player, pickedKing, info }) {
             <li key={r.rank} className={r.active ? "" : "is-idle"}>
               <span className="kp-list-rank">{r.rank}</span>
               {r.fig && r.active ? <PowerFigure spec={r.fig} caption={false} mini /> : <span className="kp-mini-none" aria-hidden="true" />}
-              <span>{r.text}</span>
+              <span>
+                {r.text}
+                {/* 王にするとエリアが付く数字に、エリアの名前を添える(ストーリーのフェーズ3) */}
+                {r.area && <span className="kp-area-chip">{areaShort(r.area.type).name}</span>}
+              </span>
             </li>
           ))}
         </ul>
@@ -857,6 +864,21 @@ function KingPowerCard({ state, pIdx, player, pickedKing, info }) {
       {card.bold && <p className="kp-bold"><Phrases text={card.bold} /></p>}
       {card.plain && <p className="kp-plain"><Phrases text={card.plain} /></p>}
       {card.board && <p className="kp-board"><Phrases text={card.board} /></p>}
+      {/* ストーリーのフェーズ3 のエリア。おすすめの駒か、フォイルを着けた札を王にしたときだけ付く(2026-10-26 本人の指示) */}
+      {info.storyAreas && (() => {
+        const area = storyAreaFor(state, pIdx, picked.rank);
+        const short = area && areaShort(area.type);
+        return (
+          <p className="kp-area">
+            <em>エリア</em>
+            {short ? (
+              <Phrases text={[area.lent ? `${short.name}が付く。` : `フォイルの${short.name}が付く。`, ...short.phrases]} />
+            ) : (
+              <Phrases text={["エリアは付かない。", `${info.storyRanks.join("か")}を王にするか、`, "フォイルを着けた札を", "王にすると付く。"]} />
+            )}
+          </p>
+        );
+      })()}
       {/* 細かい決まり・使うときの注意は、対局中に力を使える場面で光と一言で出す(2026-10-25 本人の指示「王を選ぶ画面は短く」) */}
     </section>
   );
@@ -986,14 +1008,20 @@ export function KingStep({
                   }`}
                   onClick={() => {
                     if (revealMode) {
-                      if (card && id !== pickedKing) toggleReveal(id);
+                      // 王の駒をタップしたら王を外し、王を選ぶ段へ戻る(2026-11-08 本人の指示)
+                      if (card && id === pickedKing) {
+                        dispatch({ type: "SETUP_PICK_KING", player: pIdx, cardId: null });
+                        setRevealMode(false);
+                        return;
+                      }
+                      if (card) toggleReveal(id);
                       return;
                     }
                     if (selectable)
                       dispatch({
                         type: "SETUP_PICK_KING",
                         player: pIdx,
-                        cardId: id,
+                        cardId: pickedKing === id ? null : id,
                       });
                   }}
                   key={`${row}-${col}`}
@@ -1002,7 +1030,7 @@ export function KingStep({
                     <div
                       className={`mini-piece ${
                         pickedKing === id || (revealMode && chosenReveals.includes(id)) ? "piece-selected" : ""
-                      } ${(revealMode ? id !== pickedKing : selectable) ? "" : "mini-piece-disabled"}`}
+                      } ${(revealMode || selectable) ? "" : "mini-piece-disabled"}`}
                     >
                       <CardFace
                         owner={pIdx}

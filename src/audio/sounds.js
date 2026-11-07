@@ -19,7 +19,7 @@ export const SOUNDS = {
   shuffle: { file: "se-shuffle.m4a", gain: 0.7 },
   dice: { file: "se-dice.m4a", gain: 0.7 },
   place: { file: "se-place.m4a", gain: 0.6 },
-  capture: { file: "se-capture.m4a", gain: 0.75 },
+  capture: { file: "se-capture.m4a", gain: 1 },
   king_select: { file: "se-king_select.m4a", gain: 0.7 },
   start: { file: "se-start.m4a", gain: 0.7 },
   tick: { file: "se-tick.m4a", gain: 0.7 },

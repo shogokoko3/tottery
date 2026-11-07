@@ -76,13 +76,15 @@ export function rulesForPhase(phase) {
 }
 
 /**
- * ストーリーのステージの盤。フェーズ1・2 は 5×5、フェーズ3 は 9×9。
+ * ストーリーのステージの盤。どのフェーズも 5×5。
  * (2026-09-30 はフェーズ2 から 9×9。2026-10-25 本人の指示でフェーズ2 も 5×5 に。
- *  AI テストプレイで 9×9・王の力・持ち時間が一度に来て、5人中4人がフェーズ2 の第1話で止まったため)
- * オンラインのフェーズ2 も 5×5(rulesForPhase().sizes。2026-10-25 本人の指示)
+ *  AI テストプレイで 9×9・王の力・持ち時間が一度に来て、5人中4人がフェーズ2 の第1話で止まったため。
+ *  2026-10-26 本人の指示「盤面は、55」でフェーズ3 のストーリーも 5×5 に)
+ * オンラインはフェーズごとの rulesForPhase().sizes(フェーズ3 は 5×5 と 9×9 のまま)
  */
 export function stageSize(phase) {
-  return normalizePhase(phase) >= 3 ? 9 : 5;
+  normalizePhase(phase);
+  return 5;
 }
 
 /** 持ち点(レート)に数えるフェーズか。フェーズ3だけ。通信の部屋のフェーズは onlinePhase で読んでから渡す */
@@ -104,6 +106,9 @@ export function setupFlagsForPhase(phase) {
 export function storySetupFlags(phase) {
   const p = normalizePhase(phase);
   if (p === 2) return { kingPowers: [true, false] };
+  // フェーズ3: 王の力は両方、エリアはプレイヤーの席だけ。フォイルが無くても、王にした数字のエリアを貸す
+  // (2026-10-26 本人の指示「相手も、王の力が使える」「エリア効果は、自分だけ」「55のエリア効果は、ストーリー限定にして、貸し出しが基本」)
+  if (p >= 3) return { areas: true, areaSeats: [true, false], areaLend: true };
   return setupFlagsForPhase(p);
 }
 

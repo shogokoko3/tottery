@@ -7,6 +7,7 @@ import {
   scheduleFoilAcquisition,
 } from "../skins/foil-acquisition.js";
 import { FoilArtwork } from "./foil-artwork.jsx";
+import { useHapticCue } from "./haptic-cue.js";
 import styles from "./foil-acquisition.css";
 
 function ensureStyles() {
@@ -37,6 +38,12 @@ function Acquisition({
     ...foilAcquisitionFrame(0, { play: !immediate, ready: false }),
     fallback: false,
   }));
+  useHapticCue(
+    "foil",
+    !immediate && !view.fallback && (!view.reason || view.reason === "complete") &&
+      ["reveal", "settle", "complete"].includes(view.phase),
+    skin?.id,
+  );
 
   useInsertionEffect(() => {
     if (foil) ensureStyles();

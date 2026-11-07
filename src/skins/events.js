@@ -164,6 +164,7 @@ export function phantomFilm(before, after, loadouts) {
  *
  * 相手の駒を取って「仲間にする待ち(aliceRecruit)」が新しく立った手で流す。
  * 配置より先に流し、動画のあとで置き場を開く(2026-10-16 本人の指示。それまでは配置のあとに流していた)。
+ * クロッケーでも撃破札の公開が済むまで待つ。飛翔・衝突より先には流さない。
  * 誰の画面でも流す。断っても、動画はすでに流れている
  */
 export function recruitFilm(before, after, loadouts) {
@@ -204,6 +205,8 @@ export function filmPlanFor(before, after, loadouts, viewer = null) {
   const phantom = phantomFilm(before, after, loadouts);
   const power = powerFilm(before, after, loadouts);
   const recruit = recruitFilm(before, after, loadouts);
+  const croquet = power?.fieldEffect?.type === "alice-croquet" &&
+    after?.lastAlicePower?.kind === "field";
   const revealPending = !!after?.captureReveal;
   const move = after?.lastMove;
   const actor = attack
@@ -219,10 +222,12 @@ export function filmPlanFor(before, after, loadouts, viewer = null) {
   const plan = [];
   for (const [skin, afterReveal] of [
     [attack, attackAfterReveal],
+    // クロッケーの動画 → 盤上の飛翔・衝突 → 撃破札の公開 → 仲間化の動画。
+    [croquet ? power : null, false],
     [revenge, revealPending],
     [succession, revealPending],
     [phantom, revealPending],
-    [power, revealPending],
+    [croquet ? null : power, revealPending],
     [recruit, revealPending],
   ]) {
     if (!skin) continue;

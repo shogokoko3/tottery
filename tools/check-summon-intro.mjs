@@ -267,6 +267,7 @@ function openingHarness() {
   const refs = [];
   const changed = (before, after) => !before || after.some((value, i) => value !== before[i]);
   let finished = 0, played = 0, prepared = 0, stopped = 0, disposed = 0, shown = 0;
+  const haptics = [];
   const frames = new Map(), deadlines = new Map(), renders = [], sizes = [], loading = [], states = [];
   let stateIndex = 0;
   root.getBoundingClientRect = () => ({ width: 390, height });
@@ -301,6 +302,7 @@ function openingHarness() {
     document: doc, window: win,
     loadScene: async () => ({ createPreparedSummonScene: async (host, plan, cancelled) => cancelled() ? null : scene }),
     prepareSummonSound() { prepared++; },
+    vibrate(pattern) { haptics.push(pattern); },
     startSummonSound() { played++; return () => { stopped++; }; },
     requestAnimationFrame(fn) { frames.set(++id, fn); return id; },
     cancelAnimationFrame(id) { frames.delete(id); },
@@ -318,7 +320,7 @@ function openingHarness() {
   };
   refresh();
   return {
-    root, sizes, renders, loading, states, frames, deadlines, refresh, cleanup: () => cleanup(),
+    root, sizes, renders, loading, states, frames, deadlines, haptics, refresh, cleanup: () => cleanup(),
     refs: () => refs,
     state: () => ({ finished, played, prepared, stopped, disposed, shown }),
     ready: () => { height = 800; resolveReady(); },
@@ -370,9 +372,13 @@ assert.ok(
 opening.tick(20000);
 assert.equal(opening.renders.at(-1), SUMMON_HOLD_AT, "待つあいだは進まない");
 assert.equal(opening.state().finished, 0);
+assert.deepEqual(opening.haptics, [], "門に触れる前は振動しない");
 // 触れた。止めていたぶんを引いて、続きが元の速さで流れる
 opening.root.listeners.get("summon-open")();
+opening.root.listeners.get("summon-open")();
+assert.deepEqual(opening.haptics, ["gateTouch"], "同じタップの複数イベントでも触れた振動は1度");
 opening.tick(21000);
+assert.deepEqual(opening.haptics, ["gateTouch", "gateOpen"], "開放は実際に門が動いてから");
 assert.equal(
   opening.renders.at(-1),
   SUMMON_HOLD_AT + 1000,
@@ -395,6 +401,7 @@ skipped.ready();
 await flush();
 assert.equal(skipped.state().finished, 1);
 assert.equal(skipped.state().played, 0, "準備中スキップで後から音を鳴らさない");
+assert.deepEqual(skipped.haptics, [], "スキップした門は後から振動しない");
 assert.deepEqual(skipped.renders, []);
 assert.equal(skipped.frames.size, 0);
 skipped.cleanup();

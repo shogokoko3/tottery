@@ -2,7 +2,9 @@ import { HomeCustomizationButton } from "./home-customization.jsx";
 import { HomeMusicSettings } from "./home-music-settings.jsx";
 import { AppearanceSettings } from "./season.jsx";
 import { useCollection, updateCollection } from "../skins/store.js";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { hapticsEnabled, setHapticsEnabled, subscribeHaptics } from "../game/haptic-settings.js";
+import { vibrate } from "../game/haptics.js";
 import {
   MUSIC_CREDIT,
   SE_CREDIT,
@@ -371,12 +373,35 @@ function VolumeRow({ label, value, muted, onChange }) {
   );
 }
 
-/**
- * 音の設定。
- *
- * 触ったその場で鳴っている音に効き、そのまま端末に残る。
- * 効果音のつまみを動かしたときは、その場で1度鳴らして大きさを確かめられる。
- */
+/** 端末に保存する、すべての場面に共通の振動設定。 */
+export function HapticSettings() {
+  const on = useSyncExternalStore(subscribeHaptics, hapticsEnabled);
+  return (
+    <div className="settings-list">
+      <div className="settings-row">
+        <span>振動</span>
+        <button
+          type="button"
+          className="btn btn-ghost btn-small"
+          role="switch"
+          aria-label="振動"
+          aria-checked={on}
+          onClick={() => {
+            const next = setHapticsEnabled(!on);
+            if (next) vibrate("capture");
+          }}
+        >
+          {on ? "ON" : "OFF"}
+        </button>
+      </div>
+      <p className="settings-note">
+        対局・召喚・マッチ成立の振動をまとめて切り替えます。音と動画の設定とは別に保存されます。
+      </p>
+    </div>
+  );
+}
+
+/** 音量をその場で反映する。効果音のつまみは試聴もできる。 */
 function SoundSettings() {
   const [audio, setAudio] = useState(() => audioSettings());
   return (
@@ -727,6 +752,8 @@ export function SettingsModal({ onClose }) {
             <>
               <p className="settings-head">音</p>
               <SoundSettings />
+              <p className="settings-head">振動</p>
+              <HapticSettings />
               <p className="settings-head">対局中の操作</p>
               <PlaySettings />
               <p className="settings-head">対局中の演出</p>
@@ -778,7 +805,9 @@ export function SettingsModal({ onClose }) {
               </div>
               <div className="settings-row">
                 <span>音の出どころ</span>
-                <b>{MUSIC_CREDIT} / {SE_CREDIT}</b>
+                <b>
+                  {MUSIC_CREDIT} / {SE_CREDIT}
+                </b>
               </div>
               <div className="settings-row">
                 <span>ルールの確認</span>

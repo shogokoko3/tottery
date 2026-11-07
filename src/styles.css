@@ -10923,3 +10923,16 @@ svg {
 .kp-chance em { display: inline-block; margin-bottom: 2px; padding: 0 6px; border-radius: 4px; background: rgba(240, 200, 80, 0.25); color: var(--gold); font-size: 11px; font-style: normal; font-weight: 700; }
 .kp-chance b { display: block; color: var(--gold-soft); font-size: 13px; line-height: 1.6; }
 .kp-chance span { display: block; color: var(--text); font-size: 12px; line-height: 1.6; }
+.kp-glow-btn { animation: kp-glow-btn 1.4s ease-in-out infinite; }
+@keyframes kp-glow-btn { 0%, 100% { box-shadow: 0 0 0 0 rgba(240, 200, 80, 0.0); } 50% { box-shadow: 0 0 0 4px rgba(240, 200, 80, 0.75); } }
+@media (prefers-reduced-motion: reduce) { .kp-glow-btn { animation: none; box-shadow: 0 0 0 3px rgba(240, 200, 80, 0.75); } }
+.kp-chance-area { border-color: rgba(120, 200, 220, 0.6); background: rgba(120, 200, 220, 0.1); }
+.kp-chance-area em { background: rgba(120, 200, 220, 0.25); color: #bfe6ff; }
+.kp-card .kp-area { margin-top: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(120, 200, 220, 0.1); font-size: 12px; }
+.kp-card .kp-area em { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 4px; background: rgba(120, 200, 220, 0.25); color: #bfe6ff; font-size: 11px; font-style: normal; font-weight: 700; }
+/* フェーズ3 の説明の札(案B。2026-10-26)。相手の王の力は数字の列と文の列に分け、文は句の塊で折り返す */
+.story-phase3 .story-intro-items-title { margin: 10px 0 4px; }
+.story-phase3-kings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.story-phase3-kings li { display: grid; grid-template-columns: 22px 1fr; align-items: baseline; gap: 8px; color: var(--text); font-size: 13px; line-height: 1.7; }
+.story-phase3-kings li b { color: var(--gold); font-size: 15px; text-align: center; }
+.kp-area-chip { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 4px; background: rgba(120, 200, 220, 0.25); color: #bfe6ff; font-size: 11px; font-weight: 700; white-space: nowrap; }

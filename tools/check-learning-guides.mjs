@@ -165,8 +165,11 @@ try {
   assert.doesNotMatch(second, /9×9/);
   assert.match(second, /あり\(ストーリーはあなたの王だけ\)/);
   const third = render.phase({ ...fresh, phase: 3 });
-  assert.match(third, /5×5ではエリア効果を使いません/);
-  assert.match(third, /フォイルを持っているだけでは発動しません/);
+  // 2026-10-26 本人の指示でフェーズ3 のストーリーも 5×5。エリアはあなたの王だけ、フォイルが無くても貸し出し
+  assert.match(third, /<dt>ストーリーの盤<\/dt><dd>5×5<\/dd>/);
+  assert.match(third, /ストーリーでは、第1話「二と三の王」であなたの王に「土」のエリア効果が付きます\(フォイルが無くても使えます\)/);
+  assert.match(third, /オンラインでは、2の札にフォイルを装備し、その札を王にして9×9で遊ぶと発動します/);
+  assert.match(third, /あり\(ストーリーはあなたの王だけ。オンラインはフォイルの王で9×9\)/);
   assert.match(third, /最後のフェーズに到達/);
   assert.doesNotMatch(third, /フェーズ4/);
   assert.match(render.comic(true), /すぐに遊ぶ/);

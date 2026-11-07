@@ -1,6 +1,7 @@
 // Synthesized layers from the approved capture preview. The caller supplies the
 // existing SE bus so mute/volume settings work on iOS as well as the web.
-export function captureSoundOnBus(audioCtx, output, hit) {
+export function captureSoundOnBus(audioCtx, output, hit, gainForKind = () => 1) {
+  let cueGain = 1;
   const audioBus = audioCtx.createGain();
   audioBus.gain.value = 0.84;
   const limiter = audioCtx.createDynamicsCompressor();
@@ -27,7 +28,7 @@ export function captureSoundOnBus(audioCtx, output, hit) {
     if (!audioCtx || freq > 700 || endFreq > 900) return;
     // Remove the old glassy high notes; keep a short, low wooden body only.
     dur = Math.min(dur, 0.28);
-    gain *= 0.7;
+    gain *= 0.7 * cueGain;
     const start = audioCtx.currentTime + delay,
       osc = audioCtx.createOscillator(),
       g = audioCtx.createGain();
@@ -51,6 +52,7 @@ export function captureSoundOnBus(audioCtx, output, hit) {
 
   function noise(dur, gain, freq, band = "bandpass", delay = 0) {
     if (!audioCtx) return;
+    gain *= cueGain;
     freq = Math.min(freq, 1500);
     if (band === "highpass") band = "bandpass";
     const n = Math.floor(audioCtx.sampleRate * dur),
@@ -91,6 +93,7 @@ export function captureSoundOnBus(audioCtx, output, hit) {
   }
   function sound(kind) {
     if (!audioCtx || audioCtx.state !== "running") return;
+    cueGain = gainForKind(kind);
     // 損失は低く短い衝撃と下降音。通常の撃破SEや高音のきらめきは使わない。
     if (kind === "loss-hit") {
       tone(135, 48, 0.21, 0.14);

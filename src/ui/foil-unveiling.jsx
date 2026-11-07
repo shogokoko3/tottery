@@ -1,4 +1,5 @@
 import { playSound, useCue } from "../audio/index.js";
+import { useHapticCue } from "./haptic-cue.js";
 import {
   useCallback,
   useEffect,
@@ -285,6 +286,7 @@ export function FoilUnveiling({
   }, []);
   callback.current = onComplete;
   useCue("foil_open", ["reveal", "settle", "complete"].includes(view.phase), skin.id);
+  useHapticCue("foil", !reduce && ["reveal", "settle", "complete"].includes(view.phase), skin.id);
   useEffect(() => {
     let active = true;
     const loader = assets || createFoilUnveilingAssets();

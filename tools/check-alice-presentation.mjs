@@ -12,9 +12,10 @@ for(const type of ['croquet','caucus','reverse','revive'])for(const variant of t
   assert.equal(alicePresentationEvent(after,after,viewer),null,'no duplicate event on clock/UI update');
   events.push({type,variant,viewer,moves:e.moves.length,targets:e.targets.length});
   if(type==='croquet'){
-   assert.equal(e.moves.length,1);assert.equal(e.targets[0].hit,['hit','king'].includes(variant));assert.equal(e.targets[0].royal,variant==='king');
-   assert.deepEqual(e.royalResult,variant==='king'?{lost:viewer===1}:undefined,'terminal king defeat waits for each viewer to confirm');
-   assert.equal(aliceEffectDuration(e),variant==='king'?3000:variant==='hit'?2400:1800);
+   assert.equal(e.moves.length,1);assert.equal(e.targets[0].hit,['hit','king'].includes(variant));assert.equal(e.targets[0].royal,false,'王の正体は撃破札を開くまで見せない');
+   assert.equal(e.royalResult,undefined,'結果確認は撃破札を公開したあと');
+   assert.equal(aliceEffectDuration(e),['hit','king'].includes(variant)?2400:1800);
+   if(variant==='king')assert.equal(after.captureReveal.defeated[0].isKing,true);
    assert.deepEqual(e.moves[0].to,{row:after.lastDefeat?.cells?.[1]?.row??after.pieces['own-1'].row,col:after.lastDefeat?.cells?.[1]?.col??after.pieces['own-1'].col});
    assert.equal(aliceEffectProgress(e,1).fly,1);assert.ok(Math.abs(aliceEffectProgress(e,1).impact-1)<1e-9);
    if(e.targets[0].hit){assert.equal(aliceEffectProgress(e,.60).fly,1);assert.equal(aliceEffectProgress(e,.60).impact,0,'impact follows completed flight');}

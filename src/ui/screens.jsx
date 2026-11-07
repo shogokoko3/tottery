@@ -180,6 +180,8 @@ import { QuestsScreen } from "./quests.jsx";
 import { CardMasteryScreen } from "./card-mastery.jsx";
 import { LettersScreen, useUnreadLetters } from "./letters.jsx";
 import { LoginBonus } from "./loginbonus.jsx";
+import { DailyRefresh } from "./daily-refresh.jsx";
+import { watchDailySession, canRefreshDailySession } from "../game/daily-session.js";
 import { GemShop } from "./gem-shop.jsx";
 import { ShopScreen } from "./shop.jsx";
 import { TitleDataBar } from "./title-data.jsx";
@@ -2301,11 +2303,12 @@ export function RoomScreen({
   );
 }
 export function TotteryApp() {
+  const [session, setSession] = useState(0);
   // 獲得時はホームのレベル欄も新しい経験値へ更新する。
   useSyncExternalStore(subscribeXpNotices, getXpNotices, getXpNotices);
   return (
     <>
-      <TotteryScreens />
+      <TotteryScreens key={session} onDailyRelogin={() => setSession(value => value + 1)} />
       <XpGainToast />
       <TitleAcquisition />
       <ProfileSyncNotice />
@@ -2313,7 +2316,10 @@ export function TotteryApp() {
   );
 }
 
-function TotteryScreens() {
+function TotteryScreens({ onDailyRelogin }) {
+  const [dailyUpdate, setDailyUpdate] = useState(null);
+  const [dailyReady, setDailyReady] = useState(false);
+  useEffect(() => watchDailySession(setDailyUpdate), []);
   const collection = useCollection();
   const [cpuSkins, setCpuSkins] = useState({});
   // ガチャ・スキンを開いたときの戻り先と、最初に出すタブ(ショップから来たら「加工」など)
@@ -2422,6 +2428,18 @@ function TotteryScreens() {
   // 相手の紹介にも重ねない。紹介を閉じるか、対局へ進むと再開する。
   const introQuiet = introHoldsTitles({ intro, screen: e, firstGame: tut === FIRST_GAME, firstPull: firstPullMode, stageIntro: storyIntro, afterIntro });
   useTitleNoticeHold(introQuiet);
+  useTitleNoticeHold(dailyReady);
+  useEffect(() => {
+    if (dailyReady || !dailyUpdate || !canRefreshDailySession(e, intro) || firstPullMode) return;
+    // A purchase/login/reward dialog can also be open over the home screen.
+    // Let it close before unmounting the old session.
+    const ready = () => {
+      if (!document.hidden && !document.querySelector('.modal-overlay, [role="dialog"], [role="alertdialog"]')) setDailyReady(true);
+    };
+    ready();
+    const timer = setInterval(ready, 500);
+    return () => clearInterval(timer);
+  }, [dailyUpdate, dailyReady, e, intro, firstPullMode]);
   // 同じあいだは、通信失敗の帯(「成績を保存できていません…」)も出さない(2026-10-06 見直し)。名前を決めた直後の
   // 登録が通らない(圏外・サインイン前)と、帯が無料10連の案内の唯一の釦「門を開く」を覆い、物語の頁の「前へ/次へ」と
   // 陣の「自動配置/王を選ぶ」にもかかった。送り直しは裏で続き、導入を抜けると(一覧・ホーム)出る。
@@ -2702,6 +2720,9 @@ function TotteryScreens() {
         </div>
       </GameShell>
     );
+  // 5時更新後は、取引や対局を閉じてから同じ口座で入り直す。
+  if (dailyReady) return <GameShell><DailyRefresh onDone={onDailyRelogin} /></GameShell>;
+
   // 導入(src/game/intro.js。2026-10-01 本人の指示)。
   // タイトル → 初回の漫画案内 → はじめの一局 → 結果 → 名前 → 無料10連の案内 → 10連 → 結果 → ホーム。
   // 漫画を読み終える(すぐに遊ぶ)と、はじめの一局へ

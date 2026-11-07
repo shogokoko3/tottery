@@ -224,7 +224,9 @@ export function informedPlay(s, options = {}) {
           }
         }
       }
-      score += moveSafety(s, player, p, m, capturedIds, safety);
+      // 安全さ(負なら、動いた駒が取られうる)。手加減のでたらめな手は、これが負の手を選ばない
+      const safeScore = moveSafety(s, player, p, m, capturedIds, safety);
+      score += safeScore;
       // 相手の技・盤面効果に合わせた足し引き(包囲の回避など。調整値は cpu-alice.js)
       score += aliceAdaptScore(s, player, p, m, capturedIds);
       if (
@@ -268,6 +270,7 @@ export function informedPlay(s, options = {}) {
       }
       moves.push({
         score,
+        safe: safeScore >= 0,
         type: "MOVE_PIECE",
         pieceId: p.id,
         row: m.row,
@@ -277,6 +280,13 @@ export function informedPlay(s, options = {}) {
     }
   }
   moves.sort((a, b) => b.score - a.score);
+  // 手加減の代わりの手だけを聞く(定石の CPU が自分の手の代わりに使う。cpu-joseki.js josekiCpuAction)
+  if (options.slipOnly) {
+    const alt = slipMove(moves, options.slip);
+    if (!alt) return null;
+    const { score, ...act } = alt;
+    return act;
+  }
   const best = moves[0];
   const can = canUseArea(s, player);
   if (can.ok && can.type === "sea" && shouldUseSea(s, player))
@@ -351,9 +361,40 @@ export function informedPlay(s, options = {}) {
   if (swap && swap.promising && (!best || best.score < 12))
     return { type: "__CPU_SHUFFLE", ...swap };
   if (best) {
-    const { score, ...act } = best;
+    const { score, ...act } = slipMove(moves, options.slip) || best;
     return act;
   }
   if (swap) return { type: "__CPU_SHUFFLE", ...swap };
   return cpuAction(s, player);
+}
+
+/**
+ * 手加減(2026-10-26 本人の指示「いちばん良い手をときどき外す形で、ストーリーのCPUを少し弱めて」)。
+ * slip = { rate, margin, random }: rate の割合で、2番目か3番目に良い手を選ぶ。ただし、いちばん良い手より margin 以上
+ * 点の低い手は選ばない(人のうっかりに近い外し方)。random の割合で、取られない手の中からでたらめに選ぶ。slip が無ければ何もしない
+ */
+export function slipMove(moves, slip) {
+  if (!slip || moves.length < 2) return null;
+  // でたらめな手(2026-10-26 本人の指示「でたらめな手も織り交ぜる」): slip.random の割合で、取られない手(safe)の中から適当に選ぶ。
+  // 駒をただ損する手は選ばない
+  if (slip.random > 0 && Math.random() < slip.random) {
+    const safe = moves.slice(1).filter((m) => m.safe !== false);
+    if (safe.length) return safe[Math.floor(Math.random() * safe.length)];
+  }
+  if (!(slip.rate > 0) || Math.random() >= slip.rate) return null;
+  const best = moves[0];
+  const near = moves.slice(1, 3).filter((m) => m.score >= best.score - (slip.margin ?? 10));
+  return near.length ? near[Math.floor(Math.random() * near.length)] : null;
+}
+
+/**
+ * 手加減の代わりの手(定石の CPU が自分の手の代わりに使う。cpu-joseki.js josekiCpuAction)。
+ * 盤の見え方は cpuInformedAction と同じ(シーズン2 の幻・Aの包囲を除いた盤)。代わりの手が無ければ null
+ */
+export function slipAlternative(state, player, slip) {
+  if (!slip || !(slip.rate > 0 || slip.random > 0)) return null;
+  const view = hasAliceRules(state) ? withoutAliceAceShuffle(aliceView(state, player), player) : state;
+  const alt = informedPlay(view, { slip, slipOnly: true });
+  if (!alt) return null;
+  return hasAliceRules(state) ? finishAliceMove(state, player, alt) : alt;
 }

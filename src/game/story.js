@@ -17,6 +17,7 @@
 import { storyArc, storyEpisode, episodeAccess } from "./story-narrative.js";
 import { MOVE_TEXT, SUIT_SYMBOL, movePhrases } from "./constants.js";
 import { AREA_BY_RANK, AREA_INFO } from "./areas.js";
+import { areaShort, foeKingPowerText } from "./king-power-text.js";
 import { buildDeck, shuffle, squareName } from "./board.js";
 import { josekiDeck } from "./cpu-joseki.js";
 import { STORY_TICKETS, normalizePhase, normalizeStory, phaseOf, rulesForPhase, storySetupFlags, stageSize } from "./phase.js";
@@ -76,10 +77,23 @@ export function storyRival(axis, phase = 1) {
     quote: voice.text,
     quoteSpeaker: voice.speaker,
     after: episode.after.at(-1).text,
-    // フェーズ2 は一言を出さない(すぐ下の「王の力」の欄と同じ話。行を減らして欄を最初の画面に入れる。design-v2)
-    aim: p === 1 ? RIVALS[axis].aim : p === 2 ? "" : "相手のエリアに合わせて、陣を考えよう。",
+    // フェーズ2・3 は一言を出さない(すぐ下の欄と同じ話。行を減らして欄を最初の画面に入れる。design-v2)
+    aim: p === 1 ? RIVALS[axis].aim : "",
   };
 }
+
+/** エリアの一文の句(king-power-text.js の AREA_SHORT で手で切ってある) */
+function areaPhrases(type) {
+  return areaShort(type)?.phrases || [];
+}
+
+/**
+ * ストーリーの CPU の手加減(2026-10-26 本人の指示「いちばん良い手をときどき外す形で、ストーリーのCPUを少し弱めて」)。
+ * rate の割合で、いちばん良い手の代わりに 2・3 番目の手を選ぶ(いちばん良い手より margin 以上低い手は選ばない)。
+ * 王を追い詰める定石の手(cpu-joseki の act)はそのまま。値は CPU どうしの対局で測って決めた(ストーリーとフェーズ.md)
+ */
+// random: 取られない手の中からでたらめに指す割合(2026-10-26 本人の指示「でたらめな手も織り交ぜる」)
+export const STORY_CPU_SLIP = Object.freeze({ rate: 0.3, margin: 12, random: 0.15 });
 
 /** 新規対局の配札。通常のCPU戦・通信対戦の配札には使わない。 */
 export function storyDeal(story) {
@@ -189,25 +203,37 @@ export function stageIntro(axis, phase) {
           }
         : null),
     });
-  const type = AREA_BY_RANK[stage.ranks[0]];
-  const area = AREA_INFO[type];
+  // フェーズ3(2026-10-26 本人の指示): 盤は 5×5、相手の王も王の力を持つ、エリアはあなただけ(王にした数字のエリアを貸す)。
+  // 題のすぐ下の札(phase3)に、フェーズ3で変わることと相手の王の力をまとめる(案B。2026-10-26 本人の指示)。
+  // 結びの行に置くと下の釦に隠れて最初の画面に入らなかった。第1話は「変わること」、2話目からは「決まり」
   return Object.freeze({
-    title: `${stage.name}の王と${area.name}`,
+    title: `${stage.name}の王`,
     lead,
-    items: [Object.freeze({ rank: stage.ranks.join("・"), text: `${area.name}: ${area.text}` })],
-    // フェーズ3のステージは 9×9。相手(CPU)の王にはフォイルが付くので、相手のエリアは必ず立つ
-    note: Object.freeze(["相手の王のエリアが立つ。", "あなたの王も、その数字のフォイルを装備していればエリアが立つ。"]),
+    items: stage.ranks.map((rank) => Object.freeze({ rank, text: foeKingPowerText(rank) })),
+    itemsTitle: "相手の王の力",
+    phase3: Object.freeze({
+      title: axis === "23" ? "フェーズ3で変わること" : "フェーズ3の決まり",
+      // 句の塊で出す(語の途中で割らない)。つなぐと1文
+      lines: Object.freeze([
+        Object.freeze(["相手の王も、", "王の力を持つ。"]),
+        // エリアは、おすすめの駒(この話の数字)を王にしたときだけ付く。フォイルを着けた札なら、そのフォイルのエリア(2026-10-26 本人の指示)
+        Object.freeze([`${stage.ranks.join("か")}を王にすると、`, "あなたの王に", `${areaShort(storyArea(axis)).name}が付く。`]),
+        Object.freeze(areaPhrases(storyArea(axis))),
+        Object.freeze(["フォイルを着けた札を", "王にすると、", "そのフォイルのエリアが付く。"]),
+        Object.freeze(["対局中、", "エリアが使える場面で", "光って知らせる。"]),
+      ]),
+    }),
+    note: Object.freeze([]),
   });
 }
 
 /**
  * 結びの行(stageIntro の note)を句に切ったもの(2026-10-06 見直し)。画面は句の塊(phrases.jsx の Phrases)で出し、
  * 塊の間でだけ折り返す。読点・句点で切っただけで 320 幅の列に入る行はここに書かない(Phrases がそう切る)。
- * 「あなたの王も、その数字のフォイルを装備していればエリアが立つ。」は 320・375 幅で
- * 「…その数字のフォイル/を装備していれば…」と語の途中で割れていた。文は note のまま(ここは切り方だけ)
+ * いまは手で切る行が無い(フェーズ3 の結びは題の下の札へ移した。2026-10-26)。行を足したらここに切り方を書く
  */
 const NOTE_PHRASES = new Map(
-  [["あなたの王も、", "その数字の", "フォイルを", "装備していれば", "エリアが立つ。"]].map((phrases) => [phrases.join(""), Object.freeze(phrases)]),
+  [].map((phrases) => [phrases.join(""), Object.freeze(phrases)]),
 );
 
 /** 結びの1行を句の並びに。手で切った並びが無ければ行のまま返す(Phrases が読点・句点で切る) */
@@ -228,7 +254,27 @@ export function stageSetup(axis, phase) {
     cpuAxis: [...stage.ranks],
     ...storySetupFlags(p),
     areas: rulesForPhase(p).areas,
+    // フェーズ3 は話ごとにプレイヤーのエリアを決める(2026-10-26 本人の指示「１話目なら土、２話目なら海」)
+    ...(p >= 3 ? { areaTypes: [storyArea(axis), null], areaRanks: [[...stage.ranks], null] } : null),
   });
+}
+
+/**
+ * フェーズ3 のストーリーで、おすすめの駒を王にしたときに貸すエリア(2026-10-26 本人の指示「１話目なら土、２話目なら海のように」
+ * 「推奨の駒を選んだ時のみ」)。話の軸の数字のエリア: 二と三 → 土、四と五 → 海、六と七 → 森、八と九 → 氷、十 → 空、JとQ・K → 宮殿。
+ * フォイルを着けた札を王にしたときは、そのフォイルのエリア(areas.js storyAreaFor)
+ */
+export function storyArea(axis) {
+  const stage = stageOf(axis);
+  return stage ? AREA_BY_RANK[stage.ranks[0]] || null : null;
+}
+
+/** ストーリーの対局を始める旗(START_SETUP に載せる)。フェーズ3 は話のエリアも */
+export function storyStartFlags(story) {
+  const p = normalizePhase(story?.phase);
+  const stage = story ? stageOf(story.axis) : null;
+  // フェーズ3: フォイルが無いときは、おすすめの駒(話の軸の数字)を王にしたときだけ話のエリアを貸す(2026-10-26 本人の指示)
+  return { ...storySetupFlags(p), ...(p >= 3 && stage ? { areaTypes: [storyArea(story.axis), null], areaRanks: [[...stage.ranks], null] } : null) };
 }
 
 /**

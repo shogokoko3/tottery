@@ -79,7 +79,8 @@ export function AreaEffectNotice({ effect, names }) {
   );
 }
 
-export function AreaEffects({ effect, flipped = false }) {
+// size: 盤の大きさ(ストーリーのフェーズ3 は 5×5 でもエリアが立つ。2026-10-26)
+export function AreaEffects({ effect, flipped = false, size = 9 }) {
   if (!effect.event) return null;
   const { event, stage } = effect;
   if (!["birth", "thaw"].includes(event.type))
@@ -90,11 +91,12 @@ export function AreaEffects({ effect, flipped = false }) {
         event={event}
         startedAt={effect.startedAt}
         flipped={flipped}
+        size={size}
       />
     );
   const at = (p) => ({
-    left: `${(((flipped ? 8 - p.col : p.col) + 0.5) / 9) * 100}%`,
-    top: `${(((flipped ? 8 - p.row : p.row) + 0.5) / 9) * 100}%`,
+    left: `${(((flipped ? size - 1 - p.col : p.col) + 0.5) / size) * 100}%`,
+    top: `${(((flipped ? size - 1 - p.row : p.row) + 0.5) / size) * 100}%`,
   });
   return (
     <div

@@ -46,7 +46,7 @@ import {
   hasVisibleSkyBonus,
 } from "../game/area-presentation.js";
 import { getLegalMoves, kingRankOf, squareName } from "../game/board.js";
-import { CHANCE_TELL, kingPowerChance } from "../game/king-power-hint.js";
+import { CHANCE_TELL, areaChance, kingPowerChance } from "../game/king-power-hint.js";
 import {
   PLAYER_META,
   nameOf,
@@ -60,13 +60,13 @@ import { getCollection } from "../skins/store.js";
 import { baseSkinId } from "../skins/catalog.js";
 import { cpuInformedAction as cpuAction } from "../game/cpu-informed.js";
 import { josekiCpuAction, josekiDeck } from "../game/cpu-joseki.js";
-import { STORY_XP, grantStoryReward, nextStage, nextStageAfter, storyCpuArea, storyDeal, storyFreshClear, storyUntimed, storyRival, storyLossNote } from "../game/story.js";
+import { STORY_XP, grantStoryReward, nextStage, nextStageAfter, storyCpuArea, storyDeal, storyFreshClear, storyStartFlags, STORY_CPU_SLIP, storyUntimed, storyRival, storyLossNote } from "../game/story.js";
 import { StoryCoachNote, StoryInterruptMenu } from "./story.jsx";
 import { COACH_WAIT_LINES, KEEP_LABEL, coachArranges, coachScene, coachSeen, markCoachSeen, storyCoachPlan } from "../game/story-coach.js";
 import { prologueSeen } from "../game/intro.js";
 // 句ごとに折り返す文(iPhone の WebKit は auto-phrase を知らない。2026-10-06 見直し)
 import { Phrases } from "./phrases.jsx";
-import { PHASE_MAX, STORY_TICKETS, phaseOf, rankedPhase, rulesForPhase, setupFlagsForPhase, storySetupFlags } from "../game/phase.js";
+import { PHASE_MAX, STORY_TICKETS, phaseOf, rankedPhase, rulesForPhase, setupFlagsForPhase } from "../game/phase.js";
 import { autoArrangeAction } from "../game/auto-setup.js";
 import { REPEAT_LIMIT, quietLimit } from "../game/adjudication.js";
 import { onlinePhase } from "../net/match-settings.js";
@@ -902,6 +902,7 @@ export function GameView({
                     stage: "release",
                   }}
                   flipped={d}
+                  size={state.boardSize}
                 />
               )}
               {Array.from({
@@ -1552,6 +1553,7 @@ export function GameCore({
     turnStartRef = (0, useRef)(Date.now()),
     turnKeyRef = (0, useRef)(null),
     setupStartRef = (0, useRef)(null),
+    setupElapsedRef = (0, useRef)([{ place: 0, king: 0 }, { place: 0, king: 0 }]),
     setupPhaseStartRef = (0, useRef)(null),
     [pendingCapture, setPendingCapture] = (0, useState)(null),
     [tutStep, setTutStep] = (0, useState)(0),
@@ -1741,7 +1743,7 @@ export function GameCore({
       !!a.captureReveal ||
       !!a.setupEffects,
   );
-  const aliceFx = useAliceEffects(a, network ? p : cpu ? 0 : null, cinematic.busy || aceMagic.busy || areaFx.busy || honorBusy || !!a.captureReveal || !!a.setupEffects);
+  const aliceFx = useAliceEffects(a, network ? p : cpu ? 0 : null, cinematic.busy || aceMagic.busy || areaFx.busy || honorBusy || !!a.setupEffects);
   const fxBusy = cinematic.busy || aceMagic.busy || areaFx.busy || aliceFx.busy || honorBusy;
   const autoArea = automaticAreaAction(a);
   const autoIssued = useRef(null);
@@ -1944,7 +1946,8 @@ export function GameCore({
           // フェーズ1は王の力なし(kingPowers:false)。それ以外は旗を載せない(今までどおり)。
           // ストーリーのフェーズ2 は王の力をプレイヤーの席だけに付ける(storySetupFlags。2026-10-25 本人の指示)
           ...(skins ? {loadouts:skins} : {}),
-          ...(story && cpu && !network && !tutorial ? storySetupFlags(phase) : setupFlagsForPhase(phase)),
+          // フェーズ3 は話ごとのエリアも(storyStartFlags。2026-10-26 本人の指示)
+          ...(story && cpu && !network && !tutorial ? storyStartFlags({ ...story, phase }) : setupFlagsForPhase(phase)),
           // 決着がつかない局面の判定(繰り返し・倒れない手番の連続)。手元の対局だけ(2026-10-25 本人の指示)
           ...(!network && !tutorial ? { stallRule: true } : null),
           // 盤面エリア(試験ルール、src/game/areas.js)。9×9 だけ。
@@ -2049,10 +2052,12 @@ export function GameCore({
     if (!cpu || network || tutorial || fxBusy || autoArea || a.setupEffects)
       return;
     const aliceCpuInteraction=a.aliceRevive || a.aliceRecruit?.length || a.aliceCommitted || Object.values(a.pieces).some(p=>p.alive && (p.ownerHidden || p.illusion));
+    // ストーリーの CPU は少し手加減する(いちばん良い手をときどき外す。STORY_CPU_SLIP。2026-10-26 本人の指示)
+    const cpuOptions = story ? { slip: STORY_CPU_SLIP } : {};
     let E =
       !aliceCpuInteraction && foeArea && foeArea.king
-        ? josekiCpuAction(a, T, foeArea.type, foeArea.king)
-        : cpuAction(a, T);
+        ? josekiCpuAction(a, T, foeArea.type, foeArea.king, cpuOptions)
+        : cpuAction(a, T, cpuOptions);
     // Bot の強さ(3段階)。弱い段階は移動の一部をでたらめな合法手に差し替える
     if (bot && !aliceCpuInteraction) E = botAction(a, T, E, bot);
     if (!E) return;
@@ -2217,21 +2222,27 @@ export function GameCore({
       setupClock &&
       setupClock.step === setupStep &&
       setupClock.side === setupSide
-        ? setupLimit - (nowMs - setupClock.at)
+        ? setupLimit -
+          setupElapsedRef.current[setupSide][setupStep] -
+          (nowMs - setupClock.at)
         : null;
 
   ((0, useEffect)(() => {
-    if (!setupRunning) {
+    if (a.phase !== "setup") {
       setupStartRef.current = null;
+      setupElapsedRef.current = [{ place: 0, king: 0 }, { place: 0, king: 0 }];
       return;
     }
-    setupStartRef.current = {
-      at: Date.now(),
-      step: setupStep,
-      side: setupSide,
-    };
-    setNowMs(Date.now());
-  }, [setupRunning, setupSide, setupStep]),
+    const now = Date.now();
+    const previous = setupStartRef.current;
+    // 段階を離れるまでに使った時間を控え、戻ったときは残りから再開する。
+    if (previous)
+      setupElapsedRef.current[previous.side][previous.step] += now - previous.at;
+    setupStartRef.current = setupRunning
+      ? { at: now, step: setupStep, side: setupSide }
+      : null;
+    setNowMs(now);
+  }, [a.phase, setupRunning, setupSide, setupStep]),
     // 時間切れ。置く段階なら残りを自動で埋めて王選びへ、
     // 王を選ぶ段階なら自動で選んで確定する
     (0, useEffect)(() => {
@@ -3073,11 +3084,12 @@ export function GameCore({
         <CaptureEffect
           reveal={a.captureReveal}
           defeat={a.lastDefeat}
-          move={a.lastMove?.captured && !aceMagic.captureHandled ? a.lastMove : null}
+          move={!a.captureReveal.croquet && a.lastMove?.captured && !aceMagic.captureHandled ? a.lastMove : null}
           boardRef={boardRef}
           boardSize={a.boardSize}
           viewer={network ? p : cpu ? 0 : captureDisplayed.currentTurn}
           final={a.phase === "gameover" || a.winner != null}
+          autoContinue={!!a.captureReveal.croquet && !!a.aliceRecruit?.length && a.winner == null && cinematic.enabled}
           onClose={() => y({ type: "DISMISS_CAPTURE" })}
         />
       )}
@@ -3903,6 +3915,19 @@ export function GameCore({
   })();
   // 使うときの注意は、その局で最初の2回だけ(毎回同じ文だと読まれなかった。評価 13回目)
   const kpTell = !!kpLine && Object.keys(kpShown.current.turns).length <= 2;
+  // 貸し出しのエリア(ストーリーのフェーズ3)。使える番は「発動」を光らせ、働いたら一言(2026-10-26 本人の指示)。
+  // 一言は種類ごとにその局で最初の2回だけ。光はいつも
+  const areaNow = x && !Pl && !(tutorial && tutorial.intro) ? areaChance(a, P) : null;
+  const areaLine = (() => {
+    if (!areaNow) return null;
+    const memo = kpShown.current;
+    const turnKey = `${areaNow.kind}@${a.turnNo || 0}`;
+    if (!memo.turns[turnKey]) {
+      memo.turns[turnKey] = true;
+      memo.counts[areaNow.kind] = (memo.counts[areaNow.kind] || 0) + 1;
+    }
+    return memo.counts[areaNow.kind] <= 2 ? areaNow.line : null;
+  })();
   // 盤面エリアで選べる駒(空: 変身、宮殿: 昇格)
   const logPiece = a.logViewerSnapshot || a.pieces[a.logViewerId];
   const areaCands =
@@ -3918,7 +3943,8 @@ export function GameCore({
   // 革命の扉(アリスのAのフォイル効果)。魔術師と同じ帯で、使えるかが開かずに分かる(2026-10-15 本人の指示)
   const revolution = canUseRevolution(a, P);
   const showRevolution =
-    !tutorial && a.phase === "play" && a.areasEnabled && !!revolutionAce(a, P);
+    // 貸し出しのエリア(ストーリーのフェーズ3 の 5×5)では、スキン固有の効果は立てない
+    !tutorial && a.phase === "play" && a.areasEnabled && !a.areaLend && !!revolutionAce(a, P);
   const revolutionUsed = a.aliceUsed?.[P]?.revolution === (a.turnNo || 0);
   const showAceFoil =
     !tutorial &&
@@ -4020,6 +4046,7 @@ export function GameCore({
             onHelp={() => f("areas")}
             aliceArea={aliceArea}
             focusFire={!!(tutFocus && tutFocus.areaButton)}
+            glow={areaNow?.kind === "area-ready"}
           />
         )}
         {aceMagic.controls}
@@ -4172,7 +4199,7 @@ export function GameCore({
               }}
             >
               <FieldBackdrop theme={fieldTheme} areas={displayed.areas} />
-              <AreaEffects effect={areaFx} flipped={Jl} />
+              <AreaEffects effect={areaFx} flipped={Jl} size={R} />
               <AliceBoardEffects effect={aliceFx} flipped={Jl} size={R >= 9 ? "xs" : "md"} />
               {a.lastAliceSmoke != null && <div key={`smoke-${a.lastAliceSmoke}`} className="alice-smoke" aria-hidden="true"/>}
               {/* 相手の直前の手を矢印で示す(2026-09-23 本人の指示「どこからどこへ動いたか」)。
@@ -4526,6 +4553,12 @@ export function GameCore({
             <em>王の力</em>
             <b>{kpLine}</b>
             {kpTell && <span>{CHANCE_TELL}</span>}
+          </p>
+        )}
+        {areaLine && (
+          <p className="kp-chance kp-chance-area" role="status">
+            <em>エリア</em>
+            <b>{areaLine}</b>
           </p>
         )}
         {/* はじめの一局(台本をストーリーとして遊ぶ一局)には出さない(2026-10-06 見直し)。1枚に1つのことを教える札の

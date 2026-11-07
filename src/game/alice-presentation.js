@@ -71,7 +71,7 @@ export function alicePresentationEvent(before,after,seat=null) {
       const source=before.pieces[mark.presentation?.pieceId]||fallen||moved,seen=source&&oldBy.get(source.id);
       const landing=mark.presentation?.landing||(deaths.length>=2?at(deaths[1]):moved?at(moved):null);
       if(landing){const victim=before.board[landing.row]?.[landing.col],shown=old.find(p=>cell(p)===cell(landing));
-        targets=[{...landing,hit:deaths.length>=2,royal:deaths.length>=2&&!!victim?.isKing&&after.pieces[victim.id]?.alive===false,piece:shown?visual(before,shown,viewer):null}];}
+        targets=[{...landing,hit:deaths.length>=2,royal:!after.captureReveal?.croquet&&deaths.length>=2&&!!victim?.isKing&&after.pieces[victim.id]?.alive===false,piece:shown?visual(before,shown,viewer):null}];}
       if(seen&&landing)moves.push({id:source.id,from:at(seen),to:landing,piece:visual(before,seen,viewer)});
     } else if(field==='alice-tea')type='tea';
     else if(field==='alice-quadrille') {

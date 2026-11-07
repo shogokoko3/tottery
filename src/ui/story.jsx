@@ -397,6 +397,24 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
             </div>
           </section>
         )}
+        {intro.phase3 && (
+          // フェーズ3: 変わること・相手の王の力を題のすぐ下の札にまとめる(案B。2026-10-26 本人の指示)
+          <section className="story-power story-phase3" aria-label={intro.phase3.title}>
+            <b>{intro.phase3.title}</b>
+            {intro.phase3.lines.map((line, i) => (
+              <p key={i}><Phrases text={line} /></p>
+            ))}
+            <h4 className="story-intro-items-title">{intro.itemsTitle}</h4>
+            <ul className="story-phase3-kings">
+              {intro.items.map((it) => (
+                <li key={it.rank}>
+                  <b>{it.rank}</b>
+                  <span><Phrases text={it.text} /></span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {/* 登場人物の一言・この局のねらいは句の塊で(語の途中で割らない。2026-10-06 見直し)。挑戦状(台詞)は段落のまま */}
         {arc && <div className="chronicle-roster">{arc.characters.map(c => <div key={c.rank}><CardFace rank={c.rank} suit="spade" size="sm" skinId={false} /><span><b>{c.name}</b><small><StoryText text={c.detail} /></small></span></div>)}</div>}
         <StoryPurpose episode={storyEpisode(axis, phase)} />
@@ -406,7 +424,7 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
           </div>
         )}
         {lesson && <p className="story-lesson">手札{lesson.handSize}枚から5枚を並べる。<span>使う札：{lesson.pool.join("・")}／時間制限なし</span></p>}
-        {intro.itemsTitle && <h4 className="story-intro-items-title">{intro.itemsTitle}</h4>}
+        {intro.itemsTitle && !intro.phase3 && <h4 className="story-intro-items-title">{intro.itemsTitle}</h4>}
         {phase <= 2 ? (
           // フェーズ1・2 は相手の王の動き方を盤の図で(フェーズ2 の CPU の王は力なし。2026-10-25)。図はルール(getLegalMoves)から描く MoveDiagram、文は MOVE_TEXT のまま
           // (句に切った MOVE_PHRASES で出す。つなぐと MOVE_TEXT)。
@@ -436,7 +454,7 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
               </li>
             ))}
           </ul>
-        ) : (
+        ) : intro.phase3 ? null : (
           <ul className="story-intro-items">
             {intro.items.map((it) => (
               <li key={it.rank}>
@@ -448,7 +466,7 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
         )}
         {/* 1文1行(2026-10-01 本人の指示。長い1行だと語の途中で割れる)。行の中は句の塊(2026-10-06 見直し。
             フェーズ3 の2行目が「…その数字のフォイル/を装備して…」と割れた。切り方は story.js の notePhrases) */}
-        {!intro.power && <p className="hint story-intro-note">
+        {!intro.power && intro.note.length > 0 && <p className="hint story-intro-note">
           {intro.note.map((line) => (
             <span key={line}>
               <Phrases text={notePhrases(line)} />

@@ -44,7 +44,7 @@ export function wonderlandFxScene(type='croquet',variant='empty') {
   action={type:'MOVE_PIECE',player:1,pieceId:'foe-1',row:2,col:2,seed:10};
  } else if(type==='maze')action={type:'MOVE_PIECE',player:0,pieceId:'own-1',row:4,col:2,seed:10};
  else if(type==='recruit'){
-  s=wonderlandFxScene('croquet','hit').after;action=act('recruit',{row:6,col:4});
+  s=reducer(wonderlandFxScene('croquet','hit').after,{type:'DISMISS_CAPTURE'});action=act('recruit',{row:6,col:4});
  } else if(type==='recruit-k'){
   // 仲間にする配置 → 映像 → 相手の K の予備札の配置、の順を見る場面(2026-10-16 本人の指示)。
   // 相手の foe-1 を J にして(own-1 と同じ黒)、相手の予備札を1枚用意し、クロッケーで当てて取る

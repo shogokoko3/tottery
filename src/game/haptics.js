@@ -8,7 +8,7 @@
  * - **@capacitor/haptics** を使う(2026-09-28 に追加)。
  *   はじめは navigator.vibrate だけで書いたが、**iPhone の WebView はこれを持たない**ので
  *   iOS で何も起きなかった。プラグインなら iPhone の Taptic Engine が鳴り、
- *   Android と Web では中でその navigator.vibrate に落ちる。
+ *   Android はネイティブの振動、Web は navigator.vibrate を使う。
  * - iPhone では「長さ(ミリ秒)」ではなく **強さと種類**で指定する。
  *   Taptic Engine は時間で震えるものではないので、長さを渡しても同じ叩き方になる。
  *     impact(Light/Medium/Heavy) … 物がぶつかった手ごたえ
@@ -19,6 +19,7 @@
  * - 鳴らない端末(許可が無い・対応していない)でも対局は同じに進むよう、失敗しても黙って通す。
  */
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
+import { hapticsEnabled, subscribeHaptics } from "./haptic-settings.js";
 
 /**
  * 使うメソッドだけの薄い包み。then を持たないので、返しても await されない
@@ -38,6 +39,25 @@ const tap = {
 export const PATTERNS = Object.freeze({
   /** ふつうの駒を取った。軽く1回 */
   capture: Object.freeze({ kind: "impact", style: ImpactStyle.Light, web: 20 }),
+  /** 中央の裏面が砕ける瞬間。王の正体によって変えない。 */
+  captureBreak: Object.freeze({ kind: "impact", style: ImpactStyle.Medium, web: 43 }),
+  captureLast: Object.freeze({ kind: "impact", style: ImpactStyle.Medium, web: 43 }),
+  gateTouch: Object.freeze({ kind: "impact", style: ImpactStyle.Light, web: 20 }),
+  gateOpen: Object.freeze({ kind: "impact", style: ImpactStyle.Medium, web: 43 }),
+  raritySR: Object.freeze({
+    kind: "impact", style: ImpactStyle.Medium, web: 43,
+    group: "summon", priority: 1,
+  }),
+  raritySSR: Object.freeze({
+    kind: "impact", style: ImpactStyle.Light, web: [20, 80, 61],
+    followUp: ImpactStyle.Heavy, delay: 100,
+    group: "summon", priority: 2,
+  }),
+  foil: Object.freeze({
+    kind: "impact", style: ImpactStyle.Light, web: [20, 80, 61],
+    followUp: ImpactStyle.Heavy, delay: 100,
+    group: "summon", priority: 3,
+  }),
   /** まとめて取った。中くらいの手ごたえを枚数ぶん */
   captureMany: Object.freeze({
     kind: "impact",
@@ -72,6 +92,24 @@ export const PATTERNS = Object.freeze({
 
 /** まとめ取りで刻むときの間隔(ミリ秒) */
 const REPEAT_MS = 90;
+const pending = new Set();
+const groups = new Map();
+
+function allowed() {
+  return hapticsEnabled() && !(typeof document !== "undefined" && document.hidden);
+}
+
+/** OFFやバックグラウンド移行時は、連続振動の残りも捨てる。 */
+export function cancelHaptics() {
+  for (const cancel of [...pending]) cancel();
+  groups.clear();
+}
+subscribeHaptics(() => {
+  if (!hapticsEnabled()) cancelHaptics();
+});
+globalThis.document?.addEventListener("visibilitychange", () => {
+  if (document.hidden) cancelHaptics();
+});
 
 /** この端末で震わせられるか(プラグインが載っていれば、その先はプラグインが決める) */
 export function canVibrate() {
@@ -87,6 +125,7 @@ export function canVibrate() {
 
 /** 1回鳴らす。失敗しても黙って通す */
 function fire(pattern) {
+  if (!allowed()) return false;
   try {
     if (pattern.kind === "notification")
       tap.notification({ type: pattern.type })?.catch?.(() => {});
@@ -102,14 +141,50 @@ function fire(pattern) {
  * 鳴らせない端末では何もしない(例外も投げない)
  */
 export function vibrate(pattern) {
+  return !!playHaptic(pattern);
+}
+
+/** 演出を閉じる際に、2段階の振動の残りも止められる。 */
+export function playHaptic(pattern) {
   const p = typeof pattern === "string" ? PATTERNS[pattern] : pattern;
-  if (!p || !p.kind) return false;
+  if (!p || !p.kind || !allowed()) return null;
+  // 10連をまとめて開いても同じ振動を重ねない。SSR・フォイルを優先。
+  const previous = p.group && groups.get(p.group);
+  if (previous && Date.now() - previous.at < 160) {
+    if (previous.priority >= p.priority) return null;
+    previous.cancel();
+  }
+  const timers = new Set();
+  const cancel = () => {
+    for (const timer of timers) clearTimeout(timer);
+    timers.clear();
+    pending.delete(cancel);
+  };
   const ok = fire(p);
+  if (!ok) return null;
+  const later = (delay, pulse) => {
+    const timer = setTimeout(() => {
+      timers.delete(timer);
+      fire(pulse);
+      if (!timers.size) pending.delete(cancel);
+    }, delay);
+    timers.add(timer);
+    pending.add(cancel);
+  };
+  if (p.group) groups.set(p.group, { at: Date.now(), priority: p.priority, cancel });
+  if (p.followUp) later(p.delay, { kind: "impact", style: p.followUp });
   // まとめ取りは間を置いて刻む。1回目は上で鳴らしたぶん
   if (ok && p.repeat > 1)
     for (let i = 1; i < p.repeat; i++)
-      setTimeout(() => fire(p), REPEAT_MS * i);
-  return ok;
+      later(REPEAT_MS * i, p);
+  return cancel;
+}
+
+/** 公開した札だけを参照。1枚ごとに鳴らし、王は専用通知に任せる。 */
+export function captureRevealPattern({ index, total, king = false, mine = true }) {
+  if (!mine || king || total < 2 || index < 0 || index >= total) return null;
+  if (index === total - 1) return PATTERNS.captureLast;
+  return PATTERNS.capture;
 }
 
 /**

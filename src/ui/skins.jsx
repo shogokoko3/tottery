@@ -1,5 +1,6 @@
 import { SummonResultCard, FoilBadge } from "./summon-results.jsx";
 import { playSound, useCue } from "../audio/index.js";
+import { useHapticCue } from "./haptic-cue.js";
 import { normalizeSummonFreeze, freezeLadder, freezeFoilUpgrade, summonFoilOrder, summonFoilTotal } from "../skins/summon-freeze.js";
 import { SummonFreeze, useSummonFreeze } from "./summon-freeze.jsx";
 import { GemIcon, GemAmount } from "./gem.jsx";
@@ -355,6 +356,11 @@ function RevealCard({
   const next = stage >= 0 ? ladder[stage + 1] : null;
   const final = flipped && stage === ladder.length - 1;
   useCue(ladder[stage] === "SSR" ? "reveal_ssr" : ladder[stage] === "SR" ? "reveal_sr" : "reveal_r", flipped && stage >= 0 && !spinning, `${skin.id}:${stage}`);
+  useHapticCue(
+    shown === "SSR" ? "raritySSR" : shown === "SR" ? "raritySR" : null,
+    flipped && stage >= 0 && !spinning && !reduce && (!skin.foil || foilUpgrade),
+    `${skin.id}:${stage}`,
+  );
   // Complete the final rarity landing before starting the separate foil change.
   useEffect(() => {
     if (!final) return;
