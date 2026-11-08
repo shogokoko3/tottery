@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- CI(GitHub Actions)の「審査用」の版(2026-11-09)。Actions の手動実行で release を選んだときだけ使う。
+	     内部テスト専用にしないので、外部テストと App Store の審査に出せる。広告は本物(ADMOB_TESTING=false)。
+	     ふだんの push は ios/ExportOptions-ci.plist(内部テスト専用)のまま。 -->
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>testFlightInternalTestingOnly</key>
+	<false/>
+	<key>destination</key>
+	<string>upload</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>teamID</key>
+	<string>K66H4J3S87</string>
+	<key>signingCertificate</key>
+	<string>Apple Distribution</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.shogokoko.tottery</key>
+		<string>tottery-ci-appstore</string>
+	</dict>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+</dict>
+</plist>

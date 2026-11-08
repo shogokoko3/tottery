@@ -24,6 +24,7 @@ const types = {
   ".css": "text/css",
   ".webp": "image/webp",
   ".png": "image/png",
+  ".svg": "image/svg+xml",
   ".json": "application/json",
   ".m4a": "audio/mp4",
   ".mp4": "video/mp4",

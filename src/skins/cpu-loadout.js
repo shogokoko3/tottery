@@ -1,5 +1,6 @@
 import { SKINS, FOIL_SKINS, SPECIAL_FOIL_SKINS } from "./catalog.js";
 import { areaSkinOk } from "../game/areas.js";
+import { isSeriesOpen } from "../game/content-seasons.js";
 
 // CPUは所持データを使わず、限定・バトルパスを含む全スキンから装備する。
 // 同じ数字に複数ある場合は均等に選び、対局中は選んだ装備を保持する。
@@ -10,13 +11,19 @@ const cpuFoilFor = (skin) =>
 
 /** CPU が装備できるシリーズ。heroes = 最初のシリーズ、alice = シーズン2(不思議の国のアリス) */
 export const CPU_SERIES = ["heroes", "alice"];
+/** いま開いているシリーズだけ(まだ始まっていないシーズンのスキンを CPU に着せない。2026-11-09) */
+const openCpuSeries = (now = Date.now()) => {
+  const open = CPU_SERIES.filter((id) => isSeriesOpen(id, now));
+  return open.length ? open : [CPU_SERIES[0]];
+};
 
 /**
  * 1局ぶんの装備。シリーズは1局の中でそろえる(王の効果と盤面効果がシリーズで決まるため)。
  * series を省くと、シリーズも均等に選ぶ。
  */
 export function createCpuLoadout(random = Math.random, series = null) {
-  const pick = series || CPU_SERIES[Math.floor(random() * CPU_SERIES.length)];
+  const choices = openCpuSeries();
+  const pick = series || choices[Math.floor(random() * choices.length)];
   const groups = new Map();
   for (const skin of SKINS.filter((s) => s.series === pick)) {
     if (!groups.has(skin.rank)) groups.set(skin.rank, []);

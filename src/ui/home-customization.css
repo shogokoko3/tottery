@@ -1377,3 +1377,19 @@ body:has(.stage > .home-wrap) {
     margin: 0;
   }
 }
+
+/* iPad など、幅も高さもある画面(2026-11-09)。
+ * 幅 520px のままだと、余った高さを下の6つの入り口が全部吸って、1つが 200px を超える縦長になっていた。
+ * 幅を広げ、入り口は伸ばさず、中身を画面の真ん中に寄せる */
+@media (min-width: 700px) and (min-height: 900px) {
+  .home-wrap[data-home-area] {
+    max-width: 680px;
+    justify-content: center;
+  }
+  .home-wrap[data-home-area] .home-grid {
+    flex: 0 0 auto;
+  }
+  .home-wrap[data-home-area] .home-grid > :is(.home-tile, .home-wide) {
+    min-height: 92px;
+  }
+}

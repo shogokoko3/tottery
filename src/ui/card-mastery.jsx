@@ -22,6 +22,7 @@ import { useCollection } from "../skins/store.js";
 import { byId, foilId } from "../skins/catalog.js";
 import { CardFace } from "./cards.jsx";
 import { useMissionProfile } from "./mission-profile.js";
+import { isSeriesOpen } from "../game/content-seasons.js";
 import { FRAME_GRADES } from "./title-design.js";
 import { TitleFrame } from "./title-frame.jsx";
 
@@ -46,7 +47,11 @@ export function CardMasteryScreen({ onBack, initialSeries = null }) {
   // ガチャと同じ流れ(2026-10-16 本人の指示): まず「シリーズ選択」の画面、選ぶといつもの一覧。
   // 一覧の右上の「シリーズ選択へ」で選択画面に戻る
   const [seriesId, setSeriesId] = useState(initialSeries);
-  const series = MASTERY_SERIES.find((s) => s.id === seriesId) || MASTERY_SERIES[0];
+  // まだ始まっていないシーズンは出さない。ただしそのシリーズのスキンを持っていれば出す(2026-11-09)
+  const shownSeries = MASTERY_SERIES.filter(
+    (s) => isSeriesOpen(s.id) || s.skins.some((skin) => ownsSkin(owned, skin)),
+  );
+  const series = shownSeries.find((s) => s.id === seriesId) || shownSeries[0] || MASTERY_SERIES[0];
   const pickSeries = (id) => {
     setSeriesId(id);
     setOpen(null);
@@ -89,7 +94,7 @@ export function CardMasteryScreen({ onBack, initialSeries = null }) {
           </p>
         )}
         <div className="card-mastery-pick-list" role="list" aria-label="シリーズを選ぶ">
-          {MASTERY_SERIES.map((s) => {
+          {shownSeries.map((s) => {
             const have = s.skins.filter((skin) => ownsSkin(owned, skin));
             const points = s.skins.reduce((n, skin) => n + (mastery[skin] || 0), 0);
             return (

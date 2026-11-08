@@ -1747,6 +1747,10 @@ body:has(.skin-overlay) {
 .title-hero {
   position: relative;
   width: 100%;
+  /* .intro の 420px の幅をタイトルでは外す。iPad では高さに合わせて広がった絵(約700px)が
+     420px の箱で左右を切られ、題字「トッタリー」が欠けていた(2026-11-09)。
+     幅は .title-hero-art の式が決め、広い画面では左右に地が残る */
+  max-width: none;
   display: flex;
   flex-direction: column;
   align-items: center;

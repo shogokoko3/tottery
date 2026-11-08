@@ -21,7 +21,15 @@ on:
       - "tools/strip-public.mjs"
       - "tools/patch-plugins.mjs"
       - ".github/workflows/testflight.yml"
-  workflow_dispatch: {}
+  # 手動実行(Actions タブ → TestFlight → Run workflow)で release を選ぶと「審査用」の版を作る(2026-11-09)。
+  # 内部テスト専用にせず(ExportOptions-ci-release.plist)、広告は本物(ADMOB_TESTING=false)。
+  # App Store の審査と外部テストにはこの版を選ぶ。ふだんの push は内部テスト専用・テスト広告のまま
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "審査用の版(外部テスト・App Store に出せる。広告は本物)"
+        type: boolean
+        default: false
 
 # 送信が重ならないよう直列化。走行中を止めると中途半端になるので cancel はしない。
 concurrency:
@@ -106,6 +114,11 @@ jobs:
           set -eu
           export ASC_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           export BUILD_NUMBER="$(date +%Y%m%d%H%M)"
+          if [ "${{ inputs.release || false }}" = "true" ]; then
+            export EXPORT_OPTIONS_PLIST=ios/ExportOptions-ci-release.plist
+            export ADMOB_TESTING=false
+            echo "審査用の版を作る(内部テスト専用にしない・広告は本物)"
+          fi
           npm run ios:testflight
 
 # 稼働確認済み(2026-09-21, TestFlight #10 成功)。main への push で自動起動する。

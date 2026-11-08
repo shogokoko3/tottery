@@ -44,6 +44,13 @@ sh tools/ios-release.sh all
 - 10〜30分で App Store Connect の TestFlight に現れる。輸出コンプライアンスは Info.plist の
   `ITSAppUsesNonExemptEncryption` で答えてあるので聞かれない。
 
+## 審査用の版(App Store・外部テスト)を CI で作る(2026-11-09)
+
+ふだんの push で CI が作る版は **内部テスト専用・テスト広告**(`ios/ExportOptions-ci.plist`)で、審査には出せない。
+審査用は GitHub の Actions タブ → 「TestFlight」→「Run workflow」→ **release にチェック** → Run workflow。
+`ios/ExportOptions-ci-release.plist`(内部テスト専用にしない)と `ADMOB_TESTING=false`(本物の広告)で作って送る。
+App Store Connect の「ビルド」ではこの番号を選ぶ。
+
 ## 送る前の点検
 
 - `node tools/check-submit.mjs` … 提出の関門。未了は `src/game/support.js` の **SUPPORT_EMAIL**

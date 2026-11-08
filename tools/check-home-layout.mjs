@@ -111,8 +111,12 @@ export const profileCard=(bg)=>renderToStaticMarkup(<ProfileCard view={{card:{bg
   // まずシリーズ選択(ガチャの選択画面と同じ作り。2026-10-16 本人の指示)。選ぶといつもの一覧で、右上に「シリーズ選択へ」
   const pick = cards();
   assert.ok(pick.includes("<h2>カード</h2>"), "カードの見出し");
-  assert.equal((pick.match(/card-mastery-pick"/g) || []).length, 2, "シリーズ選択はレジェンドとワンダーランド");
-  assert.ok(pick.includes("このシリーズの熟練度を見る") && pick.includes("ワンダーランド"), "シリーズごとに選ぶ釦");
+  // ワンダーランドは新シーズンで開く(2026-11-09 本人)。始まるまでは、スキンを持っていなければ出さない
+  const { isSeriesOpen } = await import("../src/game/content-seasons.js");
+  const pickCount = isSeriesOpen("alice") ? 2 : 1;
+  assert.equal((pick.match(/card-mastery-pick"/g) || []).length, pickCount, "シリーズ選択は開いているシリーズだけ");
+  assert.ok(pick.includes("このシリーズの熟練度を見る"), "シリーズごとに選ぶ釦");
+  assert.equal(pick.includes("ワンダーランド"), isSeriesOpen("alice"), "始まる前のワンダーランドは出さない");
   assert.ok(!pick.includes("card-mastery-row"), "選ぶ前は一覧を出さない");
   const cd = cards("heroes");
   assert.equal((cd.match(/card-mastery-row/g) || []).length, 17, "スキンは17種");
