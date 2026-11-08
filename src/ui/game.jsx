@@ -3404,13 +3404,10 @@ export function GameCore({
             <div className="dice-result-row">
               {[0, 1].map((U) => (
                 <div className="dice-result-item" key={U}>
-                  <span
-                    style={{
-                      color: PLAYER_META[U].color,
-                    }}
-                  >
-                    {shortPlayerLabel(U, P, names)}({PLAYER_META[U].name})
-                  </span>
+                  {/* 名前は振っている画面(「○○のサイコロ」)と同じ言い方・同じ書体で(2026-11-09 本人の指摘) */}
+                  <b className="dice-result-name" style={{ color: PLAYER_META[U].color }}>
+                    {playerLabel(U, P, names)}
+                  </b>
                   <Die value={a.dice[U]} color={PLAYER_META[U].color} />
                 </div>
               ))}
@@ -3516,13 +3513,10 @@ export function GameCore({
                 className={`dice-result-item ${a.firstPlayer === U ? "dice-winner" : ""}`}
                 key={U}
               >
-                <span
-                  style={{
-                    color: PLAYER_META[U].color,
-                  }}
-                >
-                  {shortPlayerLabel(U, P, names)}({PLAYER_META[U].name})
-                </span>
+                {/* 名前は振っている画面(「○○のサイコロ」)と同じ言い方・同じ書体で(2026-11-09 本人の指摘) */}
+                <b className="dice-result-name" style={{ color: PLAYER_META[U].color }}>
+                  {playerLabel(U, P, names)}
+                </b>
                 <Die value={a.dice[U]} color={PLAYER_META[U].color} />
               </div>
             ))}
