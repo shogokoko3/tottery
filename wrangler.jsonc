@@ -13,7 +13,7 @@
   // APP_UPDATE_URL は更新ページ。TestFlight の期間はパブリックリンク、正式リリース後は "" にして App Store へ戻す。
   // ここに書いた値が正で、ダッシュボードの値は deploy のたびに上書きされる
   "vars": {
-    "MIN_APP_BUILD": "0",
+    "MIN_APP_BUILD": "202611081618",
     "APP_UPDATE_URL": "https://testflight.apple.com/join/Nr2JracD"
   },
   "durable_objects": {"bindings": [{"name": "SEASONS", "class_name": "SeasonLedger"}]},
