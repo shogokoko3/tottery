@@ -72,6 +72,7 @@ import {
   WIN_CHANCE_REWARD_TICKETS, validWinChanceReward,
   rewardEventId as winChanceEventId,
 } from "../game/win-chance.js";
+import { Lk } from "../i18n/index.js";
 
 /** サーバーが組む出来事 id の接頭辞と、それを書いてよい道(kind)。apply() が守る */
 const RESERVED_PREFIX = Object.freeze({ earn: "earn", mission: "mission", pass: "pass", login: "login", tutorial: "tutorial", campaign: "campaign", story: "story", "win-chance": "win-chance" });
@@ -215,7 +216,7 @@ export class Wallet {
     if (!Array.isArray(ownedIds) || ownedIds.length > ALL_SKINS.length ||
         new Set(ownedIds).size !== ownedIds.length ||
         [...ownedIds].some((id) => typeof id !== "string" || !skinById(id)))
-      throw new Error("所持カードの一覧が正しくありません。");
+      throw new Error(Lk("所持カードの一覧が正しくありません。"));
     this.sql("DELETE FROM collection_skins WHERE uid=?", uid);
     for (const id of ownedIds) {
       if (skinById(id).secret) continue;
@@ -230,9 +231,9 @@ export class Wallet {
   checkFoilOwnership(uid, product, skins) {
     const collection = this.collectionOf(uid);
     if (product.secret && !ownsAllButSecret(collection, product.series || "heroes"))
-      throw new Error("このフォイルの購入条件を満たしていません。");
+      throw new Error(Lk("このフォイルの購入条件を満たしていません。"));
     if (skins.some((id) => collection.owned[foilId(id)]))
-      throw new Error("このフォイルはすでに持っています。");
+      throw new Error(Lk("このフォイルはすでに持っています。"));
   }
   /** 今日(UTC)の広告リワードの使用回数 */
   adsUsedToday(uid, now) {
@@ -281,11 +282,11 @@ export class Wallet {
   adReward(uid, id, now) {
     const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) {
-      if (seen.uid !== uid) throw new Error("他の人の出来事です。");
+      if (seen.uid !== uid) throw new Error(Lk("他の人の出来事です。"));
       return { applied: false, ...this.summary(uid, now) };
     }
     if (this.adsUsedToday(uid, now) >= ADS_PER_DAY)
-      throw new Error("今日の広告の回数を使い切りました。");
+      throw new Error(Lk("今日の広告の回数を使い切りました。"));
     // ref=日付にして、その日の回数を数えられるようにする
     const r = this.apply(uid, id, { tickets: AD_REWARD_TICKETS }, "ad", dayOf(now), now);
     return { ...r, ...this.summary(uid, now) };
@@ -298,14 +299,14 @@ export class Wallet {
     // 出来事 id にシーズンが入る(bp:pass:<シーズン>:<周>:<マス>)。無ければ魔術師(従来の形)
     const season = contentSeason(passSeasonOfTicketId(id) || "heroes");
     if (!season || !this.entitlementsOf(uid).includes(season.entitlement))
-      throw new Error("バトルパスを持っていません。");
+      throw new Error(Lk("バトルパスを持っていません。"));
     if (typeof id !== "string" || !/^[\w:.-]{1,128}$/.test(id) || RESERVED_PREFIX[id.split(":")[0]])
-      throw new Error("出来事の id が正しくありません。");
+      throw new Error(Lk("出来事の id が正しくありません。"));
     const scoped = `pass:${uid}:${id}`;
     const seen = this.sql("SELECT 1 FROM wallet_ledger WHERE uid=? AND kind='pass' AND (id=? OR id=?)", uid, id, scoped)[0];
     if (seen) return { applied: false, ...this.summary(uid, now) };
     if (this.passTicketsThisWeek(uid, now) + 1 > BATTLEPASS_WEEK_TICKET_MAX)
-      throw new Error("今週のバトルパスの上限に達しました。");
+      throw new Error(Lk("今週のバトルパスの上限に達しました。"));
     // ref=週にして、その週の枚数を数えられるようにする
     const r = this.apply(uid, scoped, { tickets: 1 }, "pass", weekOf(now), now);
     return { ...r, ...this.summary(uid, now) };
@@ -318,11 +319,11 @@ export class Wallet {
    * 枚数も端末からは受け取らない
    */
   tutorialReward(uid, chapter, now) {
-    if (!isRewardChapter(chapter)) throw new Error("話の番号が正しくありません。");
+    if (!isRewardChapter(chapter)) throw new Error(Lk("話の番号が正しくありません。"));
     const id = rewardEventId(uid, chapter);
     const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) {
-      if (seen.uid !== uid) throw new Error("他の人の出来事です。");
+      if (seen.uid !== uid) throw new Error(Lk("他の人の出来事です。"));
       return { applied: false, ...this.summary(uid, now) };
     }
     // 別枠にする前の版は、圏外で uid が取れないと tutorial:local:<話> の id で earn に積んでいた。
@@ -340,11 +341,11 @@ export class Wallet {
    */
   storyReward(uid, phase, axis, now) {
     if (!PHASES.includes(phase) || !isStoryAxis(axis))
-      throw new Error("ステージの指定が正しくありません。");
+      throw new Error(Lk("ステージの指定が正しくありません。"));
     const id = storyEventId(uid, normalizePhase(phase), axis);
     const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) {
-      if (seen.uid !== uid) throw new Error("他の人の出来事です。");
+      if (seen.uid !== uid) throw new Error(Lk("他の人の出来事です。"));
       return { applied: false, ...this.summary(uid, now) };
     }
     // ref=「フェーズ:軸」。あとから何を配ったか数えられる
@@ -358,7 +359,7 @@ export class Wallet {
   }
   missionReward(uid, mission, now, currency = null) {
     const def = missionRewardOf(mission);
-    if (!def || (currency && currency !== def.reward.type)) throw new Error("ミッション報酬の指定が正しくありません。");
+    if (!def || (currency && currency !== def.reward.type)) throw new Error(Lk("ミッション報酬の指定が正しくありません。"));
     const id = `mission:${uid}:${mission}`;
     const receipt = () => ({ ...this.summary(uid, now), uid, missionReceipt: { id: mission, received: true } });
     if (this.sql("SELECT 1 FROM wallet_ledger WHERE uid=? AND id=? AND kind='mission'", uid, id)[0])
@@ -367,7 +368,7 @@ export class Wallet {
     // 旧版の成功記録は本人のものだけを照合。使い終わった残高も復活させない。
     if (oldIds.some(old => this.sql("SELECT 1 FROM wallet_ledger WHERE uid=? AND id=? AND kind='earn'", uid, old)[0]))
       return { applied: false, ...receipt() };
-    if (!validMissionReward(mission, now)) throw new Error("この期間のミッション報酬は確認が必要です。受取記録は保存されています。");
+    if (!validMissionReward(mission, now)) throw new Error(Lk("この期間のミッション報酬は確認が必要です。受取記録は保存されています。"));
     const amount = def.reward.amount;
     const delta = def.reward.type === "ticket" ? { tickets: amount } : { gemsFree: amount };
     const result = this.apply(uid, id, delta, "mission", mission, now);
@@ -379,11 +380,11 @@ export class Wallet {
   /** 勝利チャンスは earn の30枚枠とは別に、日付と1〜3回目で一度ずつ。 */
   winChanceReward(uid, day, done, now) {
     if (!validWinChanceReward(day, done, now))
-      throw new Error("勝利報酬の指定が正しくありません。");
+      throw new Error(Lk("勝利報酬の指定が正しくありません。"));
     const id = winChanceEventId(uid, day, done);
     const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) {
-      if (seen.uid !== uid) throw new Error("他の人の出来事です。");
+      if (seen.uid !== uid) throw new Error(Lk("他の人の出来事です。"));
       return { applied: false, ...this.summary(uid, now) };
     }
     // 旧版の local ID で既に受領した本人は二重加算しない。他人の行は影響しない。
@@ -396,41 +397,41 @@ export class Wallet {
   /** 出来事 id で冪等に増減する。減らす場合は残高を超えない */
   apply(uid, id, { tickets = 0, gemsPaid = 0, gemsFree = 0 }, kind, ref, now) {
     if (typeof id !== "string" || !/^[\w:.+-]{1,320}$/.test(id))
-      throw new Error("出来事の id が正しくありません。");
+      throw new Error(Lk("出来事の id が正しくありません。"));
     for (const d of [tickets, gemsPaid, gemsFree])
       if (!Number.isSafeInteger(d) || Math.abs(d) > 1000000)
-        throw new Error("枚数が正しくありません。");
-    if (tickets === 0 && gemsPaid === 0 && gemsFree === 0) throw new Error("枚数が正しくありません。");
+        throw new Error(Lk("枚数が正しくありません。"));
+    if (tickets === 0 && gemsPaid === 0 && gemsFree === 0) throw new Error(Lk("枚数が正しくありません。"));
     // サーバーが自分で組む id の接頭辞は、その道(kind)からしか書けない(2026-09-30)。
     // ほかの道(earn-gems・ad-reward・pull など、端末が id を決める op)から同じ形の id を
     // 先に植えられると、その人の褒美が「他の人の出来事」になって永久に受け取れなくなる
     const reserved = RESERVED_PREFIX[id.split(":")[0]];
-    if (reserved && reserved !== kind) throw new Error("出来事の id が正しくありません。");
+    if (reserved && reserved !== kind) throw new Error(Lk("出来事の id が正しくありません。"));
     const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) {
-      if (seen.uid !== uid) throw new Error("他の人の出来事です。");
+      if (seen.uid !== uid) throw new Error(Lk("他の人の出来事です。"));
       return { applied: false, ...this.summary(uid) };
     }
     if (kind === "earn") {
       // 端末の申告。チケットか無償ジェムのどちらか1種類だけ、上限つき。有償ジェムは増やせない
       if (gemsPaid !== 0 || tickets < 0 || gemsFree < 0 || (tickets > 0) === (gemsFree > 0))
-        throw new Error("枚数が正しくありません。");
+        throw new Error(Lk("枚数が正しくありません。"));
       const day = dayOf(now);
       if (tickets > EARN_EVENT_MAX || gemsFree > FREE_GEM_EVENT_MAX)
-        throw new Error("枚数が正しくありません。");
+        throw new Error(Lk("枚数が正しくありません。"));
       const today = this.sql(
         "SELECT COALESCE(SUM(tickets),0) AS t, COALESCE(SUM(gems_free),0) AS g FROM wallet_ledger WHERE uid=? AND kind='earn' AND ref=?",
         uid, day,
       )[0];
       if (today.t + tickets > EARN_DAILY_MAX || today.g + gemsFree > FREE_GEM_DAILY_MAX)
-        throw new Error("今日はこれ以上受け取れません。");
+        throw new Error(Lk("今日はこれ以上受け取れません。"));
       ref = day;
     }
     const before = this.row(uid);
     if (tickets < 0 && before.tickets + tickets < 0)
-      throw new Error(`ガチャチケットが足りません(あと${-tickets - before.tickets}枚)`);
+      throw new Error(Lk("ガチャチケットが足りません(あと{n}枚)", { n: -tickets - before.tickets }));
     if ((gemsPaid < 0 && before.gems + gemsPaid < 0) || (gemsFree < 0 && before.gems_free + gemsFree < 0))
-      throw new Error("ジェムが足りません。");
+      throw new Error(Lk("ジェムが足りません。"));
     this.sql("INSERT INTO wallet_ledger (id, uid, tickets, gems, kind, ref, at, gems_free) VALUES (?,?,?,?,?,?,?,?)",
       id, uid, tickets, gemsPaid, kind, ref ?? null, now, gemsFree);
     this.sql(
@@ -442,7 +443,7 @@ export class Wallet {
   /** 同じ出来事名でも別アカウントの残高を妨げない。旧成功記録との互換は残す。 */
   earn(uid, id, delta, now) {
     if (typeof id !== "string" || !/^[\w:.+-]{1,128}$/.test(id) || RESERVED_PREFIX[id.split(":")[0]])
-      throw new Error("出来事の id が正しくありません。");
+      throw new Error(Lk("出来事の id が正しくありません。"));
     if (this.sql("SELECT 1 FROM wallet_ledger WHERE uid=? AND id=? AND kind='earn'", uid, id)[0])
       return { applied: false, ...this.summary(uid, now) };
     return this.apply(uid, `earn:${uid}:${id}`, delta, "earn", null, now);
@@ -456,8 +457,8 @@ export class Wallet {
    */
   campaign(uid, campaignId, now) {
     const c = campaignOf(campaignId);
-    if (!c) throw new Error("その配布はありません。");
-    if (!campaignOpen(c, now)) throw new Error("この配布は期間外です。");
+    if (!c) throw new Error(Lk("その配布はありません。"));
+    if (!campaignOpen(c, now)) throw new Error(Lk("この配布は期間外です。"));
     const r = this.apply(uid, `campaign:${c.id}:${uid}`, { tickets: c.tickets }, "campaign", c.id, now);
     return { ...r, campaign: c.id, tickets_granted: r.applied ? c.tickets : 0 };
   }
@@ -466,18 +467,18 @@ export class Wallet {
   earnGems(uid, id, n, now) { return this.earn(uid, id, { gemsFree: n }, now); }
   /** ジェムを使う。無償→有償の順に取り崩し、1つの出来事にする。extra は同時に足すもの(両替のチケットなど) */
   spendGems(uid, id, amount, kind, ref, now, extra = {}, { paidOnly = false } = {}) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("枚数が正しくありません。");
+    if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error(Lk("枚数が正しくありません。"));
     const seen = this.sql("SELECT uid FROM wallet_ledger WHERE id=?", id)[0];
     if (seen) return this.apply(uid, id, { gemsPaid: -1 }, kind, ref, now); // 冪等の判定だけ通す
     const r = this.row(uid);
     const pools = { free: r.gems_free, paid: r.gems };
     // 有償だけで払う品(フォイルの直接購入。本人の決め 2026-09-16)は無償に触れない
     if (paidOnly) {
-      if (pools.paid < amount) throw new Error(`有償ジェムが足りません(あと${amount - pools.paid})`);
+      if (pools.paid < amount) throw new Error(Lk("有償ジェムが足りません(あと{n})", { n: amount - pools.paid }));
       return this.apply(uid, id, { ...extra, gemsPaid: -amount }, kind, ref, now);
     }
     if (pools.free + pools.paid < amount)
-      throw new Error(`ジェムが足りません(あと${amount - pools.free - pools.paid})`);
+      throw new Error(Lk("ジェムが足りません(あと{n})", { n: amount - pools.free - pools.paid }));
     let left = amount; const take = { free: 0, paid: 0 };
     for (const p of GEM_CONSUME_ORDER) { take[p] = Math.min(pools[p], left); left -= take[p]; }
     return this.apply(uid, id, { ...extra, gemsFree: -take.free, gemsPaid: -take.paid }, kind, ref, now);
@@ -488,18 +489,18 @@ export class Wallet {
    */
   buyFoil(uid, productId, skins, now) {
     const product = foilProductOf(productId);
-    if (!product) throw new Error("その商品はありません。");
+    if (!product) throw new Error(Lk("その商品はありません。"));
     const price = foilPriceFor(product, skins);
-    if (price === null) throw new Error("買う札の指定が正しくありません。");
+    if (price === null) throw new Error(Lk("買う札の指定が正しくありません。"));
     const id = foilEventId(uid, product.id, skins);
     const prior = this.sql("SELECT uid, kind, gems FROM wallet_ledger WHERE id=?", id)[0];
     // 支払済みの同一要求は、所持同期の変化・再非公開・残高不足より先に復元する。
     if (prior) {
       if (prior.uid !== uid || prior.kind !== "foil" || prior.gems >= 0)
-        throw new Error("購入の記録を確認できませんでした。");
+        throw new Error(Lk("購入の記録を確認できませんでした。"));
       return { applied: false, ...this.summary(uid), product: product.id, skins: [...skins], price: -prior.gems };
     }
-    if (product.pending) throw new Error("その商品はありません。");
+    if (product.pending) throw new Error(Lk("その商品はありません。"));
     this.checkFoilOwnership(uid, product, skins);
     // WorkerのtransactionSyncが減算と付与をまとめて確定し、途中の例外では両方を戻す。
     const r = this.spendGems(uid, id, price, "foil", `${product.id}:${skins.join(",")}`, now, {}, { paidOnly: true });
@@ -509,7 +510,7 @@ export class Wallet {
   /** 検証済みの Apple の取引(ジェムのパック)を財布に反映する。取引 ID で冪等。円の分は有償、おまけは無償 */
   purchase(uid, tx, now) {
     const product = productOf(tx.productId);
-    if (!product) throw new Error("知らない商品の取引です。");
+    if (!product) throw new Error(Lk("知らない商品の取引です。"));
     const prior = this.sql("SELECT * FROM purchases WHERE transactionId=?", tx.transactionId)[0];
     // 初課金判定は、この取引を記録する前に「この uid に過去の購入があるか」で決める
     const hadPurchase = this.sql("SELECT 1 AS x FROM purchases WHERE uid=? LIMIT 1", uid)[0];
@@ -532,7 +533,7 @@ export class Wallet {
   /** ジェムでチケットを買う(両替)。1つの出来事なので、片方だけ効くことはない */
   exchange(uid, id, tickets, now) {
     if (!Number.isSafeInteger(tickets) || tickets < 1 || tickets > 100)
-      throw new Error("枚数が正しくありません。");
+      throw new Error(Lk("枚数が正しくありません。"));
     return this.spendGems(uid, id, ticketsPrice(tickets), "exchange", null, now, { tickets });
   }
   /**
@@ -542,7 +543,7 @@ export class Wallet {
    */
   buyEther(uid, id, gems, now) {
     const ether = etherFor(gems);
-    if (ether === null) throw new Error("ジェムの数が正しくありません(10 の倍数、1,000 まで)。");
+    if (ether === null) throw new Error(Lk("ジェムの数が正しくありません(10 の倍数、1,000 まで)。"));
     const r = this.spendGems(uid, id, gems, "ether", null, now);
     return { ...r, ether: r.applied ? ether : 0 };
   }
@@ -550,8 +551,8 @@ export class Wallet {
   buyPass(uid, id, now, seasonId = "heroes") {
     // シーズンごとの買い切り(2026-10-15 本人の指示)。始まっていないシーズンは買えない
     const season = contentSeason(seasonId);
-    if (!season) throw new Error("そのバトルパスはありません。");
-    if (season.start > now) throw new Error("そのバトルパスはまだ始まっていません。");
+    if (!season) throw new Error(Lk("そのバトルパスはありません。"));
+    if (season.start > now) throw new Error(Lk("そのバトルパスはまだ始まっていません。"));
     const ENTITLEMENT = season.entitlement;
     if (this.entitlementsOf(uid).includes(ENTITLEMENT))
       return { applied: false, ...this.summary(uid) };
@@ -579,12 +580,12 @@ export class Wallet {
   }
   /** 運営が手で付与する(チケット・無償ジェム)。上限は無いが桁は見張る。id で冪等 */
   adminGrant(uid, { tickets = 0, gemsFree = 0 }, id, now) {
-    if (typeof uid !== "string" || !uid) throw new Error("相手のuidが必要です。");
+    if (typeof uid !== "string" || !uid) throw new Error(Lk("相手のuidが必要です。"));
     const t = Number(tickets) || 0;
     const g = Number(gemsFree) || 0;
     if (!Number.isSafeInteger(t) || !Number.isSafeInteger(g) || t < 0 || g < 0 || t > 100000 || g > 100000)
-      throw new Error("枚数が正しくありません。");
-    if (t === 0 && g === 0) throw new Error("付与する数を入れてください。");
+      throw new Error(Lk("枚数が正しくありません。"));
+    if (t === 0 && g === 0) throw new Error(Lk("付与する数を入れてください。"));
     // 有償ジェムは付与しない(資金決済法の未使用残高は「買った分」だけにするため、付与は無償)
     return this.apply(uid, id, { tickets: t, gemsFree: g }, "grant", null, now);
   }
@@ -594,9 +595,9 @@ export class Wallet {
    * passComplete を見て埋める(src/ui/battlepass.jsx)。二度押しても印の時刻が進むだけ
    */
   adminPassComplete(uid, now, seasonId = "heroes") {
-    if (typeof uid !== "string" || !uid) throw new Error("相手のuidが必要です。");
+    if (typeof uid !== "string" || !uid) throw new Error(Lk("相手のuidが必要です。"));
     const season = contentSeason(seasonId);
-    if (!season) throw new Error("そのバトルパスはありません。");
+    if (!season) throw new Error(Lk("そのバトルパスはありません。"));
     this.sql("INSERT OR IGNORE INTO entitlements (uid, productId, transactionId, at) VALUES (?,?,?,?)", uid, season.entitlement, `grant:${now}`, now);
     if (season.id === "heroes") this.sql("INSERT OR REPLACE INTO pass_grants (uid, at) VALUES (?,?)", uid, now);
     else this.sql("INSERT OR REPLACE INTO pass_grants_season (uid, season, at) VALUES (?,?,?)", uid, season.id, now);
@@ -623,18 +624,18 @@ export class Wallet {
    */
   pull(uid, id, n, now, series = "heroes") {
     poolForSeries(series);
-    if (!isSeriesOpen(series, now)) throw new Error("このシリーズの召喚はまだ始まっていません。");
+    if (!isSeriesOpen(series, now)) throw new Error(Lk("このシリーズの召喚はまだ始まっていません。"));
     if (!Number.isSafeInteger(n) || (n !== 1 && n !== 10))
-      throw new Error("1回または10回を選んでください。");
+      throw new Error(Lk("1回または10回を選んでください。"));
     const done = this.sql("SELECT skins FROM gacha_draws WHERE id=?", id)[0];
     if (done) {
       // 送り直し。前と同じ札を返す(uid が違えば他人の結果なので断る)
       const owner = this.sql("SELECT uid FROM gacha_draws WHERE id=?", id)[0];
-      if (owner && owner.uid !== uid) throw new Error("他の人の抽選です。");
+      if (owner && owner.uid !== uid) throw new Error(Lk("他の人の抽選です。"));
       const saved = JSON.parse(done.skins);
       const packet = Array.isArray(saved) ? { skins: saved, freeze: null } : saved;
-      if ((packet.series || "heroes") !== series) throw new Error("前の抽選とシリーズが違います。");
-      if (packet.skins.length !== n) throw new Error("前の抽選と枚数が違います。");
+      if ((packet.series || "heroes") !== series) throw new Error(Lk("前の抽選とシリーズが違います。"));
+      if (packet.skins.length !== n) throw new Error(Lk("前の抽選と枚数が違います。"));
       return { ...this.summary(uid, now), ...packet, applied: false };
     }
     const r = this.debit(uid, id, n, "pull", now);
@@ -700,7 +701,7 @@ export class Wallet {
    */
   saveBackup(uid, blob, now) {
     if (typeof blob !== "string" || !blob || blob.length > BACKUP_MAX)
-      return { ok: false, error: "控えを預かれませんでした。" };
+      return { ok: false, error: Lk("控えを預かれませんでした。") };
     this.sql("INSERT OR REPLACE INTO profile_backups (uid, blob, at) VALUES (?,?,?)", uid, blob, now);
     return { ok: true, at: now };
   }

@@ -15,14 +15,15 @@ import { hasTitle, ownedTitles, titleOf } from "./titles.js";
 import { levelOfXp } from "./level.js";
 import { sanitizeTsumeProgress } from "./tsume-daily.js";
 import { MASTERY_SKINS } from "./constants.js";
+import { L, fmtNumber } from "../i18n/index.js";
 
 export const STANDARD_BG = "standard";
 export const SHOWCASE_MAX = 3;
 /** フレンド申請の入口(サーバーの REQUEST_SOURCES と同じ)。入口ごとに受け付けるかを決める(2026-09-24 本人の指示) */
 export const REQUEST_SOURCES = Object.freeze([
-  { id: "code", label: "フレンド ID で", note: "ID を伝えた相手からの申請" },
-  { id: "match", label: "対戦した相手から", note: "ランダムマッチで当たった相手が、終局の画面から" },
-  { id: "rank", label: "ランキングから", note: "ランキングで名前を押した人から" },
+  { id: "code", label: L("フレンド ID で"), note: L("ID を伝えた相手からの申請") },
+  { id: "match", label: L("対戦した相手から"), note: L("ランダムマッチで当たった相手が、終局の画面から") },
+  { id: "rank", label: L("ランキングから"), note: L("ランキングで名前を押した人から") },
 ]);
 export function normalizeAccept(raw) {
   const a = raw && typeof raw === "object" ? raw : {};
@@ -35,8 +36,8 @@ export function normalizeAccept(raw) {
  * - online: ランダムマッチ。**既定オフ**。オンにするとフレンドが観戦できる。観戦した席の駒だけ見える
  */
 export const SPECTATE_MODES = Object.freeze([
-  { id: "friend", label: "フレンド対戦", note: "フレンドが観戦できます(盤の両側が見えます)", def: true },
-  { id: "online", label: "ランダムマッチ", note: "オンにするとフレンドが観戦できます(あなたの駒だけ見えます)", def: false },
+  { id: "friend", label: L("フレンド対戦"), note: L("フレンドが観戦できます(盤の両側が見えます)"), def: true },
+  { id: "online", label: L("ランダムマッチ"), note: L("オンにするとフレンドが観戦できます(あなたの駒だけ見えます)"), def: false },
 ]);
 export function normalizeSpectate(raw) {
   const s = raw && typeof raw === "object" ? raw : {};
@@ -45,7 +46,7 @@ export function normalizeSpectate(raw) {
 
 /** 背景の候補。標準はいつでも。7エリアはホームの着せ替えと同じ解放条件 */
 export const PROFILE_BACKGROUNDS = Object.freeze([
-  { id: STANDARD_BG, label: "標準", condition: "いつでも使えます" },
+  { id: STANDARD_BG, label: L("標準"), condition: L("いつでも使えます") },
   ...HOME_THEMES.filter((t) => t.series !== "phase").map((t) => ({ id: t.id, label: t.title, area: t.label, condition: t.condition })),
 ]);
 
@@ -59,23 +60,23 @@ export function unlockedBackgrounds(collection) {
  * 「勝率」だけは割合。無いものは null(表示は「—」)
  */
 export const SHOWCASE = Object.freeze([
-  { id: "rating", label: "レート", unit: "", value: (c) => c.rating ?? null },
-  { id: "battles", label: "対局数", unit: "局", value: (c) => c.stats.battles },
-  { id: "wins", label: "勝利数", unit: "勝", value: (c) => c.stats.wins },
+  { id: "rating", label: L("レート"), value: (c) => c.rating ?? null },
+  { id: "battles", label: L("対局数"), fmt: (n) => L("{n}局", { n }), value: (c) => c.stats.battles },
+  { id: "wins", label: L("勝利数"), fmt: (n) => L("{n}勝", { n }), value: (c) => c.stats.wins },
   {
     id: "winRate",
-    label: "勝率",
-    unit: "%",
+    label: L("勝率"),
+    fmt: (n) => `${n}%`,
     value: (c) => (c.stats.battles > 0 ? Math.round((c.stats.wins / c.stats.battles) * 100) : null),
   },
-  { id: "rated", label: "ランダムマッチ", unit: "局", value: (c) => c.stats.rated },
-  { id: "titles", label: "称号の数", unit: "個", value: (c) => c.stats.titles },
-  { id: "level", label: "レベル", unit: "", value: (c) => c.level },
-  { id: "streak", label: "連続ログイン", unit: "日", value: (c) => c.stats.streak },
-  { id: "days", label: "遊んだ日数", unit: "日", value: (c) => c.stats.days },
-  { id: "mastery", label: "熟練度の合計点", unit: "点", value: (c) => c.stats.mastery },
-  { id: "tsume", label: "詰めトッタリー", unit: "問", value: (c) => c.stats.tsume },
-  { id: "bestPlace", label: "月間の最高順位", unit: "位", value: (c) => c.stats.bestPlace || c.bestPlace || null },
+  { id: "rated", label: L("ランダムマッチ"), fmt: (n) => L("{n}局", { n }), value: (c) => c.stats.rated },
+  { id: "titles", label: L("称号の数"), fmt: (n) => L("{n}個", { n }), value: (c) => c.stats.titles },
+  { id: "level", label: L("レベル"), value: (c) => c.level },
+  { id: "streak", label: L("連続ログイン"), fmt: (n) => L("{n}日", { n }), value: (c) => c.stats.streak },
+  { id: "days", label: L("遊んだ日数"), fmt: (n) => L("{n}日", { n }), value: (c) => c.stats.days },
+  { id: "mastery", label: L("熟練度の合計点"), fmt: (n) => L("{n}点", { n }), value: (c) => c.stats.mastery },
+  { id: "tsume", label: L("詰めトッタリー"), fmt: (n) => L("{n}問", { n }), value: (c) => c.stats.tsume },
+  { id: "bestPlace", label: L("月間の最高順位"), fmt: (n) => L("{n}位", { n }), value: (c) => c.stats.bestPlace || c.bestPlace || null },
 ]);
 export const SHOWCASE_IDS = SHOWCASE.map((s) => s.id);
 export const findShowcase = (id) => SHOWCASE.find((s) => s.id === id) || null;
@@ -145,5 +146,6 @@ export function showcaseText(id, view) {
   if (!def) return { label: "", text: "—" };
   const v = def.value(view);
   if (v === null || v === undefined) return { label: def.label, text: "—" };
-  return { label: def.label, text: `${Number(v).toLocaleString("ja-JP")}${def.unit}` };
+  const num = fmtNumber(v);
+  return { label: def.label, text: def.fmt ? def.fmt(num) : num };
 }

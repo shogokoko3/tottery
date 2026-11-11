@@ -17,6 +17,7 @@ import { TitleFrame } from "./title-frame.jsx";
 import { titleDesign } from "./title-design.js";
 import frameStyles from "./title-frame.css";
 import styles from "./title-acquisition.css";
+import { L, Lx } from "../i18n/index.js";
 
 export function useTitleNoticeHold(blocked) {
   useLayoutEffect(() => {
@@ -47,7 +48,7 @@ function Award({ notice, count }) {
     <aside
       className={`title-award${leaving ? " is-leaving" : ""}`}
       style={titleDesign(notice.titleId).style}
-      aria-label="新しい称号を獲得"
+      aria-label={L("新しい称号を獲得")}
     >
       {/* 読み上げも見える一言も、導入の言葉の調子で(です・ますを使わない。2026-10-06 本人の指示) */}
       <span
@@ -56,14 +57,16 @@ function Award({ notice, count }) {
         aria-live="polite"
         aria-atomic="true"
       >
-        称号「{notice.name}」を手に入れた。{notice.how ? `${notice.how}。` : ""}設定で、装備できる。
+        {L("称号「{name}」を手に入れた。", { name: Lx(notice.name) })}
+        {notice.how ? L("{how}。", { how: Lx(notice.how) }) : ""}
+        {L("設定で、装備できる。")}
       </span>
       <div className="title-award-glow" aria-hidden="true" />
       <div className="title-award-rays" aria-hidden="true" />
       <div className="title-award-panel">
         <div className="title-award-heading" aria-hidden="true">
           <span />
-          称号獲得
+          {L("称号獲得")}
           <span />
         </div>
         <div className="title-award-reveal" aria-hidden="true">
@@ -73,17 +76,19 @@ function Award({ notice, count }) {
         {/* どういう理由で手に入れたか(2026-10-15 本人の指示。簡易でよい) */}
         {notice.how && (
           <p className="title-award-how" aria-hidden="true">
-            {notice.how}
+            {Lx(notice.how)}
           </p>
         )}
-        <p>設定で、装備できる。</p>
+        <p>{L("設定で、装備できる。")}</p>
         {count > 1 && (
-          <span className="title-award-count">あと{count - 1}件</span>
+          <span className="title-award-count">
+            {L("あと{n}件", { n: count - 1 })}
+          </span>
         )}
         <button
           type="button"
           className="title-award-close"
-          aria-label={count > 1 ? "次の獲得称号へ" : "称号獲得の表示を閉じる"}
+          aria-label={count > 1 ? L("次の獲得称号へ") : L("称号獲得の表示を閉じる")}
           onClick={() => dismissTitleNotice(notice.id)}
         >
           {count > 1 ? "›" : "×"}

@@ -53,6 +53,8 @@ export function roomLink(code, origin) {
 export function roomFromLocation(loc = globalThis.location, history = globalThis.history) {
   try {
     if (!loc || !loc.search) return "";
+    // ?room= だけを読む(?lang=en などほかの値を合言葉と取り違えない。2026-11-11 英語版)
+    if (!/[?&]room=/.test(loc.search)) return "";
     const code = parseRoomCode(loc.search);
     if (code && history && typeof history.replaceState === "function") {
       const url = new URL(loc.href);

@@ -21,6 +21,7 @@ const WATCHDOG_MS = 15000;
 import { syncWallet } from "../net/wallet.js";
 import { isVerified } from "../net/auth.js";
 import { signInWithApple } from "../net/apple-signin.js";
+import { L, fmtNumber } from "../i18n/index.js";
 
 /**
  * ジェムのパック一覧(中身だけ)。モーダルにも、ショップの欄の中にもそのまま置ける。
@@ -87,7 +88,7 @@ export function GemPacks({
       setWaited(Math.floor(ms / 1000));
       if (!settled && ms >= WATCHDOG_MS) {
         const e = new Error(
-          `App Store から応答がありません(段階: ${currentLoadStage()})。`,
+          L("App Store から応答がありません(段階: {stage})。", { stage: currentLoadStage() }),
         );
         e.elapsedMs = ms;
         fail(e);
@@ -125,17 +126,19 @@ export function GemPacks({
       if (r === null) return;
       if (r.firstPurchase)
         say(
-          "初回購入ありがとうございます！ジェム2倍＋ペガサスナイトのスキンを差し上げました。",
+          L("初回購入ありがとうございます！ジェム2倍＋ペガサスナイトのスキンを差し上げました。"),
         );
       else
         say(
           r.pending
-            ? `購入を受け付けました。通信が戻ると反映されます。${r.reason ? `(${r.reason})` : ""}`
-            : "ジェムを受け取りました。",
+            ? L("購入を受け付けました。通信が戻ると反映されます。{reason}", {
+                reason: r.reason ? `(${r.reason})` : "",
+              })
+            : L("ジェムを受け取りました。"),
         );
       if (onDone) onDone();
     } catch (e) {
-      say((e && e.message) || "購入できませんでした。");
+      say((e && e.message) || L("購入できませんでした。"));
     } finally {
       setBusy(false);
     }
@@ -149,11 +152,11 @@ export function GemPacks({
       await syncWallet().catch(() => {});
       say(
         restored
-          ? "購入を確かめ直しました。"
-          : "確かめ直す購入はありませんでした。",
+          ? L("購入を確かめ直しました。")
+          : L("確かめ直す購入はありませんでした。"),
       );
     } catch (e) {
-      say((e && e.message) || "確かめ直せませんでした。");
+      say((e && e.message) || L("確かめ直せませんでした。"));
     } finally {
       setBusy(false);
     }
@@ -167,23 +170,22 @@ export function GemPacks({
           <div className="gem-shop-balance">
             <GemIcon size={104} />
             <div>
-              <small>所持ジェム</small>
+              <small>{L("所持ジェム")}</small>
               <GemAmount amount={gems} size={28} />
               <p>
-                有償 {gemsPaid.toLocaleString("ja-JP")} · 無償{" "}
-                {gemsFree.toLocaleString("ja-JP")}
+                {L("有償 {paid} · 無償 {free}", { paid: fmtNumber(gemsPaid), free: fmtNumber(gemsFree) })}
               </p>
             </div>
           </div>
           <p className="hint">
-            使うときは無償ジェムから先に減ります。ジェムはアカウント(Appleでのサインイン)に紐づき、機種変更やインストールし直しのあとも残ります。有効期限はありません。パックのおまけ分は無償ジェムです。
+            {L("使うときは無償ジェムから先に減ります。ジェムはアカウント(Appleでのサインイン)に紐づき、機種変更やインストールし直しのあとも残ります。有効期限はありません。パックのおまけ分は無償ジェムです。")}
           </p>
           <div className="shop-list">
             {products === null && (
               <p className="hint">
-                商品を読み込んでいます…
+                {L("商品を読み込んでいます…")}
                 <span className="gem-shop-diag">
-                  {waited}秒 · ビルド {APP_BUILD_LABEL} · {currentLoadStage()}
+                  {L("{n}秒 · ビルド {build} · {stage}", { n: waited, build: APP_BUILD_LABEL, stage: currentLoadStage() })}
                 </span>
               </p>
             )}
@@ -214,30 +216,31 @@ export function GemPacks({
             {products && !products.length && (
               <>
                 <p className="hint">
-                  {loadError || "商品を取れませんでした。"}
-                  App Store
-                  に商品が並ぶまで時間がかかることがあります。通信を確かめて、少し待ってからもう一度お試しください。
+                  {loadError || L("商品を取れませんでした。")}
+                  {L("App Store に商品が並ぶまで時間がかかることがあります。通信を確かめて、少し待ってからもう一度お試しください。")}
                 </p>
                 <button
                   className="btn btn-ghost btn-small"
                   disabled={busy}
                   onClick={() => setReload((n) => n + 1)}
                 >
-                  もう一度読み込む
+                  {L("もう一度読み込む")}
                 </button>
                 {diag && (
                   <p className="hint gem-shop-diag">
-                    診断: ビルド {diag.build || "(Web)"} · ストア{" "}
-                    {diag.storefront || "(不明)"}
+                    {L("診断: ビルド {build} · ストア {store}", {
+                      build: diag.build || "(Web)",
+                      store: diag.storefront || L("(不明)"),
+                    })}
                     {diag.elapsedMs != null &&
-                      ` · ${(diag.elapsedMs / 1000).toFixed(1)}秒`}
+                      L(" · {n}秒", { n: (diag.elapsedMs / 1000).toFixed(1) })}
                   </p>
                 )}
               </>
             )}
           </div>
           <p className="hint">
-            価格は App Storeの表示に従います。ジェムはこのゲームの中でだけ使え、払い戻しはできません。
+            {L("価格は App Storeの表示に従います。ジェムはこのゲームの中でだけ使え、払い戻しはできません。")}
           </p>
         </div>
       <div className="setup-actions">
@@ -246,11 +249,11 @@ export function GemPacks({
           disabled={busy}
           onClick={restoreAll}
         >
-          購入を確かめ直す
+          {L("購入を確かめ直す")}
         </button>
         {onDone && (
           <button className="btn btn-ghost" disabled={busy} onClick={onDone}>
-            閉じる
+            {L("閉じる")}
           </button>
         )}
       </div>
@@ -269,16 +272,16 @@ export function GemShop({
 }) {
   const [busy, setBusy] = useState(false);
   return (
-    <div className="modal-overlay" role="dialog" aria-label="ジェムを買う">
+    <div className="modal-overlay" role="dialog" aria-label={L("ジェムを買う")}>
       <div className="modal-panel gem-shop-panel">
         <div className="modal-head">
-          <h3>ジェムを買う</h3>
+          <h3>{L("ジェムを買う")}</h3>
           <button
             className="btn btn-ghost btn-small"
             disabled={busy}
             onClick={onClose}
           >
-            閉じる
+            {L("閉じる")}
           </button>
         </div>
         <GemPacks

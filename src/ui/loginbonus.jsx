@@ -5,6 +5,7 @@ import { Check, Ticket } from "../icons.jsx";
 import { getLoginBonus, claimLoginBonus } from "../net/wallet.js";
 import { cycleOf, cycleRows, dayOf } from "../game/login-bonus.js";
 import { watchLoginDay } from "../game/login-session.js";
+import { L } from "../i18n/index.js";
 
 export function LoginBonus() {
   const [offer, setOffer] = useState(null);
@@ -29,7 +30,7 @@ export function LoginBonus() {
     setError("");
     try {
       const data = await getLoginBonus();
-      if (!data.uid || !data.login) throw new Error("ログイン報酬を読み込めませんでした。");
+      if (!data.uid || !data.login) throw new Error(L("ログイン報酬を読み込めませんでした。"));
       if (!mounted.current) return;
       setOffer(data);
       setDone(false);
@@ -38,7 +39,7 @@ export function LoginBonus() {
     } catch (e) {
       if (mounted.current && loud.current) {
         show(true);
-        setError("ログイン報酬を確認できませんでした。通信を確認して、もう一度お試しください。");
+        setError(L("ログイン報酬を確認できませんでした。通信を確認して、もう一度お試しください。"));
       }
       throw e;
     } finally {
@@ -75,7 +76,7 @@ export function LoginBonus() {
       const data = await claimLoginBonus(offer.login.day, offer.uid);
       if (mounted.current) { setOffer(data); setDone(true); playSound("login"); }
     } catch {
-      if (mounted.current) setError("受け取りを確認できませんでした。次に確認するときに再送します。今すぐもう一度試すこともできます。");
+      if (mounted.current) setError(L("受け取りを確認できませんでした。次に確認するときに再送します。今すぐもう一度試すこともできます。"));
     } finally {
       working.current = false;
       if (mounted.current) setBusy(false);
@@ -83,31 +84,34 @@ export function LoginBonus() {
   }
   if (!visible) return null;
   const bonus = offer?.login;
+  // 文の途中に太字の枚数が入るので、英語の語順で切って組む
+  const [gotPre, gotPost] = L("ガチャチケットを {b} 受け取りました").split("{b}");
+  const [todayPre, todayPost] = L("今日のぶんは ガチャチケット {b}").split("{b}");
   return (
     <div className="modal-overlay bonus-overlay">
-      <div className="modal-panel bonus-panel" role="dialog" aria-modal="true" aria-label="ログインボーナス">
-        <h3 className="bonus-title">ログインボーナス</h3>
+      <div className="modal-panel bonus-panel" role="dialog" aria-modal="true" aria-label={L("ログインボーナス")}>
+        <h3 className="bonus-title">{L("ログインボーナス")}</h3>
         {bonus && <>
-          <p className="bonus-sub">{cycleOf(bonus.taken)}周目の{dayOf(bonus.taken)}日目</p>
+          <p className="bonus-sub">{L("{cycle}周目の{day}日目", { cycle: cycleOf(bonus.taken), day: dayOf(bonus.taken) })}</p>
           <div className="bonus-week">
             {cycleRows(bonus.taken).map(r => (
               <div key={r.day} className={`bonus-cell ${r.today ? "is-today" : ""} ${r.taken || (r.today && done) ? "is-taken" : ""}`}>
-                {r.taken || (r.today && done) ? <Check size={13} className="bonus-check" /> : <small>{r.day}日目</small>}
+                {r.taken || (r.today && done) ? <Check size={13} className="bonus-check" /> : <small>{L("{n}日目", { n: r.day })}</small>}
                 <b><Ticket size={14} />{r.amount}</b>
               </div>
             ))}
           </div>
           <p className="bonus-gain" aria-live="polite">
-            {done ? <>ガチャチケットを <b>{bonus.amount}枚</b> 受け取りました</> : <>今日のぶんは ガチャチケット <b>{bonus.amount}枚</b></>}
+            {done ? <>{gotPre}<b>{L("{n}枚", { n: bonus.amount })}</b>{gotPost}</> : <>{todayPre}<b>{L("{n}枚", { n: bonus.amount })}</b>{todayPost}</>}
           </p>
         </>}
-        <p className="bonus-sub">毎日0時（日本時間）に更新</p>
+        <p className="bonus-sub">{L("毎日0時（日本時間）に更新")}</p>
         {error && <p className="bonus-sub" role="alert">{error}</p>}
         {!done && <button className="btn btn-primary btn-wide" disabled={busy} onClick={bonus ? take : retry}>
-          <Ticket size={16} /> {busy ? "確認中…" : bonus ? "受け取る" : "もう一度確認する"}
+          <Ticket size={16} /> {busy ? L("確認中…") : bonus ? L("受け取る") : L("もう一度確認する")}
         </button>}
         {(done || error) && <button className="btn btn-ghost btn-wide" disabled={busy} onClick={close}>
-          {done ? "ホームへ" : "あとで確認する"}
+          {done ? L("ホームへ") : L("あとで確認する")}
         </button>}
       </div>
     </div>

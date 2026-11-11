@@ -11,6 +11,7 @@
  *
  * 通信はしない。検証は tools/check-friends.mjs(node:sqlite)。
  */
+import { Lk } from "../i18n/index.js";
 
 export const FRIEND_MAX = 50;
 export const FRIEND_CODE_LEN = 8;
@@ -43,7 +44,7 @@ export const SHOWCASE_MAX = 3;
 /** 申請の入口。code = フレンド ID、match = 対戦した相手、rank = ランキング。受け付けるかは本人が入口ごとに決める */
 export const REQUEST_SOURCES = ["code", "match", "rank"];
 /** 受け付けていない入口からの申請に返す文。断っていることは相手に伝えない(「いっぱい」と同じ文にする。2026-09-24 本人の指示) */
-export const FULL_MESSAGE = "相手のフレンドがいっぱいです。";
+export const FULL_MESSAGE = Lk("相手のフレンドがいっぱいです。");
 const NAME_MAX = 10;
 const TAG_MAX = 40;
 
@@ -124,7 +125,7 @@ export class Friends {
       this.sql("INSERT INTO friend_codes VALUES (?,?,?)", uid, code, now);
       return code;
     }
-    throw new Error("フレンド ID を作れませんでした。もう一度お試しください。");
+    throw new Error(Lk("フレンド ID を作れませんでした。もう一度お試しください。"));
   }
   static normalizeCode(raw) {
     return String(raw || "")
@@ -161,8 +162,8 @@ export class Friends {
   /** フレンド ID で申請する。互いに申請していれば、その場で結ぶ */
   request(uid, code, now, source = "code") {
     const target = this.uidOfCode(code);
-    if (!target) throw new Error("そのフレンド ID は見つかりません。");
-    if (target === uid) throw new Error("自分のフレンド ID です。");
+    if (!target) throw new Error(Lk("そのフレンド ID は見つかりません。"));
+    if (target === uid) throw new Error(Lk("自分のフレンド ID です。"));
     return this.requestUid(uid, target, now, source);
   }
   /**
@@ -170,11 +171,11 @@ export class Friends {
    * 受け付けていないときは「いっぱい」と同じ文で断る(断っていることを相手に伝えない)
    */
   requestUid(uid, target, now, source = "code") {
-    if (!REQUEST_SOURCES.includes(source)) throw new Error("申請の入口が正しくありません。");
-    if (typeof target !== "string" || !target) throw new Error("相手が見つかりません。");
-    if (target === uid) throw new Error("自分には申請できません。");
+    if (!REQUEST_SOURCES.includes(source)) throw new Error(Lk("申請の入口が正しくありません。"));
+    if (typeof target !== "string" || !target) throw new Error(Lk("相手が見つかりません。"));
+    if (target === uid) throw new Error(Lk("自分には申請できません。"));
     if (this.isFriend(uid, target)) return { ok: true, friend: true, uid: target };
-    if (this.count(uid) >= FRIEND_MAX) throw new Error(`フレンドは${FRIEND_MAX}人までです。`);
+    if (this.count(uid) >= FRIEND_MAX) throw new Error(Lk("フレンドは{n}人までです。", { n: FRIEND_MAX }));
     if (this.count(target) >= FRIEND_MAX) throw new Error(FULL_MESSAGE);
     if (!this.acceptsFrom(target, source)) throw new Error(FULL_MESSAGE);
     if (this.sql("SELECT 1 FROM friend_requests WHERE from_uid=? AND to_uid=?", target, uid).length) {
@@ -186,11 +187,11 @@ export class Friends {
   }
   accept(uid, from, now) {
     if (!this.sql("SELECT 1 FROM friend_requests WHERE from_uid=? AND to_uid=?", from, uid).length)
-      throw new Error("その申請はもうありません。");
-    if (this.count(uid) >= FRIEND_MAX) throw new Error(`フレンドは${FRIEND_MAX}人までです。`);
+      throw new Error(Lk("その申請はもうありません。"));
+    if (this.count(uid) >= FRIEND_MAX) throw new Error(Lk("フレンドは{n}人までです。", { n: FRIEND_MAX }));
     if (this.count(from) >= FRIEND_MAX) {
       this.sql("DELETE FROM friend_requests WHERE from_uid=? AND to_uid=?", from, uid);
-      throw new Error("相手のフレンドがいっぱいです。");
+      throw new Error(Lk("相手のフレンドがいっぱいです。"));
     }
     this.link(uid, from, now);
     return { ok: true };
@@ -215,11 +216,11 @@ export class Friends {
   }
   /** フレンドにチケットを1枚贈る。1日にフレンド1人あたり1枚(最大50人ぶん)・フレンドだけ。送る側は減らない */
   gift(uid, fid, now) {
-    if (!this.isFriend(uid, fid)) throw new Error("フレンドにだけ贈れます。");
+    if (!this.isFriend(uid, fid)) throw new Error(Lk("フレンドにだけ贈れます。"));
     const day = jstDay(now);
     // id は (送り主・相手・日)ごと。同じ相手には1日1枚まで(主キーと重複確認で守る)
     const id = `gift:${uid}:${fid}:${day}`;
-    if (this.sql("SELECT 1 FROM friend_gifts WHERE id=?", id).length) throw new Error("この人には今日もう贈りました。また明日。");
+    if (this.sql("SELECT 1 FROM friend_gifts WHERE id=?", id).length) throw new Error(Lk("この人には今日もう贈りました。また明日。"));
     this.sql("INSERT INTO friend_gifts VALUES (?,?,?,?,?,0)", id, uid, fid, day, now);
     return { ok: true, to: fid, day };
   }
@@ -248,8 +249,8 @@ export class Friends {
   }
 
   invite(uid, fid, code, now) {
-    if (!this.isFriend(uid, fid)) throw new Error("フレンドにだけ招待を送れます。");
-    if (typeof code !== "string" || !/^[\w-]{4,16}$/.test(code)) throw new Error("合言葉が正しくありません。");
+    if (!this.isFriend(uid, fid)) throw new Error(Lk("フレンドにだけ招待を送れます。"));
+    if (typeof code !== "string" || !/^[\w-]{4,16}$/.test(code)) throw new Error(Lk("合言葉が正しくありません。"));
     this.sql("INSERT OR REPLACE INTO friend_invites VALUES (?,?,?,?)", uid, fid, code, now);
     return { ok: true };
   }
@@ -267,7 +268,7 @@ export class Friends {
    * 本人が設定で観戦をオンにしているときだけ端末が呼ぶ(サーバーは形だけ見張る)。
    */
   enterRoom(uid, code, online, opp, now) {
-    if (typeof code !== "string" || !ROOM_CODE_RE.test(code)) throw new Error("合言葉が正しくありません。");
+    if (typeof code !== "string" || !ROOM_CODE_RE.test(code)) throw new Error(Lk("合言葉が正しくありません。"));
     this.sql(
       "INSERT INTO friend_presence VALUES (?,?,?,?,?) ON CONFLICT(uid) DO UPDATE SET code=excluded.code, online=excluded.online, opp=excluded.opp, at=excluded.at",
       uid,

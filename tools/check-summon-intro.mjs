@@ -279,6 +279,8 @@ function openingHarness() {
   };
   const sandbox = {
     module: { exports: {} }, jsx: () => ({}), STYLES: "", cardBackImg: "back.png",
+    // 英語版(src/i18n)の L。検査は日本語の端末と同じくキーをそのまま返す
+    L: (s, v) => (v ? s.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m)) : s),
     SUMMON_TIMING, SUMMON_HOLD_AT, SUMMON_WORLDS, summonPlan, smooth,
     useRef(value) {
       const i = refIndex++;

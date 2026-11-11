@@ -39,6 +39,11 @@ const KEEP_JAPANESE = [
   /^src\/i18n\//, // 辞書そのもの
 ];
 
+/** 定義のファイルは触らず、出すところで Lx() を通す文。英訳があることだけを見る */
+const SHOWN_VIA_LX = {
+  "src/audio/tracks.js": ["トッタリー オリジナルBGM", "トッタリー オリジナルSE"],
+};
+
 /** まだ英語に移していないファイル。移し終えたら消す(最後は空になる) */
 const PENDING = new Set(
   fs.existsSync(path.join(ROOT, "tools/i18n-pending.txt"))
@@ -163,7 +168,8 @@ for (const { file, code } of files) {
     }
     if (!usedKeys.has(k.key)) usedKeys.set(k.key, `${file}:${k.line}`);
   }
-  const loose = items.filter((i) => !i.skip && !i.wrapped);
+  for (const k of SHOWN_VIA_LX[file] || []) if (!usedKeys.has(k)) usedKeys.set(k, `${file}(出すところで Lx)`);
+  const loose = items.filter((i) => !i.skip && !i.wrapped && !(SHOWN_VIA_LX[file] || []).includes(i.text));
   if (!loose.length) continue;
   if (PENDING.has(file)) {
     remaining[file] = loose.length;
@@ -223,6 +229,7 @@ for (const [part, dict] of Object.entries(EN_PARTS)) {
   for (const [ja, en] of Object.entries(dict)) {
     if (typeof en !== "string" || !en.trim()) fail(`辞書 ${part}: 「${ja}」の英語が空`);
     else if (JA.test(en.replace(/[・ー]/g, ""))) fail(`辞書 ${part}: 「${ja}」の英語に日本語の字: ${en}`);
+    else if (/Tottery/i.test(en)) fail(`辞書 ${part}: 「${ja}」の英語は Take Down(英語版の名前。2026-11-11 本人の指示): ${en}`);
     else if (holes(ja) !== holes(en)) fail(`辞書 ${part}: 「${ja}」と英語で差し込みが違う(${holes(ja)} / ${holes(en)})`);
     if (Object.prototype.hasOwnProperty.call(EN, ja) && EN[ja] !== en) fail(`辞書: 「${ja}」が2つの辞書で違う英語(${EN[ja]} / ${en})`);
     EN[ja] = en;
@@ -256,6 +263,23 @@ keys.forEach((k, i) => ja.out[i] !== k && fail(`日本語の端末で文が変�
 const en = probe("en");
 if (en.LANG !== "en") fail("TOTTERY_LANG=en で英語にならない");
 keys.forEach((k, i) => JA.test(en.out[i].replace(/[・ー]/g, "")) && fail(`英語の端末で日本語が出る: 「${k}」`));
+
+// ---- 6. iOS の言語の宣言 ----
+{
+  const read = (f) => (fs.existsSync(path.join(ROOT, f)) ? fs.readFileSync(path.join(ROOT, f), "utf8") : "");
+  const plist = read("ios/App/App/Info.plist");
+  const pbx = read("ios/App/App.xcodeproj/project.pbxproj");
+  if (!/<key>CFBundleDevelopmentRegion<\/key>\s*<string>ja<\/string>/.test(plist)) fail("Info.plist: CFBundleDevelopmentRegion は ja のまま");
+  if (!/<key>CFBundleLocalizations<\/key>\s*<array>\s*<string>ja<\/string>\s*<string>en<\/string>\s*<\/array>/.test(plist)) fail("Info.plist: CFBundleLocalizations に ja と en");
+  if (!/knownRegions = \([^)]*\ben,/.test(pbx)) fail("project.pbxproj: knownRegions に en");
+  if (!/en\.lproj\/InfoPlist\.strings/.test(pbx) || !/InfoPlist\.strings in Resources \*\/,/.test(pbx)) fail("project.pbxproj: en.lproj/InfoPlist.strings を Resources に");
+  const strings = read("ios/App/App/en.lproj/InfoPlist.strings");
+  for (const key of [...plist.matchAll(/<key>(NS\w+UsageDescription)<\/key>/g)].map((m) => m[1]).concat("CFBundleDisplayName")) {
+    const m = new RegExp(`"${key}"\\s*=\\s*"([^"]*)"`).exec(strings);
+    if (!m) fail(`en.lproj/InfoPlist.strings に ${key} の英語が無い`);
+    else if (JA.test(m[1])) fail(`en.lproj/InfoPlist.strings の ${key} に日本語`);
+  }
+}
 
 // ---- 結果 ----
 const pendingLeft = Object.values(remaining).reduce((a, b) => a + b, 0);

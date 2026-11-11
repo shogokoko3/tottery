@@ -10,17 +10,18 @@ import { MoveDiagram } from "./guides.jsx";
 import { AreaGuide } from "./area-guide.jsx";
 import { AREA_GUIDE_ROWS } from "./area-guide-rows.js";
 import css from "./phase-guide.css";
+import { L } from "../i18n/index.js";
 
 const TITLES = {
-  1: "駒の動きを覚える",
-  2: "王の力を使う",
-  3: "エリアを使いこなす",
+  1: L("駒の動きを覚える"),
+  2: L("王の力を使う"),
+  3: L("エリアを使いこなす"),
 };
 const SUMMARIES = {
-  1: "小さな盤で、札の動きを手がかりに相手の王を探します。このフェーズでは、王も基本の動きだけで遊びます。",
-  2: "王ごとの特殊な力が加わります。どの札を王にするかで、戦い方が変わります。ストーリーでは、王の力を使えるのはあなたの王だけです。",
+  1: L("小さな盤で、札の動きを手がかりに相手の王を探します。このフェーズでは、王も基本の動きだけで遊びます。"),
+  2: L("王ごとの特殊な力が加わります。どの札を王にするかで、戦い方が変わります。ストーリーでは、王の力を使えるのはあなたの王だけです。"),
   // ストーリーは 5×5・相手の王も王の力・エリアはあなただけ(話ごとに決まったエリアを、フォイルが無くても貸す。2026-10-26 本人の指示)
-  3: "王の力に加えて、王のエリア効果を使えます。ストーリーでは、相手の王も王の力を持ち、エリアはあなたの王だけに付きます(話ごとに決まったエリアを、フォイルが無くても使えます)。",
+  3: L("王の力に加えて、王のエリア効果を使えます。ストーリーでは、相手の王も王の力を持ち、エリアはあなたの王だけに付きます(話ごとに決まったエリアを、フォイルが無くても使えます)。"),
 };
 
 export function PhaseGuide({ onBack, profile = loadProfile() }) {
@@ -32,24 +33,24 @@ export function PhaseGuide({ onBack, profile = loadProfile() }) {
     <div className="setup-wrap phase-guide">
       <style>{css}</style>
       <button type="button" className="btn btn-ghost" onClick={onBack}>
-        戻る
+        {L("戻る")}
       </button>
       <header className="phase-guide-heading">
-        <small>いつでも見返せる遊びの道しるべ</small>
-        <h2>フェーズガイド</h2>
+        <small>{L("いつでも見返せる遊びの道しるべ")}</small>
+        <h2>{L("フェーズガイド")}</h2>
         <p>
-          トッタリーは、3つのフェーズで少しずつルールが広がります。今遊んでいるフェーズから確認できます。
+          {L("トッタリーは、3つのフェーズで少しずつルールが広がります。今遊んでいるフェーズから確認できます。")}
         </p>
         <p className="phase-guide-common">
-          どのフェーズでも、相手の王を取れば勝ちです。
+          {L("どのフェーズでも、相手の王を取れば勝ちです。")}
         </p>
         {selected >= 2 && <p className="hint">
           {selected === 2
-            ? "フェーズ2のオンライン対戦とフェーズ3では、王を取った後に別の札が王を引き継ぐ場合もあります。詳しいルールは早見表で確認できます。"
-            : "フェーズ2からは、王を取った後に別の札が王を引き継ぐ場合もあります。詳しいルールは早見表で確認できます。"}
+            ? L("フェーズ2のオンライン対戦とフェーズ3では、王を取った後に別の札が王を引き継ぐ場合もあります。詳しいルールは早見表で確認できます。")
+            : L("フェーズ2からは、王を取った後に別の札が王を引き継ぐ場合もあります。詳しいルールは早見表で確認できます。")}
         </p>}
       </header>
-      <nav className="phase-guide-steps" aria-label="説明するフェーズを選ぶ">
+      <nav className="phase-guide-steps" aria-label={L("説明するフェーズを選ぶ")}>
         {PHASES.map((p) => (
           <button
             type="button"
@@ -59,119 +60,117 @@ export function PhaseGuide({ onBack, profile = loadProfile() }) {
             onClick={() => setSelected(p)}
           >
             <small>
-              フェーズ {p}
+              {L("フェーズ {p}", { p })}
               {p === status.phase
-                ? " · 現在"
+                ? L(" · 現在")
                 : p > status.phase
-                  ? " · これから"
-                  : " · 到達済み"}
+                  ? L(" · これから")
+                  : L(" · 到達済み")}
             </small>
             <b>{TITLES[p]}</b>
             <span>
-              {p === 1 ? "基本の動き" : p === 2 ? "＋ 王の力" : "＋ エリア効果"}
+              {p === 1 ? L("基本の動き") : p === 2 ? L("＋ 王の力") : L("＋ エリア効果")}
             </span>
           </button>
         ))}
       </nav>
       <section
         className="phase-guide-detail"
-        aria-label={`フェーズ${selected}の説明`}
+        aria-label={L("フェーズ{p}の説明", { p: selected })}
       >
-        <small>フェーズ {selected}</small>
+        <small>{L("フェーズ {p}", { p: selected })}</small>
         <h3>{TITLES[selected]}</h3>
         <p>{SUMMARIES[selected]}</p>
         <dl className="phase-guide-rules">
           <div>
-            <dt>ストーリーの盤</dt>
+            <dt>{L("ストーリーの盤")}</dt>
             <dd>
               {stageSize(selected)}×{stageSize(selected)}
             </dd>
           </div>
           <div>
-            <dt>オンラインの盤</dt>
-            <dd>{rules.sizes.map((n) => `${n}×${n}`).join("・")}</dd>
+            <dt>{L("オンラインの盤")}</dt>
+            <dd>{rules.sizes.map((n) => `${n}×${n}`).join(L("・"))}</dd>
           </div>
           <div>
-            <dt>王の力</dt>
+            <dt>{L("王の力")}</dt>
             {/* フェーズ2 のストーリーは、王の力がプレイヤーの席だけ(2026-10-25 本人の指示。phase.js storySetupFlags) */}
-            <dd>{!rules.kingPowers ? "なし" : selected === 2 ? "あり(ストーリーはあなたの王だけ)" : "あり"}</dd>
+            <dd>{!rules.kingPowers ? L("なし") : selected === 2 ? L("あり(ストーリーはあなたの王だけ)") : L("あり")}</dd>
           </div>
           <div>
-            <dt>エリア効果</dt>
+            <dt>{L("エリア効果")}</dt>
             {/* ストーリーはあなたの王だけ・フォイルが無くても貸し出し(2026-10-26 本人の指示)。オンラインはフォイルの王で 9×9 */}
-            <dd>{rules.areas ? "あり(ストーリーはあなたの王だけ。オンラインはフォイルの王で9×9)" : "なし"}</dd>
+            <dd>{rules.areas ? L("あり(ストーリーはあなたの王だけ。オンラインはフォイルの王で9×9)") : L("なし")}</dd>
           </div>
         </dl>
-        <h4>同じ「2の王」で動きを比べます</h4>
-        <p>自分の5枚に、2の札を1枚入れた場合です。中央の白いマスが王、金色のマスが動ける場所です。</p>
+        <h4>{L("同じ「2の王」で動きを比べます")}</h4>
+        <p>{L("自分の5枚に、2の札を1枚入れた場合です。中央の白いマスが王、金色のマスが動ける場所です。")}</p>
         <div className="phase-guide-example">
           <figure>
-            <div role="img" aria-label="王の力なし。2の王は縦横1マスに動ける">
+            <div role="img" aria-label={L("王の力なし。2の王は縦横1マスに動ける")}>
               <MoveDiagram rank="2" gridSize={selected === 1 ? 5 : 9} />
             </div>
-            <figcaption>フェーズ1：縦横1マス</figcaption>
+            <figcaption>{L("フェーズ1：縦横1マス")}</figcaption>
           </figure>
           {selected >= 2 && (
             <figure>
               <div
                 role="img"
-                aria-label="王の力あり。2を1枚採用した王は縦横3マスまで動ける"
+                aria-label={L("王の力あり。2を1枚採用した王は縦横3マスまで動ける")}
               >
                 <MoveDiagram rank="2" isKing gridSize={9} />
               </div>
-              <figcaption>フェーズ{selected}：縦横3マスまで</figcaption>
+              <figcaption>{L("フェーズ{p}：縦横3マスまで", { p: selected })}</figcaption>
             </figure>
           )}
         </div>
         {selected >= 2 && (
           <p>
-            2の王は、自分の札にある2の枚数に応じて移動距離が伸びます。王の力は数字ごとに異なります。
+            {L("2の王は、自分の札にある2の枚数に応じて移動距離が伸びます。王の力は数字ごとに異なります。")}
           </p>
         )}
         {selected === 3 && (
           <aside className="phase-guide-area">
-            <h4>さらに「土」のエリア効果</h4>
+            <h4>{L("さらに「土」のエリア効果")}</h4>
             <p>
-              ストーリーでは、第1話「二と三の王」であなたの王に「土」のエリア効果が付きます(フォイルが無くても使えます)。
+              {L("ストーリーでは、第1話「二と三の王」であなたの王に「土」のエリア効果が付きます(フォイルが無くても使えます)。")}
             </p>
             <p>{earth.summary}</p>
             <p>
-              オンラインでは、2の札にフォイルを装備し、その札を王にして9×9で遊ぶと発動します。
+              {L("オンラインでは、2の札にフォイルを装備し、その札を王にして9×9で遊ぶと発動します。")}
             </p>
             <details>
-              <summary>すべてのエリア効果を見る</summary>
+              <summary>{L("すべてのエリア効果を見る")}</summary>
               <AreaGuide />
             </details>
           </aside>
         )}
         <p className="hint">
           {selected === 3
-            ? "オンラインの持ち点（レート）の対象はフェーズ3です。"
-            : "オンラインの持ち点（レート）はフェーズ3からです。"}
+            ? L("オンラインの持ち点（レート）の対象はフェーズ3です。")
+            : L("オンラインの持ち点（レート）はフェーズ3からです。")}
         </p>
       </section>
-      <section className="phase-guide-progress" aria-label="現在の進み具合">
-        <small>あなたの現在地</small>
+      <section className="phase-guide-progress" aria-label={L("現在の進み具合")}>
+        <small>{L("あなたの現在地")}</small>
         <h3>
-          フェーズ {status.phase} · {TITLES[status.phase]}
+          {L("フェーズ {p} · {title}", { p: status.phase, title: TITLES[status.phase] })}
         </h3>
         {status.last ? (
           <p>
-            最後のフェーズに到達しました。王の力とエリア効果を使って対局できます。
+            {L("最後のフェーズに到達しました。王の力とエリア効果を使って対局できます。")}
           </p>
         ) : (
           <>
             <p>
-              今のフェーズで、次の両方を達成するとフェーズ{status.phase + 1}
-              へ進めます。
+              {L("今のフェーズで、次の両方を達成するとフェーズ{n}へ進めます。", { n: status.phase + 1 })}
             </p>
             <label>
-              ストーリー {status.axesCleared} / {status.axesTotal} クリア
+              {L("ストーリー {a} / {b} クリア", { a: status.axesCleared, b: status.axesTotal })}
               <progress value={status.axesCleared} max={status.axesTotal} />
             </label>
             <label>
-              オンライン {Math.min(status.wins, status.winsNeeded)} /{" "}
-              {status.winsNeeded} 勝
+              {L("オンライン {a} / {b} 勝", { a: Math.min(status.wins, status.winsNeeded), b: status.winsNeeded })}
               <progress
                 value={Math.min(status.wins, status.winsNeeded)}
                 max={status.winsNeeded}
@@ -179,19 +178,19 @@ export function PhaseGuide({ onBack, profile = loadProfile() }) {
             </label>
             <p>
               {status.axesLeft.length === 0 && status.winsLeft === 0
-                ? "昇格の準備ができました。ストーリー画面から次のフェーズへ進めます。"
-                : "条件を達成したら、ストーリー画面から昇格できます。"}
+                ? L("昇格の準備ができました。ストーリー画面から次のフェーズへ進めます。")
+                : L("条件を達成したら、ストーリー画面から昇格できます。")}
             </p>
             {status.phase === 1 && (
               <p className="hint">
-                ランダムマッチはフェーズ1のストーリー全7ステージをクリアすると開きます。
+                {L("ランダムマッチはフェーズ1のストーリー全7ステージをクリアすると開きます。")}
               </p>
             )}
           </>
         )}
       </section>
       <button type="button" className="btn btn-primary" onClick={onBack}>
-        戻る
+        {L("戻る")}
       </button>
     </div>
   );

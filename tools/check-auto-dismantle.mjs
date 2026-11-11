@@ -132,7 +132,7 @@ assert.match(ui, /dismantleResults\(s, results, s\.dismantleRarities\)\.state/, 
 assert.match(ui, /dismantleRarities: s\.dismantleRarities\.includes\(rarity\)/, "レア度の入り切りを覚える");
 assert.match(ui, /DISMANTLE_RARITIES\.map\(\(r\) => \(/, "レア度の選択を結果画面に出す");
 assert.match(ui, /const crushed = dismantledAt\.has\(index\);/, "崩した札は1枚ずつ印を出す");
-assert.match(ui, /崩した \+\$\{dismantledAt\.get\(index\)\}/, "その1枚で得たエーテルを出す");
+assert.match(ui, /崩した \+\{n\}", \{ n: dismantledAt\.get\(index\) \}/, "その1枚で得たエーテルを出す");
 assert.match(ui, /is-dismantled/, "崩した札は見た目でも分かる");
 assert.match(ui, /setDismantled\(null\);/, "結果を閉じたら印を消す(次の抽選に持ち越さない)");
 assert.match(css, /\.skin-dismantled \{/);

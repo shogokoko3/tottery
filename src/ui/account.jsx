@@ -33,6 +33,7 @@ import { Check, Close, Lock, Sparkle } from "../icons.jsx";
 import { PlayerIcon } from "./playericon.jsx";
 import { TitleFrame } from "./title-frame.jsx";
 import { phrasesOf } from "./phrase-split.js";
+import { L, Lk, Lx, fmtNumber } from "../i18n/index.js";
 
 /**
  * 名前を決める画面の本文(2026-10-01 本人の指示)。1文1行。
@@ -41,8 +42,8 @@ import { phrasesOf } from "./phrase-split.js";
  * 行の中は読点・句点のあとの句で折り返す(320 幅で1行目が2行になる。語の途中で割らない)
  */
 export const NAME_LINES = Object.freeze([
-  "インターネット上のランキングに、名前が出る。",
-  "本名は避けて。あとから変えられる。",
+  L("インターネット上のランキングに、名前が出る。"),
+  L("本名は避けて。あとから変えられる。"),
 ]);
 
 /**
@@ -51,13 +52,13 @@ export const NAME_LINES = Object.freeze([
  * 断る決まりは nameError のまま。設定の「名前を変える」(NameEditModal)は、です・ます調の画面なので nameError の文を出す
  */
 const SETUP_NAME_ERRORS = Object.freeze({
-  名前を入力してください: "名前を入れて。",
-  [`名前は${MAX_NAME_LEN}文字までです`]: `名前は${MAX_NAME_LEN}文字まで。`,
-  "その名前は使えません。別の名前にしてください": "その名前は使えない。別の名前にして。",
+  [Lk("名前を入力してください")]: L("名前を入れて。"),
+  [Lk("名前は{n}文字までです", { n: MAX_NAME_LEN })]: L("名前は{n}文字まで。", { n: MAX_NAME_LEN }),
+  [Lk("その名前は使えません。別の名前にしてください")]: L("その名前は使えない。別の名前にして。"),
 });
 export function setupNameError(raw) {
   const bad = nameError(raw);
-  return bad && (SETUP_NAME_ERRORS[bad] || bad);
+  return bad && (SETUP_NAME_ERRORS[bad] || Lx(bad));
 }
 
 /** 名前を入れてもらう欄。登録画面と変更画面で共通に使う */
@@ -69,14 +70,14 @@ function NameField({ value, onChange, error }) {
         className={`name-input ${error ? "name-input-bad" : ""}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="プレイヤー名"
+        placeholder={L("プレイヤー名")}
         maxLength={MAX_NAME_LEN + 4}
         autoComplete="off"
         autoCapitalize="off"
         spellCheck={false}
       />
       <p className={`name-note ${error ? "name-note-bad" : ""}`}>
-        {error || `${MAX_NAME_LEN}文字まで(あと${Math.max(0, left)}文字)`}
+        {error ? Lx(error) : L("{max}文字まで(あと{left}文字)", { max: MAX_NAME_LEN, left: Math.max(0, left) })}
       </p>
     </>
   );
@@ -120,8 +121,8 @@ export function NameSetupScreen({ onDone, notice, afterWin = false, reason = nul
   return (
     <div className="center-stage name-stage">
       <div className="name-card">
-        <p className="name-eyebrow">{afterWin ? "はじめての勝利" : "はじめまして"}</p>
-        <h2>あなたの名前は?</h2>
+        <p className="name-eyebrow">{afterWin ? L("はじめての勝利") : L("はじめまして")}</p>
+        <h2>{L("あなたの名前は?")}</h2>
         {reason && <p className="name-reason">{reason}</p>}
         {notice && <p className="name-notice">{notice}</p>}
         {/* 1文1行。長い3行で「出ま/す」と割れていた(2026-10-01 本人の指示で2行に)。
@@ -150,11 +151,11 @@ export function NameSetupScreen({ onDone, notice, afterWin = false, reason = nul
           onClick={submit}
           disabled={busy}
         >
-          <Sparkle size={16} /> {afterWin ? "決める" : "はじめる"}
+          <Sparkle size={16} /> {afterWin ? L("決める") : L("はじめる")}
         </button>
         {onCancel && (
           <button className="btn btn-ghost btn-wide name-cancel" onClick={onCancel} disabled={busy}>
-            戻る
+            {L("戻る")}
           </button>
         )}
       </div>
@@ -184,13 +185,13 @@ export function NameEditModal({ onClose, onSaved }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h3>名前を変える</h3>
+          <h3>{L("名前を変える")}</h3>
           <button className="icon-btn" onClick={onClose}>
             <Close size={18} />
           </button>
         </div>
         <p className="hint">
-          対戦相手と、ランキングに出る名前です。本名は入れないでください。
+          {L("対戦相手と、ランキングに出る名前です。本名は入れないでください。")}
         </p>
         <NameField
           value={value}
@@ -202,10 +203,10 @@ export function NameEditModal({ onClose, onSaved }) {
         />
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onClose}>
-            やめる
+            {L("やめる")}
           </button>
           <button className="btn btn-primary" onClick={submit}>
-            <Check size={16} /> 決定
+            <Check size={16} /> {L("決定")}
           </button>
         </div>
       </div>
@@ -236,7 +237,7 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
         <button
           className="account-mark"
           onClick={onEditIcon}
-          title="アイコンを選ぶ"
+          title={L("アイコンを選ぶ")}
         >
           <PlayerIcon
             icon={profile.icon}
@@ -244,26 +245,26 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
             size="lg"
             frame={season.frame}
           />
-          <span className="account-mark-edit">変える</span>
+          <span className="account-mark-edit">{L("変える")}</span>
         </button>
         <div className="account-id">
-          <b className="account-name">{profile.name || "(未設定)"}</b>
+          <b className="account-name">{profile.name || L("(未設定)")}</b>
           <span className="account-sub">
-            レベル {level}
-            {level >= MAX_LEVEL ? "(最高)" : ""}
+            {L("レベル {level}", { level })}
+            {level >= MAX_LEVEL ? L("(最高)") : ""}
           </span>
         </div>
         <button className="btn btn-ghost btn-small" onClick={onEditName}>
-          名前を変える
+          {L("名前を変える")}
         </button>
       </div>
 
       {/* 称号。額縁ごと一段を使って大きく見せる(2026-09-22 本人の指示)。
           名前の脇に小さく添えていたが、額縁の作りが見えず見栄えを損ねていた。
           押すと選ぶ画面へ。対戦相手にも見える */}
-      <button className="title-tag" onClick={onEditTitle} title="称号を選ぶ">
+      <button className="title-tag" onClick={onEditTitle} title={L("称号を選ぶ")}>
         <TitleFrame id={titleOf(profile).id} size="showcase" />
-        <span className="title-tag-edit">称号を変える</span>
+        <span className="title-tag-edit">{L("称号を変える")}</span>
       </button>
 
       <div className="level-bar">
@@ -274,26 +275,26 @@ export function AccountCard({ profile, onEditName, onEditIcon, onEditTitle }) {
       </div>
       <p className="level-note">
         {progress.done
-          ? `経験値 ${progress.xp.toLocaleString()} · これ以上は上がりません`
-          : `次のレベルまであと ${progress.left.toLocaleString()}(${progress.into.toLocaleString()} / ${progress.need.toLocaleString()})`}
+          ? L("経験値 {xp} · これ以上は上がりません", { xp: fmtNumber(progress.xp) })
+          : L("次のレベルまであと {left}({into} / {need})", { left: fmtNumber(progress.left), into: fmtNumber(progress.into), need: fmtNumber(progress.need) })}
       </p>
 
       <div className="stat-row">
         <div className="stat">
           <b>{battles}</b>
-          <span>対局</span>
+          <span>{L("対局")}</span>
         </div>
         <div className="stat">
           <b>{battleWins}</b>
-          <span>勝ち</span>
+          <span>{L("勝ち")}</span>
         </div>
         <div className="stat">
           <b>{battleDraws}</b>
-          <span>引き分け</span>
+          <span>{L("引き分け")}</span>
         </div>
         <div className="stat">
           <b>{rate === null ? "—" : `${rate}%`}</b>
-          <span>勝率</span>
+          <span>{L("勝率")}</span>
         </div>
       </div>
     </div>
@@ -324,12 +325,12 @@ export function IconPickModal({ onClose, onSaved }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">
-          <h3>アイコンを選ぶ</h3>
+          <h3>{L("アイコンを選ぶ")}</h3>
           <button className="icon-btn" onClick={onClose}>
             <Close size={18} />
           </button>
         </div>
-        <p className="hint">対戦相手にも見えます。</p>
+        <p className="hint">{L("対戦相手にも見えます。")}</p>
         <div className="icon-grid">
           {ICONS.map((icon) => {
             const owned = hasIcon(profile, icon.id);
@@ -343,12 +344,12 @@ export function IconPickModal({ onClose, onSaved }) {
                   owned ? "" : "icon-choice-locked"
                 }`}
                 disabled={!owned}
-                title={owned ? icon.label : icon.how}
+                title={Lx(owned ? icon.label : icon.how)}
                 onClick={() => owned && setPicked(icon.id)}
                 key={icon.id}
               >
                 <PlayerIcon icon={icon.id} name={profile.name} />
-                <span className="icon-label">{icon.label}</span>
+                <span className="icon-label">{Lx(icon.label)}</span>
               </button>
             );
           })}
@@ -358,15 +359,15 @@ export function IconPickModal({ onClose, onSaved }) {
             i.foil && (hasIcon(profile, i.id) || foilRevealed(getCollection())),
         ) && (
           <p className="hint">
-            紋章アイコンは、対応する布陣の称号を獲得すると使えます。
+            {L("紋章アイコンは、対応する布陣の称号を獲得すると使えます。")}
           </p>
         )}
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onClose}>
-            やめる
+            {L("やめる")}
           </button>
           <button className="btn btn-primary" onClick={submit}>
-            <Check size={16} /> 決定
+            <Check size={16} /> {L("決定")}
           </button>
         </div>
       </div>
@@ -409,12 +410,12 @@ export function useTitleOrder() {
 /** 「一覧順／古い順／新しい順」の切り替え(新しい順は 2026-10-16 本人の指示) */
 export function TitleOrderToggle({ value, onChange }) {
   return (
-    <div className="title-order" role="group" aria-label="使える称号の並び">
-      <span>並び</span>
+    <div className="title-order" role="group" aria-label={L("使える称号の並び")}>
+      <span>{L("並び")}</span>
       {[
-        ["list", "一覧順"],
-        ["earned", "獲得が古い順"],
-        ["newest", "獲得が新しい順"],
+        ["list", L("一覧順")],
+        ["earned", L("獲得が古い順")],
+        ["newest", L("獲得が新しい順")],
       ].map(([id, label]) => (
         <button
           key={id}
@@ -443,15 +444,15 @@ export function TitleChoice({ title: t, owned, picked, onPick, earned = "" }) {
       <span className="title-choice-state">
         {picked ? (
           <>
-            <Check size={12} /> 選択中
+            <Check size={12} /> {L("選択中")}
           </>
         ) : owned ? (
           <>
-            <Check size={12} /> 取得済み
+            <Check size={12} /> {L("取得済み")}
           </>
         ) : (
           <>
-            <Lock size={12} /> 未取得
+            <Lock size={12} /> {L("未取得")}
           </>
         )}
       </span>
@@ -459,17 +460,17 @@ export function TitleChoice({ title: t, owned, picked, onPick, earned = "" }) {
       {/* 獲得済みでも、どんな条件で取れたかを出す(2026-09-21 本人の指示) */}
       <small>
         {t.free
-          ? "最初から"
+          ? L("最初から")
           : t.how
             ? owned
-              ? `取得済み · ${t.how}`
-              : t.how
+              ? L("取得済み · {how}", { how: Lx(t.how) })
+              : Lx(t.how)
             : owned
-              ? "手に入れた"
+              ? L("手に入れた")
               : ""}
       </small>
       {/* 獲得日(2026-10-15 本人の指示)。記録が始まる前に取ったものは「記録なし」 */}
-      {owned && !t.free && earned && <small className="title-choice-date">{earned}</small>}
+      {owned && !t.free && earned && <small className="title-choice-date">{Lx(earned)}</small>}
     </button>
   );
 }
@@ -518,15 +519,15 @@ export function TitlePickModal({ onClose, onSaved }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">
-          <h3 id="title-picker-heading">称号を選ぶ</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+          <h3 id="title-picker-heading">{L("称号を選ぶ")}</h3>
+          <button className="icon-btn" onClick={onClose} aria-label={L("閉じる")}>
             <Close size={18} />
           </button>
         </div>
         <div className="title-picker-scroll">
           <div className="title-pick-preview" aria-live="polite">
-            <small>オンライン対戦でのあなたの称号</small>
-            <b>{profile.name || "あなた"}</b>
+            <small>{L("オンライン対戦でのあなたの称号")}</small>
+            <b>{profile.name || L("あなた")}</b>
             <TitleFrame
               id={picked}
               size="showcase"
@@ -536,7 +537,7 @@ export function TitlePickModal({ onClose, onSaved }) {
           <div className="title-list">
             <p className="title-group-head title-group-head-mine">
               <Check size={13} />
-              使える称号 <b>{mine.length}</b>
+              {L("使える称号")} <b>{mine.length}</b>
             </p>
             <TitleOrderToggle value={order} onChange={setOrder} />
             {mine.map((t) => (
@@ -552,7 +553,7 @@ export function TitlePickModal({ onClose, onSaved }) {
             {locked.length > 0 && (
               <p className="title-group-head">
                 <Lock size={13} />
-                まだ取れていない称号 <b>{locked.length}</b>
+                {L("まだ取れていない称号")} <b>{locked.length}</b>
               </p>
             )}
             {locked.map((t) => (
@@ -560,15 +561,15 @@ export function TitlePickModal({ onClose, onSaved }) {
             ))}
           </div>
           <p className="hint">
-            未取得の称号は、条件を満たすと使えるようになります。
+            {L("未取得の称号は、条件を満たすと使えるようになります。")}
           </p>
         </div>
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onClose}>
-            やめる
+            {L("やめる")}
           </button>
           <button className="btn btn-primary" onClick={submit}>
-            <Check size={16} /> 決定
+            <Check size={16} /> {L("決定")}
           </button>
         </div>
       </div>

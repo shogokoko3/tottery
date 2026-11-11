@@ -14,6 +14,8 @@ import { createRequire } from "node:module";
 import { build } from "esbuild";
 import { HOME_THEMES, homeThemeAssets } from "../src/skins/home-themes.js";
 
+// 英語版(2026-11-11): 検査は日本語の画面で見る。Node の navigator は en-US なので言語を決めておく
+process.env.TOTTERY_LANG ??= "ja";
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tottery-home-"));
 try {
   const outfile = path.join(dir, "view.cjs");

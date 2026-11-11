@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { areaTheme } from "../game/field-presentation.js";
 import { AREA_INFO } from "../game/areas.js";
 import { FieldArtwork } from "./fields/backdrop.jsx";
+import { L } from "../i18n/index.js";
 
 /** 宮殿は天界と魔界の2種。それ以外は1種 */
 export function themesOf(type, skinId) {
@@ -19,13 +20,13 @@ export function themesOf(type, skinId) {
 }
 
 const THEME_LABEL = {
-  earth: "土",
-  sea: "海",
-  forest: "森",
-  ice: "氷",
-  sky: "空",
-  heaven: "宮殿(天使)",
-  hell: "宮殿(悪魔)",
+  earth: L("土"),
+  sea: L("海"),
+  forest: L("森"),
+  ice: L("氷"),
+  sky: L("空"),
+  heaven: L("宮殿(天使)"),
+  hell: L("宮殿(悪魔)"),
 };
 
 /** 画面に入ってから絵を読む。盤の絵は1枚 3MB ほどあり、一覧で全部を先読みしない */
@@ -63,7 +64,7 @@ export function AreaPreview({ type, skinId, className = "" }) {
             className={`area-preview-board ${near ? "is-loaded" : ""}`}
             style={{ "--field-inset": "3%" }}
             role="img"
-            aria-label={`${AREA_INFO[type].name}の盤の見た目`}
+            aria-label={L("{name}の盤の見た目", { name: AREA_INFO[type].name })}
           >
             {near && <FieldArtwork theme={theme} />}
             <div className="area-preview-grid" aria-hidden="true">

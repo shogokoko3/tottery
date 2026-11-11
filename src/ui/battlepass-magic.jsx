@@ -3,6 +3,7 @@ import { audioSettings, connectFilmSound, duckMusic, playAuxiliarySound } from "
 import { nativeHomeMusicAvailable } from "../audio/native-home-music.js";
 import { createBattlePassPainter } from "./battlepass-magic-painter.js";
 import styles from "./battlepass-magic.css";
+import { L } from "../i18n/index.js";
 
 const DURATION = 8700;
 const REDUCED_DURATION = 1400;
@@ -78,19 +79,19 @@ function chimeUrl(reduced) {
 function phaseAt(time, reduced) {
   if (reduced)
     return time < 450
-      ? "25枚、すべて開放"
+      ? L("25枚、すべて開放")
       : time < 1000
-        ? "ひとつの絵へ"
-        : "イラスト完成";
+        ? L("ひとつの絵へ")
+        : L("イラスト完成");
   return time < 1500
-    ? "25枚、すべて開放"
+    ? L("25枚、すべて開放")
     : time < 2300
-      ? "魔法が目を覚ます"
+      ? L("魔法が目を覚ます")
       : time < 4200
-        ? "欠片に、魔法を。"
+        ? L("欠片に、魔法を。")
         : time < 6500
-          ? "ひとつの絵へ"
-          : "イラスト完成";
+          ? L("ひとつの絵へ")
+          : L("イラスト完成");
 }
 
 export function BattlePassMagic({ imageSrc, order, onComplete }) {
@@ -98,7 +99,7 @@ export function BattlePassMagic({ imageSrc, order, onComplete }) {
   const completeRef = useRef(onComplete);
   const notified = useRef(false);
   const skipRef = useRef(null);
-  const [phase, setPhase] = useState("魔法の準備中");
+  const [phase, setPhase] = useState(L("魔法の準備中"));
   completeRef.current = onComplete;
   const orderKey = Array.isArray(order) ? order.join(",") : "";
 
@@ -150,7 +151,7 @@ export function BattlePassMagic({ imageSrc, order, onComplete }) {
       } catch {
         /* The parent still shows the completed picture. */
       }
-      updatePhase("イラスト完成");
+      updatePhase(L("イラスト完成"));
       if (!notified.current) {
         notified.current = true;
         completeRef.current?.();
@@ -236,7 +237,7 @@ export function BattlePassMagic({ imageSrc, order, onComplete }) {
         /* Audio failure never holds the picture or reward. */
       }
       started = performance.now();
-      updatePhase("25枚、すべて開放");
+      updatePhase(L("25枚、すべて開放"));
       watchdog = setTimeout(finish, duration + 1000);
       frame = requestAnimationFrame(tick);
     };
@@ -272,13 +273,13 @@ export function BattlePassMagic({ imageSrc, order, onComplete }) {
   }, [imageSrc, orderKey]);
 
   return (
-    <section className="battlepass-magic" aria-label="イラスト完成の魔法">
+    <section className="battlepass-magic" aria-label={L("イラスト完成の魔法")}>
       <style>{styles}</style>
       <div className="battlepass-magic-stage">
         <canvas
           ref={canvasRef}
           role="img"
-          aria-label="25枚の欠片がシルクハットの魔法で並び替わり、イラストが完成します。"
+          aria-label={L("25枚の欠片がシルクハットの魔法で並び替わり、イラストが完成します。")}
         />
       </div>
       <div className="battlepass-magic-status">
@@ -286,7 +287,7 @@ export function BattlePassMagic({ imageSrc, order, onComplete }) {
           {phase}
         </span>
         <button type="button" onClick={() => skipRef.current?.()}>
-          演出をスキップ
+          {L("演出をスキップ")}
         </button>
       </div>
     </section>

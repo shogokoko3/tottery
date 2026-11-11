@@ -418,13 +418,13 @@ console.log("\nD. 配線");
   ok("王を選ぶ画面に quiet・lockPlacement・showFoe", /quiet=\{!!tutorial\?\.opening\?\.stopAt\}/.test(game) && (game.match(/lockPlacement=\{!!tutorial\?\.opening\?\.lockPlacement\}/g) || []).length === 2 && /showFoe=\{!!tutorial\?\.opening\?\.stopAt\}/.test(game));
   ok("story も受けたら story として記録(チュートリアルの xp・クリア・チケットなし)", /const asLesson = !!tutorial && !story && !asIntro;\s*const freshTutorial =\s*asLesson && won/.test(game) && /\.\.\.\(asLesson\s*\? \{\s*xp: won \? tutorial\.xp : 0,\s*tutorial: !0,/.test(game));
   ok("結果の「初勝利の報酬を受け取る」は呼ぶ側の onGate", /onGate=\{onGate\}/.test(game) && /onClick=\{onGate\}/.test(game));
-  ok("導入の相手は練習相手、自分はあなた", screens.includes('me || (story || firstGame ? "あなた" : null)') && screens.includes('? "練習相手"'));
+  ok("導入の相手は練習相手、自分はあなた", screens.includes('me || (story || firstGame ? L("あなた") : null)') && screens.includes('? L("練習相手")'));
   // 待ちの帯(2026-10-05 見直し)。はじめの一局は、撃破の札・取る確認のあいだは出さず、相手の番は台本の一行
   ok(
     "待ちの帯: はじめの一局は撃破の札・取る確認のあいだ出さず、相手の番は台本の一行(決まり文句を出さない)",
     /tutHold =\s*tutorial && !tutActive && tutIdx < tutorial\.steps\.length\s*\? tutorial\.intro\s*\? (\/\/[^\n]*\n\s*)*a\.captureReveal \|\| pendingCapture\s*\? null\s*: a\.phase === "play" && a\.currentTurn === 1 && tutorial\.foeTurn\s*\? \{ hold: !0, text: tutorial\.foeTurn \}\s*: null\s*: \{/.test(game),
   );
-  ok("待ちの帯: 第1〜13話の文はいままでどおり", /"相手の番です。少し待ってください。"\s*: "▼ の付いたボタンを押して進めてください。"/.test(game));
+  ok("待ちの帯: 第1〜13話の文はいままでどおり", /L\("相手の番です。少し待ってください。"\)\s*: L\("▼ の付いたボタンを押して進めてください。"\)/.test(game));
   ok("待ちの帯も plain(「最短 N 手」)", /step=\{tutHold\}[\s\S]{0,200}?plain=\{!!tutorial\.intro\}/.test(game));
   ok("取る確認: はじめの一局は plain", /<CaptureConfirm\s+(\/\/[^\n]*\n\s*)*plain=\{!!tutorial\?\.intro\}/.test(game));
   // 勝負がついたあとの上の「トッタリー」(2026-10-05 見直し)。「対局をやめますか?」「クリアにも負けにもなりません」を出さない

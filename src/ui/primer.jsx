@@ -18,6 +18,10 @@
 import { useEffect, useRef, useState } from "react";
 import { typing } from "./key-target.js";
 import { CardFace, Piece } from "./cards.jsx";
+import { L, isEnglish } from "../i18n/index.js";
+
+/** 手で切った句の並び。英語は句の英訳を空白でつないだ1つの句(語の間で折り返せる) */
+const P = (...phrases) => (isEnglish ? [phrases.join(" ")] : phrases);
 
 /**
  * 導入の札。どんなゲームか → 1手ずつ → 勝ち方 → 取れなくなったら → 王は伏せたまま → 陣 → あとはストーリーで。
@@ -39,22 +43,22 @@ export const PRIMER_PAGES = Object.freeze([
   // 1行の長文だと「ボードゲ/ーム」と語の途中で折り返していた)
   Object.freeze({
     key: "welcome",
-    title: "トッタリーへようこそ",
+    title: L("トッタリーへようこそ"),
     // 題も句の塊で(320 幅で「トッタリーへようこ/そ」と割れた。2026-10-06 見直し)。ほかの題は読点で切る
-    titlePhrases: Object.freeze(["トッタリーへ", "ようこそ"]),
-    lines: ["トランプの札を駒に、", "伏せて戦う一対一。"],
+    titlePhrases: Object.freeze(P(L("トッタリーへ"), L("ようこそ"))),
+    lines: [L("トランプの札を駒に、"), L("伏せて戦う一対一。")],
     art: "cards",
   }),
   Object.freeze({
     key: "turn",
-    title: "1手ずつ",
-    lines: ["あなたの番に、1枚を動かす。", "相手の駒へ進めば、その一枚を取れる。"],
+    title: L("1手ずつ"),
+    lines: [L("あなたの番に、1枚を動かす。"), L("相手の駒へ進めば、その一枚を取れる。")],
     art: "capture",
   }),
   Object.freeze({
     key: "win",
-    title: "勝ち方",
-    lines: ["相手の王を取れば、勝ち。"],
+    title: L("勝ち方"),
+    lines: [L("相手の王を取れば、勝ち。")],
     art: "win",
   }),
   // 勝ち方のもう1つ(adjudication.js)。5×5 の 2・3 の王どうしでも起こりうる(2026-09-30 レビュー)。
@@ -63,28 +67,28 @@ export const PRIMER_PAGES = Object.freeze([
   // 読点の無い1行目は手で切る
   Object.freeze({
     key: "judge",
-    title: "取れなくなったら",
-    lines: [["どちらの王も", "取れなくなったら、"], "並べた札の合計が、小さいほうの勝ち。"],
+    title: L("取れなくなったら"),
+    lines: [P(L("どちらの王も"), L("取れなくなったら、")), L("並べた札の合計が、小さいほうの勝ち。")],
     art: "judge",
   }),
   // 題は「名乗らない」をやめた(2026-10-01 本人の指示。語りからも外した言い回し)
   Object.freeze({
     key: "hidden",
-    title: "王は、伏せたまま",
-    lines: ["あなたの王も、相手の王も、伏せたまま。", "どの一枚が王か、取るまで分からない。"],
+    title: L("王は、伏せたまま"),
+    lines: [L("あなたの王も、相手の王も、伏せたまま。"), L("どの一枚が王か、取るまで分からない。")],
     art: "hidden",
   }),
   Object.freeze({
     key: "setup",
-    title: "陣を組む",
-    lines: ["配られた札から選んで、自陣に並べる。", "その中の1枚を、王にする。"],
+    title: L("陣を組む"),
+    lines: [L("配られた札から選んで、自陣に並べる。"), L("その中の1枚を、王にする。")],
     art: "setup",
   }),
   // 2行目はストーリー一覧の一行と同じ言い方(story.js nextStageLine。呼ぶ側が次のステージに差し替える)
   Object.freeze({
     key: "story",
-    title: "あとはストーリーで",
-    lines: ["ステージごとに、相手の王の動きを覚える。", "次は、二と三の王。"],
+    title: L("あとはストーリーで"),
+    lines: [L("ステージごとに、相手の王の動きを覚える。"), L("次は、二と三の王。")],
     art: "story",
   }),
 ]);
@@ -193,8 +197,8 @@ function PrimerArt({ page }) {
               ))}
             </div>
             <small>
-              合計 {total}
-              {win ? " の勝ち" : ""}
+              {L("合計 {n}", { n: total })}
+              {win ? L(" の勝ち") : ""}
             </small>
           </div>
         ))}
@@ -220,7 +224,7 @@ function PrimerArt({ page }) {
  * skipLabel 途中でやめる釦の一言
  * どちらも既定は「とじる」(自動で出さなくなったので、開いた画面へ閉じて戻るだけ。2026-10-01)
  */
-export function Primer({ onDone, onSkip = null, doneLabel = "とじる", skipLabel = "とじる", outro = null }) {
+export function Primer({ onDone, onSkip = null, doneLabel = L("とじる"), skipLabel = L("とじる"), outro = null }) {
   const [at, setAt] = useState(0);
   const done = useRef(false);
   // 開いたら「つづき」に focus を置く(キーで送れるように。画面は送らない)
@@ -259,7 +263,7 @@ export function Primer({ onDone, onSkip = null, doneLabel = "とじる", skipLab
   const page = base.key === "story" && Array.isArray(outro) && outro.length ? { ...base, lines: outro } : base;
   return (
     <div className="modal-overlay">
-      <div className="modal-panel primer" role="dialog" aria-modal="true" aria-label="はじめての手引き">
+      <div className="modal-panel primer" role="dialog" aria-modal="true" aria-label={L("はじめての手引き")}>
         <div className="primer-head">
           <h3>
             {(page.titlePhrases || primerPhrases(page.title)).map((phrase, i) => (
@@ -272,7 +276,7 @@ export function Primer({ onDone, onSkip = null, doneLabel = "とじる", skipLab
             <button
               type="button"
               className="primer-skip"
-              aria-label={`手引きを${skipLabel === "とじる" ? "とじる" : "読み飛ばす"}`}
+              aria-label={skipLabel === L("とじる") ? L("手引きをとじる") : L("手引きを読み飛ばす")}
               onClick={onSkip}
             >
               {skipLabel}
@@ -309,10 +313,10 @@ export function Primer({ onDone, onSkip = null, doneLabel = "とじる", skipLab
             onClick={back}
             disabled={at === 0}
           >
-            ‹ 戻る
+            {L("‹ 戻る")}
           </button>
           <button type="button" className="btn btn-primary primer-next" onClick={next} ref={nextRef}>
-            {last ? doneLabel : "つづき ›"}
+            {last ? doneLabel : L("つづき ›")}
           </button>
         </div>
       </div>

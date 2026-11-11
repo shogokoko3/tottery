@@ -46,6 +46,7 @@ import { BattlePassSkinLock } from "./battlepass-skin-lock.jsx";
 import { useUnlockedPassSeasons } from "./battlepass-access.js";
 import { BattlePassMagic } from "./battlepass-magic.jsx";
 import { SeriesSelect } from "./series-select.jsx";
+import { L, Lx } from "../i18n/index.js";
 
 /** embedded: ミッション・バトルパスのタブ画面(quests.jsx)の中。見出しは向こうが出す。initialSeason: 最初に出すシーズン */
 // onSkins は受けるが使わない(クリア後に装備を促す釦は出さない。2026-10-16 本人の指示)
@@ -129,7 +130,7 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
     if (!at || pass.grantedAt === at) return;
     updatePass((s) => completeCycle(s, at), season);
     updateCollection((s) => claimSpecial(s, skin.id)).catch(() => {});
-    setMessage("運営がバトルパスをクリア状態にしました。");
+    setMessage(L("運営がバトルパスをクリア状態にしました。"));
   }, [grantAt, pass.grantedAt, skin.id, season]);
 
   // 進めているパスを持っていない(未購入)のに、このパスは持っている → こちらを進める
@@ -166,7 +167,7 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
       if (mounted.current) setPassLeft(left);
       if (left < BATTLEPASS_TICKETS_PER_CYCLE) {
         if (mounted.current)
-          setMessage("今週の周回(3回)を使い切りました。来週また挑戦できます。");
+          setMessage(L("今週の周回(3回)を使い切りました。来週また挑戦できます。"));
         return;
       }
       updatePass(startNewCycle, season);
@@ -197,11 +198,11 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
       // 先行受取済みの場合や保存の再試行でも、特別スキンは1枚だけ。
       await updateCollection((s) => claimSpecial(s, skin.id));
       updatePass((s) => (canClaim(s) ? { ...s, claimed: true } : s), season);
-      if (mounted.current) setMessage(`「${skin.name}」を手に入れました。`);
+      if (mounted.current) setMessage(L("「{name}」を手に入れました。", { name: Lx(skin.name) }));
     } catch (e) {
       if (mounted.current)
         setMessage(
-          (e && e.message) || "受け取れませんでした。もう一度お試しください。",
+          (e && e.message) || L("受け取れませんでした。もう一度お試しください。"),
         );
     } finally {
       claiming.current = false;
@@ -232,75 +233,84 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
     updatePass((s) => flipAll(s, turned < done), season);
   }
 
+  // 文の途中にジェムの絵が入るので、英語の語順で切って組む
+  const [buyHintPre, buyHintPost] = L(
+    "バトルパスの購入で解放されます（ミッションでためた無償ジェムでも可）。 ジェム {gems}。",
+  ).split("{gems}");
+  const [buyPre, buyPost] = L("{name}を購入（{gems}）", { name: info.passName }).split("{gems}");
+
   return (
     <div className="setup-wrap">
-      {!embedded && <h2>バトルパス</h2>}
+      {!embedded && <h2>{L("バトルパス")}</h2>}
       {seasons.length > 1 && (
         /* 札1枚＋押すと縦一覧のシート(src/ui/series-select.jsx。2026-10-15 本人の決め「1」。どこも同じ部品) */
         <SeriesSelect
           className="pass-seasons"
-          items={seasons.map((s) => ({ id: s.id, name: s.passName, note: activeId === s.id ? "進行中" : undefined, art: rewardSkin(s.id)?.card }))}
+          items={seasons.map((s) => ({ id: s.id, name: s.passName, note: activeId === s.id ? L("進行中") : undefined, art: rewardSkin(s.id)?.card }))}
           value={season}
           onChange={setSeason}
-          label="バトルパスを選ぶ"
-          hint="パスを選ぶ"
+          label={L("バトルパスを選ぶ")}
+          hint={L("パスを選ぶ")}
         />
       )}
       {owned &&
         (isActive ? (
           <p className="pass-active-note" role="status">
-            <Check size={14} /> このバトルパスを進めています（対局で取った駒を数えます）
+            <Check size={14} /> {L("このバトルパスを進めています（対局で取った駒を数えます）")}
           </p>
         ) : (
           <div className="pass-active-switch">
             <p className="hint">
-              いま進めているのは「{contentSeason(activeId)?.passName || "魔術師のバトルパス"}」です。対局で取った駒はそちらに数えます。
+              {L("いま進めているのは「{name}」です。対局で取った駒はそちらに数えます。", {
+                name: contentSeason(activeId)?.passName || L("魔術師のバトルパス"),
+              })}
             </p>
             <button className="btn btn-ghost btn-small" type="button" onClick={() => setActivePassId(season)}>
-              このバトルパスを進める
+              {L("このバトルパスを進める")}
             </button>
           </div>
         ))}
       {owned && (
         <p className="hint">
-          相手の駒を取ると、真ん中のとなりのマスから埋まっていきます。
-          マスをクリアするたびにガチャチケットが1枚（1周＝
-          {BATTLEPASS_TICKETS_PER_CYCLE}枚）。
+          {L(
+            "相手の駒を取ると、真ん中のとなりのマスから埋まっていきます。 マスをクリアするたびにガチャチケットが1枚（1周＝{n}枚）。",
+            { n: BATTLEPASS_TICKETS_PER_CYCLE },
+          )}
           {firstCycle
-            ? "25マスすべてを開くと魔法で並び替わり、1周目は完成でスキンを獲得します。"
-            : "盤を埋めると次の周へ進めます。"}
+            ? L("25マスすべてを開くと魔法で並び替わり、1周目は完成でスキンを獲得します。")
+            : L("盤を埋めると次の周へ進めます。")}
         </p>
       )}
       <p className="pass-reward">
-        <Sparkle size={16} /> 各マスでチケット1枚
+        <Sparkle size={16} /> {L("各マスでチケット1枚")}
         {firstCycle && (
-          <strong>・1周目の完成でA専用スキン「{skin.name}」</strong>
+          <strong>{L("・1周目の完成でA専用スキン「{name}」", { name: Lx(skin.name) })}</strong>
         )}
       </p>
       {owned && (
         <div className="pass-counts">
           <span>
-            クリア <b>{done}</b>/{CELLS.length}
+            {L("クリア")} <b>{done}</b>/{CELLS.length}
           </span>
           {firstCycle ? (
             <span>
-              めくった <b>{assembled ? CELLS.length : turned}</b>/{CELLS.length}
+              {L("めくった")} <b>{assembled ? CELLS.length : turned}</b>/{CELLS.length}
             </span>
           ) : (
-            <span>{pass.cycle}周目</span>
+            <span>{L("{n}周目", { n: pass.cycle })}</span>
           )}
-          {cyclesLeft != null && <span>今週あと{cyclesLeft}周</span>}
+          {cyclesLeft != null && <span>{L("今週あと{n}周", { n: cyclesLeft })}</span>}
         </div>
       )}
       {!owned ? (
         <div
           className="pass-locked"
-          aria-label="未購入のバトルパス。購入すると解放されます"
+          aria-label={L("未購入のバトルパス。購入すると解放されます")}
         >
           <BattlePassSkinLock className="pass-locked-art" />
           <div className="pass-locked-caption">
-            <strong>{info.passName}を購入して解放</strong>
-            <span>マスを埋めるとチケット。1周目の完成でA専用「{skin.name}」</span>
+            <strong>{L("{name}を購入して解放", { name: info.passName })}</strong>
+            <span>{L("マスを埋めるとチケット。1周目の完成でA専用「{name}」", { name: Lx(skin.name) })}</span>
           </div>
         </div>
       ) : pending && animationReady ? (
@@ -311,14 +321,14 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
         />
       ) : assembled && !showConditions ? (
         <div className="pass-complete-art">
-          <img src={imageSrc} alt={`完成した${skin.name}のイラスト`} />
+          <img src={imageSrc} alt={L("完成した{name}のイラスト", { name: Lx(skin.name) })} />
         </div>
       ) : (
         <div
           className="pass-grid"
           style={{ "--n": SIZE }}
           role="group"
-          aria-label="バトルパスのマス"
+          aria-label={L("バトルパスのマス")}
         >
           {rows.map((c, index) => {
             const piece = pass.puzzleOrder[index];
@@ -333,9 +343,12 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
             };
             const label = c.free
               ? c.name
-              : `${c.name}（${c.now}/${c.goal}）${
-                  flipped ? "・めくり済み" : c.cleared ? "・クリア済み" : ""
-                }`;
+              : L("{name}（{now}/{goal}）{state}", {
+                  name: c.name,
+                  now: c.now,
+                  goal: c.goal,
+                  state: flipped ? L("・めくり済み") : c.cleared ? L("・クリア済み") : "",
+                });
             return (
               <button
                 type="button"
@@ -353,9 +366,9 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
                   <span className="pass-front">
                     {c.onlineOnly && (
                       <span className="pass-scope">
-                        オンライン
+                        {L("オンライン")}
                         <br />
-                        対戦で
+                        {L("対戦で")}
                       </span>
                     )}
                     <span className="pass-name">{c.shortName || c.name}</span>
@@ -365,7 +378,7 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
                       </span>
                     )}
                     {c.cleared && !c.free && !assembled && firstCycle && (
-                      <span className="pass-turn">めくる</span>
+                      <span className="pass-turn">{L("めくる")}</span>
                     )}
                     {!c.cleared && (
                       <span
@@ -389,8 +402,8 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
               onClick={() => setShowConditions((v) => !v)}
             >
               {showConditions
-                ? "完成したイラストを見る"
-                : "クリアした条件を見る"}
+                ? L("完成したイラストを見る")
+                : L("クリアした条件を見る")}
             </button>
           </div>
         ) : (
@@ -400,8 +413,8 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
             <div className="pass-actions">
               <button className="btn btn-ghost" onClick={flipCompleted}>
                 {turned < done
-                  ? "クリアしたマスを全部めくる"
-                  : "全部を条件に戻す"}
+                  ? L("クリアしたマスを全部めくる")
+                  : L("全部を条件に戻す")}
               </button>
             </div>
           )
@@ -412,8 +425,9 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
       {!owned ? (
         <div className="pass-purchase">
           <p className="hint">
-            バトルパスの購入で解放されます（ミッションでためた無償ジェムでも可）。 ジェム{" "}
-            <GemAmount amount={collection.gems || 0} />。
+            {buyHintPre}
+            <GemAmount amount={collection.gems || 0} />
+            {buyHintPost}
           </p>
           <button
             className="btn btn-primary btn-wide"
@@ -421,11 +435,12 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
             onClick={purchase}
           >
             {buying ? (
-              "購入を確認しています…"
+              L("購入を確認しています…")
             ) : (
               <>
-                {info.passName}を購入（
-                <GemAmount amount={BATTLEPASS_GEMS} />）
+                {buyPre}
+                <GemAmount amount={BATTLEPASS_GEMS} />
+                {buyPost}
               </>
             )}
           </button>
@@ -435,14 +450,14 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
               disabled={buying}
               onClick={() => setShop(true)}
             >
-              ジェムを買う
+              {L("ジェムを買う")}
             </button>
           )}
         </div>
       ) : pass.claimed && firstCycle ? (
         <p className="pass-earned" role="status">
-          <Sparkle size={18} /> スキン獲得
-          <strong>A専用「{skin.name}」</strong>
+          <Sparkle size={18} /> {L("スキン獲得")}
+          <strong>{L("A専用「{name}」", { name: Lx(skin.name) })}</strong>
         </p>
       ) : canClaim(pass) ? (
         <button
@@ -451,29 +466,30 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
           onClick={claim}
         >
           <Check size={16} />{" "}
-          {busy ? "スキンを受け取っています…" : "スキンの受け取りを再試行"}
+          {busy ? L("スキンを受け取っています…") : L("スキンの受け取りを再試行")}
         </button>
       ) : firstCycle ? (
         <p className="hint">
           {pending
-            ? "25枚の欠片が、ひとつの絵に。"
+            ? L("25枚の欠片が、ひとつの絵に。")
             : allCleared(pass)
-              ? "最後のマスをめくると、並び替えの魔法が始まります。"
-              : "25マスすべてを開くと、並び替えの魔法が始まります。"}
+              ? L("最後のマスをめくると、並び替えの魔法が始まります。")
+              : L("25マスすべてを開くと、並び替えの魔法が始まります。")}
         </p>
       ) : (
         <p className="hint">
           {cycleDone(pass)
-            ? "この周のチケットはそろいました。"
-            : "マスをクリアしてチケットを集めよう。"}
+            ? L("この周のチケットはそろいました。")
+            : L("マスをクリアしてチケットを集めよう。")}
         </p>
       )}
       {owned && cycleDone(pass) && (
         <div className="pass-purchase">
           {cyclesLeft === 0 ? (
             <p className="hint">
-              今週の周回（{BATTLEPASS_CYCLES_PER_WEEK}
-              回）を使い切りました。来週また挑戦できます。
+              {L("今週の周回（{n}回）を使い切りました。来週また挑戦できます。", {
+                n: BATTLEPASS_CYCLES_PER_WEEK,
+              })}
             </p>
           ) : (
             <button
@@ -482,15 +498,15 @@ export function BattlePassScreen({ onBack, onSkins = null, embedded = false, ini
               onClick={nextCycle}
             >
               {switching
-                ? "次の周を用意しています…"
-                : `次の周へ（チケット${BATTLEPASS_TICKETS_PER_CYCLE}枚）`}
+                ? L("次の周を用意しています…")
+                : L("次の周へ（チケット{n}枚）", { n: BATTLEPASS_TICKETS_PER_CYCLE })}
             </button>
           )}
         </div>
       )}
       {/* クリア後に装備を促す釦は出さない(2026-10-16 本人の指示) */}
       <button className="btn btn-ghost btn-home" onClick={onBack}>
-        <ArrowLeft size={16} /> ホームに戻る
+        <ArrowLeft size={16} /> {L("ホームに戻る")}
       </button>
       {shop && (
         <GemShop

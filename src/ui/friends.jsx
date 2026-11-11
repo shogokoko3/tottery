@@ -31,19 +31,20 @@ import { isBlocked } from "../game/blocked.js";
 import { PlayerIcon } from "./playericon.jsx";
 import { TitleFrame } from "./title-frame.jsx";
 import { ArrowLeft, Check, Close, Ticket, Users, DoorIn, Mail } from "../icons.jsx";
+import { L, Lx, isEnglish } from "../i18n/index.js";
 
 /** 「3分前」「2日前」。最後に開いた時刻の目安 */
 export function agoText(at, now = Date.now()) {
   if (!at) return "";
   const d = Math.max(0, now - at);
   const m = Math.floor(d / 60000);
-  if (m < 1) return "たった今";
-  if (m < 60) return `${m}分前`;
+  if (m < 1) return L("たった今");
+  if (m < 60) return L("{n}分前", { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}時間前`;
+  if (h < 24) return L("{n}時間前", { n: h });
   const day = Math.floor(h / 24);
-  if (day < 30) return `${day}日前`;
-  return `${Math.floor(day / 30)}か月前`;
+  if (day < 30) return L("{n}日前", { n: day });
+  return L("{n}か月前", { n: Math.floor(day / 30) });
 }
 
 /** フレンド ID を "ABCD-EFGH" の形に */
@@ -113,15 +114,15 @@ function FriendTag({ f, onClick, brief = false }) {
     <button className="friend-tag" onClick={onClick} disabled={!onClick}>
       <PlayerIcon icon={f.icon} name={f.name} size="md" frame={f.frame} />
       <span className="friend-tag-body">
-        {f.title ? <TitleFrame id={f.title} size="compact" /> : <span className="friend-tag-notitle">称号なし</span>}
-        <b className="friend-tag-name">{f.name || "名無し"}</b>
+        {f.title ? <TitleFrame id={f.title} size="compact" /> : <span className="friend-tag-notitle">{L("称号なし")}</span>}
+        <b className="friend-tag-name">{f.name || L("名無し")}</b>
         {!brief && (
           <small className="friend-tag-meta">
             <span className={`friend-status ${f.online ? "is-online" : "is-offline"}`}>
               <i className="friend-status-dot" aria-hidden="true" />
-              {f.online ? "オンライン" : "オフライン"}
+              {f.online ? L("オンライン") : L("オフライン")}
             </span>
-            {Number.isFinite(f.rating) ? ` · レート ${f.rating}` : ""}
+            {Number.isFinite(f.rating) ? L(" · レート {n}", { n: f.rating }) : ""}
             {f.level ? ` · Lv${f.level}` : ""}
           </small>
         )}
@@ -148,7 +149,7 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
       setState(s);
       setError("");
     } catch (e) {
-      setError(e.message || "フレンドを読み込めませんでした。");
+      setError(e.message || L("フレンドを読み込めませんでした。"));
     } finally {
       setLoading(false);
     }
@@ -170,7 +171,7 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
       if (done) setNotice(typeof done === "function" ? done(r) : done);
       await refresh();
     } catch (e) {
-      setError(e.message || "うまくいきませんでした。");
+      setError(e.message || L("うまくいきませんでした。"));
     } finally {
       setBusy("");
     }
@@ -180,9 +181,9 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
     const text = formatFriendCode(state?.code);
     try {
       await navigator.clipboard.writeText(text);
-      setNotice("フレンド ID をコピーしました");
+      setNotice(L("フレンド ID をコピーしました"));
     } catch {
-      setNotice(`フレンド ID: ${text}`);
+      setNotice(L("フレンド ID: {code}", { code: text }));
     }
   }
 
@@ -198,21 +199,21 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
 
   return (
     <div className="setup-wrap friends-screen">
-      {!embedded && <h2>フレンド</h2>}
+      {!embedded && <h2>{L("フレンド")}</h2>}
       {/* 数字の途中で折り返すと読めない(「1 / 日1回」)ので、文ごとに行を分け、数字は切らない */}
       <p className="hint friends-lead">
-        <span>フレンド ID を伝え合って登録します。<span className="nowrap">{state?.max || 50}人まで。</span></span>
+        <span>{L("フレンド ID を伝え合って登録します。")}<span className="nowrap">{L("{n}人まで。", { n: state?.max || 50 })}</span></span>
         <span>
-          <span className="nowrap">1日1回</span>、フレンド<span className="nowrap">1人ずつ</span>に<span className="nowrap">ガチャチケットを贈れます。</span>
+          <span className="nowrap">{L("1日1回")}</span>{L("、フレンド")}<span className="nowrap">{L("1人ずつ")}</span>{L("に")}<span className="nowrap">{L("ガチャチケットを贈れます。")}</span>
         </span>
       </p>
 
-      <section className="friends-me" aria-label="自分のフレンド ID">
-        <small>あなたのフレンド ID</small>
+      <section className="friends-me" aria-label={L("自分のフレンド ID")}>
+        <small>{L("あなたのフレンド ID")}</small>
         <div className="friends-code-row">
           <code className="friends-code">{state?.code ? formatFriendCode(state.code) : "········"}</code>
           <button className="btn btn-ghost btn-small" onClick={copyCode} disabled={!state?.code}>
-            コピー
+            {L("コピー")}
           </button>
         </div>
         <form
@@ -221,7 +222,7 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
             e.preventDefault();
             if (!code.trim()) return;
             run("request", () => requestFriend(code), (r) =>
-              r.friend ? "フレンドになりました" : "申請を送りました。相手の承認を待ちます",
+              r.friend ? L("フレンドになりました") : L("申請を送りました。相手の承認を待ちます"),
             ).then(() => setCode(""));
           }}
         >
@@ -229,15 +230,15 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
             className="friends-add-input"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="相手のフレンド ID"
+            placeholder={L("相手のフレンド ID")}
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}
             maxLength={9}
-            aria-label="相手のフレンド ID"
+            aria-label={L("相手のフレンド ID")}
           />
           <button className="btn btn-primary btn-small" type="submit" disabled={!code.trim() || !!busy}>
-            申請
+            {L("申請")}
           </button>
         </form>
       </section>
@@ -252,47 +253,50 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
           {error}
         </p>
       )}
-      {loading && <p className="hint">読み込んでいます…</p>}
+      {loading && <p className="hint">{L("読み込んでいます…")}</p>}
 
       {gifts.length > 0 && (
-        <section className="friends-box friends-box-gift" aria-label="届いた贈り物">
+        <section className="friends-box friends-box-gift" aria-label={L("届いた贈り物")}>
           <div className="friends-box-head">
             <Ticket size={16} />
-            <b>ガチャチケットが届いています</b>
-            <span>{gifts.length}枚</span>
+            <b>{L("ガチャチケットが届いています")}</b>
+            <span>{L("{n}枚", { n: gifts.length })}</span>
           </div>
           <p className="friends-box-from">
-            {gifts.map((g) => g.from?.name || "名無し").join("・")} から
+            {L("{names} から", {
+              // i18n-ignore 名前の区切り
+              names: gifts.map((g) => g.from?.name || L("名無し")).join(isEnglish ? ", " : "・"),
+            })}
           </p>
           <button
             className="btn btn-primary btn-wide"
             disabled={!!busy}
             onClick={() =>
-              run("claim", claimFriendGifts, (list) => `チケットを${list.length}枚受け取りました`)
+              run("claim", claimFriendGifts, (list) => L("チケットを{n}枚受け取りました", { n: list.length }))
             }
           >
-            <Check size={16} /> まとめて受け取る
+            <Check size={16} /> {L("まとめて受け取る")}
           </button>
         </section>
       )}
 
       {invites.map((i) => (
-        <section className="friends-box friends-box-invite" key={`${i.fromUid}:${i.code}`} aria-label="対戦の招待">
+        <section className="friends-box friends-box-invite" key={`${i.fromUid}:${i.code}`} aria-label={L("対戦の招待")}>
           <div className="friends-box-head">
             <DoorIn size={16} />
-            <b>{i.from?.name || "名無し"} から対戦の招待</b>
+            <b>{L("{name} から対戦の招待", { name: i.from?.name || L("名無し") })}</b>
             <span>{agoText(i.at)}</span>
           </div>
           <button className="btn btn-primary btn-wide" onClick={() => onJoinInvite && onJoinInvite(i.code, i.from)}>
-            参加する
+            {L("参加する")}
           </button>
         </section>
       ))}
 
       {requestsIn.length > 0 && (
-        <section className="friends-list" aria-label="届いた申請">
+        <section className="friends-list" aria-label={L("届いた申請")}>
           <p className="friends-list-head">
-            <Mail size={13} /> 届いた申請 <b>{requestsIn.length}</b>
+            <Mail size={13} /> {L("届いた申請")} <b>{requestsIn.length}</b>
           </p>
           {requestsIn.map((f) => (
             <div className="friend-row" key={f.uid}>
@@ -301,16 +305,16 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
                 <button
                   className="btn btn-primary btn-small"
                   disabled={!!busy}
-                  onClick={() => run(`accept:${f.uid}`, () => acceptFriend(f.uid), `${f.name || "名無し"} とフレンドになりました`)}
+                  onClick={() => run(`accept:${f.uid}`, () => acceptFriend(f.uid), L("{name} とフレンドになりました", { name: f.name || L("名無し") }))}
                 >
-                  承認
+                  {L("承認")}
                 </button>
                 <button
                   className="btn btn-ghost btn-small"
                   disabled={!!busy}
                   onClick={() => run(`decline:${f.uid}`, () => declineFriend(f.uid))}
                 >
-                  断る
+                  {L("断る")}
                 </button>
               </div>
             </div>
@@ -318,10 +322,10 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
         </section>
       )}
 
-      <section className="friends-list" aria-label="フレンドの一覧">
+      <section className="friends-list" aria-label={L("フレンドの一覧")}>
         <div className="friends-list-head friends-list-head-row">
           <span>
-            <Users size={13} /> フレンド <b>{friends.length}</b>/{state?.max || 50}
+            <Users size={13} /> {L("フレンド")} <b>{friends.length}</b>/{state?.max || 50}
           </span>
           {/* まだ今日贈っていないフレンド全員にまとめて贈る(2026-09-25 本人の指示) */}
           {(() => {
@@ -335,17 +339,17 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
                   run(
                     "gift-all",
                     giftAllFriends,
-                    (r) => (r?.sent?.length ? `${r.sent.length}人にチケットを贈りました` : "今日贈れる相手はもういません"),
+                    (r) => (r?.sent?.length ? L("{n}人にチケットを贈りました", { n: r.sent.length }) : L("今日贈れる相手はもういません")),
                   )
                 }
               >
-                <Ticket size={14} /> 全員に贈る({rest})
+                <Ticket size={14} /> {L("全員に贈る({n})", { n: rest })}
               </button>
             );
           })()}
         </div>
         {!loading && friends.length === 0 && (
-          <p className="hint">まだフレンドがいません。上の ID を伝えるか、相手の ID を入れて申請してください。</p>
+          <p className="hint">{L("まだフレンドがいません。上の ID を伝えるか、相手の ID を入れて申請してください。")}</p>
         )}
         {friends.map((f) => {
           const gifted = giftedSet.has(f.uid);
@@ -357,21 +361,21 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
                 <button
                   className="btn btn-primary btn-small friend-spectate"
                   onClick={() => onSpectate(f)}
-                  title="このフレンドの対戦を観戦する"
+                  title={L("このフレンドの対戦を観戦する")}
                 >
-                  <Users size={14} /> 観戦
+                  <Users size={14} /> {L("観戦")}
                 </button>
               )}
               <button
                 className={`btn btn-small ${gifted ? "btn-ghost" : "btn-primary"}`}
                 disabled={!!busy || gifted}
-                title={gifted ? "この人には今日もう贈りました" : "ガチャチケットを1枚贈る"}
-                onClick={() => run(`gift:${f.uid}`, () => giftFriend(f.uid), `${f.name || "名無し"} にチケットを贈りました`)}
+                title={gifted ? L("この人には今日もう贈りました") : L("ガチャチケットを1枚贈る")}
+                onClick={() => run(`gift:${f.uid}`, () => giftFriend(f.uid), L("{name} にチケットを贈りました", { name: f.name || L("名無し") }))}
               >
-                <Ticket size={14} /> {gifted ? "贈り済み" : "贈る"}
+                <Ticket size={14} /> {gifted ? L("贈り済み") : L("贈る")}
               </button>
               <button className="btn btn-ghost btn-small" onClick={() => onInvite && onInvite(f)} disabled={!onInvite}>
-                <DoorIn size={14} /> 招待
+                <DoorIn size={14} /> {L("招待")}
               </button>
               {confirmRemove === f.uid ? (
                 <span className="friend-remove-confirm">
@@ -380,17 +384,17 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
                     disabled={!!busy}
                     onClick={() => {
                       setConfirmRemove(null);
-                      run(`remove:${f.uid}`, () => removeFriend(f.uid), `${f.name || "名無し"} をフレンドから外しました`);
+                      run(`remove:${f.uid}`, () => removeFriend(f.uid), L("{name} をフレンドから外しました", { name: f.name || L("名無し") }));
                     }}
                   >
-                    フレンドを外す
+                    {L("フレンドを外す")}
                   </button>
-                  <button className="icon-btn" aria-label="やめる" onClick={() => setConfirmRemove(null)}>
+                  <button className="icon-btn" aria-label={L("やめる")} onClick={() => setConfirmRemove(null)}>
                     <Close size={14} />
                   </button>
                 </span>
               ) : (
-                <button className="icon-btn friend-more" aria-label="フレンドから外す" onClick={() => setConfirmRemove(f.uid)}>
+                <button className="icon-btn friend-more" aria-label={L("フレンドから外す")} onClick={() => setConfirmRemove(f.uid)}>
                   ⋯
                 </button>
               )}
@@ -401,16 +405,16 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
       </section>
 
       {/* 申請の受付(入口ごとに切れる。2026-09-24 本人の指示)。切った入口からの申請は、相手には「いっぱい」と見える */}
-      <section className="friends-list friends-accept" aria-label="申請の受付">
-        <p className="friends-list-head">申請の受付</p>
+      <section className="friends-list friends-accept" aria-label={L("申請の受付")}>
+        <p className="friends-list-head">{L("申請の受付")}</p>
         {REQUEST_SOURCES.map((src) => {
           const accept = normalizeAccept(profile?.card?.accept);
           const on = accept[src.id];
           return (
             <label className="friends-accept-row" key={src.id}>
               <span>
-                <b>{src.label}</b>
-                <small>{src.note}</small>
+                <b>{Lx(src.label)}</b>
+                <small>{Lx(src.note)}</small>
               </span>
               <input
                 type="checkbox"
@@ -425,20 +429,20 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
             </label>
           );
         })}
-        <p className="hint">切った入口からの申請は届きません。相手には「フレンドがいっぱい」と表示されます。</p>
+        <p className="hint">{L("切った入口からの申請は届きません。相手には「フレンドがいっぱい」と表示されます。")}</p>
       </section>
 
       {/* 観戦の受付(2026-09-24 本人の指示)。対戦の種類ごとに、フレンドが観戦できるかを決める */}
-      <section className="friends-list friends-accept" aria-label="観戦の受付">
-        <p className="friends-list-head">観戦の受付</p>
+      <section className="friends-list friends-accept" aria-label={L("観戦の受付")}>
+        <p className="friends-list-head">{L("観戦の受付")}</p>
         {SPECTATE_MODES.map((mode) => {
           const spectate = normalizeSpectate(profile?.card?.spectate);
           const on = spectate[mode.id];
           return (
             <label className="friends-accept-row" key={mode.id}>
               <span>
-                <b>{mode.label}</b>
-                <small>{mode.note}</small>
+                <b>{Lx(mode.label)}</b>
+                <small>{Lx(mode.note)}</small>
               </span>
               <input
                 type="checkbox"
@@ -452,12 +456,12 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
             </label>
           );
         })}
-        <p className="hint">対戦中の様子を、あなたのフレンドだけが見られます。ランキング対戦では、あなたの駒だけが観戦者に見えます。</p>
+        <p className="hint">{L("対戦中の様子を、あなたのフレンドだけが見られます。ランキング対戦では、あなたの駒だけが観戦者に見えます。")}</p>
       </section>
 
       {(state?.requestsOut || []).length > 0 && (
-        <section className="friends-list" aria-label="送った申請">
-          <p className="friends-list-head">送った申請 <b>{state.requestsOut.length}</b></p>
+        <section className="friends-list" aria-label={L("送った申請")}>
+          <p className="friends-list-head">{L("送った申請")} <b>{state.requestsOut.length}</b></p>
           {state.requestsOut.map((f) => (
             <div className="friend-row" key={f.uid}>
               <FriendTag f={f} brief />
@@ -467,7 +471,7 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
                   disabled={!!busy}
                   onClick={() => run(`cancel:${f.uid}`, () => cancelFriendRequest(f.uid))}
                 >
-                  取り消す
+                  {L("取り消す")}
                 </button>
               </div>
             </div>
@@ -476,7 +480,7 @@ export function FriendsScreen({ onBack, onProfile, onInvite, onJoinInvite, onSpe
       )}
 
       <button className="btn btn-ghost btn-home" onClick={onBack}>
-        <ArrowLeft size={16} /> ホームに戻る
+        <ArrowLeft size={16} /> {L("ホームに戻る")}
       </button>
     </div>
   );

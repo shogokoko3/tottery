@@ -30,6 +30,10 @@ import { CardGuide, PowerBands, PowerFigure, PowerFigurePair } from "./guides.js
 import { useNames } from "./names.jsx";
 // 句ごとに折り返す文(iPhone の WebKit は auto-phrase を知らない。2026-10-06 見直し)
 import { Phrases } from "./phrases.jsx";
+import { L, Lx, isEnglish } from "../i18n/index.js";
+
+/** 句の配列。英語は語順が違うので、句をつないだ1つの文にする */
+const phr = (parts) => (isEnglish ? parts.join(" ") : parts);
 
 export function DiscardPanel({ cards, label, color, owner }) {
   if (!cards || cards.length === 0) return null;
@@ -45,7 +49,7 @@ export function DiscardPanel({ cards, label, color, owner }) {
           color,
         }}
       >
-        {label}({n.length}枚)
+        {L("{label}({n}枚)", { label: Lx(label), n: n.length })}
       </div>
       <div className="discard-row">
         {n.map((a) => (
@@ -230,7 +234,7 @@ export function WaitingWithBoard({
               marginTop: 14,
             }}
           >
-            あなたの手札({f.length}枚)
+            {L("あなたの手札({n}枚)", { n: f.length })}
           </div>
           <div className="hand-grid">
             {f.map((r) => (
@@ -253,7 +257,7 @@ export function WaitingScreen({ text }) {
   return (
     <div className="center-stage">
       <Dice size={28} className="dim-icon spin-icon" />
-      <p className="hint">{text}</p>
+      <p className="hint">{Lx(text)}</p>
     </div>
   );
 }
@@ -282,15 +286,15 @@ export function SetupOrderNote({ state, pIdx, plain = false }) {
     return (
       <p className={`setup-order setup-order-plain ${mine ? "setup-order-first" : "setup-order-second"}`}>
         <span>
-          <Phrases text={mine ? "あなたが先に動かします。" : "相手が先に動かします。"} />
+          <Phrases text={mine ? L("あなたが先に動かします。") : L("相手が先に動かします。")} />
         </span>
       </p>
     );
   return (
     <p className={`setup-order ${mine ? "setup-order-first" : "setup-order-second"}`}>
-      <b>{mine ? "あなたは先攻" : "あなたは後攻"}</b>
+      <b>{mine ? L("あなたは先攻") : L("あなたは後攻")}</b>
       <span>
-        <Phrases text={mine ? "サイコロの結果、先に動きます" : "サイコロの結果、相手が先に動きます"} />
+        <Phrases text={mine ? L("サイコロの結果、先に動きます") : L("サイコロの結果、相手が先に動きます")} />
       </span>
     </p>
   );
@@ -302,8 +306,8 @@ export function SetupTimer({ remainingMs, label, paused, limitMs }) {
     return paused ? (
       <div className="setup-timer">
         <div className="setup-timer-head">
-          <span>{label}</span>
-          <strong>停止中</strong>
+          <span>{Lx(label)}</span>
+          <strong>{L("停止中")}</strong>
         </div>
         <div className="setup-timer-track">
           <div className="setup-timer-fill" style={{ width: "100%" }} />
@@ -318,8 +322,8 @@ export function SetupTimer({ remainingMs, label, paused, limitMs }) {
   return (
     <div className={`setup-timer ${urgent ? "setup-timer-urgent" : ""}`}>
       <div className="setup-timer-head">
-        <span>{label}</span>
-        <strong>{sec}秒</strong>
+        <span>{Lx(label)}</span>
+        <strong>{L("{n}秒", { n: sec })}</strong>
       </div>
       <div className="setup-timer-track">
         <div
@@ -376,16 +380,16 @@ export function SetupWaiting({
       <div className="waiting-head">
         <Dice size={22} className="dim-icon spin-icon" />
         <p className="hint" style={{ margin: 0 }}>
-          {text || "相手が布陣を決めています…"}
+          {Lx(text) || L("相手が布陣を決めています…")}
         </p>
       </div>
       {sec !== null && (
         <div className="setup-timer">
           <div className="setup-timer-head">
             <span>
-              {sec > 0 ? "相手の残り時間" : "まもなく自動で配置されます"}
+              {sec > 0 ? L("相手の残り時間") : L("まもなく自動で配置されます")}
             </span>
-            <strong>{sec > 0 ? `${sec}秒` : "…"}</strong>
+            <strong>{sec > 0 ? L("{n}秒", { n: sec }) : "…"}</strong>
           </div>
           <div className="setup-timer-track">
             <div
@@ -397,7 +401,7 @@ export function SetupWaiting({
           </div>
           {sec > 0 && (
             <p className="hint" style={{ margin: "6px 0 0" }}>
-              時間内に決まらなかった分は自動で配置されます。
+              {L("時間内に決まらなかった分は自動で配置されます。")}
             </p>
           )}
         </div>
@@ -620,13 +624,13 @@ export function PlaceStep({
             375×667 の端末で「王を選ぶ」が画面の下へ押し出された */}
         {note || (
           <h2 style={{ color: PLAYER_META[pIdx].color }}>
-            {nameOf(pIdx, names)}: カードを盤面に配置してね
+            {L("{name}: カードを盤面に配置してね", { name: Lx(nameOf(pIdx, names)) })}
           </h2>
         )}
         <SetupOrderNote state={state} pIdx={pIdx} plain={orderPlain} />
         <SetupTimer
           remainingMs={remainingMs}
-          label="布陣の残り時間"
+          label={L("布陣の残り時間")}
           paused={paused}
           limitMs={limitMs}
         />
@@ -635,9 +639,9 @@ export function PlaceStep({
           黙って差し替えると「引いた札と違う」と読まれるので、必ず伝える */}
       {state.handRescued && state.handRescued[pIdx] && (
         <p className="setup-rescue">
-          手札が絵札（J・Q・K）に偏っていて、盤に並べきれませんでした。
+          {L("手札が絵札（J・Q・K）に偏っていて、盤に並べきれませんでした。")}
           <br />
-          手札と捨て札を予備札に戻し、数字の札だけで配り直しています。引き直しはできません。
+          {L("手札と捨て札を予備札に戻し、数字の札だけで配り直しています。引き直しはできません。")}
         </p>
       )}
       {/* 案内は1行に絞る(長い説明が盤を画面の下へ押し出していた)。
@@ -646,13 +650,13 @@ export function PlaceStep({
         {terse ? (
           <>
             <span className="legend-dot" />
-            は動ける先
+            {L("は動ける先")}
           </>
         ) : (
           <>
-            タップかドラッグで置く。
+            {L("タップかドラッグで置く。")}
             <span className="legend-dot" />
-            は動ける先
+            {L("は動ける先")}
           </>
         )}
         <strong className="hint-count">
@@ -660,13 +664,13 @@ export function PlaceStep({
         </strong>
         {hasAdjudicationRules(state.ruleVersion) && !terse && (
           <span className="setup-adoption-total">
-            採用合計 <strong>{adoptionTotal}</strong>
+            {L("採用合計")} <strong>{adoptionTotal}</strong>
           </span>
         )}
       </p>
       {/* K を置くと王は必ず K(王を選ぶ画面で初めて知ると遅い。置く前に知らせる。AI プレイヤーの評価 12〜15回目) */}
       {!terse && player.hand.some((c) => c.rank === "K") && (
-        <p className="setup-k-note">Kを置くと、Kが必ず王になる。</p>
+        <p className="setup-k-note">{L("Kを置くと、Kが必ず王になる。")}</p>
       )}
       <div className="arrange-layout">
         <div
@@ -725,14 +729,14 @@ export function PlaceStep({
           style={{ marginBottom: 12 }}
           onClick={() => unplace(picked)}
         >
-          この駒を手札に戻す
+          {L("この駒を手札に戻す")}
         </button>
       )}
       <div className="tray">
-        <div className="tray-label">手札({hand.length}枚)</div>
+        <div className="tray-label">{L("手札({n}枚)", { n: hand.length })}</div>
         <div className="tray-row">
           {hand.length === 0 && (
-            <span className="hint">手札を全て配置しました</span>
+            <span className="hint">{L("手札を全て配置しました")}</span>
           )}
           {hand.map((card) => (
             <div
@@ -760,7 +764,7 @@ export function PlaceStep({
           className="btn btn-ghost"
           onClick={() => dispatch(autoArrangeAction(state, pIdx))}
         >
-          <Grid size={16} /> 自動配置
+          <Grid size={16} /> {L("自動配置")}
         </button>
         <button
           className="btn btn-primary"
@@ -769,7 +773,7 @@ export function PlaceStep({
             dispatch({ type: "SETUP_GOTO_KING_STEP", player: pIdx })
           }
         >
-          <Crown size={16} /> 王を選ぶ
+          <Crown size={16} /> {L("王を選ぶ")}
         </button>
       </div>
       {drag && dragCard && (
@@ -825,7 +829,7 @@ function KingPowerCard({ state, pIdx, player, pickedKing, info }) {
     const ordered = [...rows.filter((r) => r.active), ...rows.filter((r) => !r.active)];
     return (
       <section className="kp-card is-empty" role="note" aria-live="polite">
-        <b className="kp-head">王にすると、こうなる</b>
+        <b className="kp-head">{L("王にすると、こうなる")}</b>
         {/* 王の力の代償は選ぶ前に一度だけ(王を選ぶときに知りたい、と言われた。評価 12・13回目)。
             カードのいちばん下だと下に留めた釦に隠れた(評価 18回目)ので、見出しのすぐ下に */}
         <p className="kp-tell"><Phrases text={CHANCE_TELL} /></p>
@@ -842,7 +846,7 @@ function KingPowerCard({ state, pIdx, player, pickedKing, info }) {
             </li>
           ))}
         </ul>
-        <p><Phrases text="駒をタップすると、図でくわしく見られる。" /></p>
+        <p><Phrases text={L("駒をタップすると、図でくわしく見られる。")} /></p>
       </section>
     );
   }
@@ -850,7 +854,7 @@ function KingPowerCard({ state, pIdx, player, pickedKing, info }) {
   if (skin)
     return (
       <section className="kp-card" role="note" aria-live="polite">
-        <b className="kp-head">{picked.rank}を王にすると</b>
+        <b className="kp-head">{L("{rank}を王にすると", { rank: picked.rank })}</b>
         <p className="kp-bold">{skin.description}</p>
       </section>
     );
@@ -870,11 +874,11 @@ function KingPowerCard({ state, pIdx, player, pickedKing, info }) {
         const short = area && areaShort(area.type);
         return (
           <p className="kp-area">
-            <em>エリア</em>
+            <em>{L("エリア")}</em>
             {short ? (
-              <Phrases text={[area.lent ? `${short.name}が付く。` : `フォイルの${short.name}が付く。`, ...short.phrases]} />
+              <Phrases text={phr([area.lent ? L("{name}が付く。", { name: Lx(short.name) }) : L("フォイルの{name}が付く。", { name: Lx(short.name) }), ...short.phrases])} />
             ) : (
-              <Phrases text={["エリアは付かない。", `${info.storyRanks.join("か")}を王にするか、`, "フォイルを着けた札を", "王にすると付く。"]} />
+              <Phrases text={phr([L("エリアは付かない。"), L("{ranks}を王にするか、", { ranks: info.storyRanks.join(L("か")) }), L("フォイルを着けた札を"), L("王にすると付く。")])} />
             )}
           </p>
         );
@@ -947,13 +951,13 @@ export function KingStep({
       <div className="setup-head">
         {!quiet && (
           <h2 style={{ color: PLAYER_META[pIdx].color }}>
-            {nameOf(pIdx, names)}: 王にする駒を決めてね
+            {L("{name}: 王にする駒を決めてね", { name: Lx(nameOf(pIdx, names)) })}
           </h2>
         )}
         <SetupOrderNote state={state} pIdx={pIdx} plain={quiet || orderPlain} />
         <SetupTimer
           remainingMs={remainingMs}
-          label="王を選ぶ残り時間"
+          label={L("王を選ぶ残り時間")}
           paused={paused}
           limitMs={limitMs}
         />
@@ -961,17 +965,17 @@ export function KingStep({
       {!terse && (
         <p className="hint setup-hint-line">
           {revealMode
-            ? `相手に公開する駒を${revealWant}枚タップで選んでください(王は選べません)。残り${revealWant - chosenReveals.length}枚`
+            ? L("相手に公開する駒を{n}枚タップで選んでください(王は選べません)。残り{left}枚", { n: revealWant, left: revealWant - chosenReveals.length })
             : hasK
-              ? (kingPowersOn(state,pIdx) && aliceSkin(state,pIdx,"K") && Object.keys(placement).some(id=>player.hand.find(c=>c.id===id)?.rank==="A") ? "ハートの王はAと一緒に編成できません。配置に戻ってAを外してください。" : "Kを置いているので、Kが王になる。")
+              ? (kingPowersOn(state,pIdx) && aliceSkin(state,pIdx,"K") && Object.keys(placement).some(id=>player.hand.find(c=>c.id===id)?.rank==="A") ? L("ハートの王はAと一緒に編成できません。配置に戻ってAを外してください。") : L("Kを置いているので、Kが王になる。"))
               : forced
-                ? `この話では「${forced}」を王にします。${forced}の駒をタップしてください。`
+                ? L("この話では「{rank}」を王にします。{rank}の駒をタップしてください。", { rank: forced })
                 : (
                   // 句の塊で出す(2026-10-06 見直し。文は変えない)。行を釣り合わせる折り返し(.hint の balance)で、
                   // 320 幅だと「…王にす/る1枚を…」と語の途中で割れた。句は1つの span に包む
                   // (案内の行は flex なので、句を直に並べると句ごとに離れた箱になる)
                   <span>
-                    <Phrases text={["盤のあなたの駒を", "1つタップすると、", "その駒が王になる。", "何度でも選び直せる。"]} />
+                    <Phrases text={phr([L("盤のあなたの駒を"), L("1つタップすると、"), L("その駒が王になる。"), L("何度でも選び直せる。")])} />
                   </span>
                 )}
         </p>
@@ -1043,7 +1047,7 @@ export function KingStep({
                         <Crown size={12} className="king-badge" />
                       )}
                       {chosenReveals.includes(id) && (
-                        <span className="revealed-badge">公開</span>
+                        <span className="revealed-badge">{L("公開")}</span>
                       )}
                     </div>
                   )}
@@ -1070,7 +1074,7 @@ export function KingStep({
               dispatch({ type: "SETUP_BACK_TO_PLACE", player: pIdx })
             }
           >
-            <ArrowLeft size={16} /> 配置に戻る
+            <ArrowLeft size={16} /> {L("配置に戻る")}
           </button>
         )}
         {revealWant > 0 && !revealMode && (
@@ -1079,12 +1083,12 @@ export function KingStep({
             disabled={!pickedKing}
             onClick={() => setRevealMode(true)}
           >
-            公開する駒を選ぶ({revealWant}枚)
+            {L("公開する駒を選ぶ({n}枚)", { n: revealWant })}
           </button>
         )}
         {revealWant > 0 && revealMode && (
           <button className="btn btn-ghost" onClick={() => setRevealMode(false)}>
-            王を選び直す
+            {L("王を選び直す")}
           </button>
         )}
         {(revealWant === 0 || revealMode) && (
@@ -1099,7 +1103,7 @@ export function KingStep({
               })
             }
           >
-            <Crown size={16} /> 布陣を確定
+            <Crown size={16} /> {L("布陣を確定")}
           </button>
         )}
       </div>
@@ -1146,9 +1150,9 @@ export function ReservePlacer({
   placement = null,
   onPlace = null,
   onSkip = null,
-  title = "予備札を配置",
+  title = L("予備札を配置"),
   hint = null,
-  skipLabel = "今回は見送る",
+  skipLabel = L("今回は見送る"),
   addsCount = true,
 }) {
   const slot = placement || state.kPlacement;
@@ -1329,15 +1333,15 @@ export function ReservePlacer({
         {/* 釦の帯は下に固定し、盤と説明だけを送る。貼り付け(sticky)だと帯が盤の下の段を
             覆って、置きたいマスに触れないことがあった(2026-09-18) */}
         <div className="reserve-scroll">
-        <h3>{title}</h3>
+        <h3>{Lx(title)}</h3>
         <p className="hint">
-          {hint ||
+          {Lx(hint) ||
             (cards.length > 1
-              ? `Kの効果で引いた${cards.length}枚。置く札を選び、自陣の空きマスをタップして置き場所を決めます。`
-              : "Kの効果で引いた1枚。自陣の空きマスをタップして置き場所を決めます。")}
-          置いた駒はドラッグで動かせます。置き場所を決めてから「ここに置く」で確定します。
+              ? L("Kの効果で引いた{n}枚。置く札を選び、自陣の空きマスをタップして置き場所を決めます。", { n: cards.length })
+              : L("Kの効果で引いた1枚。自陣の空きマスをタップして置き場所を決めます。"))}
+          {L("置いた駒はドラッグで動かせます。置き場所を決めてから「ここに置く」で確定します。")}
           <span className="legend-dot" aria-hidden="true" />
-          はその駒が動ける先です。
+          {L("はその駒が動ける先です。")}
         </p>
         {/* 盤の外(説明の札)は触っても画面送りだけ。つかむのは盤の上に仮置きした駒だけ
             (本人の指摘 2026-09-15「盤面外はスクロール以外できない」) */}
@@ -1419,7 +1423,7 @@ export function ReservePlacer({
                             <span
                               className="mini-foe-face"
                               style={{ "--who": PLAYER_META[p.owner].color }}
-                              aria-label="相手の分かっている駒"
+                              aria-label={L("相手の分かっている駒")}
                             />
                           )}
                         </>
@@ -1451,8 +1455,8 @@ export function ReservePlacer({
         </div>
         <p className="hint reserve-status">
           {targetOk
-            ? `${chosen.rank}${SUIT_SYMBOL[chosen.suit]} を ${squareName(target.row, target.col, size)} に置きます。別のマスをタップするか、駒をドラッグすると置き直せます。`
-            : "まだ置き場所が決まっていません。"}
+            ? L("{card} を {square} に置きます。別のマスをタップするか、駒をドラッグすると置き直せます。", { card: `${chosen.rank}${SUIT_SYMBOL[chosen.suit]}`, square: squareName(target.row, target.col, size) })
+            : L("まだ置き場所が決まっていません。")}
         </p>
         </div>
         <div className="reserve-actions">
@@ -1461,11 +1465,11 @@ export function ReservePlacer({
             disabled={!targetOk}
             onClick={confirm}
           >
-            ここに置く
+            {L("ここに置く")}
           </button>
           {targetOk && (
             <button className="btn btn-ghost" onClick={() => setTarget(null)}>
-              置き直す
+              {L("置き直す")}
             </button>
           )}
           <button
@@ -1478,7 +1482,7 @@ export function ReservePlacer({
                   })
             }
           >
-            {skipLabel}
+            {Lx(skipLabel)}
           </button>
         </div>
       </div>

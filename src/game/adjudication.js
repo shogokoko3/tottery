@@ -3,6 +3,7 @@ import { RANKS, ORTH, DIAG, KNIGHT_OFFSETS } from "./constants.js";
 import { getLegalMoves, inBounds, kingRankOf } from "./board.js";
 
 import { hasAdjudicationRules } from "./rule-version.js";
+import { Lk } from "../i18n/index.js";
 export { ADJUDICATION_RULE_VERSION } from "./rule-version.js";
 
 export function rankValue(rank) {
@@ -192,10 +193,11 @@ export function trackStall(state) {
 }
 
 const REASON_LOG = {
-  "dead-position": "互いの王を討てない局面のため",
-  "no-legal-action": "動く側に可能な行動がない局面のため",
-  repetition: `同じ局面が${REPEAT_LIMIT}回目になったため`,
-  "no-progress": "駒が倒れない手番が続いたため",
+  // 記録(log)は相手に送られ保存されるので日本語のまま。出すところで Lx
+  "dead-position": Lk("互いの王を討てない局面のため"),
+  "no-legal-action": Lk("動く側に可能な行動がない局面のため"),
+  repetition: Lk("同じ局面が{n}回目になったため", { n: REPEAT_LIMIT }),
+  "no-progress": Lk("駒が倒れない手番が続いたため"),
 };
 
 /** 同期された手が完了したときだけ呼ぶ。表示用dismissには依存しない。 */
@@ -224,8 +226,8 @@ export function adjudicatePosition(state) {
   const winner = totals[0] === totals[1] ? null : totals[0] < totals[1] ? 0 : 1;
   const result =
     winner === null
-      ? "同点のため引き分け"
-      : `${winner === 0 ? "赤" : "青"}の勝利`;
+      ? Lk("同点のため引き分け")
+      : Lk("{side}の勝利", { side: winner === 0 ? Lk("赤") : Lk("青") });
   return {
     ...state,
     phase: "gameover",
@@ -241,7 +243,12 @@ export function adjudicatePosition(state) {
     interstitial: null,
     log: [
       ...state.log,
-      `${REASON_LOG[reason]}布陣判定: 赤${totals[0]}・青${totals[1]}。${result}`,
+      Lk("{reason}布陣判定: 赤{red}・青{blue}。{result}", {
+        reason: REASON_LOG[reason],
+        red: totals[0],
+        blue: totals[1],
+        result,
+      }),
     ],
   };
 }

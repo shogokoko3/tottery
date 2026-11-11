@@ -233,7 +233,7 @@ assert.match(screens, /フォイルを手に入れてエリアを解放すると
 assert.doesNotMatch(screens, /詳細設定\(開発中\)/);
 assert.match(screens, /custom=\{o === "online" \|\| !localAreas \? null : customRules\}/, "ランダムマッチには出さない。フェーズ<3 も(エリアを使うので)");
 assert.match(screens, /customLockedByPhase=\{o !== "online" && !localAreas\}/, "フェーズ<3 は鍵をかけて理由を出す");
-assert.match(screens, /customLockedByPhase \? "フェーズ3で開きます"/, "鍵の理由");
+assert.match(screens, /customLockedByPhase \? L\("フェーズ3で開きます"\)/, "鍵の理由");
 assert.match(screens, /custom=\{\s*!tut &&\s*!bot &&\s*!\(a && a\.random\) &&\s*(\/\/[^\n]*\n\s*)*rulesForPhase\(a \? roomPhaseOf\(a\) : phaseOf\(loadProfile\(\)\)\)\.areas\s*\? customRules\s*: null\s*\}/, "対局へ渡すのも CPU・同じ端末・フレンドだけ");
 assert.match(game, /\(!network \|\| hasCustomRules\(network\.ruleVersion\)\)/, "通信は版17から");
 assert.match(game, /loadouts: loadoutsForCustom\(customRules, skins\)/, "エリアの側は装備で伝える");

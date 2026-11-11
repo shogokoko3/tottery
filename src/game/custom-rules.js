@@ -17,6 +17,7 @@
  * 設定は START_SETUP の custom に載って両者に届く(通信は版 17 から)。
  */
 import { RANKS } from "./constants.js";
+import { L } from "../i18n/index.js";
 import { totalSlots } from "./board.js";
 import { AREA_SKIN_SUFFIX } from "./areas.js";
 
@@ -102,32 +103,42 @@ export function rankListText(ranks) {
   while (i < idx.length) {
     let j = i;
     while (j + 1 < idx.length && idx[j + 1] === idx[j] + 1) j++;
-    parts.push(j - i >= 2 ? `${RANKS[idx[i]]}〜${RANKS[idx[j]]}` : idx.slice(i, j + 1).map((k) => RANKS[k]).join("・"));
+    parts.push(j - i >= 2 ? `${RANKS[idx[i]]}〜${RANKS[idx[j]]}` : idx.slice(i, j + 1).map((k) => RANKS[k]).join(L("・")));
     i = j + 1;
   }
-  return parts.join("・");
+  return parts.join(L("・"));
 }
 
 export const AREA_SIDE_LABEL = Object.freeze({
-  both: "両方",
-  host: "自分だけ",
-  guest: "相手だけ",
-  none: "なし",
+  both: L("両方"),
+  host: L("自分だけ"),
+  guest: L("相手だけ"),
+  none: L("なし"),
 });
 
 /** 画面と記録に出す要約 */
 export function customSummary(custom, size) {
-  if (!custom || isDefaultCustom(custom)) return "クラシック";
+  if (!custom || isDefaultCustom(custom)) return L("クラシック");
   const army = armySizeFor(size, custom.ranks.length);
   const parts = [];
   if (custom.ranks.length !== RANKS.length)
-    parts.push(`札 ${rankListText(custom.ranks)}(駒 ${army}枚・手札 ${handSizeFor(size, custom.ranks.length)}枚)`);
-  if (custom.areas !== "both") parts.push(`エリア ${AREA_SIDE_LABEL[custom.areas]}`);
+    parts.push(
+      L("札 {ranks}(駒 {army}枚・手札 {hand}枚)", {
+        ranks: rankListText(custom.ranks),
+        army,
+        hand: handSizeFor(size, custom.ranks.length),
+      }),
+    );
+  if (custom.areas !== "both") parts.push(L("エリア {side}", { side: AREA_SIDE_LABEL[custom.areas] }));
   if (custom.reveal.count > 0 || custom.reveal.king)
     parts.push(
-      `公開 ${custom.reveal.count}枚${custom.reveal.king ? "＋王" : ""}${custom.reveal.choose ? "(自分で選ぶ)" : ""}`,
+      L("公開 {n}枚{king}{choose}", {
+        n: custom.reveal.count,
+        king: custom.reveal.king ? L("＋王") : "",
+        choose: custom.reveal.choose ? L("(自分で選ぶ)") : "",
+      }),
     );
-  return parts.join(" / ") || "クラシック";
+  return parts.join(" / ") || L("クラシック");
 }
 
 /**

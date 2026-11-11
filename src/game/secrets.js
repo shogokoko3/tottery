@@ -8,18 +8,20 @@
  * chance は実測または計算で出した確率。文言に使うので、当てずっぽうを
  * 書かないこと(tools/check-secrets.mjs が桁を見張っている)。
  */
+import { L, fmtNumber } from "../i18n/index.js";
+
 export const SECRETS = [
   {
     id: "court-heavy",
     // 麻雀の国士無双(およそ2,500局に1回)とほぼ同じ珍しさ。
     // 四字熟語としても「国に並ぶ者なき士」で、絵札だらけの手札に重なる
-    name: "国士無双",
+    name: L("国士無双"),
     // 何をしたら達成か。達成するまでは出さない
-    how: "9×9で、手札が絵札(J・Q・K)に偏りすぎて盤に並べきれず、数字の札で配り直された",
+    how: L("9×9で、手札が絵札(J・Q・K)に偏りすぎて盤に並べきれず、数字の札で配り直された"),
     // 0.038% ≒ 2600局に1回(実際の配り方で20万回試した実測)
     chance: 0.00038,
     // 同じくらいの珍しさの、よく知られた出来事
-    like: "麻雀で国士無双が出るのと、ほぼ同じ珍しさです",
+    like: L("麻雀で国士無双が出るのと、ほぼ同じ珍しさです"),
     reward: { type: "title", id: "court-heavy" },
   },
 ];
@@ -33,7 +35,7 @@ export function chanceLabel(chance) {
   const one = Math.round(1 / chance);
   const rounded =
     one >= 1000 ? Math.round(one / 100) * 100 : Math.round(one / 10) * 10;
-  return `約 ${rounded.toLocaleString()} 局に1回 (${(chance * 100).toFixed(3)}%)`;
+  return L("約 {n} 局に1回 ({p}%)", { n: fmtNumber(rounded), p: (chance * 100).toFixed(3) });
 }
 
 /** 達成したものだけを、達成した順に返す */

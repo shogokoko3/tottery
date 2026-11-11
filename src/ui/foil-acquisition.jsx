@@ -9,6 +9,7 @@ import {
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { useHapticCue } from "./haptic-cue.js";
 import styles from "./foil-acquisition.css";
+import { L } from "../i18n/index.js";
 
 function ensureStyles() {
   if (document.getElementById("tottery-foil-acquisition-styles")) return;
@@ -160,7 +161,7 @@ function Acquisition({
       data-phase={view.phase}
       style={{ "--foil-acquisition-duration": `${FOIL_ACQUISITION_MS}ms` }}
       role="img"
-      aria-label={base?.name || "カード"}
+      aria-label={base?.name || L("カード")}
     >
       <img
         className="foil-acquisition-base"

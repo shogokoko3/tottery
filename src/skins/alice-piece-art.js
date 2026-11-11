@@ -1,3 +1,4 @@
+import { L } from "../i18n/index.js";
 // Summoned cups and transformed soldiers are board pieces, not gacha equipment.
 export function alicePieceArt(piece, loadout = {}) {
   if (!piece.tea && !piece.soldier) return null;
@@ -13,7 +14,7 @@ export function alicePieceArt(piece, loadout = {}) {
     id: baseId + (foil ? ":foil" : ""),
     baseId,
     foil,
-    name: cup ? piece.teaMovement === "diag" ? "三月ウサギのティーカップ" : "帽子屋のティーカップ" : "トランプ兵",
+    name: cup ? piece.teaMovement === "diag" ? L("三月ウサギのティーカップ") : L("帽子屋のティーカップ") : L("トランプ兵"),
     boardCard: `skins/alice-extra-${foil ? "foils" : "cards"}-${folder}/${slug}.png`,
   };
 }

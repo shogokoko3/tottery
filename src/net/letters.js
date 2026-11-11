@@ -17,6 +17,7 @@
 import { DB_URL } from "./firebase.js";
 import { authedFetch } from "./auth.js";
 import { campaignLetters } from "../game/campaigns.js";
+import { L } from "../i18n/index.js";
 
 const TIMEOUT_MS = 8000;
 /** 一度に読む手紙の数 */
@@ -134,7 +135,7 @@ export async function sendLetter(letter) {
     at: Date.now(),
     ...(letter.until ? { until: Number(letter.until) } : null),
   };
-  if (!body.subject) throw new Error("件名を入れてください");
+  if (!body.subject) throw new Error(L("件名を入れてください"));
   // 全員宛てと個人宛てで置き場が違う。個人宛ては本人しか読めない場所へ
   const where = body.to === "all" ? "letters/all" : `letters/to/${body.to}`;
   const res = await withTimeout(

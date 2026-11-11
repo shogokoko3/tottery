@@ -1,4 +1,5 @@
 import { displayRating, rankTitle, RANK_TIERS } from "./rating.js";
+import { L } from "../i18n/index.js";
 
 /**
  * レート戦(9×9 のランダムマッチ)のシーズンの表(2026-11-11 本人の指示)。
@@ -53,10 +54,11 @@ export const validSeason = (id) =>
 /** 報酬の id(<シーズン>:<種類>)からシーズンを読む */
 export const seasonOfRewardId = (id) =>
   typeof id === "string" && id.includes(":") ? id.slice(0, id.indexOf(":")) : "";
+// 名前は画面に出すだけ(保存も比べもしない)。端末の言語で作る
 export const seasonName = (id) =>
   NUMBERED.test(id)
-    ? `シーズン${id.slice(1)}`
-    : `${id.slice(0, 4)}年${Number(id.slice(5))}月`;
+    ? L("シーズン{n}", { n: id.slice(1) })
+    : L("{y}年{m}月", { y: id.slice(0, 4), m: Number(id.slice(5)) });
 export const SEASON_TIERS = RANK_TIERS;
 export const tierOf = (p) =>
   SEASON_TIERS.findIndex(
@@ -73,8 +75,8 @@ export function seasonTitle(id) {
   if (!match) return null;
   return {
     id,
-    name: `${seasonName(match[1])} ${{ king: "王の証", first: "覇者", three: "三傑", ten: "十傑" }[match[2]]}`,
-    how: "シーズン報酬",
+    name: `${seasonName(match[1])} ${{ king: L("王の証"), first: L("覇者"), three: L("三傑"), ten: L("十傑") }[match[2]]}`,
+    how: L("シーズン報酬"),
   };
 }
 export function seasonRewards(id) {
@@ -82,44 +84,44 @@ export function seasonRewards(id) {
   return [
     {
       key: "participation",
-      label: "10戦達成",
-      name: "ガチャチケット ×2",
+      label: L("10戦達成"),
+      name: L("ガチャチケット ×2"),
       tickets: 2,
       games: 10,
       mark: "✦",
     },
     {
       key: "soldier",
-      label: "士に到達",
-      name: "カード裏面「月夜の紋章」",
+      label: L("士に到達"),
+      name: L("カード裏面「月夜の紋章」"),
       back: SEASON_BACK,
       tier: 2,
       mark: "☾",
     },
     {
       key: "general",
-      label: "将に到達",
-      name: "アイコンフレーム「金の月桂冠」",
+      label: L("将に到達"),
+      name: L("アイコンフレーム「金の月桂冠」"),
       frame: SEASON_FRAME,
       tier: 3,
       mark: "❧",
     },
     {
       key: "king",
-      label: "王に到達",
-      name: "称号「王の証」",
+      label: L("王に到達"),
+      name: L("称号「王の証」"),
       title: `season:${id}:king`,
       tier: 4,
       mark: "♛",
     },
     ...[
-      ["first", 1, "覇者"],
-      ["three", 3, "三傑"],
-      ["ten", 10, "十傑"],
+      ["first", 1, L("覇者")],
+      ["three", 3, L("三傑")],
+      ["ten", 10, L("十傑")],
     ].map(([key, place, name]) => ({
       key,
-      label: `最終${place === 1 ? "1位" : `${place}位以内`}`,
-      name: `${seasonName(id)}の称号「${name}」`,
+      label: place === 1 ? L("最終1位") : L("最終{n}位以内", { n: place }),
+      name: L("{season}の称号「{name}」", { season: seasonName(id), name }),
       title: `season:${id}:${key}`,
       place,
       mark: "♜",

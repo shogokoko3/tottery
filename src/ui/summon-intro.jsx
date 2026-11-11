@@ -1,3 +1,4 @@
+import { L } from "../i18n/index.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cardBackImg } from "../assets.js";
 import {
@@ -222,7 +223,7 @@ export function SummonIntro({ results, targetRef, onFinish, onReady, gateWorld =
       ref={root}
       className={`summon-intro ${plan.gold ? "is-gold" : "is-bronze"}`}
       data-world={plan.world}
-      aria-label="召喚の門"
+      aria-label={L("召喚の門")}
       aria-busy={loading}
       role="group"
     >
@@ -231,7 +232,7 @@ export function SummonIntro({ results, targetRef, onFinish, onReady, gateWorld =
         <div ref={canvas} className="summon-scene-host" aria-hidden="true" />
         <div className="summon-cinema-shade" aria-hidden="true" />
         <div className="summon-world-name" aria-hidden="true">
-          <span>{SUMMON_WORLDS[plan.world].series === "alice" ? "ワンダーランド・ゲート" : "運命の一枚を、この手に。"}</span>
+          <span>{SUMMON_WORLDS[plan.world].series === "alice" ? L("ワンダーランド・ゲート") : L("運命の一枚を、この手に。")}</span>
           <strong>{SUMMON_WORLDS[plan.world].name}</strong>
           <i />
         </div>
@@ -252,7 +253,7 @@ export function SummonIntro({ results, targetRef, onFinish, onReady, gateWorld =
         <button
           type="button"
           className={`summon-gate-touch ${pressing ? "is-pressing" : ""}`}
-          aria-label="門に触れて開く"
+          aria-label={L("門に触れて開く")}
           onPointerDown={() => {
             setPressing(true);
             if (!touched.current && !opened.current) {
@@ -273,9 +274,9 @@ export function SummonIntro({ results, targetRef, onFinish, onReady, gateWorld =
         >
           {/* 添え書きは輪の**上**へ。下に置くと「門をスキップ」と重なっていた
               (2026-09-28 本人の報告)。下端はいちばん短い「門にふれて開く」だけにする */}
-          <span className="summon-gate-hint">タップすると、門が開きます</span>
+          <span className="summon-gate-hint">{L("タップすると、門が開きます")}</span>
           <span className="summon-gate-ring" aria-hidden="true" />
-          <span className="summon-gate-label">門にふれて開く</span>
+          <span className="summon-gate-label">{L("門にふれて開く")}</span>
         </button>
       )}
       <button
@@ -283,13 +284,13 @@ export function SummonIntro({ results, targetRef, onFinish, onReady, gateWorld =
         className="summon-intro-skip"
         /* 「スキップ」だけだと引き終わりまで飛ぶと読まれる。飛ばす対象(門)を名指しする
            (2026-09-18 本人の決め)。全部を省くのはガチャ画面の「召喚の演出を飛ばす」 */
-        aria-label="門の演出をスキップして、カードをめくる画面へ"
+        aria-label={L("門の演出をスキップして、カードをめくる画面へ")}
         onClick={(event) => {
           event.stopPropagation();
           root.current?.dispatchEvent(new Event("summon-finish"));
         }}
       >
-        門をスキップ <span aria-hidden="true">≫</span>
+        {L("門をスキップ")} <span aria-hidden="true">≫</span>
       </button>
     </div>
   );

@@ -15,6 +15,7 @@ import { displayRating, nextRating, normalizeRating, winStreakBonus } from "../g
 import { TEST_PLAYERS_2026_09_08 } from "./test-players-2026-09-08.js";
 import { RATING_RESTORE_2026_09_23 } from "./rating-restore-2026-09-23.js";
 import { clampBotRating } from "../game/bot-match.js";
+import { Lk } from "../i18n/index.js";
 
 /** 記録を消した人の目印の代わり。matches に残る */
 export const FORGOTTEN = "forgotten";
@@ -183,7 +184,7 @@ export class Ledger {
   result(uid, id) {
     const m = this.sql("SELECT * FROM matches WHERE id=?", id)[0];
     if (m && m.host !== uid && m.guest !== uid)
-      throw new Error("この対局の参加者ではありません。");
+      throw new Error(Lk("この対局の参加者ではありません。"));
     return m || null;
   }
   record(match, now) {
@@ -429,10 +430,10 @@ export class Ledger {
     const reward =
       validSeason(season) && seasonRewards(season).find((r) => r.id === id);
     const period = this.sql("SELECT * FROM seasons WHERE id=?", season)[0];
-    if (!reward || !period) throw new Error("報酬が見つかりません。");
+    if (!reward || !period) throw new Error(Lk("報酬が見つかりません。"));
     const player = this.list(season).find((p) => p.uid === uid);
     if (!rewardReady(reward, player, now >= period.end))
-      throw new Error("まだ報酬の条件を満たしていません。");
+      throw new Error(Lk("まだ報酬の条件を満たしていません。"));
     this.sql(
       "INSERT OR IGNORE INTO claims VALUES (?,?,?,?)",
       uid,
@@ -448,7 +449,7 @@ export class Ledger {
       (back !== null && !owned.backs.includes(back)) ||
       (frame !== null && !owned.frames.includes(frame))
     )
-      throw new Error("まだ獲得していない装飾です。");
+      throw new Error(Lk("まだ獲得していない装飾です。"));
     this.sql(
       "INSERT OR REPLACE INTO appearance VALUES (?,?,?)",
       uid,

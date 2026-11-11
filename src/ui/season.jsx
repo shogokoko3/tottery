@@ -28,9 +28,10 @@ import { withoutBlocked } from "../game/blocked.js";
 import { CardBack } from "./cards.jsx";
 import { Close, Ticket } from "../icons.jsx";
 import { SeatsProvider, useSeats } from "./names.jsx";
+import { L, Lk, Lx, LOCALE, isEnglish } from "../i18n/index.js";
 
 const dateLabel = (n) =>
-  new Intl.DateTimeFormat("ja-JP", {
+  new Intl.DateTimeFormat(LOCALE, {
     timeZone: "Asia/Tokyo",
     month: "numeric",
     day: "numeric",
@@ -57,7 +58,7 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
     } catch {
       if (mounted.current)
         setNotice(
-          "未送信の対局があります。通信が戻ったら「更新」で再送できます。",
+          L("未送信の対局があります。通信が戻ったら「更新」で再送できます。"),
         );
     }
     try {
@@ -105,7 +106,7 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
     setNotice("");
     try {
       setData(await seasonRequest("claim", { id: reward.id }));
-      setNotice(`${reward.name}を受け取りました。`);
+      setNotice(L("{gift}を受け取りました。", { gift: reward.name }));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -134,7 +135,7 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
               <button
                 className="season-reward-mark"
                 onClick={() => setPreview(reward)}
-                aria-label={`${reward.name}の見本を見る`}
+                aria-label={L("{name}の見本を見る", { name: reward.name })}
               >
                 {reward.mark}
               </button>
@@ -144,7 +145,7 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
               >
                 <small>{reward.label}</small>
                 <b>{reward.name}</b>
-                <span className="season-reward-see">見本を見る</span>
+                <span className="season-reward-see">{L("見本を見る")}</span>
               </button>
               <button
                 className={`btn ${ready && !claimed ? "btn-primary" : "btn-ghost"}`}
@@ -152,14 +153,14 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
                 onClick={() => claim(reward)}
               >
                 {claimed
-                  ? "受取済"
+                  ? L("受取済")
                   : busy === reward.id
-                    ? "受取中…"
+                    ? L("受取中…")
                     : ready
-                      ? "受け取る"
+                      ? L("受け取る")
                       : reward.place
-                        ? "対象外"
-                        : "未達成"}
+                        ? L("対象外")
+                        : L("未達成")}
               </button>
             </div>
           );
@@ -189,9 +190,9 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
         />
       )}
       <div className="season-toolbar">
-        <span>9×9 オンライン対戦</span>
+        <span>{L("9×9 オンライン対戦")}</span>
         <button className="btn btn-ghost" disabled={!!busy} onClick={refresh}>
-          更新
+          {L("更新")}
         </button>
       </div>
       {error && (
@@ -206,53 +207,60 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
       )}
       {!data && (
         <p className="hint">
-          {busy ? "シーズンを読み込んでいます…" : "「更新」で読み直せます。"}
+          {busy ? L("シーズンを読み込んでいます…") : L("「更新」で読み直せます。")}
         </p>
       )}
       {data && !historyOnly && !rankingOnly && (
         <>
           <div className="season-hero">
-            <span className="season-eyebrow">シ ー ズ ン</span>
-            <h3>{seasonName(data.season.id)}の戦い</h3>
+            <span className="season-eyebrow">{L("シ ー ズ ン")}</span>
+            <h3>{L("{season}の戦い", { season: seasonName(data.season.id) })}</h3>
             <p>
               {/* end は「その時刻から外」なので、最後の1分(23:59)を出す */}
-              {dateLabel(data.season.start)} 〜 {dateLabel(data.season.end - 60000)}{" "}
-              <small>日本時間</small>
+              {dateLabel(data.season.start)}{isEnglish ? " – " : " 〜 "}{dateLabel(data.season.end - 60000)}{" "}
+              <small>{L("日本時間")}</small>
             </p>
             {/* シーズンの外はレート戦を閉じている(2026-11-11 本人の指示) */}
             {data.open === false && (
               <p className="season-closed" role="status">
                 {data.season.start > data.now
-                  ? `${seasonName(data.season.id)}は ${dateLabel(data.season.start)} から始まります。`
+                  ? L("{season}は {time} から始まります。", {
+                      season: seasonName(data.season.id),
+                      time: dateLabel(data.season.start),
+                    })
                   : data.next
-                    ? `${seasonName(data.season.id)}は終わりました。${seasonName(data.next.id)}は ${dateLabel(data.next.start)} から始まります。`
-                    : `${seasonName(data.season.id)}は終わりました。`}
+                    ? L("{season}は終わりました。{next}は {time} から始まります。", {
+                        season: seasonName(data.season.id),
+                        next: seasonName(data.next.id),
+                        time: dateLabel(data.next.start),
+                      })
+                    : L("{season}は終わりました。", { season: seasonName(data.season.id) })}
               </p>
             )}
             <div className="season-score">
               <span className="season-emblem">
-                {SEASON_TIERS[tierOf(p)].name}
+                {Lx(SEASON_TIERS[tierOf(p)].name)}
               </span>
               <strong>
                 {p.rating}
-                <small>レート</small>
+                <small>{L("レート")}</small>
               </strong>
               <span className="season-place">
-                {p.place ? `${p.place}位` : "未掲載"}
-                <small>{p.rated}戦</small>
+                {p.place ? L("{n}位", { n: p.place }) : L("未掲載")}
+                <small>{L("{n}戦", { n: p.rated })}</small>
               </span>
             </div>
             <div className="season-record">
               <span>
-                最高順位 <b>{p.best ? `${p.best}位` : "—"}</b>
+                {L("最高順位")} <b>{p.best ? L("{n}位", { n: p.best }) : "—"}</b>
               </span>
               <span>
-                最高到達 <b>{SEASON_TIERS[p.highest].name}</b>
+                {L("最高到達")} <b>{Lx(SEASON_TIERS[p.highest].name)}</b>
               </span>
             </div>
           </div>
           <div className="season-goal">
-            <b>{next ? `次は「${next.name}」へ` : "最高段階「王」に到達"}</b>
+            <b>{next ? L("次は「{name}」へ", { name: Lx(next.name) }) : L("最高段階「王」に到達")}</b>
             {next && (
               <>
                 <div className="season-meter">
@@ -262,7 +270,7 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
                     }}
                   />
                 </div>
-                <p>レート あと{Math.max(0, next.rating - p.rating)}点</p>
+                <p>{L("レート あと{n}点", { n: Math.max(0, next.rating - p.rating) })}</p>
               </>
             )}
             {/* 1戦から載る(2026-09-23 本人の指示。以前は10戦) */}
@@ -270,26 +278,26 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
             {p.rated < 1 && (
               <small>
                 {rankedPhase(phaseOf(loadProfile()))
-                  ? "1戦するとランキングに掲載されます。"
-                  : "フェーズ3に上がると、9×9のランダムマッチがランキングに数えられます。"}
+                  ? L("1戦するとランキングに掲載されます。")
+                  : L("フェーズ3に上がると、9×9のランダムマッチがランキングに数えられます。")}
               </small>
             )}
           </div>
-          <h4>到達報酬</h4>
+          <h4>{L("到達報酬")}</h4>
           {rewards(data.season.id, p, false)}
           <p className="hint">
-            一度到達した報酬は、段階が下がっても受け取れます。裏面と枠は設定で着脱できます。
+            {L("一度到達した報酬は、段階が下がっても受け取れます。裏面と枠は設定で着脱できます。")}
           </p>
           <RankGuide />
-          <h4>シーズン終了時の記念称号</h4>
+          <h4>{L("シーズン終了時の記念称号")}</h4>
           <p className="hint">
-            最終1位は「覇者」、3位以内は「三傑」、10位以内は「十傑」。シーズンの終了時に確定します。同じレートは同順位です。
+            {L("最終1位は「覇者」、3位以内は「三傑」、10位以内は「十傑」。シーズンの終了時に確定します。同じレートは同順位です。")}
           </p>
         </>
       )}
       {data && rankingOnly && (
         <>
-          <h3>{seasonName(data.season.id)}のランキング</h3>
+          <h3>{L("{season}のランキング", { season: seasonName(data.season.id) })}</h3>
           {data.list.length ? (
             <ol className="rank-list">
               {withoutBlocked(
@@ -348,7 +356,7 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
                           name: identities[row.uid]?.name || row.name,
                         })
                       }
-                      aria-label={`${identities[row.uid]?.name || row.name} を通報する、または見えなくする`}
+                      aria-label={L("{name} を通報する、または見えなくする", { name: identities[row.uid]?.name || row.name })}
                     >
                       ⋯
                     </button>
@@ -357,34 +365,38 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
               ))}
             </ol>
           ) : (
-            <p className="hint">フェーズ3 の 9×9 のオンライン対戦を1戦すると掲載されます。</p>
+            <p className="hint">{L("フェーズ3 の 9×9 のオンライン対戦を1戦すると掲載されます。")}</p>
           )}
         </>
       )}
       {data && historyOnly && (
         <>
-          <h3>歴代の戦績</h3>
+          <h3>{L("歴代の戦績")}</h3>
           {!data.history.length && (
-            <p className="hint">参加したシーズンの終了後に、戦績が残ります。</p>
+            <p className="hint">{L("参加したシーズンの終了後に、戦績が残ります。")}</p>
           )}
           {data.history.map((s) => (
             <article className="season-history" key={s.id}>
               <h4>{seasonName(s.id)}</h4>
               <div className="season-record">
                 <span>
-                  最終{" "}
-                  <b>{s.player.place ? `${s.player.place}位` : "未掲載"}</b>
+                  {L("最終")}{" "}
+                  <b>{s.player.place ? L("{n}位", { n: s.player.place }) : L("未掲載")}</b>
                 </span>
                 <span>
-                  最高 <b>{s.player.best ? `${s.player.best}位` : "—"}</b>
+                  {L("最高")} <b>{s.player.best ? L("{n}位", { n: s.player.best }) : "—"}</b>
                 </span>
                 <span>
-                  最高到達 <b>{SEASON_TIERS[s.player.highest].name}</b>
+                  {L("最高到達")} <b>{Lx(SEASON_TIERS[s.player.highest].name)}</b>
                 </span>
               </div>
               <p className="hint">
-                {s.player.rating}点 · {s.player.rated}戦 {s.player.wins}勝{" "}
-                {s.player.draws}分
+                {L("{rating}点 · {rated}戦 {wins}勝 {draws}分", {
+                  rating: s.player.rating,
+                  rated: s.player.rated,
+                  wins: s.player.wins,
+                  draws: s.player.draws,
+                })}
               </p>
               {rewards(s.id, s.player, false)}
               {rewards(s.id, s.player, true)}
@@ -411,17 +423,17 @@ export function SeasonRewardPreview({ reward, onClose }) {
       >
         <div className="modal-head">
           <h3>{reward.name}</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+          <button className="icon-btn" onClick={onClose} aria-label={L("閉じる")}>
             <Close size={18} />
           </button>
         </div>
-        <p className="hint">{reward.label}で受け取れます。</p>
+        <p className="hint">{L("{label}で受け取れます。", { label: reward.label })}</p>
         <div className="season-preview-stage">
           {reward.back && (
             <>
               <CardBack size="lg" colorHex="#c6a466" backId={reward.back} />
               <p className="hint">
-                自分の伏せた駒すべてがこの裏面になります。相手にも見えます。
+                {L("自分の伏せた駒すべてがこの裏面になります。相手にも見えます。")}
               </p>
             </>
           )}
@@ -434,7 +446,7 @@ export function SeasonRewardPreview({ reward, onClose }) {
                 size="lg"
               />
               <p className="hint">
-                名前の横のアイコンに付きます。ランキングや対局中にも出ます。
+                {L("名前の横のアイコンに付きます。ランキングや対局中にも出ます。")}
               </p>
             </>
           )}
@@ -442,7 +454,7 @@ export function SeasonRewardPreview({ reward, onClose }) {
             <>
               <TitleFrame id={reward.title} size="showcase" />
               <p className="hint">
-                名前の下に出る名札です。設定の「プレイヤー」から着け替えできます。
+                {L("名前の下に出る名札です。設定の「プレイヤー」から着け替えできます。")}
               </p>
             </>
           )}
@@ -451,12 +463,12 @@ export function SeasonRewardPreview({ reward, onClose }) {
               <span className="season-preview-tickets">
                 <Ticket size={28} /> ×{reward.tickets}
               </span>
-              <p className="hint">ガチャを{reward.tickets}回引けます。</p>
+              <p className="hint">{L("ガチャを{n}回引けます。", { n: reward.tickets })}</p>
             </>
           )}
         </div>
         <button className="btn btn-primary btn-wide" onClick={onClose}>
-          とじる
+          {L("とじる")}
         </button>
       </div>
     </div>
@@ -503,7 +515,7 @@ export function AppearanceSettings() {
   const me = loadProfile();
   return (
     <div className="appearance-settings">
-      <p className="settings-head">シーズンの装飾</p>
+      <p className="settings-head">{L("シーズンの装飾")}</p>
       <div className="appearance-preview">
         <CardBack size="sm" colorHex="#c6a466" backId={cache.back} />
         <PlayerIcon
@@ -512,36 +524,36 @@ export function AppearanceSettings() {
           frame={cache.frame}
           size="lg"
         />
-        <span>裏面は自分の伏せた駒すべてに付きます。</span>
+        <span>{L("裏面は自分の伏せた駒すべてに付きます。")}</span>
       </div>
       <label>
-        カード裏面
+        {L("カード裏面")}
         <select
           value={cache.back || ""}
           disabled={!ready || busy}
           onChange={(e) => equip({ back: e.target.value || null })}
         >
-          <option value="">いつもの裏面</option>
+          <option value="">{L("いつもの裏面")}</option>
           {cache.backs.includes(SEASON_BACK) && (
-            <option value={SEASON_BACK}>月夜の紋章</option>
+            <option value={SEASON_BACK}>{L("月夜の紋章")}</option>
           )}
         </select>
       </label>
       <label>
-        アイコンフレーム
+        {L("アイコンフレーム")}
         <select
           value={cache.frame || ""}
           disabled={!ready || busy}
           onChange={(e) => equip({ frame: e.target.value || null })}
         >
-          <option value="">枠なし</option>
+          <option value="">{L("枠なし")}</option>
           {cache.frames.includes(SEASON_FRAME) && (
-            <option value={SEASON_FRAME}>金の月桂冠</option>
+            <option value={SEASON_FRAME}>{L("金の月桂冠")}</option>
           )}
         </select>
       </label>
       {!cache.backs.length && !cache.frames.length && (
-        <p className="hint">月間シーズンの到達報酬で獲得できます。</p>
+        <p className="hint">{L("月間シーズンの到達報酬で獲得できます。")}</p>
       )}
       {error && (
         <>
@@ -549,7 +561,7 @@ export function AppearanceSettings() {
             {error}
           </p>
           <button className="btn btn-ghost" disabled={busy} onClick={sync}>
-            読み直す
+            {L("読み直す")}
           </button>
         </>
       )}
@@ -622,7 +634,8 @@ export function useSeasonMatch(state, network, round, disabled, bot = null) {
               id: bot.matchId || `${bot.id}:${round}`,
               // Bot 戦は自分が席0。勝者は 0(自分)・1(Bot)・null(引き分け)
               winner: state.winner,
-              name: me.name || "名無し",
+              // 名前はサーバーへ送る値なので日本語のまま
+              name: me.name || Lk("名無し"),
               icon: me.icon || null,
               // Bot の持ち点。サーバーは丸めてから式に入れる(2026-09-28 本人の指示)
               foeRating: bot.rating,
@@ -694,18 +707,18 @@ export function SeasonMatchNotice({ result }) {
   return (
     <div className="season-match-notice" role="status">
       {result.status === "done" ? (
-        "月間シーズンに成績を記録しました。"
+        L("月間シーズンに成績を記録しました。")
       ) : result.status === "error" ? (
         <>
           {result.error}
           <br />
-          再戦の前に成績を送信してください。
+          {L("再戦の前に成績を送信してください。")}
           <button className="btn btn-ghost" onClick={result.submit}>
-            再送する
+            {L("再送する")}
           </button>
         </>
       ) : (
-        "月間シーズンの成績を記録しています…"
+        L("月間シーズンの成績を記録しています…")
       )}
     </div>
   );

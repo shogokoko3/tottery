@@ -1,0 +1,5 @@
+/* 日本語の端末で出す名前と許可の文。Info.plist と同じ文 */
+"CFBundleDisplayName" = "トッタリー";
+"NSLocalNetworkUsageDescription" = "近くの端末とフレンド対戦をするために、同じ Wi‑Fi や端末どうしの直接接続を使います。";
+"NSBluetoothAlwaysUsageDescription" = "近くの端末と Bluetooth でフレンド対戦をするために使います。";
+"NSUserTrackingUsageDescription" = "広告の効果測定のために、ほかのアプリやサイトをまたいだ活動の追跡を許可するか選べます。許可しなくてもアプリはそのまま遊べます。";

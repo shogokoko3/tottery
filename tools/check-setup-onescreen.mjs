@@ -21,7 +21,7 @@ const css = read("src/styles.css");
 assert.equal((setup.match(/setup-wrap setup-wrap-compact/g) || []).length, 2, "配置と王選びの両方が圧縮版の枠");
 assert.equal((setup.match(/<div className="setup-head">/g) || []).length, 2, "帯は2か所");
 for (const label of ["布陣の残り時間", "王を選ぶ残り時間"]) {
-  const i = setup.indexOf(`label="${label}"`);
+  const i = setup.indexOf(`label={L("${label}")}`);
   assert.ok(i > 0, `${label} がある`);
   const head = setup.lastIndexOf('<div className="setup-head">', i);
   const headEnd = setup.indexOf("</div>", head);
@@ -29,7 +29,7 @@ for (const label of ["布陣の残り時間", "王を選ぶ残り時間"]) {
 }
 assert.match(setup, /<p className="hint setup-hint-line">/, "案内は1行の枠");
 assert.doesNotMatch(setup, /手札を自陣へドラッグ。タップで選んでからマスをタップでも置けます/, "長い案内文は残さない");
-assert.match(setup, /<span className="setup-adoption-total">\s*採用合計 <strong>\{adoptionTotal\}<\/strong>/, "採用合計は案内の行に並べる");
+assert.match(setup, /<span className="setup-adoption-total">\s*\{L\("採用合計"\)\} <strong>\{adoptionTotal\}<\/strong>/, "採用合計は案内の行に並べる");
 assert.match(setup, /size=\{hand\.length > 10 \|\| slots > 5 \? "tray" : undefined\}/, "9×9 の手札は tray の大きさ");
 assert.match(cards, /size === "tray"[\s\S]{0,200}w: 40,\s*h: 53/, "tray は 40×53(7枚 + 縁で 375px の端末に収まる)");
 

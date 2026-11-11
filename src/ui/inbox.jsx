@@ -7,10 +7,11 @@
  */
 import { LettersScreen, useUnreadLetters } from "./letters.jsx";
 import { FriendsScreen, useFriendAlerts } from "./friends.jsx";
+import { L } from "../i18n/index.js";
 
 export const INBOX_TABS = [
-  { id: "letters", label: "お知らせ" },
-  { id: "friends", label: "フレンド" },
+  { id: "letters", label: L("お知らせ") },
+  { id: "friends", label: L("フレンド") },
 ];
 
 export function InboxScreen({ tab = "letters", onTab, onBack, onProfile, onInvite, onJoinInvite, onSpectate }) {
@@ -20,7 +21,7 @@ export function InboxScreen({ tab = "letters", onTab, onBack, onProfile, onInvit
   const count = (id) => (id === "letters" ? unread : alerts.total);
   return (
     <div className={`quests-screen inbox-screen is-${current}`}>
-      <div className="quests-switch" role="tablist" aria-label="お知らせとフレンド">
+      <div className="quests-switch" role="tablist" aria-label={L("お知らせとフレンド")}>
         {INBOX_TABS.map((t) => (
           <button
             key={t.id}
@@ -33,7 +34,7 @@ export function InboxScreen({ tab = "letters", onTab, onBack, onProfile, onInvit
           >
             {t.label}
             {count(t.id) > 0 && (
-              <span className="missions-tab-count" aria-label={`${count(t.id)}件`}>
+              <span className="missions-tab-count" aria-label={L("{n}件", { n: count(t.id) })}>
                 {count(t.id) > 99 ? "99+" : count(t.id)}
               </span>
             )}

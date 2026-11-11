@@ -1,4 +1,5 @@
 import { ALL_POOL as POOL, baseSkinId, byId, foilId } from "./catalog.js";
+import { L } from "../i18n/index.js";
 
 export const FREEZE_FOIL_CHANCE = 0.3;
 const poolIds = new Set(POOL.map((s) => s.id));
@@ -15,7 +16,7 @@ export function qualifiesForFreeze(ids) {
 function unit(random) {
   const n = random();
   if (!Number.isFinite(n) || n < 0 || n >= 1)
-    throw new Error("乱数の範囲が不正です");
+    throw new Error(L("乱数の範囲が不正です"));
   return n;
 }
 

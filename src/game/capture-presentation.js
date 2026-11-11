@@ -18,6 +18,7 @@ export function captureDisplayState(state, before) {
   if (!state.captureReveal) return state;
   const prior = before?.captureReveal === state.captureReveal ? null : before;
   const newlyShown =
+    // i18n-ignore(state の理由の目印と比べる)
     state.lastReveal?.reason === "王を討った" ? state.lastReveal.id : null;
   const pieces = Object.fromEntries(
     Object.entries(state.pieces).map(([id, piece]) => {

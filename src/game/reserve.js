@@ -1,3 +1,4 @@
+import { Lk } from "../i18n/index.js";
 /** 版9以降の捨て札循環。撃破履歴(capturedOwn)と、再利用できる札を分ける。 */
 export const recyclesReserve = (state) => state.ruleVersion >= 9;
 
@@ -63,7 +64,7 @@ export function replenishReserve(state) {
     })),
     log: [
       ...state.log,
-      `予備札がなくなったため、捨て札${cards.length}枚をシャッフルして補充した`,
+      Lk("予備札がなくなったため、捨て札{n}枚をシャッフルして補充した", { n: cards.length }),
     ],
   };
 }

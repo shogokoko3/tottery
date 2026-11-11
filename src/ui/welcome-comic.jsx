@@ -1,5 +1,6 @@
 import { WELCOME_COMIC_PAGES } from "../game/welcome-comic.js";
 import { StoryReader } from "./story-chronicle.jsx";
+import { L } from "../i18n/index.js";
 
 export function WelcomeComic({ onDone, onClose = onDone, firstRun = false }) {
   return (
@@ -8,10 +9,10 @@ export function WelcomeComic({ onDone, onClose = onDone, firstRun = false }) {
       onDone={onDone}
       onClose={onClose}
       lesson={{
-        title: "はじめてのトッタリー",
+        title: L("はじめてのトッタリー"),
         pages: WELCOME_COMIC_PAGES,
-        closeLabel: firstRun ? "すぐに遊ぶ" : "閉じる",
-        doneLabel: firstRun ? "やってみる" : "閉じる",
+        closeLabel: firstRun ? L("すぐに遊ぶ") : L("閉じる"),
+        doneLabel: firstRun ? L("やってみる") : L("閉じる"),
       }}
     />
   );

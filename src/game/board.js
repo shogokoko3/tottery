@@ -1,3 +1,4 @@
+import { Lk } from "../i18n/index.js";
 import { RANKS, SUITS, ORTH, DIAG, KNIGHT_OFFSETS } from "./constants.js";
 
 /* ---------------------------- デッキ ---------------------------- */
@@ -327,13 +328,19 @@ export function placedRankCounts(placement, hand) {
  * (2026-09-17 本人の報告「2の王が倒されて別の2に継ぐとき、どの駒が2でどこにいるか相手に分かる」)。
  * だからこの手の行は、相手から見たときには **行ごと消す**。
  */
-export const SECRET_HISTORY = ["王位を継承"];
+// 履歴の文(日本語のまま保存・送信される)の中を探す目印
+export const SECRET_HISTORY = ["王位を継承"]; // i18n-ignore
 
 export function sanitizeHistory(piece, viewer, revealAll) {
   if (piece.owner === viewer || !piece.alive || revealAll) return piece.history;
   return piece.history
     .filter((h) => !SECRET_HISTORY.some((secret) => h.includes(secret)))
-    .map((h) => (h.includes("へ移動") ? h : "何らかの効果が発生した"));
+    // 「へ移動」は履歴の文の中を探す目印。履歴は日本語のまま持ち、出すところで Lx
+    .map((h) =>
+      h.includes("へ移動") // i18n-ignore
+        ? h
+        : Lk("何らかの効果が発生した"),
+    );
 }
 
 /**
@@ -349,7 +356,7 @@ export function moveArrow(from, to) {
   const ar = Math.abs(dr);
   const ac = Math.abs(dc);
   // 桂馬(10)の跳び方。まっすぐでも斜めでもないので、向きではなく「馬」と書く
-  if ((ar === 1 && ac === 2) || (ar === 2 && ac === 1)) return "馬";
+  if ((ar === 1 && ac === 2) || (ar === 2 && ac === 1)) return Lk("馬");
   // まっすぐか、斜め45度のときだけ向きの矢印にする
   if (dr && dc && ar !== ac) return "";
   if (dr < 0 && !dc) return "\u2b06\ufe0e";

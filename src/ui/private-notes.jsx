@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { RANKS } from "../game/constants.js";
+import { L } from "../i18n/index.js";
 import { sanitizeHistory, squareName, kingPowersOn } from "../game/board.js";
 import { candidatesFromHistory } from "../game/rank-candidates.js";
 import { movePresentationMs } from "../game/capture-presentation.js";
@@ -71,7 +72,7 @@ export function usePrivateNotes(state, viewer, blocked) {
     can: (cell) => available && noteTarget(state, noteSquare(cell), viewer),
     marker: (cell) =>
       available && notes[noteSquare(cell)] ? (
-        <span className="private-note-mark" aria-label="自分だけの推理メモあり">
+        <span className="private-note-mark" aria-label={L("自分だけの推理メモあり")}>
           ✎
         </span>
       ) : null,
@@ -187,22 +188,22 @@ function NoteEditor({ square, size, history = [], powers = true, initial, onSave
       >
         <div className="modal-head">
           <h3 id="private-note-title">
-            {squareName(row, col, size)}の推理メモ
+            {L("{square}の推理メモ", { square: squareName(row, col, size) })}
           </h3>
           <button className="btn btn-ghost" onClick={onClose}>
-            閉じる
+            {L("閉じる")}
           </button>
         </div>
         <div className="private-notes-scroll">
-          <p className="hint">自分だけに見える予想です。</p>
+          <p className="hint">{L("自分だけに見える予想です。")}</p>
           {/* 見えている動きから、ありうる数字を機械的に絞る(2026-09-28 本人の指示)。
               使うのは行動記録に出ている「どこからどこへ動いたか」だけで、
               伏せ札の正体は読んでいない */}
           <fieldset className="private-notes-deduced">
-            <legend>動きから絞った候補</legend>
+            <legend>{L("動きから絞った候補")}</legend>
             {deduced.unmoved ? (
               <p className="hint">
-                まだ動いていないので絞れません。動いたら、その動き方でここが狭まります。
+                {L("まだ動いていないので絞れません。動いたら、その動き方でここが狭まります。")}
               </p>
             ) : (
               <>
@@ -221,12 +222,11 @@ function NoteEditor({ square, size, history = [], powers = true, initial, onSave
                   ))}
                 </p>
                 <p className="hint">
-                  {deduced.moves}手ぶんの動きから、{deduced.ranks.length}通りまで
-                  絞れました。
-                  {deduced.certain && " これで確定です。"}
+                  {L("{moves}手ぶんの動きから、{n}通りまで 絞れました。", { moves: deduced.moves, n: deduced.ranks.length })}
+                  {deduced.certain && L(" これで確定です。")}
                   {deduced.kingOnly.length > 0 &&
-                    ` 金の数字(${deduced.kingOnly.join("・")})は、王でないとできない動きです。`}
-                  {deduced.mustBeKing && " つまり、この駒は王です。"}
+                    L(" 金の数字({ranks})は、王でないとできない動きです。", { ranks: deduced.kingOnly.join(L("・")) })}
+                  {deduced.mustBeKing && L(" つまり、この駒は王です。")}
                 </p>
                 <button
                   className="btn btn-ghost btn-small"
@@ -234,13 +234,13 @@ function NoteEditor({ square, size, history = [], powers = true, initial, onSave
                     setValue((v) => ({ ...v, ranks: deduced.ranks }))
                   }
                 >
-                  この候補を下に写す
+                  {L("この候補を下に写す")}
                 </button>
               </>
             )}
           </fieldset>
           <fieldset>
-            <legend>数字の候補</legend>
+            <legend>{L("数字の候補")}</legend>
             <div className="private-notes-ranks">
               {RANKS.map((rank) => (
                 <button
@@ -263,8 +263,8 @@ function NoteEditor({ square, size, history = [], powers = true, initial, onSave
           </fieldset>
           <div className="private-notes-flags">
             {[
-              ["king", "王かも"],
-              ["counter", "道連れ注意"],
+              ["king", L("王かも")],
+              ["counter", L("道連れ注意")],
             ].map(([key, label]) => (
               <label key={key}>
                 <input
@@ -279,24 +279,24 @@ function NoteEditor({ square, size, history = [], powers = true, initial, onSave
             ))}
           </div>
           <label className="private-notes-text">
-            ひとこと
+            {L("ひとこと")}
             <input
               maxLength={40}
               value={value.text}
               onChange={(e) =>
                 setValue((v) => ({ ...v, text: e.target.value }))
               }
-              placeholder="例：縦に二マス動いた"
+              placeholder={L("例：縦に二マス動いた")}
             />
           </label>
-          <p className="hint">Aの入れ替え対象になったメモは解除されます。</p>
+          <p className="hint">{L("Aの入れ替え対象になったメモは解除されます。")}</p>
         </div>
         <footer>
           <button className="btn btn-ghost" onClick={() => onSave(null)}>
-            消す
+            {L("消す")}
           </button>
           <button className="btn btn-primary" onClick={() => onSave(value)}>
-            保存する
+            {L("保存する")}
           </button>
         </footer>
       </section>

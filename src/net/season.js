@@ -2,6 +2,7 @@ import { ensureAuth } from "./auth.js";
 import { updateCollection } from "../skins/store.js";
 import { applySeasonReceipts } from "../game/season.js";
 import { grantTitle } from "../game/profile.js";
+import { L, Lx } from "../i18n/index.js";
 
 /** シーズン API の置き場所(Cloudflare Worker)。Web は同じオリジンなので相対でよい */
 export const SEASON_API_ORIGIN = "https://tottery.tsmanager.workers.dev";
@@ -19,7 +20,7 @@ export function seasonApiBase(loc = globalThis.location) {
 
 export async function seasonRequest(op, body = {}) {
   const auth = await ensureAuth();
-  if (!auth) throw new Error("通信を確認して、もう一度お試しください。");
+  if (!auth) throw new Error(L("通信を確認して、もう一度お試しください。"));
   let res;
   try {
     res = await fetch(`${seasonApiBase()}/api/season/${op}`, {
@@ -32,16 +33,16 @@ export async function seasonRequest(op, body = {}) {
       signal: AbortSignal.timeout(20000),
     });
   } catch {
-    throw new Error("通信を確認して、もう一度お試しください。");
+    throw new Error(L("通信を確認して、もう一度お試しください。"));
   }
   let data;
   try {
     data = await res.json();
   } catch {
-    throw new Error("シーズンを読み込めませんでした。もう一度お試しください。");
+    throw new Error(L("シーズンを読み込めませんでした。もう一度お試しください。"));
   }
   if (!res.ok)
-    throw new Error(data.error || "シーズンを読み込めませんでした。");
+    throw new Error(Lx(data.error) || L("シーズンを読み込めませんでした。"));
   if (data.uid && data.claims) {
     await updateCollection((c) => applySeasonReceipts(c, data));
     for (const id of data.owned?.titles || []) grantTitle(id);

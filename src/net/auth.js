@@ -21,6 +21,7 @@
  *   accounts:signUp        … 匿名の口座を作る
  *   securetoken /v1/token  … 合言葉を取り直す
  */
+import { L } from "../i18n/index.js";
 
 /**
  * Firebase コンソールの「ウェブ API キー」。
@@ -250,7 +251,7 @@ export async function ensureAuth({ forceRefresh = false } = {}) {
  * 本人がコンソールの手順で迷ったので、画面から一押しで送れるようにした(2026-09-16)
  */
 export async function sendOperatorPasswordReset(email) {
-  if (!API_KEY) throw new Error("API キーが入っていません");
+  if (!API_KEY) throw new Error(L("API キーが入っていません"));
   const res = await withTimeout(
     fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${API_KEY}`,
@@ -267,17 +268,17 @@ export async function sendOperatorPasswordReset(email) {
     const why = (d.error || {}).message || `HTTP ${res.status}`;
     throw new Error(
       why.includes("EMAIL_NOT_FOUND")
-        ? "そのメールアドレスは登録されていません"
+        ? L("そのメールアドレスは登録されていません")
         : why.includes("TOO_MANY_ATTEMPTS")
-          ? "試行が多すぎます。しばらく待ってからお試しください"
-          : `メールを送れませんでした(${why})`,
+          ? L("試行が多すぎます。しばらく待ってからお試しください")
+          : L("メールを送れませんでした({why})", { why }),
     );
   }
   return true;
 }
 
 export async function signInAsOperator(email, password) {
-  if (!API_KEY) throw new Error("API キーが入っていません");
+  if (!API_KEY) throw new Error(L("API キーが入っていません"));
   const res = await withTimeout(
     fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`,
@@ -295,12 +296,12 @@ export async function signInAsOperator(email, password) {
     throw new Error(
       why.includes("INVALID_LOGIN_CREDENTIALS") ||
         why.includes("INVALID_PASSWORD")
-        ? "メールアドレスかパスワードが違います"
+        ? L("メールアドレスかパスワードが違います")
         : why.includes("EMAIL_NOT_FOUND")
-          ? "そのメールアドレスは登録されていません"
+          ? L("そのメールアドレスは登録されていません")
           : why.includes("TOO_MANY_ATTEMPTS")
-            ? "試行が多すぎます。しばらく待ってからお試しください"
-            : `サインインできませんでした(${why})`,
+            ? L("試行が多すぎます。しばらく待ってからお試しください")
+            : L("サインインできませんでした({why})", { why }),
     );
   }
   save(d.refreshToken, d.localId);
@@ -376,8 +377,8 @@ export async function linkAppleIdentity({
   rawNonce,
   link = true,
 }) {
-  if (!API_KEY) throw new Error("API キーが入っていません");
-  if (!identityToken) throw new Error("Apple のトークンがありません");
+  if (!API_KEY) throw new Error(L("API キーが入っていません"));
+  if (!identityToken) throw new Error(L("Apple のトークンがありません"));
   const cur = await ensureAuth();
   const post = (withCurrent) => {
     const body = {
@@ -415,11 +416,11 @@ export async function linkAppleIdentity({
       (why.includes("FEDERATED_USER_ID_ALREADY_LINKED") ||
         why.includes("EMAIL_EXISTS"))
     ) {
-      const e = new Error("この Apple アカウントは別の口座に紐づいています。");
+      const e = new Error(L("この Apple アカウントは別の口座に紐づいています。"));
       e.code = "ALREADY_LINKED";
       throw e;
     }
-    throw new Error(`Apple の本人確認につなげませんでした(${why})`);
+    throw new Error(L("Apple の本人確認につなげませんでした({why})", { why }));
   }
   // 返ってきた refreshToken を控える。以後の取り直しはこれを使うので、
   // 取り直した合言葉も apple.com のままになる(匿名に戻らない)

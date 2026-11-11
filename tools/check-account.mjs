@@ -148,7 +148,8 @@ console.log("名前を決める画面の文言(2026-10-01 本人の指示)");
       if (!(i in states)) states[i] = typeof init === "function" ? init() : init;
       return [states[i], (v) => (states[i] = typeof v === "function" ? v(states[i]) : v)];
     },
-    profile: { MAX_NAME_LEN, nameError, normalizeName, phrasesOf },
+    // 文の訳(src/i18n)も本物(2026-11-11 英語版。日本語の端末ではキーをそのまま返す)
+    profile: { MAX_NAME_LEN, nameError, normalizeName, phrasesOf, ...(await import("../src/i18n/index.js")) },
   };
   globalThis.__accH = (type, props, ...children) => {
     // 中の部品(NameField)は呼んで組み立てる。偽物(Sparkle など)は名前だけ残す

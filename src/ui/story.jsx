@@ -25,12 +25,16 @@ import { CHRONICLE, STORY_PHASES, storyArc, storyEpisode } from "../game/story-n
 import { ChronicleStyles, StoryArt, StoryReader, ChronicleWorld, StoryPurpose, StoryText, JoinedPhrases } from "./story-chronicle.jsx";
 import { StoryChapterArt } from "./story-chapter-art.jsx";
 import { Phrases } from "./phrases.jsx";
+import { L, isEnglish } from "../i18n/index.js";
+
+/** 句の並び。日本語は句ごと、英語は句の英訳を空白でつないだ1つの文(語の間で折り返せる) */
+const P = (...phrases) => (isEnglish ? phrases.join(" ") : phrases);
 
 /** フェーズの一言 */
 export const PHASE_LABEL = Object.freeze({
-  1: "駒の動きだけ",
-  2: "王の力あり",
-  3: "エリアあり",
+  1: L("駒の動きだけ"),
+  2: L("王の力あり"),
+  3: L("エリアあり"),
 });
 
 export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = null, revealNext = false }) {
@@ -70,16 +74,16 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
         <StoryArt axis="k" phase={Math.min(phase, status.phase)} />
         <div className="chronicle-hero-top">
           <span>
-            <Phrases text="ストーリー · 7つの立場、3つの時代" />
+            <Phrases text={L("ストーリー · 7つの立場、3つの時代")} />
           </span>
-          {onPhaseGuide && <button type="button" className="chronicle-text-button" onClick={onPhaseGuide}>フェーズガイド</button>}
+          {onPhaseGuide && <button type="button" className="chronicle-text-button" onClick={onPhaseGuide}>{L("フェーズガイド")}</button>}
           {onGuide && (
             <button
               type="button"
               className="chronicle-text-button"
               onClick={onGuide}
             >
-              遊び方
+              {L("遊び方")}
             </button>
           )}
         </div>
@@ -92,9 +96,9 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
       </header>
       <div className="chronicle-main">
         <button type="button" className="btn btn-ghost btn-wide chronicle-opening" onClick={() => setReading("prologue")}>
-          旅のはじまり · ニノの物語を読む
+          {L("旅のはじまり · ニノの物語を読む")}
         </button>
-        <nav className="chronicle-phases" aria-label="物語のフェーズ">
+        <nav className="chronicle-phases" aria-label={L("物語のフェーズ")}>
           {[1, 2, 3].map((p) => (
             <button
               type="button"
@@ -106,10 +110,10 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
                 PHASE {p}
                 <span>
                   {p > status.phase
-                    ? "未解放"
+                    ? L("未解放")
                     : p < status.phase
-                      ? "回想"
-                      : "進行中"}
+                      ? L("回想")
+                      : L("進行中")}
                 </span>
               </small>
               <b>
@@ -122,34 +126,33 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
           <h3>{act.label}</h3>
           <p>{act.summary}</p>
           <div className="chronicle-journey">
-            <b>{phase === 1 ? "ニノが旅に出た理由" : "ニノが向き合うもの"}</b>
+            <b>{phase === 1 ? L("ニノが旅に出た理由") : L("ニノが向き合うもの")}</b>
             {/* フェーズ1 はあなたが戦う理由(段落)。2・3 は短い目的なので句で */}
             <p>{phase === 1 ? CHRONICLE.player : <StoryText text={act.purpose} />}</p>
           </div>
           <p className="story-phase">
-            フェーズ {phase}
+            {L("フェーズ {n}", { n: phase })}
             <small>
-              {PHASE_LABEL[phase]}・{stageSize(phase)}×{stageSize(phase)}
+              {L("{label}・{size}×{size}", { label: PHASE_LABEL[phase], size: stageSize(phase) })}
             </small>
           </p>
         </section>
         {!available ? (
           <section className="chronicle-locked">
             <b>
-              <Phrases text="この先の頁は、まだ閉じている。" />
+              <Phrases text={L("この先の頁は、まだ閉じている。")} />
             </b>
             <p>
-              現在のフェーズの7ステージをクリアし、
+              {L("現在のフェーズの7ステージをクリアし、")}
               <br />
-              オンライン対戦で{status.winsNeeded}
-              勝すると、次のフェーズへ進めます。
+              {L("オンライン対戦で{n}勝すると、次のフェーズへ進めます。", { n: status.winsNeeded })}
             </p>
             <button
               type="button"
               className="btn btn-ghost"
               onClick={() => setPhase(status.phase)}
             >
-              進行中の物語へ
+              {L("進行中の物語へ")}
             </button>
           </section>
         ) : (
@@ -161,7 +164,7 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
             )}
             <div
               className="story-progress"
-              aria-label={`${list.filter((s) => s.cleared).length} / ${list.length} ステージクリア`}
+              aria-label={L("{done} / {total} ステージクリア", { done: list.filter((s) => s.cleared).length, total: list.length })}
             >
               <div aria-hidden="true">
                 {list.map((s) => (
@@ -178,10 +181,10 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
                 ))}
               </div>
               <small>
-                {list.filter((s) => s.cleared).length} / {list.length} クリア
+                {L("{done} / {total} クリア", { done: list.filter((s) => s.cleared).length, total: list.length })}
               </small>
             </div>
-            <ol className="story-list" aria-label="7つの物語">
+            <ol className="story-list" aria-label={L("7つの物語")}>
               {list.map((s) => {
                 const arc = storyArc(s.axis),
                   chapter = storyEpisode(s.axis, phase);
@@ -202,6 +205,7 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
                       </span>
                       <span className="story-stage-body">
                         <span className="chronicle-role">
+                          {/* i18n-ignore(本文の役と主題をつなぐ印。本文は日本語のまま) */}
                           <JoinedPhrases head={arc.role} sep="／" tail={arc.theme} />
                         </span>
                         <b>
@@ -211,15 +215,15 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
                         <small>
                           <StoryText text={chapter.hook} />
                         </small>
-                        <span className="sr-only">{s.name}の王</span>
+                        <span className="sr-only">{L("{name}の王", { name: s.name })}</span>
                       </span>
                     </button>
                     <div className="chronicle-chapter-tail">
                       <small>
                         {s.cleared ? (
-                          <JoinedPhrases head="✓ クリア済み" sep="·" tail="後日談を解放" />
+                          <JoinedPhrases head={L("✓ クリア済み")} sep="·" tail={L("後日談を解放")} />
                         ) : (
-                          <JoinedPhrases head="初回クリア" sep="·" tail={s.available ? `チケット ${s.tickets}枚` : "6つのF3を終えると開く"} />
+                          <JoinedPhrases head={L("初回クリア")} sep="·" tail={s.available ? L("チケット {n}枚", { n: s.tickets }) : L("6つのF3を終えると開く")} />
                         )}
                       </small>
                       <button
@@ -228,7 +232,7 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
                         disabled={!s.available}
                         onClick={() => setReading(s.axis)}
                       >
-                        {s.cleared ? "回想を読む" : "物語を読む"}
+                        {s.cleared ? L("回想を読む") : L("物語を読む")}
                       </button>
                     </div>
                   </li>
@@ -240,18 +244,18 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
         <ChronicleWorld phase={Math.min(phase, status.phase)} />
         {titleGoal && (
           <details className="chronicle-world">
-            <summary>対局を重ねて目指す称号</summary>
+            <summary>{L("対局を重ねて目指す称号")}</summary>
             <section className="story-title-goal">
               <TitleFrame id={titleGoal.id} />
               <p>
-                {titleGoal.how}・現在 {profile.wins || 0}勝
+                {L("{how}・現在 {n}勝", { how: titleGoal.how, n: profile.wins || 0 })}
               </p>
-              <small>獲得した称号は、オンラインの名前に添えられます。</small>
+              <small>{L("獲得した称号は、オンラインの名前に添えられます。")}</small>
             </section>
           </details>
         )}
         {!status.last && (
-          <section className="story-promotion" aria-label="昇格">
+          <section className="story-promotion" aria-label={L("昇格")}>
             {promotable ? (
               <button
                 type="button"
@@ -263,7 +267,7 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
                   onPhaseGuide?.();
                 }}
               >
-                フェーズ {status.phase + 1} へ進む
+                {L("フェーズ {n} へ進む", { n: status.phase + 1 })}
                 <small>
                   {STORY_PHASES[status.phase + 1].title} ·{" "}
                   {PHASE_LABEL[status.phase + 1]}
@@ -273,38 +277,38 @@ export function StoryScreen({ onBack, onStart, onGuide = null, onPhaseGuide = nu
               // 下の3つの案内は句の塊で(2026-10-06 見直し。文は変えない)。320・375 幅で
               // 「全部のク/リアと、」「オンラ/イン」「5/勝。」「ステ/ージは」「「対戦/する」」と語の途中で割れていた
               <p className="hint">
-                <span className="text-phrase">昇格の条件:</span>{" "}
+                <span className="text-phrase">{L("昇格の条件:")}</span>{" "}
                 <Phrases
-                  text={[
-                    `${STORY_AXES.length}ステージ全部の`,
-                    "クリアと、",
-                    "このフェーズで",
-                    `オンライン対戦に${status.winsNeeded}勝。`,
-                  ]}
+                  text={P(
+                    L("{n}ステージ全部の", { n: STORY_AXES.length }),
+                    L("クリアと、"),
+                    L("このフェーズで"),
+                    L("オンライン対戦に{n}勝。", { n: status.winsNeeded }),
+                  )}
                 />
                 {status.axesLeft.length > 0 && (
-                  <Phrases text={`ステージはあと${status.axesLeft.length}。`} />
+                  <Phrases text={L("ステージはあと{n}。", { n: status.axesLeft.length })} />
                 )}
-                {status.winsLeft > 0 && <Phrases text={`勝利はあと${status.winsLeft}。`} />}
+                {status.winsLeft > 0 && <Phrases text={L("勝利はあと{n}。", { n: status.winsLeft })} />}
               </p>
             )}
           </section>
         )}
         {status.last && (
           <p className="hint">
-            <Phrases text={["最後のフェーズです。", "ステージは", "何度でも遊べます。"]} />
+            <Phrases text={P(L("最後のフェーズです。"), L("ステージは"), L("何度でも遊べます。"))} />
           </p>
         )}
         {!gate.ok && (
           <p className="hint story-gate">
-            <Phrases text={["ランダムマッチまで、", `あと${gate.remaining}ステージ。`]} />
+            <Phrases text={P(L("ランダムマッチまで、"), L("あと{n}ステージ。", { n: gate.remaining }))} />
             <span>
-              <Phrases text={["フレンドとは、", "ホームの「対戦する」から", "今すぐ遊べます。"]} />
+              <Phrases text={P(L("フレンドとは、"), L("ホームの「対戦する」から"), L("今すぐ遊べます。"))} />
             </span>
           </p>
         )}
         <button className="btn btn-ghost btn-home" onClick={onBack}>
-          <ArrowLeft size={16} /> ホームに戻る
+          <ArrowLeft size={16} /> {L("ホームに戻る")}
         </button>
       </div>
       {reading && (
@@ -368,15 +372,15 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
     <>
     <ChronicleStyles />
     <div className="modal-overlay" style={reading ? { display: "none" } : undefined}>
-      <div className="modal-panel story-intro chronicle-rules" role="dialog" aria-modal="true" aria-label="相手の王">
+      <div className="modal-panel story-intro chronicle-rules" role="dialog" aria-modal="true" aria-label={L("相手の王")}>
         <div className="story-intro-head">
           <span className="skins-eyebrow">
-            フェーズ {phase}・{PHASE_LABEL[phase]}・{stageSize(phase)}×{stageSize(phase)}
+            {L("フェーズ {n}・{label}・{size}×{size}", { n: phase, label: PHASE_LABEL[phase], size: stageSize(phase) })}
           </span>
           <h3>
             <StoryText text={storyEpisode(axis, phase)?.title} />
           </h3>
-          <p className="chronicle-kicker">対局説明 · {intro.title}</p>
+          <p className="chronicle-kicker">{L("対局説明 · {title}", { title: intro.title })}</p>
           <p className="story-intro-lead">{intro.lead}</p>
         </div>
         {/* 王の力の欄は題のすぐ下(図まで最初の画面に入れる。design-v2 の置き場所の決まり) */}
@@ -423,7 +427,7 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
             <div><b>{rival.quoteSpeaker || rival.name}</b><p className="story-rival-quote">{rival.quote}</p>{rival.aim && <small><Phrases text={rival.aim} /></small>}</div>
           </div>
         )}
-        {lesson && <p className="story-lesson">手札{lesson.handSize}枚から5枚を並べる。<span>使う札：{lesson.pool.join("・")}／時間制限なし</span></p>}
+        {lesson && <p className="story-lesson">{L("手札{n}枚から5枚を並べる。", { n: lesson.handSize })}<span>{L("使う札：{cards}／時間制限なし", { cards: lesson.pool.join(L("・")) })}</span></p>}
         {intro.itemsTitle && !intro.phase3 && <h4 className="story-intro-items-title">{intro.itemsTitle}</h4>}
         {phase <= 2 ? (
           // フェーズ1・2 は相手の王の動き方を盤の図で(フェーズ2 の CPU の王は力なし。2026-10-25)。図はルール(getLegalMoves)から描く MoveDiagram、文は MOVE_TEXT のまま
@@ -475,10 +479,10 @@ export function StoryIntro({ axis, phase, onStart, onBack }) {
         </p>}
         <div className="setup-actions">
           <button type="button" className="btn btn-ghost" onClick={onBack}>
-            戻る
+            {L("戻る")}
           </button>
           <button type="button" className="btn btn-primary" onClick={onStart} ref={startRef}>
-            はじめる
+            {L("はじめる")}
           </button>
         </div>
       </div>
@@ -514,19 +518,19 @@ export function StoryInterruptConfirm({ onCancel, onInterrupt }) {
         className="modal-panel tutorial-offer story-interrupt"
         role="dialog"
         aria-modal="true"
-        aria-label="ステージを中断する"
+        aria-label={L("ステージを中断する")}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3>ステージを中断しますか?</h3>
+        <h3>{L("ステージを中断しますか?")}</h3>
         <p className="hint">
-          クリアにも負けにもなりません。ストーリーの一覧に戻り、このステージはあとで最初から遊べます。
+          {L("クリアにも負けにもなりません。ストーリーの一覧に戻り、このステージはあとで最初から遊べます。")}
         </p>
         <div className="tutorial-skip-options">
           <button type="button" className="btn btn-primary btn-wide" onClick={onCancel} ref={keepRef}>
-            対局を続ける
+            {L("対局を続ける")}
           </button>
           <button type="button" className="btn btn-ghost btn-wide" onClick={onInterrupt}>
-            中断してストーリーへ
+            {L("中断してストーリーへ")}
           </button>
         </div>
       </div>
@@ -555,9 +559,9 @@ export function StoryInterruptMenu({ onInterrupt }) {
         type="button"
         className="icon-btn plain tutorial-skip-top story-interrupt-top"
         onClick={() => setOpen(true)}
-        aria-label="ステージを中断する"
+        aria-label={L("ステージを中断する")}
       >
-        中断
+        {L("中断")}
       </button>
       {confirm && (typeof document === "undefined" ? confirm : createPortal(confirm, portalRoot()))}
     </>
@@ -583,8 +587,8 @@ export function StoryCoachNote({ lines }) {
 export function storyTileNote(profile) {
   const status = promotionStatus(profile);
   const next = nextStage(profile);
-  if (next) return `フェーズ ${status.phase}・次は ${next.name}の王(${ranksLabel(next.ranks)})`;
-  if (canPromote(profile)) return `フェーズ ${status.phase + 1} へ進めます`;
-  if (status.last) return "全ステージクリア";
-  return `昇格まで オンラインの勝利あと ${status.winsLeft}`;
+  if (next) return L("フェーズ {n}・次は {name}の王({ranks})", { n: status.phase, name: next.name, ranks: ranksLabel(next.ranks) });
+  if (canPromote(profile)) return L("フェーズ {n} へ進めます", { n: status.phase + 1 });
+  if (status.last) return L("全ステージクリア");
+  return L("昇格まで オンラインの勝利あと {n}", { n: status.winsLeft });
 }

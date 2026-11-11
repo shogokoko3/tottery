@@ -1,3 +1,4 @@
+import { L } from "../i18n/index.js";
 // Presentation rewards only. Never attach a formation or its king location to a room.
 export const HONOR_VERSION =
   typeof __HONOR_VERSION__ === "undefined" ? "dev" : __HONOR_VERSION__;
@@ -9,19 +10,19 @@ export const honorRoot = `honors/${HONOR_VERSION}`;
  */
 const IMG = typeof __HONOR_IMG_EXT__ === "undefined" ? ".png" : __HONOR_IMG_EXT__;
 export const FORMATION_EMBLEMS = [
-  ["earth", "heir-hunt", "軌跡の追跡者", "土"],
-  ["sea", "kamikaze", "荒波の航海士", "海"],
-  ["forest", "elimination", "静寂な狩人", "森"],
-  ["ice", "fortress", "堅牢な要塞", "氷"],
-  ["sky", "twin-wings", "双翼の将", "空"],
-  ["heaven", "royal-road", "覇道・天界", "宮殿"],
-  ["hell", "royal-road", "覇道・魔界", "宮殿"],
+  ["earth", "heir-hunt", L("軌跡の追跡者"), L("土")],
+  ["sea", "kamikaze", L("荒波の航海士"), L("海")],
+  ["forest", "elimination", L("静寂な狩人"), L("森")],
+  ["ice", "fortress", L("堅牢な要塞"), L("氷")],
+  ["sky", "twin-wings", L("双翼の将"), L("空")],
+  ["heaven", "royal-road", L("覇道・天界"), L("宮殿")],
+  ["hell", "royal-road", L("覇道・魔界"), L("宮殿")],
 ].map(([theme, titleId, label, area]) => ({
   id: `formation-${theme}`,
   titleId,
   label,
   image: `${honorRoot}/icons/${theme}${IMG}`,
-  how: `${area}の布陣称号を獲得`,
+  how: L("{area}の布陣称号を獲得", { area }),
 }));
 
 /** Normalize only the owner's visible army into the award's three rows. */

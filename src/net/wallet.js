@@ -15,6 +15,18 @@ import { updateCollection, getCollection } from "../skins/store.js";
 import { byId } from "../skins/catalog.js";
 import { grantSkin } from "../skins/collection.js";
 import { WIN_CHANCE_KEY, WIN_CHANCE_MAX_PER_DAY, validWinChanceReward, rewardEventId as winChanceEventId } from "../game/win-chance.js";
+import { Lk, Lx } from "../i18n/index.js";
+
+/**
+ * 画面の言語の Error を作る。元の日本語(サーバーの返事・Lk の文)は e.ja に残す。
+ * 断られた理由を文で見分けるところ(drainPending・ガチャ)は e.ja を見る
+ */
+function walletError(ja) {
+  const e = new Error(Lx(ja));
+  e.ja = ja;
+  return e;
+}
+const jaOf = (e) => (e && (e.ja || e.message)) || "";
 
 /** チケットをサーバーの財布で持つか。false なら今まで通り端末だけ */
 export const WALLET_SERVER = true;
@@ -23,9 +35,9 @@ const MIGRATED_KEY = "tottery.wallet.migrated.v1";
 
 async function walletRequest(op, body = {}, expectedUid = null) {
   const auth = await ensureAuth();
-  if (!auth) throw new Error("通信を確認して、もう一度お試しください。");
+  if (!auth) throw walletError(Lk("通信を確認して、もう一度お試しください。"));
   if (expectedUid && auth.uid !== expectedUid)
-    throw new Error("報酬を獲得したアカウントで受け取ってください。");
+    throw walletError(Lk("報酬を獲得したアカウントで受け取ってください。"));
   let res;
   try {
     res = await fetch(`${seasonApiBase()}/api/wallet/${op}`, {
@@ -38,15 +50,15 @@ async function walletRequest(op, body = {}, expectedUid = null) {
       signal: AbortSignal.timeout(20000),
     });
   } catch {
-    throw new Error("通信を確認して、もう一度お試しください。");
+    throw walletError(Lk("通信を確認して、もう一度お試しください。"));
   }
   let data;
   try {
     data = await res.json();
   } catch {
-    throw new Error("財布を読み込めませんでした。");
+    throw walletError(Lk("財布を読み込めませんでした。"));
   }
-  if (!res.ok) throw new Error(data.error || "財布を読み込めませんでした。");
+  if (!res.ok) throw walletError(data.error || Lk("財布を読み込めませんでした。"));
   return data;
 }
 
@@ -102,7 +114,7 @@ function requestMissionAndMirror(mission, uid) {
     const data = await walletRequest("mission-reward", { mission }, uid);
     if (data.uid !== uid || !Number.isSafeInteger(data.tickets) || !Number.isSafeInteger(data.gemsFree) ||
         data.missionReceipt?.id !== mission || data.missionReceipt.received !== true)
-      throw new Error("受け取りを確認できませんでした。もう一度お試しください。");
+      throw walletError(Lk("受け取りを確認できませんでした。もう一度お試しください。"));
     return mirror(data);
   });
 }
@@ -149,13 +161,13 @@ async function drainPending() {
       else await requestAndMirror("earn", { id: ev.id, n: ev.n });
       drop(ev.id);
     } catch (e) {
-      if (/獲得したアカウント/.test(e.message)) continue;
+      if (/獲得したアカウント/.test(jaOf(e))) continue;
       // 圏外なら残りも保存したまま終了し、件数分の通信タイムアウトを待たない。
-      if (/通信を確認|財布を読み込/.test(e.message)) break;
+      if (/通信を確認|財布を読み込/.test(jaOf(e))) break;
       // 上限・ID衝突・通信失敗は、獲得記録を捨てる理由にしない。
       // その1件を保留し、独立したログイン・勝利などの受取は続ける。
-      if (ev.mission || ev.login || ev.winChance || /^(login|mission):/.test(ev.id) || /これ以上|他の人|上限/.test(e.message)) continue;
-      if (/正しくありません|持っていません/.test(e.message)) drop(ev.id);
+      if (ev.mission || ev.login || ev.winChance || /^(login|mission):/.test(ev.id) || /これ以上|他の人|上限/.test(jaOf(e))) continue;
+      if (/正しくありません|持っていません/.test(jaOf(e))) drop(ev.id);
       else continue;
     }
   }
@@ -196,13 +208,13 @@ async function recoverWinChanceTickets() {
 /** ミッションは枚数を送らず、カタログ上のIDだけで受け取る。確定前のローカル加算はしない。 */
 export async function claimMissionReward(mission) {
   const auth = await ensureAuth();
-  if (!auth) throw new Error("通信を確認して、もう一度お試しください。");
+  if (!auth) throw walletError(Lk("通信を確認して、もう一度お試しください。"));
   const id = `mission:${auth.uid}:${mission}`, list = readPending();
   if (!list.some(x => x.id === id))
     localStorage.setItem(PENDING_KEY, JSON.stringify([...list, { id, uid: auth.uid, mission, at: Date.now() }]));
   const data = await requestMissionAndMirror(mission, auth.uid);
   if (!data.missionReceipt?.received || data.missionReceipt.id !== mission)
-    throw new Error("受け取りを確認できませんでした。もう一度お試しください。");
+    throw walletError(Lk("受け取りを確認できませんでした。もう一度お試しください。"));
   writePending(readPending().filter(x => x.id !== id));
   return data;
 }
@@ -214,13 +226,13 @@ export async function getLoginBonus() {
 }
 export async function claimLoginBonus(day, uid) {
   if (typeof uid !== "string" || !uid || typeof day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(day))
-    throw new Error("ログイン報酬を確認してから、もう一度お試しください。");
+    throw walletError(Lk("ログイン報酬を確認してから、もう一度お試しください。"));
   const id = `login:${uid}:${day}`, list = readPending();
   if (!list.some(x => x.id === id))
     localStorage.setItem(PENDING_KEY, JSON.stringify([...list, { id, uid, login: { day }, at: Date.now() }]));
   // 他の報酬の保留に妨げられず送る。応答の消失・端末への保存失敗なら次回再送する。
   const data = await requestAndMirror("login-reward", { day }, uid);
-  if (!data.login?.received) throw new Error("受け取りを確認できませんでした。もう一度お試しください。");
+  if (!data.login?.received) throw walletError(Lk("受け取りを確認できませんでした。もう一度お試しください。"));
   writePending(readPending().filter(x => x.id !== id));
   return data;
 }
@@ -306,11 +318,11 @@ export async function pullFromServer(id, n, series = "heroes") {
   return orderedWallet(async () => {
   if (series !== "heroes") {
     const capabilities = await walletRequest("summary");
-    if (!capabilities.gachaSeries?.includes(series)) throw new Error("このシリーズの召喚は準備中です。サーバー更新後にご利用ください。");
+    if (!capabilities.gachaSeries?.includes(series)) throw walletError(Lk("このシリーズの召喚は準備中です。サーバー更新後にご利用ください。"));
   }
   const data = await walletRequest("pull", { id, n, series });
   if (!(Array.isArray(data?.skins) && data.skins.length === n && data.skins.every(id => byId(id)?.series === series && ["R", "SR", "SSR"].includes(byId(id)?.rarity))))
-    throw new Error("抽選結果を読み込めませんでした。同じ召喚をもう一度確認してください。");
+    throw walletError(Lk("抽選結果を読み込めませんでした。同じ召喚をもう一度確認してください。"));
   await mirror(data);
   return { skins: data.skins, freeze: data.freeze || null, receipt: id };
   });

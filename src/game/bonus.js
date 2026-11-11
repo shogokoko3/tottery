@@ -10,6 +10,7 @@
  */
 import { RANKS } from "./constants.js";
 import { territoryRows } from "./board.js";
+import { L } from "../i18n/index.js";
 
 /** A=1 … K=13 */
 function value(rank) {
@@ -120,10 +121,10 @@ export function isFortress(pieces, size, player) {
 export const FORMATIONS = Object.freeze([
   {
     id: "twin-wings",
-    name: "双翼の陣",
-    title: "双翼の将",
+    name: L("双翼の陣"),
+    title: L("双翼の将"),
     area: "sky",
-    flavor: "空のエリアに、10を2枚そろえて王を隠し、J・Qの4枚で取り返しを利かせた布陣。",
+    flavor: L("空のエリアに、10を2枚そろえて王を隠し、J・Qの4枚で取り返しを利かせた布陣。"),
     counts: { 10: 2, J: 2, Q: 2, 4: 1, 2: 1, 8: 1 },
     width: 5,
     cells: [
@@ -141,10 +142,10 @@ export const FORMATIONS = Object.freeze([
   {
     // 土「継承の狩り」: 2を4枚(王の射程9、倒れても継ぐ)。王は中列で前線に立つ
     id: "heir-hunt",
-    name: "継承の狩り",
-    title: "軌跡の追跡者",
+    name: L("継承の狩り"),
+    title: L("軌跡の追跡者"),
     area: "earth",
-    flavor: "土のエリアに、2を4枚そろえて王を中列に据えた布陣。王ごと前に出て、正体の分からない駒を狩る。",
+    flavor: L("土のエリアに、2を4枚そろえて王を中列に据えた布陣。王ごと前に出て、正体の分からない駒を狩る。"),
     counts: { 2: 4, J: 2, Q: 2, 10: 1 },
     width: 5,
     cells: [
@@ -162,10 +163,10 @@ export const FORMATIONS = Object.freeze([
   {
     // 森「消去法の詰め」: 隅の3×3。4回の発動で王以外を全部見抜き、残った1体を10×2とJ・Qで詰める
     id: "elimination",
-    name: "消去法の詰め",
-    title: "静寂な狩人",
+    name: L("消去法の詰め"),
+    title: L("静寂な狩人"),
     area: "forest",
-    flavor: "森のエリアに、隅の3×3で6の王を固めた布陣。王以外を全部見抜いて残った1体を、10とJ・Qで詰める。",
+    flavor: L("森のエリアに、隅の3×3で6の王を固めた布陣。王以外を全部見抜いて残った1体を、10とJ・Qで詰める。"),
     counts: { 6: 1, J: 2, Q: 2, 10: 2, 4: 1, 2: 1 },
     width: 3,
     edge: true,
@@ -184,10 +185,10 @@ export const FORMATIONS = Object.freeze([
   {
     // 海「道連れの特攻」: 4を4枚(仲間の射程10、取られても道連れ)。王は後列でJ・Qと4が守り、仲間の4が縦に並ぶ
     id: "kamikaze",
-    name: "道連れの特攻",
-    title: "荒波の航海士",
+    name: L("道連れの特攻"),
+    title: L("荒波の航海士"),
     area: "sea",
-    flavor: "海のエリアに、4を4枚そろえて王を後列に守った布陣。仲間の4が道連れ覚悟で突っ込み、海で崩した守りを食い破る。",
+    flavor: L("海のエリアに、4を4枚そろえて王を後列に守った布陣。仲間の4が道連れ覚悟で突っ込み、海で崩した守りを食い破る。"),
     counts: { 4: 4, J: 2, Q: 2, 10: 1 },
     width: 5,
     cells: [
@@ -205,10 +206,10 @@ export const FORMATIONS = Object.freeze([
   {
     // 宮殿「昇格の砦」: K王＋J・Q＋10×3＋9＋4・2 の通常配置。隅の要塞は6王に一列刈られるので組まない
     id: "royal-road",
-    name: "昇格の砦",
-    title: "覇道",
+    name: L("昇格の砦"),
+    title: L("覇道"),
     area: "palace",
-    flavor: "宮殿に、10を3枚と9を昇格の種に据えた布陣。毎ターンの昇格で仲間を育て、倒れたJ・Qは予備札で呼び戻す。",
+    flavor: L("宮殿に、10を3枚と9を昇格の種に据えた布陣。毎ターンの昇格で仲間を育て、倒れたJ・Qは予備札で呼び戻す。"),
     counts: { K: 1, J: 1, Q: 1, 10: 3, 9: 1, 4: 1, 2: 1 },
     width: 7,
     cells: [

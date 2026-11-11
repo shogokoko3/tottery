@@ -22,7 +22,7 @@ assert.equal((skins.match(/reduce \|\| collection\.summonMotion === "skip"/g) ||
 assert.match(skins, /className="skins-summon-motion toggle-hit"/, "ガチャ画面に召喚演出の設定を残す");
 assert.match(skins, /summonMotion = e\.target\.checked \? "skip" : "full"/);
 assert.doesNotMatch(skins, /演出の長さ|ガチャ省略/, "スキン画面から「演出の長さ」を外す");
-assert.match(overlays, /<p className="settings-head">対局中の演出<\/p>\s*<BattleMotionSettings \/>/, "設定画面に対局中の演出");
+assert.match(overlays, /<p className="settings-head">\{L\("対局中の演出"\)\}<\/p>\s*<BattleMotionSettings \/>/, "設定画面に対局中の演出");
 assert.match(overlays, /updateCollection\(\(s\) => \(\{ \.\.\.s, motion \}\)\)/);
 assert.match(overlays, /const motion = on \? "off" : "full";/, "対局中の演出はオン/オフだけ");
 assert.doesNotMatch(overlays, /短縮/, "設定画面に「短縮」を出さない");

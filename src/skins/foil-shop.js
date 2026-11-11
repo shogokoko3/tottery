@@ -13,69 +13,70 @@
  *  - サーバーとアプリの両方がこのファイルを読む(値段はサーバーがここから決める。端末の言い値は使わない)
  */
 import { ALL_SKINS, SERIES, baseSkinId, byId, foilId, poolForSeries } from "./catalog.js";
+import { L } from "../i18n/index.js";
 
 export const FOIL_PRODUCTS = Object.freeze(
   [
     {
       id: "foil-2-3",
       series: "heroes",
-      name: "2・3 のフォイルセット",
+      name: L("2・3 のフォイルセット"),
       skins: ["zombie-male", "zombie-female"],
       price: 1500,
     },
     {
       id: "foil-4-5",
       series: "heroes",
-      name: "4・5 のフォイルセット",
+      name: L("4・5 のフォイルセット"),
       skins: ["pirate-male", "pirate-female"],
       price: 1500,
     },
     {
       id: "foil-6-7",
       series: "heroes",
-      name: "6・7 のフォイルセット",
+      name: L("6・7 のフォイルセット"),
       skins: ["elf-male", "elf-female"],
       price: 3000,
     },
     {
       id: "foil-8-9",
       series: "heroes",
-      name: "8・9 のフォイルセット",
+      name: L("8・9 のフォイルセット"),
       skins: ["viking-male", "viking-female"],
       price: 3000,
     },
     {
       id: "foil-10",
       series: "heroes",
-      name: "10 のフォイル",
+      name: L("10 のフォイル"),
       skins: ["dragon-knight"],
       price: 5000,
     },
     {
       id: "foil-jq-angel",
       series: "heroes",
-      name: "J・Q のフォイルセット(天使)",
+      name: L("J・Q のフォイルセット(天使)"),
       skins: ["angel-j", "angel-q"],
       price: 5000,
     },
     {
       id: "foil-jq-demon",
       series: "heroes",
-      name: "J・Q のフォイルセット(悪魔)",
+      name: L("J・Q のフォイルセット(悪魔)"),
       skins: ["demon-j", "demon-q"],
       price: 5000,
     },
     {
       id: "foil-k-angel",
       series: "heroes",
-      name: "K のフォイル(天使)",
+      name: L("K のフォイル(天使)"),
       skins: ["angel-k"],
       price: 5000,
     },
     {
       id: "foil-k-demon",
       series: "heroes",
-      name: "K のフォイル(悪魔)",
+      name: L("K のフォイル(悪魔)"),
       skins: ["demon-k"],
       price: 5000,
     },
@@ -85,35 +86,35 @@ export const FOIL_PRODUCTS = Object.freeze(
     {
       id: "foil-alice-2-3",
       series: "alice",
-      name: "2・3 のフォイルセット",
+      name: L("2・3 のフォイルセット"),
       skins: ["alice-2-dodo", "alice-3-bill"],
       price: 1500,
     },
     {
       id: "foil-alice-4-5",
       series: "alice",
-      name: "4・5 のフォイルセット",
+      name: L("4・5 のフォイルセット"),
       skins: ["alice-6-gryphon", "alice-7-mock-turtle"],
       price: 1500,
     },
     {
       id: "foil-alice-6-7",
       series: "alice",
-      name: "6・7 のフォイルセット",
+      name: L("6・7 のフォイルセット"),
       skins: ["alice-8-white-rabbit", "alice-9-caterpillar"],
       price: 3000,
     },
     {
       id: "foil-alice-8-9",
       series: "alice",
-      name: "8・9 のフォイルセット",
+      name: L("8・9 のフォイルセット"),
       skins: ["alice-4-hatter", "alice-5-march-hare"],
       price: 3000,
     },
     {
       id: "foil-alice-10",
       series: "alice",
-      name: "10 のフォイル",
+      name: L("10 のフォイル"),
       skins: ["alice-10-cheshire-cat"],
       price: 5000,
     },
@@ -121,21 +122,21 @@ export const FOIL_PRODUCTS = Object.freeze(
     {
       id: "foil-alice-jk",
       series: "alice",
-      name: "J・K のフォイルセット",
+      name: L("J・K のフォイルセット"),
       skins: ["alice-J-knave", "alice-K-king"],
       price: 5000,
     },
     {
       id: "foil-alice-q",
       series: "alice",
-      name: "Q のフォイル",
+      name: L("Q のフォイル"),
       skins: ["alice-Q-queen"],
       price: 5000,
     },
     // 全カードをそろえた人だけ。有償購入済みの札はサーバーに保存して復元する。
     {
       id: "foil-a",
-      name: "A のフォイル",
+      name: L("A のフォイル"),
       skins: ["genie-magician"],
       price: 2000,
       secret: true,
@@ -143,7 +144,7 @@ export const FOIL_PRODUCTS = Object.freeze(
     },
     {
       id: "foil-alice-a",
-      name: "アリスのフォイル",
+      name: L("アリスのフォイル"),
       skins: ["alice-A-alice"],
       price: 2000,
       secret: true,
@@ -187,12 +188,12 @@ export function openFoilSeries(collection, now = Date.now()) {
 export function foilWindowLabel(leftMs) {
   if (!(leftMs > 0)) return "";
   const mins = Math.ceil(leftMs / 60000);
-  if (mins < 60) return `あと${mins}分`;
+  if (mins < 60) return L("あと{n}分", { n: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `あと${hours}時間`;
+  if (hours < 24) return L("あと{n}時間", { n: hours });
   const days = Math.floor(hours / 24);
   const rest = hours % 24;
-  return rest ? `あと${days}日と${rest}時間` : `あと${days}日`;
+  return rest ? L("あと{d}日と{h}時間", { d: days, h: rest }) : L("あと{n}日", { n: days });
 }
 
 /**

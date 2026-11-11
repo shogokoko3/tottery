@@ -67,13 +67,16 @@ const stub = (name) => {
 
 globalThis.__MOVE_TEXT = MOVE_TEXT;
 // data: の中からは相対の取り込みが解けないので、外から渡す
+globalThis.__i18n = await import("../src/i18n/index.js");
 const src = read("src/ui/primer.jsx")
   .replace(/import \{[^}]*\} from "react";/, "const { useEffect, useRef, useState } = globalThis.__react;")
   // キーの宛先の判定は別の小さな部品。ここでは「自分宛て」で固定する
   .replace(/import \{[^}]*\} from "\.\/key-target\.js";/, "const typing = () => false;")
   .replace(/import \{[^}]*\} from "\.\.\/game\/constants\.js";/, "const MOVE_TEXT = globalThis.__MOVE_TEXT;")
   .replace(/import \{[^}]*\} from "\.\/guides\.jsx";/, "const MoveDiagram = globalThis.__stub('MoveDiagram');")
-  .replace(/import \{[^}]*\} from "\.\/cards\.jsx";/, "const CardFace = globalThis.__stub('CardFace'), Piece = globalThis.__stub('Piece');");
+  .replace(/import \{[^}]*\} from "\.\/cards\.jsx";/, "const CardFace = globalThis.__stub('CardFace'), Piece = globalThis.__stub('Piece');")
+  // 英語版の取り込み(2026-11-11)。data: の中からは相対で解けないので、外から渡す
+  .replace(/import \{([^}]*)\} from "\.\.\/i18n\/index\.js";/, (m, names) => `const {${names}} = globalThis.__i18n;`)
 globalThis.__stub = stub;
 const js = transformSync(src, {
   loader: "jsx",
@@ -155,7 +158,7 @@ is("「名乗らない」の言い回しを使わない", PRIMER_PAGES.some((p) 
 is("勝ち方を言う(相手の王を取れば勝ち)", PRIMER_PAGES.find((p) => p.key === "win").lines.map(primerLineText), ["相手の王を取れば、勝ち。"]);
 {
   const { stageIntro } = await import("../src/game/story.js");
-  is("勝ち方の言い方は、語り2枚目の本文・ステージ前の説明と同じ「取れば」", [/key: "read",[\s\S]*?note: "相手の王を取れば、あなたの勝ち。"/.test(read("src/ui/prologue.jsx")), stageIntro("23", 1).note[0]], [true, "相手の王を取れば、勝ち。"]);
+  is("勝ち方の言い方は、語り2枚目の本文・ステージ前の説明と同じ「取れば」", [/key: "read",[\s\S]*?note: (?:L\()?"相手の王を取れば、あなたの勝ち。"/.test(read("src/ui/prologue.jsx")), stageIntro("23", 1).note[0]], [true, "相手の王を取れば、勝ち。"]);
 }
 is("駒の動きはここでは見せない(ステージの前に盤の図で見せる)", PRIMER_PAGES.some((p) => p.rank), false);
 is("王の力には触れない(フェーズ1 には無い)", PRIMER_PAGES.some((p) => /王の力|力がつき/.test(p.lines.map(primerLineText).join(""))), false);
@@ -321,7 +324,7 @@ console.log("\n配線");
   const guides = read("src/ui/guides.jsx");
   is("早見表からも読み返せる", /tab === "primer"/.test(guides), true);
   is("早見表に「はじめに」がある", /はじめに/.test(guides), true);
-  is("早見表の手引きも閉じるだけ", guides.includes('<Primer doneLabel="とじる" onDone={onClose} onSkip={onClose} skipLabel="とじる"'), true);
+  is("早見表の手引きも閉じるだけ", /<Primer doneLabel=(?:"とじる"|\{L\("とじる"\)\}) onDone=\{onClose\} onSkip=\{onClose\} skipLabel=(?:"とじる"|\{L\("とじる"\)\})/.test(guides), true);
   const css = read("src/styles.css");
   is("見た目が用意されている", /\.primer\b/.test(css), true);
 }

@@ -9,8 +9,9 @@ import { AREA_INFO, areaForSkin } from "../game/areas.js";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { GemIcon } from "./gem.jsx";
 import { SkinModal } from "./skin-modal.jsx";
+import { L, fmtNumber } from "../i18n/index.js";
 
-const yen = (n) => n.toLocaleString("ja-JP");
+const yen = (n) => fmtNumber(n);
 const seriesNameOf = (series) => SERIES.find((s) => s.id === series)?.name || "";
 
 /**
@@ -49,11 +50,17 @@ export function FoilOfferPicker({
   // 買える商品。全部そろえた done の商品は、ショップ(showOwned)で「獲得済み」と見せるだけ(2026-10-15 本人の指示)
   const buyable = offers.filter((o) => !o.done);
   if (!offers.length)
-    return <p className="skins-note">いま買えるフォイルはありません。</p>;
+    return <p className="skins-note">{L("いま買えるフォイルはありません。")}</p>;
   // フォイルは有償ジェムだけ。引いた直後は残高が無いことが多いので、
   // **商品を選ぶ前から**ジェムを買う道を出す(本人の指示 2026-09-17)。見るだけ(locked)のときは出さない
   const cheapest = buyable.length ? Math.min(...buyable.map((o) => o.price)) : 0;
   const short = !locked && buyable.length > 0 && gemsPaid < cheapest;
+  // 足りない額だけ太字。文を額の前後で切る
+  const [shortPre, shortPost] = (
+    onShop
+      ? L("有償ジェムが {n} 足りません。買うと、そのまま続けられます。")
+      : L("有償ジェムが {n} 足りません。有償ジェムは iPhone・iPad のアプリで買えます。")
+  ).split("{n}");
   // 札の絵。showOwned のときは持っている札も薄く「獲得済み」の印つきで並べる
   const arts = (o) => (
     <span className="foil-offer-arts">
@@ -69,21 +76,28 @@ export function FoilOfferPicker({
               animated={false}
               className="foil-offer-art"
             />
-            {got && <small>獲得済み</small>}
+            {got && <small>{L("獲得済み")}</small>}
           </span>
         );
       })}
     </span>
   );
+  // 確かめの文。値段だけ太字にするので、文を値段の前後で切る(英語では語順が違う)
+  const [confirmPre, confirmPost] = picked
+    ? L("「{name}」{series}{rest}を 有償ジェム {price} で買いますか？", {
+        name: picked.product.name,
+        series: picked.product.series ? L("（{series}）", { series: seriesNameOf(picked.product.series) }) : "",
+        rest: picked.partial ? L("の残り{n}枚", { n: picked.skins.length }) : "",
+      }).split("{price}")
+    : ["", ""];
   return (
     <>
       {picked ? (
         <div className="foil-offer-confirm">
           <p>
-            「{picked.product.name}」
-            {picked.product.series ? `（${seriesNameOf(picked.product.series)}）` : ""}
-            {picked.partial ? `の残り${picked.skins.length}枚` : ""}を
-            有償ジェム <b>{yen(picked.price)}</b> で買いますか？
+            {confirmPre}
+            <b>{yen(picked.price)}</b>
+            {confirmPost}
           </p>
           <div className="foil-offer-arts">
             {picked.skins.map((b) => {
@@ -106,7 +120,7 @@ export function FoilOfferPicker({
               disabled={working}
               onClick={() => setPicked(null)}
             >
-              やめる
+              {L("やめる")}
             </button>
             <button
               className="btn btn-primary"
@@ -116,7 +130,7 @@ export function FoilOfferPicker({
                 if (ok) setPicked(null);
               }}
             >
-              買う
+              {L("買う")}
             </button>
           </div>
           {gemsPaid < picked.price && onShop && (
@@ -125,23 +139,22 @@ export function FoilOfferPicker({
               disabled={working}
               onClick={onShop}
             >
-              有償ジェムが足りません · ジェムを買う
+              {L("有償ジェムが足りません · ジェムを買う")}
             </button>
           )}
         </div>
       ) : (
         <>
           {showOwned && !buyable.length && (
-            <p className="skins-note">このシリーズのフォイルはすべて獲得済みです。</p>
+            <p className="skins-note">{L("このシリーズのフォイルはすべて獲得済みです。")}</p>
           )}
           {!locked && buyable.length > 0 && (short || onShop) && (
             <div className="foil-offer-buy">
               {short && (
                 <p className="skins-note">
-                  有償ジェムが <b>{yen(cheapest - gemsPaid)}</b> 足りません
-                  {onShop
-                    ? "。買うと、そのまま続けられます。"
-                    : "。有償ジェムは iPhone・iPad のアプリで買えます。"}
+                  {shortPre}
+                  <b>{yen(cheapest - gemsPaid)}</b>
+                  {shortPost}
                 </p>
               )}
               {onShop && (
@@ -150,7 +163,7 @@ export function FoilOfferPicker({
                   disabled={working}
                   onClick={onShop}
                 >
-                  <GemIcon size={18} /> ジェムを買う
+                  <GemIcon size={18} /> {L("ジェムを買う")}
                 </button>
               )}
             </div>
@@ -162,7 +175,7 @@ export function FoilOfferPicker({
               <div
                 key={o.product.id}
                 className="foil-offer is-owned"
-                aria-label={`${o.product.name} 獲得済み`}
+                aria-label={L("{name} 獲得済み", { name: o.product.name })}
               >
                 {arts(o)}
                 <span className="foil-offer-name">
@@ -174,7 +187,7 @@ export function FoilOfferPicker({
                     </small>
                   ))}
                 </span>
-                <span className="foil-offer-price foil-offer-done">獲得済み</span>
+                <span className="foil-offer-price foil-offer-done">{L("獲得済み")}</span>
               </div>
             ) : (
               <button
@@ -182,12 +195,12 @@ export function FoilOfferPicker({
                 className={`foil-offer${locked ? " is-locked" : ""}`}
                 disabled={working || locked}
                 onClick={() => setPicked(o)}
-                aria-label={`${o.product.name} 有償ジェム ${yen(o.price)}${locked ? " いまは買えません" : ""}`}
+                aria-label={L("{name} 有償ジェム {price}{locked}", { name: o.product.name, price: yen(o.price), locked: locked ? L(" いまは買えません") : "" })}
               >
                 {arts(o)}
                 <span className="foil-offer-name">
                   <b>{o.product.name}</b>
-                  {o.partial && <small>残り{o.skins.length}枚ぶん</small>}
+                  {o.partial && <small>{L("残り{n}枚ぶん", { n: o.skins.length })}</small>}
                   {/* 買うとどのエリアが立つのか、効果まで見せる(2026-09-18 本人の指示) */}
                   {areaOf(o.skins).map((area) => (
                     <small className={`foil-offer-area area-${area.type}`} key={area.type}>
@@ -198,7 +211,7 @@ export function FoilOfferPicker({
                 </span>
                 <span className="foil-offer-price">
                   {yen(o.price)}
-                  <small>有償ジェム</small>
+                  <small>{L("有償ジェム")}</small>
                 </span>
               </button>
             ),
@@ -224,28 +237,33 @@ export function FoilOfferSheet({
   series = null,
 }) {
   if (!offers.length) return null;
+  // 「有償ジェム」だけ太字。文をその前後で切る
+  const [sheetPre, sheetPost] = L(
+    "持っていないフォイルを{b}で買えます(無償ジェムは使えません)。セットの片方を持っていれば、残りの1枚ぶんの値段です。",
+  ).split("{b}");
   return (
     <SkinModal
-      label="ほかのフォイルも"
+      label={L("ほかのフォイルも")}
       onClose={onClose}
       className="foil-offer-overlay"
     >
       <div className="skin-modal-head">
         <div>
           <span className="skins-eyebrow">FOIL SHOP</span>
-          <h2>ほかのフォイルも</h2>
-          {series && <p className="skins-note foil-offer-series">{seriesNameOf(series)}のフォイル</p>}
+          <h2>{L("ほかのフォイルも")}</h2>
+          {series && <p className="skins-note foil-offer-series">{L("{series}のフォイル", { series: seriesNameOf(series) })}</p>}
           <p className="skins-note">
-            持っていないフォイルを<b>有償ジェム</b>
-            で買えます(無償ジェムは使えません)。セットの片方を持っていれば、残りの1枚ぶんの値段です。
+            {sheetPre}
+            <b>{L("有償ジェム")}</b>
+            {sheetPost}
           </p>
           <p className="skins-note foil-offer-balance">
-            有償ジェム <b>{yen(gemsPaid)}</b>
+            {L("有償ジェム")} <b>{yen(gemsPaid)}</b>
           </p>
         </div>
         <button
           className="skin-close"
-          aria-label="ほかのフォイルもを閉じる"
+          aria-label={L("ほかのフォイルもを閉じる")}
           disabled={working}
           onClick={onClose}
         >
@@ -270,9 +288,9 @@ export function FoilOfferSheet({
             disabled={working}
             onClick={onSnooze}
           >
-            しばらく表示しない
+            {L("しばらく表示しない")}
           </button>
-          <small>1週間はガチャのあとに出ません。ショップのフォイルの欄からは買えます</small>
+          <small>{L("1週間はガチャのあとに出ません。ショップのフォイルの欄からは買えます")}</small>
         </div>
       )}
     </SkinModal>

@@ -31,6 +31,7 @@ function withTimeout(promise, ms) {
 // 互換用の入口も同じ保存処理を使う。ランキングだけを更新しない。
 export { publishProfile as publishRank } from "./profile-sync.js";
 import { isRankedRecord, worldGamesOf } from "./profile-record.js";
+import { L } from "../i18n/index.js";
 
 /**
  * 全体の総対局数。持ち点の「全体分」に使う。
@@ -65,7 +66,7 @@ export async function readWorldGames() {
  * シーズンの成績(Cloudflare Worker の台帳)は src/net/season.js の forgetSeason()。
  */
 export async function deleteRank(id) {
-  if (!id) return { ok: false, error: "記録が見つかりません" };
+  if (!id) return { ok: false, error: L("記録が見つかりません") };
   try {
     // ranks(公開ランキング)と players(運営の台帳)の両方。
     // ルール上、自分の uid の行は自分で消せる(newData が無い書き込み)
@@ -82,8 +83,8 @@ export async function deleteRank(id) {
       ok: false,
       error:
         err && err.__timeout
-          ? "通信が8秒以内に応答しませんでした。もう一度お試しください。"
-          : `記録を消せませんでした: ${(err && err.message) || "不明なエラー"}`,
+          ? L("通信が8秒以内に応答しませんでした。もう一度お試しください。")
+          : L("記録を消せませんでした: {why}", { why: (err && err.message) || L("不明なエラー") }),
     };
   }
 }
@@ -99,7 +100,7 @@ export async function readRanks(limit = RANK_LIMIT) {
         ok: false,
         list: [],
         error:
-          "ランキングの置き場所がまだ開いていません。Firebase のルールに ranks を足して公開してください。",
+          L("ランキングの置き場所がまだ開いていません。Firebase のルールに ranks を足して公開してください。"),
       };
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -120,8 +121,8 @@ export async function readRanks(limit = RANK_LIMIT) {
       list: [],
       error:
         err && err.__timeout
-          ? "通信が8秒以内に応答しませんでした。"
-          : `ランキングを読めませんでした: ${(err && err.message) || "不明なエラー"}`,
+          ? L("通信が8秒以内に応答しませんでした。")
+          : L("ランキングを読めませんでした: {why}", { why: (err && err.message) || L("不明なエラー") }),
     };
   }
 }

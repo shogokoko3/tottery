@@ -6,6 +6,8 @@ import { byId } from "../skins/catalog.js";
 import { cardArtSrc } from "./cards.jsx";
 import { fieldUrl } from "./fields/backdrop.jsx";
 import { loadAudioSettings } from "../audio/settings.js";
+import { L, isEnglish } from "../i18n/index.js";
+import { EN } from "../i18n/en/index.js";
 
 /** Snapshot only the local army when the formation is awarded. */
 export function formationScene(state, viewer, skins) {
@@ -45,6 +47,8 @@ export function FormationHonor({ award, onClose }) {
       ...award.scene,
       fresh: award.fresh,
       volume: settings.muted ? 0 : settings.se,
+      // 英語の端末では、演出(assets/honors/i18n.js)に辞書を渡して画面の文を英語にする
+      i18n: isEnglish ? EN : null,
     };
   });
   useEffect(() => {
@@ -102,26 +106,26 @@ export function FormationHonor({ award, onClose }) {
       className="formation-honor-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="布陣の称号と紋章アイコン"
+      aria-label={L("布陣の称号と紋章アイコン")}
     >
       <div className="formation-honor-frame">
         {!loaded && (
           <div className="formation-honor-loading" role="status">
             {failed
-              ? "称号と紋章アイコンを獲得しました。設定から選べます。"
-              : "布陣の称号"}
+              ? L("称号と紋章アイコンを獲得しました。設定から選べます。")
+              : L("布陣の称号")}
           </div>
         )}
         <iframe
           ref={frame}
-          title="布陣の称号獲得演出"
+          title={L("布陣の称号獲得演出")}
           src={`${honorRoot}/index.html`}
           allow="autoplay"
           style={{ opacity: loaded ? 1 : 0 }}
           onError={() => setFailed(true)}
         />
         <button className="formation-honor-close" onClick={onClose} autoFocus>
-          対局へ <span aria-hidden="true">→</span>
+          {L("対局へ")} <span aria-hidden="true">→</span>
         </button>
       </div>
     </div>

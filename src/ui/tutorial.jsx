@@ -27,6 +27,7 @@ import { ArrowLeft, ArrowRight, Check, Crown, Hand, Lock } from "../icons.jsx";
 import { myUid } from "../net/auth.js";
 // 1話終えるごとのガチャチケット(2026-09-28 本人の指示)
 import { grantTutorialTickets } from "../game/tutorial-reward.js";
+import { L, fmtNumber } from "../i18n/index.js";
 /**
  * 台本の1枚。盤を隠さないよう、下から出る帯にしてある。
  */
@@ -44,10 +45,10 @@ import { grantTutorialTickets } from "../game/tutorial-reward.js";
  */
 /** 王にしたときの力を、一覧の1行に収まる長さで(同じ数字が1枚のとき) */
 export const KING_ROW_TEXT = {
-  2: "縦横に、同じ数字の枚数ぶん遠くへ(1枚なら3マス)",
-  3: "斜めに、同じ数字の枚数ぶん遠くへ(1枚なら3マス)",
-  4: "自分は2マスのまま。仲間の 4 を伸ばす",
-  5: "自分は2マスのまま。仲間の 5 を伸ばす",
+  2: L("縦横に、同じ数字の枚数ぶん遠くへ(1枚なら3マス)"),
+  3: L("斜めに、同じ数字の枚数ぶん遠くへ(1枚なら3マス)"),
+  4: L("自分は2マスのまま。仲間の 4 を伸ばす"),
+  5: L("自分は2マスのまま。仲間の 5 を伸ばす"),
 };
 
 /**
@@ -62,7 +63,7 @@ export function MoveGuidePanel({ guide }) {
     <div
       className={`move-hint move-guide ${kings ? "move-guide-kings" : ""}`}
       role="group"
-      aria-label={kings ? "王の力" : "駒の動き"}
+      aria-label={kings ? L("王の力") : L("駒の動き")}
     >
       <div className="move-hint-rows">
         {guide.ranks.map((rank) => (
@@ -73,7 +74,7 @@ export function MoveGuidePanel({ guide }) {
               <MoveDiagram rank={rank} gridSize={5} />
             )}
             <span className="move-hint-label">
-              <b>{kings ? `${rank} の王` : rank}</b>
+              <b>{kings ? L("{rank} の王", { rank }) : rank}</b>
               <small>
                 {kings
                   ? KING_ROW_TEXT[rank] || ""
@@ -99,8 +100,8 @@ export function MoveHintPanel({ hint }) {
   const path = `${squareName(hint.from.row, hint.from.col, size)} → ${squareName(hint.to.row, hint.to.col, size)}`;
   const kingHits = kings.filter((k) => k.ok);
   return (
-    <div className="move-hint" role="group" aria-label="動きの一覧">
-      <p className="move-hint-title">{path} に動ける駒は?</p>
+    <div className="move-hint" role="group" aria-label={L("動きの一覧")}>
+      <p className="move-hint-title">{L("{path} に動ける駒は?", { path })}</p>
       <div className="move-hint-rows">
         {plain.map((c) => (
           <div
@@ -123,8 +124,8 @@ export function MoveHintPanel({ hint }) {
           >
             <KingMoveFigure rank={c.rank} />
             <span className="move-hint-label">
-              <b>{c.rank} の王</b>
-              <small>{KING_ROW_TEXT[c.rank] || "王の力"}</small>
+              <b>{L("{rank} の王", { rank: c.rank })}</b>
+              <small>{KING_ROW_TEXT[c.rank] || L("王の力")}</small>
             </span>
             <span className="move-hint-mark">{c.ok ? "○" : "✗"}</span>
           </div>
@@ -133,10 +134,10 @@ export function MoveHintPanel({ hint }) {
       <p className="move-hint-verdict">
         {hint.verdict ||
           (kingHits.length
-            ? `素の駒では届かない。王の力で届くのは ${kingHits
-                .map((c) => `${c.rank} の王`)
-                .join("・")} だけ。だから、あれが王です。`
-            : "どの駒でも届きます。")}
+            ? L("素の駒では届かない。王の力で届くのは {kings} だけ。だから、あれが王です。", {
+                kings: kingHits.map((c) => L("{rank} の王", { rank: c.rank })).join(L("・")),
+              })
+            : L("どの駒でも届きます。"))}
       </p>
     </div>
   );
@@ -158,20 +159,21 @@ function SkipConfirm({ what, gain, level, onCancel, onConfirm }) {
   const node = (
     <div className="modal-overlay tutorial-skip-confirm">
       <div className="modal-panel tutorial-offer">
-        <h3>{what}を飛ばしますか？</h3>
+        <h3>{L("{what}を飛ばしますか？", { what })}</h3>
         <p className="hint">
-          終えたのと同じ扱いになります。経験値 {gain.toLocaleString()} が入り
-          {level ? `、レベル ${level} に上がります` : "ます"}。
+          {level
+            ? L("終えたのと同じ扱いになります。経験値 {xp} が入り、レベル {level} に上がります。", { xp: fmtNumber(gain), level })
+            : L("終えたのと同じ扱いになります。経験値 {xp} が入ります。", { xp: fmtNumber(gain) })}
         </p>
         <p className="hint">
-          飛ばした話はあとからいつでも遊べます(経験値は入りません)。
+          {L("飛ばした話はあとからいつでも遊べます(経験値は入りません)。")}
         </p>
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onCancel}>
-            やめる
+            {L("やめる")}
           </button>
           <button className="btn btn-primary" onClick={onConfirm}>
-            飛ばす
+            {L("飛ばす")}
           </button>
         </div>
       </div>
@@ -200,9 +202,9 @@ export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll, onInterrupt 
   const chooser = (
     <div className="modal-overlay tutorial-skip-confirm">
       <div className="modal-panel tutorial-offer">
-        <h3>チュートリアルを飛ばす</h3>
+        <h3>{L("チュートリアルを飛ばす")}</h3>
         <p className="hint">
-          飛ばした話は終えたのと同じ扱いになり、あとからいつでも遊べます。
+          {L("飛ばした話は終えたのと同じ扱いになり、あとからいつでも遊べます。")}
         </p>
         <div className="tutorial-skip-options">
           <button
@@ -212,8 +214,8 @@ export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll, onInterrupt 
               setTarget("this");
             }}
           >
-            この話を飛ばす
-            {thisXp ? `（経験値 ${thisXp.toLocaleString()}）` : ""}
+            {L("この話を飛ばす")}
+            {thisXp ? L("（経験値 {xp}）", { xp: fmtNumber(thisXp) }) : ""}
           </button>
           {isMain && left.length > 1 && (
             <button
@@ -223,8 +225,7 @@ export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll, onInterrupt 
                 setTarget("all");
               }}
             >
-              残りの {left.length} 話をすべて飛ばす（経験値{" "}
-              {leftXp.toLocaleString()}）
+              {L("残りの {n} 話をすべて飛ばす（経験値 {xp}）", { n: left.length, xp: fmtNumber(leftXp) })}
             </button>
           )}
           {/* 中断: クリア扱いにせず、この話を途中でやめてホームへ。あとで最初から遊べる(2026-09-21 本人の指示) */}
@@ -236,15 +237,15 @@ export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll, onInterrupt 
                 onInterrupt();
               }}
             >
-              中断してやめる
-              <small>クリアにしません。あとで最初から遊べます</small>
+              {L("中断してやめる")}
+              <small>{L("クリアにしません。あとで最初から遊べます")}</small>
             </button>
           )}
           <button
             className="btn btn-ghost btn-wide"
             onClick={() => setOpen(false)}
           >
-            とじる
+            {L("とじる")}
           </button>
         </div>
       </div>
@@ -256,9 +257,9 @@ export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll, onInterrupt 
         type="button"
         className="icon-btn plain tutorial-skip-top"
         onClick={() => setOpen(true)}
-        aria-label="チュートリアルを飛ばす"
+        aria-label={L("チュートリアルを飛ばす")}
       >
-        飛ばす
+        {L("飛ばす")}
       </button>
       {open &&
         (typeof document === "undefined"
@@ -266,7 +267,7 @@ export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll, onInterrupt 
           : createPortal(chooser, portalRoot()))}
       {target === "this" && (
         <SkipConfirm
-          what="この話"
+          what={L("この話")}
           gain={thisXp}
           level={levelAfterSkip(profile, thisXp)}
           onCancel={() => setTarget(null)}
@@ -278,7 +279,7 @@ export function TutorialSkipMenu({ tutorial, onSkipThis, onSkipAll, onInterrupt 
       )}
       {target === "all" && (
         <SkipConfirm
-          what={`残りの ${left.length} 話`}
+          what={L("残りの {n} 話", { n: left.length })}
           gain={leftXp}
           level={levelAfterSkip(profile, leftXp)}
           onCancel={() => setTarget(null)}
@@ -410,7 +411,7 @@ export function TutorialSheet({
     >
       {confirm && (
         <SkipConfirm
-          what="この話"
+          what={L("この話")}
           gain={skipXp}
           level={levelAfterSkip(loadProfile(), skipXp)}
           onCancel={() => setConfirm(false)}
@@ -431,12 +432,12 @@ export function TutorialSheet({
               <span className={i <= index ? "on" : ""} key={i} />
             ))}
           </div>
-          {left > 0 && <small className="tutorial-left">{plain ? "最短" : "あと"} {left} 手</small>}
+          {left > 0 && <small className="tutorial-left">{plain ? L("最短 {n} 手", { n: left }) : L("あと {n} 手", { n: left })}</small>}
         </div>
         {/* 印は台本が持てる(はじめの一局は「あなたが読む、一手。」。句の塊で出す)。無ければ決まりの一言 */}
         {step.need && step.need.choose && (
           <p className="tutorial-choose-badge">
-            {step.need.choose.badge ? <Phrases text={step.need.choose.badge} /> : "自分で考える1手"}
+            {step.need.choose.badge ? <Phrases text={step.need.choose.badge} /> : L("自分で考える1手")}
           </p>
         )}
         <p className="tutorial-line">
@@ -467,9 +468,9 @@ export function TutorialSheet({
                 ) : nudge ? (
                   say(textLines(nudge)[0])
                 ) : step.need.choose ? (
-                  "どの駒で取るかは自由です"
+                  L("どの駒で取るかは自由です")
                 ) : (
-                  "▼ の付いたところを操作してください"
+                  L("▼ の付いたところを操作してください")
                 )}
               </p>
             )}
@@ -478,9 +479,9 @@ export function TutorialSheet({
                 {textLines(hint).map((line, i) =>
                   i === 0 ? (
                     plain ? (
-                      <Fragment key={i}>{say(`ヒント: ${line}`)}</Fragment>
+                      <Fragment key={i}>{say(L("ヒント: {line}", { line }))}</Fragment>
                     ) : (
-                      `ヒント: ${line}`
+                      L("ヒント: {line}", { line })
                     )
                   ) : (
                     <span className="tutorial-line-row" key={i}>
@@ -501,7 +502,7 @@ export function TutorialSheet({
                 className="btn btn-ghost tutorial-back tutorial-back-wait"
                 onClick={onHint}
               >
-                ヒントを見る
+                {L("ヒントを見る")}
               </button>
             )}
             {/* 操作の札でも、一つ前の説明に戻って読み直せるように(2026-09-21 本人の指示) */}
@@ -509,9 +510,9 @@ export function TutorialSheet({
               <button
                 className="btn btn-ghost tutorial-back tutorial-back-wait"
                 onClick={onBack}
-                aria-label="前の説明に戻る"
+                aria-label={L("前の説明に戻る")}
               >
-                <ArrowLeft size={16} /> 前の説明へ
+                <ArrowLeft size={16} /> {L("前の説明へ")}
               </button>
             )}
           </div>
@@ -521,16 +522,16 @@ export function TutorialSheet({
               <button
                 className="btn btn-ghost tutorial-back"
                 onClick={onBack}
-                aria-label="前の説明に戻る"
+                aria-label={L("前の説明に戻る")}
               >
-                <ArrowLeft size={16} /> 戻る
+                <ArrowLeft size={16} /> {L("戻る")}
               </button>
             )}
             <button
               className={`btn btn-primary tutorial-next ${lit ? "guide-target" : ""}`}
               onClick={onNext}
             >
-              {step.end ? "とじる" : nextLabel || "次へ"} <ArrowRight size={16} />
+              {step.end ? L("とじる") : nextLabel || L("次へ")} <ArrowRight size={16} />
             </button>
           </div>
         )}
@@ -542,7 +543,7 @@ export function TutorialSheet({
                 className="tutorial-skip"
                 onClick={onInterrupt}
               >
-                中断してやめる
+                {L("中断してやめる")}
               </button>
             )}
             {onSkip && (
@@ -551,7 +552,7 @@ export function TutorialSheet({
                 className="tutorial-skip"
                 onClick={() => setConfirm(true)}
               >
-                この話を飛ばす
+                {L("この話を飛ばす")}
               </button>
             )}
           </div>
@@ -581,20 +582,20 @@ export function TutorialSelect({ onStart, onBack }) {
   });
   return (
     <div className="setup-wrap">
-      <h2>チュートリアル</h2>
+      <h2>{L("チュートリアル")}</h2>
       <div className="level-badge">
         <Crown size={16} />
-        <span>レベル {level}</span>
+        <span>{L("レベル {n}", { n: level })}</span>
         <small>
           {level >= MAX_LEVEL
-            ? "最高レベルです"
-            : `次のレベルまであと ${next.toLocaleString()}`}
+            ? L("最高レベルです")
+            : L("次のレベルまであと {n}", { n: fmtNumber(next) })}
         </small>
       </div>
       <p className="hint">
         {TUTORIALS.some((t) => level < t.level)
-          ? "話を終えるか対局すると経験値が入り、続きの話が開きます。"
-          : "全12話。ここまでで、52枚すべての動きと王の力がそろいます。"}
+          ? L("話を終えるか対局すると経験値が入り、続きの話が開きます。")
+          : L("全12話。ここまでで、52枚すべての動きと王の力がそろいます。")}
       </p>
       <div className="menu-list">
         {[
@@ -613,7 +614,7 @@ export function TutorialSelect({ onStart, onBack }) {
               <span className="menu-item-main">
                 {t.title}
                 <small>
-                  {t.subtitle}・約{tutorialMinutes(t)}分
+                  {L("{sub}・約{min}分", { sub: t.subtitle, min: tutorialMinutes(t) })}
                 </small>
               </span>
               <span className="menu-item-side">
@@ -623,8 +624,8 @@ export function TutorialSelect({ onStart, onBack }) {
                   </>
                 ) : (
                   <>
-                    {cleared && <Check size={14} aria-label="クリア済み" />}
-                    カード {t.poolLabel}
+                    {cleared && <Check size={14} aria-label={L("クリア済み")} />}
+                    {L("カード {pool}", { pool: t.poolLabel })}
                   </>
                 )}
               </span>
@@ -639,16 +640,16 @@ export function TutorialSelect({ onStart, onBack }) {
           onClick={() => setConfirmSkip(true)}
         >
           {left.length === TUTORIALS.length
-            ? "チュートリアルを飛ばす"
-            : `残りの ${left.length} 話を飛ばす`}
+            ? L("チュートリアルを飛ばす")
+            : L("残りの {n} 話を飛ばす", { n: left.length })}
         </button>
       )}
       {confirmSkip && (
         <SkipConfirm
           what={
             left.length === TUTORIALS.length
-              ? "全12話"
-              : `残りの ${left.length} 話`
+              ? L("全12話")
+              : L("残りの {n} 話", { n: left.length })
           }
           gain={leftXp}
           level={levelAfterSkip(profile, leftXp)}
@@ -664,7 +665,7 @@ export function TutorialSelect({ onStart, onBack }) {
         />
       )}
       <button className="btn btn-ghost btn-home" onClick={onBack}>
-        <ArrowLeft size={16} /> ホームに戻る
+        <ArrowLeft size={16} /> {L("ホームに戻る")}
       </button>
     </div>
   );
@@ -675,7 +676,7 @@ export function LevelUpNote({ from, to }) {
   if (from === to) return null;
   return (
     <div className="level-up">
-      <Check size={16} /> レベル {from} → {to}
+      <Check size={16} /> {L("レベル {from} → {to}", { from, to })}
     </div>
   );
 }

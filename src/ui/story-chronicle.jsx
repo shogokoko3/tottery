@@ -21,6 +21,10 @@ import { storyPhrases } from "../game/story-phrases.js";
 import { CardFace } from "./cards.jsx";
 import { Phrases } from "./phrases.jsx";
 import css from "./story-chronicle.css";
+import { L } from "../i18n/index.js";
+
+// i18n-ignore(本文の地の文の話者の目印。比べるだけで画面には出さない)
+const NARRATOR = "語り";
 
 export const STORY_ART = {
   23: art23,
@@ -77,24 +81,24 @@ export function StoryPurpose({ episode, compact = false }) {
   if (!episode?.purpose) return null;
   const { goal, reason, kind, rivalIdeal, playerIdeal } = episode.purpose;
   return (
-    <aside className="chronicle-purpose" aria-label="この追憶の目的">
-      <small>この追憶の目的</small>
+    <aside className="chronicle-purpose" aria-label={L("この追憶の目的")}>
+      <small>{L("この追憶の目的")}</small>
       <p>
         <StoryText text={goal} />
       </p>
       {!compact && (
         <details>
           <summary>
-            <JoinedPhrases head={kind} sep="·" tail="対立する理由" />
+            <JoinedPhrases head={kind} sep="·" tail={L("対立する理由")} />
           </summary>
           <p>{reason}</p>
           {rivalIdeal && (
             <dl>
-              <dt>相手の信念</dt>
+              <dt>{L("相手の信念")}</dt>
               <dd>
                 <StoryText text={rivalIdeal} />
               </dd>
-              <dt>ニノの思い</dt>
+              <dt>{L("ニノの思い")}</dt>
               <dd>
                 <StoryText text={playerIdeal} />
               </dd>
@@ -113,16 +117,16 @@ export function ComicPanel({ page, column, panel }) {
   const [failed, setFailed] = useState(false);
   return <figure className={`chronicle-comic-panel${page.art ? " has-printed-lettering" : ""}${panel.lines.length > 1 ? " has-conversation" : ""}`}>
     <div className="chronicle-comic-image" aria-hidden="true" style={{aspectRatio: `${crop[2]} / ${crop[3]}`}}>
-      {failed ? <span className="chronicle-comic-missing">絵を読み込めませんでした。台詞で続きを読めます。</span> :
+      {failed ? <span className="chronicle-comic-missing">{L("絵を読み込めませんでした。台詞で続きを読めます。")}</span> :
         <svg viewBox={crop.join(" ")} preserveAspectRatio="xMidYMid meet" focusable="false">
           <defs><clipPath id={`comic-crop-${page.id}-${column}`}><rect x={crop[0]} y={crop[1]} width={crop[2]} height={crop[3]} /></clipPath></defs>
           <image clipPath={`url(#comic-crop-${page.id}-${column})`} href={storyComicUrl(page.art?.sheet || page.sheet)} width={atlas?.width || 1536} height={atlas?.height || page.rows * 288} onError={() => setFailed(true)} />
         </svg>}
     </div>
     <figcaption className={`chronicle-comic-lettering${page.art && !failed ? " printed-comic-transcript" : ""}`}>{panel.lines.map((line, i) => <div key={i}
-      role="group" aria-label={line.speaker === "語り" ? "ナレーション" : line.speaker} data-speaker={line.speaker}
-      className={`comic-letter ${line.speaker === "語り" ? "comic-narration" : "comic-balloon"}${line.offscreen ? " is-offscreen" : ""}`}>
-      <p>{line.speaker === "語り" ? line.text : line.text.replace(/^「|」$/g, "")}</p>
+      role="group" aria-label={line.speaker === NARRATOR ? L("ナレーション") : line.speaker} data-speaker={line.speaker}
+      className={`comic-letter ${line.speaker === NARRATOR ? "comic-narration" : "comic-balloon"}${line.offscreen ? " is-offscreen" : ""}`}>
+      <p>{line.speaker === NARRATOR ? line.text : line.text.replace(/^「|」$/g, "")}</p>
     </div>)}</figcaption>
   </figure>;
 }
@@ -134,8 +138,8 @@ export function ComicPage({ page, zoomed = false }) {
   if (art?.layout === "printed-manga") return <figure className={`ouhiroi-printed-page${zoomed ? " is-zoomed" : ""}`}>
     {!failed && <img src={storyComicUrl(art.sheet)} alt={page.label} onError={() => setFailed(true)} />}
     <figcaption className={failed ? "ouhiroi-image-fallback" : "printed-comic-transcript"}>
-      {failed && <p role="status">絵を読み込めませんでした。本文で続きを読めます。</p>}
-      {page.panels.flatMap(panel => panel.lines).map((line, i) => <p key={i} aria-label={line.speaker}>{line.speaker !== "語り" ? `${line.speaker} ` : ""}{line.text}</p>)}
+      {failed && <p role="status">{L("絵を読み込めませんでした。本文で続きを読めます。")}</p>}
+      {page.panels.flatMap(panel => panel.lines).map((line, i) => <p key={i} aria-label={line.speaker}>{line.speaker !== NARRATOR ? `${line.speaker} ` : ""}{line.text}</p>)}
     </figcaption>
   </figure>;
   if (art?.layout === "app-lettered-atlas") return <div className="ouhiroi-manga-page">
@@ -143,22 +147,22 @@ export function ComicPage({ page, zoomed = false }) {
   </div>;
   if (!art) return <article className="chronicle-story-page" aria-label={page.label}>
     {page.panels.flatMap(panel => panel.lines).map((line, i) =>
-      <div key={i} className={line.speaker === "語り" ? "story-prose" : "story-dialogue"}>
-        {line.speaker !== "語り" && <small>{line.speaker}</small>}
+      <div key={i} className={line.speaker === NARRATOR ? "story-prose" : "story-dialogue"}>
+        {line.speaker !== NARRATOR && <small>{line.speaker}</small>}
         <p>{line.text}</p>
       </div>)}
   </article>;
   return <figure className={`chronicle-comic-panel has-printed-lettering${failed ? " is-missing" : ""}`}>
     <div className="chronicle-comic-image" aria-hidden="true">
-      {failed ? <span className="chronicle-comic-missing">絵を読み込めませんでした。台詞で続きを読めます。</span> :
+      {failed ? <span className="chronicle-comic-missing">{L("絵を読み込めませんでした。台詞で続きを読めます。")}</span> :
         <svg viewBox={`0 0 ${art.width} ${art.height}`} preserveAspectRatio="xMidYMid meet" focusable="false">
           <image href={storyComicUrl(art.sheet)} width={art.width} height={art.height} onError={() => setFailed(true)} />
         </svg>}
     </div>
     <figcaption className={`chronicle-comic-lettering${failed ? "" : " printed-comic-transcript"}`}>
       {page.panels.flatMap(panel => panel.lines).map((line, i) => <div key={i} role="group"
-        aria-label={line.speaker === "語り" ? "ナレーション" : line.speaker} data-speaker={line.speaker}
-        className={`comic-letter ${line.speaker === "語り" ? "comic-narration" : "comic-balloon"}${line.offscreen ? " is-offscreen" : ""}`}>
+        aria-label={line.speaker === NARRATOR ? L("ナレーション") : line.speaker} data-speaker={line.speaker}
+        className={`comic-letter ${line.speaker === NARRATOR ? "comic-narration" : "comic-balloon"}${line.offscreen ? " is-offscreen" : ""}`}>
         <p>{line.text.replace(/^「|」$/g, "")}</p>
       </div>)}
     </figcaption>
@@ -171,14 +175,14 @@ function AtlasMangaPanel({ page, panel, index }) {
   const art = page.art, crop = art.cells[index];
   return <figure className="ouhiroi-manga-panel">
     <div className="ouhiroi-panel-image" style={{ aspectRatio: `${crop[2]} / ${crop[3]}` }}>
-      {failed ? <p role="status">絵を読み込めませんでした。本文で続きを読めます。</p> :
-        <svg viewBox={crop.join(" ")} preserveAspectRatio="xMidYMid meet" role="img" aria-label={`${page.label} ${index + 1}コマ目`}>
+      {failed ? <p role="status">{L("絵を読み込めませんでした。本文で続きを読めます。")}</p> :
+        <svg viewBox={crop.join(" ")} preserveAspectRatio="xMidYMid meet" role="img" aria-label={L("{label} {n}コマ目", { label: page.label, n: index + 1 })}>
           <defs><clipPath id={`ouhiroi-${page.id}-${index}`}><rect x={crop[0]} y={crop[1]} width={crop[2]} height={crop[3]} /></clipPath></defs>
           <image clipPath={`url(#ouhiroi-${page.id}-${index})`} href={storyComicUrl(art.sheet)} width={art.width} height={art.height} onError={() => setFailed(true)} />
         </svg>}
     </div>
-    <figcaption>{panel.lines.map((line, i) => <div key={i} className={line.speaker === "語り" ? "ouhiroi-narration" : "ouhiroi-balloon"}>
-      {line.speaker !== "語り" && <small>{line.speaker}</small>}
+    <figcaption>{panel.lines.map((line, i) => <div key={i} className={line.speaker === NARRATOR ? "ouhiroi-narration" : "ouhiroi-balloon"}>
+      {line.speaker !== NARRATOR && <small>{line.speaker}</small>}
       <p>{line.text}</p>
     </div>)}</figcaption>
   </figure>;
@@ -225,32 +229,32 @@ export function StoryReader({ axis, phase = 1, part = "before", onDone, onClose,
   return <div className="modal-overlay chronicle-overlay">
     <ChronicleStyles />
     <section className={`chronicle-reader chronicle-manga chronicle-page-reader${lesson ? " chronicle-lesson" : ""}${lesson && current.art ? " has-lesson-art" : ""}${CHRONICLE.presentation === "text" || CHRONICLE.presentation === "manga-atlas" ? " chronicle-text-reader" : ""}`} role="dialog" aria-modal="true"
-      aria-label={`${heading}・${lesson ? "遊び方" : "物語"}`} ref={dialog} onKeyDown={keydown}>
+      aria-label={L("{heading}・{kind}", { heading, kind: lesson ? L("遊び方") : L("物語") })} ref={dialog} onKeyDown={keydown}>
       <header className="chronicle-reader-head">
-        <div><small>{lesson ? "漫画でわかる遊び方" : inOpening ? "旅のはじまり" : `フェーズ ${phase} · ${arc.role}`}</small><h3><StoryText text={heading} /></h3></div>
-        <button type="button" className="chronicle-text-button" onClick={battle && !requireRead ? onDone : onClose}>{lesson?.closeLabel || (battle && !requireRead ? "対局説明へ" : "閉じる")}</button>
+        <div><small>{lesson ? L("漫画でわかる遊び方") : inOpening ? L("旅のはじまり") : L("フェーズ {n} · {role}", { n: phase, role: arc.role })}</small><h3><StoryText text={heading} /></h3></div>
+        <button type="button" className="chronicle-text-button" onClick={battle && !requireRead ? onDone : onClose}>{lesson?.closeLabel || (battle && !requireRead ? L("対局説明へ") : L("閉じる"))}</button>
       </header>
       <div className="chronicle-comic-toolbar">
         <span aria-live="polite">{current.label} · {page + 1} / {pages.length}</span>
-        {current.art?.layout === "printed-manga" && <button type="button" className="chronicle-text-button" aria-pressed={zoomed} onClick={() => setZoomed(v => !v)}>{zoomed ? "全体" : "拡大"}</button>}
+        {current.art?.layout === "printed-manga" && <button type="button" className="chronicle-text-button" aria-pressed={zoomed} onClick={() => setZoomed(v => !v)}>{zoomed ? L("全体") : L("拡大")}</button>}
       </div>
-      <div className={`chronicle-reader-copy chronicle-comic-copy${current.playGuide ? " has-play-guide" : ""}`} ref={textRef} tabIndex={0} role="region" aria-label={lesson ? "遊び方本文" : "物語本文"}>
+      <div className={`chronicle-reader-copy chronicle-comic-copy${current.playGuide ? " has-play-guide" : ""}`} ref={textRef} tabIndex={0} role="region" aria-label={lesson ? L("遊び方本文") : L("物語本文")}>
         <div key={current.id} data-comic-page={current.id}>
-          {current.context?.length > 0 && <aside className={`comic-scene-context${current.art ? " printed-comic-transcript" : ""}`} aria-label="場所と背景"><small>{inOpening ? "旅のはじまり" : episode.place}</small>{current.context.map((text, i) => <p key={i}>{text}</p>)}</aside>}
-          {current.playGuide ? <section className="welcome-play-guide" aria-label="最初の一局の遊び方">
+          {current.context?.length > 0 && <aside className={`comic-scene-context${current.art ? " printed-comic-transcript" : ""}`} aria-label={L("場所と背景")}><small>{inOpening ? L("旅のはじまり") : episode.place}</small>{current.context.map((text, i) => <p key={i}>{text}</p>)}</aside>}
+          {current.playGuide ? <section className="welcome-play-guide" aria-label={L("最初の一局の遊び方")}>
             <div className="welcome-play-goal"><span aria-hidden="true">♛</span><h2>{current.playGuide.goal}</h2><p>{current.playGuide.reassurance}</p></div>
-            <div className="welcome-play-start"><h3>まずは、案内と一緒に一局。</h3><ol>{current.playGuide.steps.map((step, i) => <li key={step.title}><span aria-hidden="true">{i + 1}</span><div><h4>{step.title}</h4><p>{step.text}</p></div></li>)}</ol></div>
-            <ul className="welcome-play-conditions" aria-label="最初の一局のルール">{current.playGuide.conditions.map(text => <li key={text}>{text}</li>)}</ul>
+            <div className="welcome-play-start"><h3>{L("まずは、案内と一緒に一局。")}</h3><ol>{current.playGuide.steps.map((step, i) => <li key={step.title}><span aria-hidden="true">{i + 1}</span><div><h4>{step.title}</h4><p>{step.text}</p></div></li>)}</ol></div>
+            <ul className="welcome-play-conditions" aria-label={L("最初の一局のルール")}>{current.playGuide.conditions.map(text => <li key={text}>{text}</li>)}</ul>
             <p className="welcome-play-later">{current.playGuide.later}</p>
           </section> : <ComicPage page={current} zoomed={zoomed} />}
         </div>
       </div>
       <footer className="chronicle-reader-controls">
-        <button type="button" className="btn btn-ghost" data-sound="page" disabled={!page} onClick={() => setPage(i => i - 1)}>前へ</button>
-        <span aria-label={`${page + 1} / ${pages.length} ページ`}>{page + 1} <i>/ {pages.length}</i></span>
+        <button type="button" className="btn btn-ghost" data-sound="page" disabled={!page} onClick={() => setPage(i => i - 1)}>{L("前へ")}</button>
+        <span aria-label={L("{n} / {total} ページ", { n: page + 1, total: pages.length })}>{page + 1} <i>/ {pages.length}</i></span>
         <button type="button" className="btn btn-primary" ref={nextRef}
           data-sound="page" onClick={() => page < pages.length - 1 ? setPage(i => i + 1) : onDone()}>
-          {page < pages.length - 1 ? "次へ" : lesson?.doneLabel || (battle ? "対局説明へ" : "読み終える")}
+          {page < pages.length - 1 ? L("次へ") : lesson?.doneLabel || (battle ? L("対局説明へ") : L("読み終える"))}
         </button>
       </footer>
     </section>
@@ -270,7 +274,7 @@ export function StoryAfterword({ axis, phase }) {
         className="btn btn-ghost btn-wide"
         onClick={() => setOpen(true)}
       >
-        後日談を読む
+        {L("後日談を読む")}
       </button>
       {open && (
         <StoryReader
@@ -288,14 +292,14 @@ export function StoryAfterword({ axis, phase }) {
 export function ChronicleWorld({ phase = 1 }) {
   return (
     <details className="chronicle-world">
-      <summary>この国と、ニノたちの旅</summary>
+      <summary>{L("この国と、ニノたちの旅")}</summary>
       <p>{CHRONICLE.world}</p>
       <p>{CHRONICLE.covenant}</p>
       <div className="chronicle-roster">
         <div>
           <CardFace rank="A" suit="spade" size="lg" skinId={false} />
           <span>
-            <b>A・影の者 リン</b>
+            <b>{L("A・影の者 リン")}</b>
             <small>{CHRONICLE.guide[phase]}</small>
           </span>
         </div>

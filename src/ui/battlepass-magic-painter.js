@@ -1,3 +1,4 @@
+import { Lk } from "../i18n/index.js";
 // Canvas artwork and timing carried over from the approved magician preview.
 // order maps board slot -> image piece; animation needs the inverse mapping.
 export function createBattlePassPainter(ctx, art, order) {
@@ -18,7 +19,8 @@ export function createBattlePassPainter(ctx, art, order) {
     time = 0,
     complete = false,
     reduced = false;
-  const design = { sparkles: "華やか" };
+  // 画面に出ない設定の値(比べるので日本語のまま)
+  const design = { sparkles: Lk("華やか") };
   const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
   const ease = (v) => {
     v = clamp(v);
@@ -187,6 +189,7 @@ export function createBattlePassPainter(ctx, art, order) {
   }
   function burst(p) {
     if (p <= 0 || p >= 1) return;
+    // i18n-ignore
     const n = design.sparkles === "華やか" ? 76 : 32;
     for (let i = 0; i < n; i++) {
       const a = particles[i],
@@ -312,6 +315,7 @@ export function createBattlePassPainter(ctx, art, order) {
       magicHat(hatIn * hatOut, time / 1000);
     }
     if (!reduced && time > 850 && time < 6800) {
+      // i18n-ignore
       const n = design.sparkles === "華やか" ? 36 : 14,
         a = ease((time - 850) / 800) * (1 - ease((time - 6100) / 650));
       for (let k = 0; k < n; k++) {

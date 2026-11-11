@@ -21,8 +21,9 @@
  */
 import { ALL_POOL as POOL, baseSkinId, byId, foilId } from "./catalog.js";
 import { heldOf } from "./ether.js";
+import { L } from "../i18n/index.js";
 
-export const SHARD_NAME = "フォイルの欠片";
+export const SHARD_NAME = L("フォイルの欠片");
 
 /** フォイルのダブりを崩すと出る欠片 */
 export const SHARD_VALUE = Object.freeze({ R: 1, SR: 2, SSR: 5 });
@@ -53,19 +54,19 @@ export function exchangeCostOf(skin) {
 /** 崩して欠片にできるか。理由も返す(画面にそのまま出す) */
 export function shatterCheck(state, id, n = 1) {
   const skin = byId(id);
-  if (!skin) return { ok: false, why: "その札はありません。" };
-  if (!skin.foil) return { ok: false, why: "欠片になるのはフォイルだけです。" };
+  if (!skin) return { ok: false, why: L("その札はありません。") };
+  if (!skin.foil) return { ok: false, why: L("欠片になるのはフォイルだけです。") };
   const held = heldOf(state, id);
-  if (held === 0) return { ok: false, why: "持っていません。" };
-  if (held < 2) return { ok: false, why: "最後の1枚は崩せません。" };
+  if (held === 0) return { ok: false, why: L("持っていません。") };
+  if (held < 2) return { ok: false, why: L("最後の1枚は崩せません。") };
   // まとめて崩すときは枚数ぶんで見る。最後の1枚は必ず残す
   const spare = held - 1;
   // 整数だけ受ける(小数を切り捨てると頼んだ枚数と違う数を崩してしまう)
   const want = n;
   if (!Number.isInteger(want) || want < 1)
-    return { ok: false, why: "崩す枚数が正しくありません。", spare };
+    return { ok: false, why: L("崩す枚数が正しくありません。"), spare };
   if (want > spare)
-    return { ok: false, why: `崩せるのは ${spare} 枚までです。`, spare };
+    return { ok: false, why: L("崩せるのは {n} 枚までです。", { n: spare }), spare };
   return { ok: true, gain: shardValueOf(skin) * want, each: shardValueOf(skin), count: want, spare };
 }
 
@@ -74,19 +75,19 @@ export function exchangeCheck(state, baseId) {
   const base = byId(baseSkinId(baseId));
   const cost = base ? exchangeCostOf(base) : null;
   if (!base || cost === null)
-    return { ok: false, why: "このキャラのフォイルは交換できません。" };
+    return { ok: false, why: L("このキャラのフォイルは交換できません。") };
   const id = foilId(base.id);
   if (heldOf(state, id) > 0)
     return {
       ok: false,
-      why: "このフォイルはもう持っています。交換は持っていない札だけです。",
+      why: L("このフォイルはもう持っています。交換は持っていない札だけです。"),
       cost,
     };
   const have = shardsOf(state);
   if (have < cost)
     return {
       ok: false,
-      why: `${SHARD_NAME}があと ${cost - have} 足りません。`,
+      why: L("{name}があと {n} 足りません。", { name: SHARD_NAME, n: cost - have }),
       cost,
       short: cost - have,
     };

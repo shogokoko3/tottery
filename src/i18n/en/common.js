@@ -17,4 +17,7 @@ export const EN_COMMON = {
   "テスト版で遊んだ記録を消しました。はじめから遊べます。":
     "Records from the test version were cleared. You can start fresh.",
   "はじめる": "Start",
+  // 音の出どころ(src/audio/tracks.js。別の作業中のファイルなので、出すところで Lx を通す)
+  "トッタリー オリジナルBGM": "Take Down original music",
+  "トッタリー オリジナルSE": "Take Down original sound effects",
 };

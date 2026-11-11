@@ -9,6 +9,7 @@ import { cardArtSrc } from "./cards.jsx";
 import { PROMOTION_ARROW_PATH } from "./card-status.js";
 import { SkinFilm } from "./skin-film.jsx";
 import { useReducedMotion } from "./skin-modal.jsx";
+import { L } from "../i18n/index.js";
 
 const square = ({ row, col }) => `${row},${col}`;
 
@@ -257,11 +258,11 @@ export function useAceMagic(state, loadouts, { disabled, viewer, boardRef }) {
         <div className="ace-magic-status" role="status">
           <span>
             {entry.event.kind === "ace-foil"
-              ? "Aフォイルの魔法"
-              : "マジカルシルクハット"}
+              ? L("Aフォイルの魔法")
+              : L("マジカルシルクハット")}
             {entry.event.defeated.length
-              ? ` · ${entry.event.defeated.length}体を包囲`
-              : " · 入れ替え"}
+              ? L(" · {n}体を包囲", { n: entry.event.defeated.length })
+              : L(" · 入れ替え")}
             <small className="ace-magic-phase">{phase}</small>
           </span>
           <button
@@ -271,7 +272,7 @@ export function useAceMagic(state, loadouts, { disabled, viewer, boardRef }) {
               finish(entry.key);
             }}
           >
-            演出をスキップ
+            {L("演出をスキップ")}
           </button>
         </div>
       ) : null,

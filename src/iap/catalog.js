@@ -13,6 +13,8 @@
  * 値付け(チケット1枚・バトルパス)と獲得量は目安で、あとで相談して決める。
  * 商品 ID は円で固定する(おまけを変えても App Store の商品を作り直さない)
  */
+import { L } from "../i18n/index.js";
+
 export const BUNDLE_ID = "com.shogokoko.tottery";
 
 /** 店を出すか。iOS でだけ意味を持つ(Web は課金しない)。緊急に閉じる旗 */
@@ -22,36 +24,36 @@ export const SHOP_ENABLED = true;
 export const GEM_PACKS = [
   // おまけ(無償)は買うほど率が上がる。120=0% / 600=10% / 1500≈15%(230) / 3000=20% / 5000=25% / 10000=30%
   // 120 → 150 に(2026-09-16 本人の決め。ガチャ1回 150 ジェムをちょうど買える最小のパック)
-  { id: `${BUNDLE_ID}.gems.150`, paid: 150, free: 0, name: "150ジェム" },
+  { id: `${BUNDLE_ID}.gems.150`, paid: 150, free: 0, name: L("150ジェム") },
   {
     id: `${BUNDLE_ID}.gems.600`,
     paid: 600,
     free: 60,
-    name: "600ジェム＋おまけ60",
+    name: L("600ジェム＋おまけ60"),
   },
   {
     id: `${BUNDLE_ID}.gems.1500`,
     paid: 1500,
     free: 230,
-    name: "1,500ジェム＋おまけ230",
+    name: L("1,500ジェム＋おまけ230"),
   },
   {
     id: `${BUNDLE_ID}.gems.3000`,
     paid: 3000,
     free: 600,
-    name: "3,000ジェム＋おまけ600",
+    name: L("3,000ジェム＋おまけ600"),
   },
   {
     id: `${BUNDLE_ID}.gems.5000`,
     paid: 5000,
     free: 1250,
-    name: "5,000ジェム＋おまけ1,250",
+    name: L("5,000ジェム＋おまけ1,250"),
   },
   {
     id: `${BUNDLE_ID}.gems.10000`,
     paid: 10000,
     free: 3000,
-    name: "10,000ジェム＋おまけ3,000",
+    name: L("10,000ジェム＋おまけ3,000"),
   },
 ];
 /** 使う順。無償を先に減らし、足りない分を有償から */

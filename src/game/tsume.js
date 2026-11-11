@@ -1,4 +1,5 @@
 import { questions } from "./tsume-questions.js";
+import { L } from "../i18n/index.js";
 import { initialState, reducer } from "./reducer.js";
 import { emptyBoard, getLegalMoves, kingRankOf, squareName } from "./board.js";
 import { SUITS } from "./constants.js";
@@ -179,9 +180,9 @@ export function clearDailyTsume(collection, day, evidence, at = Date.now()) {
   const progress = sanitizeTsumeProgress(collection.tsume);
   const receipt = progress.days[day];
   if (!receipt?.joined || receipt.questionId !== today.questionId)
-    throw new Error("先に今日の問題への参加を保存してください。");
+    throw new Error(L("先に今日の問題への参加を保存してください。"));
   if (!isTsumeAnswer(tsumeQuestion(today.questionId), evidence))
-    throw new Error("この回答では、まだクリアになりません。");
+    throw new Error(L("この回答では、まだクリアになりません。"));
   if (receipt.cleared) return collection;
   const gems = Number.isSafeInteger(collection.gems) ? collection.gems : 0;
   const gemsFree = Number.isSafeInteger(collection.gemsFree) ? collection.gemsFree : 0;

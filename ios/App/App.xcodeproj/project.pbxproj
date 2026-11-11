@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A28B0D001000000000000011 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A28B0D001000000000000010 /* InfoPlist.strings */; };
 		A28B0D001000000000000007 /* NativeGameAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = A28B0D001000000000000008 /* NativeGameAudio.swift */; };
 		A28B0D001000000000000005 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A28B0D001000000000000006 /* PrivacyInfo.xcprivacy */; };
 		A28B0D001000000000000001 /* NativeHomeMusicEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A28B0D001000000000000003 /* NativeHomeMusicEngine.swift */; };
@@ -24,6 +25,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A28B0D001000000000000012 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		A28B0D001000000000000013 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		A28B0D001000000000000008 /* NativeGameAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGameAudio.swift; sourceTree = "<group>"; };
 		A28B0D001000000000000006 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A28B0D001000000000000003 /* NativeHomeMusicEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHomeMusicEngine.swift; sourceTree = "<group>"; };
@@ -97,6 +100,7 @@
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
+				A28B0D001000000000000010 /* InfoPlist.strings */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 			);
@@ -148,6 +152,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				ja,
+				en,
 				Base,
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
@@ -169,6 +174,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A28B0D001000000000000005 /* PrivacyInfo.xcprivacy in Resources */,
+				A28B0D001000000000000011 /* InfoPlist.strings in Resources */,
 				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
@@ -196,6 +202,15 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
+		A28B0D001000000000000010 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A28B0D001000000000000012 /* en */,
+				A28B0D001000000000000013 /* ja */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (

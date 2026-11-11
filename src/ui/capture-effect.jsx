@@ -27,6 +27,7 @@ import {
 } from "./capture-renderer.js";
 import styles from "./capture-effect.css";
 import { captureLayout, captureBackPose } from "./capture-layout.js";
+import { L } from "../i18n/index.js";
 
 const portraitImages = new Map();
 const portraitSource = (skin) => skin?.boardCard || skin?.card;
@@ -387,16 +388,16 @@ export function CaptureEffect({
   const royal = view.royal && shown.some((c) => c.isKing);
   const title = !mine
     ? royal
-      ? "王が撃破された"
-      : "自分の駒が取られた"
+      ? L("王が撃破された")
+      : L("自分の駒が取られた")
     : royal
-      ? "王を討った"
+      ? L("王を討った")
       : view.shown
-        ? "撃破"
+        ? L("撃破")
         : "";
   return (
     <SkinModal
-      label={mine ? "撃破したカードの公開" : "自分が失ったカードの確認"}
+      label={mine ? L("撃破したカードの公開") : L("自分が失ったカードの確認")}
       className={`capture-scene ${mine ? "is-capture" : "is-loss"}`}
       onClose={() => {
         // 終局した王の撃破は、Escでは閉じず「対戦結果へ」で進む。
@@ -424,7 +425,7 @@ export function CaptureEffect({
           key={view.index}
         >
           <Face {...cards[view.index]} />
-          {!mine && <span className="capture-loss-stamp">喪失</span>}
+          {!mine && <span className="capture-loss-stamp">{L("喪失")}</span>}
         </div>
       )}
       <div
@@ -432,12 +433,12 @@ export function CaptureEffect({
         className={`capture-scene-footer ${view.done ? "is-done" : ""}`}
       >
         <p className="capture-scene-count">
-          {!mine && "あなたの失った駒　"}
-          {view.shown ? `${view.shown} / ${cards.length} 枚` : ""}
+          {!mine && L("あなたの失った駒　")}
+          {view.shown ? L("{n} / {total} 枚", { n: view.shown, total: cards.length }) : ""}
         </p>
         <div
           className="capture-scene-records"
-          aria-label={mine ? "正体が判明したカード" : "あなたの失ったカード"}
+          aria-label={mine ? L("正体が判明したカード") : L("あなたの失ったカード")}
         >
           {Array.from({ length: cards.length }, (_, index) => (
             <div
@@ -459,9 +460,9 @@ export function CaptureEffect({
         >
           {view.done
             ? final && royal
-              ? "対戦結果へ"
-              : "確認した"
-            : "正体を公開中…"}
+              ? L("対戦結果へ")
+              : L("確認した")
+            : L("正体を公開中…")}
         </button>
       </div>
     </SkinModal>

@@ -19,6 +19,7 @@
  */
 import { POOL, baseSkinId, byId } from "./catalog.js";
 import { resolveSummonFreeze } from "./summon-freeze.js";
+import { L } from "../i18n/index.js";
 
 /** 初回に引く枚数 */
 export const FIRST_PULL_SIZE = 10;
@@ -64,7 +65,7 @@ export function drawFirstPull(random = Math.random) {
   const pick = () => {
     const n = random();
     if (!Number.isFinite(n) || n < 0 || n >= 1)
-      throw new Error("乱数の範囲が不正です");
+      throw new Error(L("乱数の範囲が不正です"));
     let threshold = n * 100;
     for (const skin of POOL) {
       // catalog.js の rate と同じ重み
@@ -92,12 +93,12 @@ export function drawFirstPull(random = Math.random) {
 export function firstPullResult(random = Math.random) {
   const ids = drawFirstPull(random);
   if (ids.some((id) => id !== baseSkinId(id)))
-    throw new Error("初回の10連にフォイルが混ざっています");
-  if (!ids.some(isSsr)) throw new Error("初回の10連に SSR がありません");
+    throw new Error(L("初回の10連にフォイルが混ざっています"));
+  if (!ids.some(isSsr)) throw new Error(L("初回の10連に SSR がありません"));
   // フリーズの演出はそのまま。ただし**フォイルへの昇格だけは起こさない**
   const out = resolveSummonFreeze(ids, random, { allowFoil: false });
   if (out.skins.some((id) => id !== baseSkinId(id)))
-    throw new Error("フリーズで初回の10連にフォイルが混ざりました");
+    throw new Error(L("フリーズで初回の10連にフォイルが混ざりました"));
   return out;
 }
 

@@ -1,0 +1,5 @@
+/* 英語の端末で出す名前と許可の文(2026-11-11 英語版)。日本語は Info.plist と ja.lproj */
+"CFBundleDisplayName" = "Take Down";
+"NSLocalNetworkUsageDescription" = "Take Down uses your Wi‑Fi network and direct device-to-device connections to play friend matches with people nearby.";
+"NSBluetoothAlwaysUsageDescription" = "Take Down uses Bluetooth to play friend matches with people nearby.";
+"NSUserTrackingUsageDescription" = "Choose whether to allow tracking across other apps and websites to measure ad performance. The game works the same either way.";

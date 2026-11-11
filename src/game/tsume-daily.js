@@ -1,4 +1,5 @@
 import { missionPeriods } from "./periodic-missions.js";
+import { L } from "../i18n/index.js";
 
 export const TSUME_PARTICIPATION_ETHER = 50;
 export const TSUME_CLEAR_GEMS = 20;
@@ -70,7 +71,7 @@ export function requireTsumeDay(day, at = Date.now()) {
   const today = dailyTsume(at);
   if (today.day !== day)
     throw new Error(
-      "朝5時になり、問題が更新されました。今日の問題に挑戦してください。",
+      L("朝5時になり、問題が更新されました。今日の問題に挑戦してください。"),
     );
   return today;
 }

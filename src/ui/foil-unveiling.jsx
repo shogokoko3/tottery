@@ -14,6 +14,7 @@ import { scheduleFoilUnveiling } from "../skins/foil-unveiling.js";
 import { createFoilUnveilingAssets } from "../skins/foil-unveiling-assets.js";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import styles from "./foil-unveiling.css";
+import { L } from "../i18n/index.js";
 
 function useStyles() {
   useInsertionEffect(() => {
@@ -118,7 +119,7 @@ export function FoilUnveilingView({
   fromGrid = false,
   origin = null,
   onProceed = null,
-  proceedLabel = "結果へ →",
+  proceedLabel = L("結果へ →"),
 }) {
   useStyles();
   const visible = ["reveal", "settle", "complete"].includes(phase);
@@ -146,7 +147,7 @@ export function FoilUnveilingView({
           : undefined
       }
       role="group"
-      aria-label="フォイルカードの正体"
+      aria-label={L("フォイルカードの正体")}
     >
       <div className="foil-unveiling-aura" aria-hidden="true" />
       <div className="foil-unveiling-motes" aria-hidden="true">
@@ -171,12 +172,12 @@ export function FoilUnveilingView({
       </p>
       <p className="foil-unveiling-status" role="status">
         {visible
-          ? "輝きの、その正体は。"
+          ? L("輝きの、その正体は。")
           : upgrading
-            ? upgradedFromNormal ? "さらなる奇跡。フォイルへ昇格。" : "輝きが、変わる。"
-            : beforeUpgrade ? "この一枚に、さらなる奇跡を。" : phase === "waiting"
-              ? "光が集まりはじめた。"
-              : "この輝きは、誰のものか。"}
+            ? upgradedFromNormal ? L("さらなる奇跡。フォイルへ昇格。") : L("輝きが、変わる。")
+            : beforeUpgrade ? L("この一枚に、さらなる奇跡を。") : phase === "waiting"
+              ? L("光が集まりはじめた。")
+              : L("この輝きは、誰のものか。")}
       </p>
       <div className="foil-unveiling-card">
         <UnveilingBurst active={visible || upgrading} />
@@ -198,7 +199,7 @@ export function FoilUnveilingView({
         {upgrading && (
           <>
             <span className="foil-unveiling-upgrade" aria-hidden="true" />
-            <strong className={`foil-unveiling-promotion-label ${upgradedFromNormal ? "is-foil-conversion" : ""}`}>{upgradedFromNormal ? "フォイル昇格" : "昇格"}</strong>
+            <strong className={`foil-unveiling-promotion-label ${upgradedFromNormal ? "is-foil-conversion" : ""}`}>{upgradedFromNormal ? L("フォイル昇格") : L("昇格")}</strong>
           </>
         )}
         {!missing && (
@@ -339,7 +340,7 @@ export function FoilUnveiling({
       fromGrid={fromGrid}
       origin={origin}
       onProceed={proceed}
-      proceedLabel={last ? "結果へ →" : "次のフォイルへ →"}
+      proceedLabel={last ? L("結果へ →") : L("次のフォイルへ →")}
       {...view}
     />
   );

@@ -25,12 +25,13 @@ import { useMissionProfile } from "./mission-profile.js";
 import { isSeriesOpen } from "../game/content-seasons.js";
 import { FRAME_GRADES } from "./title-design.js";
 import { TitleFrame } from "./title-frame.jsx";
+import { L, Lx } from "../i18n/index.js";
 
 /** 段の呼び名。終局画面のメーター(mastery.jsx)と同じ言い方にそろえる */
 export function masteryStepName(step) {
-  if (step <= 0) return "未到達";
-  if (step >= MASTERY_STEPS.length) return "極み";
-  return FRAME_GRADES[step - 1] ? FRAME_GRADES[step - 1].name : `段${step}`;
+  if (step <= 0) return L("未到達");
+  if (step >= MASTERY_STEPS.length) return L("極み");
+  return FRAME_GRADES[step - 1] ? FRAME_GRADES[step - 1].name : L("段{n}", { n: step });
 }
 
 const titleNeed = MASTERY_STEPS[MASTERY_TITLE_STEP - 1];
@@ -86,22 +87,33 @@ export function CardMasteryScreen({ onBack, initialSeries = null }) {
   if (!seriesId)
     return (
       <div className="setup-wrap card-mastery">
-        <h2>カード</h2>
-        <p className="hint">熟練度を見るシリーズを選びます。所持スキンを装備して対局すると、そのスキンに点がたまります。</p>
+        <h2>{L("カード")}</h2>
+        <p className="hint">
+          {L("熟練度を見るシリーズを選びます。所持スキンを装備して対局すると、そのスキンに点がたまります。")}
+        </p>
         {!anyOwned && (
           <p className="card-mastery-locked-all">
-            <Lock size={14} /> スキンをまだ持っていません。ガチャやミッションでスキンを手に入れると、そのスキンの熟練度が解放されます。
+            <Lock size={14} />{" "}
+            {L(
+              "スキンをまだ持っていません。ガチャやミッションでスキンを手に入れると、そのスキンの熟練度が解放されます。",
+            )}
           </p>
         )}
-        <div className="card-mastery-pick-list" role="list" aria-label="シリーズを選ぶ">
+        <div className="card-mastery-pick-list" role="list" aria-label={L("シリーズを選ぶ")}>
           {shownSeries.map((s) => {
             const have = s.skins.filter((skin) => ownsSkin(owned, skin));
             const points = s.skins.reduce((n, skin) => n + (mastery[skin] || 0), 0);
             return (
               <section className="gacha-pick card-mastery-pick" key={s.id} role="listitem">
                 <div className="gacha-pick-head">
-                  <h2>{s.name}</h2>
-                  <span>所持 {have.length}/{s.skins.length} · 合計 {points}点</span>
+                  <h2>{Lx(s.name)}</h2>
+                  <span>
+                    {L("所持 {have}/{total} · 合計 {points}点", {
+                      have: have.length,
+                      total: s.skins.length,
+                      points,
+                    })}
+                  </span>
                 </div>
                 <div className="card-mastery-pick-art" onClick={() => pickSeries(s.id)} aria-hidden="true">
                   {s.skins.map((skin) => (
@@ -117,14 +129,14 @@ export function CardMasteryScreen({ onBack, initialSeries = null }) {
                   ))}
                 </div>
                 <button type="button" className="skin-btn skin-btn-gold gacha-pick-go" onClick={() => pickSeries(s.id)}>
-                  このシリーズの熟練度を見る
+                  {L("このシリーズの熟練度を見る")}
                 </button>
               </section>
             );
           })}
         </div>
         <button className="btn btn-ghost btn-home" onClick={onBack}>
-          <ArrowLeft size={16} /> ホームに戻る
+          <ArrowLeft size={16} /> {L("ホームに戻る")}
         </button>
       </div>
     );
@@ -132,39 +144,42 @@ export function CardMasteryScreen({ onBack, initialSeries = null }) {
   return (
     <div className="setup-wrap card-mastery">
       <div className="card-mastery-top">
-        <h2>カード</h2>
+        <h2>{L("カード")}</h2>
         {/* 右上にガチャと同じ「シリーズ選択へ」(2026-10-16 本人の指示) */}
         <button type="button" className="skins-gacha-back card-mastery-back" onClick={() => { setSeriesId(null); setOpen(null); }}>
-          <ArrowLeft size={14} /> シリーズ選択へ
+          <ArrowLeft size={14} /> {L("シリーズ選択へ")}
         </button>
       </div>
-      <p className="card-mastery-series-name">{series.name}</p>
+      <p className="card-mastery-series-name">{Lx(series.name)}</p>
       <p className="hint">
-        所持スキンを装備して対局すると、そのスキンに点がたまります。通常版とフォイル版は同じ熟練度です。
-        王に選ぶ +5、駒を出す +1(何体でも)、
-        王として動かす +1(1局3点まで)、王で相手の駒を取る +1(10点まで)、王で相手の王を討つ +10。
-        段に届くと称号が手に入ります。通常札では増えません。盤の有利不利には効きません。
+        {L(
+          "所持スキンを装備して対局すると、そのスキンに点がたまります。通常版とフォイル版は同じ熟練度です。 王に選ぶ +5、駒を出す +1(何体でも)、 王として動かす +1(1局3点まで)、王で相手の駒を取る +1(10点まで)、王で相手の王を討つ +10。 段に届くと称号が手に入ります。通常札では増えません。盤の有利不利には効きません。",
+        )}
       </p>
       {!anyOwned && (
         <p className="card-mastery-locked-all">
-          <Lock size={14} /> スキンをまだ持っていません。ガチャやミッションでスキンを手に入れると、そのスキンの熟練度が解放されます。
+          <Lock size={14} />{" "}
+            {L(
+              "スキンをまだ持っていません。ガチャやミッションでスキンを手に入れると、そのスキンの熟練度が解放されます。",
+            )}
         </p>
       )}
-      <div className="card-mastery-summary" aria-label="熟練度のまとめ">
+      <div className="card-mastery-summary" aria-label={L("熟練度のまとめ")}>
         <span>
-          解放したスキン <b>{unlocked.length}</b>/{series.skins.length}
+          {L("解放したスキン")} <b>{unlocked.length}</b>/{series.skins.length}
         </span>
         <span>
-          称号 <b>{titled}</b>/{series.skins.length}
+          {L("称号")} <b>{titled}</b>/{series.skins.length}
         </span>
         <span>
-          極み <b>{mastered}</b>/{series.skins.length}
+          {L("極み")} <b>{mastered}</b>/{series.skins.length}
         </span>
         <span>
-          合計 <b>{total}</b>点
+          {L("合計")} <b>{total}</b>
+          {L("点")}
         </span>
       </div>
-      <ul className="card-mastery-list" aria-label={`${series.name}シリーズの熟練度`}>
+      <ul className="card-mastery-list" aria-label={L("{series}シリーズの熟練度", { series: Lx(series.name) })}>
         {rows.map(({ skin, rank, p, title, have, titleOwned }) => {
           const isOpen = open === skin;
           const s = byId(skin);
@@ -182,10 +197,10 @@ export function CardMasteryScreen({ onBack, initialSeries = null }) {
                   <span className="card-mastery-body">
                     <span className="card-mastery-head">
                       <b className="card-mastery-rank">{rank}</b>
-                      <span className="card-mastery-lockname">{s?.name || "スキン"}</span>
+                      <span className="card-mastery-lockname">{Lx(s?.name) || L("スキン")}</span>
                     </span>
                     <small className="card-mastery-left">
-                      このスキンを手に入れると解放
+                      {L("このスキンを手に入れると解放")}
                     </small>
                   </span>
                 </div>
@@ -217,23 +232,28 @@ export function CardMasteryScreen({ onBack, initialSeries = null }) {
                 <span className="card-mastery-body">
                   <span className="card-mastery-head">
                     <b className="card-mastery-rank">{rank}</b>
-                    <span className="card-mastery-skin-name">{s?.name || "スキン"}</span>
+                    <span className="card-mastery-skin-name">{Lx(s?.name) || L("スキン")}</span>
                     <span className="card-mastery-step">{masteryStepName(p.step)}</span>
                     <span className="card-mastery-count">
-                      {p.done ? `${p.count}点` : `${p.count} / ${p.next}点`}
+                      {p.done
+                        ? L("{n}点", { n: p.count })
+                        : L("{n} / {next}点", { n: p.count, next: p.next })}
                     </span>
                   </span>
                   <span
                     className="mastery-track"
                     role="progressbar"
-                    aria-label={`${s?.name || rank} の熟練度`}
+                    aria-label={L("{name} の熟練度", { name: Lx(s?.name) || rank })}
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={Math.round(p.ratio * 100)}
                     aria-valuetext={
                       p.done
-                        ? `極み（${p.count}点）`
-                        : `${p.count}点。次の段まであと${p.left}点`
+                        ? L("極み（{n}点）", { n: p.count })
+                        : L("{n}点。次の段まであと{left}点", {
+                            n: p.count,
+                            left: p.left,
+                          })
                     }
                   >
                     <span style={{ width: `${p.ratio * 100}%` }} />
@@ -243,26 +263,33 @@ export function CardMasteryScreen({ onBack, initialSeries = null }) {
                       <TitleFrame id={title.id} size="compact" className="card-mastery-title" />
                     ) : title ? (
                       <small>
-                        あと{Math.max(0, titleNeed - p.count)}点で称号「{title.name}」
+                        {L("あと{n}点で称号「{name}」", {
+                          n: Math.max(0, titleNeed - p.count),
+                          name: Lx(title.name),
+                        })}
                       </small>
                     ) : null}
                     {!p.done && (
-                      <small className="card-mastery-left">次の段まであと {p.left}</small>
+                      <small className="card-mastery-left">
+                        {L("次の段まであと {n}", { n: p.left })}
+                      </small>
                     )}
-                    {p.done && <small className="card-mastery-left">これ以上は上がりません</small>}
+                    {p.done && (
+                      <small className="card-mastery-left">{L("これ以上は上がりません")}</small>
+                    )}
                   </span>
                 </span>
               </button>
               {isOpen && (
                 <div className="card-mastery-detail" id={`card-mastery-detail-${skin}`}>
                   <p>
-                    <b>{s?.name || "スキン"}</b>
-                    {s?.role ? ` · ${s.role}` : ""}
+                    <b>{Lx(s?.name) || L("スキン")}</b>
+                    {s?.role ? ` · ${Lx(s.role)}` : ""}
                   </p>
                   {s?.move && (
                     <p>
-                      <b>{s.move}</b>
-                      {s.description ? ` — ${s.description}` : ""}
+                      <b>{Lx(s.move)}</b>
+                      {s.description ? ` — ${Lx(s.description)}` : ""}
                     </p>
                   )}
                 </div>
@@ -271,24 +298,31 @@ export function CardMasteryScreen({ onBack, initialSeries = null }) {
           );
         })}
       </ul>
-      <section className="card-mastery-all" aria-label="通しの称号">
-        <h3>{series.name}の全スキンを使い込むと</h3>
+      <section className="card-mastery-all" aria-label={L("通しの称号")}>
+        <h3>{L("{series}の全スキンを使い込むと", { series: Lx(series.name) })}</h3>
         {allRows.map(({ title, need, has, owned: got }) => (
           <div key={title.id} className={`card-mastery-all-row${got ? " is-owned" : ""}`}>
             {got ? (
               <TitleFrame id={title.id} size="compact" />
             ) : (
-              <b className="card-mastery-all-name">{title.name}</b>
+              <b className="card-mastery-all-name">{Lx(title.name)}</b>
             )}
             <small>
-              {title.how} · {masteryStepName(need)}に届いたスキン {has}/{series.skins.length}
+              {title.how} ·{" "}
+              {L("{step}に届いたスキン {has}/{total}", {
+                step: masteryStepName(need),
+                has,
+                total: series.skins.length,
+              })}
             </small>
           </div>
         ))}
-        <p className="mastery-steps-note">段の境目: {MASTERY_STEPS.join(" · ")}点</p>
+        <p className="mastery-steps-note">
+          {L("段の境目: {steps}点", { steps: MASTERY_STEPS.join(" · ") })}
+        </p>
       </section>
       <button className="btn btn-ghost btn-home" onClick={onBack}>
-        <ArrowLeft size={16} /> ホームに戻る
+        <ArrowLeft size={16} /> {L("ホームに戻る")}
       </button>
     </div>
   );

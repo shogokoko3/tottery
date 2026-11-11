@@ -1,3 +1,4 @@
+import { L } from "../i18n/index.js";
 const api = (() => {
   "use strict";
   const SKIN_ID = "genie-magician";
@@ -186,19 +187,19 @@ const api = (() => {
   function phaseAt(event, t) {
     const count = event.defeated.length;
     if (t >= duration(event))
-      return count ? `完了：${count}体撃破` : "完了：入れ替え";
+      return count ? L("完了：{count}体撃破", { count }) : L("完了：入れ替え");
     if (event.kind === "ace-foil") {
-      if (t < FOIL_SNAP_MS) return "指パッチン：フォイル魔法を発動";
+      if (t < FOIL_SNAP_MS) return L("指パッチン：フォイル魔法を発動");
       t -= FOIL_SNAP_MS;
     }
-    if (t < 420) return "開幕：3つのシルクハット";
-    if (t < 800) return "吸い込み：駒が帽子の中へ";
-    if (t < 1620) return "シャッフル：紫の煙で中身を隠す";
-    if (t < 2070) return "再登場：3か所から同時にポン！";
-    if (!count) return "余韻：金の星が消える";
-    if (t < 2440) return `包囲成立：${count}体の敵に金の輪`;
-    if (t < 3250) return `一斉吸収：${count}体が帽子の中へ`;
-    return "フィナーレ：金の紙吹雪";
+    if (t < 420) return L("開幕：3つのシルクハット");
+    if (t < 800) return L("吸い込み：駒が帽子の中へ");
+    if (t < 1620) return L("シャッフル：紫の煙で中身を隠す");
+    if (t < 2070) return L("再登場：3か所から同時にポン！");
+    if (!count) return L("余韻：金の星が消える");
+    if (t < 2440) return L("包囲成立：{count}体の敵に金の輪", { count });
+    if (t < 3250) return L("一斉吸収：{count}体が帽子の中へ", { count });
+    return L("フィナーレ：金の紙吹雪");
   }
   function createRenderer(ctx) {
     const settings = { sparkles: 1 };

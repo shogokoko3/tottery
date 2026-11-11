@@ -202,10 +202,10 @@ console.log("\n配線");
   is("結果が無ければ英雄の紹介を出さない", firstPullCompanion({}), null);
   is(
     "初回の結果で自動装備と見た目のみの変更を伝える",
-    /\{firstResults && \(\s*<p className="skins-first-pull-note">\s*数字ごとに自動で装備しました。札の見た目が変わり、動きや強さは変わりません。\s*<\/p>/.test(skins),
+    /\{firstResults && \(\s*<p className="skins-first-pull-note">\s*\{L\("数字ごとに自動で装備しました。札の見た目が変わり、動きや強さは変わりません。"\)\}\s*<\/p>/.test(skins),
     true,
   );
-  is("初回はホームへ進む", skins.includes('{firstResults ? "ホームへ進む" : "結果を確認"}'), true);
+  is("初回はホームへ進む", skins.includes('{firstResults ? L("ホームへ進む") : L("結果を確認")}'), true);
   is(
     "閉じたあと呼ぶ側の onBack へ(閉じるのに失敗したら行かない)",
     /const closeFirstResults = async \(\) => \{\s*const next = await closeResults\(\);\s*if \(next && onBack\) onBack\(\);\s*\};/.test(skins),
@@ -266,7 +266,7 @@ console.log("\n10連の言葉と折り返し(2026-10-06 見直し)");
     ["すべての札が現れました。", "札に宿る輝きをお待ちください。", "札を引き寄せてめくるか、指でなぞって次々にめくれます。"].every((t) => skins.includes(`"${t}"`)),
     true,
   );
-  is("10連の結果の印は「装備した」(ふつうのガチャは「装備しました」)", /\{firstResults \? "装備した" : "装備しました"\}/.test(skins), true);
+  is("10連の結果の印は「装備した」(ふつうのガチャは「装備しました」)", /\{firstResults \? L\("装備した"\) : L\("装備しました"\)\}/.test(skins), true);
   // 札の名は「の」と空白のあとで句に切る(4列の狭い列で「黄昏のレヴナン/ト」と割れた)
   const names = [...new Set(SKINS.map((s) => s.name))];
   const em = (t) => [...t.trim()].reduce((n, c) => n + (/[\x20-\x7e]/.test(c) ? 0.6 : 1), 0);

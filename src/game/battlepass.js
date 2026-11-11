@@ -11,6 +11,7 @@
  * オンライン限定のマスは実際の通信対戦での撃破だけを追加する。
  */
 import { byId } from "../skins/catalog.js";
+import { L, Lk, Lx } from "../i18n/index.js";
 import { contentSeason, DEFAULT_SEASON } from "./content-seasons.js";
 
 /** 盤の一辺。奇数にすること(真ん中が1マスに決まる) */
@@ -50,30 +51,30 @@ export function gainOf(captured) {
  */
 function buildCells() {
   const missions = {
-    "1-2": ["any", 3, "駒を3枚取る"],
-    "2-1": ["any", 5, "駒を5枚取る"],
-    "2-3": ["multi", 1, "1手で2枚まとめて取る"],
-    "3-2": ["king", 1, "相手の王を討つ"],
-    "1-1": ["rank:2", 2, "2を2枚取る"],
-    "1-3": ["rank:3", 2, "3を2枚取る"],
-    "3-1": ["rank:4", 2, "4を2枚取る"],
-    "3-3": ["rank:5", 2, "5を2枚取る"],
-    "0-0": ["any", 10, "駒を10枚取る"],
-    "0-1": ["any", 15, "駒を15枚取る"],
-    "0-2": ["any", 20, "駒を20枚取る", true],
-    "0-3": ["any", 30, "駒を30枚取る"],
-    "0-4": ["rank:6", 3, "6を3枚取る"],
-    "1-0": ["rank:7", 3, "7を3枚取る"],
-    "1-4": ["rank:8", 3, "8を3枚取る"],
-    "2-0": ["rank:9", 3, "9を3枚取る"],
-    "2-4": ["rank:10", 3, "10を3枚取る", true],
-    "3-0": ["rank:J", 2, "Jを2枚取る"],
-    "3-4": ["rank:Q", 2, "Qを2枚取る"],
-    "4-0": ["rank:K", 2, "Kを2枚取る"],
-    "4-1": ["rank:A", 2, "Aを2枚取る"],
-    "4-2": ["multi", 3, "1手で2枚まとめて取る(3回)", true],
-    "4-3": ["king", 3, "相手の王を討つ(3回)", true],
-    "4-4": ["king", 5, "相手の王を討つ(5回)"],
+    "1-2": ["any", 3, Lk("駒を3枚取る")],
+    "2-1": ["any", 5, Lk("駒を5枚取る")],
+    "2-3": ["multi", 1, Lk("1手で2枚まとめて取る")],
+    "3-2": ["king", 1, Lk("相手の王を討つ")],
+    "1-1": ["rank:2", 2, Lk("2を2枚取る")],
+    "1-3": ["rank:3", 2, Lk("3を2枚取る")],
+    "3-1": ["rank:4", 2, Lk("4を2枚取る")],
+    "3-3": ["rank:5", 2, Lk("5を2枚取る")],
+    "0-0": ["any", 10, Lk("駒を10枚取る")],
+    "0-1": ["any", 15, Lk("駒を15枚取る")],
+    "0-2": ["any", 20, Lk("駒を20枚取る"), true],
+    "0-3": ["any", 30, Lk("駒を30枚取る")],
+    "0-4": ["rank:6", 3, Lk("6を3枚取る")],
+    "1-0": ["rank:7", 3, Lk("7を3枚取る")],
+    "1-4": ["rank:8", 3, Lk("8を3枚取る")],
+    "2-0": ["rank:9", 3, Lk("9を3枚取る")],
+    "2-4": ["rank:10", 3, Lk("10を3枚取る"), true],
+    "3-0": ["rank:J", 2, Lk("Jを2枚取る")],
+    "3-4": ["rank:Q", 2, Lk("Qを2枚取る")],
+    "4-0": ["rank:K", 2, Lk("Kを2枚取る")],
+    "4-1": ["rank:A", 2, Lk("Aを2枚取る")],
+    "4-2": ["multi", 3, Lk("1手で2枚まとめて取る(3回)"), true],
+    "4-3": ["king", 3, Lk("相手の王を討つ(3回)"), true],
+    "4-4": ["king", 5, Lk("相手の王を討つ(5回)")],
   };
   const layout = [
     ["4-4", "1-0", "2-4", "3-4", "0-3"],
@@ -85,7 +86,7 @@ function buildCells() {
   return layout.flatMap((line, row) =>
     line.map((id, col) => {
       if (id === centerId)
-        return { id, row, col, free: true, name: "はじまりの地" };
+        return { id, row, col, free: true, name: L("はじまりの地") };
       const [track, goal, title, onlineOnly = false] = missions[id];
       const dr = Math.abs(row - CENTER),
         dc = Math.abs(col - CENTER);
@@ -98,12 +99,14 @@ function buildCells() {
         track,
         goal,
         onlineOnly,
-        name: `${onlineOnly ? "オンライン対戦で" : ""}${title}`,
-        shortName: onlineOnly
-          ? title
-              .replace("1手で2枚まとめて取る(3回)", "2枚まとめ取り(3回)")
-              .replace("相手の王を討つ", "王を討つ")
-          : title,
+        name: onlineOnly ? L("オンライン対戦で{title}", { title: Lx(title) }) : Lx(title),
+        shortName: Lx(
+          onlineOnly
+            ? title
+                .replace(Lk("1手で2枚まとめて取る(3回)"), Lk("2枚まとめ取り(3回)"))
+                .replace(Lk("相手の王を討つ"), Lk("王を討つ"))
+            : title,
+        ),
         ring,
         group: ring > 1 ? "far" : dr + dc === 1 ? "first" : "near",
       };

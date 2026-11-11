@@ -1,4 +1,5 @@
 import { FOIL_MISSION_DEFS } from "./foil-missions.js";
+import { L } from "../i18n/index.js";
 
 export const MISSIONS = [
   // 使用頻度 → 称号・スキン
@@ -6,21 +7,21 @@ export const MISSIONS = [
     id: "days-3",
     kind: "days",
     goal: 3,
-    name: "3日あそぶ",
+    name: L("3日あそぶ"),
     reward: { type: "title", id: "regular" },
   },
   {
     id: "days-10",
     kind: "days",
     goal: 10,
-    name: "10日あそぶ",
+    name: L("10日あそぶ"),
     reward: { type: "skin", id: "pirate-male" },
   },
   {
     id: "days-30",
     kind: "days",
     goal: 30,
-    name: "30日あそぶ",
+    name: L("30日あそぶ"),
     reward: { type: "title", id: "devoted" },
   },
 
@@ -30,28 +31,28 @@ export const MISSIONS = [
     id: "level-5",
     kind: "level",
     goal: 5,
-    name: "レベル5になる",
+    name: L("レベル5になる"),
     reward: { type: "gems", amount: 500 },
   },
   {
     id: "level-10",
     kind: "level",
     goal: 10,
-    name: "レベル10になる",
+    name: L("レベル10になる"),
     reward: { type: "icon", id: "crown" },
   },
   {
     id: "level-20",
     kind: "level",
     goal: 20,
-    name: "レベル20になる",
+    name: L("レベル20になる"),
     reward: { type: "gems", amount: 500 },
   },
   {
     id: "level-30",
     kind: "level",
     goal: 30,
-    name: "レベル30になる",
+    name: L("レベル30になる"),
     reward: { type: "icon", id: "star" },
   },
 
@@ -60,28 +61,28 @@ export const MISSIONS = [
     id: "battles-10",
     kind: "battles",
     goal: 10,
-    name: "10戦する",
+    name: L("10戦する"),
     reward: { type: "gems", amount: 500 },
   },
   {
     id: "battles-50",
     kind: "battles",
     goal: 50,
-    name: "50戦する",
+    name: L("50戦する"),
     reward: { type: "gems", amount: 500 },
   },
   {
     id: "battles-100",
     kind: "battles",
     goal: 100,
-    name: "100戦する",
+    name: L("100戦する"),
     reward: { type: "gems", amount: 500 },
   },
   {
     id: "battles-500",
     kind: "battles",
     goal: 500,
-    name: "500戦する",
+    name: L("500戦する"),
     reward: { type: "gems", amount: 500 },
   },
   ...FOIL_MISSION_DEFS.map((entry) => ({

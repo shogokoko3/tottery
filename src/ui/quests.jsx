@@ -14,10 +14,11 @@ import { useCollection } from "../skins/store.js";
 import { BattlePassScreen } from "./battlepass.jsx";
 import { MissionsScreen } from "./missions.jsx";
 import { useMissionProfile } from "./mission-profile.js";
+import { L } from "../i18n/index.js";
 
 export const QUEST_TABS = [
-  { id: "missions", label: "ミッション" },
-  { id: "battlepass", label: "バトルパス" },
+  { id: "missions", label: L("ミッション") },
+  { id: "battlepass", label: L("バトルパス") },
 ];
 
 export function QuestsScreen({ tab = "missions", onTab, onBack, onSkins, passSeason = null }) {
@@ -31,7 +32,7 @@ export function QuestsScreen({ tab = "missions", onTab, onBack, onSkins, passSea
       <div
         className="quests-switch"
         role="tablist"
-        aria-label="ミッションとバトルパス"
+        aria-label={L("ミッションとバトルパス")}
       >
         {QUEST_TABS.map((t) => (
           <button
@@ -45,7 +46,7 @@ export function QuestsScreen({ tab = "missions", onTab, onBack, onSkins, passSea
           >
             {t.label}
             {t.id === "missions" && ready > 0 && (
-              <span className="missions-tab-count" aria-label={`受取可能${ready}件`}>
+              <span className="missions-tab-count" aria-label={L("受取可能{n}件", { n: ready })}>
                 {ready > 99 ? "99+" : ready}
               </span>
             )}

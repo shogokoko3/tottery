@@ -8,6 +8,7 @@
  * items: [{ id, name, note? }]  note は札の下の小さな文字(「12キャラ」「進行中」など)
  */
 import { useEffect, useRef } from "react";
+import { L } from "../i18n/index.js";
 
 export function SeriesTabs({
   items,
@@ -16,7 +17,7 @@ export function SeriesTabs({
   label,
   disabled = false,
   allowAll = false,
-  allLabel = "全シリーズ",
+  allLabel = L("全シリーズ"),
   className = "",
 }) {
   const rail = useRef(null);

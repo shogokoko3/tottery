@@ -33,6 +33,7 @@ import { ALICE_SKINS } from "../skins/alice.js";
  */
 import { SEA_SLIDE_RULE_VERSION } from "./rule-version.js";
 import { RANKS, PLAYER_META } from "./constants.js";
+import { L, Lk } from "../i18n/index.js";
 import { getLegalMoves, kingRankOf, squareName,
   moveArrow,
 } from "./board.js";
@@ -52,51 +53,69 @@ export const AREA_BY_RANK = Object.freeze({
   K: "palace",
 });
 
+// 名前と説明は画面に出すだけ(保存も比べもしない)。対局の記録(log)には AREA_LOG_NAME の日本語を入れる
 export const AREA_INFO = Object.freeze({
-  "alice-revolution": {name:"革命の扉",text:"自軍の王とAを除く駒、および相手の王を除く駒からランダムで1体の数字を逆転。Aが王でなくても発動できる。",usesTurn:false,needsPiece:false},
-  "alice-caucus": {name: "コーカス・レース", text: "自分のターンに1回、任意で発動。盤面中央を軸に、3×3・5×5・7×7・9×9の指定マスと、その上の駒をまとめて180度回転させます。対象外のマスは動きません。手番は消費せず、続けて駒を動かせます。", usesTurn: false, needsPiece: false},
-  "alice-quadrille": {name: "カドリール", text: "自分のターンに1回、味方1体と相手1体を選び、相手の駒を味方と3ターン同じ動き方にします。味方の王・A・ティーカップは選べません。相手の王・A・ティーカップは選べます。手番は消費せず、続けて駒を動かせます。", usesTurn: false, needsPiece: false},
-  "alice-maze": {name: "迷いの森", text: "双方の残り時間を隠します。相手のターンが始まるたび、盤面の空きマス1箇所をランダムに選び、そのターン中は相手が移動できなくします。自分のターンが始まると封鎖を解除します。ボタン操作なしで働く効果です。", usesTurn: false, needsPiece: false},
-  "alice-tea": {name: "終わらないお茶会", text: "自分のターンに1回、任意で発動。両軍の駒とティーカップの合計が18体未満なら、18体になるまで自陣の空きマスにティーカップをランダムに配置します。空きマスがなくなると配置は止まります。手番は消費せず、続けて駒を動かせます。", usesTurn: false, needsPiece: false},
-  "alice-illusion": {name: "幻影", text: "自分のターンに1回、駒を動かす前に任意で発動。煙で盤面を覆い、選んだ味方2体の位置を入れ替えます。公開されていた駒も、入れ替え後は正体を隠します。手番は消費せず、続けて駒を動かせます。", usesTurn: false, needsPiece: false},
-  "alice-croquet": {name: "クロッケー大会", text: "自分のターンに1回、王を中心とした5×5内のトランプ兵1体を飛ばします。着地点は指定マスと上下左右からランダムに選びます（中央5箇所・端4箇所・角3箇所）。駒に当たると、敵味方を問わず両方を撃破。空きマスなら移動だけ行います。手番は消費しません。", usesTurn: false, needsPiece: false},
+  "alice-revolution": {name: L("革命の扉"),text: L("自軍の王とAを除く駒、および相手の王を除く駒からランダムで1体の数字を逆転。Aが王でなくても発動できる。"),usesTurn:false,needsPiece:false},
+  "alice-caucus": {name: L("コーカス・レース"), text: L("自分のターンに1回、任意で発動。盤面中央を軸に、3×3・5×5・7×7・9×9の指定マスと、その上の駒をまとめて180度回転させます。対象外のマスは動きません。手番は消費せず、続けて駒を動かせます。"), usesTurn: false, needsPiece: false},
+  "alice-quadrille": {name: L("カドリール"), text: L("自分のターンに1回、味方1体と相手1体を選び、相手の駒を味方と3ターン同じ動き方にします。味方の王・A・ティーカップは選べません。相手の王・A・ティーカップは選べます。手番は消費せず、続けて駒を動かせます。"), usesTurn: false, needsPiece: false},
+  "alice-maze": {name: L("迷いの森"), text: L("双方の残り時間を隠します。相手のターンが始まるたび、盤面の空きマス1箇所をランダムに選び、そのターン中は相手が移動できなくします。自分のターンが始まると封鎖を解除します。ボタン操作なしで働く効果です。"), usesTurn: false, needsPiece: false},
+  "alice-tea": {name: L("終わらないお茶会"), text: L("自分のターンに1回、任意で発動。両軍の駒とティーカップの合計が18体未満なら、18体になるまで自陣の空きマスにティーカップをランダムに配置します。空きマスがなくなると配置は止まります。手番は消費せず、続けて駒を動かせます。"), usesTurn: false, needsPiece: false},
+  "alice-illusion": {name: L("幻影"), text: L("自分のターンに1回、駒を動かす前に任意で発動。煙で盤面を覆い、選んだ味方2体の位置を入れ替えます。公開されていた駒も、入れ替え後は正体を隠します。手番は消費せず、続けて駒を動かせます。"), usesTurn: false, needsPiece: false},
+  "alice-croquet": {name: L("クロッケー大会"), text: L("自分のターンに1回、王を中心とした5×5内のトランプ兵1体を飛ばします。着地点は指定マスと上下左右からランダムに選びます（中央5箇所・端4箇所・角3箇所）。駒に当たると、敵味方を問わず両方を撃破。空きマスなら移動だけ行います。手番は消費しません。"), usesTurn: false, needsPiece: false},
 
   earth: {
-    name: "土のエリア",
-    text: "毎ターンの初めに自動発動。直前に動いた相手の駒の正体を必ず見抜く。王も対象。正体は自分だけに表示。",
+    name: L("土のエリア"),
+    text: L("毎ターンの初めに自動発動。直前に動いた相手の駒の正体を必ず見抜く。王も対象。正体は自分だけに表示。"),
     usesTurn: false,
     needsPiece: false,
   },
   sea: {
-    name: "海のエリア",
-    text: "毎ターンの初めに任意発動。相手の全駒を中央へ最大1マス引き寄せる(斜めの先が埋まっていれば縦か横で寄る)。自分の駒は動かず、寄れる空きマスが無い駒はそのまま。発動後も移動できる。",
+    name: L("海のエリア"),
+    text: L("毎ターンの初めに任意発動。相手の全駒を中央へ最大1マス引き寄せる(斜めの先が埋まっていれば縦か横で寄る)。自分の駒は動かず、寄れる空きマスが無い駒はそのまま。発動後も移動できる。"),
     usesTurn: false,
     needsPiece: false,
   },
   forest: {
-    name: "森のエリア",
-    text: "毎ターンの初めに自動発動。相手の王以外で、正体を知らない駒から最大2体をランダムに見抜く。見抜いた駒は自分にだけ表向きになる。",
+    name: L("森のエリア"),
+    text: L("毎ターンの初めに自動発動。相手の王以外で、正体を知らない駒から最大2体をランダムに見抜く。見抜いた駒は自分にだけ表向きになる。"),
     usesTurn: false,
     needsPiece: false,
   },
   ice: {
-    name: "氷のエリア",
-    text: "毎ターンの初めに自動発動。相手の駒(王も)をランダムに1体凍らせ、相手の3ターン動けなくする。凍結中の駒なら残りに3ターン追加。",
+    name: L("氷のエリア"),
+    text: L("毎ターンの初めに自動発動。相手の駒(王も)をランダムに1体凍らせ、相手の3ターン動けなくする。凍結中の駒なら残りに3ターン追加。"),
     usesTurn: false,
     needsPiece: false,
   },
   sky: {
-    name: "空のエリア",
-    text: "毎ターンの初めに任意発動。自分の駒1体(王・10以外)を10に変身させて公開。以後、自分の10は1ターンに同じ1体を2回動かせる。発動後も移動できる。",
+    name: L("空のエリア"),
+    text: L("毎ターンの初めに任意発動。自分の駒1体(王・10以外)を10に変身させて公開。以後、自分の10は1ターンに同じ1体を2回動かせる。発動後も移動できる。"),
     usesTurn: false,
     needsPiece: true,
   },
   palace: {
-    name: "宮殿",
-    text: "毎ターンの初めに任意発動。自分の駒1体(王・A・K以外)を1段階昇格させて公開。1局に1回だけ2段階も選べる。Kが上限。発動後も移動できる。",
+    name: L("宮殿"),
+    text: L("毎ターンの初めに任意発動。自分の駒1体(王・A・K以外)を1段階昇格させて公開。1局に1回だけ2段階も選べる。Kが上限。発動後も移動できる。"),
     usesTurn: false,
     needsPiece: true,
   },
+});
+
+/** 対局の記録(log)に入れるエリアの名前。記録は日本語のまま持ち、出すところで Lx */
+const AREA_LOG_NAME = Object.freeze({
+  "alice-revolution": Lk("革命の扉"),
+  "alice-caucus": Lk("コーカス・レース"),
+  "alice-quadrille": Lk("カドリール"),
+  "alice-maze": Lk("迷いの森"),
+  "alice-tea": Lk("終わらないお茶会"),
+  "alice-illusion": Lk("幻影"),
+  "alice-croquet": Lk("クロッケー大会"),
+  earth: Lk("土のエリア"),
+  sea: Lk("海のエリア"),
+  forest: Lk("森のエリア"),
+  ice: Lk("氷のエリア"),
+  sky: Lk("空のエリア"),
+  palace: Lk("宮殿"),
 });
 
 /**
@@ -229,7 +248,7 @@ export function initAreas(state) {
   for (const i of [0, 1])
     if (areas[i])
       log.push(
-        `${PLAYER_META[i].name}の盤に${AREA_INFO[areas[i].type].name}が立った`,
+        Lk("{who}の盤に{area}が立った", { who: PLAYER_META[i].name, area: AREA_LOG_NAME[areas[i].type] || areas[i].type }),
       );
   return { ...base, areas, log };
 }
@@ -364,10 +383,10 @@ function recount(counts, from, to) {
  */
 export function canUseArea(state, player) {
   if (state.phase !== "play" || state.winner != null)
-    return { ok: false, why: "対局中ではありません" };
+    return { ok: false, why: L("対局中ではありません") };
   const area = state.areas && state.areas[player];
-  if (!area) return { ok: false, why: "エリアがありません" };
-  if(area.type.startsWith("alice-")) return {ok:false,why:"シーズン2の操作を使ってください"};
+  if (!area) return { ok: false, why: L("エリアがありません") };
+  if(area.type.startsWith("alice-")) return {ok:false,why:L("シーズン2の操作を使ってください")};
   if (
     recurringArea(state, area.type)
       ? area.lastUsedTurn === (state.turnNo || 0)
@@ -376,32 +395,32 @@ export function canUseArea(state, player) {
     return {
       ok: false,
       why: recurringArea(state, area.type)
-        ? "このターンでは発動済みです"
-        : "この局ではもう使いました",
+        ? L("このターンでは発動済みです")
+        : L("この局ではもう使いました"),
     };
-  if (state.currentTurn !== player) return { ok: false, why: "相手の番です" };
+  if (state.currentTurn !== player) return { ok: false, why: L("相手の番です") };
   if (state.extraMoveFor || state.extraUsed || state.pendingKingChoice)
-    return { ok: false, why: "ターンの初めにだけ使えます" };
+    return { ok: false, why: L("ターンの初めにだけ使えます") };
   switch (area.type) {
     case "earth":
       if (!earthTarget(state, player))
-        return { ok: false, why: "読める足跡がありません" };
+        return { ok: false, why: L("読める足跡がありません") };
       break;
     case "forest":
       if (!forestCandidates(state, player).length)
-        return { ok: false, why: "見抜ける駒がありません" };
+        return { ok: false, why: L("見抜ける駒がありません") };
       break;
     case "ice":
       if (!iceCandidates(state, player).length)
-        return { ok: false, why: "凍らせられる駒がありません" };
+        return { ok: false, why: L("凍らせられる駒がありません") };
       break;
     case "sky":
       if (!skyCandidates(state, player).length)
-        return { ok: false, why: "変身させられる駒がありません" };
+        return { ok: false, why: L("変身させられる駒がありません") };
       break;
     case "palace":
       if (!palaceCandidates(state, player).length)
-        return { ok: false, why: "昇格させられる駒がありません" };
+        return { ok: false, why: L("昇格させられる駒がありません") };
       break;
     default:
       break;
@@ -469,7 +488,9 @@ export function useArea(state, action) {
         ...next,
         log: [
           ...state.log,
-          `${name}が土のエリアで足跡を読んだ…${hit ? "正体を見抜いた!" : "読み違えた"}`,
+          hit
+            ? Lk("{name}が土のエリアで足跡を読んだ…正体を見抜いた!", { name })
+            : Lk("{name}が土のエリアで足跡を読んだ…読み違えた", { name }),
         ],
       };
       return markUsed(next, player, { hit, pieceId: target.id });
@@ -499,7 +520,7 @@ export function useArea(state, action) {
         known,
         log: [
           ...state.log,
-          `${name}が森のエリアで${foeName}の駒を${chosen.length}体見抜いた`,
+          Lk("{name}が森のエリアで{foe}の駒を{n}体見抜いた", { name, foe: foeName, n: chosen.length }),
         ],
       };
       return markUsed(next, player, { pieceIds: chosen });
@@ -546,8 +567,8 @@ export function useArea(state, action) {
           history: [
             ...next.pieces[id].history,
             recurringIce(state) && isFrozen(state, next.pieces[id])
-              ? `氷のエリアで凍結が${AREA_TUNING.freezeTurns}ターン延長された`
-              : "氷のエリアで凍りついた",
+              ? Lk("氷のエリアで凍結が{n}ターン延長された", { n: AREA_TUNING.freezeTurns })
+              : Lk("氷のエリアで凍りついた"),
           ],
         });
       const squares = targets
@@ -558,7 +579,7 @@ export function useArea(state, action) {
             state.boardSize,
           ),
         )
-        .join("・");
+        .join("・"); // i18n-ignore マスの名前の区切り(記録の中)
       if (targets.some((id) => state.pieces[id].isKing)) {
         const areas = [...next.areas];
         areas[player] = { ...areas[player], kingFrozenOnce: true };
@@ -569,7 +590,9 @@ export function useArea(state, action) {
           ...next,
           log: [
             ...state.log,
-            `${name}が氷のエリアで${squares}の${foeName}の駒${extended ? `の凍結を${AREA_TUNING.freezeTurns}ターン延長した` : "を凍らせた"}`,
+            extended
+              ? Lk("{name}が氷のエリアで{squares}の{foe}の駒の凍結を{n}ターン延長した", { name, squares, foe: foeName, n: AREA_TUNING.freezeTurns })
+              : Lk("{name}が氷のエリアで{squares}の{foe}の駒を凍らせた", { name, squares, foe: foeName }),
           ],
         },
         player,
@@ -608,17 +631,17 @@ export function useArea(state, action) {
           skyTwice: true,
           history: [
             ...piece.history,
-            `空のエリアで${piece.rank}から10に変身した(公開)`,
+            Lk("空のエリアで{from}から10に変身した(公開)", { from: piece.rank }),
           ],
         },
       );
       return markUsed(
         {
           ...next,
-          lastReveal: { id: piece.id, reason: "空のエリアで変身した" },
+          lastReveal: { id: piece.id, reason: Lk("空のエリアで変身した") },
           log: [
             ...state.log,
-            `${name}が空のエリアで${squareName(piece.row, piece.col, state.boardSize)}の駒を10に変身させた(公開)。${name}の10は全て2回動ける`,
+            Lk("{name}が空のエリアで{square}の駒を10に変身させた(公開)。{name}の10は全て2回動ける", { name, square: squareName(piece.row, piece.col, state.boardSize) }),
           ],
         },
         player,
@@ -650,7 +673,7 @@ export function useArea(state, action) {
           mark: "palace",
           history: [
             ...piece.history,
-            `宮殿で${piece.rank}から${rank}へ昇格した(公開)`,
+            Lk("宮殿で{from}から{to}へ昇格した(公開)", { from: piece.rank, to: rank }),
           ],
         },
       );
@@ -666,10 +689,12 @@ export function useArea(state, action) {
                 ),
               }
             : {}),
-          lastReveal: { id: piece.id, reason: "宮殿で昇格した" },
+          lastReveal: { id: piece.id, reason: Lk("宮殿で昇格した") },
           log: [
             ...state.log,
-            `${name}が宮殿で${squareName(piece.row, piece.col, state.boardSize)}の駒を${rank}に${steps === 2 ? "2段階" : ""}昇格させた(公開)${steps === 2 ? "。2段階昇格は使用済み" : ""}`,
+            steps === 2
+              ? Lk("{name}が宮殿で{square}の駒を{rank}に2段階昇格させた(公開)。2段階昇格は使用済み", { name, square: squareName(piece.row, piece.col, state.boardSize), rank })
+              : Lk("{name}が宮殿で{square}の駒を{rank}に昇格させた(公開)", { name, square: squareName(piece.row, piece.col, state.boardSize), rank }),
           ],
         },
         player,
@@ -740,7 +765,7 @@ export function seaPull(state) {
       col,
       history: [
         ...p.history,
-        `${squareName(p.row, p.col, state.boardSize)}→${squareName(row, col, state.boardSize)} ${moveArrow(p, { row, col })} へ移動(海の引き寄せ)`,
+        Lk("{from}→{to} {arrow} へ移動(海の引き寄せ)", { from: squareName(p.row, p.col, state.boardSize), to: squareName(row, col, state.boardSize), arrow: moveArrow(p, { row, col }) }),
       ],
     };
     board[p.row][p.col] = null;
@@ -762,7 +787,9 @@ export function seaPull(state) {
     shuffleMode: null,
     log: [
       ...state.log,
-      `${PLAYER_META[state.currentTurn].name}が海のエリアで${pullsOwn ? "駒" : "相手の駒"}を中央へ1マスずつ引き寄せた(${moves.length}体が動いた)`,
+      pullsOwn
+        ? Lk("{name}が海のエリアで駒を中央へ1マスずつ引き寄せた({n}体が動いた)", { name: PLAYER_META[state.currentTurn].name, n: moves.length })
+        : Lk("{name}が海のエリアで相手の駒を中央へ1マスずつ引き寄せた({n}体が動いた)", { name: PLAYER_META[state.currentTurn].name, n: moves.length }),
     ],
   };
 }
@@ -809,7 +836,7 @@ function seaPullLegacy(state) {
           col: at.col,
           history: [
             ...p.history,
-            `${squareName(p.row, p.col, size)}→${squareName(at.r, at.col, size)} ${moveArrow(p, { row: at.r, col: at.col })} へ移動(海の引き寄せ)`,
+            Lk("{from}→{to} {arrow} へ移動(海の引き寄せ)", { from: squareName(p.row, p.col, size), to: squareName(at.r, at.col, size), arrow: moveArrow(p, { row: at.r, col: at.col }) }),
           ],
         };
     if (!same) {
@@ -833,7 +860,7 @@ function seaPullLegacy(state) {
     shuffleMode: null,
     log: [
       ...state.log,
-      `${PLAYER_META[me].name}が海のエリアで駒を中央へ引き寄せた(${moved}体が動いた)`,
+      Lk("{name}が海のエリアで駒を中央へ引き寄せた({n}体が動いた)", { name: PLAYER_META[me].name, n: moved }),
     ],
   };
 }
@@ -886,7 +913,7 @@ export function loseIfFrozen(state) {
     endReason: "frozen",
     log: [
       ...state.log,
-      `${PLAYER_META[player].name}の駒は凍りついて動けない…${PLAYER_META[winner].name}の勝利!(氷のエリア)`,
+      Lk("{loser}の駒は凍りついて動けない…{winner}の勝利!(氷のエリア)", { loser: PLAYER_META[player].name, winner: PLAYER_META[winner].name }),
     ],
   };
 }
@@ -895,7 +922,7 @@ export function loseIfFrozen(state) {
 export function thaw(piece) {
   if (!piece || piece.frozenUntil == null) return piece;
   const { frozenUntil, ...rest } = piece;
-  return { ...rest, history: [...rest.history, "入れ替えで氷が解けた"] };
+  return { ...rest, history: [...rest.history, Lk("入れ替えで氷が解けた")] };
 }
 
 /** 旧対局・リプレイでは従来の手番消費を保持する。 */

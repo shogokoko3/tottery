@@ -404,7 +404,7 @@ console.log("\nE. 画面の配線(screens.jsx)");
   is("対局は結果の上に cover を出す(GameShell の中。色の決まりが付く)", /\{a\.phase === "gameover" && cover\}\s*<\/div>\s*<\/GameShell>/.test(read("src/ui/game.jsx")), true);
   is(
     "専用門の案内から初回の10連へ(戻り先はホーム)",
-    /if \(intro === "gate"\)[\s\S]{0,200}<FirstSummonLobby\s+name=\{loadProfile\(\)\.name \|\| "旅人"\}\s+onStart=\{\(\) => \{\s*setIntro\(null\);\s*setFirstPullMode\(!0\);\s*setSkinsTab\("gacha"\);\s*setSkinsFrom\("menu"\);\s*t\("skins"\);/.test(screens),
+    /if \(intro === "gate"\)[\s\S]{0,200}<FirstSummonLobby\s+name=\{loadProfile\(\)\.name \|\| L\("旅人"\)\}\s+onStart=\{\(\) => \{\s*setIntro\(null\);\s*setFirstPullMode\(!0\);\s*setSkinsTab\("gacha"\);\s*setSkinsFrom\("menu"\);\s*t\("skins"\);/.test(screens),
     true,
   );
   is(
@@ -477,7 +477,7 @@ console.log("\nE. 画面の配線(screens.jsx)");
       /:root\[data-intro\] \.profile-sync-notice \{\s*display: none;\s*\}/.test(read("src/styles.css")),
     true,
   );
-  is("通信失敗の帯の文は句ごとに折り返す(文は変えない)", /<Phrases text="成績を保存できていません。通信が戻ると再送します。" \/>/.test(read("src/ui/profile-sync.jsx")), true);
+  is("通信失敗の帯の文は句ごとに折り返す(文は変えない)", /<Phrases text=\{L\("成績を保存できていません。通信が戻ると再送します。"\)\} \/>/.test(read("src/ui/profile-sync.jsx")), true);
   is(
     "導入を終えたあとは件数を絞り、ホームを開いたら下ろす",
     /useTitleNoticeLimit\(introTitleQuota\(\{ afterIntro, screen: e \}\)\);\s*useEffect\(\(\) => \{\s*if \(e === "menu"\) setAfterIntro\(!1\);\s*\}, \[e\]\);/.test(screens),

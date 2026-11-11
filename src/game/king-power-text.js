@@ -15,8 +15,10 @@
  *               止まれないマスの相手は飛び越える。味方は越えられない
  */
 import { KING_RANGE_PER_CARD } from "./board.js";
+import { L, isEnglish } from "../i18n/index.js";
 
-const SIDE = { 2: "縦横", 3: "斜め", 4: "縦横", 5: "斜め", 6: "縦横", 7: "斜め", 8: "縦横", 9: "斜め" };
+// 英語版(2026-11-11): 「縦横」「斜め」「○マスまで」を差し込む組み立てはやめ、文ごとに L() で引く
+// (英語は語順が違うので、句を差し込むと文にならない)。日本語の出方は前と同じ
 const DIAG = { 3: true, 5: true, 7: true, 9: true };
 
 /** 1本の線で止まれるマスの数(= 1回の動きで取れる最大の枚数) */
@@ -24,20 +26,62 @@ function stopCount(rank, size) {
   const odd = rank === "8" || rank === "9";
   return Math.floor((size - 1 - (odd ? 1 : 2)) / 2) + 1;
 }
-/** 取れる駒の並び方(6・7 は「1マスあけて、1つとばしに」、8・9 は「すぐ前から、1つとばしに」)。6 と 8 の違いを一言で(評価 10回目) */
-const lineWords = (rank) => (rank === "8" || rank === "9" ? "すぐ前から1つとばしに" : "1マスあけて1つとばしに");
-/** 6〜9 で最初に取れる駒の場所(6・7 は2マス先、8・9 はすぐ前)。向きも添える */
-const firstStop = (rank) => `${SIDE[rank]}${rank === "8" || rank === "9" ? "のすぐ前" : "に2マス先"}`;
-/** 1枚目のあと、どこまで取れるか(5×5 は2枚目まで。9×9 はその先も2マスごと) */
-const moreStops = (size) => (size > 5 ? "その先も2マスごとに相手を取れる" : "さらに2マス先の相手も取れる");
+/**
+ * 6〜9 の王の一文。最初に取れる駒の場所(6・7 は2マス先、8・9 はすぐ前。向きも添える)と、
+ * 1枚目のあとどこまで取れるか(5×5 は2枚目まで。9×9 はその先も2マスごと)で文が分かれる
+ */
+function captureBold(rank, size) {
+  const far = size > 5;
+  switch (rank) {
+    case "6":
+      return far
+        ? L("ふつうの{rank}は、縦横に2マス先の相手を取ったら止まる。王の{rank}は止まらず、その先も2マスごとに相手を取れる。", { rank })
+        : L("ふつうの{rank}は、縦横に2マス先の相手を取ったら止まる。王の{rank}は止まらず、さらに2マス先の相手も取れる。", { rank });
+    case "7":
+      return far
+        ? L("ふつうの{rank}は、斜めに2マス先の相手を取ったら止まる。王の{rank}は止まらず、その先も2マスごとに相手を取れる。", { rank })
+        : L("ふつうの{rank}は、斜めに2マス先の相手を取ったら止まる。王の{rank}は止まらず、さらに2マス先の相手も取れる。", { rank });
+    case "8":
+      return far
+        ? L("ふつうの{rank}は、縦横のすぐ前の相手を取ったら止まる。王の{rank}は止まらず、その先も2マスごとに相手を取れる。", { rank })
+        : L("ふつうの{rank}は、縦横のすぐ前の相手を取ったら止まる。王の{rank}は止まらず、さらに2マス先の相手も取れる。", { rank });
+    default:
+      return far
+        ? L("ふつうの{rank}は、斜めのすぐ前の相手を取ったら止まる。王の{rank}は止まらず、その先も2マスごとに相手を取れる。", { rank })
+        : L("ふつうの{rank}は、斜めのすぐ前の相手を取ったら止まる。王の{rank}は止まらず、さらに2マス先の相手も取れる。", { rank });
+  }
+}
+/** 取れる駒の並び方(6・7 は「1マスあけて、1つとばしに」、8・9 は「すぐ前から、1つとばしに」)。6 と 8 の違いを一言で(評価 10回目)。いまは使っていない */
+// eslint-disable-next-line no-unused-vars
+const lineWords = (rank) => (rank === "8" || rank === "9" ? L("すぐ前から1つとばしに") : L("1マスあけて1つとばしに"));
+/** 6〜9 の王の一言(王を選ぶ前の駒ごとの札) */
+function captureTag(rank, size) {
+  const far = size > 5;
+  switch (rank) {
+    case "6":
+      return far ? L("縦横に2マス先の相手を取っても止まらず、その先も2マスごとに相手を取れる") : L("縦横に2マス先の相手を取っても止まらず、さらに2マス先の相手も取れる");
+    case "7":
+      return far ? L("斜めに2マス先の相手を取っても止まらず、その先も2マスごとに相手を取れる") : L("斜めに2マス先の相手を取っても止まらず、さらに2マス先の相手も取れる");
+    case "8":
+      return far ? L("縦横のすぐ前の相手を取っても止まらず、その先も2マスごとに相手を取れる") : L("縦横のすぐ前の相手を取っても止まらず、さらに2マス先の相手も取れる");
+    default:
+      return far ? L("斜めのすぐ前の相手を取っても止まらず、その先も2マスごとに相手を取れる") : L("斜めのすぐ前の相手を取っても止まらず、さらに2マス先の相手も取れる");
+  }
+}
 /** 4・5 の図で、王の4(5)を置くマス。金色(ほかの4・5の行ける先)から離す(近いと王が動けるように見えた。評価 16回目) */
 const kingSpot = (rank) => (rank === "4" ? "d4" : "e2");
-const reachWords = (reach, size) => (reach >= size - 1 ? "盤の端まで" : `${reach}マスまで`);
+/** 「縦横に3マスまで」「斜めに盤の端まで」(距離は「○マスまで」か「盤の端まで」だけ) */
+const sideReach = (rank, reach, size) =>
+  reach >= size - 1
+    ? DIAG[rank] ? L("斜めに盤の端まで") : L("縦横に盤の端まで")
+    : DIAG[rank] ? L("斜めに{n}マスまで", { n: reach }) : L("縦横に{n}マスまで", { n: reach });
+/** 「盤の端まで」か「3マスまで」 */
+const reachWords = (reach, size) => (reach >= size - 1 ? L("盤の端まで") : L("{n}マスまで", { n: reach }));
 
 /** 相手の駒が出てくる図(6〜9)の上に出す短い見方(凡例が「くわしく」の中だけだと、図の赤い丸が何か分からなかった。評価 8回目) */
-export const FOE_LEGEND = "赤い丸は相手の駒。赤い枠は取れる駒。金色は王の力で行けるマス。";
+export const FOE_LEGEND = L("赤い丸は相手の駒。赤い枠は取れる駒。金色は王の力で行けるマス。");
 /** 相手の駒が出てこない図の上に出す短い見方 */
-export const MOVE_LEGEND = "丸はふつうに行けるマス。金色は王の力で行けるマス。";
+export const MOVE_LEGEND = L("丸はふつうに行けるマス。金色は王の力で行けるマス。");
 
 /* ---------- 図(5×5)。マスの呼び名は列 a〜e(左から)・段 1〜5(下から)。左下のすみが a1 ---------- */
 const FIG = 5;
@@ -80,8 +124,8 @@ function captureFigs(rank) {
   const [near, far] = odd ? [1, 3] : [2, 4];
   const at = (d) => line(diag, d, d)[0];
   return [
-    fig([{ at: "a1", rank }], [], [], "ふつう: 1枚取って止まる", [{ at: at(near), frame: true }, { at: at(far) }], ["a1", at(near)]),
-    fig([{ at: "a1", rank, king: true }], [], [at(far)], "王: 2枚まとめて取れる", [{ at: at(near), frame: true }, { at: at(far) }], ["a1", at(far)]),
+    fig([{ at: "a1", rank }], [], [], L("ふつう: 1枚取って止まる"), [{ at: at(near), frame: true }, { at: at(far) }], ["a1", at(near)]),
+    fig([{ at: "a1", rank, king: true }], [], [at(far)], L("王: 2枚まとめて取れる"), [{ at: at(near), frame: true }, { at: at(far) }], ["a1", at(far)]),
   ];
 }
 
@@ -97,45 +141,45 @@ function captureFigs(rank) {
  */
 export function kingPowerCard(rank, count = 1, size = 5, hasJQ = true) {
   const n = Math.max(1, Number(count) || 1);
-  const head = `${rank}を王にすると`;
+  const head = L("{rank}を王にすると", { rank });
   const base = { head, figs: null, bands: null, bold: null, plain: null, board: null, active: true };
   switch (rank) {
     case "2":
     case "3": {
       const reach = Math.min(1 + KING_RANGE_PER_CARD * n, size - 1);
-      const plainCap = rank === "2" ? "ふつう: 縦横1マス" : "ふつう: 斜め1マス";
+      const plainCap = rank === "2" ? L("ふつう: 縦横1マス") : L("ふつう: 斜め1マス");
       return {
         ...base,
         figs: [
           fig([{ at: "a1", rank }], reachCells(rank, 1), [], plainCap),
-          fig([{ at: "a1", rank, king: true }], reachCells(rank, 1), minus(reachCells(rank, reach), reachCells(rank, 1)), `王: ${SIDE[rank]}に${reachWords(reach, size)}`),
+          fig([{ at: "a1", rank, king: true }], reachCells(rank, 1), minus(reachCells(rank, reach), reachCells(rank, 1)), L("王: {reach}", { reach: sideReach(rank, reach, size) })),
         ],
-        bold: `王の${rank}は、${SIDE[rank]}に${reachWords(reach, size)}動ける。`,
+        bold: L("王の{rank}は、{reach}動ける。", { rank, reach: sideReach(rank, reach, size) }),
         board:
           n >= 3
-            ? `王の${rank}が取られても、盤にほかの${rank}が残っていれば、その中から1枚を選んで新しい王にする。`
+            ? L("王の{rank}が取られても、盤にほかの{rank}が残っていれば、その中から1枚を選んで新しい王にする。", { rank })
             : n === 2
-              ? `王の${rank}が取られても、盤にほかの${rank}が残っていれば、その${rank}が新しい王になる。`
+              ? L("王の{rank}が取られても、盤にほかの{rank}が残っていれば、その{rank}が新しい王になる。", { rank })
               : null,
       };
     }
     case "4":
     case "5": {
       if (n < 2)
-        return { ...base, bold: `${rank}を王にすると、ほかの${rank}が強くなる。`, plain: `いまの盤にはほかの${rank}が無いので、この力は起きない。`, active: false };
+        return { ...base, bold: L("{rank}を王にすると、ほかの{rank}が強くなる。", { rank }), plain: L("いまの盤にはほかの{rank}が無いので、この力は起きない。", { rank }), active: false };
       const reach = Math.min(2 + KING_RANGE_PER_CARD * n, size - 1);
       // 「強くなるのは、盤のほかの4」は「あなたの王が力を持つ」と逆に見えた(評価 7回目)。だれが強くなるかを先に言う
       return {
         ...base,
         figs: [
-          fig([{ at: "a1", rank }, { at: kingSpot(rank), rank }], reachCells(rank, 2), [], `ふつう: ${SIDE[rank]}2マスまで`),
-          fig([{ at: "a1", rank }, { at: kingSpot(rank), rank, king: true }], reachCells(rank, 2), minus(reachCells(rank, reach), reachCells(rank, 2)), `ほかの${rank}: ${reachWords(reach, size)}`),
+          fig([{ at: "a1", rank }, { at: kingSpot(rank), rank }], reachCells(rank, 2), [], DIAG[rank] ? L("ふつう: 斜め2マスまで") : L("ふつう: 縦横2マスまで")),
+          fig([{ at: "a1", rank }, { at: kingSpot(rank), rank, king: true }], reachCells(rank, 2), minus(reachCells(rank, reach), reachCells(rank, 2)), L("ほかの{rank}: {reach}", { rank, reach: reachWords(reach, size) })),
         ],
         // 「王ではない4」が早口言葉のよう(評価 14回目)、説明が長い(評価 16回目)。短い文にする
-        bold: `${rank}を王にすると、ほかの${rank}が強くなる。`,
-        plain: `ほかの${rank}は、${SIDE[rank]}に${reachWords(reach, size)}動ける。`,
+        bold: L("{rank}を王にすると、ほかの{rank}が強くなる。", { rank }),
+        plain: L("ほかの{rank}は、{reach}動ける。", { rank, reach: sideReach(rank, reach, size) }),
         // 相討ちは王を決める前に要る(評価 18回目。対局中にしか出ていなかった)。短い一文で
-        board: `ほかの${rank}を取った相手の駒も、一緒に取られる。`,
+        board: L("ほかの{rank}を取った相手の駒も、一緒に取られる。", { rank }),
       };
     }
     case "6":
@@ -146,8 +190,8 @@ export function kingPowerCard(rank, count = 1, size = 5, hasJQ = true) {
         ...base,
         figs: captureFigs(rank),
         // 条件として読める文にする(「(2・4マス目)」が謎の言葉だった。評価 16回目)。6 と 8 は「最初に取れる駒の場所」だけが違う
-        bold: `ふつうの${rank}は、${firstStop(rank)}の相手を取ったら止まる。王の${rank}は止まらず、${moreStops(size)}。`,
-        board: `1枚目で止まってもよい。`,
+        bold: captureBold(rank, size),
+        board: L("1枚目で止まってもよい。"),
       };
     }
     case "10":
@@ -156,37 +200,37 @@ export function kingPowerCard(rank, count = 1, size = 5, hasJQ = true) {
       return {
         ...base,
         figs: [
-          fig([{ at: "c3", rank }], ["e2", "d1", "e4", "d5", "a2", "b1", "a4", "b5"], [], "ふつう: 1回の番に1回"),
-          { ...fig([{ at: "c3", rank, king: true }], ["e4"], ["c5"], "王: 1回の番に2回"), arrows: [["c3", "e4"], ["e4", "c5"]] },
+          fig([{ at: "c3", rank }], ["e2", "d1", "e4", "d5", "a2", "b1", "a4", "b5"], [], L("ふつう: 1回の番に1回")),
+          { ...fig([{ at: "c3", rank, king: true }], ["e4"], ["c5"], L("王: 1回の番に2回")), arrows: [["c3", "e4"], ["e4", "c5"]] },
         ],
-        bold: "王の10は、1回の番で2回続けて動ける。1回でやめてもよい。",
+        bold: L("王の10は、1回の番で2回続けて動ける。1回でやめてもよい。"),
       };
     case "J":
       return {
         ...base,
         figs: [
-          fig([{ at: "a1", rank }], reachCells("2", 4), [], "ふつう: 縦横に何マスでも"),
-          fig([{ at: "a1", rank, king: true }], reachCells("2", 4), ["b2"], "王: ＋斜め1マス"),
+          fig([{ at: "a1", rank }], reachCells("2", 4), [], L("ふつう: 縦横に何マスでも")),
+          fig([{ at: "a1", rank, king: true }], reachCells("2", 4), ["b2"], L("王: ＋斜め1マス")),
         ],
-        bold: "王のJは、縦横に何マスでも動けるのに加えて、斜めにも1マス動ける。",
+        bold: L("王のJは、縦横に何マスでも動けるのに加えて、斜めにも1マス動ける。"),
       };
     case "Q":
       return {
         ...base,
         figs: [
-          fig([{ at: "a1", rank }], reachCells("3", 4), [], "ふつう: 斜めに何マスでも"),
-          fig([{ at: "a1", rank, king: true }], reachCells("3", 4), ["a2", "b1"], "王: ＋縦横1マス"),
+          fig([{ at: "a1", rank }], reachCells("3", 4), [], L("ふつう: 斜めに何マスでも")),
+          fig([{ at: "a1", rank, king: true }], reachCells("3", 4), ["a2", "b1"], L("王: ＋縦横1マス")),
         ],
-        bold: "王のQは、斜めに何マスでも動けるのに加えて、縦横にも1マス動ける。",
+        bold: L("王のQは、斜めに何マスでも動けるのに加えて、縦横にも1マス動ける。"),
       };
     // 「Kは必ず王」を先に(力の説明は後でいい。評価 12回目)
     case "K":
       return hasJQ
-        ? { ...base, bold: "Kを置くと、Kが必ず王になる。", plain: "王のKは、JかQが取られると、山札の残りから1枚を盤に出せる。" }
+        ? { ...base, bold: L("Kを置くと、Kが必ず王になる。"), plain: L("王のKは、JかQが取られると、山札の残りから1枚を盤に出せる。") }
         : // 「何も変わらない」だけでは K の力が分からず、K を置く意味も分からなかった(評価 7回目)
-          { ...base, bold: "Kを置くと、Kが必ず王になる。", plain: "王のKは、JかQが取られると、山札の残りから1枚を盤に出せる。いまの盤にはJもQも無いので、この力は起きない。", active: false };
+          { ...base, bold: L("Kを置くと、Kが必ず王になる。"), plain: L("王のKは、JかQが取られると、山札の残りから1枚を盤に出せる。いまの盤にはJもQも無いので、この力は起きない。"), active: false };
     case "A":
-      return { ...base, bands: "swap", bold: "王のAは、入れ替えを1回の番で2回使える。" };
+      return { ...base, bands: "swap", bold: L("王のAは、入れ替えを1回の番で2回使える。") };
     default:
       return { ...base, active: false };
   }
@@ -201,29 +245,29 @@ export function kingPowerTag(rank, count = 1, size = 5, hasJQ = true) {
   switch (rank) {
     case "2":
     case "3":
-      return { text: `${SIDE[rank]}に${reachWords(Math.min(1 + KING_RANGE_PER_CARD * n, size - 1), size)}`, active: true };
+      return { text: sideReach(rank, Math.min(1 + KING_RANGE_PER_CARD * n, size - 1), size), active: true };
     case "4":
     case "5":
       return n >= 2
-        ? { text: `ほかの${rank}が${reachWords(Math.min(2 + KING_RANGE_PER_CARD * n, size - 1), size)}動く。ほかの${rank}を取った相手も取られる`, active: true }
+        ? { text: L("ほかの{rank}が{reach}動く。ほかの{rank}を取った相手も取られる", { rank, reach: reachWords(Math.min(2 + KING_RANGE_PER_CARD * n, size - 1), size) }), active: true }
         // 何の力が無いのかを添える(「力なし」だけでは分からなかった。評価 18回目)
-        : { text: `ほかの${rank}を強くする力。いまはほかの${rank}が無いので、力なし`, active: false };
+        : { text: L("ほかの{rank}を強くする力。いまはほかの{rank}が無いので、力なし", { rank }), active: false };
     case "6":
     case "7":
     case "8":
     case "9":
       // 6 と 8 が同じ一言にならず、条件として読める文に(評価 16回目)
-      return { text: `${firstStop(rank)}の相手を取っても止まらず、${moreStops(size)}`, active: true };
+      return { text: captureTag(rank, size), active: true };
     case "10":
-      return { text: "2回続けて動ける", active: true };
+      return { text: L("2回続けて動ける"), active: true };
     case "J":
-      return { text: "斜めにも1マス", active: true };
+      return { text: L("斜めにも1マス"), active: true };
     case "Q":
-      return { text: "縦横にも1マス", active: true };
+      return { text: L("縦横にも1マス"), active: true };
     case "K":
-      return hasJQ ? { text: "JかQが取られると札を出せる", active: true } : { text: "JかQが取られると札を出す力。いまはJもQも無いので、力なし", active: false };
+      return hasJQ ? { text: L("JかQが取られると札を出せる"), active: true } : { text: L("JかQが取られると札を出す力。いまはJもQも無いので、力なし"), active: false };
     case "A":
-      return { text: "入れ替えを2回", active: true };
+      return { text: L("入れ替えを2回"), active: true };
     default:
       return { text: "", active: false };
   }
@@ -232,8 +276,8 @@ export function kingPowerTag(rank, count = 1, size = 5, hasJQ = true) {
 /** ステージ前の説明(フェーズ2 第1話)の、2 の比べの図 */
 export function introFigs() {
   return [
-    fig([{ at: "a1", rank: "2" }], reachCells("2", 1), [], "ふつう: 縦横1マス"),
-    fig([{ at: "a1", rank: "2", king: true }], reachCells("2", 1), minus(reachCells("2", 3), reachCells("2", 1)), "王: 縦横に3マスまで"),
+    fig([{ at: "a1", rank: "2" }], reachCells("2", 1), [], L("ふつう: 縦横1マス")),
+    fig([{ at: "a1", rank: "2", king: true }], reachCells("2", 1), minus(reachCells("2", 3), reachCells("2", 1)), L("王: 縦横に3マスまで")),
   ];
 }
 /** 相手の王(力なし)の動きの図。2・3 だけ(第1話の相手) */
@@ -249,14 +293,36 @@ export function plainFig(rank) {
 const AREA_SHORT = Object.freeze(
   Object.fromEntries(
     [
-      // [種類, 名前, 句(つなぐと1文。説明の札で語の途中で割らないよう手で切る), 自動か]
-      ["earth", "土のエリア", ["毎ターン、", "相手が直前に動かした駒の", "正体を見抜く(王も)。"], true],
-      ["forest", "森のエリア", ["毎ターン、", "相手の駒(王以外)を", "2体まで見抜く。"], true],
-      ["ice", "氷のエリア", ["毎ターン、", "相手の駒を1体凍らせる", "(3ターン動けない。王も)。"], true],
-      ["sea", "海のエリア", ["毎ターン「発動」で、", "相手の駒を中央へ", "1マス引き寄せられる。"], false],
-      ["sky", "空のエリア", ["毎ターン「発動」で、", "自分の駒1体(王・10以外)を", "10に変えられる(表になる)。"], false],
-      ["palace", "宮殿", ["毎ターン「発動」で、", "自分の駒1体(王・A・K以外)を", "1段上の数字にできる", "(表になる)。"], false],
-    ].map(([type, name, phrases, auto]) => [type, Object.freeze({ name, text: phrases.join(""), phrases: Object.freeze(phrases), auto })]),
+      // [種類, 名前, 文, 句(つなぐと文。説明の札で語の途中で割らないよう手で切る), 自動か]
+      // 句は日本語のときだけ使う。英語は文を1つの句で出す(語の区切りで折り返せるので)
+      ["earth", L("土のエリア"), L("毎ターン、相手が直前に動かした駒の正体を見抜く(王も)。"),
+      // i18n-ignore
+      ["毎ターン、", "相手が直前に動かした駒の", "正体を見抜く(王も)。"],
+      true],
+      ["forest", L("森のエリア"), L("毎ターン、相手の駒(王以外)を2体まで見抜く。"),
+      // i18n-ignore
+      ["毎ターン、", "相手の駒(王以外)を", "2体まで見抜く。"],
+      true],
+      ["ice", L("氷のエリア"), L("毎ターン、相手の駒を1体凍らせる(3ターン動けない。王も)。"),
+      // i18n-ignore
+      ["毎ターン、", "相手の駒を1体凍らせる", "(3ターン動けない。王も)。"],
+      true],
+      ["sea", L("海のエリア"), L("毎ターン「発動」で、相手の駒を中央へ1マス引き寄せられる。"),
+      // i18n-ignore
+      ["毎ターン「発動」で、", "相手の駒を中央へ", "1マス引き寄せられる。"],
+      false],
+      ["sky", L("空のエリア"), L("毎ターン「発動」で、自分の駒1体(王・10以外)を10に変えられる(表になる)。"),
+      // i18n-ignore
+      ["毎ターン「発動」で、", "自分の駒1体(王・10以外)を", "10に変えられる(表になる)。"],
+      false],
+      ["palace", L("宮殿"), L("毎ターン「発動」で、自分の駒1体(王・A・K以外)を1段上の数字にできる(表になる)。"),
+      // i18n-ignore
+      ["毎ターン「発動」で、", "自分の駒1体(王・A・K以外)を", "1段上の数字にできる", "(表になる)。"],
+      false],
+    ].map(([type, name, text, phrases, auto]) => [
+      type,
+      Object.freeze({ name, text, phrases: Object.freeze(isEnglish || phrases.join("") !== text ? [text] : phrases), auto }),
+    ]),
   ),
 );
 export function areaShort(type) {
@@ -269,7 +335,10 @@ export function areaShort(type) {
  */
 export function foeKingPowerText(rank) {
   // 相手が4(5)を何枚置いたかは分からないので、届く距離は言わない
-  if (rank === "4" || rank === "5") return `王の${rank}はふつうのまま。ほかの${rank}が、${SIDE[rank]}に遠くまで動ける。`;
-  if (rank === "K") return "王のKは、JかQが取られると、予備札から1枚を盤に出せる。";
+  if (rank === "4" || rank === "5")
+    return rank === "5"
+      ? L("王の{rank}はふつうのまま。ほかの{rank}が、斜めに遠くまで動ける。", { rank })
+      : L("王の{rank}はふつうのまま。ほかの{rank}が、縦横に遠くまで動ける。", { rank });
+  if (rank === "K") return L("王のKは、JかQが取られると、予備札から1枚を盤に出せる。");
   return kingPowerCard(rank, 1, 5).bold;
 }

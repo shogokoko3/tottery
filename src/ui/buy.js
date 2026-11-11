@@ -22,15 +22,16 @@ import {
 } from "../net/wallet.js";
 import { getActivePassId, setActivePassId } from "../game/battlepass-store.js";
 import { passUnlockedFor } from "./battlepass-access.js";
+import { L } from "../i18n/index.js";
 
-/** 有償ジェムだけで買う商品の、残高不足の言い方 */
+/** 有償ジェムだけで買う商品の、残高不足の言い方(サーバーの日本語の文 e.ja と比べる) */
 const PAID_SHORT = /有償ジェムが足りません/;
 /** どちらのジェムでも買える商品の、残高不足の言い方 */
 const ANY_SHORT = /ジェムが足りません/;
 
 function failed(e, short) {
-  const message = (e && e.message) || "買えませんでした。";
-  return { ok: false, message, needGems: short.test(message) };
+  const message = (e && e.message) || L("買えませんでした。");
+  return { ok: false, message, needGems: short.test((e && e.ja) || message) };
 }
 
 /** ガチャチケットをジェムで買う(有償・無償どちらでも) */
@@ -38,7 +39,7 @@ export async function buyTicketsFor(n) {
   try {
     await exchangeGems(newEventId("xchg"), n);
     playSound("purchase");
-    return { ok: true, message: `ガチャチケットを${n}枚受け取りました。`, needGems: false };
+    return { ok: true, message: L("ガチャチケットを{n}枚受け取りました。", { n }), needGems: false };
   } catch (e) {
     return failed(e, ANY_SHORT);
   }
@@ -51,7 +52,7 @@ export async function buyFoilFor(offer) {
     playSound("purchase");
     return {
       ok: true,
-      message: `「${offer.product.name}」のフォイルを受け取りました。`,
+      message: L("「{name}」のフォイルを受け取りました。", { name: offer.product.name }),
       needGems: false,
     };
   } catch (e) {
@@ -66,7 +67,7 @@ export async function buyPassFor(season = "heroes") {
     playSound("purchase");
     // 進めているパスを持っていなければ、買ったこのパスを進める(持っていれば本人が選ぶ)
     if (!passUnlockedFor(getActivePassId())) setActivePassId(season);
-    return { ok: true, message: "バトルパスを手に入れました。", needGems: false };
+    return { ok: true, message: L("バトルパスを手に入れました。"), needGems: false };
   } catch (e) {
     return failed(e, ANY_SHORT);
   }

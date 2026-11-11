@@ -1,4 +1,5 @@
 import { areaTheme } from "./field-presentation.js";
+import { L } from "../i18n/index.js";
 import {
   AREA_INFO,
   canUseArea,
@@ -92,7 +93,7 @@ export function areaEvent(before, after, viewer) {
       type: "birth",
       targets: [],
       areas: after.areas.map((a) => a?.type || null),
-      title: "盤面にエリアが広がった",
+      title: L("盤面にエリアが広がった"),
     };
   const targets = Object.values(after.pieces)
     .filter(
@@ -105,7 +106,7 @@ export function areaEvent(before, after, viewer) {
         id: `thaw-${after.turnNo}-${after.lastSwap?.seq || 0}`,
         type: "thaw",
         targets,
-        title: "氷が解けた",
+        title: L("氷が解けた"),
       }
     : null;
 }
@@ -114,38 +115,43 @@ export function areaEventText(event, stage) {
   if (stage === "gather")
     return (
       {
-        earth: "鬼火が気配をたどっている…",
-        sea: "中央に潮流が集まる…",
-        forest: "森の気配を探っている…",
-        ice: "冷気が集まる…",
-        sky: "風が駒を包み込む…",
+        earth: L("鬼火が気配をたどっている…"),
+        sea: L("中央に潮流が集まる…"),
+        forest: L("森の気配を探っている…"),
+        ice: L("冷気が集まる…"),
+        sky: L("風が駒を包み込む…"),
         palace:
-          event.theme === "hell" ? "昇格の炎が集まる…" : "昇格の光が集まる…",
+          event.theme === "hell" ? L("昇格の炎が集まる…") : L("昇格の光が集まる…"),
       }[event.type] || ""
     );
   return (
     {
       earth: event.hit
         ? event.own
-          ? "正体を見抜いた"
-          : "正体を見抜かれた"
-        : "鬼火が静かに消えた・読み違えた",
+          ? L("正体を見抜いた")
+          : L("正体を見抜かれた")
+        : L("鬼火が静かに消えた・読み違えた"),
       sea:
         event.pullsOwn === false
           ? event.own
-            ? "水流が相手の駒を中央へ引き寄せた"
-            : "水流が自分の駒を中央へ引き寄せた"
-          : "水流が駒を中央へ引き寄せた",
+            ? L("水流が相手の駒を中央へ引き寄せた")
+            : L("水流が自分の駒を中央へ引き寄せた")
+          : L("水流が駒を中央へ引き寄せた"),
       forest: event.own
-        ? "森が正体を知らせた・自分だけに表示"
-        : "森の力で駒を見抜かれた",
+        ? L("森が正体を知らせた・自分だけに表示")
+        : L("森の力で駒を見抜かれた"),
       ice: event.extended
-        ? `凍結を延長・残り${event.frozenTurns}ターン`
-        : `凍結・${event.own ? "相手" : "自分"}の${event.frozenTurns}ターンは動けない`,
-      sky: `10へ変身・${event.own ? "自軍" : "相手"}の10は同じ1体で2回行動`,
-      palace: `${event.from} → ${event.to} に昇格・${event.usesTurn === false ? "続けて駒を動かせる" : "相手のターンへ"}`,
-      thaw: "再び動けるようになった",
-      birth: "陣地にエリアの力が宿った",
+        ? L("凍結を延長・残り{n}ターン", { n: event.frozenTurns })
+        : event.own
+          ? L("凍結・相手の{n}ターンは動けない", { n: event.frozenTurns })
+          : L("凍結・自分の{n}ターンは動けない", { n: event.frozenTurns }),
+      sky: event.own ? L("10へ変身・自軍の10は同じ1体で2回行動") : L("10へ変身・相手の10は同じ1体で2回行動"),
+      palace:
+        event.usesTurn === false
+          ? L("{from} → {to} に昇格・続けて駒を動かせる", { from: event.from, to: event.to })
+          : L("{from} → {to} に昇格・相手のターンへ", { from: event.from, to: event.to }),
+      thaw: L("再び動けるようになった"),
+      birth: L("陣地にエリアの力が宿った"),
     }[event.type] || ""
   );
 }

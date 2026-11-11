@@ -24,6 +24,7 @@ import {
   SHOP_ENABLED,
   productOf,
 } from "../iap/catalog.js";
+import { L, Lx } from "../i18n/index.js";
 
 const PENDING_KEY = "tottery.iap.pending.v1";
 let plugin = null;
@@ -78,7 +79,7 @@ function withTimeout(promise, ms, why) {
 }
 
 // いまどこまで進んだか(店の読み込み中の行と診断に出す)。console にも残す(Xcode で読める)
-let loadStage = "未着手";
+let loadStage = L("未着手");
 export const currentLoadStage = () => loadStage;
 function stage(s) {
   loadStage = s;
@@ -100,9 +101,9 @@ export async function storeDiagnostics(elapsedMs = null) {
     const p = await store();
     if (!p) return out;
     const r = await withTimeout(p.getStorefront(), 6000, "storefront timeout");
-    out.storefront = (r && r.countryCode) || "(不明)";
+    out.storefront = (r && r.countryCode) || L("(不明)");
   } catch {
-    out.storefront = "(取れない)";
+    out.storefront = L("(取れない)");
   }
   return out;
 }
@@ -132,24 +133,24 @@ export async function reportDiag(d) {
 
 /** 商品の一覧(表示価格は StoreKit のもの)。時間切れ・失敗は投げる(呼ぶ側が知らせる) */
 export async function loadProducts() {
-  stage("プラグイン読み込み");
+  stage(L("プラグイン読み込み"));
   const p = await store();
   if (!p) return [];
-  stage("商品の問い合わせ");
+  stage(L("商品の問い合わせ"));
   const started = Date.now();
   let products;
   try {
     ({ products } = await withTimeout(
       p.getProducts({ productIdentifiers: PRODUCT_IDS, productType: "inapp" }),
       PRODUCTS_TIMEOUT_MS,
-      "App Store から商品の一覧が返ってきませんでした。",
+      L("App Store から商品の一覧が返ってきませんでした。"),
     ));
   } catch (e) {
-    stage("問い合わせに失敗");
+    stage(L("問い合わせに失敗"));
     if (e) e.elapsedMs = Date.now() - started;
     throw e;
   }
-  stage(`応答あり(${products.length}件)`);
+  stage(L("応答あり({n}件)", { n: products.length }));
   const found = PRODUCTS.map((c) => {
     const s = products.find((x) => x.identifier === c.id);
     return s ? { ...c, price: s.priceString, title: s.title || c.name } : null;
@@ -158,7 +159,10 @@ export async function loadProducts() {
   // 商品 ID の不一致。件数を文言に入れて、切り分けの手がかりにする
   if (!found.length) {
     const e = new Error(
-      `App Store が商品を返しませんでした(${products.length}件受信、対象 ${PRODUCT_IDS.length}件)。商品の反映待ちの可能性があります。`,
+      L("App Store が商品を返しませんでした({got}件受信、対象 {want}件)。商品の反映待ちの可能性があります。", {
+        got: products.length,
+        want: PRODUCT_IDS.length,
+      }),
     );
     e.elapsedMs = Date.now() - started;
     throw e;
@@ -184,7 +188,7 @@ function writePending(list) {
 
 async function verifyOnServer(jws) {
   const auth = await ensureAuth();
-  if (!auth) throw new Error("通信を確認して、もう一度お試しください。");
+  if (!auth) throw new Error(L("通信を確認して、もう一度お試しください。"));
   const res = await fetch(`${seasonApiBase()}/api/iap/verify`, {
     method: "POST",
     headers: {
@@ -196,7 +200,7 @@ async function verifyOnServer(jws) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const e = new Error(data.error || "購入を確認できませんでした。");
+    const e = new Error(Lx(data.error) || L("購入を確認できませんでした。"));
     e.status = res.status;
     throw e;
   }
@@ -263,9 +267,9 @@ export async function flushPurchases() {
 /** 買う。ユーザーが取り消したら null。通れば財布の反映結果 */
 export async function buy(productId) {
   const p = await store();
-  if (!p) throw new Error("この端末では購入できません。");
+  if (!p) throw new Error(L("この端末では購入できません。"));
   const c = productOf(productId);
-  if (!c) throw new Error("知らない商品です。");
+  if (!c) throw new Error(L("知らない商品です。"));
   let tx;
   try {
     tx = await p.purchaseProduct({
@@ -275,10 +279,10 @@ export async function buy(productId) {
     });
   } catch (e) {
     if (/cancel/i.test(String(e && e.message))) return null;
-    throw new Error("購入を完了できませんでした。");
+    throw new Error(L("購入を完了できませんでした。"));
   }
   if (!tx || !tx.jwsRepresentation)
-    throw new Error("購入の記録を受け取れませんでした。");
+    throw new Error(L("購入の記録を受け取れませんでした。"));
   // 先に控えてから送る。送る途中で落ちても、次に開いたとき送り直せる
   writePending([
     ...readPending(),

@@ -5,43 +5,42 @@
  * 選ぶ→確認→確定の二段は崩さない。ここは「確認」の中で枚数を決めるところで、
  * 押しただけでは何も起きない。上限(max)は呼ぶ側が計算して渡す。
  */
+import { L } from "../i18n/index.js";
+
 export function AmountPicker({
   value,
   max,
-  unit = "枚",
+  unit = null,
   working = false,
   onChange,
 }) {
   const set = (n) => onChange(Math.max(1, Math.min(max, n)));
+  const amount = (n) => (unit == null ? L("{n}枚", { n }) : `${n}${unit}`);
   return (
     <div className="amount-picker">
       <button
         className="btn btn-ghost amount-step"
         disabled={working || value <= 1}
         onClick={() => set(value - 1)}
-        aria-label="1つ減らす"
+        aria-label={L("1つ減らす")}
       >
         −
       </button>
-      <b aria-live="polite">
-        {value}
-        {unit}
-      </b>
+      <b aria-live="polite">{amount(value)}</b>
       <button
         className="btn btn-ghost amount-step"
         disabled={working || value >= max}
         onClick={() => set(value + 1)}
-        aria-label="1つ増やす"
+        aria-label={L("1つ増やす")}
       >
-        ＋
+        {L("＋")}
       </button>
       <button
         className="btn btn-ghost btn-small amount-max"
         disabled={working || value >= max}
         onClick={() => set(max)}
       >
-        最大（{max}
-        {unit}）
+        {L("最大（{n}）", { n: amount(max) })}
       </button>
     </div>
   );

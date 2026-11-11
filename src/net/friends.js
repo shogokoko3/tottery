@@ -7,10 +7,11 @@
 import { ensureAuth } from "./auth.js";
 import { seasonApiBase } from "./season.js";
 import { updateCollection } from "../skins/store.js";
+import { L, Lx } from "../i18n/index.js";
 
 async function friendsRequest(op, body = {}) {
   const auth = await ensureAuth();
-  if (!auth) throw new Error("通信を確認して、もう一度お試しください。");
+  if (!auth) throw new Error(L("通信を確認して、もう一度お試しください。"));
   let res;
   try {
     res = await fetch(`${seasonApiBase()}/api/friends/${op}`, {
@@ -23,15 +24,15 @@ async function friendsRequest(op, body = {}) {
       signal: AbortSignal.timeout(20000),
     });
   } catch {
-    throw new Error("通信を確認して、もう一度お試しください。");
+    throw new Error(L("通信を確認して、もう一度お試しください。"));
   }
   let data;
   try {
     data = await res.json();
   } catch {
-    throw new Error("フレンドを読み込めませんでした。");
+    throw new Error(L("フレンドを読み込めませんでした。"));
   }
-  if (!res.ok) throw new Error(data.error || "フレンドを読み込めませんでした。");
+  if (!res.ok) throw new Error(Lx(data.error) || L("フレンドを読み込めませんでした。"));
   return data;
 }
 

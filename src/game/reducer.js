@@ -6,6 +6,9 @@ import { isStraight, isFlush, revealCount, pickRevealed } from "./bonus.js";
 import { normalizeCustom, armySizeFor, handSizeFor } from "./custom-rules.js";
 import { PLAYER_META, RANKS, SUITS, SUIT_SYMBOL } from "./constants.js";
 import { adjudicatePosition, withInitialArmies } from "./adjudication.js";
+// 記録(log)と駒の履歴(history)は相手に送られ・保存されるので日本語のまま(Lk)。出すところで Lx
+import { Lk, Lx, isEnglish } from "../i18n/index.js";
+import { EN } from "../i18n/en/index.js";
 import {
   hasAdjudicationRules,
   hasSimultaneousPrep,
@@ -31,7 +34,7 @@ function resolveDice(state) {
       diceIdx: 3,
       log: [
         ...state.log,
-        `サイコロが同じ目(${state.dice[0]})だったので振り直します`,
+        Lk("サイコロが同じ目({n})だったので振り直します", { n: state.dice[0] }),
       ],
     };
   const first = state.dice[0] > state.dice[1] ? 0 : 1;
@@ -42,7 +45,13 @@ function resolveDice(state) {
     currentTurn: first,
     log: [
       ...state.log,
-      `サイコロ: ${PLAYER_META[0].name}=${state.dice[0]} / ${PLAYER_META[1].name}=${state.dice[1]} → ${PLAYER_META[first].name}が先手`,
+      Lk("サイコロ: {p0}={d0} / {p1}={d1} → {first}が先手", {
+        p0: PLAYER_META[0].name,
+        d0: state.dice[0],
+        p1: PLAYER_META[1].name,
+        d1: state.dice[1],
+        first: PLAYER_META[first].name,
+      }),
     ],
   };
 }
@@ -246,7 +255,7 @@ function rescueHand(state, idx) {
     handRescued: replaceAt(state.handRescued || [false, false], idx, true),
     log: [
       ...state.log,
-      `${PLAYER_META[idx].name}の手札は絵札に偏っていて盤に並べきれないため、数字の札で配り直した`,
+      Lk("{who}の手札は絵札に偏っていて盤に並べきれないため、数字の札で配り直した", { who: PLAYER_META[idx].name }),
     ],
   };
 }
@@ -491,22 +500,87 @@ function onBoard(board, row, col) {
   );
 }
 
+/**
+ * 記録(log)・駒の履歴(history)の1行を、出すときに訳す。英語でなければそのまま。
+ * Lx は辞書の全部の形を順に当てるので、ほかの画面の短い形(「…の勝利」など)に先に当たることがある。
+ * ここで先に、この記録の形だけを当てる。当たらなければ Lx(ほかの場所が足した記録の文)
+ */
+const LOG_FORMS = [
+  Lk("{reason}布陣判定: 赤{red}・青{blue}。{result}"),
+  Lk("サイコロが同じ目({n})だったので振り直します"),
+  Lk("サイコロ: {p0}={d0} / {p1}={d1} → {first}が先手"),
+  Lk("{who}の手札は絵札に偏っていて盤に並べきれないため、数字の札で配り直した"),
+  Lk("{who}の王が倒された…{winner}の勝利!"),
+  Lk("{who}は王を立てられない…{winner}の勝利!"),
+  Lk("{who}の持ち時間が尽きた…{winner}の勝利!"),
+  Lk("{who}が降参した…{winner}の勝利!"),
+  Lk("{who}に新しい王が立った!"),
+  Lk("{who}は新しい王を選びます"),
+  Lk("{who}の予備札は、相手が仲間にするかを決めてから引く"),
+  Lk("{who}は予備札を1枚引いた(配置できます)"),
+  Lk("{who}の{card}は凍りついたまま倒れた(凍結死)"),
+  Lk("{who}の{card}が名乗りを上げた!"),
+  Lk("{who}の{card}が道連れにした!"),
+  Lk("--- 対局開始:{who}の番 ---"),
+  Lk("{who}の布陣はフラッシュ! {other}の駒が{n}枚公開された"),
+  Lk("{who}の布陣はストレート!"),
+  Lk("詳細設定: {who}の駒が{n}枚公開された{king}"),
+  Lk("{who}が{n}枚を引き直した"),
+  Lk("{who}が布陣を完了"),
+  Lk("{who}が3つの駒の位置を入れ替えた{again}"),
+  Lk("周囲の駒と位置を入れ替えた{again}"),
+  Lk("{who}が包囲で{victim}の{card}を撃破!"),
+  Lk("{who}が予備札から {card} を投入(公開)"),
+  Lk("{who}が{victim}の{card}を撃破!{nth}"),
+  Lk("{who}が{nth}に移動 ({from} → {to})"),
+  Lk("{from}→{to} {arrow} へ移動{again}"),
+  Lk("予備札がなくなったため、捨て札{n}枚をシャッフルして補充した"),
+  Lk("{side}の勝利"),
+];
+let logForms = null;
+export function logText(text) {
+  if (!isEnglish || typeof text !== "string" || !text) return text;
+  if (!logForms)
+    logForms = LOG_FORMS.filter((ja) => EN[ja]).map((ja) => {
+      const names = [];
+      const src = ja
+        .split(/(\{\w+\})/)
+        .map((part) => {
+          const m = /^\{(\w+)\}$/.exec(part);
+          if (!m) return part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          names.push(m[1]);
+          return "([\\s\\S]*?)";
+        })
+        .join("");
+      return { re: new RegExp(`^${src}$`), names, en: EN[ja] };
+    });
+  for (const f of logForms) {
+    const m = f.re.exec(text);
+    if (!m) continue;
+    const vars = {};
+    f.names.forEach((n, i) => (vars[n] = logText(m[i + 1])));
+    return f.en.replace(/\{(\w+)\}/g, (all, k) => (k in vars ? vars[k] : all));
+  }
+  return Lx(text);
+}
+
 /** 対局の記録に残す出来事かどうか */
 export function isNotableLog(line) {
   return (
-    ["逆転","帰還","バリア","偽の王","持ち時間","正体を隠","盤面効果","召喚","革命の扉","仲間に"].some(word=>line.includes(word)) ||
-    line.includes("撃破") ||
-    line.includes("回目に移動") ||
-    line.includes("王が倒された") ||
-    line.includes("道連れ") ||
-    line.includes("新しい王") ||
-    line.includes("入れ替えた") ||
-    line.includes("投入") ||
-    line.includes("降参") ||
-    line.includes("布陣判定") ||
-    line.includes("エリア") ||
-    line.includes("宮殿") ||
-    line.includes("シャッフルして補充")
+    // 記録は日本語のまま保存されるので、日本語の言葉で探す
+    line.includes(Lk("回目に移動")) ||
+    ["逆転","帰還","バリア","偽の王","持ち時間","正体を隠","盤面効果","召喚","革命の扉","仲間に"].some(word=>line.includes(word)) || // i18n-ignore
+    line.includes("撃破") || // i18n-ignore
+    line.includes("王が倒された") || // i18n-ignore
+    line.includes("道連れ") || // i18n-ignore
+    line.includes("新しい王") || // i18n-ignore
+    line.includes("入れ替えた") || // i18n-ignore
+    line.includes("投入") || // i18n-ignore
+    line.includes("降参") || // i18n-ignore
+    line.includes("布陣判定") || // i18n-ignore
+    line.includes("エリア") || // i18n-ignore
+    line.includes("宮殿") || // i18n-ignore
+    line.includes("シャッフルして補充") // i18n-ignore
   );
 }
 
@@ -672,12 +746,12 @@ export function removePiece(state, pieceId, opts) {
       const heir = {
         ...heirs[0],
         isKing: true,
-        history: [...heirs[0].history, "王位を継承"],
+        history: [...heirs[0].history, Lk("王位を継承")],
       };
       pieces[heir.id] = heir;
       board[heir.row][heir.col] = heir;
       players[dead.owner].kingId = heir.id;
-      log.push(`${PLAYER_META[dead.owner].name}に新しい王が立った!`);
+      log.push(Lk("{who}に新しい王が立った!", { who: PLAYER_META[dead.owner].name }));
     } else if (heirs.length > 1) {
       players[dead.owner].kingId = null;
       pendingKingChoice = {
@@ -686,7 +760,7 @@ export function removePiece(state, pieceId, opts) {
         candidateIds: heirs.map((h) => h.id),
         acknowledged: false,
       };
-      log.push(`${PLAYER_META[dead.owner].name}は新しい王を選びます`);
+      log.push(Lk("{who}は新しい王を選びます", { who: PLAYER_META[dead.owner].name }));
     }
   }
 
@@ -698,7 +772,10 @@ export function removePiece(state, pieceId, opts) {
   ) {
     winner = 1 - dead.owner;
     log.push(
-      `${PLAYER_META[dead.owner].name}の王が倒された…${PLAYER_META[winner].name}の勝利!`,
+      Lk("{who}の王が倒された…{winner}の勝利!", {
+        who: PLAYER_META[dead.owner].name,
+        winner: PLAYER_META[winner].name,
+      }),
     );
   }
 
@@ -717,14 +794,17 @@ export function removePiece(state, pieceId, opts) {
       const shown = {
         ...killer,
         revealed: true,
-        history: [...killer.history, "王を討って名乗りを上げた"],
+        history: [...killer.history, Lk("王を討って名乗りを上げた")],
       };
       pieces[shown.id] = shown;
       if (board[shown.row][shown.col]?.id === shown.id)
         board[shown.row][shown.col] = shown;
-      lastReveal = { id: shown.id, reason: "王を討った" };
+      lastReveal = { id: shown.id, reason: "王を討った" }; // i18n-ignore(目印。画面には出さない)
       log.push(
-        `${PLAYER_META[shown.owner].name}の${shown.rank}${SUIT_SYMBOL[shown.suit]}が名乗りを上げた!`,
+        Lk("{who}の{card}が名乗りを上げた!", {
+          who: PLAYER_META[shown.owner].name,
+          card: `${shown.rank}${SUIT_SYMBOL[shown.suit]}`,
+        }),
       );
     }
   }
@@ -771,7 +851,10 @@ export function removePiece(state, pieceId, opts) {
       const killer = next.pieces[opts.by];
       if (killer && killer.alive) {
         log.push(
-          `${PLAYER_META[dead.owner].name}の${dead.rank}${SUIT_SYMBOL[dead.suit]}が道連れにした!`,
+          Lk("{who}の{card}が道連れにした!", {
+            who: PLAYER_META[dead.owner].name,
+            card: `${dead.rank}${SUIT_SYMBOL[dead.suit]}`,
+          }),
         );
         next = removePiece(
           {
@@ -812,7 +895,7 @@ export function removePiece(state, pieceId, opts) {
         next = { ...next, kDeferred: [...(next.kDeferred || []), dead.owner] };
         next.log = [
           ...next.log,
-          `${PLAYER_META[dead.owner].name}の予備札は、相手が仲間にするかを決めてから引く`,
+          Lk("{who}の予備札は、相手が仲間にするかを決めてから引く", { who: PLAYER_META[dead.owner].name }),
         ];
       } else next = drawReserveForK(next, dead.owner);
     }
@@ -834,7 +917,7 @@ function drawReserveForK(state, owner) {
     reserve,
     kPlacement: { owner, cards: [...held, card] },
   };
-  next.log = [...next.log, `${PLAYER_META[owner].name}は予備札を1枚引いた(配置できます)`];
+  next.log = [...next.log, Lk("{who}は予備札を1枚引いた(配置できます)", { who: PLAYER_META[owner].name })];
   return next;
 }
 
@@ -918,7 +1001,10 @@ function freezeDeaths(state) {
       ...next,
       log: [
         ...next.log,
-        `${PLAYER_META[player].name}の${p.rank}${SUIT_SYMBOL[p.suit]}は凍りついたまま倒れた(凍結死)`,
+        Lk("{who}の{card}は凍りついたまま倒れた(凍結死)", {
+          who: PLAYER_META[player].name,
+          card: `${p.rank}${SUIT_SYMBOL[p.suit]}`,
+        }),
       ],
     };
     next = removePiece(next, p.id, { by: null, viaCounter: true });
@@ -1107,7 +1193,7 @@ function startPlay(base, log) {
       currentTurn: base.firstPlayer,
       log: [
         ...log,
-        `--- 対局開始:${PLAYER_META[base.firstPlayer].name}の番 ---`,
+        Lk("--- 対局開始:{who}の番 ---", { who: PLAYER_META[base.firstPlayer].name }),
       ],
       interstitial: { forPlayer: base.firstPlayer, kind: "turn" },
     });
@@ -1127,10 +1213,10 @@ function startPlay(base, log) {
   let nextLog = [...log];
 
   for (const i of [0, 1])
-    if (straights[i]) nextLog.push(`${PLAYER_META[i].name}の布陣はストレート!`);
+    if (straights[i]) nextLog.push(Lk("{who}の布陣はストレート!", { who: PLAYER_META[i].name }));
   if (straights[0] !== straights[1])
-    nextLog.push("布陣ボーナス: 先手と後手が入れ替わった");
-  else if (straights[0]) nextLog.push("両者ストレートのため、先手はそのまま");
+    nextLog.push(Lk("布陣ボーナス: 先手と後手が入れ替わった"));
+  else if (straights[0]) nextLog.push(Lk("両者ストレートのため、先手はそのまま"));
 
   // フラッシュは相手の駒を公開させる。王は選ばれない
   const seed = Object.keys(base.pieces).sort().join(",");
@@ -1157,7 +1243,11 @@ function startPlay(base, log) {
       });
     }
     nextLog.push(
-      `${PLAYER_META[i].name}の布陣はフラッシュ! ${PLAYER_META[1 - i].name}の駒が${picked.length}枚公開された`,
+      Lk("{who}の布陣はフラッシュ! {other}の駒が{n}枚公開された", {
+        who: PLAYER_META[i].name,
+        other: PLAYER_META[1 - i].name,
+        n: picked.length,
+      }),
     );
   }
 
@@ -1191,7 +1281,11 @@ function startPlay(base, log) {
       }
       if (shownCount)
         nextLog.push(
-          `詳細設定: ${PLAYER_META[i].name}の駒が${shownCount}枚公開された${custom.reveal.king ? "(王を含む)" : ""}`,
+          Lk("詳細設定: {who}の駒が{n}枚公開された{king}", {
+            who: PLAYER_META[i].name,
+            n: shownCount,
+            king: custom.reveal.king ? Lk("(王を含む)") : "",
+          }),
         );
     }
   }
@@ -1214,7 +1308,7 @@ function startPlay(base, log) {
     phase: "play",
     currentTurn: first,
     firstPlayer: first,
-    log: [...nextLog, `--- 対局開始:${PLAYER_META[first].name}の番 ---`],
+    log: [...nextLog, Lk("--- 対局開始:{who}の番 ---", { who: PLAYER_META[first].name })],
     setupEffects: effects,
     // 版13の通信対局では、ボーナスの知らせを両者が閉じるまで指し手を受け付けない。
     // 片方が読んでいるあいだに相手が指すと、戻ってきたら盤が動いていた、になる
@@ -1295,7 +1389,7 @@ export function reducer(state, action) {
     for (const owner of owners) next = drawReserveForK(next, owner);
   }
   if(state.phase!=="play" && next.phase==="play" && hasAliceRules(next)) next=aliceAfterTurn(next);
-  if(next.aliceRevive && !revivalAvailable(next,next.pieces[next.aliceRevive.pieceId])) next={...next,winner:1-next.aliceRevive.owner,phase:"gameover",aliceRevive:null,log:[...next.log,"王が帰還できず、敗北が確定した"]};
+  if(next.aliceRevive && !revivalAvailable(next,next.pieces[next.aliceRevive.pieceId])) next={...next,winner:1-next.aliceRevive.owner,phase:"gameover",aliceRevive:null,log:[...next.log,Lk("王が帰還できず、敗北が確定した")]};
   return afterAction(state, next, action);
 }
 
@@ -1347,7 +1441,7 @@ function settleKingChoice(state) {
   if (alive.length === 1) {
     // 残りが1枚なら選ぶまでもない
     const heir = { ...state.pieces[alive[0]], isKing: true };
-    heir.history = [...heir.history, "王位を継承"];
+    heir.history = [...heir.history, Lk("王位を継承")];
     const pieces = { ...state.pieces, [heir.id]: heir };
     const board = state.board.map((r) => [...r]);
     board[heir.row][heir.col] = heir;
@@ -1360,7 +1454,7 @@ function settleKingChoice(state) {
       board,
       players,
       pendingKingChoice: null,
-      log: [...state.log, `${PLAYER_META[pk.owner].name}に新しい王が立った!`],
+      log: [...state.log, Lk("{who}に新しい王が立った!", { who: PLAYER_META[pk.owner].name })],
     };
   }
   // ひとりも残っていない。王を立てられない側の負け
@@ -1372,7 +1466,10 @@ function settleKingChoice(state) {
     winner,
     log: [
       ...state.log,
-      `${PLAYER_META[pk.owner].name}は王を立てられない…${PLAYER_META[winner].name}の勝利!`,
+      Lk("{who}は王を立てられない…{winner}の勝利!", {
+        who: PLAYER_META[pk.owner].name,
+        winner: PLAYER_META[winner].name,
+      }),
     ],
   };
 }
@@ -1552,7 +1649,10 @@ function afterClock(prev, next, action) {
         interstitial: null,
         log: [
           ...out.log,
-          `${PLAYER_META[mover].name}の持ち時間が尽きた…${PLAYER_META[1 - mover].name}の勝利!`,
+          Lk("{who}の持ち時間が尽きた…{winner}の勝利!", {
+            who: PLAYER_META[mover].name,
+            winner: PLAYER_META[1 - mover].name,
+          }),
         ],
       };
     } else {
@@ -1750,7 +1850,7 @@ function coreReducer(state, action) {
 
       const log = [
         ...state.log,
-        `${PLAYER_META[idx].name}が${count}枚を引き直した`,
+        Lk("{who}が{n}枚を引き直した", { who: PLAYER_META[idx].name, n: count }),
       ];
       const discardPile = discardCards(state, discarded).discardPile;
 
@@ -1970,7 +2070,7 @@ function coreReducer(state, action) {
       players[idx] = me;
 
       const setupDone = replaceAt(state.setupDone, idx, true);
-      const log = [...state.log, `${PLAYER_META[idx].name}が布陣を完了`];
+      const log = [...state.log, Lk("{who}が布陣を完了", { who: PLAYER_META[idx].name })];
       const base = {
         ...state,
         players,
@@ -2016,7 +2116,7 @@ function coreReducer(state, action) {
         ...state,
         setupAck,
         log: setupAck.every(Boolean)
-          ? [...state.log, "両者が布陣ボーナスを確認した。対局開始"]
+          ? [...state.log, Lk("両者が布陣ボーナスを確認した。対局開始")]
           : state.log,
       };
     }
@@ -2034,7 +2134,10 @@ function coreReducer(state, action) {
         clocks: replaceAt(state.clocks, loser, 0),
         log: [
           ...state.log,
-          `${PLAYER_META[loser].name}の持ち時間が尽きた…${PLAYER_META[1 - loser].name}の勝利!`,
+          Lk("{who}の持ち時間が尽きた…{winner}の勝利!", {
+            who: PLAYER_META[loser].name,
+            winner: PLAYER_META[1 - loser].name,
+          }),
         ],
       };
     }
@@ -2148,7 +2251,7 @@ function coreReducer(state, action) {
           col: at.col,
           history: [
             ...base.history,
-            `周囲の駒と位置を入れ替えた${secondSwap && id === aId ? "(2回目)" : ""}`,
+            Lk("周囲の駒と位置を入れ替えた{again}", { again: secondSwap && id === aId ? Lk("(2回目)") : "" }),
           ],
         };
         board[at.row][at.col] = pieces[id];
@@ -2156,7 +2259,10 @@ function coreReducer(state, action) {
 
       const log = [
         ...state.log,
-        `${PLAYER_META[state.currentTurn].name}が3つの駒の位置を入れ替えた${secondSwap ? "(2回目)" : ""}`,
+        Lk("{who}が3つの駒の位置を入れ替えた{again}", {
+          who: PLAYER_META[state.currentTurn].name,
+          again: secondSwap ? Lk("(2回目)") : "",
+        }),
       ];
       let next = {
         ...state,
@@ -2201,7 +2307,11 @@ function coreReducer(state, action) {
           });
           next.log = [
             ...next.log,
-            `${PLAYER_META[state.currentTurn].name}が包囲で${PLAYER_META[piece.owner].name}の${piece.rank}${SUIT_SYMBOL[piece.suit]}を撃破!`,
+            Lk("{who}が包囲で{victim}の{card}を撃破!", {
+              who: PLAYER_META[state.currentTurn].name,
+              victim: PLAYER_META[piece.owner].name,
+              card: `${piece.rank}${SUIT_SYMBOL[piece.suit]}`,
+            }),
           ];
           next = removePiece(next, victim.id, { by: null, viaCounter: true });
           // 王を取った時点で止めない。囲んだ駒は全部倒してから決着する
@@ -2254,7 +2364,7 @@ function coreReducer(state, action) {
         ((mover.isKing && !mover.aliceSkin) ||
           !!mover.skyTwice ||
           !!state.players[mover.owner].skyTwice);
-      const nth = secondAction ? "2回目" : "1回目";
+      const nth = secondAction ? Lk("2回目") : Lk("1回目");
 
       const board = state.board.map((r) => [...r]);
       let next = {
@@ -2292,7 +2402,12 @@ function coreReducer(state, action) {
         });
         next.log = [
           ...next.log,
-          `${PLAYER_META[state.currentTurn].name}が${PLAYER_META[victim.owner].name}の${victim.rank}${SUIT_SYMBOL[victim.suit]}を撃破!${twiceKing ? `(${nth})` : ""}`,
+          Lk("{who}が{victim}の{card}を撃破!{nth}", {
+            who: PLAYER_META[state.currentTurn].name,
+            victim: PLAYER_META[victim.owner].name,
+            card: `${victim.rank}${SUIT_SYMBOL[victim.suit]}`,
+            nth: twiceKing ? `(${nth})` : "",
+          }),
         ];
         next = removePiece(next, victim.id, {
           by: mover.id,
@@ -2321,7 +2436,12 @@ function coreReducer(state, action) {
           col: action.col,
           history: [
             ...moved.history,
-            `${squareName(mover.row, mover.col, state.boardSize)}→${squareName(action.row, action.col, state.boardSize)} ${moveArrow(mover, { row: action.row, col: action.col })} へ移動${secondAction ? "(2回目)" : ""}`,
+            Lk("{from}→{to} {arrow} へ移動{again}", {
+              from: squareName(mover.row, mover.col, state.boardSize),
+              to: squareName(action.row, action.col, state.boardSize),
+              arrow: moveArrow(mover, { row: action.row, col: action.col }),
+              again: secondAction ? Lk("(2回目)") : "",
+            }),
           ],
         };
         nextPieces[mover.id] = updated;
@@ -2335,7 +2455,12 @@ function coreReducer(state, action) {
         twiceKing && defeated.length === 0 && moved && moved.alive
           ? [
               ...next.log,
-              `${PLAYER_META[state.currentTurn].name}が${nth}に移動 (${squareName(mover.row, mover.col, state.boardSize)} → ${squareName(action.row, action.col, state.boardSize)})`,
+              Lk("{who}が{nth}に移動 ({from} → {to})", {
+                who: PLAYER_META[state.currentTurn].name,
+                nth,
+                from: squareName(mover.row, mover.col, state.boardSize),
+                to: squareName(action.row, action.col, state.boardSize),
+              }),
             ]
           : next.log;
 
@@ -2380,7 +2505,7 @@ function coreReducer(state, action) {
       const crowned = {
         ...heir,
         isKing: true,
-        history: [...heir.history, "王位を継承"],
+        history: [...heir.history, Lk("王位を継承")],
       };
       pieces[heir.id] = crowned;
       board[heir.row][heir.col] = crowned;
@@ -2396,7 +2521,7 @@ function coreReducer(state, action) {
         pendingKingChoice: null,
         log: [
           ...state.log,
-          `${PLAYER_META[pending.owner].name}に新しい王が立った!`,
+          Lk("{who}に新しい王が立った!", { who: PLAYER_META[pending.owner].name }),
         ],
       };
     }
@@ -2435,7 +2560,7 @@ function coreReducer(state, action) {
         col: action.col,
         alive: true,
         revealed: true,
-        history: ["予備札から表向きに出撃"],
+        history: [Lk("予備札から表向きに出撃")],
         everRevived: false,
       };
       pieces[piece.id] = piece;
@@ -2463,10 +2588,13 @@ function coreReducer(state, action) {
             ? { owner, cards: cards.filter((c) => c.id !== card.id) }
             : null,
         // 盤でめくる演出に乗せる。表で出ることが目で分かるように
-        lastReveal: { id: piece.id, reason: "予備札から出た" },
+        lastReveal: { id: piece.id, reason: "予備札から出た" }, // i18n-ignore(目印。画面には出さない)
         log: [
           ...state.log,
-          `${PLAYER_META[owner].name}が予備札から ${card.rank}${SUIT_SYMBOL[card.suit]} を投入(公開)`,
+          Lk("{who}が予備札から {card} を投入(公開)", {
+            who: PLAYER_META[owner].name,
+            card: `${card.rank}${SUIT_SYMBOL[card.suit]}`,
+          }),
         ],
       };
     }
@@ -2539,7 +2667,10 @@ function coreReducer(state, action) {
         extraMoveFor: null,
         log: [
           ...state.log,
-          `${PLAYER_META[who].name}が降参した…${PLAYER_META[1 - who].name}の勝利!`,
+          Lk("{who}が降参した…{winner}の勝利!", {
+            who: PLAYER_META[who].name,
+            winner: PLAYER_META[1 - who].name,
+          }),
         ],
       };
     }

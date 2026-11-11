@@ -33,6 +33,7 @@ const url = (id) => `${DB_URL}/players/${id}.json`;
 
 export { profileRecord as playerRecord } from "./profile-record.js";
 import { publishProfile } from "./profile-sync.js";
+import { L } from "../i18n/index.js";
 
 /** 自分の記録を読む。無ければ data は null */
 export async function readPlayer(id) {
@@ -143,14 +144,16 @@ export async function readPlayers() {
     withTimeout(authedFetch(`${DB_URL}/bans.json`), TIMEOUT_MS).then((r) => {
       if (!r.ok)
         throw new Error(
-          `停止の印(bans)が読めません(HTTP ${r.status})。ルールの bans に運営の .read があるか確かめてください。`,
+          L("停止の印(bans)が読めません(HTTP {status})。ルールの bans に運営の .read があるか確かめてください。", {
+            status: r.status,
+          }),
         );
       return r.json();
     }),
   ]);
   if (res.status === 401)
     throw new Error(
-      "players は読めません。Firebase のルールに players を足して公開してください。",
+      L("players は読めません。Firebase のルールに players を足して公開してください。"),
     );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();

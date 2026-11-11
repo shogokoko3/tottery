@@ -1,4 +1,5 @@
 import { FORMATION_EMBLEMS } from "./formation-honors.js";
+import { L } from "../i18n/index.js";
 /**
  * アカウントのアイコン。
  *
@@ -9,21 +10,21 @@ import { FORMATION_EMBLEMS } from "./formation-honors.js";
  * free: true は最初から使える。それ以外は how に手に入れ方を書く。
  */
 export const ICONS = [
-  { id: "initial", label: "名前の頭文字", mark: null, free: true },
-  { id: "spade", label: "スペード", mark: "♠", free: true },
-  { id: "heart", label: "ハート", mark: "♥", free: true },
-  { id: "diamond", label: "ダイヤ", mark: "♦", free: true },
-  { id: "club", label: "クラブ", mark: "♣", free: true },
+  { id: "initial", label: L("名前の頭文字"), mark: null, free: true },
+  { id: "spade", label: L("スペード"), mark: "♠", free: true },
+  { id: "heart", label: L("ハート"), mark: "♥", free: true },
+  { id: "diamond", label: L("ダイヤ"), mark: "♦", free: true },
+  { id: "club", label: L("クラブ"), mark: "♣", free: true },
   {
     id: "crown",
-    label: "王冠",
+    label: L("王冠"),
     mark: "♛",
-    how: "ミッション「レベル10になる」",
+    how: L("ミッション「レベル10になる」"),
   },
-  { id: "star", label: "星", mark: "★", how: "ミッション「レベル30になる」" },
+  { id: "star", label: L("星"), mark: "★", how: L("ミッション「レベル30になる」") },
   // 布陣の紋章。エリア(フォイル)で手に入るので、フォイルを持たないうちは一覧に出さない
   ...FORMATION_EMBLEMS.map((e) => ({ ...e, foil: true })),
-  { id: "flame", label: "炎", mark: "✦", how: "これから手に入ります" },
+  { id: "flame", label: L("炎"), mark: "✦", how: L("これから手に入ります") },
 ];
 
 /** 既定のアイコン。名前の頭文字を出す */

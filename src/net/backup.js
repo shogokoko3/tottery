@@ -17,6 +17,7 @@ import { seasonApiBase } from "./season.js";
 import { loadProfile, restoreProfile } from "../game/profile.js";
 import { getCollection, updateCollection } from "../skins/store.js";
 import { syncWallet } from "./wallet.js";
+import { L, Lx } from "../i18n/index.js";
 
 /** 控えの大きさの上限(文字数)。src/server/wallet.js の BACKUP_MAX と同じ値にする */
 export const BACKUP_MAX = 40000;
@@ -28,7 +29,7 @@ export const BACKUP_INTERVAL_MS = 60000;
 
 async function request(op, body = {}) {
   const auth = await ensureAuth();
-  if (!auth) throw new Error("通信を確認して、もう一度お試しください。");
+  if (!auth) throw new Error(L("通信を確認して、もう一度お試しください。"));
   let res;
   try {
     res = await fetch(`${seasonApiBase()}/api/wallet/${op}`, {
@@ -41,15 +42,15 @@ async function request(op, body = {}) {
       signal: AbortSignal.timeout(20000),
     });
   } catch {
-    throw new Error("通信を確認して、もう一度お試しください。");
+    throw new Error(L("通信を確認して、もう一度お試しください。"));
   }
   let data;
   try {
     data = await res.json();
   } catch {
-    throw new Error("引き継ぎの控えを読めませんでした。");
+    throw new Error(L("引き継ぎの控えを読めませんでした。"));
   }
-  if (!res.ok) throw new Error(data.error || "引き継ぎの控えを読めませんでした。");
+  if (!res.ok) throw new Error(Lx(data.error) || L("引き継ぎの控えを読めませんでした。"));
   return data;
 }
 

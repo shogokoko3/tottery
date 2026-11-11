@@ -8,6 +8,7 @@
  */
 import { TUTORIALS, tutorialMinutes } from "./tutorial.js";
 import { hasCleared } from "./profile.js";
+import { L } from "../i18n/index.js";
 // ホームの誘いは第8話まで(ランダムマッチの条件はストーリーに移った。2026-09-30)
 const NUDGE_EPISODES = 8;
 
@@ -28,9 +29,9 @@ export function homeTutorialNudge(profile) {
   const next = nextTutorial(profile);
   if (!next || next.id > NUDGE_EPISODES) return null;
   if (next.id === 1)
-    return { kind: "start", text: "まずはここから。第1話は1分ほど", next };
+    return { kind: "start", text: L("まずはここから。第1話は1分ほど"), next };
   // 中身と時間が分かる形に(2026-09-25 本人の指示。「次は第N話」だけでは重さが読めない)
-  return { kind: "next", text: `次は ${next.title}(約${tutorialMinutes(next)}分)`, next };
+  return { kind: "next", text: L("次は {title}(約{min}分)", { title: next.title, min: tutorialMinutes(next) }), next };
 }
 
 /** 名前を決めた直後の案内(導入)を出すか。まだ出していないときだけ。前の版で第1話を終えた人には出さない */

@@ -105,23 +105,23 @@ const FILM_SLOTS = ["king", "reverse", "revive", "field", "recruit", "phantom", 
 function filmLabel(skin, slot) {
   switch (slot) {
     case "king":
-      return `${skin.move}（王のとき）`;
+      return L("{move}（王のとき）", { move: skin.move });
     case "reverse":
-      return `${skin.move}（王以外）`;
+      return L("{move}（王以外）", { move: skin.move });
     case "revive":
-      return "帰還";
+      return L("帰還");
     case "field":
-      return skin.fieldEffect?.name || "盤面効果";
+      return skin.fieldEffect?.name || L("盤面効果");
     case "recruit":
-      return "仲間にしたとき";
+      return L("仲間にしたとき");
     case "phantom":
-      return "幻影が倒されたとき";
+      return L("幻影が倒されたとき");
     case "capture":
-      return skin.id === "genie-magician" ? "包囲撃破" : "撃破";
+      return skin.id === "genie-magician" ? L("包囲撃破") : L("撃破");
     case "swap":
-      return "入れ替え";
+      return L("入れ替え");
     default:
-      return "フォイル効果";
+      return L("フォイル効果");
   }
 }
 import { ArrowLeft, ArrowRight, Cards, Ether, Home, Shard, Sparkle } from "../icons.jsx";
@@ -160,6 +160,7 @@ import { useLongPress } from "./long-press.js";
 // 句ごとに折り返す文と札の名(iPhone の WebKit は auto-phrase を知らない。2026-10-06 見直し)
 import { Phrases, namePhrases } from "./phrases.jsx";
 import { backfillTutorialRewards } from "../game/tutorial-reward.js";
+import { L, Lk, Lx, fmtNumber } from "../i18n/index.js";
 
 const foilPct = FOIL_CHANCE * 100;
 /**
@@ -171,29 +172,33 @@ function SkinAreaNote({ skin, owned, equipped }) {
   if (skin.series === "alice" && skin.rank === "A")
     return skin.foil ? (
       <div className="skins-area-note">
-        <b>フォイル効果</b>
-        <p>自分のターンに1回、任意で発動できます。自軍の王とAを除く駒、および相手の王からランダムな1体の数字を逆転します。Aが王でなくても使え、手番は消費しません。</p>
+        <b>{L("フォイル効果")}</b>
+        <p>{L("自分のターンに1回、任意で発動できます。自軍の王とAを除く駒、および相手の王からランダムな1体の数字を逆転します。Aが王でなくても使え、手番は消費しません。")}</p>
       </div>
-    ) : <p className="skins-area-note skins-area-note-plain">フォイル版を手に入れると、ランダムに1体の数字を逆転する追加効果が使えます。</p>;
+    ) : <p className="skins-area-note skins-area-note-plain">{L("フォイル版を手に入れると、ランダムに1体の数字を逆転する追加効果が使えます。")}</p>;
   if (skin.id === "genie-magician:foil")
     return (
       <div className="skins-area-note">
-        <b>マジカルシャッフル · 9×9</b>
-        <p>Aが王でなくても、毎回の自分のターンに任意で1回発動。自軍のAと王を除く駒からランダムな3体の位置を入れ替えます。相手の王も対象です。発動後も通常の移動ができます。</p>
+        <b>{L("マジカルシャッフル · 9×9")}</b>
+        <p>{L("Aが王でなくても、毎回の自分のターンに任意で1回発動。自軍のAと王を除く駒からランダムな3体の位置を入れ替えます。相手の王も対象です。発動後も通常の移動ができます。")}</p>
       </div>
     );
-  if (skin.series === "alice" && !skin.fieldEffect) return <p className="skins-area-note">盤面効果は準備中です。</p>;
+  if (skin.series === "alice" && !skin.fieldEffect) return <p className="skins-area-note">{L("盤面効果は準備中です。")}</p>;
   const type = areaForSkin(skin.rank, skin.id);
   if (!type) return null;
   const info = AREA_INFO[type];
+  // 太字(数字・「〇を王」)を挟んだ文。英語では語順が違うので、1つの文を印で切って組む
+  const howParts = L(
+    "このフォイルを {a} に装備し、{b}にすると使えます（9×9の対局のみ・自分のターンの初めに1回まで）。",
+  ).split(/\{a\}|\{b\}/);
   if (!skin.foil)return (
       <p className="skins-area-note skins-area-note-plain">
-        フォイル版を手に入れると、効果盤面「{info.name}」が使えます。
+        {L("フォイル版を手に入れると、効果盤面「{name}」が使えます。", { name: info.name })}
       </p>
     );
   return (
     <div className={`skins-area-note skins-area-note-${type}`}>
-      <span className="skins-eyebrow">効果盤面</span>
+      <span className="skins-eyebrow">{L("効果盤面")}</span>
       <h3>{info.name}</h3>
       <AreaPreview
         type={type}
@@ -202,13 +207,13 @@ function SkinAreaNote({ skin, owned, equipped }) {
       />
       <p>{info.text}</p>
       <p className="skins-area-how">
-        このフォイルを <b>{skin.rank}</b> に装備し、<b>{skin.rank} を王</b>
-        にすると使えます（9×9の対局のみ・自分のターンの初めに1回まで）。
+        {howParts[0]}<b>{skin.rank}</b>{howParts[1]}<b>{L("{rank} を王", { rank: skin.rank })}</b>
+        {howParts[2]}
         {!owned
-          ? " まだ持っていません。ガチャや錬成でフォイルを引くか、同じキャラを通算100枚集めて加工すると手に入ります。"
+          ? L(" まだ持っていません。ガチャや錬成でフォイルを引くか、同じキャラを通算100枚集めて加工すると手に入ります。")
           : equipped
-            ? " いま装備中です。"
-            : " 持っています。装備すると使えます。"}
+            ? L(" いま装備中です。")
+            : L(" 持っています。装備すると使えます。")}
       </p>
     </div>
   );
@@ -232,9 +237,9 @@ const isBattlePassLocked = (skin, owned) =>
 
 const rarityLabel = (s) =>
   s.rarity === "LIMITED"
-    ? "初回購入特典"
+    ? L("初回購入特典")
     : s.rarity === "SPECIAL"
-      ? "特別スキン"
+      ? L("特別スキン")
       : s.rarity;
 
 /**
@@ -416,12 +421,12 @@ function RevealCard({
       }}
       aria-label={
         flipped
-          ? identityHidden ? "フォイルカード。正体はまだ光に包まれています" : final
+          ? identityHidden ? L("フォイルカード。正体はまだ光に包まれています") : final
             ? visibleSkin.name
             : shown
-              ? `${label}。${next}へ昇格中`
-              : `${index + 1}枚目をめくっています`
-          : `${index + 1}枚目をめくる`
+              ? L("{label}。{next}へ昇格中", { label, next })
+              : L("{n}枚目をめくっています", { n: index + 1 })
+          : L("{n}枚目をめくる", { n: index + 1 })
       }
     >
       <span className="reveal-inner">
@@ -473,7 +478,7 @@ function RevealCard({
           {final && visibleSkin.foil && !identityHidden && (
             <FoilBadge className="reveal-foil" />
           )}
-          {spinning && <span className="reveal-promoting">{skin.foil && !foilUpgrade ? "覚醒" : "昇格"}</span>}
+          {spinning && <span className="reveal-promoting">{skin.foil && !foilUpgrade ? L("覚醒") : L("昇格")}</span>}
           {/* 名は「の」と空白のあとで句に切り、句の間で折り返す(10連の結果と同じ。2026-10-06 見直し)。
               1行で「…」と切っていて、4列の札で「墓守のレヴ…」「黄昏のレヴ…」としか読めなかった */}
           {final && !identityHidden && (
@@ -486,12 +491,12 @@ function RevealCard({
           )}
           {/* 通常とフォイルを持っているか。引いた側は光らせる */}
           {final && !identityHidden && !(foilUpgrade && !foilRevealed && !reduce) && owned && (
-            <span className="reveal-owned" aria-label="このキャラの所持">
+            <span className="reveal-owned" aria-label={L("このキャラの所持")}>
               <b className={owned.base > 0 ? "is-owned" : ""}>
-                通常{owned.base > 0 ? `×${owned.base}` : "—"}
+                {L("通常")}{owned.base > 0 ? `×${owned.base}` : "—"}
               </b>
               <b className={owned.foil > 0 ? "is-owned is-foil" : ""}>
-                箔{owned.foil > 0 ? `×${owned.foil}` : "—"}
+                {L("箔")}{owned.foil > 0 ? `×${owned.foil}` : "—"}
               </b>
             </span>
           )}
@@ -630,7 +635,7 @@ export function SummonRevealPresentation({
   };
   return (
     <Modal
-      label="スキン召喚"
+      label={L("スキン召喚")}
       onClose={intro ? finishIntro : freeze && !allComplete ? () => {} : onFinish}
       className={`skin-summon-overlay ${intro ? introReady ? "summon-playing" : "summon-awaiting-frame" : ""} ${freeze && !intro ? `freeze-phase-${freezePhase}` : ""}`}
     >
@@ -639,14 +644,14 @@ export function SummonRevealPresentation({
         <p className="reveal-caption" role="status">
           {allComplete
             ? plain
-              ? "すべての札が現れました。"
-              : "すべての札が現れました。"
+              ? L("すべての札が現れました。")
+              : L("すべての札が現れました。")
             : all
               ? foilIndexes.length
-                ? "まだ、輝きは終わらない。"
+                ? L("まだ、輝きは終わらない。")
                 : plain
-                  ? "札の輝きが変わっています。"
-                  : "札に宿る輝きをお待ちください。"
+                  ? L("札の輝きが変わっています。")
+                  : L("札に宿る輝きをお待ちください。")
               : freeze ? "" : OMEN_TEXT[omen]}
         </p>
         <div
@@ -682,11 +687,11 @@ export function SummonRevealPresentation({
             ? ""
             : results.length === 1
               ? plain
-                ? "札をタップすると、めくれます。"
-                : "札を引き寄せて、めくってください。"
+                ? L("札をタップすると、めくれます。")
+                : L("札を引き寄せて、めくってください。")
               : plain
-                ? "札をタップすると、めくれます。指でなぞって、続けてめくることもできます。"
-                : "札を引き寄せてめくるか、指でなぞって次々にめくれます。"}
+                ? L("札をタップすると、めくれます。指でなぞって、続けてめくることもできます。")
+                : L("札を引き寄せてめくるか、指でなぞって次々にめくれます。")}
         </p>
         <div className="reveal-actions">
           {!all && !freezeLocked && (
@@ -694,12 +699,12 @@ export function SummonRevealPresentation({
               className="skin-btn"
               onClick={() => setFlipped(results.map(() => true))}
             >
-              すべてめくる
+              {L("すべてめくる")}
             </button>
           )}
           {allComplete && (!hasAreaReward || !reduce) && (
             <button className="skin-btn skin-btn-gold" onClick={onFinish}>
-              結果へ →
+              {L("結果へ →")}
             </button>
           )}
         </div>
@@ -733,7 +738,7 @@ function CraftedFoilReveal({ result, reduce, onFinish }) {
   const base = byId(baseSkinId(skin.id));
   return (
     <SkinModal
-      label="カードの獲得演出"
+      label={L("カードの獲得演出")}
       onClose={onFinish}
       className="skins-results-overlay"
     >
@@ -742,7 +747,7 @@ function CraftedFoilReveal({ result, reduce, onFinish }) {
           <span className="skins-eyebrow">
             {rarityLabel(base)} / {base.rank}
           </span>
-          <h2>カードに宿る輝き</h2>
+          <h2>{L("カードに宿る輝き")}</h2>
         </div>
       </div>
       <div className="skins-results-grid single-result">
@@ -762,7 +767,7 @@ function CraftedFoilReveal({ result, reduce, onFinish }) {
         </article>
       </div>
       <button className="skin-btn skins-result-done" onClick={onFinish}>
-        演出をスキップ
+        {L("演出をスキップ")}
       </button>
     </SkinModal>
   );
@@ -876,7 +881,7 @@ function ForgePanel({
       playSound("dismantle");
       setConfirmDust(null);
       setMessage(
-        `「${skin.name}」を ${n}枚崩して ${ETHER_NAME}を ${dustOf(skin) * n} 得ました。`,
+        L("「{name}」を {n}枚崩して {what}を {got} 得ました。", { name: skin.name, n, what: ETHER_NAME, got: dustOf(skin) * n }),
       );
     }
   };
@@ -885,7 +890,7 @@ function ForgePanel({
       playSound("dismantle");
       setConfirmBreak(null);
       setMessage(
-        `「${skin.name}」を ${n}枚崩して ${SHARD_NAME}を ${SHARD_VALUE[skin.rarity] * n} 得ました。`,
+        L("「{name}」を {n}枚崩して {what}を {got} 得ました。", { name: skin.name, n, what: SHARD_NAME, got: SHARD_VALUE[skin.rarity] * n }),
       );
     }
   };
@@ -894,13 +899,13 @@ function ForgePanel({
     const next = await acquire((c) => exchangeFoil(c, base.id));
     if (next)
       setMessage(
-        `${SHARD_NAME}を ${cost} 使って、「${base.name}」のフォイルと交換しました。`,
+        L("{what}を {cost} 使って、「{name}」のフォイルと交換しました。", { what: SHARD_NAME, cost, name: base.name }),
       );
   };
   const breakAll = async () => {
     if (await run((c) => dismantleAll(c, series)))
       setMessage(
-        `選択中のシリーズの通常版のダブりを崩して ${ETHER_NAME}を ${bulk} 得ました。フォイルは残しています。`,
+        L("選択中のシリーズの通常版のダブりを崩して {what}を {n} 得ました。フォイルは残しています。", { what: ETHER_NAME, n: bulk }),
       );
   };
   const make = async (skin, n = 1) => {
@@ -909,7 +914,7 @@ function ForgePanel({
       playSound("forge");
       setConfirmCraft(null);
       setMessage(
-        `${ETHER_NAME}を ${(costOf(skin) * n).toLocaleString()} 使って、${n}枚を錬成しました。`,
+        L("{what}を {cost} 使って、{n}枚を錬成しました。", { what: ETHER_NAME, cost: (costOf(skin) * n).toLocaleString(), n }),
       );
     }
   };
@@ -917,14 +922,42 @@ function ForgePanel({
     const next = await acquire((c) => claimFoilMilestone(c, skin.id));
     if (next) {
       setMessage(
-        `通算${FOIL_MILESTONE}枚獲得の記念に1枚を受け取りました。所持カードと${ETHER_NAME}は減りません。`,
+        L("通算{n}枚獲得の記念に1枚を受け取りました。所持カードと{what}は減りません。", { n: FOIL_MILESTONE, what: ETHER_NAME }),
       );
     }
   };
 
+  // ジェム→エーテルの1行。持っている数だけ太字なので、その前後で切る
+  const etherRate = L("ジェム {g} → {name} {e}。無償から先に使います。いま {all}(無償 {free})", {
+    g: ETHER_EXCHANGE.gems,
+    name: ETHER_NAME,
+    e: ETHER_EXCHANGE.ether,
+    free: gemsFree.toLocaleString(),
+  }).split("{all}");
+  // 錬成の確かめの文。使う量だけ太字なので、その前後で切る
+  const craftUse = confirmCraft
+    ? L("{what} {cost} を使います（残り {left}）。", {
+        what: ETHER_NAME,
+        left: Math.max(0, ether - costOf(confirmCraft) * craftN).toLocaleString(),
+      }).split("{cost}")
+    : ["", ""];
+  // 交換の目安の説明。太字を挟むので、文を {bold} の前後で切って組む
+  const rateLine1 = L(
+    "崩してもらえる量は「その1枚の出にくさ」に比例させてあります。作るのに要るのは、その4倍。つまり{bold}。",
+  ).split("{bold}");
+  const rateLine2 = L(
+    "SSR 1枚（{cost}）は{bold}。 R だけを崩して貯めると約{r}回ぶん、SR だけなら約{sr}回ぶんで、 狙った SSR を運で当てる{top}回とほぼ同じです。 引いたものを全部崩せば約{all}回ぶんになります。",
+    {
+      cost: CRAFT.SSR.toLocaleString(),
+      r: summary.byId("R").pullsForTop,
+      sr: summary.byId("SR").pullsForTop,
+      top: top.pulls,
+      all: summary.pullsIfAll,
+    },
+  ).split("{bold}");
   return (
-    <div role="tabpanel" aria-label={foilView ? "加工" : "錬成"}>
-      <SeriesPicker series={series} onChange={onSeriesChange} label={foilView ? "加工シリーズ" : "錬成シリーズ"} disabled={working || !!confirmBreak || !!confirmCraft || !!confirmDust} />
+    <div role="tabpanel" aria-label={foilView ? L("加工") : L("錬成")}>
+      <SeriesPicker series={series} onChange={onSeriesChange} label={foilView ? L("加工シリーズ") : L("錬成シリーズ")} disabled={working || !!confirmBreak || !!confirmCraft || !!confirmDust} />
       <div className="forge-banks">
         {foilView ? (
           <div className="forge-bank forge-bank-shards">
@@ -933,7 +966,7 @@ function ForgePanel({
               <Shard size={26} /> {shards.toLocaleString()}
             </b>
             <p>
-              ダブったフォイルを崩すと貯まります。持っていないフォイルと交換します。
+              {L("ダブったフォイルを崩すと貯まります。持っていないフォイルと交換します。")}
             </p>
           </div>
         ) : (
@@ -942,7 +975,7 @@ function ForgePanel({
             <b>
               <Ether size={26} /> {ether.toLocaleString()}
             </b>
-            <p>ダブった札を崩すと貯まります。狙った1枚を作るのに使います。</p>
+            <p>{L("ダブった札を崩すと貯まります。狙った1枚を作るのに使います。")}</p>
           </div>
         )}
       </div>
@@ -958,13 +991,14 @@ function ForgePanel({
       {!foilView && onEther && (
         <section
           className="forge-section forge-ether-exchange"
-          aria-label="ジェムをエーテルに"
+          aria-label={L("ジェムをエーテルに")}
         >
           <div className="forge-ether-text">
-            <h3>ジェムを{ETHER_NAME}に</h3>
+            <h3>{L("ジェムを{name}に", { name: ETHER_NAME })}</h3>
             <small>
-              ジェム {ETHER_EXCHANGE.gems} → {ETHER_NAME} {ETHER_EXCHANGE.ether}。無償から先に使います。いま{" "}
-              <b>{gemsAll.toLocaleString()}</b>(無償 {gemsFree.toLocaleString()})
+              {etherRate[0]}
+              <b>{gemsAll.toLocaleString()}</b>
+              {etherRate[1]}
             </small>
           </div>
           <div className="forge-ether-buttons">
@@ -975,7 +1009,7 @@ function ForgePanel({
                 disabled={working || gemsAll < g}
                 onClick={() => setConfirmEther(g)}
               >
-                ジェム{g}
+                {L("ジェム{g}", { g })}
                 <span>→ {etherFor(g)}</span>
               </button>
             ))}
@@ -983,37 +1017,38 @@ function ForgePanel({
         </section>
       )}
       {confirmEther && (
-        <SkinModal label="ジェムを使う確認" onClose={() => setConfirmEther(null)}>
+        <SkinModal label={L("ジェムを使う確認")} onClose={() => setConfirmEther(null)}>
           <div className="skin-modal-head">
             <h2>
-              ジェム{confirmEther}を{ETHER_NAME} {etherFor(confirmEther)}にしますか？
+              {L("ジェム{g}を{name} {e}にしますか？", { g: confirmEther, name: ETHER_NAME, e: etherFor(confirmEther) })}
             </h2>
             <button
               className="skin-close"
-              aria-label="確認を閉じる"
+              aria-label={L("確認を閉じる")}
               disabled={working}
               onClick={() => setConfirmEther(null)}
             >
               ×
             </button>
           </div>
-          <p>
-            無償ジェム {etherSplit(confirmEther).free}
-            {etherSplit(confirmEther).paid > 0 && (
-              <>
-                {" "}と <b>有償ジェム {etherSplit(confirmEther).paid}</b>
-              </>
-            )}{" "}
-            を使います。
-            {etherSplit(confirmEther).paid > 0 && "有償ジェムは戻せません。"}
-          </p>
+          {/* 有償の額だけ太字。英語では語順が違うので、文を太字の前後で切って組む */}
+          {etherSplit(confirmEther).paid > 0 ? (
+            <p>
+              {L("無償ジェム {free} と {paid} を使います。", { free: etherSplit(confirmEther).free }).split("{paid}")[0]}
+              <b>{L("有償ジェム {n}", { n: etherSplit(confirmEther).paid })}</b>
+              {L("無償ジェム {free} と {paid} を使います。", { free: etherSplit(confirmEther).free }).split("{paid}")[1]}
+              {L("有償ジェムは戻せません。")}
+            </p>
+          ) : (
+            <p>{L("無償ジェム {free} を使います。", { free: etherSplit(confirmEther).free })}</p>
+          )}
           <div className="skins-confirm-actions">
             <button
               className="skin-btn"
               disabled={working}
               onClick={() => setConfirmEther(null)}
             >
-              やめる
+              {L("やめる")}
             </button>
             <button
               className="skin-btn skin-btn-gold"
@@ -1023,7 +1058,7 @@ function ForgePanel({
                 if (ok) setConfirmEther(null);
               }}
             >
-              使う（{ETHER_NAME} +{etherFor(confirmEther)}）
+              {L("使う（{name} +{n}）", { name: ETHER_NAME, n: etherFor(confirmEther) })}
             </button>
           </div>
           <p className="skins-message" role="status">
@@ -1034,15 +1069,15 @@ function ForgePanel({
 
       {/* どちらの作業をするかを先に選ぶ。選んだほうの一覧だけを出す */}
       {foilView && (
-        <div className="forge-work-picker" role="tablist" aria-label="加工の種類">
+        <div className="forge-work-picker" role="tablist" aria-label={L("加工の種類")}>
           <button
             className="btn btn-ghost"
             role="tab"
             aria-selected={foilWork === "milestone"}
             onClick={() => setFoilWork("milestone")}
           >
-            フォイル加工
-            <small>通算獲得で1枚</small>
+            {L("フォイル加工")}
+            <small>{L("通算獲得で1枚")}</small>
           </button>
           <button
             className="btn btn-ghost"
@@ -1051,8 +1086,8 @@ function ForgePanel({
             onClick={() => setFoilWork("exchange")}
             disabled={!foilKnown}
           >
-            フォイルの交換
-            <small>{foilKnown ? `${SHARD_NAME}と引き換え` : "フォイルを持つと開きます"}</small>
+            {L("フォイルの交換")}
+            <small>{foilKnown ? L("{name}と引き換え", { name: SHARD_NAME }) : L("フォイルを持つと開きます")}</small>
           </button>
         </div>
       )}
@@ -1062,26 +1097,23 @@ function ForgePanel({
         <section
           id="forge-foil-milestones"
           className="forge-section forge-milestones"
-          aria-label="通算獲得でフォイル加工"
+          aria-label={L("通算獲得でフォイル加工")}
         >
           <div className="forge-head">
             <h3>
-              <FoilBadge /> フォイル加工
+              <FoilBadge /> {L("フォイル加工")}
             </h3>
             <span>
-              {readyCount > 0 ? `受取可能 ${readyCount}種 · ` : ""}受取済み{" "}
-              {claimedCount}/{seriesPool.length}種
+              {readyCount > 0 ? L("受取可能 {n}種 · ", { n: readyCount }) : ""}
+              {L("受取済み {c}/{t}種", { c: claimedCount, t: seriesPool.length })}
             </span>
           </div>
           <p className="forge-milestone-intro">
-            同じキャラを通算{FOIL_MILESTONE}
-            枚獲得すると、フォイル1枚を一度だけ受け取れます。
-            <strong>所持カード・エーテルの消費はありません。</strong>
+            {L("同じキャラを通算{n}枚獲得すると、フォイル1枚を一度だけ受け取れます。", { n: FOIL_MILESTONE })}
+            <strong>{L("所持カード・エーテルの消費はありません。")}</strong>
           </p>
           <p className="skins-note">
-            通常版とフォイル版を合算します。カードを崩しても進捗は減りません。
-            ガチャ・錬成で1枚ごとに{foilPct}%のフォイル抽選も続きます。
-            加工で受け取る報酬は通算枚数に含みません。
+            {L("通常版とフォイル版を合算します。カードを崩しても進捗は減りません。 ガチャ・錬成で1枚ごとに{pct}%のフォイル抽選も続きます。 加工で受け取る報酬は通算枚数に含みません。", { pct: foilPct })}
           </p>
           <div className="forge-milestone-grid">
             {milestones.map(({ skin, check }) => (
@@ -1093,7 +1125,7 @@ function ForgePanel({
                   className="forge-milestone-thumb"
                   onClick={() => onPick(byId(foilId(skin.id)))}
                   {...longPress(byId(foilId(skin.id)))}
-                  aria-label={`${skin.name}のフォイル詳細`}
+                  aria-label={L("{name}のフォイル詳細", { name: skin.name })}
                 >
                   <FoilArtwork
                     skin={byId(foilId(skin.id))}
@@ -1113,46 +1145,47 @@ function ForgePanel({
                       type="button"
                       className="forge-milestone-area"
                       onClick={() => onPick(byId(foilId(skin.id)))}
-                      aria-label={`${skin.name}のフォイルで立つ効果盤面「${AREA_INFO[areaForSkin(skin.rank, skin.id)].name}」の詳細`}
+                      aria-label={L("{name}のフォイルで立つ効果盤面「{area}」の詳細", { name: skin.name, area: AREA_INFO[areaForSkin(skin.rank, skin.id)].name })}
                     >
-                      効果盤面: {AREA_INFO[areaForSkin(skin.rank, skin.id)].name} ›
+                      {L("効果盤面: {name} ›", { name: AREA_INFO[areaForSkin(skin.rank, skin.id)].name })}
                     </button>
                   )}
                 </div>
                 <div className="forge-milestone-progress">
                   <div>
                     <span>
-                      通算 <b>{check.total.toLocaleString()}</b>/{check.target}
-                      枚
+                      {L("通算 {t}/{target}枚", { target: check.target }).split("{t}")[0]}
+                      <b>{check.total.toLocaleString()}</b>
+                      {L("通算 {t}/{target}枚", { target: check.target }).split("{t}")[1]}
                     </span>
                     <span>
                       {check.claimed
-                        ? "受取済み"
+                        ? L("受取済み")
                         : check.remaining
-                          ? `あと${check.remaining}枚`
-                          : "目標達成"}
+                          ? L("あと{n}枚", { n: check.remaining })
+                          : L("目標達成")}
                     </span>
                   </div>
                   <progress
                     max={check.target}
                     value={Math.min(check.total, check.target)}
-                    aria-label={`${skin.name}の通算獲得`}
-                    aria-valuetext={`通算${check.total}枚、目標${check.target}枚${check.claimed ? "、受取済み" : ""}`}
+                    aria-label={L("{name}の通算獲得", { name: skin.name })}
+                    aria-valuetext={L("通算{n}枚、目標{target}枚{claimed}", { n: check.total, target: check.target, claimed: check.claimed ? L("、受取済み") : "" })}
                   />
                 </div>
                 <button
                   className={`skin-btn${check.ok ? " skin-btn-gold" : ""} forge-milestone-claim`}
                   disabled={working || !check.ok}
                   onClick={() => finishFoil(skin)}
-                  aria-label={`${skin.name} ${check.claimed ? "フォイル受取済み" : "フォイル加工"}`}
+                  aria-label={`${skin.name} ${check.claimed ? L("フォイル受取済み") : L("フォイル加工")}`}
                 >
-                  {check.claimed ? "受取済み" : "フォイル加工"}
+                  {check.claimed ? L("受取済み") : L("フォイル加工")}
                 </button>
               </article>
             ))}
           </div>
           <p className="skins-note forge-milestone-migration">
-            以前のバージョンからは、現在の所持枚数を通算獲得の開始値として引き継ぎます。過去に崩した分は履歴がないため含められません。
+            {L("以前のバージョンからは、現在の所持枚数を通算獲得の開始値として引き継ぎます。過去に崩した分は履歴がないため含められません。")}
           </p>
         </section>
       )}
@@ -1161,31 +1194,34 @@ function ForgePanel({
         <section
           id="forge-foil-exchange"
           className="forge-section forge-milestones forge-exchange"
-          aria-label="フォイルの交換"
+          aria-label={L("フォイルの交換")}
         >
           <div className="forge-head">
             <h3>
-              <Shard size={16} /> フォイルの交換
+              <Shard size={16} /> {L("フォイルの交換")}
             </h3>
             <span>
               {SHARD_NAME} {shards}
               {foilRows.length
-                ? ` · 崩せるフォイル ${foilRows.reduce((n, r) => n + r.spare, 0)}枚`
+                ? L(" · 崩せるフォイル {n}枚", { n: foilRows.reduce((n, r) => n + r.spare, 0) })
                 : ""}
             </span>
           </div>
           <p className="forge-milestone-intro">
-            ダブったフォイルを崩すと{SHARD_NAME}になり、
-            持っていないフォイルと交換できます。
+            {L("ダブったフォイルを崩すと{name}になり、 持っていないフォイルと交換できます。", { name: SHARD_NAME })}
             <strong>
-              崩すと R {SHARD_VALUE.R}・SR {SHARD_VALUE.SR}・SSR{" "}
-              {SHARD_VALUE.SSR}
-              。交換に要るのは R {EXCHANGE_COST.R}・SR {EXCHANGE_COST.SR}・SSR{" "}
-              {EXCHANGE_COST.SSR}。
+              {L("崩すと R {a}・SR {b}・SSR {c}。交換に要るのは R {d}・SR {e}・SSR {f}。", {
+                a: SHARD_VALUE.R,
+                b: SHARD_VALUE.SR,
+                c: SHARD_VALUE.SSR,
+                d: EXCHANGE_COST.R,
+                e: EXCHANGE_COST.SR,
+                f: EXCHANGE_COST.SSR,
+              })}
             </strong>
           </p>
           <p className="skins-note">
-            最後の1枚は残ります。交換は持っていないフォイルだけで、抽選はありません。交換で得た分も通算獲得に数えます。
+            {L("最後の1枚は残ります。交換は持っていないフォイルだけで、抽選はありません。交換で得た分も通算獲得に数えます。")}
           </p>
           {foilRows.length > 0 && (
             <ul className="forge-list">
@@ -1195,7 +1231,7 @@ function ForgePanel({
                     className="forge-thumb"
                     onClick={() => onPick(skin)}
                     {...longPress(skin)}
-                    aria-label={`${skin.name}の詳細`}
+                    aria-label={L("{name}の詳細", { name: skin.name })}
                   >
                     <FoilArtwork
                       skin={skin}
@@ -1207,7 +1243,7 @@ function ForgePanel({
                   <span className="forge-name">
                     <b>{skin.name}</b>
                     <small>
-                      {rarityLabel(skin)} ・ 余り {spare}枚 <FoilBadge />
+                      {rarityLabel(skin)}{L(" ・ 余り {n}枚", { n: spare })} <FoilBadge />
                     </small>
                   </span>
                   <span className="forge-gain forge-gain-shard">
@@ -1220,7 +1256,7 @@ function ForgePanel({
                       setMessage(""), setBreakN(1), setConfirmBreak(skin)
                     )}
                   >
-                    欠片にする
+                    {L("欠片にする")}
                   </button>
                 </li>
               ))}
@@ -1240,7 +1276,7 @@ function ForgePanel({
                     className="forge-card-art"
                     onClick={() => onPick(skin)}
                     {...longPress(skin)}
-                    aria-label={`${skin.name}の詳細`}
+                    aria-label={L("{name}の詳細", { name: skin.name })}
                   >
                     <FoilArtwork
                       skin={skin}
@@ -1254,23 +1290,23 @@ function ForgePanel({
                   <small>
                     {rarityLabel(base)}
                     {areaForSkin(base.rank, base.id)
-                      ? ` ・ ${AREA_INFO[areaForSkin(base.rank, base.id)].name}`
+                      ? L(" ・ {name}", { name: AREA_INFO[areaForSkin(base.rank, base.id)].name })
                       : ""}
                   </small>
                   <small className="forge-foil-held">
                     {owned
-                      ? `フォイル所持 ×${collection.owned[skin.id]}`
-                      : "フォイル未所持"}
+                      ? L("フォイル所持 ×{n}", { n: collection.owned[skin.id] })
+                      : L("フォイル未所持")}
                   </small>
                   <button
                     className={`btn ${check.ok ? "btn-primary" : "btn-ghost"} btn-small`}
                     disabled={working || !check.ok}
                     onClick={() => trade(base)}
-                    aria-label={`${base.name}のフォイルと${SHARD_NAME} ${exchangeCostOf(base)} で交換`}
+                    aria-label={L("{name}のフォイルと{what} {cost} で交換", { name: base.name, what: SHARD_NAME, cost: exchangeCostOf(base) })}
                     title={check.ok ? "" : check.why}
                   >
                     <Shard size={13} />{" "}
-                    {owned ? "所持済み" : exchangeCostOf(base)}
+                    {owned ? L("所持済み") : exchangeCostOf(base)}
                   </button>
                 </div>
               );
@@ -1282,11 +1318,11 @@ function ForgePanel({
       {!foilView && (
         <section className="forge-section">
           <div className="forge-head">
-            <h3>崩す</h3>
+            <h3>{L("崩す")}</h3>
             <span>
               {rows.length
-                ? `ダブり ${rows.reduce((n, r) => n + r.spare, 0)}枚`
-                : "ダブりなし"}
+                ? L("ダブり {n}枚", { n: rows.reduce((n, r) => n + r.spare, 0) })
+                : L("ダブりなし")}
             </span>
           </div>
           {rows.length ? (
@@ -1301,14 +1337,14 @@ function ForgePanel({
                       className="forge-thumb"
                       onClick={() => onPick(skin)}
                       {...longPress(skin)}
-                      aria-label={`${skin.name}の詳細`}
+                      aria-label={L("{name}の詳細", { name: skin.name })}
                     >
                       <img src={skin.card} alt="" loading="lazy" />
                     </button>
                     <span className="forge-name">
                       <b>{skin.name}</b>
                       <small>
-                        {rarityLabel(skin)} ・ 余り {spare}枚
+                        {rarityLabel(skin)}{L(" ・ 余り {n}枚", { n: spare })}
                       </small>
                     </span>
                     <span className="forge-gain">
@@ -1321,7 +1357,7 @@ function ForgePanel({
                         setMessage(""), setDustN(1), setConfirmDust(skin)
                       )}
                     >
-                      崩す
+                      {L("崩す")}
                     </button>
                   </li>
                 ))}
@@ -1331,18 +1367,18 @@ function ForgePanel({
                 disabled={working || !bulk}
                 onClick={breakAll}
               >
-                <Ether size={16} /> このシリーズのダブりを全部崩す（+{bulk}）
+                <Ether size={16} /> {L("このシリーズのダブりを全部崩す（+{n}）", { n: bulk })}
               </button>
             </>
           ) : (
             <p className="skins-empty">
-              同じ札が2枚以上あると崩せます。最後の1枚は残るので、装備中の札が消えることはありません。
+              {L("同じ札が2枚以上あると崩せます。最後の1枚は残るので、装備中の札が消えることはありません。")}
             </p>
           )}
           <p className="skins-note forge-protection">
             {foilKnown
-              ? `最後の1枚は通常版・フォイルそれぞれ守られます。ここで崩すのは通常版だけです。フォイルのダブりは「加工」タブで${SHARD_NAME}にします(エーテルにはなりません)。`
-              : "最後の1枚は保護され、一括で崩す対象になりません。"}
+              ? L("最後の1枚は通常版・フォイルそれぞれ守られます。ここで崩すのは通常版だけです。フォイルのダブりは「加工」タブで{name}にします(エーテルにはなりません)。", { name: SHARD_NAME })
+              : L("最後の1枚は保護され、一括で崩す対象になりません。")}
           </p>
         </section>
       )}
@@ -1350,21 +1386,20 @@ function ForgePanel({
       {!foilView && (
         <section className="forge-section">
           <div className="forge-head">
-            <h3>作る</h3>
-            <span>好きなキャラを選べます</span>
+            <h3>{L("作る")}</h3>
+            <span>{L("好きなキャラを選べます")}</span>
           </div>
           <p className="skins-foil-note">
-            錬成も1枚ごとに{foilPct}
-            %でフォイルになります。通常版とフォイルのどちらか1枚を獲得します。
+            {L("錬成も1枚ごとに{pct}%でフォイルになります。通常版とフォイルのどちらか1枚を獲得します。", { pct: foilPct })}
           </p>
-          <div className="skins-filters" aria-label="作る札の絞り込み">
+          <div className="skins-filters" aria-label={L("作る札の絞り込み")}>
             {["R", "SR", "SSR"].map((r) => (
               <button
                 key={r}
                 aria-pressed={pick === r}
                 onClick={() => setPick(r)}
               >
-                {r}（{CRAFT[r]}）
+                {L("{r}（{n}）", { r, n: CRAFT[r] })}
               </button>
             ))}
           </div>
@@ -1382,18 +1417,18 @@ function ForgePanel({
                     className="forge-card-art"
                     onClick={() => onPick(skin)}
                     {...longPress(skin)}
-                    aria-label={`${skin.name}の詳細`}
+                    aria-label={L("{name}の詳細", { name: skin.name })}
                   >
                     <img src={skin.card} alt="" loading="lazy" />
                     <span className="skins-tile-rank">{skin.rank}</span>
                   </button>
                   <b>{skin.name}</b>
-                  <small>{held ? `所持 ×${held}` : "未所持"}</small>
+                  <small>{held ? L("所持 ×{n}", { n: held }) : L("未所持")}</small>
                   <small className="forge-foil-held">
-                    フォイル{" "}
+                    {L("フォイル")}{" "}
                     {collection.owned[foilId(skin.id)]
                       ? `×${collection.owned[foilId(skin.id)]}`
-                      : "未所持"}
+                      : L("未所持")}
                   </small>
                   <button
                     className={`btn ${can ? "btn-primary" : "btn-ghost"} btn-small`}
@@ -1414,16 +1449,16 @@ function ForgePanel({
       {!foilView && (
         <section className="forge-section forge-rates">
           <div className="forge-head">
-            <h3>交換の目安</h3>
+            <h3>{L("交換の目安")}</h3>
           </div>
-          <p className="skins-note">選択中のシリーズの通常抽選の割合で計算しています。10回召喚のフリーズ昇格は含みません。</p>
+          <p className="skins-note">{L("選択中のシリーズの通常抽選の割合で計算しています。10回召喚のフリーズ昇格は含みません。")}</p>
           <table className="skins-rate-table">
             <thead>
               <tr>
-                <th>格</th>
-                <th>崩すと</th>
-                <th>作るのに</th>
-                <th>1枚を狙うと</th>
+                <th>{L("格")}</th>
+                <th>{L("崩すと")}</th>
+                <th>{L("作るのに")}</th>
+                <th>{L("1枚を狙うと")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1432,44 +1467,47 @@ function ForgePanel({
                   <td>{row.rarity}</td>
                   <td>+{row.dust}</td>
                   <td>{row.craft.toLocaleString()}</td>
-                  <td>{row.pulls}回</td>
+                  <td>{L("{n}回", { n: row.pulls })}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="skins-note">
-            崩してもらえる量は「その1枚の出にくさ」に比例させてあります。作るのに要るのは、その4倍。つまり
-            <b>同じ格ならダブり4枚で好きなキャラを1枚</b>
-            。
+            {rateLine1[0]}
+            <b>{L("同じ格ならダブり4枚で好きなキャラを1枚")}</b>
+            {rateLine1[1]}
             <br />
-            SSR 1枚（{CRAFT.SSR.toLocaleString()}）は
+            {rateLine2[0]}
             <b>
-              {" "}
-              R なら{summary.byId("R").cardsForTop}枚 ・ SR なら
-              {summary.byId("SR").cardsForTop}枚 ・ SSR なら
-              {summary.byId("SSR").cardsForTop}枚
+              {L(" R なら{a}枚 ・ SR なら{b}枚 ・ SSR なら{c}枚", {
+                a: summary.byId("R").cardsForTop,
+                b: summary.byId("SR").cardsForTop,
+                c: summary.byId("SSR").cardsForTop,
+              })}
             </b>
-            。 R だけを崩して貯めると約{summary.byId("R").pullsForTop}回ぶん、SR
-            だけなら約{summary.byId("SR").pullsForTop}回ぶんで、 狙った SSR
-            を運で当てる{top.pulls}回とほぼ同じです。 引いたものを全部崩せば約
-            {summary.pullsIfAll}回ぶんになります。
+            {rateLine2[1]}
             <br />
-            初回購入特典・特別スキンは崩すことも作ることもできません。
+            {L("初回購入特典・特別スキンは崩すことも作ることもできません。")}
             {foilKnown &&
-              ` フォイルのダブりはエーテルにならず、「加工」タブで${SHARD_NAME}(R ${SHARD_VALUE.R}・SR ${SHARD_VALUE.SR}・SSR ${SHARD_VALUE.SSR})になります。`}
+              L(" フォイルのダブりはエーテルにならず、「加工」タブで{name}(R {r}・SR {sr}・SSR {ssr})になります。", {
+                name: SHARD_NAME,
+                r: SHARD_VALUE.R,
+                sr: SHARD_VALUE.SR,
+                ssr: SHARD_VALUE.SSR,
+              })}
           </p>
         </section>
       )}
       {confirmBreak && (
         <SkinModal
-          label="フォイルを崩す確認"
+          label={L("フォイルを崩す確認")}
           onClose={() => setConfirmBreak(null)}
         >
           <div className="skin-modal-head">
-            <h2>フォイルを{breakN}枚崩しますか？</h2>
+            <h2>{L("フォイルを{n}枚崩しますか？", { n: breakN })}</h2>
             <button
               className="skin-close"
-              aria-label="確認を閉じる"
+              aria-label={L("確認を閉じる")}
               disabled={working}
               onClick={() => setConfirmBreak(null)}
             >
@@ -1477,9 +1515,12 @@ function ForgePanel({
             </button>
           </div>
           <p>
-            「{confirmBreak.name}」のダブり{breakN}枚を、{SHARD_NAME}{" "}
-            {SHARD_VALUE[confirmBreak.rarity] * breakN}{" "}
-            に変えます。エーテルにはなりません。
+            {L("「{name}」のダブり{n}枚を、{what} {v} に変えます。エーテルにはなりません。", {
+              name: confirmBreak.name,
+              n: breakN,
+              what: SHARD_NAME,
+              v: SHARD_VALUE[confirmBreak.rarity] * breakN,
+            })}
           </p>
           <AmountPicker
             value={breakN}
@@ -1488,9 +1529,10 @@ function ForgePanel({
             onChange={setBreakN}
           />
           <p className="skins-note">
-            所持 {collection.owned[confirmBreak.id] || 0}枚 →{" "}
-            {Math.max(0, (collection.owned[confirmBreak.id] || 0) - breakN)}
-            枚。最後の1枚は残ります。
+            {L("所持 {n}枚 → {left}枚。最後の1枚は残ります。", {
+              n: collection.owned[confirmBreak.id] || 0,
+              left: Math.max(0, (collection.owned[confirmBreak.id] || 0) - breakN),
+            })}
           </p>
           <div className="skins-confirm-actions">
             <button
@@ -1498,7 +1540,7 @@ function ForgePanel({
               disabled={working}
               onClick={() => setConfirmBreak(null)}
             >
-              残す
+              {L("残す")}
             </button>
             <button
               className="skin-btn skin-btn-gold"
@@ -1508,8 +1550,7 @@ function ForgePanel({
               }
               onClick={() => shatterSome(confirmBreak, breakN)}
             >
-              {breakN}枚崩す（{SHARD_NAME} +
-              {SHARD_VALUE[confirmBreak.rarity] * breakN}）
+              {L("{n}枚崩す（{what} +{v}）", { n: breakN, what: SHARD_NAME, v: SHARD_VALUE[confirmBreak.rarity] * breakN })}
             </button>
           </div>
           <p className="skins-message" role="status">
@@ -1518,14 +1559,14 @@ function ForgePanel({
         </SkinModal>
       )}
       {confirmCraft && (
-        <SkinModal label="錬成の確認" onClose={() => setConfirmCraft(null)}>
+        <SkinModal label={L("錬成の確認")} onClose={() => setConfirmCraft(null)}>
           <div className="skin-modal-head">
             <h2>
-              「{confirmCraft.name}」を{craftN}枚つくりますか？
+              {L("「{name}」を{n}枚つくりますか？", { name: confirmCraft.name, n: craftN })}
             </h2>
             <button
               className="skin-close"
-              aria-label="確認を閉じる"
+              aria-label={L("確認を閉じる")}
               disabled={working}
               onClick={() => setConfirmCraft(null)}
             >
@@ -1533,14 +1574,9 @@ function ForgePanel({
             </button>
           </div>
           <p>
-            {ETHER_NAME}{" "}
-            <b>{(costOf(confirmCraft) * craftN).toLocaleString()}</b>{" "}
-            を使います（残り{" "}
-            {Math.max(
-              0,
-              ether - costOf(confirmCraft) * craftN,
-            ).toLocaleString()}
-            ）。
+            {craftUse[0]}
+            <b>{(costOf(confirmCraft) * craftN).toLocaleString()}</b>
+            {craftUse[1]}
           </p>
           <AmountPicker
             value={craftN}
@@ -1549,9 +1585,7 @@ function ForgePanel({
             onChange={setCraftN}
           />
           <p className="skins-note">
-            1枚ごとに{foilPct}
-            %でフォイルになります。まとめて作っても1枚あたりの確率は変わりません。一度に作れるのは
-            {CRAFT_MAX}枚までです。
+            {L("1枚ごとに{pct}%でフォイルになります。まとめて作っても1枚あたりの確率は変わりません。一度に作れるのは{n}枚までです。", { pct: foilPct, n: CRAFT_MAX })}
           </p>
           <div className="skins-confirm-actions">
             <button
@@ -1559,15 +1593,14 @@ function ForgePanel({
               disabled={working}
               onClick={() => setConfirmCraft(null)}
             >
-              やめる
+              {L("やめる")}
             </button>
             <button
               className="skin-btn skin-btn-gold"
               disabled={working || ether < costOf(confirmCraft) * craftN}
               onClick={() => make(confirmCraft, craftN)}
             >
-              {craftN}枚つくる（{(costOf(confirmCraft) * craftN).toLocaleString()}
-              ）
+              {L("{n}枚つくる（{cost}）", { n: craftN, cost: (costOf(confirmCraft) * craftN).toLocaleString() })}
             </button>
           </div>
           <p className="skins-message" role="status">
@@ -1576,14 +1609,14 @@ function ForgePanel({
         </SkinModal>
       )}
       {confirmDust && (
-        <SkinModal label="崩す確認" onClose={() => setConfirmDust(null)}>
+        <SkinModal label={L("崩す確認")} onClose={() => setConfirmDust(null)}>
           <div className="skin-modal-head">
             <h2>
-              「{confirmDust.name}」を{dustN}枚崩しますか？
+              {L("「{name}」を{n}枚崩しますか？", { name: confirmDust.name, n: dustN })}
             </h2>
             <button
               className="skin-close"
-              aria-label="確認を閉じる"
+              aria-label={L("確認を閉じる")}
               disabled={working}
               onClick={() => setConfirmDust(null)}
             >
@@ -1591,9 +1624,12 @@ function ForgePanel({
             </button>
           </div>
           <p>
-            「{confirmDust.name}」のダブり{dustN}枚を、{ETHER_NAME}{" "}
-            {(dustOf(confirmDust) * dustN).toLocaleString()}{" "}
-            に変えます。最後の1枚は残ります。
+            {L("「{name}」のダブり{n}枚を、{what} {v} に変えます。最後の1枚は残ります。", {
+              name: confirmDust.name,
+              n: dustN,
+              what: ETHER_NAME,
+              v: (dustOf(confirmDust) * dustN).toLocaleString(),
+            })}
           </p>
           <AmountPicker
             value={dustN}
@@ -1607,14 +1643,14 @@ function ForgePanel({
               disabled={working}
               onClick={() => setConfirmDust(null)}
             >
-              やめる
+              {L("やめる")}
             </button>
             <button
               className="skin-btn skin-btn-gold"
               disabled={working}
               onClick={() => dustSome(confirmDust, dustN)}
             >
-              {dustN}枚崩す（+{(dustOf(confirmDust) * dustN).toLocaleString()}）
+              {L("{n}枚崩す（+{v}）", { n: dustN, v: (dustOf(confirmDust) * dustN).toLocaleString() })}
             </button>
           </div>
           <p className="skins-message" role="status">
@@ -1666,43 +1702,44 @@ function ResultDismantle({
   if (!shown && !anyDup) return null;
   const sheets = shown ? shown.rows.reduce((n, r) => n + r.count, 0) : 0;
   const label = shown
-    ? shown.rows.map((r) => `${byId(r.id).rank} ${byId(r.id).name}×${r.count}`).join("・")
+    ? shown.rows.map((r) => `${byId(r.id).rank} ${byId(r.id).name}×${r.count}`).join(L("・"))
     : "";
   return (
-    <section className="skins-result-dismantle" aria-label="重複した札を崩す">
+    <section className="skins-result-dismantle" aria-label={L("重複した札を崩す")}>
       {!shown ? (
         <p className="skins-note">
-          いま選んでいるレア度に、崩せる重複はありません。
+          {L("いま選んでいるレア度に、崩せる重複はありません。")}
         </p>
       ) : done ? (
         <p className="skins-note">
-          重複した{sheets}枚を崩して{" "}
+          {L("重複した{n}枚を崩して {bold} にしました。", { n: sheets }).split("{bold}")[0]}
           <b>
             {ETHER_NAME} +{done.gain}
-          </b>{" "}
-          にしました。
+          </b>
+          {L("重複した{n}枚を崩して {bold} にしました。", { n: sheets }).split("{bold}")[1]}
           <small>{label}</small>
         </p>
       ) : (
         <>
           <p className="skins-note">
-            重複した{sheets}枚を崩すと{" "}
+            {L("重複した{n}枚を崩すと {bold}。", { n: sheets }).split("{bold}")[0]}
             <b>
               {ETHER_NAME} +{preview.gain}
             </b>
-            。<small>{label}</small>
+            {L("重複した{n}枚を崩すと {bold}。", { n: sheets }).split("{bold}")[1]}
+            <small>{label}</small>
           </p>
           <button
             className="skin-btn"
             disabled={working}
             onClick={() => onRun(preview).then((r) => r && setDone(r))}
           >
-            <Ether size={16} /> 重複を崩す
+            <Ether size={16} /> {L("重複を崩す")}
           </button>
         </>
       )}
-      <div className="skins-dismantle-rarities" role="group" aria-label="崩すレア度">
-        <span>崩すのは</span>
+      <div className="skins-dismantle-rarities" role="group" aria-label={L("崩すレア度")}>
+        <span>{L("崩すのは")}</span>
         {DISMANTLE_RARITIES.map((r) => (
           <button
             key={r}
@@ -1722,8 +1759,8 @@ function ResultDismantle({
           disabled={working}
           onChange={onToggleAuto}
         />
-        次から自動で崩す
-        <small>フォイルと記念の札、最後の1枚は崩しません。あとから切れます</small>
+        {L("次から自動で崩す")}
+        <small>{L("フォイルと記念の札、最後の1枚は崩しません。あとから切れます")}</small>
       </label>
     </section>
   );
@@ -1753,21 +1790,21 @@ function SeriesBanner({ series, shine, foilKnown }) {
         />
       </div>
       <div className="skins-banner-copy">
-        <span className="skins-eyebrow">{name} / キャラクター召喚</span>
+        <span className="skins-eyebrow">{name}{L(" / キャラクター召喚")}</span>
         <h2>
-          {series === "alice" ? <>不思議の国へ、<br />ようこそ。</> : <>運命の一枚を、<br />この手に。</>}
+          {series === "alice" ? <>{L("不思議の国へ、")}<br />{L("ようこそ。")}</> : <>{L("運命の一枚を、")}<br />{L("この手に。")}</>}
         </h2>
-        <p>カードに宿る、新たな姿。</p>
+        <p>{L("カードに宿る、新たな姿。")}</p>
         {foilKnown && (
           <>
             <FoilBadge />
             <p className="skins-banner-foil">
-              箔がきらめく、特別な一枚。
+              {L("箔がきらめく、特別な一枚。")}
             </p>
           </>
         )}
         <span className="skins-banner-label">
-          {pool.length}キャラ{foilKnown ? " · 各キャラにフォイル版" : ""}
+          {L("{n}キャラ", { n: pool.length })}{foilKnown ? L(" · 各キャラにフォイル版") : ""}
         </span>
       </div>
     </section>
@@ -1778,7 +1815,8 @@ export function SkinsScreen({
   onBack,
   onBattlePass,
   // 下のメニュー左端の戻る釦の名前。戻り先(ホーム・ショップ・次の相手)に合わせる
-  backLabel = "ホーム",
+  // 比べるので日本語のまま持つ(呼ぶ側も Lk で渡す)。出すところで Lx
+  backLabel = Lk("ホーム"),
   initialTab = "gacha",
   // はじめての10連(2026-09-28 本人の指示)。導入の最後、はじめの一局に勝って名前を決め、
   // 門の語りを通ったあとに一度だけ真で入る(2026-10-01 本人の指示で、一局のあとへ移した)。
@@ -1787,6 +1825,8 @@ export function SkinsScreen({
 }) {
   const collection = useCollection(),
     reduce = useReducedMotion();
+  // i18n-ignore 比べるための値(backLabel は日本語のまま届く)
+  const nextBack = backLabel === "つぎへ";
   // 最初に出すタブ。ショップの「フォイルを買う」から来たときは「加工」を開く
   const [tab, setTab] = useState(initialTab),
     // 所持・装備は最初から「所持」だけを出す。未所持が混ざると装備しづらい(本人の指示 2026-09-21)
@@ -1894,9 +1934,9 @@ export function SkinsScreen({
       const d = await watchAdForTicket();
       if (d === null) return; // 途中で閉じた
       if (Number.isSafeInteger(d.adsLeftToday)) setAdsLeft(d.adsLeftToday);
-      setMessage("ガチャチケットを1枚受け取りました。");
+      setMessage(L("ガチャチケットを1枚受け取りました。"));
     } catch (e) {
-      setMessage((e && e.message) || "広告を再生できませんでした。");
+      setMessage(Lx(e && e.message) || L("広告を再生できませんでした。"));
     } finally {
       setBuying(false);
     }
@@ -1909,7 +1949,7 @@ export function SkinsScreen({
     // 決済の呼び出しは src/ui/buy.js の1本に寄せてある(ショップと同じ道)
     const r = await buyTicketsFor(n);
     if (r.needGems && shopOk) setShop(true);
-    setMessage(r.message);
+    setMessage(Lx(r.message));
     setBuying(false);
     return r.ok;
   };
@@ -1928,11 +1968,17 @@ export function SkinsScreen({
         : etherFor(gems) || 0;
       if (got > 0) await updateCollection((s) => addEther(s, got));
       setMessage(
-        `ジェム ${gems}(無償 ${free}${paid > 0 ? `・有償 ${paid}` : ""})を ${ETHER_NAME} ${got} にしました。`,
+        L("ジェム {g}(無償 {free}{paid})を {name} {got} にしました。", {
+          g: gems,
+          free,
+          paid: paid > 0 ? L("・有償 {n}", { n: paid }) : "",
+          name: ETHER_NAME,
+          got,
+        }),
       );
       return true;
     } catch (e) {
-      setMessage((e && e.message) || "両替できませんでした。");
+      setMessage(Lx(e && e.message) || L("両替できませんでした。"));
       return false;
     } finally {
       setBuying(false);
@@ -1960,7 +2006,11 @@ export function SkinsScreen({
     };
   });
   const seriesCountNote = (item) =>
-    `通常 ${item.normalOwned}/${item.normalTotal}種${foilKnown ? ` · フォイル ${item.foilOwned}/${item.foilTotal}種` : ""}`;
+    L("通常 {a}/{b}種{foil}", {
+      a: item.normalOwned,
+      b: item.normalTotal,
+      foil: foilKnown ? L(" · フォイル {a}/{b}種", { a: item.foilOwned, b: item.foilTotal }) : "",
+    });
   const allSeriesCount = seriesCountNote(
     seriesOwned.reduce(
       (sum, item) => ({
@@ -1977,12 +2027,12 @@ export function SkinsScreen({
   const milestoneResult = craftResult?.source === "milestone";
   const exchangeResult = craftResult?.source === "exchange";
   const resultLabel = milestoneResult
-    ? "フォイル加工完了"
+    ? L("フォイル加工完了")
     : exchangeResult
-      ? "フォイル交換完了"
+      ? L("フォイル交換完了")
       : craftResult
-        ? "錬成結果"
-        : "召喚結果";
+        ? L("錬成結果")
+        : L("召喚結果");
   // まとめ錬成は lastCraft.results に複数枚が入る(pending は召喚専用なので使わない)
   const results =
     collection.pending?.results ||
@@ -2017,7 +2067,7 @@ export function SkinsScreen({
       if (next) recordGachaStats(gachaStatsOf(next));
       return next;
     } catch (e) {
-      setMessage(e.message);
+      setMessage(Lx(e.message));
       return false;
     } finally {
       busy.current = false;
@@ -2060,9 +2110,9 @@ export function SkinsScreen({
           drawn = await pullFromServer(eventId, amount, requestedSeries);
         } catch (e) {
           // 残高不足など、サーバーがはっきり断ったものはそのまま伝える
-          if (/足りません|他の人の抽選|前の抽選と枚数|このシリーズの召喚は準備中/.test(e?.message || ""))
+          if (/足りません|他の人の抽選|前の抽選と枚数|このシリーズの召喚は準備中/.test(e?.ja || e?.message || ""))
             await updateCollection(s => ({ ...s, pendingPull: null }));
-          if (requestedSeries !== "heroes" || !/見つかりません|not found|404/i.test((e && e.message) || "")) throw e;
+          if (requestedSeries !== "heroes" || !/見つかりません|not found|404/i.test(e?.ja || e?.message || "")) throw e;
         }
         if (!drawn) await debitTickets(eventId, amount * PULL_COST);
         setAcquisitionMode(reduce || collection.summonMotion === "skip" ? "area" : "summon");
@@ -2077,7 +2127,7 @@ export function SkinsScreen({
       } catch (e) {
         setAcquisitionMode(null);
         setMessage(
-          (e && e.message) || "ガチャチケットを確認できませんでした。",
+          Lx(e && e.message) || L("ガチャチケットを確認できませんでした。"),
         );
       } finally {
         busy.current = false;
@@ -2115,7 +2165,7 @@ export function SkinsScreen({
   const equipSkin = async (skin) => {
     if (await run((s) => equip(s, skin.id))) {
       playSound("equip");
-      setMessage(`${skin.rank}のカードに「${skin.name}」を装備しました。`);
+      setMessage(L("{rank}のカードに「{name}」を装備しました。", { rank: skin.rank, name: skin.name }));
     }
   };
   // この抽選で自動装備した札(2026-09-28 本人の指示。印は「新たな出会い」に出す)。
@@ -2215,7 +2265,7 @@ export function SkinsScreen({
     setMessage("");
     try {
       const r = await buyFoilFor(offer);
-      setMessage(r.message);
+      setMessage(Lx(r.message));
       if (r.needGems && shopOk) setShop(true);
       return r.ok;
     } finally {
@@ -2237,22 +2287,26 @@ export function SkinsScreen({
     <div className={`skins-page${tab === "gacha" ? " is-gacha" : ""}`}>
       <div className="skins-heading">
         <div className="skins-heading-top">
-          <span className="skins-eyebrow">トッタリー / CARD SKINS</span>
+          <span className="skins-eyebrow">{L("トッタリー / CARD SKINS")}</span>
           {/* 右上の空きに、ガチャの選択画面へ戻る釦(2026-10-15 本人の指示)。はじめての10連のあいだは出さない */}
           {tab === "gacha" && pickedSeries && !firstPull && (
             <button type="button" className="skins-gacha-back" disabled={working} onClick={backToGachaPick}>
-              <ArrowLeft size={14} /> ガチャ選択へ
+              <ArrowLeft size={14} /> {L("ガチャ選択へ")}
             </button>
           )}
         </div>
         <div className="skins-heading-meta">
           <p>
-            所持 <strong>{ownedCount}</strong>
+            {L("所持")} <strong>{ownedCount}</strong>
             <span> / {foilKnown ? visibleSkins.length : SKINS.length}</span>
             {foilKnown && (
               <small className="skins-owned-breakdown">
-                通常 {ownedCount - foilOwnedCount}/{SKINS.length} · フォイル{" "}
-                {foilOwnedCount}/{visibleFoils.length}
+                {L("通常 {a}/{b} · フォイル {c}/{d}", {
+                  a: ownedCount - foilOwnedCount,
+                  b: SKINS.length,
+                  c: foilOwnedCount,
+                  d: visibleFoils.length,
+                })}
               </small>
             )}
           </p>
@@ -2260,39 +2314,39 @@ export function SkinsScreen({
       </div>
       {tab === "gacha" && !pickedSeries ? (
         /* ガチャの選択画面(2026-10-15 本人の指示)。見出し(シリーズ名)＋看板＋「ガチャを選ぶ」をシリーズごとに */
-        <div className="skins-gacha skins-gacha-select" role="tabpanel" aria-label="ガチャを選ぶ">
+        <div className="skins-gacha skins-gacha-select" role="tabpanel" aria-label={L("ガチャを選ぶ")}>
           {/* ガチャの項目(見出し＋看板＋「ガチャを選ぶ」)を縦に並べ、スクロールして選ぶ(2026-10-15 本人の指示。上の札は置かない) */}
           {gachaSeriesList.map((item) => (
             <section className="gacha-pick" key={item.id}>
               <div className="gacha-pick-head">
                 <h2>{item.name}</h2>
-                <span>{poolForSeries(item.id).length}キャラ</span>
+                <span>{L("{n}キャラ", { n: poolForSeries(item.id).length })}</span>
               </div>
               <div className="gacha-pick-banner" onClick={() => pickGacha(item.id)}>
                 <SeriesBanner series={item.id} shine={shine} foilKnown={foilKnown} />
               </div>
               <button type="button" className="skin-btn skin-btn-gold gacha-pick-go" disabled={working} onClick={() => pickGacha(item.id)}>
-                ガチャを選ぶ
+                {L("ガチャを選ぶ")}
               </button>
             </section>
           ))}
         </div>
       ) : tab === "gacha" ? (
-        <div className="skins-gacha" role="tabpanel" aria-label="ガチャ">
+        <div className="skins-gacha" role="tabpanel" aria-label={L("ガチャ")}>
           <SeriesBanner series={series} shine={shine} foilKnown={foilKnown} />
           <div className="skins-summon-controls">
-            <div className="skins-summon-primary" role="group" aria-label={`${seriesName}の召喚`}>
+            <div className="skins-summon-primary" role="group" aria-label={L("{name}の召喚", { name: seriesName })}>
               <div className="skins-pull-context">
                 <div className="skins-pull-summary">
                   <strong>{seriesName}</strong>
                   {FREE_GACHA ? (
                     <div className="skins-free">
-                      <span>TEST PLAY</span>無料・回数制限なし
+                      <span>TEST PLAY</span>{L("無料・回数制限なし")}
                     </div>
                   ) : (
                     <div className="skins-balances">
                       <div className="skins-free">
-                        チケット {collection.tickets.toLocaleString("ja-JP")}枚
+                        {L("チケット {n}枚", { n: fmtNumber(collection.tickets) })}
                       </div>
                       <div className="skins-free">
                         <GemAmount amount={collection.gems || 0} size={20} />
@@ -2302,7 +2356,7 @@ export function SkinsScreen({
                 </div>
               </div>
               {collection.pendingPull && <button className="skin-btn skin-btn-gold" disabled={working || !!results} onClick={() => roll(collection.pendingPull.amount)}>
-                未受取の{collection.pendingPull.amount}回召喚を確認
+                {L("未受取の{n}回召喚を確認", { n: collection.pendingPull.amount })}
               </button>}
               <div className="skins-pull-buttons">
                 <button
@@ -2316,8 +2370,8 @@ export function SkinsScreen({
                   className="skin-btn"
                   onClick={() => roll(1)}
                 >
-                  1回召喚
-                  <span>{FREE_GACHA ? "無料" : `チケット${PULL_COST}枚`}</span>
+                  {L("1回召喚")}
+                  <span>{FREE_GACHA ? L("無料") : L("チケット{n}枚", { n: PULL_COST })}</span>
                 </button>
                 <button
                   data-pull-count="10"
@@ -2330,9 +2384,9 @@ export function SkinsScreen({
                   className="skin-btn skin-btn-gold"
                   onClick={() => roll(10)}
                 >
-                  10連召喚
+                  {L("10連召喚")}
                   <span>
-                    {FREE_GACHA ? "無料" : `チケット${PULL_COST * 10}枚`}
+                    {FREE_GACHA ? L("無料") : L("チケット{n}枚", { n: PULL_COST * 10 })}
                   </span>
                 </button>
               </div>
@@ -2353,9 +2407,9 @@ export function SkinsScreen({
                     run((s) => ({ ...s, summonMotion }));
                   }}
                 />
-                召喚の演出を飛ばす
+                {L("召喚の演出を飛ばす")}
               </label>
-              <p className="toggle-note">門とカードの演出を省き、結果をすぐ出します</p>
+              <p className="toggle-note">{L("門とカードの演出を省き、結果をすぐ出します")}</p>
             </div>
             {WALLET_SERVER && !FREE_GACHA && (
               /* ショップと同じ部品。買う前に確認し、確認は切れる(本人の指示 2026-09-17) */
@@ -2378,11 +2432,11 @@ export function SkinsScreen({
                     disabled={buying || working}
                     onClick={watchAd}
                   >
-                    広告を見て
+                    {L("広告を見て")}
                     <br />
-                    チケット1枚
+                    {L("チケット1枚")}
                     <span>
-                      {adsLeft == null ? "1日3回まで" : `今日はあと${adsLeft}回`}
+                      {adsLeft == null ? L("1日3回まで") : L("今日はあと{n}回", { n: adsLeft })}
                     </span>
                   </button>
                 )}
@@ -2392,7 +2446,7 @@ export function SkinsScreen({
                     disabled={buying || working}
                     onClick={() => setShop(true)}
                   >
-                    <GemIcon size={24} /> ジェムを買う
+                    <GemIcon size={24} /> {L("ジェムを買う")}
                   </button>
                 )}
               </div>
@@ -2407,21 +2461,20 @@ export function SkinsScreen({
               <span>
                 SSR <b>{ODDS.SSR}%</b>
               </span>
-              <button onClick={() => setOdds(true)}>提供割合</button>
+              <button onClick={() => setOdds(true)}>{L("提供割合")}</button>
             </div>
             <p className="skins-note">
-              上記は通常抽選の割合です。10回召喚では、条件達成でフリーズ昇格が発生します。
+              {L("上記は通常抽選の割合です。10回召喚では、条件達成でフリーズ昇格が発生します。")}
             </p>
             <p className="skins-foil-note">
-              各キャラ獲得時に{foilPct}
-              %でフォイル。フリーズ時は、最初に出た通常SSRがそれぞれ30%でフォイルへ昇格します。
+              {L("各キャラ獲得時に{pct}%でフォイル。フリーズ時は、最初に出た通常SSRがそれぞれ30%でフォイルへ昇格します。", { pct: foilPct })}
             </p>
-            {series === "alice" && <p className="skins-note">アリス（A）はバトルパス報酬です。ガチャの排出対象は2〜Kです。</p>}
+            {series === "alice" && <p className="skins-note">{L("アリス（A）はバトルパス報酬です。ガチャの排出対象は2〜Kです。")}</p>}
           </div>
           <section className="skins-special">
             <button
               className="skins-special-art"
-              aria-label={`A ${seriesAce.name}の詳細`}
+              aria-label={L("A {name}の詳細", { name: seriesAce.name })}
               onClick={() => setSelected(seriesAce)}
             >
               {magicianLocked ? (
@@ -2437,12 +2490,12 @@ export function SkinsScreen({
               <span className="skins-eyebrow">BATTLE PASS REWARD / A</span>
               <h3>{seriesAce.name}</h3>
               {magicianLocked && (
-                <p className="skins-pass-hint">バトルパスクリアで獲得可能</p>
+                <p className="skins-pass-hint">{L("バトルパスクリアで獲得可能")}</p>
               )}
               <p>
                 {seriesAce.description}
                 <br />
-                バトルパスを完成させて手に入る特別スキンです。
+                {L("バトルパスを完成させて手に入る特別スキンです。")}
               </p>
               <button
                 className="skin-btn skin-btn-gold"
@@ -2458,10 +2511,10 @@ export function SkinsScreen({
                 }
               >
                 {collection.equipped.A === seriesAce.id
-                  ? "Aに装備中"
+                  ? L("Aに装備中")
                   : collection.owned[seriesAce.id]
-                    ? "Aに装備"
-                    : "バトルパスで獲得"}
+                    ? L("Aに装備")
+                    : L("バトルパスで獲得")}
               </button>
             </div>
           </section>
@@ -2479,15 +2532,15 @@ export function SkinsScreen({
             </div>
             <div>
               <span className="skins-eyebrow">FIRST PURCHASE GIFT</span>
-              <h3>白い翼を、あなたに。</h3>
+              <h3>{L("白い翼を、あなたに。")}</h3>
               <p>
-                ペガサスナイト
+                {L("ペガサスナイト")}
                 <br />
-                はじめてのジェム購入でお渡しする「10」用スキン。
+                {L("はじめてのジェム購入でお渡しする「10」用スキン。")}
                 <br />
                 {hasPegasus
-                  ? "受け取り済みです。所持・装備から選べます。"
-                  : "ガチャからは出ません。初回購入だけ、ジェムも2倍になります。"}
+                  ? L("受け取り済みです。所持・装備から選べます。")
+                  : L("ガチャからは出ません。初回購入だけ、ジェムも2倍になります。")}
               </p>
               <button
                 className="skin-btn"
@@ -2495,10 +2548,10 @@ export function SkinsScreen({
                 onClick={() => setShop(true)}
               >
                 {hasPegasus
-                  ? "受け取り済み"
+                  ? L("受け取り済み")
                   : shopOk
-                    ? "ジェムを買う"
-                    : "アプリでジェムを買うと受け取れます"}
+                    ? L("ジェムを買う")
+                    : L("アプリでジェムを買うと受け取れます")}
               </button>
             </div>
           </section>
@@ -2519,29 +2572,29 @@ export function SkinsScreen({
           setMessage={setMessage}
         />
       ) : (
-        <div role="tabpanel" aria-label="所持・装備">
+        <div role="tabpanel" aria-label={L("所持・装備")}>
           <SeriesPicker
             series={collectionSeries}
             onChange={setCollectionSeries}
-            label="カードシリーズ"
+            label={L("カードシリーズ")}
             allowAll
             notes={Object.fromEntries(seriesOwned.map((item) => [item.id, seriesCountNote(item)]))}
             allNote={allSeriesCount}
           />
           {/* シリーズの札は小さく。通常版とフォイルの「何種類/何種類」だけ(2026-10-16 本人の指示) */}
-          <div className="skins-series-owned" aria-label="シリーズ別の所持数">
+          <div className="skins-series-owned" aria-label={L("シリーズ別の所持数")}>
             {seriesOwned.map(item => (
               <button key={item.id} className="skins-series-owned-card" aria-pressed={collectionSeries === item.id} onClick={() => setCollectionSeries(item.id)}>
                 <span className="skins-series-owned-name">{item.name}</span>
-                <span className="skins-series-owned-count">通常 <b>{item.normalOwned}</b>/{item.normalTotal}種</span>
-                {foilKnown && <span className="skins-series-owned-count is-foil">フォイル <b>{item.foilOwned}</b>/{item.foilTotal}種</span>}
+                <span className="skins-series-owned-count">{L("通常 {a}/{b}種", { b: item.normalTotal }).split("{a}")[0]}<b>{item.normalOwned}</b>{L("通常 {a}/{b}種", { b: item.normalTotal }).split("{a}")[1]}</span>
+                {foilKnown && <span className="skins-series-owned-count is-foil">{L("フォイル {a}/{b}種", { b: item.foilTotal }).split("{a}")[0]}<b>{item.foilOwned}</b>{L("フォイル {a}/{b}種", { b: item.foilTotal }).split("{a}")[1]}</span>}
               </button>
             ))}
           </div>
           <div className="skins-loadout">
             <div>
               <span className="skins-eyebrow">YOUR DECK</span>
-              <h3>装備中のスキン</h3>
+              <h3>{L("装備中のスキン")}</h3>
             </div>
             <div className="skins-loadout-row">
               {Object.values(collection.equipped).length ? (
@@ -2550,7 +2603,7 @@ export function SkinsScreen({
                   return (
                     <button
                       key={id}
-                      aria-label={`${skin.rank} ${skin.name}の装備詳細`}
+                      aria-label={L("{rank} {name}の装備詳細", { rank: skin.rank, name: skin.name })}
                       onClick={() => setSelected(skin)}
                     >
                       <CardFace
@@ -2566,19 +2619,19 @@ export function SkinsScreen({
                   );
                 })
               ) : (
-                <p>獲得したスキンを選び、カードを着せ替えましょう。</p>
+                <p>{L("獲得したスキンを選び、カードを着せ替えましょう。")}</p>
               )}
             </div>
           </div>
-          <div className="skins-filters" aria-label="スキンの絞り込み">
+          <div className="skins-filters" aria-label={L("スキンの絞り込み")}>
             {[
-              ["all", "すべて"],
-              ["owned", "所持"],
+              ["all", L("すべて")],
+              ["owned", L("所持")],
               ["R", "R"],
               ["SR", "SR"],
               ["SSR", "SSR"],
-              ["LIMITED", "初回購入特典"],
-              ["SPECIAL", "特別スキン"],
+              ["LIMITED", L("初回購入特典")],
+              ["SPECIAL", L("特別スキン")],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -2599,7 +2652,7 @@ export function SkinsScreen({
                   className={`skins-tile rarity-${skin.rarity}${locked ? " is-pass-locked" : ""}${skin.foil ? " is-foil" : ""}`}
                   key={skin.id}
                   onClick={() => setSelected(skin)}
-                  aria-label={`${skin.rank} ${skin.name} ${locked ? "ロック中・バトルパスクリアで獲得可能" : collection.owned[skin.id] ? "所持" : "未所持"}`}
+                  aria-label={`${skin.rank} ${skin.name} ${locked ? L("ロック中・バトルパスクリアで獲得可能") : collection.owned[skin.id] ? L("所持") : L("未所持")}`}
                 >
                   <div className="skins-tile-art">
                     {locked ? (
@@ -2619,16 +2672,16 @@ export function SkinsScreen({
                     </span>
                     {skin.foil && <FoilBadge className="skins-art-foil" />}
                     {collection.equipped[skin.rank] === skin.id && (
-                      <span className="skins-equipped">装備中</span>
+                      <span className="skins-equipped">{L("装備中")}</span>
                     )}
                   </div>
                   <strong>{skin.name}</strong>
                   <span className="skins-tile-status">
                     {collection.owned[skin.id]
-                      ? `所持 ×${collection.owned[skin.id]}`
+                      ? L("所持 ×{n}", { n: collection.owned[skin.id] })
                       : locked
-                        ? "バトルパスクリアで獲得可能"
-                        : "未所持"}
+                        ? L("バトルパスクリアで獲得可能")
+                        : L("未所持")}
                   </span>
                 </button>
                 </div>
@@ -2637,14 +2690,14 @@ export function SkinsScreen({
           </div>
           {!shown.length && (
             <p className="skins-empty">
-              この条件に当てはまるスキンはありません。
+              {L("この条件に当てはまるスキンはありません。")}
             </p>
           )}
         </div>
       )}
       <div className="skins-preferences">
         <p>
-          音と対局中の演出(動画)は、右上の設定で変えられます。所持と装備はこの端末に保存されます。
+          {L("音と対局中の演出(動画)は、右上の設定で変えられます。所持と装備はこの端末に保存されます。")}
         </p>
       </div>
       <p className="skins-message" role="status">
@@ -2652,37 +2705,33 @@ export function SkinsScreen({
       </p>
 
       {odds && (
-        <SkinModal label="提供割合" onClose={() => setOdds(false)}>
+        <SkinModal label={L("提供割合")} onClose={() => setOdds(false)}>
           <div className="skin-modal-head">
-            <h2>提供割合</h2>
+            <h2>{L("提供割合")}</h2>
             <button
               className="skin-close"
-              aria-label="提供割合を閉じる"
+              aria-label={L("提供割合を閉じる")}
               onClick={() => setOdds(false)}
             >
               ×
             </button>
           </div>
           <p>
-            通常抽選の提供割合：R {ODDS.R}％ / SR {ODDS.SR}％ / SSR {ODDS.SSR}％
+            {L("通常抽選の提供割合：R {r}％ / SR {sr}％ / SSR {ssr}％", { r: ODDS.R, sr: ODDS.SR, ssr: ODDS.SSR })}
           </p>
           <p className="skins-foil-note">
-            キャラが決まったあと、{foilPct}
-            %でフォイルになります。下表はフリーズ昇格前の、通常版とフォイルを合計したキャラごとの確率です。
+            {L("キャラが決まったあと、{pct}%でフォイルになります。下表はフリーズ昇格前の、通常版とフォイルを合計したキャラごとの確率です。", { pct: foilPct })}
           </p>
           <p className="skins-note">
-            10回召喚で、最初の10枚に「SSRが2枚以上」または「SSRとフォイルが各1枚以上」含まれるとフリーズが発生します。SSRフォイル1枚だけでも後者を満たします。
-            元のSSR・フォイル以外は、通常R→通常SR、通常SR→通常SSRに1段階昇格し、昇格先のキャラはそのレアリティ内で均等に抽選します。
-            元の通常SSRは、キャラを変えずに1枚ごとに30%でフォイルへ。元からあるフォイルは変わりません。昇格で新たに生まれたSSRは追加フォイル抽選の対象外です。
-            獲得するのは昇格後の10枚です。追加のチケットは不要で、演出を省略しても結果は同じです。
+            {L("10回召喚で、最初の10枚に「SSRが2枚以上」または「SSRとフォイルが各1枚以上」含まれるとフリーズが発生します。SSRフォイル1枚だけでも後者を満たします。 元のSSR・フォイル以外は、通常R→通常SR、通常SR→通常SSRに1段階昇格し、昇格先のキャラはそのレアリティ内で均等に抽選します。 元の通常SSRは、キャラを変えずに1枚ごとに30%でフォイルへ。元からあるフォイルは変わりません。昇格で新たに生まれたSSRは追加フォイル抽選の対象外です。 獲得するのは昇格後の10枚です。追加のチケットは不要で、演出を省略しても結果は同じです。")}
           </p>
           <table className="skins-rate-table">
             <thead>
               <tr>
-                <th>スキン</th>
-                <th>レア度</th>
-                <th>キャラ合計</th>
-                <th>うちフォイル</th>
+                <th>{L("スキン")}</th>
+                <th>{L("レア度")}</th>
+                <th>{L("キャラ合計")}</th>
+                <th>{L("うちフォイル")}</th>
               </tr>
             </thead>
             <tbody>
@@ -2692,16 +2741,14 @@ export function SkinsScreen({
                     {s.rank} · {s.name}
                   </td>
                   <td>{s.rarity}</td>
-                  <td>{ratePct(s)}％</td>
-                  <td>{Number((rate(s) * FOIL_CHANCE).toFixed(5))}％</td>
+                  <td>{L("{n}％", { n: ratePct(s) })}</td>
+                  <td>{L("{n}％", { n: Number((rate(s) * FOIL_CHANCE).toFixed(5)) })}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="skins-note">
-            通常抽選は1枚ごとに独立し、その後に上記のフリーズ判定を行います。重複時は所持数が増えます。初回購入特典・特別スキンはガチャから出現しません。
-            通常版とフォイルは別々に所持・装備できます。錬成もキャラ1枚ごとに
-            {foilPct}%でフォイルです。
+            {L("通常抽選は1枚ごとに独立し、その後に上記のフリーズ判定を行います。重複時は所持数が増えます。初回購入特典・特別スキンはガチャから出現しません。 通常版とフォイルは別々に所持・装備できます。錬成もキャラ1枚ごとに{pct}%でフォイルです。", { pct: foilPct })}
           </p>
         </SkinModal>
       )}
@@ -2748,44 +2795,43 @@ export function SkinsScreen({
                 </span>
                 <h2>
                   {milestoneResult
-                    ? "フォイル加工完了"
+                    ? L("フォイル加工完了")
                     : exchangeResult
-                      ? "フォイル交換完了"
+                      ? L("フォイル交換完了")
                       : craftResult
-                        ? "錬成が完成しました"
-                        : "新たな出会い"}
+                        ? L("錬成が完成しました")
+                        : L("新たな出会い")}
                 </h2>
                 {milestoneResult && (
                   <p className="skins-note">
-                    通算{FOIL_MILESTONE}
-                    枚獲得の記念に1枚プレゼント。所持カード・エーテルの消費はありません。
+                    {L("通算{n}枚獲得の記念に1枚プレゼント。所持カード・エーテルの消費はありません。", { n: FOIL_MILESTONE })}
                   </p>
                 )}
                 {exchangeResult && (
                   <p className="skins-note">
-                    {SHARD_NAME}を使って交換しました。抽選はありません。
+                    {L("{name}を使って交換しました。抽選はありません。", { name: SHARD_NAME })}
                   </p>
                 )}
                 {/* 着せた札(「装備しました」の印)だけが駒の姿になる。10枚全部とは読ませない */}
                 {firstResults && (
                   <p className="skins-first-pull-note">
-                    数字ごとに自動で装備しました。札の見た目が変わり、動きや強さは変わりません。
+                    {L("数字ごとに自動で装備しました。札の見た目が変わり、動きや強さは変わりません。")}
                   </p>
                 )}
                 {firstResults && (
                   <p className="skins-note">
-                    次の対局では2〜5の札を使います。ほかの数字の英雄は、後の対局で使えます。
+                    {L("次の対局では2〜5の札を使います。ほかの数字の英雄は、後の対局で使えます。")}
                   </p>
                 )}
                 {results.some((r) => byId(r.id).foil) && (
                   <p className="skins-foil-acquired">
-                    <FoilBadge /> フォイルを獲得しました
+                    <FoilBadge /> {L("フォイルを獲得しました")}
                   </p>
                 )}
               </div>
               <button
                 className="skin-close"
-                aria-label={`${resultLabel}を閉じる`}
+                aria-label={L("{label}を閉じる", { label: resultLabel })}
                 disabled={working}
                 onClick={closeShown}
               >
@@ -2796,7 +2842,7 @@ export function SkinsScreen({
               <div className="skins-first-companion">
                 <CardFace rank={companion.skin.rank} suit="spade" size="lg" skinId={companion.skin.id} animated={false} />
                 <div>
-                  <small>盤上では、この姿に</small>
+                  <small>{L("盤上では、この姿に")}</small>
                   <strong>
                     <Phrases text={namePhrases(companion.skin.name)} />
                   </strong>
@@ -2806,9 +2852,9 @@ export function SkinsScreen({
                       text={
                         companion.equipped
                           ? companion.available
-                            ? `${companion.skin.rank}の札に装備中です。次の対局でも使えます。`
-                            : `${companion.skin.rank}の札に装備中です。この数字が登場する対局で使えます。`
-                          : `${companion.skin.rank}の札に装備すると、見た目がこの姿に変わります。`
+                            ? L("{rank}の札に装備中です。次の対局でも使えます。", { rank: companion.skin.rank })
+                            : L("{rank}の札に装備中です。この数字が登場する対局で使えます。", { rank: companion.skin.rank })
+                          : L("{rank}の札に装備すると、見た目がこの姿に変わります。", { rank: companion.skin.rank })
                       }
                     />
                   </p>
@@ -2834,9 +2880,9 @@ export function SkinsScreen({
             {areaRewards.length > 0 && (
               <section
                 className="skins-result-areas"
-                aria-label="獲得した効果盤面"
+                aria-label={L("獲得した効果盤面")}
               >
-                <h3>効果盤面も獲得しました</h3>
+                <h3>{L("効果盤面も獲得しました")}</h3>
                 <ul>
                   {areaRewards.map((reward) => (
                     <li key={reward.theme}>
@@ -2845,7 +2891,7 @@ export function SkinsScreen({
                       <span>
                         {reward.skins.map((skin) => (
                           <small key={skin.id}>
-                            {skin.rank}：{skin.name.replace("（フォイル）", "")}
+                            {L("{rank}：{name}", { rank: skin.rank, name: skin.baseName ?? skin.name.replace("（フォイル）", "") /* i18n-ignore 名前から除く印 */ })}
                           </small>
                         ))}
                       </span>
@@ -2853,13 +2899,13 @@ export function SkinsScreen({
                   ))}
                 </ul>
                 <p>
-                  獲得したフォイルを対応する数字に装備し、その札を王にすると、9×9の対局で使えます。
+                  {L("獲得したフォイルを対応する数字に装備し、その札を王にすると、9×9の対局で使えます。")}
                 </p>
                 <p>
-                  効果の詳しい説明は、所持スキン一覧でフォイルを選ぶと確認できます。
+                  {L("効果の詳しい説明は、所持スキン一覧でフォイルを選ぶと確認できます。")}
                 </p>
                 <p>
-                  対応するホーム装飾も解放されます。ホームの「着せ替え」から選べます。
+                  {L("対応するホーム装飾も解放されます。ホームの「着せ替え」から選べます。")}
                 </p>
               </section>
             )}
@@ -2885,7 +2931,7 @@ export function SkinsScreen({
                 disabled={working}
                 onClick={closeShown}
               >
-                {firstResults ? "ホームへ進む" : "結果を確認"}
+                {firstResults ? L("ホームへ進む") : L("結果を確認")}
               </button>
             </div>
           </SkinModal>
@@ -2922,7 +2968,7 @@ export function SkinsScreen({
       )}
       {selected && (
         <SkinModal
-          label={`${selected.name}の詳細`}
+          label={L("{name}の詳細", { name: selected.name })}
           onClose={() => setSelected(null)}
           className="skins-detail-overlay"
         >
@@ -2930,13 +2976,13 @@ export function SkinsScreen({
             <button
               type="button"
               className="skin-btn skins-detail-back"
-              aria-label="スキン一覧に戻る"
+              aria-label={L("スキン一覧に戻る")}
               onClick={() => setSelected(null)}
             >
-              <ArrowLeft size={18} /> もどる
+              <ArrowLeft size={18} /> {L("もどる")}
             </button>
             {/* 右上の「バトル演出を見る」はやめ、動画の釦は下(ワンダーランドと同じ場所)に置く(2026-10-16 本人の指示) */}
-            <span>スキン詳細</span>
+            <span>{L("スキン詳細")}</span>
           </div>
           <div className="skins-detail">
             {selectedLocked ? (
@@ -2966,7 +3012,7 @@ export function SkinsScreen({
               {foilKnown && skinVisibleInCollection(collection, byId(foilId(baseSkinId(selected.id)))) && (
                 <div
                   className="skins-variant-switch"
-                  aria-label="このキャラの仕上げ"
+                  aria-label={L("このキャラの仕上げ")}
                 >
                   {[
                     byId(baseSkinId(selected.id)),
@@ -2977,13 +3023,13 @@ export function SkinsScreen({
                       aria-pressed={selected.id === variant.id}
                       onClick={() => setSelected(variant)}
                     >
-                      {variant.foil ? "フォイル" : "通常版"}
+                      {variant.foil ? L("フォイル") : L("通常版")}
                       <small>
                         {collection.owned[variant.id]
-                          ? `所持 ×${collection.owned[variant.id]}`
-                          : "未所持"}
+                          ? L("所持 ×{n}", { n: collection.owned[variant.id] })
+                          : L("未所持")}
                         {collection.equipped[variant.rank] === variant.id
-                          ? " · 装備中"
+                          ? L(" · 装備中")
                           : ""}
                       </small>
                     </button>
@@ -2993,9 +3039,7 @@ export function SkinsScreen({
               {selected.foil && !selected.secret && (
                 <>
                   <p className="skins-note">
-                    箔の部分だけが光るフォイル版。ガチャ・錬成で、このキャラを獲得したときに
-                    {foilPct}%の確率で手に入ります。また、通算{FOIL_MILESTONE}
-                    枚獲得すると「フォイル加工」で一度だけ、所持カード・エーテルを消費せず1枚受け取れます。
+                    {L("箔の部分だけが光るフォイル版。ガチャ・錬成で、このキャラを獲得したときに{pct}%の確率で手に入ります。また、通算{n}枚獲得すると「フォイル加工」で一度だけ、所持カード・エーテルを消費せず1枚受け取れます。", { pct: foilPct, n: FOIL_MILESTONE })}
                   </p>
                   <button
                     className="skin-btn"
@@ -3009,20 +3053,20 @@ export function SkinsScreen({
                       );
                     }}
                   >
-                    フォイル加工の進捗を見る
+                    {L("フォイル加工の進捗を見る")}
                   </button>
                 </>
               )}
               {selected.secret && (
                 <p className="skins-note">
-                  すべての通常カードとほかのフォイルをそろえた人だけが、有償ジェム2,000で購入できる特別なフォイルです。
+                  {L("すべての通常カードとほかのフォイルをそろえた人だけが、有償ジェム2,000で購入できる特別なフォイルです。")}
                 </p>
               )}
               {selectedLocked ? (
                 <div className="skins-pass-unlock">
-                  <strong>バトルパスクリアで獲得可能</strong>
+                  <strong>{L("バトルパスクリアで獲得可能")}</strong>
                   <p>
-                    すべてのマスをクリアしてめくり、報酬を受け取ると解放されます。
+                    {L("すべてのマスをクリアしてめくり、報酬を受け取ると解放されます。")}
                   </p>
                 </div>
               ) : (
@@ -3035,7 +3079,7 @@ export function SkinsScreen({
                       skinId={selected.id}
                       animated={shine}
                     />
-                    <span>5マス盤</span>
+                    <span>{L("5マス盤")}</span>
                   </div>
                   <div>
                     <CardFace
@@ -3045,7 +3089,7 @@ export function SkinsScreen({
                       skinId={selected.id}
                       animated={shine}
                     />
-                    <span>9マス盤</span>
+                    <span>{L("9マス盤")}</span>
                   </div>
                   <div>
                     <CardFace
@@ -3056,16 +3100,16 @@ export function SkinsScreen({
                       animated={shine}
                       isKing
                     />
-                    <span>王カード</span>
+                    <span>{L("王カード")}</span>
                   </div>
                 </div>
               )}
               <p className="skins-note">
-                同じ数字の全スートに適用。
+                {L("同じ数字の全スートに適用。")}
                 <br />
                 {selected.id === "genie-magician:foil"
-                  ? "9×9では通常のAの能力に加えて、マジカルシャッフルを使えます。"
-                  : "カードの能力や動ける範囲は変わりません。"}
+                  ? L("9×9では通常のAの能力に加えて、マジカルシャッフルを使えます。")
+                  : L("カードの能力や動ける範囲は変わりません。")}
               </p>
               {collection.owned[selected.id] ? (
                 <button
@@ -3078,8 +3122,8 @@ export function SkinsScreen({
                   }
                 >
                   {collection.equipped[selected.rank] === selected.id
-                    ? "装備を外す"
-                    : `${selected.rank}のカードに装備`}
+                    ? L("装備を外す")
+                    : L("{rank}のカードに装備", { rank: selected.rank })}
                 </button>
               ) : selected.secret ? (
                 <button
@@ -3090,7 +3134,7 @@ export function SkinsScreen({
                     setFoilOffer({ exclude: [], series: selected.series });
                   }}
                 >
-                  有償ジェム2,000で購入
+                  {L("有償ジェム2,000で購入")}
                 </button>
               ) : selected.acquisition === "battlepass" ? (
                 <button
@@ -3098,15 +3142,15 @@ export function SkinsScreen({
                   disabled={working || !onBattlePass}
                   onClick={() => onBattlePass(seasonOfSeries(selected.series)?.id)}
                 >
-                  バトルパスを見る
+                  {L("バトルパスを見る")}
                 </button>
               ) : (
                 <p className="skins-locked">
                   {selected.rarity === "LIMITED"
-                    ? "はじめてのジェム購入で獲得"
+                    ? L("はじめてのジェム購入で獲得")
                     : selected.foil
-                      ? `獲得時に${foilPct}%、または通算${FOIL_MILESTONE}枚でフォイル加工`
-                      : "ガチャ・錬成から獲得できます"}
+                      ? L("獲得時に{pct}%、または通算{n}枚でフォイル加工", { pct: foilPct, n: FOIL_MILESTONE })
+                      : L("ガチャ・錬成から獲得できます")}
                 </p>
               )}
               {!selectedLocked && (selected.video || Object.values(selected.videos || {}).some(Boolean)) && (
@@ -3121,13 +3165,13 @@ export function SkinsScreen({
                         setFilm({ ...selected, video: selected.videos[slot] })
                       }
                     >
-                      ▶ {filmLabel(selected, slot)}の動画を見る
+                      {L("▶ {name}の動画を見る", { name: filmLabel(selected, slot) })}
                     </button>
                   ))}
                   {/* レジェンドのように動画が1本だけの札は、同じ場所に1つの釦(2026-10-16 本人の指示) */}
                   {!Object.values(selected.videos || {}).some(Boolean) && selected.video && (
                     <button className="skin-btn" onClick={() => setFilm(selected)}>
-                      ▶ バトル演出の動画を見る
+                      {L("▶ バトル演出の動画を見る")}
                     </button>
                   )}
                 </>
@@ -3143,19 +3187,20 @@ export function SkinsScreen({
       {/* ホームへの戻りは親指の届く下のメニューの左端に置く。見出しの横は届きにくく見落とした(本人の指示 2026-10-12) */}
       <div className={`skins-bottom-dock${onBack ? " has-home" : ""}`} ref={bottomDockRef}>
         {onBack && (
-          <button className="skins-dock-home" onClick={onBack} aria-label={backLabel === "つぎへ" ? "つぎへ進む" : `${backLabel}に戻る`}>
+          <button className="skins-dock-home" onClick={onBack} aria-label={nextBack ? L("つぎへ進む") : L("{label}に戻る", { label: Lx(backLabel) })}>
+            {/* i18n-ignore 比べるための値 */}
             {backLabel === "ホーム" ? <Home size={20} /> : backLabel === "つぎへ" ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
-            <span>{backLabel}</span>
+            <span>{Lx(backLabel)}</span>
           </button>
         )}
-        <div className="skins-tabs" role="tablist" aria-label="スキンメニュー">
+        <div className="skins-tabs" role="tablist" aria-label={L("スキンメニュー")}>
           <button
             role="tab"
             aria-selected={tab === "gacha"}
             onClick={() => { setTab("gacha"); window.scrollTo(0, 0); }}
           >
             <Sparkle size={20} />
-            <span>ガチャ</span>
+            <span>{L("ガチャ")}</span>
           </button>
           <button
             role="tab"
@@ -3163,7 +3208,7 @@ export function SkinsScreen({
             onClick={() => { setTab("collection"); window.scrollTo(0, 0); }}
           >
             <Cards size={20} />
-            <span>所持・装備</span>
+            <span>{L("所持・装備")}</span>
           </button>
           <button
             role="tab"
@@ -3171,7 +3216,7 @@ export function SkinsScreen({
             onClick={() => { setTab("forge"); window.scrollTo(0, 0); }}
           >
             <Ether size={20} />
-            <span>錬成</span>
+            <span>{L("錬成")}</span>
           </button>
           {/* 欠片と交換・フォイル加工はこちら。錬成と対の名前。
               フォイルを持たないうちも開ける(通算獲得の進み具合を見せ、手に入れる道筋を知らせる)。
@@ -3182,7 +3227,7 @@ export function SkinsScreen({
             onClick={() => { setTab("foil"); window.scrollTo(0, 0); }}
           >
             <Shard size={20} />
-            <span>加工</span>
+            <span>{L("加工")}</span>
           </button>
         </div>
       </div>

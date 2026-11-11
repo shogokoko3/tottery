@@ -33,6 +33,7 @@
  * - 生成は通常版からキャラを選ぶ。完成時に独立した1%でフォイルになる
  */
 import { ODDS, poolForSeries, byId, rate } from "./catalog.js";
+import { L } from "../i18n/index.js";
 
 /** 分解でもらえる量 */
 export const DUST = Object.freeze({ R: 10, SR: 20, SSR: 375 });
@@ -48,7 +49,7 @@ export const CRAFT = Object.freeze({
 });
 
 /** エーテルの呼び名。画面で何度も出るので1か所に置く */
-export const ETHER_NAME = "エーテル";
+export const ETHER_NAME = L("エーテル");
 
 /** その札を崩すともらえる量。崩せない札は 0 */
 export function dustOf(skin) {
@@ -90,28 +91,28 @@ export function etherOf(state) {
 /** 崩せるか。理由も返す(画面にそのまま出す) */
 export function dismantleCheck(state, id, n = 1) {
   const skin = byId(id);
-  if (!skin) return { ok: false, why: "その札はありません。" };
+  if (!skin) return { ok: false, why: L("その札はありません。") };
   if (isKeepsake(skin))
     return {
       ok: false,
       why:
         skin.rarity === "SPECIAL"
-          ? "特別スキンは崩せません。"
-          : "初回購入特典の札は崩せません。ガチャや錬成では手に入らないためです。",
+          ? L("特別スキンは崩せません。")
+          : L("初回購入特典の札は崩せません。ガチャや錬成では手に入らないためです。"),
     };
   if (skin.foil)
     return {
       ok: false,
-      why: "フォイルはエーテルにせず、欠片にします。「フォイルの交換」から崩してください。",
+      why: L("フォイルはエーテルにせず、欠片にします。「フォイルの交換」から崩してください。"),
     };
-  if (heldOf(state, id) === 0) return { ok: false, why: "持っていません。" };
+  if (heldOf(state, id) === 0) return { ok: false, why: L("持っていません。") };
   // 最後の1枚は必ず残す。まとめて崩すときは枚数ぶんで見る(欠片化と同じ作法)
   const spare = spareOf(state, id);
-  if (spare === 0) return { ok: false, why: "最後の1枚は崩せません。", spare };
+  if (spare === 0) return { ok: false, why: L("最後の1枚は崩せません。"), spare };
   if (!Number.isInteger(n) || n < 1)
-    return { ok: false, why: "崩す枚数が正しくありません。", spare };
+    return { ok: false, why: L("崩す枚数が正しくありません。"), spare };
   if (n > spare)
-    return { ok: false, why: `崩せるのは ${spare} 枚までです。`, spare };
+    return { ok: false, why: L("崩せるのは {n} 枚までです。", { n: spare }), spare };
   return { ok: true, gain: dustOf(skin) * n, each: dustOf(skin), count: n, spare };
 }
 
@@ -133,33 +134,33 @@ export function craftableCount(state, id) {
 
 export function craftCheck(state, id, n = 1) {
   const skin = byId(id);
-  if (!skin) return { ok: false, why: "その札はありません。" };
+  if (!skin) return { ok: false, why: L("その札はありません。") };
   if (skin.foil)
     return {
       ok: false,
-      why: "通常版からキャラクターを選んでください。1%でフォイルが完成します。",
+      why: L("通常版からキャラクターを選んでください。1%でフォイルが完成します。"),
     };
   if (isKeepsake(skin))
     return {
       ok: false,
       why:
         skin.rarity === "SPECIAL"
-          ? "特別スキンはエーテルで作れません。"
-          : "初回購入特典の札は作れません。",
+          ? L("特別スキンはエーテルで作れません。")
+          : L("初回購入特典の札は作れません。"),
     };
   const each = costOf(skin);
-  if (each === null) return { ok: false, why: "この札は作れません。" };
+  if (each === null) return { ok: false, why: L("この札は作れません。") };
   // まとめて作るときは枚数ぶんの値段で見る。cost は「払う合計」
   // 整数だけ受ける。小数を黙って切り捨てると、頼んだ枚数と違う数を作ってしまう
   const want = n;
   if (!Number.isInteger(want) || want < 1 || want > CRAFT_MAX)
-    return { ok: false, why: `一度に作れるのは 1〜${CRAFT_MAX} 枚です。`, each };
+    return { ok: false, why: L("一度に作れるのは 1〜{n} 枚です。", { n: CRAFT_MAX }), each };
   const cost = each * want;
   const have = etherOf(state);
   if (have < cost)
     return {
       ok: false,
-      why: `あと ${cost - have} 足りません。`,
+      why: L("あと {n} 足りません。", { n: cost - have }),
       cost,
       each,
       count: want,

@@ -21,6 +21,7 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { myUid } from "./auth.js";
 import { onlinePhase } from "./match-settings.js";
+import { L, Lk } from "../i18n/index.js";
 
 export const NEARBY_PREFIX = "NEAR-";
 export const isNearbyCode = (code) =>
@@ -66,7 +67,7 @@ export function nearbyId() {
   }
 }
 
-const DISCONNECTED = "相手との接続が切れました。近くに居るか、Bluetooth と Wi‑Fi が有効か確かめてください。";
+const DISCONNECTED = L("相手との接続が切れました。近くに居るか、Bluetooth と Wi‑Fi が有効か確かめてください。");
 
 /**
  * 近くの端末との接続と、部屋の写しを持つ。
@@ -223,7 +224,7 @@ export function createNearby({ plugin, myId, now = () => Date.now() } = {}) {
       // 2026-09-28 まで**誰も拾っていなかった**ので、画面は「まだ見つかりません」の
       // ままで、何が起きているか分からなかった(本人の報告「Bluetooth の対戦ができなかった」)
       plugin.addListener("error", (e) => {
-        const message = (e && e.message) || "近くの端末との通信を始められませんでした";
+        const message = (e && e.message) || L("近くの端末との通信を始められませんでした");
         lastError = message;
         emit("state", { state: "error", message });
       }),
@@ -250,7 +251,8 @@ export function createNearby({ plugin, myId, now = () => Date.now() } = {}) {
       connected = false;
       lastError = null;
       await attach();
-      await plugin.start({ name: profile.name || "名無し" });
+      // 名乗りは相手に送る値なので日本語のまま(出すところで Lx)
+      await plugin.start({ name: profile.name || Lk("名無し") });
     },
     /** 相手をタップ: 招待する(自分がゲストになる) */
     async invite(peerId) {

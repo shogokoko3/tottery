@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { normalize } from "./collection.js";
+import { L } from "../i18n/index.js";
 
 export const COLLECTION_KEY = "tottery.skins.v1";
 const LEGACY_KEY = "tottery.skin-preview.v1";
@@ -49,7 +50,7 @@ export function updateCollection(change) {
       localStorage.setItem(COLLECTION_KEY, JSON.stringify(next));
     } catch {
       throw new Error(
-        "保存できませんでした。ブラウザーの保存設定や空き容量をご確認ください。",
+        L("保存できませんでした。ブラウザーの保存設定や空き容量をご確認ください。"),
       );
     }
     snapshot = next;

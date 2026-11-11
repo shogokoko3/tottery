@@ -2,6 +2,7 @@ import { playSound, useCue } from "../audio/index.js";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { progressOfXp } from "../game/level.js";
+import { L, fmtNumber } from "../i18n/index.js";
 import {
   dismissXpNotice,
   getXpNotices,
@@ -66,24 +67,24 @@ function XpGain({ notice }) {
   const { progress, leveled } = frame;
   const label =
     notice.source === "tutorial"
-      ? "チュートリアル報酬"
+      ? L("チュートリアル報酬")
       : notice.source === "battle"
-        ? "対戦報酬"
-        : "経験値を獲得";
+        ? L("対戦報酬")
+        : L("経験値を獲得");
   return (
     <aside
       className={`xp-gain ${leaving ? "xp-gain-leaving" : ""} ${leveled ? "xp-gain-level-up" : ""}`}
-      aria-label="経験値の獲得"
+      aria-label={L("経験値の獲得")}
     >
       <span className="xp-gain-announcement" role="status" aria-live="polite">
-        経験値を{gained.toLocaleString()}獲得。
+        {L("経験値を{n}獲得。", { n: fmtNumber(gained) })}
         {levels > 0
-          ? `レベル${from.level}から${to.level}にアップしました。`
-          : `レベル${to.level}。`}
+          ? L("レベル{from}から{to}にアップしました。", { from: from.level, to: to.level })
+          : L("レベル{n}。", { n: to.level })}
       </span>
       <div className="xp-gain-top">
         <span>{label}</span>
-        <strong>+{gained.toLocaleString()} XP</strong>
+        <strong>+{fmtNumber(gained)} XP</strong>
       </div>
       <div className="xp-gain-level">
         <b>Lv.{progress.level}</b>
@@ -92,19 +93,19 @@ function XpGain({ notice }) {
             ? `LEVEL UP!${levels > 1 ? ` +${levels}` : ""}`
             : progress.done
               ? "MAX LEVEL"
-              : "プレイヤーレベル"}
+              : L("プレイヤーレベル")}
         </span>
       </div>
       <div
         className="xp-gain-track"
         role="progressbar"
-        aria-label="プレイヤーレベルの経験値"
+        aria-label={L("プレイヤーレベルの経験値")}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(progress.ratio * 100)}
         aria-valuetext={
           progress.done
-            ? "最高レベル"
+            ? L("最高レベル")
             : `${progress.into} / ${progress.need} XP`
         }
       >
@@ -112,14 +113,14 @@ function XpGain({ notice }) {
       </div>
       <div className="xp-gain-detail">
         {progress.done ? (
-          <span>累計 {progress.xp.toLocaleString()} XP</span>
+          <span>{L("累計 {n} XP", { n: fmtNumber(progress.xp) })}</span>
         ) : (
           <>
             <span>
-              {progress.into.toLocaleString()} /{" "}
-              {progress.need.toLocaleString()} XP
+              {fmtNumber(progress.into)} /{" "}
+              {fmtNumber(progress.need)} XP
             </span>
-            <span>次まで {progress.left.toLocaleString()}</span>
+            <span>{L("次まで {n}", { n: fmtNumber(progress.left) })}</span>
           </>
         )}
       </div>

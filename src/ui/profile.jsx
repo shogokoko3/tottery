@@ -32,6 +32,7 @@ import { useOpenSettings } from "./open-settings.js";
 import { ArrowLeft, Check, Close, DoorIn, Settings, Ticket, Users, Lock } from "../icons.jsx";
 
 import { HOME_THEMES, homeThemeAssets } from "../skins/home-themes.js";
+import { L, Lx } from "../i18n/index.js";
 
 const bgImage = (bg) => homeThemeAssets(HOME_THEMES.find((theme) => theme.id === bg))?.decoration || null;
 
@@ -53,7 +54,7 @@ export function ProfileCard({ view, name, mine }) {
         {/* 名前だけ。レベルとレートは出さない(2026-09-24 本人の指示。見せたい記録はアピールで選ぶ)。
             ふだん付けている称号も出さない */}
         <div className="profile-id">
-          <b className="profile-name">{name || "名無し"}</b>
+          <b className="profile-name">{name || L("名無し")}</b>
         </div>
       </div>
       {card.pinnedTitle && findTitle(card.pinnedTitle) && (
@@ -62,7 +63,7 @@ export function ProfileCard({ view, name, mine }) {
         </div>
       )}
       {showcase.length > 0 && (
-        <div className="profile-showcase" aria-label="記録のアピール">
+        <div className="profile-showcase" aria-label={L("記録のアピール")}>
           {showcase.map((s) => (
             <div className="profile-showcase-item" key={s.id}>
               <b>{s.text}</b>
@@ -74,22 +75,22 @@ export function ProfileCard({ view, name, mine }) {
       <div className="stat-row profile-stats">
         <div className="stat">
           <b>{stats.battles || 0}</b>
-          <span>対局</span>
+          <span>{L("対局")}</span>
         </div>
         <div className="stat">
           <b>{stats.wins || 0}</b>
-          <span>勝ち</span>
+          <span>{L("勝ち")}</span>
         </div>
         <div className="stat">
           <b>{stats.draws || 0}</b>
-          <span>引き分け</span>
+          <span>{L("引き分け")}</span>
         </div>
         <div className="stat">
           <b>{winRate === null ? "—" : `${winRate}%`}</b>
-          <span>勝率</span>
+          <span>{L("勝率")}</span>
         </div>
       </div>
-      {!mine && view.seen ? <p className="profile-seen">最後に開いたのは {agoText(view.seen)}</p> : null}
+      {!mine && view.seen ? <p className="profile-seen">{L("最後に開いたのは {ago}", { ago: Lx(agoText(view.seen)) })}</p> : null}
     </div>
   );
 }
@@ -112,24 +113,24 @@ function PinnedTitlePicker({ profile, collection, picked, onPick, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel title-picker-panel" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h3>プロフィールの称号を選ぶ</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+          <h3>{L("プロフィールの称号を選ぶ")}</h3>
+          <button className="icon-btn" onClick={onClose} aria-label={L("閉じる")}>
             <Close size={18} />
           </button>
         </div>
         <div className="title-picker-scroll">
           <div className="title-pick-preview" aria-live="polite">
-            <small>プロフィールに据える称号</small>
-            <b>{profile.name || "あなた"}</b>
-            {cur ? <TitleFrame id={cur} size="showcase" animated={collection.motion !== "off"} /> : <span className="hint">なし</span>}
+            <small>{L("プロフィールに据える称号")}</small>
+            <b>{profile.name || L("あなた")}</b>
+            {cur ? <TitleFrame id={cur} size="showcase" animated={collection.motion !== "off"} /> : <span className="hint">{L("なし")}</span>}
           </div>
           <div className="title-list">
             <button className={`title-choice ${!cur ? "title-choice-on" : ""}`} onClick={() => setCur("")}>
-              <b>称号を出さない</b>
-              <small>プロフィールに称号を載せません</small>
+              <b>{L("称号を出さない")}</b>
+              <small>{L("プロフィールに称号を載せません")}</small>
             </button>
             <p className="title-group-head title-group-head-mine">
-              <Check size={13} /> 使える称号 <b>{mine.length}</b>
+              <Check size={13} /> {L("使える称号")} <b>{mine.length}</b>
             </p>
             <TitleOrderToggle value={order} onChange={setOrder} />
             {mine.map((t) => (
@@ -137,7 +138,7 @@ function PinnedTitlePicker({ profile, collection, picked, onPick, onClose }) {
             ))}
             {locked.length > 0 && (
               <p className="title-group-head">
-                <Lock size={13} /> まだ取れていない称号 <b>{locked.length}</b>
+                <Lock size={13} /> {L("まだ取れていない称号")} <b>{locked.length}</b>
               </p>
             )}
             {locked.map((t) => (
@@ -147,7 +148,7 @@ function PinnedTitlePicker({ profile, collection, picked, onPick, onClose }) {
         </div>
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onClose}>
-            やめる
+            {L("やめる")}
           </button>
           <button
             className="btn btn-primary"
@@ -156,7 +157,7 @@ function PinnedTitlePicker({ profile, collection, picked, onPick, onClose }) {
               onClose();
             }}
           >
-            <Check size={16} /> 決定
+            <Check size={16} /> {L("決定")}
           </button>
         </div>
       </div>
@@ -203,15 +204,15 @@ export function ProfileEditModal({ onClose, onSaved }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel profile-edit-panel" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h3>プロフィールを編集</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+          <h3>{L("プロフィールを編集")}</h3>
+          <button className="icon-btn" onClick={onClose} aria-label={L("閉じる")}>
             <Close size={18} />
           </button>
         </div>
         <div className="profile-edit-scroll">
           <ProfileCard view={preview} name={profile.name} mine />
 
-          <p className="profile-edit-head">背景</p>
+          <p className="profile-edit-head">{L("背景")}</p>
           <div className="profile-bg-list">
             {PROFILE_BACKGROUNDS.map((b) => {
               const ok = unlocked.includes(b.id);
@@ -223,12 +224,12 @@ export function ProfileEditModal({ onClose, onSaved }) {
                   style={img ? { "--profile-bg": `url("${img}")` } : undefined}
                   disabled={!ok}
                   onClick={() => setCard((c) => ({ ...c, bg: b.id }))}
-                  title={ok ? b.label : b.condition}
+                  title={Lx(ok ? b.label : b.condition)}
                 >
-                  <b>{b.label}</b>
+                  <b>{Lx(b.label)}</b>
                   {!ok && (
                     <small>
-                      <Lock size={10} /> {b.condition}
+                      <Lock size={10} /> {Lx(b.condition)}
                     </small>
                   )}
                 </button>
@@ -237,7 +238,7 @@ export function ProfileEditModal({ onClose, onSaved }) {
           </div>
 
           <p className="profile-edit-head">
-            記録のアピール <small>{card.showcase.length}/{SHOWCASE_MAX}</small>
+            {L("記録のアピール")} <small>{card.showcase.length}/{SHOWCASE_MAX}</small>
           </p>
           <div className="profile-showcase-list">
             {SHOWCASE.map((s) => {
@@ -256,27 +257,27 @@ export function ProfileEditModal({ onClose, onSaved }) {
             })}
           </div>
 
-          <p className="profile-edit-head">プロフィールの称号</p>
+          <p className="profile-edit-head">{L("プロフィールの称号")}</p>
           <button className="title-tag profile-pinned-pick" onClick={() => setPickTitle(true)}>
             {card.pinnedTitle && hasTitle(profile, card.pinnedTitle) ? (
               <TitleFrame id={card.pinnedTitle} size="showcase" />
             ) : (
-              <span className="hint">称号を出していません</span>
+              <span className="hint">{L("称号を出していません")}</span>
             )}
-            <span className="title-tag-edit">称号を選ぶ</span>
+            <span className="title-tag-edit">{L("称号を選ぶ")}</span>
           </button>
           {error && (
             <p className="hint friends-error" role="alert">
-              {error}
+              {Lx(error)}
             </p>
           )}
         </div>
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onClose}>
-            やめる
+            {L("やめる")}
           </button>
           <button className="btn btn-primary" onClick={submit} disabled={saving}>
-            <Check size={16} /> 保存
+            <Check size={16} /> {L("保存")}
           </button>
         </div>
         {pickTitle && (
@@ -296,7 +297,7 @@ export function ProfileEditModal({ onClose, onSaved }) {
 /**
  * プロフィールの画面。uid が自分(か無指定)なら編集できる。フレンドなら贈る・招待・外す。
  */
-export function ProfileScreen({ uid = null, onBack, backLabel = "ホームに戻る", onFriends, onInvite, onRemoved, onSettings = null }) {
+export function ProfileScreen({ uid = null, onBack, backLabel = L("ホームに戻る"), onFriends, onInvite, onRemoved, onSettings = null }) {
   const [profile] = useMissionProfile();
   const collection = useCollection();
   const me = myUid();
@@ -346,7 +347,7 @@ export function ProfileScreen({ uid = null, onBack, backLabel = "ホームに戻
       await fn();
       setNotice(done);
     } catch (e) {
-      setError(e.message || "うまくいきませんでした。");
+      setError(Lx(e.message) || L("うまくいきませんでした。"));
     } finally {
       setBusy(false);
     }
@@ -354,11 +355,11 @@ export function ProfileScreen({ uid = null, onBack, backLabel = "ホームに戻
 
   return (
     <div className="setup-wrap profile-screen">
-      <h2>{mine ? "プロフィール" : `${name || "フレンド"}のプロフィール`}</h2>
+      <h2>{mine ? L("プロフィール") : (name ? L("{name}のプロフィール", { name }) : L("フレンドのプロフィール"))}</h2>
       {view ? (
         <ProfileCard view={view} name={name} mine={mine} />
       ) : error ? null : (
-        <p className="hint">読み込んでいます…</p>
+        <p className="hint">{L("読み込んでいます…")}</p>
       )}
       {notice && (
         <p className="hint friends-notice" role="status">
@@ -367,22 +368,22 @@ export function ProfileScreen({ uid = null, onBack, backLabel = "ホームに戻
       )}
       {error && (
         <p className="hint friends-error" role="alert">
-          {error}
+          {Lx(error)}
         </p>
       )}
       {mine ? (
         <div className="nav-stack profile-actions">
           <button className="btn btn-primary" onClick={() => setEdit(true)}>
-            プロフィールを編集
+            {L("プロフィールを編集")}
           </button>
           {openSettings && (
             <button className="btn btn-ghost" onClick={openSettings}>
-              <Settings size={16} /> 名前・アイコン・称号を変える
+              <Settings size={16} /> {L("名前・アイコン・称号を変える")}
             </button>
           )}
           {onFriends && (
             <button className="btn btn-ghost" onClick={onFriends}>
-              <Users size={16} /> フレンド
+              <Users size={16} /> {L("フレンド")}
             </button>
           )}
         </div>
@@ -393,13 +394,13 @@ export function ProfileScreen({ uid = null, onBack, backLabel = "ホームに戻
             <button
               className="btn btn-primary"
               disabled={busy}
-              onClick={() => act(() => giftFriend(uid), "ガチャチケットを1枚贈りました")}
+              onClick={() => act(() => giftFriend(uid), L("ガチャチケットを1枚贈りました"))}
             >
-              <Ticket size={16} /> チケットを贈る
+              <Ticket size={16} /> {L("チケットを贈る")}
             </button>
             {onInvite && (
               <button className="btn btn-ghost" onClick={() => onInvite({ uid, name })}>
-                <DoorIn size={16} /> 対戦に招待する
+                <DoorIn size={16} /> {L("対戦に招待する")}
               </button>
             )}
             {confirmRemove ? (
@@ -410,21 +411,21 @@ export function ProfileScreen({ uid = null, onBack, backLabel = "ホームに戻
                   act(async () => {
                     await removeFriend(uid);
                     onRemoved && onRemoved();
-                  }, "フレンドから外しました")
+                  }, L("フレンドから外しました"))
                 }
               >
-                本当に外す
+                {L("本当に外す")}
               </button>
             ) : (
               <button className="btn btn-ghost" onClick={() => setConfirmRemove(true)}>
-                フレンドから外す
+                {L("フレンドから外す")}
               </button>
             )}
           </div>
         )
       )}
       <button className="btn btn-ghost btn-home" onClick={onBack}>
-        <ArrowLeft size={16} /> {backLabel}
+        <ArrowLeft size={16} /> {Lx(backLabel)}
       </button>
       {edit && (
         <ProfileEditModal

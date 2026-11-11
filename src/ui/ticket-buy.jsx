@@ -5,8 +5,10 @@
 import { useState } from "react";
 import { GemAmount } from "./gem.jsx";
 import { GEM_PER_TICKET, TICKET_BUNDLE } from "../iap/catalog.js";
+import { L, fmtNumber } from "../i18n/index.js";
 
-const yen = (n) => Number(n || 0).toLocaleString("ja-JP");
+// ジェムの数の書式(名前は前のまま。値段は円ではなくジェム)
+const yen = (n) => fmtNumber(n);
 
 export function TicketBuy({
   gems = 0,
@@ -28,15 +30,16 @@ export function TicketBuy({
   const shortFor = (lot) => gems < lot.gems;
   if (picked) {
     const short = gems < picked.gems;
+    // 文の途中に太字が2つ入るので、英語の語順で切って組む(枚数 → ジェムの順は英語でも同じ)
+    const [askA, askB, askC] = L("ガチャチケット {t}を ジェム {g} で買いますか？").split(/\{t\}|\{g\}/);
     return (
       <div className="foil-offer-confirm">
         <p>
-          ガチャチケット <b>{picked.tickets}枚</b>を ジェム <b>{yen(picked.gems)}</b>{" "}
-          で買いますか？
+          {askA}<b>{L("{n}枚", { n: picked.tickets })}</b>{askB}<b>{yen(picked.gems)}</b>{askC}
         </p>
         <div className="setup-actions">
           <button className="btn btn-ghost" disabled={working} onClick={() => setPicked(null)}>
-            やめる
+            {L("やめる")}
           </button>
           <button
             className="btn btn-primary"
@@ -46,12 +49,12 @@ export function TicketBuy({
               if (ok) setPicked(null);
             }}
           >
-            買う
+            {L("買う")}
           </button>
         </div>
         {short && onShop && (
           <button className="btn btn-ghost btn-small" disabled={working} onClick={onShop}>
-            ジェムが足りません · ジェムを買う
+            {L("ジェムが足りません · ジェムを買う")}
           </button>
         )}
         {message && (
@@ -71,9 +74,9 @@ export function TicketBuy({
             className={layout === "grid" ? "skin-btn" : "skin-btn shop-item"}
             disabled={working}
             onClick={() => (confirm ? setPicked(lot) : onBuy(lot.tickets))}
-            aria-label={`チケット${lot.tickets}枚 ジェム ${yen(lot.gems)}`}
+            aria-label={L("チケット{t}枚 ジェム {g}", { t: lot.tickets, g: yen(lot.gems) })}
           >
-            <span>チケット{lot.tickets}枚</span>
+            <span>{L("チケット{n}枚", { n: lot.tickets })}</span>
             <GemAmount amount={lot.gems} size={20} />
           </button>
         ))}
@@ -89,16 +92,16 @@ export function TicketBuy({
               disabled={working}
               onChange={onToggleConfirm}
             />
-            買う前に確認する
+            {L("買う前に確認する")}
           </label>
           <p className="toggle-note">
-            切ると、押した瞬間にジェムで買います。フォイルとバトルパスの確認は外せません
+            {L("切ると、押した瞬間にジェムで買います。フォイルとバトルパスの確認は外せません")}
           </p>
         </div>
       )}
       {layout !== "grid" && (
         <p className="hint">
-          使うときは無償ジェムから先に減ります。チケットはガチャ・スキンの画面で使えます。
+          {L("使うときは無償ジェムから先に減ります。チケットはガチャ・スキンの画面で使えます。")}
         </p>
       )}
       {message && (

@@ -15,15 +15,16 @@
  */
 import { DB_URL } from "./firebase.js";
 import { authedFetch, myUid } from "./auth.js";
+import { L } from "../i18n/index.js";
 
 const TIMEOUT_MS = 8000;
 
 /** 通報の理由。画面に出す順で並べる */
 export const REASONS = [
-  { id: "name", label: "名前が不快・不適切" },
-  { id: "impersonation", label: "運営や他人になりすましている" },
-  { id: "cheating", label: "不正な遊び方をしている" },
-  { id: "other", label: "その他" },
+  { id: "name", label: L("名前が不快・不適切") },
+  { id: "impersonation", label: L("運営や他人になりすましている") },
+  { id: "cheating", label: L("不正な遊び方をしている") },
+  { id: "other", label: L("その他") },
 ];
 
 export function reasonLabel(id) {
@@ -52,7 +53,7 @@ function withTimeout(promise, ms) {
  * me:     {id, name} 通報する人。uid がまだ無いときの控えにだけ使う
  */
 export async function sendReport(target, reason, me) {
-  if (!target || !target.id) return { ok: false, error: "相手が分かりません" };
+  if (!target || !target.id) return { ok: false, error: L("相手が分かりません") };
   try {
     const res = await withTimeout(
       authedFetch(`${DB_URL}/reports.json`, {
@@ -75,7 +76,7 @@ export async function sendReport(target, reason, me) {
       return {
         ok: false,
         error:
-          "通報の置き場所がまだ開いていません。Firebase のルールに reports を足して公開してください。",
+          L("通報の置き場所がまだ開いていません。Firebase のルールに reports を足して公開してください。"),
       };
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return { ok: true, error: null };
@@ -84,8 +85,8 @@ export async function sendReport(target, reason, me) {
       ok: false,
       error:
         err && err.__timeout
-          ? "通信が8秒以内に応答しませんでした。もう一度お試しください。"
-          : `通報を送れませんでした: ${(err && err.message) || "不明なエラー"}`,
+          ? L("通信が8秒以内に応答しませんでした。もう一度お試しください。")
+          : L("通報を送れませんでした: {why}", { why: (err && err.message) || L("不明なエラー") }),
     };
   }
 }

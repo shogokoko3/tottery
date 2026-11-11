@@ -4,6 +4,8 @@
  * 同格なら勝ち+16・負け-16。引き分けは結果0.5。全体の対戦数による加点はしない。
  * 参考: https://assets.pokemon.com/assets/cms/pdf/op/tournaments/2011/Pokemon_Ratings_and_Rankings_FAQ.pdf
  */
+import { Lk } from "../i18n/index.js";
+
 export const START_RATING = 1500;
 export const MIN_RATING = 100;
 export const MAX_RATING = 4000;
@@ -88,11 +90,12 @@ export function wrFromProfile(saved) {
 
 /** 判定・シーズン報酬・段位一覧で同じ到達条件を使う。 */
 export const RANK_TIERS = [
-  { name: "見習い", rating: 0 },
-  { name: "兵", rating: 1450 },
-  { name: "士", rating: 1550 },
-  { name: "将", rating: 1650 },
-  { name: "王", rating: 1750 },
+  // 段位の名前は比べる(season.js の tierOf)・管理画面に出すので日本語のまま。出すところで Lx
+  { name: Lk("見習い"), rating: 0 },
+  { name: Lk("兵"), rating: 1450 },
+  { name: Lk("士"), rating: 1550 },
+  { name: Lk("将"), rating: 1650 },
+  { name: Lk("王"), rating: 1750 },
 ];
 export function rankTitle(rating) {
   const score = num(rating, START_RATING);

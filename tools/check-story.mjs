@@ -542,7 +542,7 @@ console.log("\n配線(game.jsx / screens.jsx)");
   is("中断の釦はストーリーの対局の上のバーに(決着したあとは出さない)", /\) : \(story \|\| tutorial\?\.intro\) && a\.phase !== "gameover" \? \(\s*(\/\/[^\n]*\n\s*)*<StoryInterruptMenu onInterrupt=\{\(\) => \(onTutorialList \|\| onExit\)\(\)\} \/>/.test(game), true);
   is("やめる確認にストーリーを渡す", /story=\{!!story\}\s*onCancel=\{\(\) => r\(!1\)\}/.test(game), true);
   is("対局後の見出しは「ステージクリア!」", game.includes('"ステージクリア!"') && game.includes("次のステージへ") && game.includes("ストーリーへ"), true);
-  is("ホームのタイルはストーリー(チュートリアルの場所)", /tone="story"[\s\S]*?label="ストーリー"[\s\S]*?note=\{storyTileNote\(profile\)\}[\s\S]*?onClick=\{onStory\}/.test(screens) && !/tone="tutorial"/.test(screens), true);
+  is("ホームのタイルはストーリー(チュートリアルの場所)", /tone="story"[\s\S]*?label=\{L\("ストーリー"\)\}[\s\S]*?note=\{storyTileNote\(profile\)\}[\s\S]*?onClick=\{onStory\}/.test(screens) && !/tone="tutorial"/.test(screens), true);
   is("ストーリーの画面とステージ前の1枚", /<StoryScreen\s+onBack=\{\(\) => t\("menu"\)\}\s+onStart=\{openStage\}\s+onGuide=\{\(\) => setStoryPrimer\("guide"\)\}\s+onPhaseGuide=\{\(\) => \(setPhaseGuideFrom\("story"\), t\("phaseGuide"\)\)\}\s*(\/\/[^\n]*\n\s*)*revealNext=\{afterIntro && !storyIntro\}\s*\/>/.test(screens) && screens.includes("<StoryIntro"), true);
   // 導入を終えて一覧へ来たら「次は、四と五の王。」を見える所へ送る(2026-10-06 見直し。375×667 では画面の下に外れていた)
   {

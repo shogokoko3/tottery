@@ -11,13 +11,14 @@
  * クリアすると開く(2026-09-30。前はチュートリアル第8話まで)。
  */
 import { CARD_POOLS } from "./constants.js";
+import { L } from "../i18n/index.js";
 
 /** レベルごとに加わる札。上から順に、そのレベル以上なら開く */
 export const CARD_UNLOCKS = Object.freeze([
   { level: 1, pool: "basic", adds: ["2", "3", "4", "5"], label: "2〜5" },
   { level: 4, pool: "mid", adds: ["6", "7", "8", "9"], label: "6〜9" },
   { level: 6, pool: "numbers", adds: ["10"], label: "10" },
-  { level: 7, pool: "high", adds: ["J", "Q"], label: "J・Q" },
+  { level: 7, pool: "high", adds: ["J", "Q"], label: L("J・Q") },
   { level: 8, pool: "court", adds: ["K"], label: "K" },
   { level: 9, pool: "full", adds: ["A"], label: "A" },
 ]);
@@ -71,10 +72,10 @@ export function boardOpen(size, level) {
 export function cardUnlockText(level) {
   const pool = poolForLevel(level);
   const next = nextCardUnlock(level);
-  if (!pool) return "すべての札を使えます";
+  if (!pool) return L("すべての札を使えます");
   // 開いている札は 2 から続きの並びなので「2〜9」のように詰める
   const have = `${pool[0]}〜${pool[pool.length - 1]}`;
   return next
-    ? `使える札は ${have}。Lv${next.level} で ${next.label} が加わります`
-    : `使える札は ${have}`;
+    ? L("使える札は {have}。Lv{level} で {label} が加わります", { have, level: next.level, label: next.label })
+    : L("使える札は {have}", { have });
 }

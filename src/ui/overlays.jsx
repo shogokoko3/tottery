@@ -15,6 +15,8 @@ import {
   setSeVolume,
 } from "../audio/index.js";
 import { sanitizeHistory } from "../game/board.js";
+import { logText } from "../game/reducer.js";
+import { L, Lx } from "../i18n/index.js";
 import {
   PLAYER_META,
   SUIT_SYMBOL,
@@ -53,11 +55,14 @@ export function Interstitial({ forPlayer, kind, onReady }) {
   let n = PLAYER_META[forPlayer],
     a = PLAYER_META[1 - forPlayer],
     u = {
-      dice: "サイコロフェーズ",
-      mulligan: "引き直しフェーズ",
-      setup: "布陣フェーズ",
-      turn: "ターン交代",
-    };
+      dice: L("サイコロフェーズ"),
+      mulligan: L("引き直しフェーズ"),
+      setup: L("布陣フェーズ"),
+      turn: L("ターン交代"),
+    },
+    // 英語は語順が違うので、名前の前後で文を切って組む
+    [passPre, passPost] = L("{who}の担当者に画面を渡してください。").split("{who}"),
+    [hidePre, hidePost] = L("{who}には見えないようにしてください。").split("{who}");
   return (
     <div className="interstitial">
       <div className="interstitial-card">
@@ -67,30 +72,32 @@ export function Interstitial({ forPlayer, kind, onReady }) {
             color: n.color,
           }}
         >
-          {n.name}の番です
+          {L("{who}の番です", { who: Lx(n.name) })}
         </h2>
         <p>
           {u[kind] || ""} —{" "}
+          {passPre}
           <b
             style={{
               color: n.color,
             }}
           >
-            {n.name}
+            {Lx(n.name)}
           </b>
-          の担当者に画面を渡してください。
+          {passPost}
           <br />
+          {hidePre}
           <b
             style={{
               color: a.color,
             }}
           >
-            {a.name}
+            {Lx(a.name)}
           </b>
-          には見えないようにしてください。
+          {hidePost}
         </p>
         <button className="btn btn-primary" onClick={onReady}>
-          <Sparkle size={16} /> 準備ができた
+          <Sparkle size={16} /> {L("準備ができた")}
         </button>
       </div>
     </div>
@@ -109,11 +116,10 @@ export function KingChoiceInterstitial({ state, size, dispatch }) {
               color: a.color,
             }}
           >
-            {a.name}の王が倒れました
+            {L("{who}の王が倒れました", { who: Lx(a.name) })}
           </h2>
           <p>
-            残っている{n.rank}
-            の中から、新しい王を選びます。画面を渡してください。
+            {L("残っている{rank}の中から、新しい王を選びます。画面を渡してください。", { rank: n.rank })}
           </p>
           <button
             className="btn btn-primary"
@@ -123,7 +129,7 @@ export function KingChoiceInterstitial({ state, size, dispatch }) {
               })
             }
           >
-            <Sparkle size={16} /> 準備ができた
+            <Sparkle size={16} /> {L("準備ができた")}
           </button>
         </div>
       </div>
@@ -136,10 +142,10 @@ export function KingChoiceInterstitial({ state, size, dispatch }) {
           color: a.color,
         }}
       >
-        新しい王を選んでください
+        {L("新しい王を選んでください")}
       </h2>
       <p className="hint">
-        光っている{n.rank}のうち、どれを王にするか選びます。
+        {L("光っている{rank}のうち、どれを王にするか選びます。", { rank: n.rank })}
       </p>
       <div className="board-outer">
         <div
@@ -205,26 +211,44 @@ export function MoveConfirm({ from, to, onCancel, onConfirm }) {
         className="modal-panel capture-confirm move-confirm"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3>ここに動かしますか</h3>
+        <h3>{L("ここに動かしますか")}</h3>
         <p className="hint">
           {from ? (
-            <>
-              <strong>{from}</strong> から <strong>{to}</strong> へ動かします。
-            </>
+            (() => {
+              // 英語は語順が違うので、マスの前後で文を切って組む
+              const [a, rest] = L("{from} から {to} へ動かします。").split("{from}");
+              const [b, c] = rest.split("{to}");
+              return (
+                <>
+                  {a}
+                  <strong>{from}</strong>
+                  {b}
+                  <strong>{to}</strong>
+                  {c}
+                </>
+              );
+            })()
           ) : (
-            <>
-              <strong>{to}</strong> へ動かします。
-            </>
+            (() => {
+              const [a, b] = L("{to} へ動かします。").split("{to}");
+              return (
+                <>
+                  {a}
+                  <strong>{to}</strong>
+                  {b}
+                </>
+              );
+            })()
           )}
           <br />
-          やめれば、別のマスや別の駒を選び直せます。
+          {L("やめれば、別のマスや別の駒を選び直せます。")}
         </p>
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onCancel}>
-            やめる
+            {L("やめる")}
           </button>
           <button className="btn btn-primary" onClick={onConfirm}>
-            動かす
+            {L("動かす")}
           </button>
         </div>
       </div>
@@ -249,29 +273,29 @@ export function CaptureConfirm({ count, squares, onCancel, onConfirm, plain = fa
         <h3>
           {plain
             ? count > 1
-              ? `伏せ札を${count}枚、まとめて取る?`
+              ? L("伏せ札を{n}枚、まとめて取る?", { n: count })
               : where
-                ? `${where[0]} の伏せ札を、取る?`
-                : "この伏せ札を、取る?"
+                ? L("{square} の伏せ札を、取る?", { square: where[0] })
+                : L("この伏せ札を、取る?")
             : count > 1
-              ? `${count}体をまとめて取ります`
-              : "この駒を取ります"}
+              ? L("{n}体をまとめて取ります", { n: count })
+              : L("この駒を取ります")}
         </h3>
         <p className="hint">
           {where && !plain && (
             <>
-              対象のマス: <strong>{where.join(" / ")}</strong>
+              {L("対象のマス:")} <strong>{where.join(" / ")}</strong>
               <br />
             </>
           )}
-          {plain ? "取れば、正体が分かる。" : "取った駒の正体は、取ったあとに公開されます。"}
+          {plain ? L("取れば、正体が分かる。") : L("取った駒の正体は、取ったあとに公開されます。")}
         </p>
         <div className="setup-actions">
           <button className="btn btn-ghost" onClick={onCancel}>
-            やめる
+            {L("やめる")}
           </button>
           <button className="btn btn-danger" onClick={onConfirm}>
-            取る
+            {L("取る")}
           </button>
         </div>
       </div>
@@ -307,7 +331,7 @@ export function LogViewer({ piece, viewer, onClose, revealAll, onMemo }) {
               color: a.color,
             }}
           >
-            {u ? `${piece.rank}${SUIT_SYMBOL[piece.suit]}` : "???"} の行動ログ
+            {L("{card} の行動ログ", { card: u ? `${piece.rank}${SUIT_SYMBOL[piece.suit]}` : "???" })}
           </h3>
           <button className="icon-btn" onClick={onClose}>
             <Close size={18} />
@@ -315,13 +339,19 @@ export function LogViewer({ piece, viewer, onClose, revealAll, onMemo }) {
         </div>
         {onMemo && (
           <button className="btn btn-ghost" onClick={onMemo}>
-            ✎ 自分だけの推理メモ
+            {L("✎ 自分だけの推理メモ")}
           </button>
         )}
         {u && piece.originalRank && piece.originalRank !== piece.rank && (
           <p className="card-origin-note">
-            元のカード：<b>{piece.originalRank}{SUIT_SYMBOL[piece.suit]}</b>
-            <span> → {piece.alive ? "現在" : "撃破時"}：{piece.rank}{SUIT_SYMBOL[piece.suit]}</span>
+            {L("元のカード：")}<b>{piece.originalRank}{SUIT_SYMBOL[piece.suit]}</b>
+            <span>
+              {" → "}
+              {L("{when}：{card}", {
+                when: piece.alive ? L("現在") : L("撃破時"),
+                card: `${piece.rank}${SUIT_SYMBOL[piece.suit]}`,
+              })}
+            </span>
           </p>
         )}
         {u && (
@@ -338,12 +368,12 @@ export function LogViewer({ piece, viewer, onClose, revealAll, onMemo }) {
           />
         )}
         {i.length === 0 ? (
-          <p className="hint">まだ行動していません。</p>
+          <p className="hint">{L("まだ行動していません。")}</p>
         ) : (
           <ol className="log-list">
             {i.map((f, o) => (
               <li key={o}>
-                {o + 1}. {f}
+                {o + 1}. {logText(f)}
               </li>
             ))}
           </ol>
@@ -379,12 +409,12 @@ export function HapticSettings() {
   return (
     <div className="settings-list">
       <div className="settings-row">
-        <span>振動</span>
+        <span>{L("振動")}</span>
         <button
           type="button"
           className="btn btn-ghost btn-small"
           role="switch"
-          aria-label="振動"
+          aria-label={L("振動")}
           aria-checked={on}
           onClick={() => {
             const next = setHapticsEnabled(!on);
@@ -395,7 +425,7 @@ export function HapticSettings() {
         </button>
       </div>
       <p className="settings-note">
-        対局・召喚・マッチ成立の振動をまとめて切り替えます。音と動画の設定とは別に保存されます。
+        {L("対局・召喚・マッチ成立の振動をまとめて切り替えます。音と動画の設定とは別に保存されます。")}
       </p>
     </div>
   );
@@ -407,12 +437,12 @@ function SoundSettings() {
   return (
     <div className="settings-list">
       <div className="settings-row">
-        <span>音</span>
+        <span>{L("音")}</span>
         <button
           className="btn btn-ghost btn-small"
           onClick={() => setAudio(setMuted(!audio.muted))}
         >
-          {audio.muted ? "鳴らす" : "鳴らさない"}
+          {audio.muted ? L("鳴らす") : L("鳴らさない")}
         </button>
       </div>
       <VolumeRow
@@ -422,7 +452,7 @@ function SoundSettings() {
         onChange={(v) => setAudio(setBgmVolume(v))}
       />
       <VolumeRow
-        label="効果音"
+        label={L("効果音")}
         value={audio.se}
         muted={audio.muted}
         onChange={(v) => {
@@ -448,32 +478,32 @@ function BlockedListModal({ onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">
-          <h3>見えなくした人</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+          <h3>{L("見えなくした人")}</h3>
+          <button className="icon-btn" onClick={onClose} aria-label={L("閉じる")}>
             <Close size={18} />
           </button>
         </div>
         {list.length === 0 ? (
           <p className="hint">
-            いません。ランキングの右端の「⋯」から、見たくない相手を隠せます。
+            {L("いません。ランキングの右端の「⋯」から、見たくない相手を隠せます。")}
           </p>
         ) : (
           <div className="settings-list">
             {list.map((b) => (
               <div className="settings-row" key={b.id}>
-                <span>{b.name || "(名前なし)"}</span>
+                <span>{b.name || L("(名前なし)")}</span>
                 <button
                   className="btn btn-ghost btn-small"
                   onClick={() => setList(unblock(b.id))}
                 >
-                  戻す
+                  {L("戻す")}
                 </button>
               </div>
             ))}
           </div>
         )}
         <button className="btn btn-primary btn-wide" onClick={onClose}>
-          閉じる
+          {L("閉じる")}
         </button>
       </div>
     </div>
@@ -502,7 +532,7 @@ export function DeleteMeModal({ onClose, onDeleted }) {
       try {
         await forgetSeason();
       } catch (err) {
-        setError(`シーズンの記録を消せませんでした: ${err.message}`);
+        setError(L("シーズンの記録を消せませんでした: {msg}", { msg: Lx(err.message) }));
         setStep("error");
         return;
       }
@@ -531,9 +561,9 @@ export function DeleteMeModal({ onClose, onDeleted }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">
-          <h3>記録を消す</h3>
+          <h3>{L("記録を消す")}</h3>
           {step !== "running" && (
-            <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+            <button className="icon-btn" onClick={onClose} aria-label={L("閉じる")}>
               <Close size={18} />
             </button>
           )}
@@ -544,57 +574,65 @@ export function DeleteMeModal({ onClose, onDeleted }) {
             {/* 2026-09-28 本人の報告。以前は名前と戦績だけを消しており、
                 引いた札や財布が残ったまま次の人に見えていた。いまは全部消す */}
             <p className="hint">
-              この端末に残っている<b>すべて</b>を消します。
+              {(() => {
+                const [pre, post] = L("この端末に残っている{all}を消します。").split("{all}");
+                return (
+                  <>
+                    {pre}
+                    <b>{L("すべて")}</b>
+                    {post}
+                  </>
+                );
+              })()}
             </p>
             <ul className="delete-me-list">
-              <li>名前・アイコン・称号・戦績・レート</li>
+              <li>{L("名前・アイコン・称号・戦績・レート")}</li>
               <li>
-                <b>引いたスキン・ガチャチケット・ジェム・バトルパス</b>
+                <b>{L("引いたスキン・ガチャチケット・ジェム・バトルパス")}</b>
               </li>
-              <li>チュートリアルの進み・詰めトッタリーの記録・ミッション</li>
-              <li>設定(音・演出・操作)と、見えなくした人の一覧</li>
-              <li>公開ランキングに載っているあなたの行</li>
+              <li>{L("チュートリアルの進み・詰めトッタリーの記録・ミッション")}</li>
+              <li>{L("設定(音・演出・操作)と、見えなくした人の一覧")}</li>
+              <li>{L("公開ランキングに載っているあなたの行")}</li>
             </ul>
             <p className="hint">
-              <b>元には戻せません。</b>
-              買ったジェムやチケットも戻りません。消したあとは、名前を決めるところから
-              まっさらでやり直しになります。
+              <b>{L("元には戻せません。")}</b>
+              {L("買ったジェムやチケットも戻りません。消したあとは、名前を決めるところから まっさらでやり直しになります。")}
             </p>
             <div className="settings-actions">
               <button className="btn btn-primary btn-wide" onClick={onClose}>
-                やめる
+                {L("やめる")}
               </button>
               <button
                 className="btn btn-ghost btn-wide btn-danger"
                 onClick={run}
               >
-                消す
+                {L("消す")}
               </button>
             </div>
           </>
         )}
-        {step === "running" && <p className="hint">消しています…</p>}
+        {step === "running" && <p className="hint">{L("消しています…")}</p>}
         {step === "error" && (
           <>
-            <p className="error-text">{error}</p>
+            <p className="error-text">{Lx(error)}</p>
             <p className="hint">
-              通信できないと、公開されている記録を消せません。電波の届くところでもう一度お試しください。
+              {L("通信できないと、公開されている記録を消せません。電波の届くところでもう一度お試しください。")}
             </p>
             <div className="settings-actions">
               <button className="btn btn-primary btn-wide" onClick={onClose}>
-                閉じる
+                {L("閉じる")}
               </button>
               <button className="btn btn-ghost btn-wide" onClick={run}>
-                もう一度
+                {L("もう一度")}
               </button>
             </div>
           </>
         )}
         {step === "done" && (
           <>
-            <p className="report-done">消しました。</p>
+            <p className="report-done">{L("消しました。")}</p>
             <button className="btn btn-primary btn-wide" onClick={onDeleted}>
-              最初から始める
+              {L("最初から始める")}
             </button>
           </>
         )}
@@ -614,7 +652,7 @@ export function BattleMotionSettings() {
   return (
     <div className="settings-list battle-motion-settings">
       <div className="settings-row">
-        <span>対局中の演出（動画）</span>
+        <span>{L("対局中の演出（動画）")}</span>
         <button
           className="btn btn-ghost btn-small"
           aria-pressed={on}
@@ -622,15 +660,17 @@ export function BattleMotionSettings() {
             const motion = on ? "off" : "full";
             setError("");
             updateCollection((s) => ({ ...s, motion })).catch((err) =>
-              setError(err.message),
+              setError(Lx(err.message)),
             );
           }}
         >
-          {on ? "出さない" : "出す"}
+          {on ? L("出さない") : L("出す")}
         </button>
       </div>
       <p className="settings-note">
-        いまは{on ? "出します" : "出しません"}。装備した駒が相手を取ったときの動画と、A の魔法の演出に効きます。召喚の演出はスキン画面の召喚ボタンの横で変えられます。
+        {L("いまは{state}。装備した駒が相手を取ったときの動画と、A の魔法の演出に効きます。召喚の演出はスキン画面の召喚ボタンの横で変えられます。", {
+          state: on ? L("出します") : L("出しません"),
+        })}
       </p>
       {error && <p className="settings-note settings-error">{error}</p>}
     </div>
@@ -647,21 +687,21 @@ export function PlaySettings() {
   return (
     <div className="settings-list">
       <div className="settings-row">
-        <span>駒を動かす前に確認する</span>
+        <span>{L("駒を動かす前に確認する")}</span>
         <button
           className="btn btn-ghost btn-small"
           aria-pressed={on}
           onClick={() => setSettings(savePlaySettings({ confirmMove: !on }))}
         >
-          {on ? "しない" : "する"}
+          {on ? L("しない") : L("する")}
         </button>
       </div>
       <p className="settings-note">
-        いまは
+        {L("いまは")}
         {on
-          ? "行き先のマスを押したあと「動かす」で確定します。押し間違いで動いてしまうのを防げます。"
-          : "行き先のマスを押すとすぐ動きます。"}
-        相手の駒を取る手は、この設定に関わらず必ず確認します。
+          ? L("行き先のマスを押したあと「動かす」で確定します。押し間違いで動いてしまうのを防げます。")
+          : L("行き先のマスを押すとすぐ動きます。")}
+        {L("相手の駒を取る手は、この設定に関わらず必ず確認します。")}
       </p>
     </div>
   );
@@ -707,19 +747,19 @@ export function SettingsModal({ onClose }) {
         onClick={(t) => t.stopPropagation()}
       >
         <div className="modal-head">
-          <h3>設定</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+          <h3>{L("設定")}</h3>
+          <button className="icon-btn" onClick={onClose} aria-label={L("閉じる")}>
             <Close size={18} />
           </button>
         </div>
         {/* 中身が増えて縦に長くなったので、4つに分けて1画面ずつ出す
             (2026-09-18 本人の指示「使いやすいUIで見やすいレイアウトに」) */}
-        <div className="settings-tabs" role="tablist" aria-label="設定の種類">
+        <div className="settings-tabs" role="tablist" aria-label={L("設定の種類")}>
           {[
-            ["account", "プレイヤー"],
-            ["look", "音と演出"],
-            ["safety", "安心"],
-            ["about", "アプリ"],
+            ["account", L("プレイヤー")],
+            ["look", L("音と演出")],
+            ["safety", L("安心")],
+            ["about", L("アプリ")],
           ].map(([id, label]) => (
             <button
               key={id}
@@ -750,13 +790,13 @@ export function SettingsModal({ onClose }) {
           )}
           {tab === "look" && (
             <>
-              <p className="settings-head">音</p>
+              <p className="settings-head">{L("音")}</p>
               <SoundSettings />
-              <p className="settings-head">振動</p>
+              <p className="settings-head">{L("振動")}</p>
               <HapticSettings />
-              <p className="settings-head">対局中の操作</p>
+              <p className="settings-head">{L("対局中の操作")}</p>
               <PlaySettings />
-              <p className="settings-head">対局中の演出</p>
+              <p className="settings-head">{L("対局中の演出")}</p>
               <BattleMotionSettings />
             </>
           )}
@@ -764,61 +804,61 @@ export function SettingsModal({ onClose }) {
             <>
               <div className="settings-list">
                 <div className="settings-row">
-                  <span>見えなくした人</span>
+                  <span>{L("見えなくした人")}</span>
                   <button
                     className="btn btn-ghost btn-small"
                     onClick={() => setEditing("blocked")}
                   >
-                    {loadBlocked().length}人
+                    {L("{n}人", { n: loadBlocked().length })}
                   </button>
                 </div>
               </div>
               <p className="settings-note">
-                ランキングの右端の「⋯」から、その人を通報したり、見えなくしたりできます。
+                {L("ランキングの右端の「⋯」から、その人を通報したり、見えなくしたりできます。")}
               </p>
-              <p className="settings-head">記録を消す</p>
+              <p className="settings-head">{L("記録を消す")}</p>
               <div className="settings-list">
                 <div className="settings-row">
-                  <span>自分の記録を消す</span>
+                  <span>{L("自分の記録を消す")}</span>
                   <button
                     className="btn btn-ghost btn-small btn-danger"
                     onClick={() => setEditing("delete")}
                   >
-                    消す
+                    {L("消す")}
                   </button>
                 </div>
               </div>
               <p className="settings-note">
-                名前・戦績・レートと、公開ランキングのあなたの行を消します。元には戻せません。
+                {L("名前・戦績・レートと、公開ランキングのあなたの行を消します。元には戻せません。")}
               </p>
             </>
           )}
           {tab === "about" && (
             <div className="settings-list">
               <div className="settings-row">
-                <span>ゲームの版</span>
+                <span>{L("ゲームの版")}</span>
                 <b>{VERSION}</b>
               </div>
               <div className="settings-row">
-                <span>この版の内容</span>
-                <b>{VERSION_NOTE}</b>
+                <span>{L("この版の内容")}</span>
+                <b>{Lx(VERSION_NOTE)}</b>
               </div>
               <div className="settings-row">
-                <span>音の出どころ</span>
+                <span>{L("音の出どころ")}</span>
                 <b>
-                  {MUSIC_CREDIT} / {SE_CREDIT}
+                  {Lx(MUSIC_CREDIT)} / {Lx(SE_CREDIT)}
                 </b>
               </div>
               <div className="settings-row">
-                <span>ルールの確認</span>
-                <b>右上の「i」から</b>
+                <span>{L("ルールの確認")}</span>
+                <b>{L("右上の「i」から")}</b>
               </div>
               <div className="settings-row">
-                <span>通信</span>
-                <b>オンライン対戦に対応</b>
+                <span>{L("通信")}</span>
+                <b>{L("オンライン対戦に対応")}</b>
               </div>
               <div className="settings-row">
-                <span>お問い合わせ</span>
+                <span>{L("お問い合わせ")}</span>
                 {hasSupportContact() ? (
                   <a
                     className="settings-link"
@@ -829,11 +869,11 @@ export function SettingsModal({ onClose }) {
                     {SUPPORT_EMAIL}
                   </a>
                 ) : (
-                  <b className="settings-todo">未設定</b>
+                  <b className="settings-todo">{L("未設定")}</b>
                 )}
               </div>
               <div className="settings-row">
-                <span>プライバシーポリシー</span>
+                <span>{L("プライバシーポリシー")}</span>
                 {hasPrivacyUrl() ? (
                   <a
                     className="settings-link"
@@ -841,17 +881,17 @@ export function SettingsModal({ onClose }) {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    開く
+                    {L("開く")}
                   </a>
                 ) : (
-                  <b className="settings-todo">未設定</b>
+                  <b className="settings-todo">{L("未設定")}</b>
                 )}
               </div>
             </div>
           )}
         </div>
         <button className="btn btn-primary btn-wide" onClick={onClose}>
-          閉じる
+          {L("閉じる")}
         </button>
       </div>
     </div>
@@ -877,17 +917,25 @@ export function ResignConfirm({ onCancel, onResign, viewer }) {
             margin: "8px 0 10px",
           }}
         >
-          降参しますか?
+          {L("降参しますか?")}
         </h3>
         <p className="hint">
-          <b
-            style={{
-              color: n.color,
-            }}
-          >
-            {playerLabel(viewer, viewer, names)}
-          </b>
-          の負けとして、この対局が終わります。
+          {(() => {
+            const [pre, post] = L("{who}の負けとして、この対局が終わります。").split("{who}");
+            return (
+              <>
+                {pre}
+                <b
+                  style={{
+                    color: n.color,
+                  }}
+                >
+                  {playerLabel(viewer, viewer, names)}
+                </b>
+                {post}
+              </>
+            );
+          })()}
         </p>
         <div
           className="setup-actions"
@@ -897,10 +945,10 @@ export function ResignConfirm({ onCancel, onResign, viewer }) {
           }}
         >
           <button className="btn btn-primary" onClick={onCancel}>
-            対局を続ける
+            {L("対局を続ける")}
           </button>
           <button className="btn btn-ghost" onClick={onResign}>
-            <Flag size={16} /> 降参する
+            <Flag size={16} /> {L("降参する")}
           </button>
         </div>
       </div>
@@ -920,24 +968,40 @@ export function QuitConfirm({ onCancel, onQuit, network, counts = !!network, sto
             margin: "0 0 10px",
           }}
         >
-          対局をやめますか?
+          {L("対局をやめますか?")}
         </h3>
         <p className="hint">
           {network && !counts ? (
-            <>
-              途中でやめると<b>降参</b>になり、相手の勝ちとして勝敗がつきます。相手には「降参」と伝わります(この対局はレートに数えません)。
-            </>
+            (() => {
+              const [pre, post] = L(
+                "途中でやめると{resign}になり、相手の勝ちとして勝敗がつきます。相手には「降参」と伝わります(この対局はレートに数えません)。",
+              ).split("{resign}");
+              return (
+                <>
+                  {pre}
+                  <b>{L("降参")}</b>
+                  {post}
+                </>
+              );
+            })()
           ) : network ? (
-            <>
-              オンライン対戦では、途中でやめると<b>降参</b>になります。
-              <br />
-              相手の勝ちとして勝敗がつき、レート(月間シーズンの成績)を清算します。相手には「降参」と伝わります。
-            </>
+            (() => {
+              const [pre, post] = L("オンライン対戦では、途中でやめると{resign}になります。").split("{resign}");
+              return (
+                <>
+                  {pre}
+                  <b>{L("降参")}</b>
+                  {post}
+                  <br />
+                  {L("相手の勝ちとして勝敗がつき、レート(月間シーズンの成績)を清算します。相手には「降参」と伝わります。")}
+                </>
+              );
+            })()
           ) : story ? (
             // ストーリーのステージ: 中断(クリアにも負けにもしない)。一覧へ戻る(2026-10-01)
-            "ステージを中断して、ストーリーの一覧に戻ります。クリアにも負けにもなりません。"
+            L("ステージを中断して、ストーリーの一覧に戻ります。クリアにも負けにもなりません。")
           ) : (
-            "今の対局は最初からやり直しになります。"
+            L("今の対局は最初からやり直しになります。")
           )}
         </p>
         <div
@@ -948,11 +1012,11 @@ export function QuitConfirm({ onCancel, onQuit, network, counts = !!network, sto
           }}
         >
           <button className="btn btn-primary" onClick={onCancel}>
-            対局を続ける
+            {L("対局を続ける")}
           </button>
           <button className="btn btn-ghost" onClick={onQuit}>
             <ArrowLeft size={16} />{" "}
-            {network ? "降参してホームに戻る" : story ? "中断してストーリーへ" : "やめてタイトルに戻る"}
+            {network ? L("降参してホームに戻る") : story ? L("中断してストーリーへ") : L("やめてタイトルに戻る")}
           </button>
         </div>
       </div>
@@ -968,7 +1032,7 @@ export function SetupEffectsModal({ effects, viewer, onClose }) {
   const names = useNames();
   const me = viewer === void 0 || viewer === null ? null : viewer;
   const side = (i) =>
-    me === null ? nameOf(i, names) : i === me ? "あなた" : "相手";
+    me === null ? nameOf(i, names) : i === me ? L("あなた") : L("相手");
   const shown = effects.revealed || [];
   const myShown = me === null ? [] : shown.filter((c) => c.owner === me);
   const foeShown = me === null ? shown : shown.filter((c) => c.owner !== me);
@@ -976,7 +1040,7 @@ export function SetupEffectsModal({ effects, viewer, onClose }) {
   return (
     <div className="modal-overlay">
       <div className="modal-panel bonus-panel">
-        <p className="bonus-eyebrow">布陣ボーナス</p>
+        <p className="bonus-eyebrow">{L("布陣ボーナス")}</p>
 
         <ul className="bonus-list">
           {[0, 1].map((i) =>
@@ -986,9 +1050,9 @@ export function SetupEffectsModal({ effects, viewer, onClose }) {
                   className="bonus-tag"
                   style={{ "--who": PLAYER_META[i].color }}
                 >
-                  ストレート
+                  {L("ストレート")}
                 </span>
-                <span>{side(i)}の布陣が数字で並んだ</span>
+                <span>{L("{side}の布陣が数字で並んだ", { side: side(i) })}</span>
               </li>
             ) : null,
           )}
@@ -999,9 +1063,9 @@ export function SetupEffectsModal({ effects, viewer, onClose }) {
                   className="bonus-tag"
                   style={{ "--who": PLAYER_META[i].color }}
                 >
-                  フラッシュ
+                  {L("フラッシュ")}
                 </span>
-                <span>{side(i)}の布陣がマークでそろった</span>
+                <span>{L("{side}の布陣がマークでそろった", { side: side(i) })}</span>
               </li>
             ) : null,
           )}
@@ -1010,8 +1074,8 @@ export function SetupEffectsModal({ effects, viewer, onClose }) {
         {effects.straights.some(Boolean) && (
           <p className="bonus-note">
             {effects.swapped
-              ? `先手と後手が入れ替わり、${side(effects.first)}から始まります。`
-              : "両者ストレートのため、先手はそのままです。"}
+              ? L("先手と後手が入れ替わり、{side}から始まります。", { side: side(effects.first) })
+              : L("両者ストレートのため、先手はそのままです。")}
           </p>
         )}
 
@@ -1019,8 +1083,8 @@ export function SetupEffectsModal({ effects, viewer, onClose }) {
           <>
             <p className="bonus-note">
               {me === null
-                ? `${foeShown.length}枚の駒が公開されました。`
-                : `相手の駒が${foeShown.length}枚めくれました。`}
+                ? L("{n}枚の駒が公開されました。", { n: foeShown.length })
+                : L("相手の駒が{n}枚めくれました。", { n: foeShown.length })}
             </p>
             <div className="bonus-cards">
               {foeShown.map((c) => (
@@ -1045,13 +1109,12 @@ export function SetupEffectsModal({ effects, viewer, onClose }) {
 
         {myShown.length > 0 && (
           <p className="bonus-note">
-            あなたの駒が{myShown.length}枚、相手に見えてしまいました。
-            盤の「公開」の印が目印です。
+            {L("あなたの駒が{n}枚、相手に見えてしまいました。 盤の「公開」の印が目印です。", { n: myShown.length })}
           </p>
         )}
 
         <button className="btn btn-primary" onClick={onClose}>
-          対局を始める <Check size={16} />
+          {L("対局を始める")} <Check size={16} />
         </button>
       </div>
     </div>

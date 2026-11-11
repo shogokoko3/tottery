@@ -18,26 +18,27 @@ import {
 } from "../skins/collection.js";
 import { ETHER_NAME } from "../skins/ether.js";
 import { updateCollection } from "../skins/store.js";
+import { L, Lx, fmtNumber } from "../i18n/index.js";
 
 /** 画面に出す呼び名。知らない id でも壊れない */
 export function giftLabel(gift) {
   if (!gift) return "—";
-  if (gift.type === "ticket") return `ガチャチケット ×${gift.amount}`;
-  if (gift.type === "gems") return `ジェム ×${gift.amount}`;
+  if (gift.type === "ticket") return L("ガチャチケット ×{n}", { n: gift.amount });
+  if (gift.type === "gems") return L("ジェム ×{n}", { n: gift.amount });
   if (gift.type === "ether")
-    return `${ETHER_NAME} ${Number(gift.amount).toLocaleString()}`;
-  if (gift.type === "xp") return `経験値 ${gift.amount}`;
+    return `${Lx(ETHER_NAME)} ${fmtNumber(gift.amount)}`;
+  if (gift.type === "xp") return L("経験値 {n}", { n: gift.amount });
   if (gift.type === "title")
-    return `称号「${(findTitle(gift.id) || {}).name || gift.id}」`;
-  if (gift.type === "icon") return `アイコン「${findIcon(gift.id).label}」`;
+    return L("称号「{name}」", { name: Lx((findTitle(gift.id) || {}).name || gift.id) });
+  if (gift.type === "icon") return L("アイコン「{name}」", { name: Lx(findIcon(gift.id).label) });
   if (gift.type === "skin")
-    return `スキン「${(skinById(gift.id) || {}).name || gift.id}」`;
+    return L("スキン「{name}」", { name: Lx((skinById(gift.id) || {}).name || gift.id) });
   return "—";
 }
 
 /** まとめて読み上げる文 */
 export const giftsLabel = (gifts) =>
-  (gifts || []).map(giftLabel).join("、") || "（添付なし）";
+  (gifts || []).map(giftLabel).join(L("、")) || L("（添付なし）");
 
 /** 1つ配る。控えるのは呼んだ側の仕事 */
 export async function giveGift(gift) {

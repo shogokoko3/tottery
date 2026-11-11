@@ -20,10 +20,11 @@ import {
   supportMailto,
 } from "../game/support.js";
 import { VERSION } from "../game/constants.js";
+import { L, Lx, fmtDate } from "../i18n/index.js";
 
 const when = (at) =>
   at
-    ? new Date(at).toLocaleString("ja-JP", {
+    ? fmtDate(at, {
         dateStyle: "medium",
         timeStyle: "short",
       })
@@ -42,7 +43,7 @@ function DataManageModal({ onClose }) {
         onDeleted={() => location.reload()}
       />
     );
-  const id = profile.id || "(まだありません)";
+  const id = profile.id || L("(まだありません)");
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
@@ -50,14 +51,14 @@ function DataManageModal({ onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">
-          <h3>データ管理</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+          <h3>{L("データ管理")}</h3>
+          <button className="icon-btn" onClick={onClose} aria-label={L("閉じる")}>
             <Close size={18} />
           </button>
         </div>
         {/* 見出しと「とじる」は動かさず、中身だけを送る。包まないと背の低い窓で下が切れていた(2026-10-18) */}
         <div className="settings-body">
-          <p className="settings-head">プレイヤーID</p>
+          <p className="settings-head">{L("プレイヤーID")}</p>
           <div className="settings-list">
             <div className="settings-row">
               <code className="player-id">{id}</code>
@@ -72,18 +73,18 @@ function DataManageModal({ onClose }) {
                   }
                 }}
               >
-                {copied ? "写しました" : "写す"}
+                {copied ? L("写しました") : L("写す")}
               </button>
             </div>
           </div>
           <p className="settings-note">
-            お問い合わせのときに教えてください。この番号から、あなたの記録を探せます。
+            {L("お問い合わせのときに教えてください。この番号から、あなたの記録を探せます。")}
           </p>
 
-          <p className="settings-head">問い合わせ先</p>
+          <p className="settings-head">{L("問い合わせ先")}</p>
           <div className="settings-list">
             <div className="settings-row">
-              <span>お問い合わせ</span>
+              <span>{L("お問い合わせ")}</span>
               {hasSupportContact() ? (
                 <a
                   className="settings-link"
@@ -94,11 +95,11 @@ function DataManageModal({ onClose }) {
                   {SUPPORT_EMAIL}
                 </a>
               ) : (
-                <b className="settings-todo">未設定</b>
+                <b className="settings-todo">{L("未設定")}</b>
               )}
             </div>
             <div className="settings-row">
-              <span>プライバシーポリシー</span>
+              <span>{L("プライバシーポリシー")}</span>
               {hasPrivacyUrl() ? (
                 <a
                   className="settings-link"
@@ -106,36 +107,36 @@ function DataManageModal({ onClose }) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  開く
+                  {L("開く")}
                 </a>
               ) : (
-                <b className="settings-todo">未設定</b>
+                <b className="settings-todo">{L("未設定")}</b>
               )}
             </div>
             <div className="settings-row">
-              <span>ゲームの版</span>
+              <span>{L("ゲームの版")}</span>
               <b>{VERSION}</b>
             </div>
           </div>
 
-          <p className="settings-head">アカウント削除</p>
+          <p className="settings-head">{L("アカウント削除")}</p>
           <div className="settings-list">
             <div className="settings-row">
-              <span>この端末の記録を消す</span>
+              <span>{L("この端末の記録を消す")}</span>
               <button
                 className="btn btn-ghost btn-small btn-danger"
                 onClick={() => setDeleting(true)}
               >
-                消す
+                {L("消す")}
               </button>
             </div>
           </div>
           <p className="settings-note">
-            名前・戦績・レートと、公開ランキングのあなたの行を消します。元には戻せません。
+            {L("名前・戦績・レートと、公開ランキングのあなたの行を消します。元には戻せません。")}
           </p>
         </div>
         <button className="btn btn-primary btn-wide" onClick={onClose}>
-          とじる
+          {L("とじる")}
         </button>
       </div>
     </div>
@@ -179,10 +180,10 @@ function DataTransferModal({ onClose }) {
       const s = await backupStatus();
       setStatus(s);
       setMessage(
-        "この端末の記録を預けました。新しい端末では、同じ Apple ID でサインインしてください。",
+        L("この端末の記録を預けました。新しい端末では、同じ Apple ID でサインインしてください。"),
       );
     } catch (e) {
-      setError(e.message || "設定できませんでした。");
+      setError(Lx(e.message) || L("設定できませんでした。"));
     }
     setBusy("");
   };
@@ -205,16 +206,16 @@ function DataTransferModal({ onClose }) {
       if (!r.restored) {
         setError(
           r.broken
-            ? "預かっていた記録を読めませんでした。お問い合わせください。"
-            : "この Apple ID には、まだ記録が預けられていません。",
+            ? L("預かっていた記録を読めませんでした。お問い合わせください。")
+            : L("この Apple ID には、まだ記録が預けられていません。"),
         );
         setBusy("");
         return;
       }
-      setMessage("引き継ぎました。画面を読み込み直します。");
+      setMessage(L("引き継ぎました。画面を読み込み直します。"));
       setTimeout(() => location.reload(), 1200);
     } catch (e) {
-      setError(e.message || "引き継げませんでした。");
+      setError(Lx(e.message) || L("引き継げませんでした。"));
     }
     setBusy("");
   };
@@ -226,38 +227,38 @@ function DataTransferModal({ onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">
-          <h3>データ引き継ぎ</h3>
+          <h3>{L("データ引き継ぎ")}</h3>
           {!busy && (
-            <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+            <button className="icon-btn" onClick={onClose} aria-label={L("閉じる")}>
               <Close size={18} />
             </button>
           )}
         </div>
         <div className="settings-body">
           <p className="hint">
-            Apple ID にこの記録を結びつけます。新しい端末で同じ Apple ID
-            からサインインすると、
-            名前・レベル・戦績・レート・持っているスキンとジェムを引き継げます。
+            {L(
+              "Apple ID にこの記録を結びつけます。新しい端末で同じ Apple ID からサインインすると、 名前・レベル・戦績・レート・持っているスキンとジェムを引き継げます。",
+            )}
           </p>
           <div className="settings-list">
             <div className="settings-row">
-              <span>いまの状態</span>
-              <b>{verified ? "Apple ID と結びつき済み" : "この端末だけ"}</b>
+              <span>{L("いまの状態")}</span>
+              <b>{verified ? L("Apple ID と結びつき済み") : L("この端末だけ")}</b>
             </div>
             {verified && (
               <div className="settings-row">
-                <span>最後に預けた日時</span>
+                <span>{L("最後に預けた日時")}</span>
                 <b>
                   {status
-                    ? when(status.at) || "まだ預けていません"
-                    : "確認しています…"}
+                    ? when(status.at) || L("まだ預けていません")
+                    : L("確認しています…")}
                 </b>
               </div>
             )}
           </div>
           {!canApple && (
             <p className="settings-note">
-              引き継ぎの設定は、iPhone・iPad のアプリで行えます。
+              {L("引き継ぎの設定は、iPhone・iPad のアプリで行えます。")}
             </p>
           )}
           {error && (
@@ -277,10 +278,10 @@ function DataTransferModal({ onClose }) {
               onClick={setUp}
             >
               {busy === "setup"
-                ? "預けています…"
+                ? L("預けています…")
                 : verified
-                  ? "いまの記録を預け直す"
-                  : "Apple ID で引き継ぎを設定する"}
+                  ? L("いまの記録を預け直す")
+                  : L("Apple ID で引き継ぎを設定する")}
             </button>
             <button
               className="btn btn-ghost btn-wide"
@@ -288,13 +289,14 @@ function DataTransferModal({ onClose }) {
               onClick={takeOver}
             >
               {busy === "restore"
-                ? "引き継いでいます…"
-                : "別の端末から引き継ぐ"}
+                ? L("引き継いでいます…")
+                : L("別の端末から引き継ぐ")}
             </button>
           </div>
           <p className="settings-note">
-            引き継ぐと、この端末にいまある記録は、預けてあった記録で置き換わります。
-            ジェムとチケットの残高はサーバーの台帳が正なので、引き継いだあとにそろいます。
+            {L(
+              "引き継ぐと、この端末にいまある記録は、預けてあった記録で置き換わります。 ジェムとチケットの残高はサーバーの台帳が正なので、引き継いだあとにそろいます。",
+            )}
           </p>
         </div>
         <button
@@ -302,7 +304,7 @@ function DataTransferModal({ onClose }) {
           onClick={onClose}
           disabled={!!busy}
         >
-          とじる
+          {L("とじる")}
         </button>
       </div>
     </div>
@@ -317,11 +319,11 @@ export function TitleDataBar() {
       <div className="title-data-bar">
         <button className="title-data-btn" onClick={() => setOpen("manage")}>
           <Settings size={20} />
-          <span>データ管理</span>
+          <span>{L("データ管理")}</span>
         </button>
         <button className="title-data-btn" onClick={() => setOpen("transfer")}>
           <DoorIn size={20} />
-          <span>データ引き継ぎ</span>
+          <span>{L("データ引き継ぎ")}</span>
         </button>
       </div>
       {open === "manage" && <DataManageModal onClose={() => setOpen(null)} />}

@@ -28,6 +28,7 @@ import {
 } from "../game/periodic-missions.js";
 // 引いた札の自動装備(2026-09-28 本人の指示)
 import { autoEquip, autoEquipChanges } from "./auto-equip.js";
+import { L } from "../i18n/index.js";
 
 const count = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : 0);
 const addCount = (a, b) => Math.min(Number.MAX_SAFE_INTEGER, a + b);
@@ -75,13 +76,13 @@ export function foilMilestoneCheck(state, baseId) {
   const claimed = eligible && state?.foilMilestones?.[baseId] === true;
   const remaining = Math.max(0, FOIL_MILESTONE - total);
   const why = !eligible
-    ? "通常版の対象キャラクターを選んでください。"
+    ? L("通常版の対象キャラクターを選んでください。")
     : claimed
-      ? "このキャラクターの達成報酬は受け取り済みです。"
+      ? L("このキャラクターの達成報酬は受け取り済みです。")
       : remaining > 0
-        ? `通算獲得があと${remaining}回必要です。`
+        ? L("通算獲得があと{n}回必要です。", { n: remaining })
         : state?.pending || state?.lastCraft
-          ? "先にガチャ・錬成の結果を確認してください。"
+          ? L("先にガチャ・錬成の結果を確認してください。")
           : null;
   return {
     ok: why === null,
@@ -288,7 +289,7 @@ export function normalize(raw) {
 function finishedId(baseId, random) {
   const n = random();
   if (!Number.isFinite(n) || n < 0 || n >= 1)
-    throw new Error("乱数の範囲が不正です");
+    throw new Error(L("乱数の範囲が不正です"));
   return n < FOIL_CHANCE ? foilId(baseId) : baseId;
 }
 
@@ -318,18 +319,18 @@ export function applyPull(state, skinIds, { free = FREE_GACHA } = {}) {
   const receipt = !Array.isArray(skinIds) && skinIds?.receipt;
   if (receipt && receipt === state.lastPullId) return state;
   if (receipt && state.pendingPull?.id !== receipt)
-    throw new Error("未受取の召喚と結果が一致しません。もう一度確認してください。");
+    throw new Error(L("未受取の召喚と結果が一致しません。もう一度確認してください。"));
   const ids = Array.isArray(skinIds) ? skinIds : skinIds?.skins || [];
   const freeze = normalizeSummonFreeze(skinIds?.freeze, ids);
   if (ids.length !== 1 && ids.length !== 10)
-    throw new Error("1回または10回を選んでください");
-  if (ids.some((id) => !byId(id))) throw new Error("知らない札が混ざっています");
+    throw new Error(L("1回または10回を選んでください"));
+  if (ids.some((id) => !byId(id))) throw new Error(L("知らない札が混ざっています"));
   if (state.pending || state.lastCraft)
-    throw new Error("先にガチャ・錬成の結果を確認してください");
+    throw new Error(L("先にガチャ・錬成の結果を確認してください"));
   const cost = free ? 0 : ids.length * PULL_COST;
   const tickets = count(state.tickets);
   if (cost > tickets)
-    throw new Error(`ガチャチケットが足りません(あと${cost - tickets}枚)`);
+    throw new Error(L("ガチャチケットが足りません(あと{n}枚)", { n: cost - tickets }));
   const owned = { ...state.owned };
   const acquired = acquiredTotals(state);
   const results = ids.map((id) => {
@@ -388,13 +389,13 @@ export function pull(
   { free = FREE_GACHA, series = "heroes" } = {},
 ) {
   if (amount !== 1 && amount !== 10)
-    throw new Error("1回または10回を選んでください");
+    throw new Error(L("1回または10回を選んでください"));
   if (state.pending || state.lastCraft)
-    throw new Error("先にガチャ・錬成の結果を確認してください");
+    throw new Error(L("先にガチャ・錬成の結果を確認してください"));
   const cost = free ? 0 : amount * PULL_COST;
   const tickets = count(state.tickets);
   if (cost > tickets)
-    throw new Error(`ガチャチケットが足りません(あと${cost - tickets}枚)`);
+    throw new Error(L("ガチャチケットが足りません(あと{n}枚)", { n: cost - tickets }));
   const initial = Array.from({ length: amount }, () => drawOne(random, series));
   return applyPull(state, resolveSummonFreeze(initial, random), { free });
 }
@@ -471,7 +472,7 @@ export function grantFoils(state, baseIds) {
 export function equip(state, id) {
   const skin = byId(id);
   if (!skin || !state.owned[id])
-    throw new Error("このスキンはまだ所持していません");
+    throw new Error(L("このスキンはまだ所持していません"));
   return { ...state, equipped: { ...state.equipped, [skin.rank]: id } };
 }
 export function unequip(state, rank) {
@@ -539,7 +540,7 @@ export function shatterMany(state, id, n) {
  */
 export function exchangeFoil(state, baseId) {
   if (state.pending || state.lastCraft)
-    throw new Error("先にガチャ・錬成の結果を確認してください。");
+    throw new Error(L("先にガチャ・錬成の結果を確認してください。"));
   const check = exchangeCheck(state, baseId);
   if (!check.ok) throw new Error(check.why);
   const id = foilId(baseSkinId(baseId));
@@ -627,7 +628,7 @@ export function dismantleAll(state, series = null) {
 /** エーテルを払って、好きな1枚を作る。すでに持っている札なら枚数が増える */
 export function craft(state, id, random = Math.random) {
   if (state.pending || state.lastCraft)
-    throw new Error("先にガチャ・錬成の結果を確認してください");
+    throw new Error(L("先にガチャ・錬成の結果を確認してください"));
   const check = craftCheck(state, id);
   if (!check.ok) throw new Error(check.why);
   const resultId = finishedId(id, random);
@@ -656,7 +657,7 @@ export function craft(state, id, random = Math.random) {
  */
 export function craftMany(state, id, n, random = Math.random) {
   if (state.pending || state.lastCraft)
-    throw new Error("先にガチャ・錬成の結果を確認してください");
+    throw new Error(L("先にガチャ・錬成の結果を確認してください"));
   const check = craftCheck(state, id, n);
   if (!check.ok) throw new Error(check.why);
   const acquired = acquiredTotals(state);
@@ -698,7 +699,7 @@ export function claimEarly(state) {
 export function claimSpecial(state, id) {
   const skin = byId(id);
   if (skin?.rarity !== "SPECIAL" || skin.foil)
-    throw new Error("特別スキンを選んでください");
+    throw new Error(L("特別スキンを選んでください"));
   if (state.owned[id]) return state;
   return { ...state, owned: { ...state.owned, [id]: 1 } };
 }

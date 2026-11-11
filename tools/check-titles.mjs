@@ -175,7 +175,7 @@ console.log("獲得日時と獲得順(2026-10-15 本人の指示)");
   is("設定の値で並べる(newest)", orderTitles(list, { titleAt: { fifty: 300, regular: 100, devoted: 100 } }, "newest").map((t) => t.id), newest);
   is("設定の値で並べる(list はそのまま)", orderTitles(list, {}, "list").map((t) => t.id), ["fifty", "regular", "novice", "first", "devoted"]);
   const acct = (await import("node:fs")).readFileSync(new URL("../src/ui/account.jsx", import.meta.url), "utf8");
-  is("切り替えに「新しい順」がある", /\["newest", "獲得が新しい順"\]/.test(acct) && /saved === "earned" \|\| saved === "newest"/.test(acct), true);
+  is("切り替えに「新しい順」がある", /\["newest", L\("獲得が新しい順"\)\]/.test(acct) && /saved === "earned" \|\| saved === "newest"/.test(acct), true);
 }
 
 console.log(`\n${ok} ok / ${fails.length} fail`);

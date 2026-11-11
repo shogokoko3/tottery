@@ -1,4 +1,5 @@
 import {discardCards} from "./reserve.js";
+import { L, Lk } from "../i18n/index.js";
 import { ALICE_SKINS } from '../skins/alice.js';
 import { getLegalMoves, territoryRows, kingPowersOn, kingRankOf } from './board.js';
 import { ALICE_RULE_VERSION, GAME_RULE_VERSION } from './rule-version.js';
@@ -58,7 +59,7 @@ const inverse = {2:'K',3:'Q',4:'J',5:'10',6:'9',7:'8',8:'7',9:'6',10:'5',J:'4',Q
 function reverse(s, p, reveal) {
   if (!inverse[p.rank]) return s; // 相手のAだけが不発。他の対象には続けて適用する。
   return update(s, {...p, rank: inverse[p.rank], originalRank:p.originalRank || p.rank, reverseUntil: threeTurns(s, p.owner),
-    revealed: reveal ? true : !!p.revealed, history: [...p.history, '数字が逆転した']});
+    revealed: reveal ? true : !!p.revealed, history: [...p.history, Lk('数字が逆転した')]});
 }
 // 合法手・CPU・表示に共通する駒の印。現在の数字の装備で王の力を再評価する。
 export function syncAlice(s) {
@@ -160,16 +161,16 @@ export function revolutionCandidates(s, owner) {
  * 王の力の小窓を開かないと使えるか分からなかった)。aliceAction の revolution と同じ条件
  */
 export function canUseRevolution(s, owner) {
-  if (!hasAliceRules(s) || s.phase !== 'play' || s.winner != null) return {ok:false, why:'対局中ではありません'};
-  if (!s.areasEnabled) return {ok:false, why:'エリアありの対戦で使えます'};
+  if (!hasAliceRules(s) || s.phase !== 'play' || s.winner != null) return {ok:false, why:L('対局中ではありません')};
+  if (!s.areasEnabled) return {ok:false, why:L('エリアありの対戦で使えます')};
   const ace = revolutionAce(s, owner);
-  if (!ace) return {ok:false, why:'アリスのAのフォイルを盤に置いていません'};
-  if (s.aliceRevive || s.aliceRecruit?.length) return {ok:false, why:'現在の操作を終えてください'};
-  if (owner !== s.currentTurn) return {ok:false, why:'相手の番です'};
-  if (s.pendingKingChoice || s.kPlacement || s.extraMoveFor) return {ok:false, why:'通常の行動の前にだけ使えます'};
-  if (used(s, owner, 'revolution')) return {ok:false, why:'このターンでは発動済みです'};
-  if (ace.frozenUntil > turn(s)) return {ok:false, why:'Aが動けないあいだは使えません'};
-  if (!revolutionCandidates(s, owner).length) return {ok:false, why:'逆転できる駒がありません'};
+  if (!ace) return {ok:false, why:L('アリスのAのフォイルを盤に置いていません')};
+  if (s.aliceRevive || s.aliceRecruit?.length) return {ok:false, why:L('現在の操作を終えてください')};
+  if (owner !== s.currentTurn) return {ok:false, why:L('相手の番です')};
+  if (s.pendingKingChoice || s.kPlacement || s.extraMoveFor) return {ok:false, why:L('通常の行動の前にだけ使えます')};
+  if (used(s, owner, 'revolution')) return {ok:false, why:L('このターンでは発動済みです')};
+  if (ace.frozenUntil > turn(s)) return {ok:false, why:L('Aが動けないあいだは使えません')};
+  if (!revolutionCandidates(s, owner).length) return {ok:false, why:L('逆転できる駒がありません')};
   return {ok:true, why:''};
 }
 export function aliceAction(s, a, hooks) {
@@ -185,7 +186,7 @@ export function aliceAction(s, a, hooks) {
     if (a.kind === 'recruit') {
       const id=`r${s.aliceSerial||0}`;
       next = update({...next,aliceSerial:(s.aliceSerial||0)+1}, {...entry.card,id,owner,alive:true,isKing:false,falseKing:false,illusion:null,ownerHidden:false,frozenUntil:null,danceUntil:null,rank:entry.card.rank,row:a.row,col:a.col,history:[],revealed:true});
-      next = log(next,'撃破した駒を仲間にした');
+      next = log(next,Lk('撃破した駒を仲間にした'));
       // 仲間の映像は撃破の時点(待ちが立ったとき)に流し終えている(recruitFilm)。配置ではもう流さない(2026-10-16 本人の指示)
     }
     if(a.kind==='decline' && next.aliceRevive?.pieceId!==entry.card.id)next=discardCards(next,[entry.card]);
@@ -197,7 +198,7 @@ export function aliceAction(s, a, hooks) {
     const dead = s.pieces[pending.pieceId];
     let next = update({...s, aliceRevive:null, aliceRevives:{...s.aliceRevives,[dead.id]:(s.aliceRevives?.[dead.id]||0)+1}}, {...dead,alive:true,row:a.row,col:a.col,everRevived:true});
     next = {...next,players:next.players.map((p,i)=>i===owner?{...p,capturedOwn:p.capturedOwn.filter(c=>c.id!==dead.id)}:p), lastAlicePower:{owner,rank:dead.rank,kind:'revive',seq:(s.lastAlicePower?.seq||0)+1}};
-    next = log(next,'王が自陣に帰還した');
+    next = log(next,Lk('王が自陣に帰還した'));
     return syncAlice(next);
   }
   if (owner !== s.currentTurn || s.pendingKingChoice || s.kPlacement || s.extraMoveFor) return s;
@@ -220,36 +221,36 @@ export function aliceAction(s, a, hooks) {
     for (const p of selected) next=reverse(next,p,royal);
     if (!royal) next=update(next,{...next.pieces[ace.id],revealed:true});
     next={...next,selectedId:null,shuffleMode:null};
-    next=log(next,'アリスが数字の逆転を試みた');
+    next=log(next,Lk('アリスが数字の逆転を試みた'));
   } else if (a.kind === 'revolution') {
     const ace=revolutionAce(s,owner);
     if (!ace || !s.areasEnabled || ace.frozenUntil>turn(s)) return s;
     const candidates=revolutionCandidates(s,owner);
     if (!candidates.length) return s;
     const target=pick(candidates,rng);presentation={pickIds:[target.id]};
-    next=reverse(next,target,false); next=log(next,'アリスのフォイル効果で数字を逆転した');
+    next=reverse(next,target,false); next=log(next,Lk('アリスのフォイル効果で数字を逆転した'));
   } else if (a.kind === 'king') {
     if (!k || k.frozenUntil>turn(s)) return s;
     if (k.rank === '4') {
       const n=s.aliceCharges?.[k.id]||0; if(n>=3)return s;
       next={...next,aliceCharges:{...s.aliceCharges,[k.id]:n+1},aliceBarrier:{...s.aliceBarrier,[owner]:turn(s)+2}};
-      next=log(next,'グリフォンが全軍にバリアを張った');
+      next=log(next,Lk('グリフォンが全軍にバリアを張った'));
     } else if(k.rank === '5') {
       const n=s.aliceCharges?.[k.id]||0, p=selected[0];
       if(n>=3 || ids.length!==1 || p.owner!==owner || p.isKing || p.falseKing || alive(s,owner).filter(p=>p.falseKing).length>=3)return s;
-      next=update({...next,aliceCharges:{...s.aliceCharges,[k.id]:n+1}},{...p,falseKing:true}); next=log(next,'ニセウミガメが偽の王を任命した');
+      next=update({...next,aliceCharges:{...s.aliceCharges,[k.id]:n+1}},{...p,falseKing:true}); next=log(next,Lk('ニセウミガメが偽の王を任命した'));
     } else if(k.rank === '6') {
       if(!Array.isArray(s.clocks))return s;
-      const clocks=[...s.clocks]; clocks[1-owner]=Math.min(clocks[1-owner],Math.max(10000,clocks[1-owner]-30000)); next={...next,clocks}; next=log(next,'白ウサギが相手の持ち時間を減らした');
+      const clocks=[...s.clocks]; clocks[1-owner]=Math.min(clocks[1-owner],Math.max(10000,clocks[1-owner]-30000)); next={...next,clocks}; next=log(next,Lk('白ウサギが相手の持ち時間を減らした'));
     } else if(k.rank === '7') {
       const candidates=alive(s,1-owner).filter(p=>!p.tea && !p.ownerHidden && !p.barrier);
       const count=Math.min(2,candidates.length);
       for(let i=0;i<count;i++){const p=candidates.splice(Math.floor(rng()*candidates.length),1)[0];next=update(next,{...p,ownerHidden:true});}
       if(!candidates.length && !alive(s,1-owner).some(p=>!p.tea && !p.ownerHidden))return s;
-      next=log(next,'イモムシが相手の駒の正体を隠した');
+      next=log(next,Lk('イモムシが相手の駒の正体を隠した'));
     } else if(['8','9'].includes(k.rank)) {
       const cells=emptyCells(s,owner); if(!cells.length)return s;
-      next=spawn(next,owner,pick(cells,rng),k.rank);next=log(next,'ティーカップを召喚した');
+      next=spawn(next,owner,pick(cells,rng),k.rank);next=log(next,Lk('ティーカップを召喚した'));
       return hooks.endAction(syncAlice(spend({...next,lastAlicePower:{owner,rank:k.rank,kind:a.kind,seq:(s.lastAlicePower?.seq||0)+1}},owner,usedKey)),null);
     } else return s;
   } else if(a.kind === 'field') {
@@ -288,7 +289,7 @@ export function aliceAction(s, a, hooks) {
       if(victim){ next=hooks.removePiece(next,p.id,{by:null});if(victim.id!==p.id)next=hooks.removePiece(next,victim.id,{by:p.id}); }
       else {const board=next.board.map(r=>[...r]);board[p.row][p.col]=null;next=update({...next,board},{...p,row:at.row,col:at.col,...(ghost?.ghostOf?{revealed:true}:{})});}
     } else return s;
-    next=log(next,'シーズン2の盤面効果を発動した');
+    next=log(next,Lk('シーズン2の盤面効果を発動した'));
   } else if(a.kind==='unmask') {
     const p=selected[0]; if(ids.length!==1 || p.owner!==owner || !p.ownerHidden)return s;
     // 移動する駒を確定する。確認後に別の駒へ選び直せない。

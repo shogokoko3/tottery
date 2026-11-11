@@ -8,6 +8,7 @@
  */
 import { STORY_AXES, normalizeStory, phaseOf } from "./phase.js";
 import { nextSeason, seasonAt, seasonName } from "./season.js";
+import { L, Lx, LOCALE } from "../i18n/index.js";
 
 /**
  * レート戦(ランダムマッチ)はシーズンの中だけ開く(2026-11-11 本人の指示「シーズンの外はレート戦を閉じる」)。
@@ -19,7 +20,7 @@ export function ratedSeasonGate(now = Date.now()) {
 }
 
 const startLabel = (n) =>
-  new Intl.DateTimeFormat("ja-JP", {
+  new Intl.DateTimeFormat(LOCALE, {
     timeZone: "Asia/Tokyo",
     month: "numeric",
     day: "numeric",
@@ -32,8 +33,8 @@ const startLabel = (n) =>
 export function ratedSeasonLabel(gate) {
   if (gate.open) return null;
   return gate.next
-    ? `${seasonName(gate.next.id)}は ${startLabel(gate.next.start)} から`
-    : "次のシーズンをお待ちください";
+    ? L("{season}は {time} から", { season: Lx(seasonName(gate.next.id)), time: startLabel(gate.next.start) })
+    : L("次のシーズンをお待ちください");
 }
 
 /** このフェーズのストーリーをクリアするとランダムマッチが開く */
@@ -56,7 +57,7 @@ export function onlineGate(profile) {
 /** 入口に添える一言 */
 export function onlineGateLabel(gate) {
   if (gate.ok) return null;
-  return `ストーリー フェーズ1のクリアで開きます（あと${gate.remaining}ステージ）`;
+  return L("ストーリー フェーズ1のクリアで開きます（あと{n}ステージ）", { n: gate.remaining });
 }
 
 /**
@@ -79,7 +80,7 @@ export function needsName(screen, mode = null) {
 
 /** 名前の壁で、いま聞くわけの一行 */
 export function nameWallReason(screen) {
-  if (screen === "ranking") return "ランキングを見る前に、名前を決めよう。";
-  if (screen === "friends" || screen === "spectate") return "フレンドと遊ぶ前に、名前を決めよう。";
-  return "人と対戦する前に、名前を決めよう。";
+  if (screen === "ranking") return L("ランキングを見る前に、名前を決めよう。");
+  if (screen === "friends" || screen === "spectate") return L("フレンドと遊ぶ前に、名前を決めよう。");
+  return L("人と対戦する前に、名前を決めよう。");
 }

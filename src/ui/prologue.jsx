@@ -29,6 +29,7 @@ import { cardBackImg } from "../assets.js";
 import { Piece } from "./cards.jsx";
 import { useReducedMotion } from "./skin-modal.jsx";
 import { useCollection } from "../skins/store.js";
+import { L } from "../i18n/index.js";
 
 /**
  * 語りの札。lines は見出し(読点ごとの行)、note はその下の一行、art は絵の種類。
@@ -38,15 +39,15 @@ export const PROLOGUE = Object.freeze([
   Object.freeze({
     key: "one",
     // 導入1枚目。広告にも使う(2026-10-01 本人の決め)
-    lines: Object.freeze(["その一枚が、", "王かもしれない。"]),
-    note: "トランプの札を駒に、伏せて戦う一対一。",
+    lines: Object.freeze([L("その一枚が、"), L("王かもしれない。")]),
+    note: L("トランプの札を駒に、伏せて戦う一対一。"),
     art: "take",
     touch: true,
   }),
   Object.freeze({
     key: "read",
-    lines: Object.freeze(["動きを読め。", "隠れた王を討て。"]),
-    note: "相手の王を取れば、あなたの勝ち。",
+    lines: Object.freeze([L("動きを読め。"), L("隠れた王を討て。")]),
+    note: L("相手の王を取れば、あなたの勝ち。"),
     art: "king",
   }),
 ]);
@@ -55,17 +56,17 @@ export const PROLOGUE = Object.freeze([
 export const GATE = Object.freeze([
   Object.freeze({
     key: "gate",
-    lines: Object.freeze(["はじめての勝ちに、", "門が開く。"]),
+    lines: Object.freeze([L("はじめての勝ちに、"), L("門が開く。")]),
     // 「十人」は駒が増えるように読めるので使わない。門の「この手に」との重なりも避ける
-    note: "札に宿る英雄を、呼び出そう。",
+    note: L("札に宿る英雄を、呼び出そう。"),
     art: "gate",
   }),
 ]);
 
 /** 語りの組ごとの、最後の釦と読み飛ばしの行き先 */
 const SETS = Object.freeze({
-  intro: { cards: PROLOGUE, label: "はじまりの語り", done: "盤へ", skip: "語りを読み飛ばして盤へ" },
-  gate: { cards: GATE, label: "門の語り", done: "門を開く", skip: "語りを読み飛ばして召喚の門へ" },
+  intro: { cards: PROLOGUE, label: L("はじまりの語り"), done: L("盤へ"), skip: L("語りを読み飛ばして盤へ") },
+  gate: { cards: GATE, label: L("門の語り"), done: L("門を開く"), skip: L("語りを読み飛ばして召喚の門へ") },
 });
 
 /**
@@ -133,7 +134,7 @@ function TakeArt({ taken, kingAt, settled, onTake }) {
               type="button"
               className="prologue-foe"
               disabled={!inviting}
-              aria-label={`相手の伏せ札(左から${col + 1}枚目)を取る`}
+              aria-label={L("相手の伏せ札(左から{n}枚目)を取る", { n: col + 1 })}
               tabIndex={inviting ? 0 : -1}
               onClick={(e) => {
                 e.stopPropagation();
@@ -218,7 +219,7 @@ export function Prologue({ kind = "intro", onDone }) {
           finish();
         }}
       >
-        読み飛ばす ≫
+        {L("読み飛ばす ≫")}
       </button>
       {/* 札を差し替えるたびに入り直す(key で作り直す) */}
       <div className="prologue-text" key={card.key}>
@@ -245,7 +246,7 @@ export function Prologue({ kind = "intro", onDone }) {
           数え方は算用数字(「1枚」「4枚」。2026-10-06 本人の指示)。見出しの「その一枚が、」は決めた言葉なので漢数字のまま */}
       {card.art !== "gate" && (
         <p className="prologue-cue" aria-live="polite" key={card.touch ? (taken === null ? "ask" : "miss") : "none"}>
-          {card.touch ? (taken === null ? "1枚、取ってみて。" : "外れ。王は、残りの4枚の中。") : null}
+          {card.touch ? (taken === null ? L("1枚、取ってみて。") : L("外れ。王は、残りの4枚の中。")) : null}
         </p>
       )}
       <div className="prologue-foot">
@@ -264,7 +265,7 @@ export function Prologue({ kind = "intro", onDone }) {
             next();
           }}
         >
-          {last ? set.done : "つづき"}
+          {last ? set.done : L("つづき")}
         </button>
       </div>
     </div>

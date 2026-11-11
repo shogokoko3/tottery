@@ -7,6 +7,7 @@
  * 見抜いた駒(known)・凍った駒・変身/昇格のしるしは cards.jsx の Piece が描く。
  */
 import { PLAYER_META, SUIT_SYMBOL } from "../game/constants.js";
+import { L, Lx } from "../i18n/index.js";
 import { isAutomaticArea } from "../game/area-presentation.js";
 import { AliceAreaBar } from "./alice-areas.jsx";
 import {
@@ -55,7 +56,7 @@ export function AreaBar({
     ? {
         ...AREA_INFO[mine.type],
         ...(areaUsesTurn(state, mine.type)
-          ? { text: "ターンを使い、自分の駒1体を1段昇格させる(Kまで・公開)" }
+          ? { text: L("ターンを使い、自分の駒1体を1段昇格させる(Kまで・公開)") }
           : {}),
       }
     : null;
@@ -64,31 +65,46 @@ export function AreaBar({
     state.ruleVersion < 9 &&
     !areaUsesTurn(state, mine.type)
   )
-    info.text = "自分の駒1体を1段昇格させる(Kまで・公開)。昇格後も駒を動かせる";
+    info.text = L("自分の駒1体を1段昇格させる(Kまで・公開)。昇格後も駒を動かせる");
   const doubleLeft = palaceDoubleRemaining(state, me);
   const doubleTargets =
     mine?.type === "palace" ? palaceCandidates(state, me, 2) : [];
-  const label = (i) => (names && names[i] ? names[i] : PLAYER_META[i].name);
+  const label = (i) => (names && names[i] ? names[i] : Lx(PLAYER_META[i].name));
+  // 選んだ駒の札(太字)を文の途中に入れる。英語は語順が違うので、文ごと引いて {piece} で切る
+  const chosenText = !chosen
+    ? null
+    : mine?.type === "sky"
+      ? L("{piece} を 10 に変身させます(公開されます)")
+      : picking === 2
+        ? L("{piece} を2段階昇格させます({from} → {to}、公開されます)", {
+            from: chosen.rank,
+            to: palacePromotionRank(state, chosen, 2) || "?",
+          })
+        : L("{piece} を1段階昇格させます({from} → {to}、公開されます)", {
+            from: chosen.rank,
+            to: palacePromotionRank(state, chosen, 1) || "?",
+          });
+  const [chosenPre, chosenPost] = chosenText ? chosenText.split("{piece}") : ["", ""];
 
   if (picking && mine) {
     return (
       <div
         className="area-bar area-bar-picking"
         role="group"
-        aria-label="エリアの対象選択"
+        aria-label={L("エリアの対象選択")}
       >
         {mine.type === "palace" && state.ruleVersion >= 9 && (
           <div
             className="area-promotion-options"
             role="group"
-            aria-label="昇格する段階"
+            aria-label={L("昇格する段階")}
           >
             <button
               className={`btn btn-small ${picking !== 2 ? "btn-primary" : "btn-ghost"}`}
               aria-pressed={picking !== 2}
               onClick={() => setPicking(1)}
             >
-              1段階昇格
+              {L("1段階昇格")}
             </button>
             <button
               className={`btn btn-small ${picking === 2 ? "btn-primary" : "btn-ghost"}`}
@@ -96,51 +112,52 @@ export function AreaBar({
               disabled={!doubleLeft || !doubleTargets.length}
               title={
                 !doubleLeft
-                  ? "この局の2段階昇格は使用済みです"
+                  ? L("この局の2段階昇格は使用済みです")
                   : !doubleTargets.length
-                    ? "2段階昇格できる駒がありません"
-                    : "1局に1回だけ使えます"
+                    ? L("2段階昇格できる駒がありません")
+                    : L("1局に1回だけ使えます")
               }
               onClick={() => setPicking(2)}
             >
-              2段階昇格
-              <small>{doubleLeft ? `残り${doubleLeft}回` : "使用済み"}</small>
+              {L("2段階昇格")}
+              <small>{doubleLeft ? L("残り{n}回", { n: doubleLeft }) : L("使用済み")}</small>
             </button>
           </div>
         )}
         {chosen ? (
           <>
             <span className="area-pick-instruction">
+              {chosenPre}
               <b>
                 {chosen.rank}
                 {SUIT_SYMBOL[chosen.suit]}
               </b>
-              {mine.type === "sky"
-                ? " を 10 に変身させます(公開されます)"
-                : ` を${picking === 2 ? "2段階" : "1段階"}昇格させます(${chosen.rank} → ${palacePromotionRank(state, chosen, picking === 2 ? 2 : 1) || "?"}、公開されます)`}
+              {chosenPost}
             </span>
             <button
               className={`btn btn-primary btn-small ${focusFire ? "guide-target" : ""}`}
               onClick={onConfirm}
             >
-              確定
+              {L("確定")}
             </button>
             <button className="btn btn-ghost btn-small" onClick={onUnchoose}>
-              選び直す
+              {L("選び直す")}
             </button>
           </>
         ) : (
           <span className="area-pick-instruction">
             {mine.type === "sky"
-              ? "10に変身させる駒を選んでください"
-              : `${picking === 2 ? "2段階" : "1段階"}昇格させる駒を選んでください`}
+              ? L("10に変身させる駒を選んでください")
+              : picking === 2
+                ? L("2段階昇格させる駒を選んでください")
+                : L("1段階昇格させる駒を選んでください")}
           </span>
         )}
         <button
           className="btn btn-ghost btn-small"
           onClick={() => setPicking(false)}
         >
-          やめる
+          {L("やめる")}
         </button>
       </div>
     );
@@ -154,19 +171,19 @@ export function AreaBar({
             {info.name}
             <small>
               {recurringArea(state, mine.type)
-                ? "毎ターン"
+                ? L("毎ターン")
                 : mine.used
-                  ? "使用済み"
-                  : "未使用"}
+                  ? L("使用済み")
+                  : L("未使用")}
             </small>
             {mine.type === "palace" && state.ruleVersion >= 9 && (
               <small>
-                2段階：{doubleLeft ? `残り${doubleLeft}回` : "使用済み"}
+                {L("2段階：{left}", { left: doubleLeft ? L("残り{n}回", { n: doubleLeft }) : L("使用済み") })}
               </small>
             )}
           </>
         ) : (
-          <small>エリアなし</small>
+          <small>{L("エリアなし")}</small>
         )}
       </span>
       {/* 「発動」の枠は相手の番でも残す(見えなくするだけ)。出たり消えたりで帯の幅と高さが変わり、
@@ -183,7 +200,7 @@ export function AreaBar({
             else dispatch({ type: "USE_AREA" });
           }}
         >
-          発動
+          {L("発動")}
         </button>
       )}
       <span
@@ -195,28 +212,27 @@ export function AreaBar({
             {AREA_INFO[areas[foe].type].name}
             <small>
               {recurringArea(state, areas[foe].type)
-                ? "毎ターン"
+                ? L("毎ターン")
                 : areas[foe].used
-                  ? "使用済み"
-                  : "未使用"}
+                  ? L("使用済み")
+                  : L("未使用")}
             </small>
             {areas[foe].type === "palace" && state.ruleVersion >= 9 && (
               <small>
-                2段階：
-                {palaceDoubleRemaining(state, foe) ? "残り1回" : "使用済み"}
+                {L("2段階：{left}", { left: palaceDoubleRemaining(state, foe) ? L("残り1回") : L("使用済み") })}
               </small>
             )}
           </>
         ) : (
-          <small>エリアなし</small>
+          <small>{L("エリアなし")}</small>
         )}
       </span>
       {onHelp && (
         <button
           className="icon-btn area-help"
           onClick={onHelp}
-          aria-label="盤面エリアの説明を見る"
-          title="盤面エリアの説明"
+          aria-label={L("盤面エリアの説明を見る")}
+          title={L("盤面エリアの説明")}
         >
           ?
         </button>
@@ -231,7 +247,7 @@ export function AreaBar({
         can.why
           ? can.why
           : mine?.type === "sea" && state.ruleVersion >= 10 && myTurn && can.ok
-            ? "発動は任意です。使わずに駒を動かせます。"
+            ? L("発動は任意です。使わずに駒を動かせます。")
             : " "}
       </small>
     </div>

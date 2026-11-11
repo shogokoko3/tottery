@@ -91,7 +91,7 @@ const reset = () => {
   assert.ok(/skipXp=\{tutorial\.xp \|\| 0\}/.test(game));
   // 途中でも飛ばせる: 上の釦(TutorialSkipMenu)を対局画面の全ての GameShell に渡す
   assert.ok(/export function TutorialSkipMenu\(/.test(ui), "上の「飛ばす」がある");
-  assert.ok(/残りの \{left\.length\} 話をすべて飛ばす/.test(ui), "残りの全話も選べる");
+  assert.ok(/残りの (?:\{left\.length\}|\{n\}) 話をすべて飛ばす/.test(ui), "残りの全話も選べる");
   const shells = (game.match(/<GameShell\n/g) || []).length;
   const wired = (game.match(/topExtra=\{skipMenu\}/g) || []).length;
   assert.ok(shells > 0 && shells === wired, `対局画面の GameShell 全部に「飛ばす」を渡す(${wired}/${shells})`);

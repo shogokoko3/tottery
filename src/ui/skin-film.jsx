@@ -3,6 +3,7 @@ import { audioSettings, connectFilmSound, duckMusic } from "../audio/index.js";
 import { useCollection } from "../skins/store.js";
 import { filmPlanFor, filmQueueState } from "../skins/events.js";
 import { SkinModal, useReducedMotion } from "./skin-modal.jsx";
+import { L } from "../i18n/index.js";
 
 export function SkinFilm({ skin, short = false, onClose }) {
   const video = useRef(null),
@@ -64,7 +65,7 @@ export function SkinFilm({ skin, short = false, onClose }) {
   }, [skin.video, short]);
   return (
     <SkinModal
-      label={`${skin.name}の演出`}
+      label={L("{name}の演出", { name: skin.name })}
       onClose={onClose}
       className="skin-film-overlay"
     >
@@ -74,10 +75,10 @@ export function SkinFilm({ skin, short = false, onClose }) {
         poster={skin.image}
         playsInline
         preload="auto"
-        aria-label={`${skin.name}・${skin.move}の演出`}
+        aria-label={L("{name}・{move}の演出", { name: skin.name, move: skin.move })}
       />
       <button className="skin-skip" onClick={onClose}>
-        演出をスキップ →
+        {L("演出をスキップ →")}
       </button>
     </SkinModal>
   );

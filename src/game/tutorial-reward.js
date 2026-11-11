@@ -17,6 +17,8 @@
  * 話の数が有限なので、上限は「話ごとに一度」で足りる(1人あたり最大 13×10 枚)
  */
 
+import { L } from "../i18n/index.js";
+
 /** 1話終えるごとに配るガチャチケットの枚数 */
 export const TUTORIAL_TICKETS = 10;
 
@@ -44,7 +46,7 @@ export function ticketsForCleared(cleared) {
 /** 画面に出す一言。0 枚なら null(何も出さない) */
 export function ticketRewardLabel(count) {
   const n = Number(count) || 0;
-  return n > 0 ? `ガチャチケット ${n}枚` : null;
+  return n > 0 ? L("ガチャチケット {n}枚", { n }) : null;
 }
 
 /**

@@ -11,16 +11,17 @@
  */
 import { useState } from "react";
 import { SkinModal } from "./skin-modal.jsx";
+import { L } from "../i18n/index.js";
 
 export function SeriesSelect({
   items,
   value,
   onChange,
-  label = "シリーズを選ぶ",
-  hint = "シリーズを選ぶ",
+  label = L("シリーズを選ぶ"),
+  hint = L("シリーズを選ぶ"),
   disabled = false,
   allowAll = false,
-  allLabel = "全シリーズ",
+  allLabel = L("全シリーズ"),
   allNote = "",
   className = "",
 }) {
@@ -51,7 +52,7 @@ export function SeriesSelect({
         <SkinModal label={label} onClose={() => setOpen(false)} className="series-select-overlay">
           <div className="skin-modal-head">
             <h2>{label}</h2>
-            <button className="skin-close" aria-label={`${label}を閉じる`} onClick={() => setOpen(false)}>
+            <button className="skin-close" aria-label={L("{label}を閉じる", { label })} onClick={() => setOpen(false)}>
               ×
             </button>
           </div>

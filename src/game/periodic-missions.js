@@ -1,3 +1,4 @@
+import { L } from "../i18n/index.js";
 // Mission days begin at 05:00 JST; mission weeks begin Monday at 05:00 JST.
 const DAY = 86400000;
 const OFFSET = 4 * 3600000;
@@ -134,36 +135,36 @@ export const PERIODIC_MISSIONS = [
   {
     key: "login",
     category: "daily",
-    name: "ログインする",
+    name: L("ログインする"),
     goal: 1,
     reward: { type: "gems", amount: 10 },
   },
   {
     key: "all",
     category: "daily",
-    name: "デイリーミッションを全てクリアする",
+    name: L("デイリーミッションを全てクリアする"),
     goal: 3,
-    unit: "件",
+    unit: "件", // i18n-ignore 単位は日本語の画面でだけ出す
     reward: { type: "ether", amount: 30 },
   },
   {
     key: "online",
     category: "daily",
-    name: "オンライン対戦をする",
+    name: L("オンライン対戦をする"),
     goal: 1,
     reward: { type: "gems", amount: 20 },
   },
   {
     key: "gacha",
     category: "daily",
-    name: "ガチャを1回する",
+    name: L("ガチャを1回する"),
     goal: 1,
     reward: { type: "ether", amount: 30 },
   },
   {
     key: "tsume",
     category: "weekly",
-    name: "詰めトッタリーをクリアする",
+    name: L("詰めトッタリーをクリアする"),
     goal: 5,
     segments: true,
     reward: { type: "gems", amount: 50 },
@@ -171,7 +172,7 @@ export const PERIODIC_MISSIONS = [
   {
     key: "wins",
     category: "weekly",
-    name: "オンライン対戦で勝利する",
+    name: L("オンライン対戦で勝利する"),
     goal: 5,
     segments: true,
     reward: { type: "gems", amount: 50 },
@@ -180,7 +181,7 @@ export const PERIODIC_MISSIONS = [
     key: "king",
     category: "weekly",
     // 実際の名前は periodicMissionRows が今週の数字を入れて作る
-    name: "今週の数字を王にしてオンライン対戦で勝利する",
+    name: L("今週の数字を王にしてオンライン対戦で勝利する"),
     goal: 1,
     reward: { type: "gems", amount: 50 },
   },
@@ -188,7 +189,7 @@ export const PERIODIC_MISSIONS = [
 
 /** 今週の数字を入れた、王のミッションの名前 */
 export const kingMissionName = (rank) =>
-  `今週の数字「${rank}」を王にしてオンライン対戦で勝利する`;
+  L("今週の数字「{rank}」を王にしてオンライン対戦で勝利する", { rank });
 
 export const sanitizeMissionClaims = (raw) =>
   unique(
@@ -245,8 +246,8 @@ export function periodicMissionRows(profile, collection, at = Date.now()) {
       id,
       periodic: true,
       kind: def.category,
-      kindLabel: def.category === "daily" ? "デイリー" : "ウィークリー",
-      unit: def.unit || "回",
+      kindLabel: def.category === "daily" ? L("デイリー") : L("ウィークリー"),
+      unit: def.unit || "回", // i18n-ignore 単位は日本語の画面でだけ出す
       now,
       raw,
       claimed,
@@ -262,10 +263,10 @@ export function claimPeriodicMission(collection, profile, id, at = Date.now()) {
   const row = rows.find((m) => m.id === id);
   if (!row)
     throw new Error(
-      "ミッションが更新されました。現在のミッションをご確認ください。",
+      L("ミッションが更新されました。現在のミッションをご確認ください。"),
     );
   if (row.claimed) return collection;
-  if (!row.done) throw new Error("まだミッションの条件を満たしていません。");
+  if (!row.done) throw new Error(L("まだミッションの条件を満たしていません。"));
   // 受け取り済みの控え(今の期間のぶんだけ残し、今回の分を足す)
   const missionClaims = [
     ...sanitizeMissionClaims(collection.missionClaims).filter((claim) =>

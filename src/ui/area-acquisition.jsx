@@ -2,6 +2,7 @@ import { playSound, useCue } from "../audio/index.js";
 import { useEffect, useRef, useState } from "react";
 import { AREA_INFO } from "../game/areas.js";
 import { areaRewardName } from "../skins/area-rewards.js";
+import { L } from "../i18n/index.js";
 import { fieldUrl } from "./fields/backdrop.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { SkinModal } from "./skin-modal.jsx";
@@ -25,9 +26,9 @@ function AcquiredField({ reward, reduce }) {
       <header className="area-acquisition-heading">
         <span className="area-acquisition-eyebrow">FIELD ACQUIRED</span>
         <h2 ref={heading} tabIndex={-1}>
-          効果盤面も獲得
+          {L("効果盤面も獲得")}
         </h2>
-        <p>箔の輝きが、新たな盤面を呼び覚ます。</p>
+        <p>{L("箔の輝きが、新たな盤面を呼び覚ます。")}</p>
       </header>
       <div className="area-acquisition-stage">
         <div className="area-acquisition-orbit" aria-hidden="true" />
@@ -39,7 +40,7 @@ function AcquiredField({ reward, reduce }) {
         <div className="area-acquisition-frame">
           <img
             src={fieldUrl(reward.theme)}
-            alt={`${areaRewardName(reward)}の効果盤面`}
+            alt={L("{name}の効果盤面", { name: areaRewardName(reward) })}
             onLoad={() => setReady(true)}
             onError={() => setReady(true)}
           />
@@ -55,7 +56,7 @@ function AcquiredField({ reward, reduce }) {
           />
           <span>
             <b>FOIL</b>
-            <small>この輝きに宿る盤面</small>
+            <small>{L("この輝きに宿る盤面")}</small>
           </span>
         </div>
       </div>
@@ -64,17 +65,17 @@ function AcquiredField({ reward, reduce }) {
         <div className="area-acquisition-ranks">
           {reward.skins.map((skin) => (
             <span key={skin.id}>
-              {skin.rank} <small>{skin.name.replace("（フォイル）", "")}</small>
+              {skin.rank} <small>{skin.baseName ?? skin.name.replace(L("（フォイル）"), "")}</small>
             </span>
           ))}
         </div>
         <p className="area-acquisition-condition">
-          <b>盤面の使い方</b>
-          このフォイルを対応する数字に装備し、その札を王にすると、9×9の対局で使えます。
+          <b>{L("盤面の使い方")}</b>
+          {L("このフォイルを対応する数字に装備し、その札を王にすると、9×9の対局で使えます。")}
         </p>
         <p className="area-acquisition-condition">
-          <b>ホームの着せ替え</b>
-          このフォイルに対応するキャラ入り背景と装飾も使えます。ホームの「着せ替え」からセットで選べます。
+          <b>{L("ホームの着せ替え")}</b>
+          {L("このフォイルに対応するキャラ入り背景と装飾も使えます。ホームの「着せ替え」からセットで選べます。")}
         </p>
       </div>
     </div>
@@ -90,7 +91,7 @@ export function AreaAcquisition({ rewards, reduce = false, onFinish }) {
   const last = index === rewards.length - 1;
   return (
     <SkinModal
-      label="効果盤面の獲得"
+      label={L("効果盤面の獲得")}
       onClose={onFinish}
       className="area-acquisition-overlay"
     >
@@ -105,14 +106,14 @@ export function AreaAcquisition({ rewards, reduce = false, onFinish }) {
       <footer className="area-acquisition-footer">
         {rewards.length > 1 && (
           <span>
-            {index + 1} / {rewards.length} 盤面
+            {L("{i} / {n} 盤面", { i: index + 1, n: rewards.length })}
           </span>
         )}
         <button
           className="skin-btn skin-btn-gold"
           onClick={last ? onFinish : () => setIndex((i) => i + 1)}
         >
-          {last ? "獲得結果へ →" : "次の効果盤面へ →"}
+          {last ? L("獲得結果へ →") : L("次の効果盤面へ →")}
         </button>
       </footer>
     </SkinModal>

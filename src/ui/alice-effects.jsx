@@ -6,6 +6,7 @@ import {Piece} from './cards.jsx';
 import CSS from './alice-effects.css';
 import { playSound, duckMusic } from '../audio/index.js';
 import {AliceExtraEffects} from './alice-extra-effects.jsx';
+import {L} from '../i18n/index.js';
 
 export function useAliceEffects(state,viewer=null,blocked=false) {
   // クロッケーの飛翔と衝突だけは撃破札を開く前。それ以外は従来どおり公開を待つ。
@@ -117,12 +118,12 @@ export function AliceBoardEffects({effect,flipped=false,size='sm',progress=null}
     {royal&&impact>0&&<div className={`alice-royal-banner${lost?' is-loss':''}`} style={{opacity:e.royalResult?ease(impact/.28):Math.sin(Math.PI*clamp((impact-.09)/.85))**.45,transform:`translate(-50%,-50%) scale(${.8+ease(impact/.28)*.2})`}}>
       <svg viewBox="0 0 100 54" aria-hidden="true"><path d="M18 40 L8 8 L32 24 L50 2 L68 24 L92 8 L82 40 Z" fill={lost?'#a68c99':'#f6d68d'} stroke={lost?'#cfbdc6':'#fff4c3'} strokeWidth="3"/><path d="M18 48 H82" stroke={lost?'#a68c99':'#f6d68d'} strokeWidth="5"/>{lost&&<path d="M53 5 L43 25 L56 30 L45 44" fill="none" stroke="#2a1826" strokeWidth="5"/>}</svg>
       <small>{lost?'ROYAL FALL':'ROYAL BREAK'}</small>
-      <b role="status">{lost?'王が撃破された':'王 撃 破'}</b>
+      <b role="status">{lost?L('王が撃破された'):L('王 撃 破')}</b>
       {!lost&&e.royalResult&&<em className="alice-royal-congratulations">Congratulations!!</em>}
-      <span>クロッケー大会</span>
-      {e.royalResult&&t>=1&&effect.dismiss&&<button type="button" className="btn alice-royal-continue" autoFocus onClick={effect.dismiss}>対戦結果へ</button>}
+      <span>{L('クロッケー大会')}</span>
+      {e.royalResult&&t>=1&&effect.dismiss&&<button type="button" className="btn alice-royal-continue" autoFocus onClick={effect.dismiss}>{L('対戦結果へ')}</button>}
     </div>}
-    {e.type==='reverse'&&e.targets.map((a,i)=>{const p=center(a),piece=flip<.5?a.before:a.after,angle=flip<.5?flip*180:(flip-1)*180,lift=a.changed?Math.sin(Math.PI*clamp((t-.1)/.78)):0,flash=Math.sin(Math.PI*clamp((t-.36)/.22))**2;return <div key={i}>{clone(piece,p,{transform:`translate(-50%,calc(-50% - ${lift*6}px)) perspective(500px) rotateY(${a.changed?angle:0}deg) scale(${1+lift*.09})`,filter:a.changed?`brightness(${1+flash*2}) drop-shadow(0 0 ${3+lift*8}px #8de4ed)`:t>.2?'grayscale(.7)':undefined},'flip'+i)}{t>.64&&<span className={`alice-fx-change alice-reverse-change${a.changed?'':' alice-reverse-change-miss'}`} style={{left:`${p.x}%`,top:`${p.y+100/n*.51}%`,width:`${100/n*.98}%`,opacity:ease((t-.64)/.09),transform:`translate(-50%,${(1-ease((t-.64)/.12))*6}px)`}}>{!a.changed?'不発':a.label?<><del>{a.before.rank||'？'}</del><i>→</i><b>{a.after.rank}</b></>:'逆転'}</span>}</div>;})}
+    {e.type==='reverse'&&e.targets.map((a,i)=>{const p=center(a),piece=flip<.5?a.before:a.after,angle=flip<.5?flip*180:(flip-1)*180,lift=a.changed?Math.sin(Math.PI*clamp((t-.1)/.78)):0,flash=Math.sin(Math.PI*clamp((t-.36)/.22))**2;return <div key={i}>{clone(piece,p,{transform:`translate(-50%,calc(-50% - ${lift*6}px)) perspective(500px) rotateY(${a.changed?angle:0}deg) scale(${1+lift*.09})`,filter:a.changed?`brightness(${1+flash*2}) drop-shadow(0 0 ${3+lift*8}px #8de4ed)`:t>.2?'grayscale(.7)':undefined},'flip'+i)}{t>.64&&<span className={`alice-fx-change alice-reverse-change${a.changed?'':' alice-reverse-change-miss'}`} style={{left:`${p.x}%`,top:`${p.y+100/n*.51}%`,width:`${100/n*.98}%`,opacity:ease((t-.64)/.09),transform:`translate(-50%,${(1-ease((t-.64)/.12))*6}px)`}}>{!a.changed?L('不発'):a.label?<><del>{a.before.rank||L('？')}</del><i>→</i><b>{a.after.rank}</b></>:L('逆転')}</span>}</div>;})}
     {e.type==='revive'&&e.targets.map((a,i)=>clone(a.piece,center(a),{opacity:arrival,transform:`translate(-50%,${-50+(1-arrival)*40}%) scale(${.75+arrival*.25})`,filter:`brightness(${1+(1-arrival)*2})`},'revive'+i))}
     <AliceExtraEffects event={e} t={t} point={point} clone={clone}/>
   </div>;

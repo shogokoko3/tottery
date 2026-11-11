@@ -20,17 +20,26 @@ import { AREA_BY_RANK, AREA_INFO } from "./areas.js";
 import { areaShort, foeKingPowerText } from "./king-power-text.js";
 import { buildDeck, shuffle, squareName } from "./board.js";
 import { josekiDeck } from "./cpu-joseki.js";
+import { L, isEnglish } from "../i18n/index.js";
 import { STORY_TICKETS, normalizePhase, normalizeStory, phaseOf, rulesForPhase, storySetupFlags, stageSize } from "./phase.js";
+
+/**
+ * 句の並び(画面は句ごとに折り返す)。日本語は句ごと、英語は句の英訳を空白でつないだ1つの句
+ * (英語は語の間で折り返せるので、句に切らない)
+ */
+const P = (...phrases) => (isEnglish ? [capitalize(phrases.join(" "))] : phrases);
+// 英語の句は、ほかの画面と同じ訳(文の途中から始まる「or …」など)を使うことがあるので、文頭だけ大文字に
+const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** ステージ。並びは STORY_AXES と同じ */
 export const STORY_STAGES = Object.freeze([
-  Object.freeze({ axis: "23", ranks: Object.freeze(["2", "3"]), name: "二と三", tagline: "小回りの王。近くで討ち合う" }),
-  Object.freeze({ axis: "45", ranks: Object.freeze(["4", "5"]), name: "四と五", tagline: "二歩の王。仲間と並んで押す" }),
-  Object.freeze({ axis: "67", ranks: Object.freeze(["6", "7"]), name: "六と七", tagline: "偶数マスの王。飛び石で迫る" }),
-  Object.freeze({ axis: "89", ranks: Object.freeze(["8", "9"]), name: "八と九", tagline: "奇数マスの王。一歩から遠くまで" }),
-  Object.freeze({ axis: "10", ranks: Object.freeze(["10"]), name: "十", tagline: "跳ぶ王。間の駒を飛び越える" }),
-  Object.freeze({ axis: "jq", ranks: Object.freeze(["J", "Q"]), name: "JとQ", tagline: "果てまで走る王。縦横か斜めに一直線" }),
-  Object.freeze({ axis: "k", ranks: Object.freeze(["K"]), name: "K", tagline: "縦横斜めに走り、跳ぶこともできる王" }),
+  Object.freeze({ axis: "23", ranks: Object.freeze(["2", "3"]), name: L("二と三"), tagline: L("小回りの王。近くで討ち合う") }),
+  Object.freeze({ axis: "45", ranks: Object.freeze(["4", "5"]), name: L("四と五"), tagline: L("二歩の王。仲間と並んで押す") }),
+  Object.freeze({ axis: "67", ranks: Object.freeze(["6", "7"]), name: L("六と七"), tagline: L("偶数マスの王。飛び石で迫る") }),
+  Object.freeze({ axis: "89", ranks: Object.freeze(["8", "9"]), name: L("八と九"), tagline: L("奇数マスの王。一歩から遠くまで") }),
+  Object.freeze({ axis: "10", ranks: Object.freeze(["10"]), name: L("十"), tagline: L("跳ぶ王。間の駒を飛び越える") }),
+  Object.freeze({ axis: "jq", ranks: Object.freeze(["J", "Q"]), name: L("JとQ"), tagline: L("果てまで走る王。縦横か斜めに一直線") }),
+  Object.freeze({ axis: "k", ranks: Object.freeze(["K"]), name: "K", tagline: L("縦横斜めに走り、跳ぶこともできる王") }),
 ]);
 
 /** ステージごとの xp(仮置き。本人が決めるまでの値) */
@@ -55,13 +64,13 @@ export function storyLesson(axis, phase = 1) {
  * 「一直線」は言葉なので漢数字のまま
  */
 const RIVALS = Object.freeze({
-  "23": { name: "門前の番人", quote: "逃げた一枚を、どう読む？", aim: "相手の動きから、王を探そう。", after: "読みは届いた。門の先へ進め。" },
-  "45": { name: "双歩の衛士", quote: "今度は、君の王を探そう。", aim: "自分の王に、味方を1枚添えよう。", after: "その陣なら、先へ進める。" },
-  "67": { name: "飛び石の旅人", quote: "届かないと思った、その先へ。", aim: "2マス先から届く手に注目しよう。", after: "距離を読めたな。次はもっと遠くだ。" },
-  "89": { name: "遠見の狩人", quote: "遠くにいるから、安心かい？", aim: "1・3マス先への動きを見よう。", after: "遠くの一手まで、見えてきたね。" },
-  "10": { name: "空渡りの騎士", quote: "その壁を、越えてみせよう。", aim: "駒を飛び越える行き先を見よう。", after: "壁の向こうまで、読まれたか。" },
-  "jq": { name: "二筋の宰相", quote: "縦横か、斜めか。道を見よ。", aim: "一直線に届く道を探そう。", after: "道は開いた。玉座で待つ者のもとへ。" },
-  "k": { name: "玉座の主", quote: "ここまでの読みを、見せてみよ。", aim: "動きと逃げ方から、王を絞ろう。", after: "見事だ。その読みを、次の相手へ。" },
+  "23": { name: L("門前の番人"), quote: L("逃げた一枚を、どう読む？"), aim: L("相手の動きから、王を探そう。"), after: L("読みは届いた。門の先へ進め。") },
+  "45": { name: L("双歩の衛士"), quote: L("今度は、君の王を探そう。"), aim: L("自分の王に、味方を1枚添えよう。"), after: L("その陣なら、先へ進める。") },
+  "67": { name: L("飛び石の旅人"), quote: L("届かないと思った、その先へ。"), aim: L("2マス先から届く手に注目しよう。"), after: L("距離を読めたな。次はもっと遠くだ。") },
+  "89": { name: L("遠見の狩人"), quote: L("遠くにいるから、安心かい？"), aim: L("1・3マス先への動きを見よう。"), after: L("遠くの一手まで、見えてきたね。") },
+  "10": { name: L("空渡りの騎士"), quote: L("その壁を、越えてみせよう。"), aim: L("駒を飛び越える行き先を見よう。"), after: L("壁の向こうまで、読まれたか。") },
+  "jq": { name: L("二筋の宰相"), quote: L("縦横か、斜めか。道を見よ。"), aim: L("一直線に届く道を探そう。"), after: L("道は開いた。玉座で待つ者のもとへ。") },
+  "k": { name: L("玉座の主"), quote: L("ここまでの読みを、見せてみよ。"), aim: L("動きと逃げ方から、王を絞ろう。"), after: L("見事だ。その読みを、次の相手へ。") },
 });
 
 export function storyRival(axis, phase = 1) {
@@ -69,6 +78,7 @@ export function storyRival(axis, phase = 1) {
   const p = normalizePhase(phase);
   const arc = storyArc(axis), episode = storyEpisode(axis, p);
   const voice = episode.before.filter(line => arc.characters.some(c => c.name === line.speaker)).at(-1)
+    // i18n-ignore(本文の話者の目印。比べるだけ)
     || episode.before.filter(line => line.speaker !== "語り").at(-1) || episode.before[0];
   return {
     ...RIVALS[axis],
@@ -107,8 +117,8 @@ export function storyDeal(story) {
 /** 結果で確かめられる事実を一つだけ伝える。未公開の推測やCPUの意図は説明しない。 */
 export function storyLossNote(state, seat = 0) {
   if (!state || state.phase !== "gameover" || state.winner == null || state.winner === seat) return null;
-  if (state.resignedBy === seat) return { fact: "今回は、ここで一休み。", tip: "同じ相手に、何度でも挑める。" };
-  if (state.adjudication) return { fact: "今回は、採用した札の合計で決着。", tip: "次は、判定の前に王を探してみよう。" };
+  if (state.resignedBy === seat) return { fact: L("今回は、ここで一休み。"), tip: L("同じ相手に、何度でも挑める。") };
+  if (state.adjudication) return { fact: L("今回は、採用した札の合計で決着。"), tip: L("次は、判定の前に王を探してみよう。") };
   const king = state.pieces?.[state.players?.[seat]?.kingId];
   const move = state.lastMove;
   const mover = state.pieces?.[move?.pieceId];
@@ -116,11 +126,15 @@ export function storyLossNote(state, seat = 0) {
   if (king?.alive === false && mover && move.owner !== seat && move.captured &&
       taken.some((p) => p.owner === seat && p.row === king.row && p.col === king.col)) {
     return {
-      fact: `${mover.rank}${SUIT_SYMBOL[mover.suit]} の ${squareName(move.from.row, move.from.col, state.boardSize)} → ${squareName(move.to.row, move.to.col, state.boardSize)} が、王に届いた。`,
-      tip: "次は、王の近くの相手がどこへ動けるか見よう。",
+      fact: L("{piece} の {from} → {to} が、王に届いた。", {
+        piece: `${mover.rank}${SUIT_SYMBOL[mover.suit]}`,
+        from: squareName(move.from.row, move.from.col, state.boardSize),
+        to: squareName(move.to.row, move.to.col, state.boardSize),
+      }),
+      tip: L("次は、王の近くの相手がどこへ動けるか見よう。"),
     };
   }
-  return { fact: "次の一局で、もう一度読んでみよう。", tip: "振り返りで、決着の一手を確かめられる。" };
+  return { fact: L("次の一局で、もう一度読んでみよう。"), tip: L("振り返りで、決着の一手を確かめられる。") };
 }
 
 /** 並びで次のステージ(クリアの有無は見ない)。最後なら null */
@@ -142,7 +156,7 @@ export function nextStageAfter(profile, axis) {
 }
 
 /** 数字の並びを「2 か 3」のように読める形に */
-export const ranksLabel = (ranks) => ranks.join(" か ");
+export const ranksLabel = (ranks) => ranks.join(L(" か "));
 
 /**
  * ステージの前に出す、相手の王の説明。フェーズで中身が変わる。
@@ -154,28 +168,28 @@ export function stageIntro(axis, phase) {
   const stage = stageOf(axis);
   if (!stage) return null;
   const p = normalizePhase(phase);
-  const lead = `相手の王は ${ranksLabel(stage.ranks)}。`;
+  const lead = L("相手の王は {ranks}。", { ranks: ranksLabel(stage.ranks) });
   if (p === 1)
     return Object.freeze({
-      title: `${stage.name}の王`,
+      title: L("{name}の王", { name: stage.name }),
       lead,
       // フェーズ1は駒の動き方だけ(2026-09-30 本人の指示)。王の力には触れない
       // 文は MOVE_TEXT のまま。画面は句(phrases)ごとに出す(375 幅で「縦横に2マスま/で。」と割れた)
       items: stage.ranks.map((rank) => Object.freeze({ rank, text: MOVE_TEXT[rank], phrases: Object.freeze([...movePhrases(rank)]) })),
       // 「名乗らない」はやめた(2026-10-01 本人の指示。語りと手引きからも外した言い回し)。
       // 1文1行(2026-10-06 見直し。2文を1行に入れていて、320 幅で「取/るまで分からない。」と割れた。文は変えない)
-      note: Object.freeze(["相手の王を取れば、勝ち。", "王は、伏せたまま。", "取るまで分からない。"]),
+      note: Object.freeze([L("相手の王を取れば、勝ち。"), L("王は、伏せたまま。"), L("取るまで分からない。")]),
     });
   if (p === 2)
     return Object.freeze({
-      title: `${stage.name}の王`,
+      title: L("{name}の王", { name: stage.name }),
       lead,
       // フェーズ2 の CPU の王は力なし(2026-10-25 本人の指示「王の力は、プレイヤー側のみが発動できる」)。
       // 相手の王について知ることは動き方だけなので、フェーズ1 と同じく MOVE_TEXT を句ごとに出す
       items: stage.ranks.map((rank) => Object.freeze({ rank, text: MOVE_TEXT[rank], phrases: Object.freeze([...movePhrases(rank)]) })),
       // 相手の王の動きの欄の見出し(王の力の図と取り違えないように。AI プレイヤーの評価 2026-10-25)
-      itemsTitle: "相手の王の動き(王の力なし)",
-      note: Object.freeze(["王の力は、あなたの王だけが使える。", "相手の王は力を持たない。取れば、勝ち。"]),
+      itemsTitle: L("相手の王の動き(王の力なし)"),
+      note: Object.freeze([L("王の力は、あなたの王だけが使える。"), L("相手の王は力を持たない。取れば、勝ち。")]),
       // フェーズ2 の第1話では、王の力とは何かを先に見せる(2026-10-25 本人の指示)。図は 2 の王の力なし/ありの比べ。
       // 文は AI プレイヤー3人の評価(1回目 2.0〜2.8)で直した: 「取られても新しい王」を先に言う・1文1つ・用語は「札」「取る」
       ...(axis === "23"
@@ -185,20 +199,20 @@ export function stageIntro(axis, phase) {
             // (王の力は数字で決まる/中身は王を選ぶ画面で見られる/力はあなたの王だけ)。図は 2 の「ふつう → 王」。
             // 動詞は「持つ」(4・5・K は王自身が強くならないので「強くなる」と言わない。「付く」は何に付くか迷う)
             power: Object.freeze({
-              title: "王の力",
+              title: L("王の力"),
               // 句の塊で出す(「…特別な力を持/つ。」と割れないように)。つなぐと1文
               lines: Object.freeze([
-                Object.freeze(["フェーズ2から、", "王にした駒の数字で", "「王の力」が決まる。"]),
+                Object.freeze(P(L("フェーズ2から、"), L("王にした駒の数字で"), L("「王の力」が決まる。"))),
                 // 4・5・K は王ではない駒に効く。「王が強くなる」とだけ言うと、王を選ぶ画面の4で食い違って見えた(評価 13回目)
-                Object.freeze(["王が強く動ける数字も、", "ほかの駒が強くなる数字もある。"]),
+                Object.freeze(P(L("王が強く動ける数字も、"), L("ほかの駒が強くなる数字もある。"))),
               ]),
               // 「3マスまで」は盤の2が1枚のときの数。条件を言わないと決まった数に読まれた(評価 18回目、誤り探し2人)
-              example: Object.freeze({ rank: "2", label: "例: 盤の2が1枚のとき、2を王にすると" }),
+              example: Object.freeze({ rank: "2", label: L("例: 盤の2が1枚のとき、2を王にすると") }),
               // 数字ごとの中身は、対局中に使える場面で光と一言で教える(2026-10-25 本人の指示。説明の画面は短く)
-              after: Object.freeze(["対局中、", "王の力で行けるマスが", "金色に光る。"]),
+              after: Object.freeze(P(L("対局中、"), L("王の力で行けるマスが"), L("金色に光る。"))),
               // 「あなたの王だけ」は、ほかの駒に効く4・5・Kと食い違って見えた。「1回」は「2回取る場合もあるのか」と疑われた(評価 7回目)
               // 使うと王だと気づかれやすい、を選ぶ前にも(対局中だけだと、王を選ぶときに代償が分からなかった。評価 12回目)
-              rules: Object.freeze([Object.freeze(["王の力は、", "あなたの側だけ。"]), Object.freeze(["相手の王には無い。", "相手の王を取れば、", "あなたの勝ち。"]), Object.freeze(["王の力を使うと、", "相手に王を", "読まれやすい。"])]),
+              rules: Object.freeze([Object.freeze(P(L("王の力は、"), L("あなたの側だけ。"))), Object.freeze(P(L("相手の王には無い。"), L("相手の王を取れば、"), L("あなたの勝ち。"))), Object.freeze(P(L("王の力を使うと、"), L("相手に王を"), L("読まれやすい。")))]),
             }),
           }
         : null),
@@ -207,20 +221,20 @@ export function stageIntro(axis, phase) {
   // 題のすぐ下の札(phase3)に、フェーズ3で変わることと相手の王の力をまとめる(案B。2026-10-26 本人の指示)。
   // 結びの行に置くと下の釦に隠れて最初の画面に入らなかった。第1話は「変わること」、2話目からは「決まり」
   return Object.freeze({
-    title: `${stage.name}の王`,
+    title: L("{name}の王", { name: stage.name }),
     lead,
     items: stage.ranks.map((rank) => Object.freeze({ rank, text: foeKingPowerText(rank) })),
-    itemsTitle: "相手の王の力",
+    itemsTitle: L("相手の王の力"),
     phase3: Object.freeze({
-      title: axis === "23" ? "フェーズ3で変わること" : "フェーズ3の決まり",
+      title: axis === "23" ? L("フェーズ3で変わること") : L("フェーズ3の決まり"),
       // 句の塊で出す(語の途中で割らない)。つなぐと1文
       lines: Object.freeze([
-        Object.freeze(["相手の王も、", "王の力を持つ。"]),
+        Object.freeze(P(L("相手の王も、"), L("王の力を持つ。"))),
         // エリアは、おすすめの駒(この話の数字)を王にしたときだけ付く。フォイルを着けた札なら、そのフォイルのエリア(2026-10-26 本人の指示)
-        Object.freeze([`${stage.ranks.join("か")}を王にすると、`, "あなたの王に", `${areaShort(storyArea(axis)).name}が付く。`]),
-        Object.freeze(areaPhrases(storyArea(axis))),
-        Object.freeze(["フォイルを着けた札を", "王にすると、", "そのフォイルのエリアが付く。"]),
-        Object.freeze(["対局中、", "エリアが使える場面で", "光って知らせる。"]),
+        Object.freeze(P(L("{ranks}を王にすると、", { ranks: stage.ranks.join(L("か")) }), L("あなたの王に"), L("{area}が付く。", { area: areaShort(storyArea(axis)).name }))),
+        Object.freeze(isEnglish ? [areaPhrases(storyArea(axis)).join(" ")] : areaPhrases(storyArea(axis))),
+        Object.freeze(P(L("フォイルを着けた札を"), L("王にすると、"), L("そのフォイルのエリアが付く。"))),
+        Object.freeze(P(L("対局中、"), L("エリアが使える場面で"), L("光って知らせる。"))),
       ]),
     }),
     note: Object.freeze([]),
@@ -362,7 +376,7 @@ export function nextStage(profile) {
  */
 export function nextStageLine(profile) {
   const next = nextStage(profile);
-  return next ? `次は、${next.name}の王。` : null;
+  return next ? L("次は、{name}の王。", { name: next.name }) : null;
 }
 
 /** この1局で**はじめて**その軸をクリアするか(褒美を二度配らないため、終える前に見る) */
@@ -423,9 +437,9 @@ export function primerOutroLines(profile) {
   // 言葉は導入の調子(です・ますを使わない。2026-10-06 本人の指示)。句は読点で切り、狭い幅でも読点で折れる
   const first =
     phase >= 3
-      ? ["ステージごとに、", "相手の王のエリアを覚える。"]
+      ? P(L("ステージごとに、"), L("相手の王のエリアを覚える。"))
       : phase === 2
-        ? ["ステージごとに、", "相手の王の力を覚える。"]
-        : ["ステージごとに、", "相手の王の動きを覚える。"];
-  return [first, nextStageLine(profile) || "ステージは、何度でも遊べる。"];
+        ? P(L("ステージごとに、"), L("相手の王の力を覚える。"))
+        : P(L("ステージごとに、"), L("相手の王の動きを覚える。"));
+  return [first, nextStageLine(profile) || L("ステージは、何度でも遊べる。")];
 }

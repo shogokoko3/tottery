@@ -1,3 +1,4 @@
+import { L } from "../i18n/index.js";
 import { areaApplyMs, areaDuration } from "../game/field-presentation.js";
 import { FieldAbilityCanvas } from "./fields/ability-canvas.jsx";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -71,7 +72,7 @@ export function AreaEffectNotice({ effect, names }) {
     <div className={`area-effect-notice area-tone-${event.type}`} role="status">
       <b>
         {SIGNS[event.type]}{" "}
-        {event.player != null ? `${names[event.player]}・` : ""}
+        {event.player != null ? L("{name}・", { name: names[event.player] }) : ""}
         {event.title}
       </b>
       <span>{areaEventText(event, stage)}</span>

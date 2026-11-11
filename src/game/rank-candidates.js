@@ -24,9 +24,10 @@ const MAX_BONUS = KING_RANGE_PER_CARD * MAX_ADOPT;
 
 /** 行動記録の1行からマスを取り出す。「c2→c3 ➡︎ へ移動」の形 */
 export function parseMoveLine(line, size) {
+  // i18n-ignore(記録の日本語の文から読む)
   if (typeof line !== "string" || !line.includes("へ移動")) return null;
   // 海の引き寄せは、その駒の動き方ではない(押し流されただけ)
-  if (line.includes("引き寄せ")) return null;
+  if (line.includes("引き寄せ")) return null; // i18n-ignore
   const m = line.match(/([a-z])(\d+)→([a-z])(\d+)/);
   if (!m) return null;
   const at = (fileCh, rankNum) => {

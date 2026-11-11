@@ -11,6 +11,7 @@ import { block } from "../game/blocked.js";
 import { REASONS, sendReport } from "../net/reports.js";
 import { requestFriendByUid } from "../net/friends.js";
 import { Close, Users } from "../icons.jsx";
+import { L, Lx } from "../i18n/index.js";
 
 export function PlayerActionModal({ target, onClose, onChanged, friendSource = "rank" }) {
   // "menu" 何をするか / "reason" 理由を選ぶ / "sending" 送信中
@@ -21,7 +22,7 @@ export function PlayerActionModal({ target, onClose, onChanged, friendSource = "
   const [friendMsg, setFriendMsg] = useState("");
   const [friendBusy, setFriendBusy] = useState(false);
 
-  const name = (target && target.name) || "この人";
+  const name = (target && target.name) || L("この人");
 
   async function befriend() {
     if (friendBusy) return;
@@ -29,9 +30,9 @@ export function PlayerActionModal({ target, onClose, onChanged, friendSource = "
     setFriendMsg("");
     try {
       const r = await requestFriendByUid(target.id, friendSource);
-      setFriendMsg(r.friend ? `${name} とフレンドになりました` : "フレンド申請を送りました");
+      setFriendMsg(r.friend ? L("{name} とフレンドになりました", { name }) : L("フレンド申請を送りました"));
     } catch (e) {
-      setFriendMsg(e.message || "送れませんでした");
+      setFriendMsg(Lx(e.message) || L("送れませんでした"));
     } finally {
       setFriendBusy(false);
     }
@@ -61,8 +62,8 @@ export function PlayerActionModal({ target, onClose, onChanged, friendSource = "
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">
-          <h3>{name} について</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+          <h3>{L("{name} について", { name })}</h3>
+          <button className="icon-btn" onClick={onClose} aria-label={L("閉じる")}>
             <Close size={18} />
           </button>
         </div>
@@ -71,21 +72,21 @@ export function PlayerActionModal({ target, onClose, onChanged, friendSource = "
           <div className="report-body">
             <button className="btn btn-ghost report-choice" disabled={friendBusy} onClick={befriend}>
               <b>
-                <Users size={14} /> フレンド申請を送る
+                <Users size={14} /> {L("フレンド申請を送る")}
               </b>
-              <span>{friendMsg || "相手が承認するとフレンドになります"}</span>
+              <span>{friendMsg || L("相手が承認するとフレンドになります")}</span>
             </button>
             <button
               className="btn btn-ghost report-choice"
               onClick={() => setStep("reason")}
             >
-              <b>通報する</b>
-              <span>運営に知らせます。24時間以内に確認します</span>
+              <b>{L("通報する")}</b>
+              <span>{L("運営に知らせます。24時間以内に確認します")}</span>
             </button>
             <button className="btn btn-ghost report-choice" onClick={hide}>
-              <b>この人を見えなくする</b>
+              <b>{L("この人を見えなくする")}</b>
               <span>
-                ランキングと待ち合わせに出なくなります。相手には伝わりません
+                {L("ランキングと待ち合わせに出なくなります。相手には伝わりません")}
               </span>
             </button>
           </div>
@@ -93,7 +94,7 @@ export function PlayerActionModal({ target, onClose, onChanged, friendSource = "
 
         {step === "reason" && (
           <div className="report-body">
-            <p className="hint">どれにあてはまりますか。</p>
+            <p className="hint">{L("どれにあてはまりますか。")}</p>
             {REASONS.map((r) => (
               <button
                 key={r.id}
@@ -107,57 +108,57 @@ export function PlayerActionModal({ target, onClose, onChanged, friendSource = "
               className="btn btn-ghost report-back"
               onClick={() => setStep("menu")}
             >
-              戻る
+              {L("戻る")}
             </button>
           </div>
         )}
 
         {step === "sending" && (
           <div className="report-body">
-            <p className="hint">送っています…</p>
+            <p className="hint">{L("送っています…")}</p>
           </div>
         )}
 
         {step === "sent" && (
           <div className="report-body">
-            <p className="report-done">通報を受け付けました。</p>
+            <p className="report-done">{L("通報を受け付けました。")}</p>
             <p className="hint">
-              運営が中身を確かめ、24時間以内に対応します。あわせてこの人を見えなくすることもできます。
+              {L("運営が中身を確かめ、24時間以内に対応します。あわせてこの人を見えなくすることもできます。")}
             </p>
             <button className="btn btn-ghost report-choice" onClick={hide}>
-              <b>この人を見えなくする</b>
+              <b>{L("この人を見えなくする")}</b>
             </button>
             <button className="btn btn-primary" onClick={onClose}>
-              閉じる
+              {L("閉じる")}
             </button>
           </div>
         )}
 
         {step === "error" && (
           <div className="report-body">
-            <p className="error-text">{error}</p>
+            <p className="error-text">{Lx(error)}</p>
             <button
               className="btn btn-ghost report-choice"
               onClick={() => setStep("reason")}
             >
-              <b>もう一度送る</b>
+              <b>{L("もう一度送る")}</b>
             </button>
             <button className="btn btn-ghost report-choice" onClick={hide}>
-              <b>この人を見えなくする</b>
-              <span>通報が送れなくても、見えなくすることはできます</span>
+              <b>{L("この人を見えなくする")}</b>
+              <span>{L("通報が送れなくても、見えなくすることはできます")}</span>
             </button>
             <button className="btn btn-primary" onClick={onClose}>
-              閉じる
+              {L("閉じる")}
             </button>
           </div>
         )}
 
         {step === "blocked" && (
           <div className="report-body">
-            <p className="report-done">{name} を見えなくしました。</p>
-            <p className="hint">設定の「見えなくした人」から戻せます。</p>
+            <p className="report-done">{L("{name} を見えなくしました。", { name })}</p>
+            <p className="hint">{L("設定の「見えなくした人」から戻せます。")}</p>
             <button className="btn btn-primary" onClick={onClose}>
-              閉じる
+              {L("閉じる")}
             </button>
           </div>
         )}

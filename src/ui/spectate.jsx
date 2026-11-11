@@ -24,6 +24,7 @@ import { PlayerIcon } from "./playericon.jsx";
 import { TitleFrame } from "./title-frame.jsx";
 import { ArrowLeft, Users } from "../icons.jsx";
 import { roomPhaseOf } from "../net/match-settings.js";
+import { L, Lx } from "../i18n/index.js";
 
 const clip = (s, n) => (typeof s === "string" ? s.slice(0, n) : "");
 
@@ -81,7 +82,7 @@ function SeatTag({ name, icon, title, active }) {
     <div className={`spectate-seat ${active ? "spectate-seat-active" : ""}`}>
       <PlayerIcon icon={icon} name={name} size="sm" />
       <div className="spectate-seat-body">
-        <b>{name || "プレイヤー"}</b>
+        <b>{name || L("プレイヤー")}</b>
         {title ? <TitleFrame id={title} size="compact" /> : null}
       </div>
     </div>
@@ -115,7 +116,7 @@ export function SpectateScreen({ match, friend, onExit }) {
       const j = await joinSpectate(code);
       if (!alive) return;
       if (!j.ok) {
-        setErr(j.error || "観戦を始められませんでした。");
+        setErr(Lx(j.error) || L("観戦を始められませんでした。"));
         setStatus("fail");
         return;
       }
@@ -206,30 +207,31 @@ export function SpectateScreen({ match, friend, onExit }) {
   const turnLabel = (() => {
     if (!meta) return "";
     if (state.phase === "gameover") {
-      if (state.winner === 0 || state.winner === 1) return `${meta.names[state.winner] || "プレイヤー"} の勝ち`;
-      return "引き分け";
+      if (state.winner === 0 || state.winner === 1)
+        return L("{name} の勝ち", { name: meta.names[state.winner] || L("プレイヤー") });
+      return L("引き分け");
     }
-    if (state.phase !== "play") return "布陣中";
+    if (state.phase !== "play") return L("布陣中");
     const t = state.currentTurn;
-    return t === 0 || t === 1 ? `${meta.names[t] || "プレイヤー"} の番` : "";
+    return t === 0 || t === 1 ? L("{name} の番", { name: meta.names[t] || L("プレイヤー") }) : "";
   })();
 
   return (
     <div className="spectate-screen">
       <div className="spectate-bar">
-        <button className="icon-btn" aria-label="観戦をやめる" onClick={onExit}>
+        <button className="icon-btn" aria-label={L("観戦をやめる")} onClick={onExit}>
           <ArrowLeft size={18} />
         </button>
         <span className="spectate-title">
-          <Users size={16} /> 観戦{match.online ? "(ランダムマッチ)" : "(フレンド対戦)"}
+          <Users size={16} /> {match.online ? L("観戦(ランダムマッチ)") : L("観戦(フレンド対戦)")}
         </span>
         <span className="spectate-turn">{turnLabel}</span>
       </div>
 
-      {status === "loading" && <p className="hint spectate-note">対局を読み込んでいます…</p>}
+      {status === "loading" && <p className="hint spectate-note">{L("対局を読み込んでいます…")}</p>}
       {status === "fail" && <p className="hint spectate-note">{err}</p>}
       {status === "ended" && (
-        <p className="hint spectate-note">この対局は終了したか、見つかりませんでした。</p>
+        <p className="hint spectate-note">{L("この対局は終了したか、見つかりませんでした。")}</p>
       )}
 
       {meta && status !== "fail" && (
@@ -252,7 +254,11 @@ export function SpectateScreen({ match, friend, onExit }) {
 
           {!meta.reveal && (
             <p className="hint spectate-note">
-              {(meta.names[meta.friendSeat] || "フレンド")} の視点で観戦しています(相手の伏せ札は見えません)。
+              {meta.names[meta.friendSeat]
+                ? L("{name} の視点で観戦しています(相手の伏せ札は見えません)。", {
+                    name: meta.names[meta.friendSeat],
+                  })
+                : L("フレンド の視点で観戦しています(相手の伏せ札は見えません)。")}
             </p>
           )}
 

@@ -1,3 +1,4 @@
+import { L } from "../i18n/index.js";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { Phrases, namePhrases } from "./phrases.jsx";
 
@@ -43,10 +44,10 @@ export function SummonResultCard({
           }
         >
           {crushed
-            ? `崩した +${dismantledAt.get(index)}`
+            ? L("崩した +{n}", { n: dismantledAt.get(index) })
             : result.isNew
               ? "NEW"
-              : "重複"}
+              : L("重複")}
         </span>
         {/* このキャラのフォイルを持っているか。1行の文で出すと枠を取りすぎるので、
                           絵の右下に小さな印で(2026-09-24 本人の指示) */}
@@ -55,11 +56,11 @@ export function SummonResultCard({
             className={`skins-result-foil${foilHeld ? " is-owned" : ""}`}
             title={
               foilHeld
-                ? "このキャラのフォイルを持っています"
-                : "このキャラのフォイルは未所持"
+                ? L("このキャラのフォイルを持っています")
+                : L("このキャラのフォイルは未所持")
             }
           >
-            箔
+            {L("箔")}
           </small>
         )}
       </div>
@@ -75,24 +76,24 @@ export function SummonResultCard({
       {autoEquippedAt.has(index) && collection.equipped[s.rank] === s.id ? (
         <small
           className="skins-result-equipped"
-          aria-label={`${s.rank}に「${s.name}」を装備${firstResults ? "した" : "しました"}`}
+          aria-label={firstResults ? L("{rank}に「{name}」を装備した", { rank: s.rank, name: s.name }) : L("{rank}に「{name}」を装備しました", { rank: s.rank, name: s.name })}
         >
           <i aria-hidden="true" />
           {/* 導入の10連は導入の言葉の調子で(2026-10-06 見直し) */}
-          {firstResults ? "装備した" : "装備しました"}
+          {firstResults ? L("装備した") : L("装備しました")}
         </small>
       ) : !s.foil &&
         foil &&
         foilHeld &&
         collection.equipped[s.rank] === foil.id ? (
-        <small className="skins-result-equipped-foil">フォイル装備中</small>
+        <small className="skins-result-equipped-foil">{L("フォイル装備中")}</small>
       ) : (
         <button
           className="skin-btn"
           disabled={working || collection.equipped[s.rank] === s.id}
           onClick={() => onEquip(s)}
         >
-          {collection.equipped[s.rank] === s.id ? "装備中" : `${s.rank}に装備`}
+          {collection.equipped[s.rank] === s.id ? L("装備中") : L("{rank}に装備", { rank: s.rank })}
         </button>
       )}
     </article>

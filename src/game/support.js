@@ -15,6 +15,8 @@
  * 問い合わせ先。このアプリ専用のアドレスを用意して入れる。
  * 個人の常用アドレスは入れない — App Store とアプリの中から誰でも読める。
  */
+import { L } from "../i18n/index.js";
+
 export const SUPPORT_EMAIL = "TS_manager@tottery.support"; // 2026-09-12 本人が用意したアプリ専用のアドレス(独自ドメイン)
 
 /**
@@ -37,6 +39,6 @@ export function hasPrivacyUrl() {
 /** 問い合わせ用の mailto。件名に版を入れて、どの版からの連絡か分かるようにする */
 export function supportMailto(version) {
   if (!hasSupportContact()) return null;
-  const subject = encodeURIComponent(`トッタリー ${version || ""} お問い合わせ`);
+  const subject = encodeURIComponent(L("トッタリー {version} お問い合わせ", { version: version || "" }));
   return `mailto:${SUPPORT_EMAIL}?subject=${subject}`;
 }

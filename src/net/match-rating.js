@@ -1,6 +1,7 @@
 import { authedFetch, myUid } from "./auth.js";
 import { DB_URL } from "./firebase.js";
 import { normalizeRating, START_RATING } from "../game/rating.js";
+import { L } from "../i18n/index.js";
 
 /** 部屋の自己申告値ではなく、対戦前の公開記録を読む。再戦は別の組として読む。 */
 export async function readMatchRatings(
@@ -11,7 +12,7 @@ export async function readMatchRatings(
   const ids =
     network.myPlayerIndex === 0 ? [uid, network.foeUid] : [network.foeUid, uid];
   if (!ids.every((id) => typeof id === "string" && /^[\w-]{1,128}$/.test(id)))
-    throw new Error("対戦相手のレートを確認できませんでした。");
+    throw new Error(L("対戦相手のレートを確認できませんでした。"));
   const key = JSON.stringify([network.code, network.createdAt, round, ids]);
   try {
     const saved = JSON.parse(
@@ -32,7 +33,7 @@ export async function readMatchRatings(
         signal: AbortSignal.timeout(8000),
       });
       if (!res.ok)
-        throw new Error("レートを確認できませんでした。再接続しています…");
+        throw new Error(L("レートを確認できませんでした。再接続しています…"));
       const record = await res.json();
       return normalizeRating(record?.rating ?? START_RATING);
     }),

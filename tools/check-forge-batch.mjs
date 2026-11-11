@@ -152,8 +152,8 @@ assert.match(ui, /craftMany\(c, skin\.id, n\)/, "まとめ錬成は1回の更新
 assert.match(ui, /shatterMany\(c, skin\.id, n\)/, "一括分解も1回の更新で確定する");
 assert.match(ui, /dismantleMany\(c, skin\.id, n\)/, "エーテルの一括分解も1回の更新で確定する");
 assert.match(ui, /setConfirmCraft\(skin\)/, "作るときも確認を挟む(選ぶ→確認→確定)");
-assert.match(picker, /aria-label="1つ増やす"/, "読み上げの名前を付ける");
-assert.match(picker, /最大（\{max\}/, "上限までまとめて選べる");
+assert.match(picker, /aria-label=\{L\("1つ増やす"\)\}/, "読み上げの名前を付ける");
+assert.match(picker, /L\("最大（\{n\}）", \{ n: amount\(max\) \}\)/, "上限までまとめて選べる");
 
 console.log(
   "まとめ錬成・一括分解: 1枚版と同値・pending 不使用・抽選は1枚ごと・全か無か・上限・保存往復・配線: OK",

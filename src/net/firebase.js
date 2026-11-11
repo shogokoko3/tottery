@@ -6,6 +6,7 @@
 
 import { authedFetch, ensureAuth, myUid } from "./auth.js";
 import { isNearbyCode, nearby } from "./nearby.js";
+import { L } from "../i18n/index.js";
 
 export const DB_URL =
   "https://tottery-66e0f-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -33,9 +34,9 @@ const lobbyUrl = (path = "") => `${DB_URL}/lobby${path}.json`;
 
 function errorText(err) {
   if (err && err.__timeout) {
-    return "通信が8秒以内に応答しませんでした(タイムアウト)。通信状況を確認し、もう一度お試しください。";
+    return L("通信が8秒以内に応答しませんでした(タイムアウト)。通信状況を確認し、もう一度お試しください。");
   }
-  return `通信に失敗しました: ${(err && (err.message || err.toString())) || "不明なエラー"}`;
+  return L("通信に失敗しました: {why}", { why: (err && (err.message || err.toString())) || L("不明なエラー") });
 }
 
 function withTimeout(promise, ms) {
@@ -113,7 +114,7 @@ export const readRoom = (code) =>
  */
 export async function createRoom(code, data) {
   const uid = await whoAmI();
-  if (!uid) return { ok: false, error: "サインインできていません" };
+  if (!uid) return { ok: false, error: L("サインインできていません") };
   const base = data && typeof data === "object" ? data : {};
   return sendJson(roomUrl(code), "PUT", {
     ...base,
@@ -141,7 +142,7 @@ export const updateRoom = (code, patch) =>
 export async function joinRoom(code) {
   if (isNearbyCode(code)) return nearby().joinRoom();
   const uid = await whoAmI();
-  if (!uid) return { ok: false, error: "サインインできていません" };
+  if (!uid) return { ok: false, error: L("サインインできていません") };
   return sendJson(guestSeatUrl(code), "PUT", uid);
 }
 
@@ -199,7 +200,7 @@ export const clearActs = (code) =>
 export async function wantRematch(code, round) {
   if (isNearbyCode(code)) return nearby().wantRematch(round);
   const uid = await whoAmI();
-  if (!uid) return { ok: false, error: "サインインできていません" };
+  if (!uid) return { ok: false, error: L("サインインできていません") };
   return sendJson(
     `${DB_URL}/rooms/${code}/rematch/r${round}/${uid}.json`,
     "PUT",
@@ -270,9 +271,9 @@ export const setRoomSpectate = (code, on, reveal) =>
  * これを置いた人だけが、その部屋(spectate 済み)を読める。手番は書けない。
  */
 export async function joinSpectate(code) {
-  if (isNearbyCode(code)) return { ok: false, error: "近くの対戦は観戦できません。" };
+  if (isNearbyCode(code)) return { ok: false, error: L("近くの対戦は観戦できません。") };
   const uid = await whoAmI();
-  if (!uid) return { ok: false, error: "サインインできていません" };
+  if (!uid) return { ok: false, error: L("サインインできていません") };
   return sendJson(`${DB_URL}/rooms/${code}/spectators/${uid}.json`, "PUT", true);
 }
 

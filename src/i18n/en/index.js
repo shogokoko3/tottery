@@ -11,6 +11,7 @@ import { EN_PUZZLE } from "./puzzle.js";
 import { EN_MATCH } from "./match.js";
 import { EN_SHOP } from "./shop.js";
 import { EN_HOME } from "./home.js";
+import { EN_HONORS } from "./honors.js";
 
 export const EN_PARTS = {
   common: EN_COMMON,
@@ -21,6 +22,7 @@ export const EN_PARTS = {
   match: EN_MATCH,
   shop: EN_SHOP,
   home: EN_HOME,
+  honors: EN_HONORS,
 };
 
 export const EN = Object.freeze(Object.assign({}, ...Object.values(EN_PARTS)));

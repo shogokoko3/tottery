@@ -5,6 +5,7 @@ import { playSound } from "../audio/index.js";
 import { Fragment, useRef, useState } from "react";
 import { ArrowLeft, Book, Check, Close, Crown, Lock, Sparkle } from "../icons.jsx";
 import { SkinModal } from "./skin-modal.jsx";
+import { L, Lx } from "../i18n/index.js";
 import { useCollection, updateCollection } from "../skins/store.js";
 import { byId } from "../skins/catalog.js";
 import {
@@ -128,18 +129,18 @@ export function HomeRealmPortrait({ theme }) {
   return (
     <section
       className="home-realm-portrait"
-      aria-label={`${theme.label}のホーム装飾`}
+      aria-label={L("{area}のホーム装飾", { area: Lx(theme.label) })}
     >
       <img
         className="home-realm-king"
         src={portrait.image}
-        alt={portrait.name}
+        alt={Lx(portrait.name)}
         key={portrait.image}
         style={{ objectPosition: portrait.position }}
       />
       <div className="home-realm-caption">
-        <span>{theme.phase ? `PHASE ${theme.phase} · ${theme.subtitle}` : theme.title}</span>
-        <h2>{portrait.name}</h2>
+        <span>{theme.phase ? `PHASE ${theme.phase} · ${Lx(theme.subtitle)}` : Lx(theme.title)}</span>
+        <h2>{Lx(portrait.name)}</h2>
       </div>
       <HomeFrameCorners theme={theme} />
       <img
@@ -154,9 +155,9 @@ export function HomeRealmPortrait({ theme }) {
 
 const ORIGINAL = {
   id: DEFAULT_HOME_THEME,
-  label: "ストーリーに連動",
-  title: "進行に合わせて背景が変わるホーム",
-  condition: "はじめから使用できます",
+  label: L("ストーリーに連動"),
+  title: L("進行に合わせて背景が変わるホーム"),
+  condition: L("はじめから使用できます"),
 };
 
 /**
@@ -199,8 +200,8 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
     choice.id === current &&
     (!characters || portraitId === homePortraitOf(collection, choice.id));
   const condition = characters
-    ? `${byId(portraitId).rank} ${byId(portraitId).name}のフォイルを獲得`
-    : choice.condition;
+    ? L("{rank} {name}のフォイルを獲得", { rank: byId(portraitId).rank, name: Lx(byId(portraitId).name) })
+    : Lx(choice.condition);
   const selectTheme = (id) => {
     if (id !== DEFAULT_HOME_THEME) manualSelections.current[phase] = id;
     setSelected(id);
@@ -217,33 +218,33 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
       playSound("equip");
       (onApplied || onClose)();
     } catch (err) {
-      setError(err.message || "着せ替えを保存できませんでした。");
+      setError(Lx(err.message) || L("着せ替えを保存できませんでした。"));
       setSaving(false);
     }
   };
   return (
     <SkinModal
-      label="ホームの着せ替え"
+      label={L("ホームの着せ替え")}
       onClose={onClose}
       className="home-customize-overlay"
     >
       <header className="home-customize-head">
         <div>
           <span className="home-customize-eyebrow">
-            帰る場所を、あなたらしく。
+            {L("帰る場所を、あなたらしく。")}
           </span>
-          <h2>ホームの着せ替え</h2>
+          <h2>{L("ホームの着せ替え")}</h2>
         </div>
         <button
           className="icon-btn"
           onClick={onClose}
-          aria-label="着せ替えを閉じる"
+          aria-label={L("着せ替えを閉じる")}
         >
           <Close size={20} />
         </button>
       </header>
       <div className="home-customize-scroll" ref={scroller}>
-        <div className="home-phase-selector" role="group" aria-label="着せ替えるフェーズ">
+        <div className="home-phase-selector" role="group" aria-label={L("着せ替えるフェーズ")}>
           {[1, 2, 3].map((value) => (
             <button key={value} className={`btn ${phase === value ? "btn-primary" : "btn-ghost"}`}
               aria-pressed={phase === value} disabled={saving}
@@ -253,13 +254,13 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
                 setSelected(homeThemeOf(state));
                 setPortraits(homePortraitsOf(state));
                 setError("");
-              }}>フェーズ{value}</button>
+              }}>{L("フェーズ{n}", { n: value })}</button>
           ))}
         </div>
         <p className="home-customize-guide">
-          フェーズ{phase}で使う背景の切り替え方を選べます。
+          {L("フェーズ{n}で使う背景の切り替え方を選べます。", { n: phase })}
         </p>
-        <div className="home-background-modes" role="group" aria-label="背景の切り替え方">
+        <div className="home-background-modes" role="group" aria-label={L("背景の切り替え方")}>
           <button
             type="button"
             className={`home-background-mode${automatic ? " is-selected" : ""}`}
@@ -268,8 +269,8 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
             onClick={() => selectTheme(DEFAULT_HOME_THEME)}
           >
             <Book size={21} />
-            <b>ストーリーに連動</b>
-            <small>進行に合わせて自動で変わる</small>
+            <b>{L("ストーリーに連動")}</b>
+            <small>{L("進行に合わせて自動で変わる")}</small>
             {automatic && <Check size={15} className="home-background-mode-check" />}
           </button>
           <button
@@ -281,27 +282,27 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
               (current !== DEFAULT_HOME_THEME ? current : `phase-${phase}`))}
           >
             <Crown size={21} />
-            <b>背景を選ぶ</b>
-            <small>好きな背景を使い続ける</small>
+            <b>{L("背景を選ぶ")}</b>
+            <small>{L("好きな背景を使い続ける")}</small>
             {!automatic && <Check size={15} className="home-background-mode-check" />}
           </button>
         </div>
-        <section className="home-story-picker" aria-label={`フェーズ${phase}のストーリー背景`}>
-          <h3>ストーリーの背景</h3>
-          <p>第1話〜第7話から選ぶと、その背景に固定できます。</p>
-          <div className="home-story-chapters" role="group" aria-label="ストーリーの話数を選ぶ">
+        <section className="home-story-picker" aria-label={L("フェーズ{n}のストーリー背景", { n: phase })}>
+          <h3>{L("ストーリーの背景")}</h3>
+          <p>{L("第1話〜第7話から選ぶと、その背景に固定できます。")}</p>
+          <div className="home-story-chapters" role="group" aria-label={L("ストーリーの話数を選ぶ")}>
             {storyChoices.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 className={`home-story-chapter${selected === item.id ? " is-selected" : ""}`}
-                aria-label={`ストーリー${item.chapter}・${item.name}`}
+                aria-label={L("ストーリー{n}・{name}", { n: item.chapter, name: Lx(item.name) })}
                 aria-pressed={selected === item.id}
                 disabled={saving}
                 onClick={() => selectTheme(item.id)}
               >
                 <img src={item.assets.scene} alt="" loading="lazy" />
-                <span>第{item.chapter}話</span>
+                <span>{L("第{n}話", { n: item.chapter })}</span>
                 {selected === item.id && <Check size={13} />}
               </button>
             ))}
@@ -309,18 +310,18 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
         </section>
         {automatic && (
           <div className="home-story-follow" role="status">
-            <span>現在の進行 · フェーズ{phase} / 第{autoTheme.chapter}話</span>
-            <b>{autoTheme.name}</b>
+            <span>{L("現在の進行 · フェーズ{phase} / 第{n}話", { phase, n: autoTheme.chapter })}</span>
+            <b>{Lx(autoTheme.name)}</b>
             <p>{progress.complete
-              ? "このフェーズは全話クリア済みです。最後の話の背景を表示します。"
-              : "話をクリアすると、次の話の背景へ自動で切り替わります。"}</p>
+              ? L("このフェーズは全話クリア済みです。最後の話の背景を表示します。")
+              : L("話をクリアすると、次の話の背景へ自動で切り替わります。")}</p>
           </div>
         )}
         {fixedStory && (
           <div className="home-story-follow" role="status">
-            <span>背景を固定 · フェーズ{phase} / 第{choice.chapter}話</span>
-            <b>{choice.name}</b>
-            <p>ストーリーが進んでも、この背景を使い続けます。</p>
+            <span>{L("背景を固定 · フェーズ{phase} / 第{n}話", { phase, n: choice.chapter })}</span>
+            <b>{Lx(choice.name)}</b>
+            <p>{L("ストーリーが進んでも、この背景を使い続けます。")}</p>
           </div>
         )}
         <div
@@ -333,18 +334,18 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
             {theme ? (
               <img
                 src={portrait.image}
-                alt={`${theme.label}のホーム装飾の見本・${portrait.name}`}
+                alt={L("{area}のホーム装飾の見本・{name}", { area: Lx(theme.label), name: Lx(portrait.name) })}
                 style={{ objectPosition: portrait.position }}
               />
             ) : (
               <div className="home-original-art">
                 <Crown size={48} />
-                <span>トッタリー</span>
+                <span>{L("トッタリー")}</span>
               </div>
             )}
             <HomeFrameCorners theme={theme} />
             <span className="home-preview-label">
-              {automatic || fixedStory ? theme.title : `${choice.label} · ${characters ? portrait.name : choice.title}`}
+              {automatic || fixedStory ? Lx(theme.title) : `${Lx(choice.label)} · ${Lx(characters ? portrait.name : choice.title)}`}
             </span>
           </div>
         </div>
@@ -354,16 +355,16 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
         >
           {available ? <Check size={17} /> : <Lock size={17} />}
           <span>
-            {available ? (isCurrent ? (automatic ? "ストーリー連動を使用中" : "現在使用中") : (automatic ? "適用すると、現在の進行に合わせて切り替わります" : "解放済み")) : condition}
+            {available ? (isCurrent ? (automatic ? L("ストーリー連動を使用中") : L("現在使用中")) : (automatic ? L("適用すると、現在の進行に合わせて切り替わります") : L("解放済み"))) : condition}
           </span>
         </div>
         {characters && (
           <section
             className="home-characters"
-            aria-label="ホームに表示するキャラ"
+            aria-label={L("ホームに表示するキャラ")}
           >
-            <h3>ホームに迎えるキャラ</h3>
-            <p>対応するキャラのフォイルで解放</p>
+            <h3>{L("ホームに迎えるキャラ")}</h3>
+            <p>{L("対応するキャラのフォイルで解放")}</p>
             <div
               className="home-character-grid"
               style={{ "--home-character-count": characters.length }}
@@ -376,7 +377,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
                   <button
                     key={id}
                     className={`home-character-option${portraitId === id ? " is-selected" : ""}${open ? "" : " is-locked"}`}
-                    aria-label={`${skin.rank} ${skin.name} ${open ? "解放済み" : "未解放"}`}
+                    aria-label={`${skin.rank} ${Lx(skin.name)} ${open ? L("解放済み") : L("未解放")}`}
                     aria-pressed={portraitId === id}
                     disabled={saving}
                     onClick={() => {
@@ -393,8 +394,8 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
                       {!open && <Lock size={18} />}
                     </span>
                     <b>{skin.rank}</b>
-                    <span>{skin.name}</span>
-                    <small>{open ? "解放済み" : "未解放"}</small>
+                    <span>{Lx(skin.name)}</span>
+                    <small>{open ? L("解放済み") : L("未解放")}</small>
                   </button>
                 );
               })}
@@ -404,7 +405,7 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
         {!automatic && <div
           className="home-theme-grid"
           role="group"
-          aria-label="ホーム装飾を選ぶ"
+          aria-label={L("ホーム装飾を選ぶ")}
         >
           {choices.map((item, index) => {
             const open = unlocked.includes(item.id);
@@ -414,14 +415,14 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
                 {(index === 0 || item.series !== choices[index - 1].series) && (
                   <h3 className="home-theme-series">
                     {item.series === "alice"
-                      ? "ワンダーランド"
-                      : item.series === "phase" ? "フェーズ専用ホーム" : "初期シリーズ"}
+                      ? L("ワンダーランド")
+                      : item.series === "phase" ? L("フェーズ専用ホーム") : L("初期シリーズ")}
                   </h3>
                 )}
                 <button
                   className={`home-theme-option${active ? " is-selected" : ""}${open ? "" : " is-locked"}`}
                   aria-pressed={active}
-                  aria-label={`${item.label}のホーム ${open ? (item.id === current ? "使用中" : "解放済み") : `未解放・${item.condition}`}`}
+                  aria-label={L("{area}のホーム {state}", { area: Lx(item.label), state: open ? (item.id === current ? L("使用中") : L("解放済み")) : L("未解放・{condition}", { condition: Lx(item.condition) }) })}
                   onClick={() => {
                     selectTheme(item.id);
                     if (scroller.current) scroller.current.scrollTop = 0;
@@ -459,13 +460,13 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
                     {item.id === current && (
                       <span className="home-theme-current">
                         <Check size={12} />
-                        使用中
+                        {L("使用中")}
                       </span>
                     )}
                   </span>
                   <span className="home-theme-name">
-                    {item.label}
-                    <small>{open ? item.title : "フォイルで解放"}</small>
+                    {Lx(item.label)}
+                    <small>{open ? Lx(item.title) : L("フォイルで解放")}</small>
                   </span>
                   {active && (
                     <Check className="home-theme-selected-mark" size={16} />
@@ -477,10 +478,10 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
         </div>}
       </div>
       <footer className="home-customize-footer">
-        {error && <p role="alert">{error}</p>}
+        {error && <p role="alert">{Lx(error)}</p>}
         <button className="btn btn-ghost" onClick={onClose}>
           <ArrowLeft size={17} />
-          戻る
+          {L("戻る")}
         </button>
         <button
           className="btn btn-primary"
@@ -488,16 +489,16 @@ export function HomeCustomizationModal({ onClose, onApplied = null }) {
           disabled={!available || saving}
         >
           {saving
-            ? "保存中…"
+            ? L("保存中…")
             : !available
-              ? "未解放"
+              ? L("未解放")
               : isCurrent
-                ? "このまま使う"
+                ? L("このまま使う")
                 : automatic
-                  ? "ストーリー連動を使う"
+                  ? L("ストーリー連動を使う")
                   : fixedStory
-                    ? "この話の背景を使う"
-                    : "この装飾に着せ替える"}
+                    ? L("この話の背景を使う")
+                    : L("この装飾に着せ替える")}
         </button>
       </footer>
     </SkinModal>
@@ -521,20 +522,20 @@ export function HomeCustomizationButton({
       >
         <span>
           {settings
-            ? "ホームの着せ替え"
+            ? L("ホームの着せ替え")
             : theme
-              ? `${theme.label}の領域`
-              : "あなたのホーム"}
+              ? L("{area}の領域", { area: Lx(theme.label) })
+              : L("あなたのホーム")}
         </span>
         <button
           className={
             settings ? "btn btn-ghost btn-small" : "home-customize-button"
           }
           onClick={() => setOpen(true)}
-          aria-label="ホームの着せ替えを開く"
+          aria-label={L("ホームの着せ替えを開く")}
         >
           <Sparkle size={16} />
-          着せ替え
+          {L("着せ替え")}
         </button>
       </div>
       {open && (

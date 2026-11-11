@@ -1,6 +1,7 @@
 import { isFrozen, thaw } from "./areas.js";
 import { PLAYER_META } from "./constants.js";
 import { ACE_FOIL_RULE_VERSION, hasAreaRules } from "./rule-version.js";
+import { L, Lk } from "../i18n/index.js";
 
 export const ACE_FOIL_SKIN_ID = "genie-magician:foil";
 
@@ -29,7 +30,7 @@ export function aceFoilCandidates(state, player = state.currentTurn) {
 /** 王のエリアと独立した、手番を使わないAフォイルの任意効果。 */
 export function canUseAceFoil(state, player = state.currentTurn, aId = null) {
   if (state.phase !== "play" || state.winner != null)
-    return { ok: false, why: "対局中ではありません" };
+    return { ok: false, why: L("対局中ではありません") };
   if (
     !hasAreaRules(state.ruleVersion) ||
     state.ruleVersion < ACE_FOIL_RULE_VERSION ||
@@ -37,22 +38,22 @@ export function canUseAceFoil(state, player = state.currentTurn, aId = null) {
     state.boardSize !== 9 ||
     state.board?.length !== 9
   )
-    return { ok: false, why: "エリアありの9×9対戦で使えます" };
+    return { ok: false, why: L("エリアありの9×9対戦で使えます") };
   if (state.areaLoadouts?.[player]?.A !== ACE_FOIL_SKIN_ID)
-    return { ok: false, why: "Aのフォイルを装備していません" };
+    return { ok: false, why: L("Aのフォイルを装備していません") };
   if ((player !== 0 && player !== 1) || state.currentTurn !== player)
-    return { ok: false, why: "相手の番です" };
+    return { ok: false, why: L("相手の番です") };
   if (state.setupAck?.some((ack) => !ack))
-    return { ok: false, why: "布陣ボーナスの確認を待っています" };
+    return { ok: false, why: L("布陣ボーナスの確認を待っています") };
   if (
     state.extraMoveFor ||
     state.extraUsed ||
     state.pendingKingChoice ||
     state.kPlacement?.owner === player
   )
-    return { ok: false, why: "通常の行動の前にだけ使えます" };
+    return { ok: false, why: L("通常の行動の前にだけ使えます") };
   if (state.aceFoilUsedTurn?.[player] === (state.turnNo || 0))
-    return { ok: false, why: "このターンでは発動済みです" };
+    return { ok: false, why: L("このターンでは発動済みです") };
   const ace = Object.values(state.pieces || {})
     .filter(
       (piece) =>
@@ -63,9 +64,9 @@ export function canUseAceFoil(state, player = state.currentTurn, aId = null) {
         (aId === null || piece.id === aId),
     )
     .sort((a, b) => a.id.localeCompare(b.id))[0];
-  if (!ace) return { ok: false, why: "動けるAが盤上にいません" };
+  if (!ace) return { ok: false, why: L("動けるAが盤上にいません") };
   if (aceFoilCandidates(state, player).length < 3)
-    return { ok: false, why: "入れ替えられる駒が3体必要です" };
+    return { ok: false, why: L("入れ替えられる駒が3体必要です") };
   return { ok: true, why: null, aId: ace.id };
 }
 
@@ -108,7 +109,7 @@ export function useAceFoil(state, action) {
     const piece = {
       ...base,
       ...at,
-      history: [...base.history, "Aのフォイル魔法で位置を入れ替えた"],
+      history: [...base.history, Lk("Aのフォイル魔法で位置を入れ替えた")],
     };
     pieces[id] = piece;
     board[at.row][at.col] = piece;
@@ -128,7 +129,7 @@ export function useAceFoil(state, action) {
     lastSwap: { kind: "ace-foil", cells, owner: player, aId: action.aId, seq },
     log: [
       ...state.log,
-      `${PLAYER_META[player].name}がAのフォイル魔法でランダムな3つの駒の位置を入れ替えた`,
+      Lk("{name}がAのフォイル魔法でランダムな3つの駒の位置を入れ替えた", { name: PLAYER_META[player].name }),
     ],
   };
 }

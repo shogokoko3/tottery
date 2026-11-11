@@ -9,6 +9,7 @@
 import { Capacitor } from "@capacitor/core";
 import { linkAppleIdentity, isVerified } from "./auth.js";
 import { BUNDLE_ID } from "../iap/catalog.js";
+import { L, Lx } from "../i18n/index.js";
 
 export const appleSignInAvailable = () =>
   Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
@@ -27,7 +28,7 @@ async function sha256hex(text) {
 export async function signInWithApple() {
   if (isVerified()) return { already: true };
   if (!appleSignInAvailable())
-    throw new Error("Apple でのサインインは iOS アプリで行えます。");
+    throw new Error(L("Apple でのサインインは iOS アプリで行えます。"));
   const { SignInWithApple } =
     await import("@capacitor-community/apple-sign-in");
   // Apple に署名してもらう。トークンは一度しか使えないので、呼ぶたびに新しい nonce で取る
@@ -43,11 +44,11 @@ export async function signInWithApple() {
       });
     } catch (e) {
       if (/cancel|1001/i.test(String(e && (e.message || e.code)))) return null;
-      throw new Error("Apple のサインインを完了できませんでした。");
+      throw new Error(L("Apple のサインインを完了できませんでした。"));
     }
     const identityToken = res && res.response && res.response.identityToken;
     if (!identityToken)
-      throw new Error("Apple からの返事を受け取れませんでした。");
+      throw new Error(L("Apple からの返事を受け取れませんでした。"));
     return { identityToken, rawNonce };
   };
   const first = await authorize();

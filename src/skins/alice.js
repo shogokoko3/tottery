@@ -1,16 +1,17 @@
+import { L } from "../i18n/index.js";
 // シーズン2の装備。既存の所持情報を保つため、IDと画像名は変更しない。
 export const ALICE_SKINS = [
   {
     "id": "alice-A-alice",
     "rank": "A",
-    "name": "アリス",
-    "role": "アリス",
+    "name": L("アリス"),
+    "role": L("アリス"),
     "family": "alice",
     "series": "alice",
     "rarity": "SPECIAL",
     "color": "#a6cbea",
-    "move": "数字逆転",
-    "description": "毎ターン1回、数字を逆転する。王以外は1体、王なら最大3体(王のときは選んだ駒を公開)。相手のAを選んだ分だけ不発。逆転した駒(⇅)は3ターン選べない。手番は消費しない。",
+    "move": L("数字逆転"),
+    "description": L("毎ターン1回、数字を逆転する。王以外は1体、王なら最大3体(王のときは選んだ駒を公開)。相手のAを選んだ分だけ不発。逆転した駒(⇅)は3ターン選べない。手番は消費しない。"),
     "acquisition": "battlepass",
     "battlepassSeries": "alice",
     "image": "skins/alice-concepts-v1/A-alice.png",
@@ -36,14 +37,14 @@ export const ALICE_SKINS = [
   {
     "id": "alice-2-dodo",
     "rank": "2",
-    "name": "ドードー",
-    "role": "ドードー",
+    "name": L("ドードー"),
+    "role": L("ドードー"),
     "family": "alice",
     "series": "alice",
     "rarity": "R",
     "color": "#a6cbea",
-    "move": "帰還",
-    "description": "採用枚数×2マス移動距離が伸びる。撃破されても採用枚数分、自陣の空きマスを選んで帰還できる。復活できない場合に敗北。",
+    "move": L("帰還"),
+    "description": L("採用枚数×2マス移動距離が伸びる。撃破されても採用枚数分、自陣の空きマスを選んで帰還できる。復活できない場合に敗北。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/2-dodo.png",
@@ -63,20 +64,20 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-caucus",
-      "name": "コーカス・レース"
+      "name": L("コーカス・レース")
     }
   },
   {
     "id": "alice-3-bill",
     "rank": "3",
-    "name": "トカゲのビル",
-    "role": "トカゲのビル",
+    "name": L("トカゲのビル"),
+    "role": L("トカゲのビル"),
     "family": "alice",
     "series": "alice",
     "rarity": "R",
     "color": "#a6cbea",
-    "move": "帰還",
-    "description": "採用枚数×2マス移動距離が伸びる。撃破されても採用枚数分、自陣の空きマスを選んで帰還できる。復活できない場合に敗北。",
+    "move": L("帰還"),
+    "description": L("採用枚数×2マス移動距離が伸びる。撃破されても採用枚数分、自陣の空きマスを選んで帰還できる。復活できない場合に敗北。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/3-bill.png",
@@ -96,20 +97,20 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-caucus",
-      "name": "コーカス・レース"
+      "name": L("コーカス・レース")
     }
   },
   {
     "id": "alice-4-hatter",
     "rank": "8",
-    "name": "帽子屋",
-    "role": "帽子屋",
+    "name": L("帽子屋"),
+    "role": L("帽子屋"),
     "family": "alice",
     "series": "alice",
     "rarity": "SR",
     "color": "#a6cbea",
-    "move": "ティーカップ召喚",
-    "description": "手番を使って自陣の空きマスにティーカップをランダム召喚できる。ティーカップは縦横に何マスでも動ける。",
+    "move": L("ティーカップ召喚"),
+    "description": L("手番を使って自陣の空きマスにティーカップをランダム召喚できる。ティーカップは縦横に何マスでも動ける。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/4-hatter.png",
@@ -129,20 +130,20 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-tea",
-      "name": "終わらないお茶会"
+      "name": L("終わらないお茶会")
     }
   },
   {
     "id": "alice-5-march-hare",
     "rank": "9",
-    "name": "三月ウサギ",
-    "role": "三月ウサギ",
+    "name": L("三月ウサギ"),
+    "role": L("三月ウサギ"),
     "family": "alice",
     "series": "alice",
     "rarity": "SR",
     "color": "#a6cbea",
-    "move": "ティーカップ召喚",
-    "description": "手番を使って自陣の空きマスにティーカップをランダム召喚できる。ティーカップは斜めに何マスでも動ける。",
+    "move": L("ティーカップ召喚"),
+    "description": L("手番を使って自陣の空きマスにティーカップをランダム召喚できる。ティーカップは斜めに何マスでも動ける。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/5-march-hare.png",
@@ -162,20 +163,20 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-tea",
-      "name": "終わらないお茶会"
+      "name": L("終わらないお茶会")
     }
   },
   {
     "id": "alice-6-gryphon",
     "rank": "4",
-    "name": "グリフォン",
-    "role": "グリフォン",
+    "name": L("グリフォン"),
+    "role": L("グリフォン"),
     "family": "alice",
     "series": "alice",
     "rarity": "R",
     "color": "#a6cbea",
-    "move": "全軍バリア",
-    "description": "1局3回、毎ターン1回、次の自分の手番まで王を含む全軍を撃破されないバリアで守る。手番は消費しない。",
+    "move": L("全軍バリア"),
+    "description": L("1局3回、毎ターン1回、次の自分の手番まで王を含む全軍を撃破されないバリアで守る。手番は消費しない。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/6-gryphon.png",
@@ -195,20 +196,20 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-quadrille",
-      "name": "カドリール"
+      "name": L("カドリール")
     }
   },
   {
     "id": "alice-7-mock-turtle",
     "rank": "5",
-    "name": "ニセウミガメ",
-    "role": "ニセウミガメ",
+    "name": L("ニセウミガメ"),
+    "role": L("ニセウミガメ"),
     "family": "alice",
     "series": "alice",
     "rarity": "R",
     "color": "#a6cbea",
-    "move": "偽の王",
-    "description": "1局3回まで味方を偽の王に任命。偽の王を倒した相手は名乗りを上げ、次の手番から3手番動けない。任命先は相手に秘密。手番は消費しない。",
+    "move": L("偽の王"),
+    "description": L("1局3回まで味方を偽の王に任命。偽の王を倒した相手は名乗りを上げ、次の手番から3手番動けない。任命先は相手に秘密。手番は消費しない。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/7-mock-turtle.png",
@@ -228,20 +229,20 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-quadrille",
-      "name": "カドリール"
+      "name": L("カドリール")
     }
   },
   {
     "id": "alice-8-white-rabbit",
     "rank": "6",
-    "name": "白ウサギ",
-    "role": "白ウサギ",
+    "name": L("白ウサギ"),
+    "role": L("白ウサギ"),
     "family": "alice",
     "series": "alice",
     "rarity": "SR",
     "color": "#a6cbea",
-    "move": "時間を奪う",
-    "description": "毎ターン1回、相手の持ち時間を30秒減らす。10秒未満にはしない。手番は消費しない。",
+    "move": L("時間を奪う"),
+    "description": L("毎ターン1回、相手の持ち時間を30秒減らす。10秒未満にはしない。手番は消費しない。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/8-white-rabbit.png",
@@ -261,20 +262,20 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-maze",
-      "name": "迷いの森"
+      "name": L("迷いの森")
     }
   },
   {
     "id": "alice-9-caterpillar",
     "rank": "7",
-    "name": "イモムシ",
-    "role": "イモムシ",
+    "name": L("イモムシ"),
+    "role": L("イモムシ"),
     "family": "alice",
     "series": "alice",
     "rarity": "SR",
     "color": "#a6cbea",
-    "move": "正体を隠す",
-    "description": "毎ターン1回、相手の駒を最大2体、持ち主から正体が分からない状態にする。持ち主が動かす駒を確定すると正体が分かる。手番は消費しない。",
+    "move": L("正体を隠す"),
+    "description": L("毎ターン1回、相手の駒を最大2体、持ち主から正体が分からない状態にする。持ち主が動かす駒を確定すると正体が分かる。手番は消費しない。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/9-caterpillar.png",
@@ -294,20 +295,20 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-maze",
-      "name": "迷いの森"
+      "name": L("迷いの森")
     }
   },
   {
     "id": "alice-10-cheshire-cat",
     "rank": "10",
-    "name": "チェシャ猫",
-    "role": "チェシャ猫",
+    "name": L("チェシャ猫"),
+    "role": L("チェシャ猫"),
     "family": "alice",
     "series": "alice",
     "rarity": "SSR",
     "color": "#a6cbea",
-    "move": "騙す移動",
-    "description": "移動する駒の騙す位置と本当の位置を選べる。騙す位置は空きマスだけ。相手には次の自分の手番まで騙す位置を見せる。実体が撃破すると本当の位置が分かる。2回行動はしない。",
+    "move": L("騙す移動"),
+    "description": L("移動する駒の騙す位置と本当の位置を選べる。騙す位置は空きマスだけ。相手には次の自分の手番まで騙す位置を見せる。実体が撃破すると本当の位置が分かる。2回行動はしない。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/10-cheshire-cat.png",
@@ -328,20 +329,20 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-illusion",
-      "name": "幻影"
+      "name": L("幻影")
     }
   },
   {
     "id": "alice-J-knave",
     "rank": "J",
-    "name": "ハートのジャック",
-    "role": "ハートのジャック",
+    "name": L("ハートのジャック"),
+    "role": L("ハートのジャック"),
     "family": "alice",
     "series": "alice",
     "rarity": "SSR",
     "color": "#a6cbea",
-    "move": "同じ数字の駒を仲間にする",
-    "description": "開始時の編成にAは使えない。味方の2〜10はトランプ兵になる。相手を撃破した駒と同じ数字なら、撃破した相手を仲間にして自陣の空きマスに配置できる。",
+    "move": L("同じ数字の駒を仲間にする"),
+    "description": L("開始時の編成にAは使えない。味方の2〜10はトランプ兵になる。相手を撃破した駒と同じ数字なら、撃破した相手を仲間にして自陣の空きマスに配置できる。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/J-knave.png",
@@ -361,20 +362,20 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-croquet",
-      "name": "クロッケー大会"
+      "name": L("クロッケー大会")
     }
   },
   {
     "id": "alice-Q-queen",
     "rank": "Q",
-    "name": "ハートの女王",
-    "role": "ハートの女王",
+    "name": L("ハートの女王"),
+    "role": L("ハートの女王"),
     "family": "alice",
     "series": "alice",
     "rarity": "SSR",
     "color": "#a6cbea",
-    "move": "同じ色の駒を仲間にする",
-    "description": "開始時の編成にAは使えない。味方の2〜10はトランプ兵になる。相手を撃破した駒と同じ色のスートなら、撃破した相手を仲間にして自陣の空きマスに配置できる。",
+    "move": L("同じ色の駒を仲間にする"),
+    "description": L("開始時の編成にAは使えない。味方の2〜10はトランプ兵になる。相手を撃破した駒と同じ色のスートなら、撃破した相手を仲間にして自陣の空きマスに配置できる。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/Q-queen.png",
@@ -394,20 +395,20 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-croquet",
-      "name": "クロッケー大会"
+      "name": L("クロッケー大会")
     }
   },
   {
     "id": "alice-K-king",
     "rank": "K",
-    "name": "ハートの王",
-    "role": "ハートの王",
+    "name": L("ハートの王"),
+    "role": L("ハートの王"),
     "family": "alice",
     "series": "alice",
     "rarity": "SSR",
     "color": "#a6cbea",
-    "move": "同じ数字の駒を仲間にする",
-    "description": "開始時の編成にAは使えない。味方の2〜10はトランプ兵になる。相手を撃破した駒と同じ数字なら、撃破した相手を仲間にして自陣の空きマスに配置できる。",
+    "move": L("同じ数字の駒を仲間にする"),
+    "description": L("開始時の編成にAは使えない。味方の2〜10はトランプ兵になる。相手を撃破した駒と同じ数字なら、撃破した相手を仲間にして自陣の空きマスに配置できる。"),
     "acquisition": null,
     "battlepassSeries": null,
     "image": "skins/alice-concepts-v1/K-king.png",
@@ -427,7 +428,7 @@ export const ALICE_SKINS = [
     },
     "fieldEffect": {
       "type": "alice-croquet",
-      "name": "クロッケー大会"
+      "name": L("クロッケー大会")
     }
   }
 ];

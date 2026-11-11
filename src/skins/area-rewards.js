@@ -1,10 +1,11 @@
 import { byId } from "./catalog.js";
+import { L } from "../i18n/index.js";
 import { areaForSkin, AREA_INFO } from "../game/areas.js";
 import { areaTheme } from "../game/field-presentation.js";
 
 export function areaRewardName(reward) {
   return reward.type === "palace"
-    ? `宮殿・${reward.theme === "hell" ? "魔界" : "天界"}`
+    ? L("宮殿・{theme}", { theme: reward.theme === "hell" ? L("魔界") : L("天界") })
     : AREA_INFO[reward.type].name;
 }
 

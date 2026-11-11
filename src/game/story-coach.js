@@ -12,6 +12,7 @@
  * 画面(game.jsx)と検査(tools/check-story-coach.mjs)が同じ関数を呼ぶ
  */
 import { normalizePhase } from "./phase.js";
+import { L } from "../i18n/index.js";
 
 /** 手当ての場面。出会う順 */
 export const COACH_SCENES = Object.freeze(["dice", "mulligan", "setup"]);
@@ -23,9 +24,9 @@ export const COACH_SCENES = Object.freeze(["dice", "mulligan", "setup"]);
  * 「自動配置」へ目を向けさせた)
  */
 export const COACH_LINES = Object.freeze({
-  dice: Object.freeze(["先手は、サイコロで決まる。"]),
-  mulligan: Object.freeze(["いらない札は、捨てて引き直せる。", "捨てた札は、相手にも見える。"]),
-  setup: Object.freeze(["伏せた一枚に、策がある。", "おすすめの陣を、並べておいた。"]),
+  dice: Object.freeze([L("先手は、サイコロで決まる。")]),
+  mulligan: Object.freeze([L("いらない札は、捨てて引き直せる。"), L("捨てた札は、相手にも見える。")]),
+  setup: Object.freeze([L("伏せた一枚に、策がある。"), L("おすすめの陣を、並べておいた。")]),
 });
 
 /**
@@ -34,12 +35,12 @@ export const COACH_LINES = Object.freeze({
  * このままの人には嘘だった)。後手(先手の相手を待つ): 次が自分の番だと分かるように
  */
 export const COACH_WAIT_LINES = Object.freeze({
-  first: Object.freeze(["あなたの手札は、決まった。", "相手が、捨てる札を選んでいる…"]),
-  second: Object.freeze(["相手が、捨てる札を選んでいる。", "次は、あなた…"]),
+  first: Object.freeze([L("あなたの手札は、決まった。"), L("相手が、捨てる札を選んでいる…")]),
+  second: Object.freeze([L("相手が、捨てる札を選んでいる。"), L("次は、あなた…")]),
 });
 
 /** 引き直しで、1枚も選んでいないときの釦(引き直さずに進む)。手当ての対局ではこれを光らせる */
-export const KEEP_LABEL = "このまま";
+export const KEEP_LABEL = L("このまま");
 
 /**
  * この対局で出す手当て。出さないなら null。

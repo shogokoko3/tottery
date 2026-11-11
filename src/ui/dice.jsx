@@ -7,6 +7,7 @@ import { useNames, useSeats } from "./names.jsx";
 import { PlayerIcon } from "./playericon.jsx";
 import { shortPlayerLabel } from "../game/constants.js";
 import { TitleFrame } from "./title-frame.jsx";
+import { L } from "../i18n/index.js";
 
 export const DIE_PIPS = {
   1: [[1, 1]],
@@ -250,20 +251,20 @@ export function DiceDuo({
   // 言葉の出し分け。plain は導入の言い方
   const say = plain
     ? {
-        rolling: "転がっている…",
-        notYet: "まだ振っていない",
-        foeWaiting: "相手が振るのを待っている…",
-        rolled: (v) => `${v} が出た`,
-        tie: "同じ目。もう一度…",
-        waitFoe: "相手のサイコロを待っている…",
+        rolling: L("転がっている…"),
+        notYet: L("まだ振っていない"),
+        foeWaiting: L("相手が振るのを待っている…"),
+        rolled: (v) => L("{v} が出た", { v }),
+        tie: L("同じ目。もう一度…"),
+        waitFoe: L("相手のサイコロを待っている…"),
       }
     : {
-        rolling: "転がしています…",
-        notYet: "まだ振っていません",
-        foeWaiting: "相手が振るのを待っています…",
-        rolled: (v) => `${v} が出ました`,
-        tie: "同じ目でした。もう一度振ります…",
-        waitFoe: "相手のサイコロを待っています…",
+        rolling: L("転がしています…"),
+        notYet: L("まだ振っていません"),
+        foeWaiting: L("相手が振るのを待っています…"),
+        rolled: (v) => L("{v} が出ました", { v }),
+        tie: L("同じ目でした。もう一度振ります…"),
+        waitFoe: L("相手のサイコロを待っています…"),
       };
   const [pressed, setPressed] = useState(false);
   // 押してから 900ms 転がして、それから出目を決める(1人用の DiceStep と同じ手触り)
@@ -309,7 +310,7 @@ export function DiceDuo({
   return (
     <div className="center-stage dice-duo">
       <MatchupBar viewer={me} />
-      {note || <h2>サイコロで先手を決めます</h2>}
+      {note || <h2>{L("サイコロで先手を決めます")}</h2>}
       {remainingMs != null && (
         // 両方の目がそろったら残り時間は要らないが、帯を消すと下の並びが上に跳ぶ。
         // 振っている間と同じ高さのまま見えなくして、サイコロと言葉の位置を変えない(2026-10-15 本人の指摘)
@@ -318,8 +319,8 @@ export function DiceDuo({
           aria-hidden={both ? "true" : undefined}
         >
           <div className="setup-timer-head">
-            <span>振る残り時間</span>
-            <strong>{Math.max(0, Math.ceil(remainingMs / 1000))}秒</strong>
+            <span>{L("振る残り時間")}</span>
+            <strong>{L("{n}秒", { n: Math.max(0, Math.ceil(remainingMs / 1000)) })}</strong>
           </div>
           <div className="setup-timer-track">
             <div
@@ -344,7 +345,7 @@ export function DiceDuo({
             disabled={pressed}
             onClick={() => setPressed(true)}
           >
-            {pressed ? say.rolling : "サイコロを振る"}
+            {pressed ? say.rolling : L("サイコロを振る")}
           </button>
         ) : both && mineSettled && foeSettled ? (
           tie ? (
@@ -353,8 +354,10 @@ export function DiceDuo({
             <p style={{ color: PLAYER_META[firstPlayer].color, fontWeight: 700 }}>
               {plain
                 ? // 主語はあなた。相手は席の名(「四と五の王」)で
-                  `先手は、${firstPlayer === me ? "あなた" : (names && names[firstPlayer]) || "相手"}。`
-                : `${playerLabel(firstPlayer, me, names)}が先手です`}
+                  firstPlayer === me
+                  ? L("先手は、あなた。")
+                  : L("先手は、{who}。", { who: (names && names[firstPlayer]) || L("相手") })
+                : L("{who}が先手です", { who: playerLabel(firstPlayer, me, names) })}
             </p>
           )
         ) : (
@@ -378,7 +381,7 @@ export function DiceStage({ playerIdx, value }) {
           color: l.color,
         }}
       >
-        {playerLabel(playerIdx, 1 - playerIdx, names)}のサイコロ
+        {L("{who}のサイコロ", { who: playerLabel(playerIdx, 1 - playerIdx, names) })}
       </h2>
       <div className="die-stage">
         <DieCube value={u ? value : 1} rolling={!u} color={l.color} />
@@ -391,12 +394,12 @@ export function DiceStage({ playerIdx, value }) {
               color: l.color,
             }}
           >
-            {value} が出ました
+            {L("{v} が出ました", { v: value })}
           </p>
-          <p className="hint">相手が次に進むのを待っています…</p>
+          <p className="hint">{L("相手が次に進むのを待っています…")}</p>
         </>
       ) : (
-        <p className="hint">相手が振っています…</p>
+        <p className="hint">{L("相手が振っています…")}</p>
       )}
     </div>
   );
@@ -425,7 +428,7 @@ export function DiceStep({ playerIdx, value, onRoll, onNext }) {
           color: o.color,
         }}
       >
-        {playerLabel(playerIdx, playerIdx, names)}のサイコロ
+        {L("{who}のサイコロ", { who: playerLabel(playerIdx, playerIdx, names) })}
       </h2>
       <div className="die-stage">
         <DieCube
@@ -442,10 +445,10 @@ export function DiceStep({ playerIdx, value, onRoll, onNext }) {
               color: o.color,
             }}
           >
-            {value} が出ました
+            {L("{v} が出ました", { v: value })}
           </p>
           <button className="btn btn-primary" onClick={onNext}>
-            次へ <ArrowRight size={16} />
+            {L("次へ")} <ArrowRight size={16} />
           </button>
         </>
       ) : (
@@ -455,8 +458,8 @@ export function DiceStep({ playerIdx, value, onRoll, onNext }) {
           onClick={() => u(!0)}
         >
           {a || (value !== null && !settled)
-            ? "転がしています…"
-            : "サイコロを振る"}
+            ? L("転がしています…")
+            : L("サイコロを振る")}
         </button>
       )}
     </div>

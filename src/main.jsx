@@ -6,7 +6,12 @@ import { checkAppVersion } from "./net/app-version.js";
 import { runTestflightReset } from "./net/tf-reset.js";
 import { TotteryApp } from "./ui/screens.jsx";
 import { installNativeInteractionGuard } from "./ui/native-interactions.js";
-import { L } from "./i18n/index.js";
+import { L, isEnglish } from "./i18n/index.js";
+
+// 英語版の名前は Take Down(2026-11-11 本人の指示)。日本語はトッタリーのまま(index.html の <title>)
+if (isEnglish) document.title = "Take Down";
+// 英語で長くなる所だけを CSS で詰めるための印(html[data-lang="en"])。lang 属性は変えない(日本語のストーリー本文の字形のため)
+document.documentElement.dataset.lang = isEnglish ? "en" : "ja";
 
 /**
  * 描くところで落ちたときの受け皿。

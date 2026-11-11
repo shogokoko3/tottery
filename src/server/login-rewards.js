@@ -1,4 +1,5 @@
 import { dayOf, ticketsOf, loginDay, legacyLoginIndex } from "../game/login-bonus.js";
+import { Lk } from "../i18n/index.js";
 
 /** 呼び出し元の Durable Object transactionSync 内で、受取記録と残高を一括確定する。 */
 export class LoginRewards {
@@ -30,10 +31,10 @@ export class LoginRewards {
   }
   claim(uid, day, now) {
     if (typeof day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(day) || day > loginDay(now))
-      throw new Error("ログイン報酬の日付が正しくありません。");
+      throw new Error(Lk("ログイン報酬の日付が正しくありません。"));
     const row = this.sql("SELECT * FROM login_rewards WHERE uid=? AND day=?", uid, day)[0];
     // 過去の日付を自己申告して増やすことはできない。サーバーが発行した日の分だけ再送できる。
-    if (!row) throw new Error("ログイン報酬を確認してから、もう一度お試しください。");
+    if (!row) throw new Error(Lk("ログイン報酬を確認してから、もう一度お試しください。"));
     if (row.claimedAt !== null) return { applied: false, ...this.packet(uid, row, now) };
     const taken = this.progress(uid) + 1, amount = ticketsOf(dayOf(taken - 1));
     const result = this.wallet.apply(uid, `login:${uid}:${day}`, { tickets: amount }, "login", day, now);
@@ -41,7 +42,7 @@ export class LoginRewards {
     return { applied: result.applied, ...this.packet(uid, { ...row, taken, amount, claimedAt: now }, now) };
   }
   legacy(uid, id, now) {
-    if (legacyLoginIndex(id) === null) throw new Error("ログイン報酬の指定が正しくありません。");
+    if (legacyLoginIndex(id) === null) throw new Error(Lk("ログイン報酬の指定が正しくありません。"));
     if (this.legacyRows(uid).some(r => r.id === id)) return { applied: false, ...this.wallet.summary(uid, now) };
     const alias = this.sql("SELECT day FROM login_legacy_receipts WHERE uid=? AND id=?", uid, id)[0];
     if (alias) return this.claim(uid, alias.day, now);

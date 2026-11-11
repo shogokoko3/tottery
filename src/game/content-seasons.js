@@ -7,12 +7,14 @@
  *   ・進めるパスは1つだけ選ぶ(対局で取った駒は選んだパスにだけ数える)。battlepass-store.js の active
  *   ・サーバー(src/server/wallet.js)もこの表から gachaSeries と権利の名前を決める
  */
+import { L } from "../i18n/index.js";
+
 export const CONTENT_SEASONS = Object.freeze([
   Object.freeze({
     id: "heroes",
     series: "heroes",
-    name: "レジェンド・ゲート",
-    passName: "魔術師のバトルパス",
+    name: L("レジェンド・ゲート"),
+    passName: L("魔術師のバトルパス"),
     passReward: "genie-magician",
     entitlement: "battlepass",
     start: Date.parse("2026-09-01T05:00:00+09:00"),
@@ -22,8 +24,8 @@ export const CONTENT_SEASONS = Object.freeze([
   Object.freeze({
     id: "alice",
     series: "alice",
-    name: "ワンダーランド・ゲート",
-    passName: "アリスのバトルパス",
+    name: L("ワンダーランド・ゲート"),
+    passName: L("アリスのバトルパス"),
     passReward: "alice-A-alice",
     entitlement: "battlepass-alice",
     start: Date.parse("2027-01-01T09:00:00+09:00"),

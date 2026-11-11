@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { readMatchRatings } from "../net/match-rating.js";
+import { L } from "../i18n/index.js";
 
 export function useMatchRatings(network, round, enabled) {
   const key = enabled ? `${network.code}:${network.createdAt}:${round}` : null;
@@ -17,7 +18,7 @@ export function useMatchRatings(network, round, enabled) {
           setState({
             key,
             ratings: null,
-            error: "レートを確認できませんでした。再接続しています…",
+            error: L("レートを確認できませんでした。再接続しています…"),
           });
           timer = setTimeout(read, 3000);
         }

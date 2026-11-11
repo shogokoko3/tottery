@@ -17,6 +17,7 @@ import { primerOutroLines } from "../game/story.js";
 import { loadProfile } from "../game/profile.js";
 import { getCollection } from "../skins/store.js";
 import { foilRevealed } from "../skins/collection.js";
+import { L } from "../i18n/index.js";
 
 export function MoveDiagram({ rank, isKing = !1, gridSize = 7 }) {
   // 4・5 の王は自分ではなく「王以外の同じ数字」を伸ばす。
@@ -214,13 +215,13 @@ export function PowerBands({ kind }) {
   return (
     <div className="pf-bands">
       <div className="pf-band">
-        <span className="pf-band-who">ふつう</span>
-        <span className="pf-band-turn">1回の番</span>
+        <span className="pf-band-who">{L("ふつう")}</span>
+        <span className="pf-band-turn">{L("1回の番")}</span>
         <span className="pf-band-marks">{mark} ①</span>
       </div>
       <div className="pf-band is-king">
-        <span className="pf-band-who">王</span>
-        <span className="pf-band-turn">1回の番</span>
+        <span className="pf-band-who">{L("王")}</span>
+        <span className="pf-band-turn">{L("1回の番")}</span>
         <span className="pf-band-marks">{mark} {mark} ①②</span>
       </div>
     </div>
@@ -239,11 +240,11 @@ export function KingMoveFigure({ rank, gridSize = 7 }) {
     <div className="md-pair">
       <figure>
         <MoveDiagram rank={rank} gridSize={gridSize} />
-        <figcaption>王(2マスのまま)</figcaption>
+        <figcaption>{L("王(2マスのまま)")}</figcaption>
       </figure>
       <figure>
         <MoveDiagram rank={rank} isKing gridSize={gridSize} />
-        <figcaption>仲間の{rank}(伸びる)</figcaption>
+        <figcaption>{L("仲間の{rank}(伸びる)", { rank })}</figcaption>
       </figure>
     </div>
   );
@@ -273,13 +274,13 @@ export function CardGuide({
         ) : (
           <div className="cg-rank">{rank}</div>
         )}
-        {alice && rank==="A" ? <p className="hint">数字逆転<br/>2↔K・3↔Q・4↔J<br/>5↔10・6↔9・7↔8</p> : isKing && (!alice || ["2","3"].includes(rank)) ? <KingMoveFigure rank={rank} /> : <MoveDiagram rank={movementRank || rank} />}
+        {alice && rank==="A" ? <p className="hint">{L("数字逆転")}<br/>{L("2↔K・3↔Q・4↔J")}<br/>{L("5↔10・6↔9・7↔8")}</p> : isKing && (!alice || ["2","3"].includes(rank)) ? <KingMoveFigure rank={rank} /> : <MoveDiagram rank={movementRank || rank} />}
       </div>
       <p className="cg-text">
         {placing ? moveOnlyText(rank) : MOVE_TEXT[rank]}
       </p>
-      {isKing && <p className="cg-king">王の効果: {alice ? ALICE_SKINS.find(s=>s.rank===rank)?.description : KING_TEXT[rank]}</p>}
-      {movementRank && <p className="hint">カドリール：現在は{movementRank}と同じ動きです。</p>}
+      {isKing && <p className="cg-king">{L("王の効果: {text}", { text: (alice ? ALICE_SKINS.find(s=>s.rank===rank)?.description : KING_TEXT[rank]) ?? "" })}</p>}
+      {movementRank && <p className="hint">{L("カドリール：現在は{rank}と同じ動きです。", { rank: movementRank })}</p>}
     </div>
   );
 }
@@ -302,64 +303,68 @@ export function RulesPanel({ onClose, initialTab = "moves" }) {
     return (
       /* 1枚目からでも閉じられるように、途中でやめる釦も「とじる」にする
          (2026-09-30 見直し。10枚送らないと閉じられなかった) */
-      <Primer doneLabel="とじる" onDone={onClose} onSkip={onClose} skipLabel="とじる" outro={primerOutroLines(loadProfile())} />
+      <Primer doneLabel={L("とじる")} onDone={onClose} onSkip={onClose} skipLabel={L("とじる")} outro={primerOutroLines(loadProfile())} />
     );
   if (tab === "areas")
     return (
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal-panel" onClick={(n) => n.stopPropagation()}>
           <div className="modal-head">
-            <h3>盤面エリア</h3>
+            <h3>{L("盤面エリア")}</h3>
             <button className="icon-btn" onClick={onClose}>
               <Close size={18} />
             </button>
           </div>
           <div className="rule-toggle">
             <button className="btn btn-ghost" onClick={() => setTab("primer")}>
-              はじめに
+              {L("はじめに")}
             </button>
             <button className="btn btn-ghost" onClick={() => setTab("moves")}>
-              通常の動き
+              {L("通常の動き")}
             </button>
             <button className="btn btn-ghost" onClick={() => setTab("king")}>
-              王にした時
+              {L("王にした時")}
             </button>
             <button className="btn btn-primary" onClick={() => setTab("areas")}>
-              盤面エリア
+              {L("盤面エリア")}
             </button>
           </div>
           <AreaGuide />
         </div>
       </div>
     );
+  // 太字の3つを文の途中に入れる。英語でも同じ順に並ぶ文にして {b1}〜{b3} で切る
+  const revealParts = L(
+    "駒が表になるのは3つの場面です。布陣が{b1}で相手に公開された とき、{b2}とき（その駒はその場で名乗りを上げます）、 そして{b3}から出たとき。表になった駒は、相手にも 正体が見えます。",
+  ).split(/\{b\d\}/);
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel" onClick={(n) => n.stopPropagation()}>
         <div className="modal-head">
-          <h3>カード早見表</h3>
+          <h3>{L("カード早見表")}</h3>
           <button className="icon-btn" onClick={onClose}>
             <Close size={18} />
           </button>
         </div>
         <div className="rule-toggle">
           <button className="btn btn-ghost" onClick={() => setTab("primer")}>
-            はじめに
+            {L("はじめに")}
           </button>
           <button
             className={`btn ${t ? "btn-ghost" : "btn-primary"}`}
             onClick={() => l(!1)}
           >
-            通常の動き
+            {L("通常の動き")}
           </button>
           <button
             className={`btn ${t ? "btn-primary" : "btn-ghost"}`}
             onClick={() => l(!0)}
           >
-            王にした時
+            {L("王にした時")}
           </button>
           {areasKnown && (
             <button className="btn btn-ghost" onClick={() => setTab("areas")}>
-              盤面エリア
+              {L("盤面エリア")}
             </button>
           )}
         </div>
@@ -370,8 +375,8 @@ export function RulesPanel({ onClose, initialTab = "moves" }) {
           }}
         >
           {t
-            ? "王にした時に加わる効果です。図は同じ数字を1枚だけ採用した場合。"
-            : "金色のマスが動ける先です。"}
+            ? L("王にした時に加わる効果です。図は同じ数字を1枚だけ採用した場合。")
+            : L("金色のマスが動ける先です。")}
         </p>
         <div className="rule-grid">
           {RANKS.map((n) => (
@@ -386,13 +391,13 @@ export function RulesPanel({ onClose, initialTab = "moves" }) {
         </div>
         {/* 表になる場面は2つしかないので、早見表の足元に添えておく */}
         <p className="hint rule-foot">
-          駒が表になるのは3つの場面です。布陣が<b>フラッシュ</b>
-          で相手に公開された とき、<b>相手の王を討った</b>
-          とき（その駒はその場で名乗りを上げます）、 そして<b>Kの王の予備札</b>
-          から出たとき。表になった駒は、相手にも 正体が見えます。
+          {revealParts[0]}<b>{L("フラッシュ")}</b>
+          {revealParts[1]}<b>{L("相手の王を討った")}</b>
+          {revealParts[2]}<b>{L("Kの王の予備札")}</b>
+          {revealParts[3]}
         </p>
         <p className="hint rule-foot">
-          <b>終局できない局面の判定：</b>駒の移動範囲から両者の王を討てないと確定した場合、または動く側に合法な行動がない場合は、対局開始時に採用した札の数字の合計が低い側の勝ちです。同点は引き分け。A=1、J=11、Q=12、K=13として数え、倒れた駒も含みます。途中で投入した予備札は合計に含みません。CPU戦・ストーリー・同じ端末の対局では、同じ局面が3回目になったとき、または駒が1枚も倒れない手番が続いたとき(5×5は両者合わせて40手番、9×9は60手番)も同じ判定です。オンライン対戦では、同じ局面の繰り返しだけでは判定しません。
+          <b>{L("終局できない局面の判定：")}</b>{L("駒の移動範囲から両者の王を討てないと確定した場合、または動く側に合法な行動がない場合は、対局開始時に採用した札の数字の合計が低い側の勝ちです。同点は引き分け。A=1、J=11、Q=12、K=13として数え、倒れた駒も含みます。途中で投入した予備札は合計に含みません。CPU戦・ストーリー・同じ端末の対局では、同じ局面が3回目になったとき、または駒が1枚も倒れない手番が続いたとき(5×5は両者合わせて40手番、9×9は60手番)も同じ判定です。オンライン対戦では、同じ局面の繰り返しだけでは判定しません。")}
         </p>
       </div>
     </div>

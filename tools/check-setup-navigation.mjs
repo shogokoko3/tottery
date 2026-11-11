@@ -101,6 +101,8 @@ const ui = vm.createContext({
   findHandCard: (player, id) => player.hand.find((card) => card.id === id),
   territoryRows, kingPowerBoard: () => null, kingPowersOn: () => false,
   PLAYER_META: [{ color: "blue" }, { color: "red" }], nameOf: () => "Player",
+  // 文の訳(2026-11-11 英語版)。日本語の端末ではキーをそのまま返す
+  ...(await import("../src/i18n/index.js")), phr: (parts) => parts,
   ...Object.fromEntries(["SetupOrderNote", "SetupTimer", "Phrases", "CardFace", "CardBack", "KingPowerCard", "ArrowLeft", "Crown"].map((name) => [name, name])),
 });
 const KingStep = vm.runInContext(`${code}; KingStep`, ui);

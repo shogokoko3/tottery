@@ -16,6 +16,7 @@
  * SSRフォイルの2経路には保存済みの通算召喚枚数も使い、同じキャラを再び引いても固定しない。
  */
 import { byId } from "./catalog.js";
+import { L } from "../i18n/index.js";
 
 export const POWER = { R: 1, SR: 2, SSR: 3, LIMITED: 3, SPECIAL: 3 };
 
@@ -96,7 +97,7 @@ export function ladderFor(rarity, seed) {
 
 /** 前兆の一言 */
 export const OMEN_TEXT = {
-  R: "運命が、目を覚ます。",
-  SR: "光が、集まりはじめた。",
-  SSR: "……ただならぬ気配。",
+  R: L("運命が、目を覚ます。"),
+  SR: L("光が、集まりはじめた。"),
+  SSR: L("……ただならぬ気配。"),
 };

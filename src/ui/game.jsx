@@ -1,4 +1,5 @@
 import {AliceControls} from "./alice-controls.jsx";
+import { L, Lx, isEnglish } from "../i18n/index.js";
 import {useAliceEffects,AliceBoardEffects,AliceEffectNotice} from "./alice-effects.jsx";
 import {useAliceArea} from "./alice-areas.jsx";
 import {aliceSkin,aliceKing,aliceBoard,aliceClocksHidden,reverseLimit,reverseCandidates,reverseLocked,reverseTurnsLeft} from "../game/alice-rules.js";
@@ -84,6 +85,7 @@ import {
   MULLIGAN_LIMIT_MS,
   setupLimitMs,
   setupWaiting,
+  logText,
 } from "../game/reducer.js";
 import {
   ArrowRight,
@@ -247,27 +249,27 @@ export function ClockBar({
                   size="sm"
                 />
                 <span className="clock-name">
-                  {shortPlayerLabel(idx, viewer, names)}({PLAYER_META[idx].name}
+                  {shortPlayerLabel(idx, viewer, names)}({Lx(PLAYER_META[idx].name)}
                   )
                 </span>
               </span>
               {/* 残り時間の脇に、追加の残り回数を小さな点で(2026-09-23 本人の指示。
                   「追加 あと6回」の行は場所を取っていた)。残り3回からは点が橙、0回で赤 */}
               <strong className={`clock-time ${untimed ? "clock-time-untimed" : ""}`}>
-                {untimed ? "制限なし" : hidden ? "？？？" : fmt(ms)}
+                {untimed ? L("制限なし") : hidden ? L("？？？") : fmt(ms)}
                 {extensions && (
                   <span
                     className={`clock-pips-inline ${warning ? "is-warning" : ""} ${remaining === 0 ? "is-empty" : ""}`}
                     role="img"
                     aria-label={
                       remaining === 0
-                        ? "時間の追加はもうありません"
-                        : `時間の追加はあと${remaining}回`
+                        ? L("時間の追加はもうありません")
+                        : L("時間の追加はあと{n}回", { n: remaining })
                     }
                     title={
                       remaining === 0
-                        ? "次のターンから追加なし"
-                        : `残り30秒以下のターン開始時に+10秒。あと${remaining}回`
+                        ? L("次のターンから追加なし")
+                        : L("残り30秒以下のターン開始時に+10秒。あと{n}回", { n: remaining })
                     }
                   >
                     {Array.from({ length: CLOCK_EXTENSION_LIMIT }, (_, n) => (
@@ -283,7 +285,7 @@ export function ClockBar({
       </div>
       {extensions && (
         <p className="clock-rule-hint">
-          ターン開始時に30秒以下なら＋10秒・各6回まで
+          {L("ターン開始時に30秒以下なら＋10秒・各6回まで")}
         </p>
       )}
     </div>
@@ -295,13 +297,25 @@ export function ClockBar({
  * 「青が赤のA♦を撃破!」のように色名が2つ出るので、
  * それぞれその色で書いて、どちらが何をしたのか読み取れるようにする。
  */
+/**
+ * 記録の色名(赤/青)。記録は日本語のまま保存されるので、出すときに Lx で訳してから色名を探す。
+ * 英語では "Red" が "Redrew" の中で当たらないよう、語の切れ目で探す
+ */
+const colorWords = () => PLAYER_META.map((p) => Lx(p.name));
+const colorPattern = (words, flags) =>
+  new RegExp(isEnglish ? `\\b(${words.join("|")})\\b` : `(${words.join("|")})`, flags);
+
 /** 記録の中の色名(赤/青)を、分かっていればプレイヤー名に置き換える */
 export function withNames(text, names) {
-  if (!text || !names) return text;
+  if (!text) return text;
+  const shown = logText(text);
+  if (!names) return shown;
   return PLAYER_META.reduce(
     (out, meta, idx) =>
-      names[idx] ? out.split(meta.name).join(names[idx]) : out,
-    text,
+      names[idx]
+        ? out.replace(colorPattern([Lx(meta.name)], "g"), () => names[idx])
+        : out,
+    shown,
   );
 }
 
@@ -310,8 +324,8 @@ export function LogLine({ text, index, active, onPick }) {
   // 書き換えずに表示のときだけ名前へ置き換える。
   // 記録そのものを名前で作ると、オンラインで再生がずれてしまう
   const names = useNames();
-  const colors = PLAYER_META.map((p) => p.name);
-  const parts = text.split(new RegExp(`(${colors.join("|")})`));
+  const colors = colorWords();
+  const parts = logText(text).split(colorPattern(colors));
   const first = parts.find((p) => colors.includes(p));
   const actor = first ? PLAYER_META[colors.indexOf(first)] : null;
   return (
@@ -334,7 +348,7 @@ export function LogLine({ text, index, active, onPick }) {
           <span key={i}>{part}</span>
         );
       })}
-      {onPick && <span className="log-peek">盤面</span>}
+      {onPick && <span className="log-peek">{L("盤面")}</span>}
     </li>
   );
 }
@@ -355,9 +369,10 @@ export function TurnBar({ state, viewer, onLog = null }) {
           .reverse()
           .find(
             (line) =>
-              !line.includes("勝利") &&
-              !line.includes("王が倒された") &&
-              !line.includes("新しい王"),
+              // 記録は日本語のまま保存されるので、日本語の言葉で探す
+              !line.includes("勝利") && // i18n-ignore
+              !line.includes("王が倒された") && // i18n-ignore
+              !line.includes("新しい王"), // i18n-ignore
           )
       : state.log[state.log.length - 1];
   // 1行に収める(2026-09-23 本人の指示「盤が一番見やすいように」)。手番と最後の記録を並べ、
@@ -378,7 +393,7 @@ export function TurnBar({ state, viewer, onLog = null }) {
             fontWeight: 700,
           }}
         >
-          {playerLabel(state.currentTurn, viewer, names)}の番です
+          {L("{who}の番です", { who: playerLabel(state.currentTurn, viewer, names) })}
         </span>
         <span className="turn-log">{withNames(log, names) || " "}</span>
       </div>
@@ -417,30 +432,33 @@ export function MatchIntro({ me, ratings, chance, onDone, seconds = 6 }) {
       )}
       <b className="match-intro-name">{nameOf(idx, names)}</b>
       <span className="match-intro-rating">
-        レート <b>{Number.isFinite(ratings?.[idx]) ? ratings[idx] : "—"}</b>
+        {L("レート")} <b>{Number.isFinite(ratings?.[idx]) ? ratings[idx] : "—"}</b>
       </span>
     </div>
   );
   return (
     <div className="center-stage match-intro">
-      <h2>対戦相手が決まりました</h2>
+      <h2>{L("対戦相手が決まりました")}</h2>
       <div className="match-intro-seats">
-        {seat(me, "あなた")}
+        {seat(me, L("あなた"))}
         <span className="match-intro-vs" aria-hidden="true">
           VS
         </span>
-        {seat(1 - me, "相手")}
+        {seat(1 - me, L("相手"))}
       </div>
       {chance > 0 && (
         <div className="match-intro-chance" role="status">
-          <b>勝利チャンス！</b>
+          <b>{L("勝利チャンス！")}</b>
           <span>
-            この対局に勝つとガチャチケット{WIN_CHANCE_REWARD_TICKETS}枚(今日あと{chance}回)
+            {L("この対局に勝つとガチャチケット{n}枚(今日あと{left}回)", {
+              n: WIN_CHANCE_REWARD_TICKETS,
+              left: chance,
+            })}
           </span>
         </div>
       )}
       <button type="button" className="btn btn-primary" onClick={onDone}>
-        対局へ({Math.max(0, left)})
+        {L("対局へ({n})", { n: Math.max(0, left) })}
       </button>
     </div>
   );
@@ -462,19 +480,19 @@ export function LiveLogModal({ log, onClose }) {
     <div
       className={`live-log-sheet ${peek ? "is-peek" : ""}`}
       role="dialog"
-      aria-label="対局の記録"
+      aria-label={L("対局の記録")}
     >
       <div className="live-log-head">
-        <h3>対局の記録</h3>
+        <h3>{L("対局の記録")}</h3>
         <button
           type="button"
           className="btn btn-ghost btn-small"
           onClick={() => setPeek((v) => !v)}
         >
-          {peek ? "記録に戻る" : "盤面を見る"}
+          {peek ? L("記録に戻る") : L("盤面を見る")}
         </button>
         <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>
-          閉じる
+          {L("閉じる")}
         </button>
       </div>
       {!peek && (
@@ -483,7 +501,7 @@ export function LiveLogModal({ log, onClose }) {
             {log.length ? (
               log.map((s, v) => <LogLine text={s} index={v} key={v} />)
             ) : (
-              <li>まだ記録はありません</li>
+              <li>{L("まだ記録はありません")}</li>
             )}
           </ol>
         </div>
@@ -506,8 +524,10 @@ export function CapturedRow({ players, dispatch, viewer }) {
                 color: PLAYER_META[f].color,
               }}
             >
-              {shortPlayerLabel(f, viewer, names)}({PLAYER_META[f].name}
-              )が失った駒
+              {L("{who}({color})が失った駒", {
+                who: shortPlayerLabel(f, viewer, names),
+                color: Lx(PLAYER_META[f].name),
+              })}
             </div>
             <div className="captured-cards">
               {i.capturedOwn
@@ -535,7 +555,7 @@ export function CapturedRow({ players, dispatch, viewer }) {
       {u && (
         <div className="discard-toggle-wrap">
           <button className="btn btn-ghost" onClick={() => a((i) => !i)}>
-            {n ? "引き直しの捨て札を隠す" : "引き直しの捨て札を見る"}
+            {n ? L("引き直しの捨て札を隠す") : L("引き直しの捨て札を見る")}
           </button>
           {n && (
             <div className="discard-both">
@@ -543,7 +563,10 @@ export function CapturedRow({ players, dispatch, viewer }) {
                 <DiscardPanel
                   owner={f}
                   cards={i.discard}
-                  label={`${shortPlayerLabel(f, viewer, names)}(${PLAYER_META[f].name})が捨てたカード`}
+                  label={L("{who}({color})が捨てたカード", {
+                    who: shortPlayerLabel(f, viewer, names),
+                    color: Lx(PLAYER_META[f].name),
+                  })}
                   color={PLAYER_META[f].color}
                   key={f}
                 />
@@ -567,9 +590,11 @@ export function StallMeter({ state }) {
   const near = left <= 10 || repeat >= REPEAT_LIMIT - 1;
   return (
     <p className={`stall-meter${near ? " is-near" : ""}`} role="status" aria-live="polite">
-      <span>駒が倒れないまま、あと{left}手番で判定</span>
-      {repeat >= 2 && <span>同じ局面が{repeat}回目。{REPEAT_LIMIT}回目で判定</span>}
-      <small>判定では、最初に並べた札の合計が小さい側の勝ち</small>
+      <span>{L("駒が倒れないまま、あと{n}手番で判定", { n: left })}</span>
+      {repeat >= 2 && (
+        <span>{L("同じ局面が{n}回目。{limit}回目で判定", { n: repeat, limit: REPEAT_LIMIT })}</span>
+      )}
+      <small>{L("判定では、最初に並べた札の合計が小さい側の勝ち")}</small>
     </p>
   );
 }
@@ -578,15 +603,15 @@ function AdjudicationResult({ state, names }) {
   const result = state.adjudication;
   if (!result) return null;
   return (
-    <section className="adjudication-result" aria-label="判定結果の内訳">
+    <section className="adjudication-result" aria-label={L("判定結果の内訳")}>
       <p>
         {result.reason === "no-legal-action"
-          ? "動く側に指せる手がなく、対局を続けられないため判定になりました。"
+          ? L("動く側に指せる手がなく、対局を続けられないため判定になりました。")
           : result.reason === "repetition"
-            ? "同じ局面が3回目になったため、判定になりました。"
+            ? L("同じ局面が3回目になったため、判定になりました。")
             : result.reason === "no-progress"
-              ? "駒が1枚も倒れない手番が続いたため、判定になりました。"
-              : "駒の動ける範囲から、どちらの王も討てない局面と判定しました。"}
+              ? L("駒が1枚も倒れない手番が続いたため、判定になりました。")
+              : L("駒の動ける範囲から、どちらの王も討てない局面と判定しました。")}
       </p>
       <div className="adjudication-scores">
         {result.totals.map((total, side) => (
@@ -602,11 +627,11 @@ function AdjudicationResult({ state, names }) {
       </div>
       <p>
         {state.winner == null
-          ? "採用合計が同じため、引き分けです。"
-          : "採用合計が低い側の勝ちです。"}
+          ? L("採用合計が同じため、引き分けです。")
+          : L("採用合計が低い側の勝ちです。")}
       </p>
       <p className="hint">
-        対局開始時に採用した全ての札を合計します。A=1、J=11、Q=12、K=13。倒れた駒も含み、途中で投入した予備札は含みません。
+        {L("対局開始時に採用した全ての札を合計します。A=1、J=11、Q=12、K=13。倒れた駒も含み、途中で投入した予備札は含みません。")}
       </p>
     </section>
   );
@@ -645,16 +670,16 @@ function FoeFriendRequest({ uid, name }) {
           setBusy(true);
           try {
             const r = await requestFriendByUid(uid, "match");
-            setMsg(r.friend ? "フレンドになりました" : "フレンド申請を送りました");
+            setMsg(r.friend ? L("フレンドになりました") : L("フレンド申請を送りました"));
             setDone(true);
           } catch (e) {
-            setMsg(e.message || "送れませんでした");
+            setMsg(Lx(e.message) || L("送れませんでした"));
           } finally {
             setBusy(false);
           }
         }}
       >
-        <Users size={14} /> {name ? `${name} にフレンド申請` : "相手にフレンド申請"}
+        <Users size={14} /> {name ? L("{name} にフレンド申請", { name }) : L("相手にフレンド申請")}
       </button>
       {msg && <small className="foe-friend-msg">{msg}</small>}
     </div>
@@ -669,7 +694,7 @@ export function GameView({
   viewer,
   dispatch,
   onExit,
-  exitLabel = "タイトルに戻る",
+  exitLabel = L("タイトルに戻る"),
   // ホームへ(対局後の左下)。チュートリアルは onExit がタイトルへ戻すので渡さない
   onHome = null,
   onNextMatch,
@@ -706,7 +731,7 @@ export function GameView({
     [playing, setPlaying] = (0, useState)(!1),
     drawn = state.winner === null,
     r = drawn
-      ? { name: "引き分け", color: "var(--gold-soft)" }
+      ? { name: L("引き分け"), color: "var(--gold-soft)" }
       : PLAYER_META[state.winner],
     // 1台で交互に指しているときは「あなた」が決まらないので、色名で伝える
     lost =
@@ -811,12 +836,12 @@ export function GameView({
               }}
             >
               {drawn
-                ? "引き分け"
+                ? L("引き分け")
                 : network
                   ? state.winner === myIdx
-                    ? "あなたの勝ち!"
-                    : "あなたの負け…"
-                  : `${r.name}の勝利!`}
+                    ? L("あなたの勝ち!")
+                    : L("あなたの負け…")
+                  : L("{side}の勝利!", { side: Lx(r.name) })}
             </h3>
             <button className="icon-btn" onClick={() => o(!1)}>
               <Close size={18} />
@@ -825,8 +850,8 @@ export function GameView({
           {state.endReason === "frozen" && (
             <div className="area-frozen-result">
               <span aria-hidden="true">❄</span>
-              <b>氷のエリアによる決着</b>
-              <p>凍って指せる手がなくなったため、対局が終わりました。</p>
+              <b>{L("氷のエリアによる決着")}</b>
+              <p>{L("凍って指せる手がなくなったため、対局が終わりました。")}</p>
             </div>
           )}
           <AdjudicationResult state={state} names={names} />
@@ -837,13 +862,13 @@ export function GameView({
                 color: "var(--gold-soft)",
               }}
             >
-              {nameOf(state.resignedBy, names)}の降参により決着しました。
+              {L("{who}の降参により決着しました。", { who: nameOf(state.resignedBy, names) })}
             </p>
           )}
           <p className="hint">
             {at === null
-              ? "最終盤面(すべての駒を公開)。駒をタップすると、その駒の動きを追えます。"
-              : `${at + 1}番目の出来事の直後の盤面です。`}
+              ? L("最終盤面(すべての駒を公開)。駒をタップすると、その駒の動きを追えます。")
+              : L("{n}番目の出来事の直後の盤面です。", { n: at + 1 })}
           </p>
           <div className="side-legend">
             {state.players.map((s, v) => (
@@ -858,10 +883,10 @@ export function GameView({
           </div>
           {at !== null && mark && (
             <div className="trace-legend">
-              <span className="trace-key trace-key-from">動く前</span>
-              <span className="trace-key trace-key-to">動いた先</span>
+              <span className="trace-key trace-key-from">{L("動く前")}</span>
+              <span className="trace-key trace-key-to">{L("動いた先")}</span>
               {mark.taken && mark.taken.length > 0 && (
-                <span className="trace-key trace-key-taken">取られた駒</span>
+                <span className="trace-key trace-key-taken">{L("取られた駒")}</span>
               )}
             </div>
           )}
@@ -872,11 +897,11 @@ export function GameView({
                   className="btn btn-ghost"
                   onClick={() => setPlaySeq((n) => n + 1)}
                 >
-                  <Sparkle size={14} /> もう一度見る
+                  <Sparkle size={14} /> {L("もう一度見る")}
                 </button>
               )}
               <button className="btn btn-ghost" onClick={() => setAt(null)}>
-                最終盤面に戻る
+                {L("最終盤面に戻る")}
               </button>
             </div>
           )}
@@ -934,7 +959,7 @@ export function GameView({
                         mark.to &&
                         mark.to.row === z &&
                         mark.to.col === g && (
-                          <span className="trace-pin trace-pin-to">着</span>
+                          <span className="trace-pin trace-pin-to">{L("着")}</span>
                         )}
                       {!playing && hit(mark && mark.taken, z, g) && (
                         <span className="trace-pin trace-pin-taken">×</span>
@@ -1000,8 +1025,10 @@ export function GameView({
                     color: PLAYER_META[v].color,
                   }}
                 >
-                  {shortPlayerLabel(v, viewer, names)}({PLAYER_META[v].name}
-                  )が失った駒
+                  {L("{who}({color})が失った駒", {
+                    who: shortPlayerLabel(v, viewer, names),
+                    color: Lx(PLAYER_META[v].name),
+                  })}
                 </div>
                 <div className="captured-cards">
                   {s.capturedOwn
@@ -1023,14 +1050,14 @@ export function GameView({
                       </div>
                     ))}
                   {s.capturedOwn.filter((p) => !p.alive).length === 0 && (
-                    <span className="hint">なし</span>
+                    <span className="hint">{L("なし")}</span>
                   )}
                 </div>
               </div>
             ))}
           </div>
           <div className="review-log">
-            <div className="tray-label">対局の記録</div>
+            <div className="tray-label">{L("対局の記録")}</div>
             <ol className="log-list">
               {m.length ? (
                 m.map((s, v) => (
@@ -1042,13 +1069,13 @@ export function GameView({
                     key={v}
                   />
                 ))) : (
-                <li>特筆すべき出来事はありませんでした</li>
+                <li>{L("特筆すべき出来事はありませんでした")}</li>
               )}
             </ol>
           </div>
           <div className="setup-actions">
             <button className="btn btn-ghost" onClick={() => o(!1)}>
-              閉じる
+              {L("閉じる")}
             </button>
           </div>
         </div>
@@ -1065,7 +1092,7 @@ export function GameView({
         <div className="gameover-body">
         {drawn ? (
           <span className="adjudication-draw-mark" aria-hidden="true">
-            ＝
+            {L("＝")}
           </span>
         ) : lost ? (
           <Flag size={34} className="defeat-mark" />
@@ -1082,18 +1109,18 @@ export function GameView({
           style={lost ? void 0 : { color: r.color }}
         >
           {drawn
-            ? "引き分け"
+            ? L("引き分け")
             : tutorial?.intro && won
-              ? "初勝利!"
+              ? L("初勝利!")
               : story && won
-              ? "ステージクリア!"
+              ? L("ステージクリア!")
               : tutorial && won
-                ? "チュートリアルクリア!"
+                ? L("チュートリアルクリア!")
                 : won
-                  ? "あなたの勝ち!"
+                  ? L("あなたの勝ち!")
                   : lost
-                    ? "敗北"
-                    : `${r.name}の勝利!`}
+                    ? L("敗北")
+                    : L("{side}の勝利!", { side: Lx(r.name) })}
         </h2>
         {tutorial && won && (
           <>
@@ -1119,17 +1146,17 @@ export function GameView({
                     // です・ます調の決まり文句「…でした」を使わない(2026-10-06 見直し。第1〜13話はいままでどおり)
                     <p>
                       <span className="tutorial-line-row">
-                        <Phrases text="相手の王は、" />
+                        <Phrases text={L("相手の王は、")} />
                       </span>
                       <span className="tutorial-line-row">
                         <span className="text-phrase">
-                          <b>{foeKing.rank}{SUIT_SYMBOL[foeKing.suit]}</b> だった。
+                          <b>{foeKing.rank}{SUIT_SYMBOL[foeKing.suit]}</b> {L("だった。")}
                         </span>
                       </span>
                     </p>
                   ) : (
                     <p>
-                      相手の王は <b>{foeKing.rank}{SUIT_SYMBOL[foeKing.suit]}</b> でした
+                      {L("相手の王は")} <b>{foeKing.rank}{SUIT_SYMBOL[foeKing.suit]}</b> {L("でした")}
                     </p>
                   )}
                 </div>
@@ -1181,7 +1208,7 @@ export function GameView({
             })()}
             {/* 文ごとに折り返す(「一枚に、野/望を。」と語の途中で割れていた) */}
             <p className="tutorial-tagline">
-              {(tutorial.tagline || "相手の王を討て。").match(/[^。]+。?/g).map((part, i) => (
+              {(tutorial.tagline || L("相手の王を討て。")).match(/[^。]+。?/g).map((part, i) => (
                 <span className="tutorial-tagline-part" key={i}>
                   {part}
                 </span>
@@ -1192,14 +1219,14 @@ export function GameView({
         {lost && (
           <p className="defeat-lead">
             {state.endReason === "frozen"
-              ? "凍結によって動ける駒がなくなりました"
+              ? L("凍結によって動ける駒がなくなりました")
               : state.adjudication
-                ? "採用カードの合計による判定負けです"
+                ? L("採用カードの合計による判定負けです")
                 : state.timeoutBy === youAre
-                  ? "持ち時間を使い切りました"
+                  ? L("持ち時間を使い切りました")
                   : state.resignedBy === youAre
-                    ? "降参しました"
-                    : "王を討たれました"}
+                    ? L("降参しました")
+                    : L("王を討たれました")}
           </p>
         )}
         {lossNote && <div className="story-loss-note" role="note"><b>{lossNote.fact}</b><p>{lossNote.tip}</p></div>}
@@ -1210,14 +1237,14 @@ export function GameView({
               marginTop: -6,
             }}
           >
-            {nameOf(state.resignedBy, names)}が降参しました
+            {L("{who}が降参しました", { who: nameOf(state.resignedBy, names) })}
           </p>
         )}
         {state.endReason === "frozen" && (
           <div className="area-frozen-result">
             <span aria-hidden="true">❄</span>
-            <b>氷のエリアによる決着</b>
-            <p>凍って指せる手がなくなったため、対局が終わりました。</p>
+            <b>{L("氷のエリアによる決着")}</b>
+            <p>{L("凍って指せる手がなくなったため、対局が終わりました。")}</p>
           </div>
         )}
         <AdjudicationResult state={state} names={names} />
@@ -1239,14 +1266,16 @@ export function GameView({
             しくじったときは何も出さない(次の対局の「対戦相手」の画面でまた知らせる) */}
         {chance && chance.rewarded && (
           <div className="chance-notice chance-notice-won" role="status">
-            <b>勝利チャンス成功！</b> ガチャチケット{WIN_CHANCE_REWARD_TICKETS}枚
-            {chance.receipt === "pending" ? "を受取待ちです。通信でき次第、自動で受け取ります" : "を受け取りました"}
-            {chance.left > 0 ? `(今日あと${chance.left}回)` : "(今日はここまで)"}
+            <b>{L("勝利チャンス成功！")}</b>{" "}
+            {chance.receipt === "pending"
+              ? L("ガチャチケット{n}枚を受取待ちです。通信でき次第、自動で受け取ります", { n: WIN_CHANCE_REWARD_TICKETS })
+              : L("ガチャチケット{n}枚を受け取りました", { n: WIN_CHANCE_REWARD_TICKETS })}
+            {chance.left > 0 ? L("(今日あと{n}回)", { n: chance.left }) : L("(今日はここまで)")}
           </div>
         )}
         {rating && (
           <div className="rating-change">
-            <span className="rating-label">レート</span>
+            <span className="rating-label">{L("レート")}</span>
             <span className="rating-nums">
               {rating.before}
               <span className="rating-arrow">→</span>
@@ -1259,7 +1288,7 @@ export function GameView({
             </span>
             {rating.adjusted && (
               <small className="rating-adjusted">
-                レートはサーバーの記録に合わせています
+                {L("レートはサーバーの記録に合わせています")}
               </small>
             )}
           </div>
@@ -1269,23 +1298,23 @@ export function GameView({
             {nextTutorial && onNextTutorial ? (
               <>
                 <p className="hint">
-                  次は「{nextTutorial.title}」(約{tutorialMinutes(nextTutorial)}分)
+                  {L("次は「{title}」(約{n}分)", { title: nextTutorial.title, n: tutorialMinutes(nextTutorial) })}
                 </p>
                 <button
                   className="btn btn-primary btn-wide"
                   onClick={onNextTutorial}
                 >
-                  次のステージへ <ArrowRight size={16} />
+                  {L("次のステージへ")} <ArrowRight size={16} />
                 </button>
               </>
             ) : (
               <>
-                <p className="hint">最終ステージをクリアしました!</p>
+                <p className="hint">{L("最終ステージをクリアしました!")}</p>
                 <button
                   className="btn btn-primary btn-wide"
                   onClick={onTutorialList || onExit}
                 >
-                  チュートリアル一覧へ
+                  {L("チュートリアル一覧へ")}
                 </button>
               </>
             )}
@@ -1296,26 +1325,26 @@ export function GameView({
         {story && won && story.ready && !onGate && (
           <div className="tutorial-complete story-complete">
             {/* 台本の一局は、見出しの下にステージの名が出ている */}
-            {!tutorial && <p className="hint">{story.title}をクリア</p>}
+            {!tutorial && <p className="hint">{L("{title}をクリア", { title: story.title })}</p>}
             <StoryAfterword axis={story.axis} phase={story.phase} />
             {story.fresh && (
-              <p className="hint story-reward">ガチャチケット {STORY_TICKETS}枚を受け取りました</p>
+              <p className="hint story-reward">{L("ガチャチケット {n}枚を受け取りました", { n: STORY_TICKETS })}</p>
             )}
             {/* 次のステージはストーリーの一覧でも知らせる */}
             {story.next && onNextStory ? (
               <>
-                <p className="hint">次は「{story.next.title}」</p>
+                <p className="hint">{L("次は「{title}」", { title: story.next.title })}</p>
                 <button className="btn btn-primary btn-wide" onClick={() => onNextStory(story.next.axis)}>
-                  次のステージへ <ArrowRight size={16} />
+                  {L("次のステージへ")} <ArrowRight size={16} />
                 </button>
               </>
             ) : story.allCleared ? (
               // 一覧へは右上の「ストーリーへ」で(釦を二つ並べない)
-              <p className="hint">このフェーズの全ステージをクリアしました!</p>
+              <p className="hint">{L("このフェーズの全ステージをクリアしました!")}</p>
             ) : null}
             {/* フェーズ1を全部クリアしたら、ランダムマッチが開く(2026-09-30 本人の指示)。開いたその1局だけ知らせる */}
             {story.fresh && story.allCleared && story.phase === 1 && (
-              <p className="hint story-gate-open">ランダムマッチが開きました</p>
+              <p className="hint story-gate-open">{L("ランダムマッチが開きました")}</p>
             )}
           </div>
         )}
@@ -1330,7 +1359,7 @@ export function GameView({
         {tutorial?.intro && won && introReady && onGate && (
           <div className="gameover-gate">
             <button className="btn btn-primary btn-wide result-gate" onClick={onGate}>
-              初勝利の報酬を受け取る <ArrowRight size={16} />
+              {L("初勝利の報酬を受け取る")} <ArrowRight size={16} />
             </button>
           </div>
         )}
@@ -1342,24 +1371,24 @@ export function GameView({
         {/* 門へ進むとき(はじめの一局)は「対戦の振り返り」だけ。「ストーリーへ」「ホームへ」は、
             名前の画面(導入の続き)へ行ってしまい、釦の名と行き先が違った(2026-10-01 の見直し) */}
         {onGate ? (
-          <div className="gameover-grid gameover-grid-single" role="group" aria-label="対局後の操作">
+          <div className="gameover-grid gameover-grid-single" role="group" aria-label={L("対局後の操作")}>
             <button className="btn btn-ghost go-review" onClick={() => o(!0)}>
-              <Info size={16} /> 対戦の振り返り
+              <Info size={16} /> {L("対戦の振り返り")}
             </button>
           </div>
         ) : (
-        <div className="gameover-grid" role="group" aria-label="対局後の操作">
+        <div className="gameover-grid" role="group" aria-label={L("対局後の操作")}>
           <button
             className={`btn ${(tutorial || story) && won || lossNote ? "btn-ghost" : "btn-primary"} go-review`}
             onClick={() => o(!0)}
           >
-            <Info size={16} /> 対戦の振り返り
+            <Info size={16} /> {L("対戦の振り返り")}
           </button>
           {story ? (
             // ストーリーは右上を一覧(ストーリー)へ
             onTutorialList && (
               <button className="btn btn-ghost go-match" onClick={onTutorialList}>
-                ストーリーへ
+                {L("ストーリーへ")}
               </button>
             )
           ) : lesson ? (
@@ -1367,17 +1396,17 @@ export function GameView({
             onTutorialList &&
             (!won || nextTutorial) && (
               <button className="btn btn-ghost go-match" onClick={onTutorialList}>
-                チュートリアル一覧へ
+                {L("チュートリアル一覧へ")}
               </button>
             )) : onNextMatch ? (
             // ランダムマッチ・Bot は、同じ相手との再戦を待たずに次の相手を探せる(連戦)
             <button className="btn btn-primary go-match" onClick={onNextMatch}>
-              <Globe size={16} /> マッチングへ
+              <Globe size={16} /> {L("マッチングへ")}
             </button>
           ) : (onExit && (
               // 手元の対局(CPU・同じ端末・フレンド)は、対戦相手を選ぶ画面へ。釦もその画面の名で(2026-10-15 本人の指示)
               <button className="btn btn-ghost go-match" onClick={onExit}>
-                <Globe size={16} /> 対戦相手を選ぶ
+                <Globe size={16} /> {L("対戦相手を選ぶ")}
               </button>
             )
           )}
@@ -1385,16 +1414,16 @@ export function GameView({
             // チュートリアルは左下にタイトルへ戻る、右下にホームへ(2026-09-21 本人の指示で左右入れ替え)
             onExit && (
               <button className="btn btn-ghost go-home" onClick={onExit}>
-                {exitLabel}
+                {Lx(exitLabel)}
               </button>
             )
           ) : onHome ? (
             <button className="btn btn-ghost go-home" onClick={onHome}>
-              <Home size={16} /> ホームへ
+              <Home size={16} /> {L("ホームへ")}
             </button>
           ) : (onExit && (
               <button className="btn btn-ghost go-home" onClick={onExit}>
-                <Home size={16} /> {exitLabel}
+                <Home size={16} /> {Lx(exitLabel)}
               </button>
             )
           )}
@@ -1402,7 +1431,7 @@ export function GameView({
             // チュートリアルの右下はホームへ
             onHome && (
               <button className="btn btn-ghost go-again" onClick={onHome}>
-                <Home size={16} /> ホームへ
+                <Home size={16} /> {L("ホームへ")}
               </button>
             )
           ) : rematch ? (
@@ -1410,12 +1439,12 @@ export function GameView({
             // 相手は準備ができていないまま次の対局に入ってしまう
             rematch.foeLeft ? (
               <p className="hint">
-                相手は部屋を出ました。この相手との再戦はできません。
+                {L("相手は部屋を出ました。この相手との再戦はできません。")}
               </p>
             ) : rematch.asked ? (
               <p className="hint">
-                相手の返事を待っています…
-                {rematch.foeAsked && "（そろいました。仕切り直します）"}
+                {L("相手の返事を待っています…")}
+                {rematch.foeAsked && L("（そろいました。仕切り直します）")}
               </p>
             ) : (
               <>
@@ -1424,16 +1453,16 @@ export function GameView({
                   onClick={rematch.ask}
                   disabled={seasonResult?.status === "saving"}
                 >
-                  <RotateCcw size={16} /> もう一度遊ぶ
+                  <RotateCcw size={16} /> {L("もう一度遊ぶ")}
                 </button>
                 {rematch.foeAsked && (
-                  <p className="hint">相手はもう一度遊びたいようです</p>
+                  <p className="hint">{L("相手はもう一度遊びたいようです")}</p>
                 )}
               </>
             )) : story && onRetryStory ? (
             // ストーリーのやり直しは相手の王の説明から(王の数字も引き直す)
             <button className={`btn ${lossNote ? "btn-primary" : "btn-ghost"} go-again`} onClick={onRetryStory}>
-              <RotateCcw size={16} /> もう一度遊ぶ
+              <RotateCcw size={16} /> {L("もう一度遊ぶ")}
             </button>
           ) : tutorial ? (
             // 台本の一局(はじめの一局)は NEW_GAME で作り直すと台本の盤にならないので出さない
@@ -1443,7 +1472,7 @@ export function GameView({
               className="btn btn-ghost go-again"
               onClick={() => (onReplay ? onReplay() : dispatch({ type: "NEW_GAME" }))}
             >
-              <RotateCcw size={16} /> もう一度遊ぶ
+              <RotateCcw size={16} /> {L("もう一度遊ぶ")}
             </button>
           )}
         </div>
@@ -2149,7 +2178,7 @@ export function GameCore({
                   // 続いてしまう。少なくとも起きたことは知らせる
                   console.warn("受け取った手を適用できませんでした", ze, err);
                   v(
-                    "相手から受け取れない手が届きました。盤がずれている可能性があります。",
+                    L("相手から受け取れない手が届きました。盤がずれている可能性があります。"),
                   );
                   return Me;
                 }
@@ -2729,7 +2758,7 @@ export function GameCore({
       const next = nextStageAfter(afterProfile, story.axis);
       setStoryResult({
         fresh: freshStory,
-        next: next ? { axis: next.axis, title: `${next.name}の王` } : null,
+        next: next ? { axis: next.axis, title: L("{name}の王", { name: next.name }) } : null,
         allCleared: !nextStage(afterProfile),
       });
     }
@@ -2970,8 +2999,8 @@ export function GameCore({
                 a.currentTurn === 1 &&
                 !pendingCapture &&
                 !a.captureReveal
-                  ? "相手の番です。少し待ってください。"
-                  : "▼ の付いたボタンを押して進めてください。",
+                  ? L("相手の番です。少し待ってください。")
+                  : L("▼ の付いたボタンを押して進めてください。"),
             }
         : null,
     // 最後の説明と次の話への案内は、撃破札の確認後に完了画面へまとめる。
@@ -3239,10 +3268,10 @@ export function GameCore({
         <WaitingScreen
           text={
             !matchRatings.ready
-              ? matchRatings.error || "対戦前のレートを確認しています…"
+              ? matchRatings.error || L("対戦前のレートを確認しています…")
               : network && p !== 0
-                ? "相手の準備を待っています…"
-                : "対局の準備をしています…"
+                ? L("相手の準備を待っています…")
+                : L("対局の準備をしています…")
           }
         />
       </GameShell>
@@ -3267,7 +3296,7 @@ export function GameCore({
           if (!fxBusy) r(!0);
         }}
       >
-        <WaitingScreen text="相手が新しい王を選んでいます…" />
+        <WaitingScreen text={L("相手が新しい王を選んでいます…")} />
       </GameShell>
     ) : (
       <GameShell
@@ -3327,7 +3356,7 @@ export function GameCore({
           if (!fxBusy) r(!0);
         }}
       >
-        <WaitingScreen text="相手が布陣ボーナスを確認しています…" />
+        <WaitingScreen text={L("相手が布陣ボーナスを確認しています…")} />
       </GameShell>
     );
   if (a.interstitial && !a.captureReveal && !network && !cpu && !fxBusy)return (
@@ -3400,7 +3429,7 @@ export function GameCore({
           }}
         >
           <div className="center-stage">
-            <h2>同じ目でした</h2>
+            <h2>{L("同じ目でした")}</h2>
             <div className="dice-result-row">
               {[0, 1].map((U) => (
                 <div className="dice-result-item" key={U}>
@@ -3413,7 +3442,7 @@ export function GameCore({
               ))}
             </div>
             <p className="hint">
-              先手・後手が決まらないため、もう一度振り直します。
+              {L("先手・後手が決まらないため、もう一度振り直します。")}
             </p>
             {!network || p === 0 ? (
               <button
@@ -3424,10 +3453,10 @@ export function GameCore({
                   })
                 }
               >
-                <RotateCcw size={16} /> 振り直す
+                <RotateCcw size={16} /> {L("振り直す")}
               </button>
             ) : (
-              <p className="hint">ホストが振り直しを開始します…</p>
+              <p className="hint">{L("ホストが振り直しを開始します…")}</p>
             )}
           </div>
         </GameShell>
@@ -3506,7 +3535,7 @@ export function GameCore({
         }}
       >
         <div className="center-stage">
-          <h2>結果発表</h2>
+          <h2>{L("結果発表")}</h2>
           <div className="dice-result-row">
             {[0, 1].map((U) => (
               <div
@@ -3527,7 +3556,7 @@ export function GameCore({
               fontWeight: 700,
             }}
           >
-            {playerLabel(a.firstPlayer, P, names)}が先手です
+            {L("{who}が先手です", { who: playerLabel(a.firstPlayer, P, names) })}
           </p>
           {!network || p === 0 ? (
             <button
@@ -3538,10 +3567,10 @@ export function GameCore({
                 })
               }
             >
-              手札を確認する <ArrowRight size={16} />
+              {L("手札を確認する")} <ArrowRight size={16} />
             </button>
           ) : (
-            <p className="hint">ホストが次に進めます…</p>
+            <p className="hint">{L("ホストが次に進めます…")}</p>
           )}
         </div>
       </GameShell>
@@ -3572,27 +3601,29 @@ export function GameCore({
           <div className="setup-wrap">
             <MatchupBar viewer={me} />
             {/* 手当ての一言は見出しの代わりに(見出しと一言で同じことを二度言わない。陣・サイコロと同じ) */}
-            {coachNote || <h2 style={{ color: PLAYER_META[me].color }}>交換するカードを選んでね</h2>}
+            {coachNote || <h2 style={{ color: PLAYER_META[me].color }}>{L("交換するカードを選んでね")}</h2>}
             {a.firstPlayer !== null && a.firstPlayer !== undefined && (
               <p className="mulligan-order">
-                <b>{me === a.firstPlayer ? "先手" : "後手"}</b>
+                <b>{me === a.firstPlayer ? L("先手") : L("後手")}</b>
                 {coach ? (
                   // 手当ての局は、はじめの一局と同じ言い方(名前の三人称「ためしが先手・四と五の王が後手」を使わない。
                   // 2026-10-06 見直し)
                   <span>
-                    <Phrases text={me === a.firstPlayer ? "あなたが先に動かします。" : "相手が先に動かします。"} />
+                    <Phrases text={me === a.firstPlayer ? L("あなたが先に動かします。") : L("相手が先に動かします。")} />
                   </span>
                 ) : (
                   <span>
-                    {playerLabel(a.firstPlayer, P, names)}が先手・
-                    {playerLabel(1 - a.firstPlayer, P, names)}が後手
+                    {L("{first}が先手・{second}が後手", {
+                      first: playerLabel(a.firstPlayer, P, names),
+                      second: playerLabel(1 - a.firstPlayer, P, names),
+                    })}
                   </span>
                 )}
               </p>
             )}
             <SetupTimer
               remainingMs={prepRemaining}
-              label={myTurn ? "引き直しの残り時間" : "相手の残り時間"}
+              label={myTurn ? L("引き直しの残り時間") : L("相手の残り時間")}
               limitMs={MULLIGAN_LIMIT_MS}
             />
             <p className="hint">
@@ -3600,11 +3631,11 @@ export function GameCore({
                 ? coachLines
                   ? // 一言(「いらない札は、捨てて引き直せる。」「捨てた札は、相手にも見える。」)が出ているときは、
                     // 触り方だけを1行で(同じことを重ねると、375×667 で「このまま」が画面の下へ押し出された)
-                    "捨てる札をタップ(もう一度で取り消し)。"
+                    L("捨てる札をタップ(もう一度で取り消し)。")
                   : [
-                      "捨てたい札をタップ(もう一度タップで取り消し)。同じ枚数を予備札から引き直します。捨て札は公開情報になります。",
+                      L("捨てたい札をタップ(もう一度タップで取り消し)。同じ枚数を予備札から引き直します。捨て札は公開情報になります。"),
                       // 時間制限なし(フェーズ1 のストーリーなど)では、時間切れの話をしない
-                      untimed ? "" : "時間が来たら、選んでいる札のまま引き直します。",
+                      untimed ? "" : L("時間が来たら、選んでいる札のまま引き直します。"),
                     ].join("")
                 : coachLines
                   ? // 手当ての一言(「いらない札は、捨てて引き直せる。」)と言葉をそろえる(「カード」と混ぜない。2026-10-05 見直し)。
@@ -3619,8 +3650,8 @@ export function GameCore({
                       </span>
                     ))
                   : me === a.firstPlayer
-                    ? "引き直しは済みました。相手(後攻)が交換するカードを選んでいます…"
-                    : "先攻の相手が交換するカードを選んでいます。終わったらあなたの番です…"}
+                    ? L("引き直しは済みました。相手(後攻)が交換するカードを選んでいます…")
+                    : L("先攻の相手が交換するカードを選んでいます。終わったらあなたの番です…")}
             </p>
             <MulliganHand
               owner={me}
@@ -3637,7 +3668,17 @@ export function GameCore({
               owner={1 - me}
               cards={a.players[1 - me].discard}
               // 手当ての一言が出ている局は「札」にそろえる(2026-10-05 見直し)
-              label={`${shortPlayerLabel(1 - me, P, names)}(${PLAYER_META[1 - me].name})が捨てた${coachLines ? "札" : "カード"}`}
+              label={
+                coachLines
+                  ? L("{who}({color})が捨てた札", {
+                      who: shortPlayerLabel(1 - me, P, names),
+                      color: Lx(PLAYER_META[1 - me].name),
+                    })
+                  : L("{who}({color})が捨てたカード", {
+                      who: shortPlayerLabel(1 - me, P, names),
+                      color: Lx(PLAYER_META[1 - me].name),
+                    })
+              }
               color={PLAYER_META[1 - me].color}
             />
             {myTurn ? (
@@ -3653,14 +3694,14 @@ export function GameCore({
                   </>
                 ) : (
                   <>
-                    {be.size}枚 引き直して確定 <Check size={16} />
+                    {L("{n}枚 引き直して確定", { n: be.size })} <Check size={16} />
                   </>
                 )}
               </button>
             ) : coachLines ? null : (
               // 手当ての一言が出ている局は、上の待つ文が同じことを言っている(二度言わない。2026-10-06 見直し)
               <p className="hint">
-                {untimed ? "相手が確定するまでお待ちください。" : "相手が確定するか、時間が来るまでお待ちください。"}
+                {untimed ? L("相手が確定するまでお待ちください。") : L("相手が確定するか、時間が来るまでお待ちください。")}
               </p>
             )}
           </div>
@@ -3684,10 +3725,10 @@ export function GameCore({
           <WaitingWithBoard
             text={
               tutorial
-                ? "相手がカードを選んでいます…"
+                ? L("相手がカードを選んでいます…")
                 : bot
-                  ? "相手がカードを選んでいます…"
-                  : "CPUがカードを選んでいます…"
+                  ? L("相手がカードを選んでいます…")
+                  : L("CPUがカードを選んでいます…")
             }
             hand={a.players[0].hand}
             viewer={0}
@@ -3709,7 +3750,7 @@ export function GameCore({
           }}
         >
           <WaitingWithBoard
-            text="相手が交換するカードを選んでいます…"
+            text={L("相手が交換するカードを選んでいます…")}
             hand={a.players[p].hand}
             viewer={p}
             size={R}
@@ -3738,22 +3779,24 @@ export function GameCore({
               color: PLAYER_META[E].color,
             }}
           >
-            {playerLabel(E, P, names)}: 交換するカードを選んでね
+            {L("{who}: 交換するカードを選んでね", { who: playerLabel(E, P, names) })}
           </h2>
           {/* サイコロで決まった先手・後手を、引き直しの画面でも見えるようにする
               (2026-09-18 本人の指示。ここで手札を決めるので、順番は判断の材料になる) */}
           {a.firstPlayer !== null && a.firstPlayer !== undefined && (
             <p className="mulligan-order">
-              <b>{E === a.firstPlayer ? "先手" : "後手"}</b>
+              <b>{E === a.firstPlayer ? L("先手") : L("後手")}</b>
               <span>
-                {playerLabel(a.firstPlayer, P, names)}が先手・
-                {playerLabel(1 - a.firstPlayer, P, names)}が後手
+                {L("{first}が先手・{second}が後手", {
+                  first: playerLabel(a.firstPlayer, P, names),
+                  second: playerLabel(1 - a.firstPlayer, P, names),
+                })}
               </span>
             </p>
           )}
           {!tutorial && (
             <p className="hint">
-              捨てたい札をタップ(もう一度タップで取り消し)。同じ枚数を予備札から引き直します。捨て札は公開情報になります。
+              {L("捨てたい札をタップ(もう一度タップで取り消し)。同じ枚数を予備札から引き直します。捨て札は公開情報になります。")}
             </p>
           )}
           <MulliganHand
@@ -3771,7 +3814,10 @@ export function GameCore({
           <DiscardPanel
             owner={1 - E}
             cards={a.players[1 - E].discard}
-            label={`${shortPlayerLabel(1 - E, P, names)}(${PLAYER_META[1 - E].name})が捨てたカード`}
+            label={L("{who}({color})が捨てたカード", {
+              who: shortPlayerLabel(1 - E, P, names),
+              color: Lx(PLAYER_META[1 - E].name),
+            })}
             color={PLAYER_META[1 - E].color}
           />
           <button
@@ -3782,7 +3828,7 @@ export function GameCore({
               })
             }
           >
-            {be.size}枚 引き直して確定 <Check size={16} />
+            {L("{n}枚 引き直して確定", { n: be.size })} <Check size={16} />
           </button>
         </div>
       </GameShell>
@@ -3815,9 +3861,9 @@ export function GameCore({
             text={
               cpu && !tutorial
                 ? bot
-                  ? "相手が布陣を決めています…"
-                  : "CPUが布陣を決めています…"
-                : "相手が布陣を決めています…"
+                  ? L("相手が布陣を決めています…")
+                  : L("CPUが布陣を決めています…")
+                : L("相手が布陣を決めています…")
             }
           />
         </GameShell>
@@ -3979,7 +4025,7 @@ export function GameCore({
       <div className={`play-wrap${(aliceFx.busy ? !!displayed.shuffleMode : Pl) ? " has-shuffle-bar" : ""}${aliceArea.type ? " has-alice-area" : ""}`}>
         {network && a.ruleVersion !== GAME_RULE_VERSION && (
           <p className="hint">
-            この対局は従来ルールで進みます。新しいルールを使うには、両者が再読み込みして新しい対局を始めてください。
+            {L("この対局は従来ルールで進みます。新しいルールを使うには、両者が再読み込みして新しい対局を始めてください。")}
           </p>
         )}
         {!tutorial && (
@@ -4009,7 +4055,7 @@ export function GameCore({
           !a.aliceRevive &&
           !fxBusy && (
             <div className="alice-controls hint" role="status">
-              相手がKの効果で予備札を配置しています…
+              {L("相手がKの効果で予備札を配置しています…")}
             </div>
           )}
         {(aliceFx.busy ? displayed.phase : a.phase) === "play" && (
@@ -4046,16 +4092,16 @@ export function GameCore({
         {aceMagic.controls}
         {/* エリアの札と同じ作り(帯＋小さな「発動」)。盤と間を空ける(本人の指摘 2026-09-17) */}
         {showAceFoil && (
-          <div className="area-bar ace-foil-bar" role="group" aria-label="Aフォイルの魔法">
+          <div className="area-bar ace-foil-bar" role="group" aria-label={L("Aフォイルの魔法")}>
             <span
               className="area-chip area-chip-ace"
-              title="Aフォイルの魔法: 自分のA・王を除く3体をランダムに入れ替える。毎ターン1回、通常の行動の前に。発動後も通常の行動ができる"
+              title={L("Aフォイルの魔法: 自分のA・王を除く3体をランダムに入れ替える。毎ターン1回、通常の行動の前に。発動後も通常の行動ができる")}
             >
-              <b>Aフォイル</b>
+              <b>{L("Aフォイル")}</b>
               <small>
                 {a.aceFoilUsedTurn?.[P] === (a.turnNo || 0)
-                  ? "このターンは発動済み"
-                  : "毎ターン1回・行動前に"}
+                  ? L("このターンは発動済み")
+                  : L("毎ターン1回・行動前に")}
               </small>
             </span>
             {/* 釦の枠は使用済みでも残す(見えなくするだけ)。出たり消えたりで帯の幅と高さが変わらない */}
@@ -4076,22 +4122,22 @@ export function GameCore({
                 a.aceFoilUsedTurn?.[P] === (a.turnNo || 0)
               }
               // 使えない理由は釦の説明(title)に。帯を細くするため、行としては出さない(2026-09-23)
-              title={aceFoil.why || "毎ターン1回・通常の行動前に任意発動"}
+              title={Lx(aceFoil.why) || L("毎ターン1回・通常の行動前に任意発動")}
               onClick={() => y({ type: "USE_ACE_FOIL" })}
             >
-              発動
+              {L("発動")}
             </button>
           </div>
         )}
         {/* 革命の扉(アリスのAのフォイル効果)。魔術師の帯と同じ作り・同じ置き場(2026-10-15 本人の指示) */}
         {showRevolution && (
-          <div className="area-bar ace-foil-bar" role="group" aria-label="革命の扉">
+          <div className="area-bar ace-foil-bar" role="group" aria-label={L("革命の扉")}>
             <span
               className="area-chip area-chip-alice-ace"
-              title="革命の扉: 自分の王とAを除く駒からランダムに1体の数字を逆転する。毎ターン1回、通常の行動の前に。発動後も通常の行動ができる"
+              title={L("革命の扉: 自分の王とAを除く駒からランダムに1体の数字を逆転する。毎ターン1回、通常の行動の前に。発動後も通常の行動ができる")}
             >
-              <b>革命の扉</b>
-              <small>{revolutionUsed ? "このターンは発動済み" : "毎ターン1回・行動前に"}</small>
+              <b>{L("革命の扉")}</b>
+              <small>{revolutionUsed ? L("このターンは発動済み") : L("毎ターン1回・行動前に")}</small>
             </span>
             <button
               className="btn btn-primary btn-small"
@@ -4106,10 +4152,10 @@ export function GameCore({
                 aliceArea.picking ||
                 revolutionUsed
               }
-              title={revolution.why || "毎ターン1回・通常の行動前に任意発動"}
+              title={Lx(revolution.why) || L("毎ターン1回・通常の行動前に任意発動")}
               onClick={() => y({ type: "ALICE_ACTION", kind: "revolution", player: P })}
             >
-              発動
+              {L("発動")}
             </button>
           </div>
         )}
@@ -4159,15 +4205,19 @@ export function GameCore({
             {/* エラーの案内も盤の上に重ねる。「相手のターンです」の類は出さない(2026-09-24 本人の指示。持ち時間の減りで分かる) */}
             {s && (
               <p className="hint play-status play-status-alert" role="status">
-                {s}
+                {Lx(s)}
               </p>
             )}
           </div>
-          <div className="piece-faction-legend" aria-label="駒の陣営">
+          <div className="piece-faction-legend" aria-label={L("駒の陣営")}>
             {[0, 1].map((owner) => (
               <span key={owner} className={`faction-${owner}`}>
-                <b aria-hidden="true">{P == null ? PLAYER_META[owner].name : owner === P ? "自" : "敵"}</b>
-                {P == null ? `${PLAYER_META[owner].name}陣営` : owner === P ? "自分の駒" : "相手の駒"}
+                <b aria-hidden="true">{P == null ? Lx(PLAYER_META[owner].name) : owner === P ? L("自") : L("敵")}</b>
+                {P == null
+                  ? L("{color}陣営", { color: Lx(PLAYER_META[owner].name) })
+                  : owner === P
+                    ? L("自分の駒")
+                    : L("相手の駒")}
               </span>
             ))}
           </div>
@@ -4512,10 +4562,15 @@ export function GameCore({
         {aceMagic.boardEffect}
         {/* A の入れ替えの確認は画面の下に貼り付ける。盤の下に置くと送らないと押せなかった(2026-09-24 本人の指摘) */}
         {Pl && (
-          <div className="action-bar ace-shuffle-bar" role="group" aria-label="Aの入れ替えの確認">
+          <div className="action-bar ace-shuffle-bar" role="group" aria-label={L("Aの入れ替えの確認")}>
             <span>
-              {aliceSkin(a,P,"A") ? `数字を逆転する駒を選択(${a.shuffleMode.picks.length}/${reverseLimit(a,a.pieces[a.shuffleMode.aId])})` : `入れ替える駒を2つ選択(${a.shuffleMode.picks.length}/2)`}
-              <small>{aliceSkin(a,P,"A") ? "相手のAには不発。⇅の駒(逆転してから3ターン)は選べません。手番は消費しません" : "味方だけを選ぶと、囲んだ相手を取れます"}</small>
+              {aliceSkin(a,P,"A")
+                ? L("数字を逆転する駒を選択({n}/{max})", {
+                    n: a.shuffleMode.picks.length,
+                    max: reverseLimit(a, a.pieces[a.shuffleMode.aId]),
+                  })
+                : L("入れ替える駒を2つ選択({n}/2)", { n: a.shuffleMode.picks.length })}
+              <small>{aliceSkin(a,P,"A") ? L("相手のAには不発。⇅の駒(逆転してから3ターン)は選べません。手番は消費しません") : L("味方だけを選ぶと、囲んだ相手を取れます")}</small>
             </span>
             <button
               className="btn btn-primary"
@@ -4526,7 +4581,7 @@ export function GameCore({
                 })
               }
             >
-              {aliceSkin(a,P,"A") ? "数字逆転" : "シャッフル実行"} <Shuffle size={14} />
+              {aliceSkin(a,P,"A") ? L("数字逆転") : L("シャッフル実行")} <Shuffle size={14} />
             </button>
             <button
               className="btn btn-ghost"
@@ -4536,7 +4591,7 @@ export function GameCore({
                 })
               }
             >
-              やめる
+              {L("やめる")}
             </button>
           </div>
         )}
@@ -4544,14 +4599,14 @@ export function GameCore({
         {kpLine && (
           <p className="kp-chance" role="status">
             {/* 「王の力:」の「:」は式のようで読みにくい(評価 13回目)。見出しの札にする */}
-            <em>王の力</em>
+            <em>{L("王の力")}</em>
             <b>{kpLine}</b>
             {kpTell && <span>{CHANCE_TELL}</span>}
           </p>
         )}
         {areaLine && (
           <p className="kp-chance kp-chance-area" role="status">
-            <em>エリア</em>
+            <em>{L("エリア")}</em>
             <b>{areaLine}</b>
           </p>
         )}
@@ -4568,7 +4623,7 @@ export function GameCore({
                 })
               }
             >
-              この駒の行動ログを見る
+              {L("この駒の行動ログを見る")}
             </button>
           </div>
         )}
@@ -4582,10 +4637,10 @@ export function GameCore({
               <div className="action-bar">
                 <span>
                   {U
-                    ? "王(A)はもう一度入れ替えられます"
+                    ? L("王(A)はもう一度入れ替えられます")
                     : E?.isKing
-                      ? "王(10)はもう一度動けます"
-                      : "空の力でもう一度動けます（残り1回）"}
+                      ? L("王(10)はもう一度動けます")
+                      : L("空の力でもう一度動けます（残り1回）")}
                 </span>
                 <button
                   className="btn btn-ghost"
@@ -4595,7 +4650,7 @@ export function GameCore({
                     })
                   }
                 >
-                  使わずターンを終える
+                  {L("使わずターンを終える")}
                 </button>
               </div>
             );
@@ -4622,9 +4677,11 @@ export function GameCore({
             dispatch={y}
             size={R}
             placement={{ owner: P, cards: [a.aliceRecruit[0].card] }}
-            title="撃破した駒を仲間にする"
-            hint={`撃破した ${a.aliceRecruit[0].card.rank}${SUIT_SYMBOL[a.aliceRecruit[0].card.suit] || ""} を仲間にできます。自陣の空きマスをタップして置き場所を決めます。`}
-            skipLabel="仲間にしない"
+            title={L("撃破した駒を仲間にする")}
+            hint={L("撃破した {card} を仲間にできます。自陣の空きマスをタップして置き場所を決めます。", {
+              card: `${a.aliceRecruit[0].card.rank}${SUIT_SYMBOL[a.aliceRecruit[0].card.suit] || ""}`,
+            })}
+            skipLabel={L("仲間にしない")}
             addsCount={false}
             onPlace={(card, row, col) =>
               y({ type: "ALICE_ACTION", kind: "recruit", player: P, row, col })
@@ -4638,17 +4695,17 @@ export function GameCore({
           <div className="modal-overlay">
             <div className="modal-panel secret-panel">
               <Crown size={28} className="dim-icon" />
-              <h3>シークレット達成</h3>
+              <h3>{L("シークレット達成")}</h3>
               <p className="secret-name">{secretGot.name}</p>
               <p className="hint">{secretGot.how}</p>
               <p className="secret-chance">{chanceLabel(secretGot.chance)}</p>
               {secretGot.like && <p className="hint">{secretGot.like}</p>}
-              <p className="hint">称号「{secretGot.name}」を手に入れました。</p>
+              <p className="hint">{L("称号「{name}」を手に入れました。", { name: secretGot.name })}</p>
               <button
                 className="btn btn-primary"
                 onClick={() => setSecretGot(null)}
               >
-                閉じる
+                {L("閉じる")}
               </button>
             </div>
           </div>
@@ -4674,12 +4731,12 @@ export function GameCore({
               type="button"
               className="btn btn-ghost btn-small board-log-btn"
               onClick={() => setLogOpen(true)}
-              aria-label="対局の記録を見る"
+              aria-label={L("対局の記録を見る")}
             >
-              記録
+              {L("記録")}
             </button>
             {!tutorial && (network || cpu) && a.phase === "play" && (
-              <span className="private-note-hint">✎ 相手の伏せ札を長押しで推理メモ</span>
+              <span className="private-note-hint">{L("✎ 相手の伏せ札を長押しで推理メモ")}</span>
             )}
           </div>
         )}
@@ -4694,7 +4751,7 @@ export function GameCore({
               disabled={fxBusy}
               onClick={() => m(!0)}
             >
-              <Flag size={16} /> 降参する
+              <Flag size={16} /> {L("降参する")}
             </button>
           </div>
         )}

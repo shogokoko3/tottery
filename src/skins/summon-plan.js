@@ -1,4 +1,5 @@
 import { byId } from "./catalog.js";
+import { L } from "../i18n/index.js";
 
 export const SUMMON_TIMING = Object.freeze({
   ascent: 2000,
@@ -22,11 +23,11 @@ export const SUMMON_HOLD_AT = SUMMON_TIMING.ascent + SUMMON_TIMING.gate;
 
 export const SUMMON_WORLDS = Object.freeze({
   "first-victory": {
-    name: "初勝利の祝福",
+    name: L("初勝利の祝福"),
     sky: "#172437", stone: "#c8bd9d", accent: "#f6d38a", fog: "#807052", crest: "♛",
   },
   earth: {
-    name: "忘却の墓廟",
+    name: L("忘却の墓廟"),
     sky: "#101b24",
     stone: "#343d41",
     accent: "#8bddc0",
@@ -34,7 +35,7 @@ export const SUMMON_WORLDS = Object.freeze({
     crest: "♠",
   },
   sea: {
-    name: "黒潮の宝物殿",
+    name: L("黒潮の宝物殿"),
     sky: "#0b2738",
     stone: "#304250",
     accent: "#73d7e9",
@@ -42,7 +43,7 @@ export const SUMMON_WORLDS = Object.freeze({
     crest: "⚓",
   },
   forest: {
-    name: "翠樹の神殿",
+    name: L("翠樹の神殿"),
     sky: "#102820",
     stone: "#40503c",
     accent: "#b3dd8b",
@@ -50,7 +51,7 @@ export const SUMMON_WORLDS = Object.freeze({
     crest: "❧",
   },
   ice: {
-    name: "極光の氷殿",
+    name: L("極光の氷殿"),
     sky: "#162741",
     stone: "#647f95",
     accent: "#b5ecff",
@@ -58,7 +59,7 @@ export const SUMMON_WORLDS = Object.freeze({
     crest: "❄",
   },
   sky: {
-    name: "雲海の天空門",
+    name: L("雲海の天空門"),
     sky: "#172a43",
     stone: "#4d657b",
     accent: "#d5ecff",
@@ -66,7 +67,7 @@ export const SUMMON_WORLDS = Object.freeze({
     crest: "✦",
   },
   heaven: {
-    name: "白金の聖堂",
+    name: L("白金の聖堂"),
     sky: "#111d36",
     stone: "#425269",
     accent: "#ffe6ab",
@@ -74,7 +75,7 @@ export const SUMMON_WORLDS = Object.freeze({
     crest: "♛",
   },
   hell: {
-    name: "深淵の魔王門",
+    name: L("深淵の魔王門"),
     sky: "#1b1123",
     stone: "#302534",
     accent: "#f98055",
@@ -82,27 +83,27 @@ export const SUMMON_WORLDS = Object.freeze({
     crest: "♜",
   },
   "alice-caucus": {
-    name: "コーカス・レースの門", series: "alice",
+    name: L("コーカス・レースの門"), series: "alice",
     sky: "#152b23", stone: "#63533b", accent: "#cfe4a0", fog: "#26362b", crest: "◉",
   },
   "alice-quadrille": {
-    name: "カドリールの門", series: "alice",
+    name: L("カドリールの門"), series: "alice",
     sky: "#10333e", stone: "#b6bcab", accent: "#9ae9e0", fog: "#234b50", crest: "❧",
   },
   "alice-maze": {
-    name: "迷いの森の門", series: "alice",
+    name: L("迷いの森の門"), series: "alice",
     sky: "#111f2a", stone: "#35463e", accent: "#aacded", fog: "#1b3538", crest: "⌛",
   },
   "alice-tea": {
-    name: "終わらないお茶会の門", series: "alice",
+    name: L("終わらないお茶会の門"), series: "alice",
     sky: "#302331", stone: "#c9aa86", accent: "#ffd1ac", fog: "#473545", crest: "♧",
   },
   "alice-illusion": {
-    name: "幻影の門", series: "alice",
+    name: L("幻影の門"), series: "alice",
     sky: "#18152e", stone: "#6c6381", accent: "#c8afff", fog: "#352744", crest: "☾",
   },
   "alice-croquet": {
-    name: "クロッケー大会の門", series: "alice",
+    name: L("クロッケー大会の門"), series: "alice",
     sky: "#231921", stone: "#754b41", accent: "#f6b8ad", fog: "#452632", crest: "♥",
   },
 });

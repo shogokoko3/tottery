@@ -18,6 +18,7 @@ import { legacyLoginIndex } from "../game/login-bonus.js";
 import { chapterFromLegacyId, isRewardChapter } from "../game/tutorial-reward.js";
 import { validWinChanceReward, winChanceFromLegacyId } from "../game/win-chance.js";
 import { PHASES, isStoryAxis } from "../game/phase.js";
+import { Lk } from "../i18n/index.js";
 
 const json = (data, status = 200) =>
   Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -83,9 +84,9 @@ async function handleApi(request, env, url) {
       !adminForget &&
       !/^\/api\/(season|wallet|iap|friends)\//.test(url.pathname)
     )
-      return json({ error: "見つかりません。" }, 404);
+      return json({ error: Lk("見つかりません。") }, 404);
     if (request.method !== "POST")
-      return json({ error: "POSTを使用してください。" }, 405);
+      return json({ error: Lk("POSTを使用してください。") }, 405);
     try {
       // 本文の上限。購入の検証だけは Apple の取引(JWS。証明書3枚つきで 6KB ほど)が入るので広い
       // (2026-09-15、実機の購入が 413 で弾かれ「反映待ち」のまま残った)
@@ -97,16 +98,16 @@ async function handleApi(request, env, url) {
             ? BACKUP_BODY_MAX
             : 4096;
       if (Number(request.headers.get("content-length") || 0) > maxBody)
-        return json({ error: "リクエストが大きすぎます。" }, 413);
+        return json({ error: Lk("リクエストが大きすぎます。") }, 413);
       const raw = await request.text();
       if (raw.length > maxBody)
-        return json({ error: "リクエストが大きすぎます。" }, 413);
+        return json({ error: Lk("リクエストが大きすぎます。") }, 413);
       const body = JSON.parse(raw || "{}");
       const token = request.headers
         .get("authorization")
         ?.match(/^Bearer (\S+)$/)?.[1];
       if (!token || token.length > 4096)
-        return json({ error: "本人確認が必要です。" }, 401);
+        return json({ error: Lk("本人確認が必要です。") }, 401);
       // 診断の一覧だけは、秘密のトークン(読み取り専用)でも通す。運営が手元の curl で読むため
       if (adminDiag && env.DIAG_TOKEN && token.length >= 32 && token === env.DIAG_TOKEN) {
         const ledger0 = env.SEASONS.get(env.SEASONS.idFromName("monthly-v1"));
@@ -121,18 +122,18 @@ async function handleApi(request, env, url) {
         },
       );
       if (!auth.ok)
-        return json({ error: "本人確認をやり直してください。" }, 401);
+        return json({ error: Lk("本人確認をやり直してください。") }, 401);
       const uid = (await auth.json()).users?.[0]?.localId;
-      if (!uid) return json({ error: "本人確認ができませんでした。" }, 401);
+      if (!uid) return json({ error: Lk("本人確認ができませんでした。") }, 401);
       if (adminSession)
         return uid === OPERATOR_UID
           ? json({ uid })
-          : json({ error: "運営権限がありません。" }, 403);
+          : json({ error: Lk("運営権限がありません。") }, 403);
       if (
         (adminSeason || adminWallet || adminGrant || adminPurchases || adminGacha || adminDiag || adminPass || adminForget) &&
         uid !== OPERATOR_UID
       )
-        return json({ error: "運営権限がありません。" }, 403);
+        return json({ error: Lk("運営権限がありません。") }, 403);
       const ledger = env.SEASONS.get(env.SEASONS.idFromName("monthly-v1"));
       const call = (op, args = {}) =>
         ledger.fetch(
@@ -152,7 +153,7 @@ async function handleApi(request, env, url) {
         const uids = Array.isArray(body.uids)
           ? body.uids.filter((x) => typeof x === "string" && /^[\w-]{1,128}$/.test(x)).slice(0, 200)
           : [];
-        if (!uids.length) return json({ error: "uids を指定してください。" }, 400);
+        if (!uids.length) return json({ error: Lk("uids を指定してください。") }, 400);
         return call("admin-forget", { uids });
       }
       // 未使用残高(資金決済法の集計)。運営だけ
@@ -172,12 +173,12 @@ async function handleApi(request, env, url) {
         if (wop === "mission-reward")
           return missionRewardOf(body.mission)
             ? call("wallet-mission-reward", { mission: body.mission })
-            : json({ error: "ミッション報酬の指定が正しくありません。" }, 400);
+            : json({ error: Lk("ミッション報酬の指定が正しくありません。") }, 400);
         if (wop === "login-status") return call("wallet-login-status");
         if (wop === "login-reward")
           return typeof body.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.day)
             ? call("wallet-login-reward", { day: body.day })
-            : json({ error: "ログイン報酬の日付が正しくありません。" }, 400);
+            : json({ error: Lk("ログイン報酬の日付が正しくありません。") }, 400);
         if (wop === "summary") return call("wallet-summary");
         // 機種変更の引き継ぎ。端末の記録の控えを預かる・返す(中身は見ない)
         if (wop === "backup-save" && typeof body.blob === "string" && body.blob.length <= BACKUP_MAX)
@@ -195,18 +196,18 @@ async function handleApi(request, env, url) {
         if (wop === "win-chance-reward")
           return validWinChanceReward(body.day, body.done)
             ? call("wallet-win-chance-reward", { day: body.day, done: body.done })
-            : json({ error: "勝利報酬の指定が正しくありません。" }, 400);
+            : json({ error: Lk("勝利報酬の指定が正しくありません。") }, 400);
         // ストーリーのステージの褒美。端末は「どのフェーズの何の軸」だけ送る
         if (wop === "story-reward")
           return PHASES.includes(body.phase) && isStoryAxis(body.axis)
             ? call("wallet-story-reward", { phase: body.phase, axis: body.axis })
-            : json({ error: "ステージの指定が正しくありません。" }, 400);
+            : json({ error: Lk("ステージの指定が正しくありません。") }, 400);
         // チュートリアル1話の褒美。earn の1日上限とは別の道。端末は「何話」だけ送る。
         // 話の番号として変なものは、台帳まで行かせずここで断る
         if (wop === "tutorial-reward")
           return isRewardChapter(body.chapter)
             ? call("wallet-tutorial-reward", { chapter: body.chapter })
-            : json({ error: "話の番号が正しくありません。" }, 400);
+            : json({ error: Lk("話の番号が正しくありません。") }, 400);
         if (wop === "earn" && eventId(body.id) && Number.isSafeInteger(body.n) && body.n > 0) {
           // 配布済みの古い端末は tutorial:<uid>:<話> を earn に流してくる。同じ道へ寄せる
           // (圏外で uid が取れず tutorial:local:N になった id も、ここで正しい uid に組み直る)。
@@ -215,23 +216,23 @@ async function handleApi(request, env, url) {
             const chapter = chapterFromLegacyId(body.id);
             return chapter != null
               ? call("wallet-tutorial-reward", { chapter })
-              : json({ error: "話の番号が正しくありません。" }, 400);
+              : json({ error: Lk("話の番号が正しくありません。") }, 400);
           }
           if (body.id.startsWith("win-chance:")) {
             const reward = winChanceFromLegacyId(body.id);
             return reward
               ? call("wallet-win-chance-reward", reward)
-              : json({ error: "勝利報酬の指定が正しくありません。" }, 400);
+              : json({ error: Lk("勝利報酬の指定が正しくありません。") }, 400);
           }
           if (body.id.startsWith("login:"))
             return legacyLoginIndex(body.id) !== null
               ? call("wallet-login-legacy", { id: body.id })
-              : json({ error: "ログイン報酬の指定が正しくありません。" }, 400);
+              : json({ error: Lk("ログイン報酬の指定が正しくありません。") }, 400);
           if (body.id.startsWith("mission:")) {
             const mission = missionFromLegacyId(body.id);
             return mission && missionRewardOf(mission).reward.type === "ticket"
               ? call("wallet-mission-reward", { mission, currency: "ticket" })
-              : json({ error: "ミッション報酬の指定が正しくありません。" }, 400);
+              : json({ error: Lk("ミッション報酬の指定が正しくありません。") }, 400);
           }
           return call("wallet-credit", { id: body.id, n: body.n, kind: "earn" });
         }
@@ -244,7 +245,7 @@ async function handleApi(request, env, url) {
             const mission = missionFromLegacyId(body.id);
             return mission && missionRewardOf(mission).reward.type === "gems"
               ? call("wallet-mission-reward", { mission, currency: "gems" })
-              : json({ error: "ミッション報酬の指定が正しくありません。" }, 400);
+              : json({ error: Lk("ミッション報酬の指定が正しくありません。") }, 400);
           }
           return call("wallet-earn-gems", { id: body.id, gems: body.gems });
         }
@@ -274,7 +275,7 @@ async function handleApi(request, env, url) {
         // ガチャの結果を記録(運営の履歴用)。端末の申告。残高は動かさない
         if (wop === "log-pull" && Array.isArray(body.items))
           return call("wallet-log-pull", { items: body.items.slice(0, 20) });
-        return json({ error: "見つかりません。" }, 404);
+        return json({ error: Lk("見つかりません。") }, 404);
       }
       if (url.pathname === "/api/iap/verify") {
         // Apple の署名は非同期に検証し、通ったものだけを台帳(同期)へ渡す
@@ -297,7 +298,7 @@ async function handleApi(request, env, url) {
       if (url.pathname === "/api/iap/diag" && body.diag && typeof body.diag === "object")
         return call("wallet-diag", { diag: body.diag });
       if (url.pathname.startsWith("/api/iap/"))
-        return json({ error: "見つかりません。" }, 404);
+        return json({ error: Lk("見つかりません。") }, 404);
       // ---- フレンドとプロフィール(2026-09-23 本人の指示) ----
       // 相手は uid(申請だけはフレンド ID)。形だけここで見て、決まりは Durable Object(src/server/friends.js)が守る
       if (url.pathname.startsWith("/api/friends/")) {
@@ -328,7 +329,7 @@ async function handleApi(request, env, url) {
         if (fop === "profile-set" && body.card && typeof body.card === "object")
           return call("friends-profile-set", { card: body.card });
         if (fop === "profile-get" && who(body.uid)) return call("friends-profile-get", { target: body.uid });
-        return json({ error: "見つかりません。" }, 404);
+        return json({ error: Lk("見つかりません。") }, 404);
       }
       const op = url.pathname.slice("/api/season/".length);
       // Bot(ランダムマッチの練習相手)との対局(2026-09-23 本人の指示)。部屋が無いので手順は確かめられない。
@@ -339,11 +340,11 @@ async function handleApi(request, env, url) {
           !/^[\w:-]{4,80}$/.test(body.id) ||
           ![0, 1, null].includes(body.winner)
         )
-          return json({ error: "対局の指定が正しくありません。" }, 400);
+          return json({ error: Lk("対局の指定が正しくありません。") }, 400);
         const name =
           typeof body.name === "string" && body.name.trim().length >= 1
             ? body.name.trim().slice(0, 10)
-            : "名無し";
+            : Lk("名無し");
         const icon =
           typeof body.icon === "string" && /^[\w-]{1,32}$/.test(body.icon) ? body.icon : null;
         // Bot の持ち点。**そのまま式には入れない** — 台帳が clampBotRating で
@@ -364,7 +365,7 @@ async function handleApi(request, env, url) {
           body.round < 0 ||
           body.round > 10000
         )
-          return json({ error: "対局の指定が正しくありません。" }, 400);
+          return json({ error: Lk("対局の指定が正しくありません。") }, 400);
         const id = `${body.code}:${body.createdAt}:${body.round}`;
         const prior = await call("result", { id });
         if (!prior.ok) return prior;
@@ -373,7 +374,7 @@ async function handleApi(request, env, url) {
           `${DB_URL}/rooms/${body.code}.json?auth=${encodeURIComponent(token)}`,
         );
         if (!res.ok)
-          return json({ error: "対局の記録を読み込めませんでした。" }, 409);
+          return json({ error: Lk("対局の記録を読み込めませんでした。") }, 409);
         return call("record", { room: await res.json(), request: body });
       }
       if (op === "summary") return call("summary");
@@ -395,13 +396,13 @@ async function handleApi(request, env, url) {
         )
       )
         return call("appearance", { uids: body.uids });
-      return json({ error: "見つかりません。" }, 404);
+      return json({ error: Lk("見つかりません。") }, 404);
     } catch (e) {
       // 外部通信例外には認証 URL が含まれる可能性があるので本文・ログへ出さない。
       const known = /^(この対局|対局|通常の9×9)/.test(e.message || "");
       return json(
         {
-          error: known ? e.message : "通信を確認して、もう一度お試しください。",
+          error: known ? e.message : Lk("通信を確認して、もう一度お試しください。"),
         },
         409,
       );
@@ -503,7 +504,7 @@ export class SeasonLedger {
         if (op === "friends-profile-set") return fr.setProfile(uid, args.card, now);
         if (op === "friends-profile-get") {
           // 他人のプロフィールはフレンドだけ。自分のはいつでも
-          if (args.target !== uid && !fr.isFriend(uid, args.target)) throw new Error("フレンドのプロフィールだけ見られます。");
+          if (args.target !== uid && !fr.isFriend(uid, args.target)) throw new Error(Lk("フレンドのプロフィールだけ見られます。"));
           const card = fr.profileOf(args.target);
           const season = l.shown(now).id;
           const row = l.playerRow(args.target, season);
@@ -569,7 +570,7 @@ export class SeasonLedger {
           return Object.fromEntries(
             args.targets.map((id) => [id, l.appearance(id)]),
           );
-        throw new Error("操作が見つかりません。");
+        throw new Error(Lk("操作が見つかりません。"));
       });
       return json(data);
     } catch (e) {

@@ -18,6 +18,7 @@ import { levelOf } from "./profile.js";
 import { MISSIONS } from "./mission-catalog.js";
 import { foilRevealed } from "../skins/collection.js";
 import { periodicMissionRows } from "./periodic-missions.js";
+import { L } from "../i18n/index.js";
 
 /** 条件ごとの、いまの数字の読み方 */
 export const STATS = {
@@ -32,10 +33,20 @@ export const STATS = {
 
 /** 条件ごとの見出しと単位 */
 export const KINDS = {
-  days: { label: "使用頻度", unit: "日" },
-  level: { label: "プレイヤーレベル", unit: "" },
-  battles: { label: "対戦回数", unit: "戦" },
-  foil: { label: "フォイル獲得", unit: "枚" },
+  // 単位は日本語の画面でだけ出す(英語の画面は「3 / 10」)
+  days: {
+    label: L("使用頻度"),
+    unit: "日", // i18n-ignore
+  },
+  level: { label: L("プレイヤーレベル"), unit: "" },
+  battles: {
+    label: L("対戦回数"),
+    unit: "戦", // i18n-ignore
+  },
+  foil: {
+    label: L("フォイル獲得"),
+    unit: "枚", // i18n-ignore
+  },
 };
 
 export { MISSIONS } from "./mission-catalog.js";

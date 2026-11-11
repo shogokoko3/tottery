@@ -1,3 +1,4 @@
+import { L } from "../i18n/index.js";
 import { useEffect, useInsertionEffect, useRef, useState } from "react";
 import { FREEZE_TIMES } from "../skins/summon-freeze.js";
 import { startFreezeSound } from "../skins/freeze-sound.js";
@@ -61,25 +62,25 @@ export function SummonFreeze({ phase, reduce, onOpen }) {
             </svg>
             <b>✦</b>
           </div>
-          <p className="freeze-kicker">運命が、動き出す。</p>
+          <p className="freeze-kicker">{L("運命が、動き出す。")}</p>
           <h2>
-            すべての札に、
+            {L("すべての札に、")}
             <br />
-            新たな輝きを。
+            {L("新たな輝きを。")}
           </h2>
           <p className="freeze-instruction">
-            ボタンを押して、10枚を一斉に開こう。
+            {L("ボタンを押して、10枚を一斉に開こう。")}
           </p>
           <button ref={button} className="freeze-open" onClick={onOpen}>
-            <span>全札を解放する</span>
-            <small>10枚をオープン</small>
+            <span>{L("全札を解放する")}</span>
+            <small>{L("10枚をオープン")}</small>
           </button>
         </div>
       )}
       {phase === "released" && (
         <div className="freeze-release" aria-hidden="true">
           <i />
-          <b>運命解放</b>
+          <b>{L("運命解放")}</b>
         </div>
       )}
     </div>

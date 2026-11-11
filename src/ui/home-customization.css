@@ -1393,3 +1393,13 @@ body:has(.stage > .home-wrap) {
     min-height: 92px;
   }
 }
+
+/* 英語版(2026-11-11): 話の帯の題は英語だと長いので、字を詰めて枠に収める */
+html[data-lang="en"] .home-wrap .home-realm-caption {
+  right: 20px;
+}
+html[data-lang="en"] .home-wrap .home-realm-caption h2 {
+  font-size: 17px;
+  letter-spacing: .03em;
+  line-height: 1.15;
+}

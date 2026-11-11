@@ -42,6 +42,7 @@ import {
   MASTERY_SKINS,
 } from "./constants.js";
 import { findBadWord } from "./badwords.js";
+import { L, Lk } from "../i18n/index.js";
 import { clearBlocked } from "./blocked.js";
 import {
   DEFAULT_PHASE,
@@ -490,16 +491,16 @@ export function resetAccount() {
 /** 名前として使えるか。使えないときは理由を返す */
 export function nameError(raw) {
   const name = normalizeName(raw);
-  if (!name) return "名前を入力してください";
+  if (!name) return Lk("名前を入力してください");
   // 整えたあとの長さで見る。生の文字列を見ると、前後に空白を付けただけで
   // 10文字以内の名前を断ってしまう
   const trimmed = String(raw == null ? "" : raw)
     .trim()
     .replace(/\s+/g, " ");
   if ([...trimmed].length > MAX_NAME_LEN)
-    return `名前は${MAX_NAME_LEN}文字までです`;
+    return Lk("名前は{n}文字までです", { n: MAX_NAME_LEN });
   // 他人の画面と公開ランキングに出るので、露骨な語は断る(ガイドライン 1.2)
-  if (findBadWord(name)) return "その名前は使えません。別の名前にしてください";
+  if (findBadWord(name)) return Lk("その名前は使えません。別の名前にしてください");
   return null;
 }
 
@@ -911,7 +912,7 @@ export function markMissionClaimed(id) {
 /** 称号報酬と受取済みの控えを同時に保存し、失敗時は再受取できるようにする。 */
 export function grantMissionTitle(missionId, titleId) {
   if (typeof missionId !== "string" || !missionId || !findTitle(titleId))
-    throw new Error("称号報酬が見つかりません。");
+    throw new Error(L("称号報酬が見つかりません。"));
   const profile = loadProfile();
   if (profile.missions.includes(missionId)) return profile;
   const next = stampTitleDates(profile, {
@@ -925,7 +926,7 @@ export function grantMissionTitle(missionId, titleId) {
     localStorage.setItem(KEY, JSON.stringify(next));
   } catch {
     throw new Error(
-      "保存できませんでした。空き容量や保存設定を確認して、もう一度受け取ってください。",
+      L("保存できませんでした。空き容量や保存設定を確認して、もう一度受け取ってください。"),
     );
   }
   publishTitleNotices(profile, next);

@@ -6,6 +6,7 @@ import { Crown } from "../icons.jsx";
 import { FoilArtwork } from "./foil-artwork.jsx";
 import { PROMOTION_ARROW_PATH } from "./card-status.js";
 import { alicePieceArt } from "../skins/alice-piece-art.js";
+import { L, Lx } from "../i18n/index.js";
 
 export const SUIT_CODE = {
   spade: "S",
@@ -38,7 +39,7 @@ export function CardFace({
   const kingFrame = isKing && !skin;
   const promoted = mark === "palace";
   const promotionLabel = promoted
-    ? ` · 昇格${originalRank ? `（元は${originalRank}${SUIT_SYMBOL[suit]}）` : ""}`
+    ? L(" · 昇格{orig}", { orig: originalRank ? L("（元は{rank}{suit}）", { rank: originalRank, suit: SUIT_SYMBOL[suit] }) : "" })
     : "";
   let a =
     size === "xs"
@@ -79,7 +80,7 @@ export function CardFace({
       <FoilArtwork
         skin={skin}
         src={skin?.boardCard || skin?.card || cardArtSrc(rank, suit)}
-        alt={cup ? skin?.name || "ティーカップ" : `${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}${isKing ? " · 王" : ""}${promotionLabel}`}
+        alt={cup ? skin?.name || L("ティーカップ") : `${rank}${SUIT_SYMBOL[suit]}${skin ? " · " + skin.name : ""}${isKing ? L(" · 王") : ""}${promotionLabel}`}
         animated={animated}
       />
       <span
@@ -88,7 +89,7 @@ export function CardFace({
       >
         {cup ? "☕" : rank}
         {promoted ? (
-          <small className="card-suit-promoted" title="昇格">
+          <small className="card-suit-promoted" title={L("昇格")}>
             <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
               <path d={PROMOTION_ARROW_PATH} fill="currentColor" />
             </svg>
@@ -98,7 +99,7 @@ export function CardFace({
         )}
       </span>
       {skin && isKing && (
-        <span className="skin-king-mark" aria-label="王">
+        <span className="skin-king-mark" aria-label={L("王")}>
           ♛
         </span>
       )}
@@ -116,13 +117,13 @@ export function CapturedCardFace({ piece, size = "sm" }) {
       className="captured-card-face"
       title={
         changed
-          ? `元のカード ${rank}${SUIT_SYMBOL[piece.suit]} ／ 撃破時 ${piece.rank}${SUIT_SYMBOL[piece.suit]}`
+          ? L("元のカード {from} ／ 撃破時 {at}", { from: `${rank}${SUIT_SYMBOL[piece.suit]}`, at: `${piece.rank}${SUIT_SYMBOL[piece.suit]}` })
           : undefined
       }
     >
       <CardFace owner={piece.owner} rank={rank} suit={piece.suit} size={size} artworkSkin={artworkSkin} animated={false} />
       {changed && (
-        <small className="captured-card-note">撃破時 {piece.rank}</small>
+        <small className="captured-card-note">{L("撃破時 {rank}", { rank: piece.rank })}</small>
       )}
     </div>
   );
@@ -204,18 +205,18 @@ export function Piece({
   const own = piece.owner === viewer;
   const spectator = viewer == null;
   const factionLabel = spectator
-    ? `${u.name}陣営`
+    ? L("{name}陣営", { name: Lx(u.name) })
     : own
-      ? "自分の駒"
-      : "相手の駒";
-  const factionMark = spectator ? u.name : own ? "自" : "敵";
+      ? L("自分の駒")
+      : L("相手の駒");
+  const factionMark = spectator ? Lx(u.name) : own ? L("自") : L("敵");
   return (
     <div
       className={`piece-wrap ${isSelected ? "piece-selected" : ""} ${isPickable ? "piece-pickable" : ""} ${isGuided ? "guide-target" : ""} ${justRevealed ? "piece-unveiled" : ""} ${frozen ? "piece-frozen" : ""} piece-faction faction-${piece.owner} ${!spectator && !own ? "piece-enemy" : "piece-ally"}`}
       style={{ "--who": u.color }}
       data-size={size}
       data-faction={piece.owner}
-      aria-label={`${factionLabel}・${u.name}陣営`}
+      aria-label={L("{label}・{name}陣営", { label: factionLabel, name: Lx(u.name) })}
     >
       {piece.tea || i ? (
         <CardFace
@@ -231,30 +232,30 @@ export function Piece({
       ) : (
         <CardBack colorHex={u.color} size={size} owner={piece.owner} />
       )}
-      {i && piece.soldier && <span className="alice-soldier" aria-label="トランプ兵">♜</span>}
-      {piece.barrier && <span className="alice-barrier" aria-label="バリア"/>}
+      {i && piece.soldier && <span className="alice-soldier" aria-label={L("トランプ兵")}>♜</span>}
+      {piece.barrier && <span className="alice-barrier" aria-label={L("バリア")}/>}
       <span className="piece-faction-mark" aria-hidden="true">
         {factionMark}
       </span>
       {i && piece.revealed && !piece.mark && (
-        <span className="revealed-badge" aria-label="公開された駒">
-          {size === "xs" ? "公" : "公開"}
+        <span className="revealed-badge" aria-label={L("公開された駒")}>
+          {size === "xs" ? L("公") : L("公開")}
         </span>
       )}
       {skyMark && (
-        <span className="mark-badge mark-sky" aria-label="空のエリアで変身">
-          空
+        <span className="mark-badge mark-sky" aria-label={L("空のエリアで変身")}>
+          {L("空")}
         </span>
       )}
       {known && !piece.revealed && piece.owner !== viewer && (
-        <span className="known-badge" aria-label="見抜いた駒">
-          {size === "xs" ? "見" : "見抜"}
+        <span className="known-badge" aria-label={L("見抜いた駒")}>
+          {size === "xs" ? L("見") : L("見抜")}
         </span>
       )}
       {frozen && (
         <span
           className="frozen-badge"
-          aria-label={`凍結・残り${frozenTurns}ターン`}
+          aria-label={L("凍結・残り{n}ターン", { n: frozenTurns })}
         >
           ❄<b>{frozenTurns || ""}</b>
         </span>
@@ -262,8 +263,8 @@ export function Piece({
       {reversed && (
         <span
           className="reverse-badge"
-          aria-label={`数字が逆転中・あと${reversedTurns}ターンは逆転の対象に選べない`}
-          title={`数字が逆転中。あと${reversedTurns}ターンは逆転の対象に選べません`}
+          aria-label={L("数字が逆転中・あと{n}ターンは逆転の対象に選べない", { n: reversedTurns })}
+          title={L("数字が逆転中。あと{n}ターンは逆転の対象に選べません", { n: reversedTurns })}
         >
           ⇅<b>{reversedTurns || ""}</b>
         </span>
@@ -271,9 +272,9 @@ export function Piece({
       {skyBonus && i && (
         <span
           className={`sky-action-badge ${extraReady ? "sky-action-ready" : ""}`}
-          aria-label={extraReady ? "追加行動・残り1回" : "空の力・2回行動"}
+          aria-label={extraReady ? L("追加行動・残り1回") : L("空の力・2回行動")}
         >
-          {extraReady ? "あと1" : "×2"}
+          {extraReady ? L("あと1") : "×2"}
         </span>
       )}
       {piece.isKing && i && (

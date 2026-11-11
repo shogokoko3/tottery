@@ -1,5 +1,6 @@
 import { findTitle } from "../game/titles.js";
 import { byId } from "../skins/catalog.js";
+import { L } from "../i18n/index.js";
 
 // Appearance is derived from the existing title ID, so both online seats use the
 // same frame without changing saves, rewards, or the network protocol.
@@ -107,26 +108,26 @@ const FAMILIES = {
 // Art direction based on achievement effort, collection rarity and final rank.
 // These are display grades, not drop probabilities or new unlock conditions.
 export const FRAME_GRADES = [
-  { level: 1, name: "素朴", metal: "#9eafbd", detail: "細い金属枠" },
-  { level: 2, name: "彫金", metal: "#d5dce7", detail: "銀の彫刻・小さな宝石" },
+  { level: 1, name: L("素朴"), metal: "#9eafbd", detail: L("細い金属枠") },
+  { level: 2, name: L("彫金"), metal: "#d5dce7", detail: L("銀の彫刻・小さな宝石") },
   {
     level: 3,
-    name: "宝飾",
+    name: L("宝飾"),
     metal: "#ddbe7e",
-    detail: "二重の金縁・紋章・宝石",
+    detail: L("二重の金縁・紋章・宝石"),
   },
-  { level: 4, name: "荘厳", metal: "#f3d08a", detail: "翼状の彫刻・宝石の帯" },
+  { level: 4, name: L("荘厳"), metal: "#f3d08a", detail: L("翼状の彫刻・宝石の帯") },
   {
     level: 5,
-    name: "絢爛",
+    name: L("絢爛"),
     metal: "#ffe4a1",
-    detail: "多重の装飾・大粒の宝石・後光",
+    detail: L("多重の装飾・大粒の宝石・後光"),
   },
   {
     level: 6,
-    name: "極煌",
+    name: L("極煌"),
     metal: "#fff2c5",
-    detail: "冠飾り・放射状の翼・極光の縁",
+    detail: L("冠飾り・放射状の翼・極光の縁"),
   },
 ];
 const ACHIEVEMENT_LEVELS = {

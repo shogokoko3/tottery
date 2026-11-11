@@ -8,6 +8,7 @@ import { GemAmount } from "./gem.jsx";
 import { useEffect, useState } from "react";
 import { earnTickets, earnGems, claimCampaign } from "../net/wallet.js";
 import { isCampaignLetter } from "../game/campaigns.js";
+import { L, fmtDate } from "../i18n/index.js";
 /** 手紙のチケットをサーバーの財布にも。id は手紙と何番目かで決まる(やり直しても二重にならない) */
 function creditLetter(letter) {
   (letter.gifts || []).forEach((g, i) => {
@@ -48,10 +49,10 @@ const when = (ms) => {
   if (!ms) return "";
   const d = new Date(ms);
   const days = Math.round((midnight(new Date()) - midnight(d)) / 86400000);
-  if (days <= 0) return "きょう";
-  if (days === 1) return "きのう";
-  if (days < 7) return `${days}日前`;
-  return d.toLocaleDateString("ja-JP");
+  if (days <= 0) return L("きょう");
+  if (days === 1) return L("きのう");
+  if (days < 7) return L("{n}日前", { n: days });
+  return fmtDate(d);
 };
 
 export function LettersScreen({ onBack, embedded = false }) {
@@ -87,11 +88,11 @@ export function LettersScreen({ onBack, embedded = false }) {
       setProfile(markLetterTaken(letter.id));
       setMessage(
         letter.gifts.length
-          ? `${giftsLabel(letter.gifts)}を受け取りました。`
-          : "確認しました。",
+          ? L("{gift}を受け取りました。", { gift: giftsLabel(letter.gifts) })
+          : L("確認しました。"),
       );
     } catch (e) {
-      setMessage((e && e.message) || "受け取れませんでした。");
+      setMessage((e && e.message) || L("受け取れませんでした。"));
     } finally {
       setBusy(false);
     }
@@ -109,12 +110,12 @@ export function LettersScreen({ onBack, embedded = false }) {
         last = markLetterTaken(l.id);
         got += 1;
       }
-      setMessage(`${got}通ぶんを受け取りました。`);
+      setMessage(L("{n}通ぶんを受け取りました。", { n: got }));
     } catch (e) {
       setMessage(
         got
-          ? `${got}通を受け取ったところで止まりました`
-          : (e && e.message) || "受け取れませんでした。",
+          ? L("{n}通を受け取ったところで止まりました", { n: got })
+          : (e && e.message) || L("受け取れませんでした。"),
       );
     } finally {
       setProfile(last);
@@ -127,7 +128,7 @@ export function LettersScreen({ onBack, embedded = false }) {
   return (
     <div className="setup-wrap notice-wrap">
       {/* お知らせ・フレンドの画面(InboxScreen)に入っているときは、タブが見出しの代わり */}
-      {!embedded && <h2>運営からのお知らせ</h2>}
+      {!embedded && <h2>{L("運営からのお知らせ")}</h2>}
       <p className="mission-message" role="status">
         {message}
       </p>
@@ -138,14 +139,14 @@ export function LettersScreen({ onBack, embedded = false }) {
           disabled={busy}
           onClick={takeAll}
         >
-          <Check size={16} /> {unread.length}通をまとめて受け取る
+          <Check size={16} /> {L("{n}通をまとめて受け取る", { n: unread.length })}
         </button>
       )}
 
       <div className="notice-list">
-        {list === null && <p className="hint">読み込んでいます…</p>}
+        {list === null && <p className="hint">{L("読み込んでいます…")}</p>}
         {list && list.length === 0 && (
-          <p className="hint">いま届いているお知らせはありません。</p>
+          <p className="hint">{L("いま届いているお知らせはありません。")}</p>
         )}
         {(list || []).map((l) => (
           <button
@@ -180,7 +181,7 @@ export function LettersScreen({ onBack, embedded = false }) {
       </div>
 
       <button className="btn btn-ghost btn-home" onClick={onBack}>
-        <ArrowLeft size={16} /> ホームに戻る
+        <ArrowLeft size={16} /> {L("ホームに戻る")}
       </button>
 
       {shown && (
@@ -195,7 +196,7 @@ export function LettersScreen({ onBack, embedded = false }) {
               <b>{shown.subject}</b>
               <button
                 className="icon-btn notice-close"
-                aria-label="閉じる"
+                aria-label={L("閉じる")}
                 onClick={() => setOpen(null)}
               >
                 <Close size={18} />
@@ -206,7 +207,7 @@ export function LettersScreen({ onBack, embedded = false }) {
               <p className="notice-body">{shown.body}</p>
               {shown.gifts.length > 0 && (
                 <div className="notice-gifts">
-                  <span className="notice-gifts-label">添付</span>
+                  <span className="notice-gifts-label">{L("添付")}</span>
                   <ul>
                     {shown.gifts.map((g, i) => (
                       <li key={i}>
@@ -224,7 +225,7 @@ export function LettersScreen({ onBack, embedded = false }) {
             <div className="notice-actions">
               {taken(shown) ? (
                 <button className="btn btn-ghost btn-wide" disabled>
-                  <Check size={16} /> 受け取り済み
+                  <Check size={16} /> {L("受け取り済み")}
                 </button>
               ) : (
                 <button
@@ -233,7 +234,7 @@ export function LettersScreen({ onBack, embedded = false }) {
                   onClick={() => take(shown).then(() => setOpen(null))}
                 >
                   <Check size={16} />{" "}
-                  {shown.gifts.length ? "受け取る" : "確認した"}
+                  {shown.gifts.length ? L("受け取る") : L("確認した")}
                 </button>
               )}
             </div>

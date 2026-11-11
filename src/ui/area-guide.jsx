@@ -10,17 +10,18 @@
 import { AREA_INFO } from "../game/areas.js";
 import { AREA_GUIDE_ROWS } from "./area-guide-rows.js";
 import { AreaPreview } from "./area-preview.jsx";
+import { L } from "../i18n/index.js";
 
 export function AreaGuide() {
   return (
     <div className="area-guide">
       <p className="hint area-guide-lead">
-        <b>フォイルを装備した札を王にすると、9×9で使えます。</b>
-        通常のスキンでは立ちません。
+        <b>{L("フォイルを装備した札を王にすると、9×9で使えます。")}</b>
+        {L("通常のスキンでは立ちません。")}
       </p>
       <p className="hint area-guide-lead">
-        <b>自分のターンの初めに1回。発動後も移動できます。</b>
-        「任意発動」は、使いたいターンだけ「発動」を押します。
+        <b>{L("自分のターンの初めに1回。発動後も移動できます。")}</b>
+        {L("「任意発動」は、使いたいターンだけ「発動」を押します。")}
       </p>
       <div className="area-guide-list">
         {AREA_GUIDE_ROWS.map((row) => (
@@ -32,13 +33,13 @@ export function AreaGuide() {
               <span className={`area-chip area-chip-${row.type}`}>
                 {AREA_INFO[row.type].name}
               </span>
-              <span className="area-guide-ranks">王が {row.ranks}</span>
+              <span className="area-guide-ranks">{L("王が {ranks}", { ranks: row.ranks })}</span>
             </div>
             <AreaPreview type={row.type} className="area-guide-preview" />
             <div className="area-guide-when">{row.when}</div>
             <div className="area-guide-effect">{row.summary}</div>
             <details className="area-guide-details">
-              <summary>詳しいルール</summary>
+              <summary>{L("詳しいルール")}</summary>
               <div className="area-guide-effect">{row.effect}</div>
               <div className="area-guide-seen">{row.seen}</div>
             </details>
@@ -46,27 +47,27 @@ export function AreaGuide() {
         ))}
       </div>
       <details className="area-guide-details area-guide-common">
-        <summary>入手方法・共通ルール</summary>
+        <summary>{L("入手方法・共通ルール")}</summary>
         <p className="hint rule-foot">
-          昇格・変身は盤面上だけの効果です。撃破されると元の数字の捨て札になります。予備札がなくなると、両者の引き直し・撃破による捨て札をシャッフルして補充します。凍結中の駒を昇格・変身させても、凍結の残り期間は引き継ぎます。
+          {L("昇格・変身は盤面上だけの効果です。撃破されると元の数字の捨て札になります。予備札がなくなると、両者の引き直し・撃破による捨て札をシャッフルして補充します。凍結中の駒を昇格・変身させても、凍結の残り期間は引き継ぎます。")}
         </p>
         <p className="hint rule-foot">
-          エリアの種類は対局開始時の王と装備で決まり、その試合中は変わりません。両者がエリアを持つ場合、背景は動く側のエリアに切り替わります。
+          {L("エリアの種類は対局開始時の王と装備で決まり、その試合中は変わりません。両者がエリアを持つ場合、背景は動く側のエリアに切り替わります。")}
         </p>
         <p className="hint rule-foot">
-          <b>印の読み方：</b>「見抜」は自分だけが正体を知っている相手の駒。❄
-          は凍っている駒。「空」は変身した駒、スート欄の金色の上向き矢印は昇格した駒です。どちらも相手に公開されています。失った駒の欄では元のカードを表示し、昇格・変身していた札には撃破時の数字を添えます。
+          <b>{L("印の読み方：")}</b>
+          {L("「見抜」は自分だけが正体を知っている相手の駒。❄ は凍っている駒。「空」は変身した駒、スート欄の金色の上向き矢印は昇格した駒です。どちらも相手に公開されています。失った駒の欄では元のカードを表示し、昇格・変身していた札には撃破時の数字を添えます。")}
         </p>
         <p className="hint rule-foot">
-          <b>手に入れ方：</b>
-          ガチャや錬成でフォイルを引くか、同じキャラを通算100枚集めて加工すると手に入ります。どの入手方法でも効果は同じです。手に入れたフォイルを対応するランクに装備し、その札を王にすると使えます（たとえば土なら2か3のフォイル）。効果はスキン画面の詳細でも確認できます。
+          <b>{L("手に入れ方：")}</b>
+          {L("ガチャや錬成でフォイルを引くか、同じキャラを通算100枚集めて加工すると手に入ります。どの入手方法でも効果は同じです。手に入れたフォイルを対応するランクに装備し、その札を王にすると使えます（たとえば土なら2か3のフォイル）。効果はスキン画面の詳細でも確認できます。")}
         </p>
         <p className="hint rule-foot">
-          <b>オンラインでは</b>
-          、二人のルール版が一致し、どちらも盤面エリアに対応しているときに使えます。ルール版が違う場合は、エリアなしで対戦します。開始済みの対局は開始時のルールで続きます。
+          <b>{L("オンラインでは")}</b>
+          {L("、二人のルール版が一致し、どちらも盤面エリアに対応しているときに使えます。ルール版が違う場合は、エリアなしで対戦します。開始済みの対局は開始時のルールで続きます。")}
         </p>
         <p className="hint rule-foot">
-          盤面エリアはチュートリアル第13話でも体験できます。
+          {L("盤面エリアはチュートリアル第13話でも体験できます。")}
         </p>
       </details>
     </div>

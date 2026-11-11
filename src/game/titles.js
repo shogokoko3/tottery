@@ -1,4 +1,5 @@
 import { seasonTitle } from "./season.js";
+import { L, Lx, fmtDate } from "../i18n/index.js";
 /**
  * アカウントの称号。名前の横に添える飾り。
  *
@@ -30,84 +31,79 @@ const GACHA_FAMILIES = [
   {
     family: "all-r",
     stat: "allR",
-    what: "10連がすべてRになる",
-    unit: "回目",
+    how: (n) => L("10連がすべてRになる（累計{n}回目）", { n }),
     tiers: [
-      [1, "静寂の凪"],
-      [5, "灰燼の蒐集者"],
-      [10, "無銘の求道者"],
-      [30, "常闇の徒"],
-      [50, "虚無を統べる者"],
-      [100, "無冠の帝王"],
+      [1, L("静寂の凪")],
+      [5, L("灰燼の蒐集者")],
+      [10, L("無銘の求道者")],
+      [30, L("常闇の徒")],
+      [50, L("虚無を統べる者")],
+      [100, L("無冠の帝王")],
     ],
   },
   {
     family: "freeze",
     stat: "freeze",
-    what: "フリーズを引く",
-    unit: "回目",
+    how: (n) => L("フリーズを引く（累計{n}回目）", { n }),
     tiers: [
-      [1, "氷結の刻"],
-      [5, "永氷の使徒"],
-      [10, "絶対零度"],
-      [30, "氷獄の支配者"],
-      [50, "氷結界の主"],
-      [100, "絶氷帝"],
+      [1, L("氷結の刻")],
+      [5, L("永氷の使徒")],
+      [10, L("絶対零度")],
+      [30, L("氷獄の支配者")],
+      [50, L("氷結界の主")],
+      [100, L("絶氷帝")],
     ],
   },
   {
     family: "foil-draw",
     stat: "foil",
     foil: true,
-    what: "フォイルを引く",
-    unit: "回目",
+    how: (n) => L("フォイルを引く（累計{n}回目）", { n }),
     tiers: [
-      [1, "輝きの黎明"],
-      [5, "金箔の求道者"],
-      [10, "黄金律"],
-      [30, "光輝の覇者"],
-      [50, "燦然たる者"],
-      [100, "黄金卿"],
+      [1, L("輝きの黎明")],
+      [5, L("金箔の求道者")],
+      [10, L("黄金律")],
+      [30, L("光輝の覇者")],
+      [50, L("燦然たる者")],
+      [100, L("黄金卿")],
     ],
   },
   {
     family: "ssr-draw",
     stat: "ssr",
-    what: "SSRを引く",
-    unit: "回目",
+    how: (n) => L("SSRを引く（累計{n}回目）", { n }),
     tiers: [
-      [1, "至高との邂逅"],
-      [5, "頂への渇望"],
-      [10, "高みの征服者"],
-      [30, "至高の狩人"],
-      [50, "頂点捕食者"],
-      [100, "至尊の覇王"],
+      [1, L("至高との邂逅")],
+      [5, L("頂への渇望")],
+      [10, L("高みの征服者")],
+      [30, L("至高の狩人")],
+      [50, L("頂点捕食者")],
+      [100, L("至尊の覇王")],
     ],
   },
   {
     family: "pulls",
     stat: "pulls",
-    what: "ガチャを引く",
-    unit: "回",
+    how: (n) => L("ガチャを引く（累計{n}回）", { n }),
     tiers: [
-      [10, "召喚者"],
-      [100, "門の開拓者"],
-      [300, "召喚の求道者"],
-      [500, "星辰の召喚士"],
-      [1000, "千召の覇者"],
-      [2000, "万象の召喚士"],
-      [3000, "召喚の権化"],
-      [5000, "深淵の召喚王"],
-      [10000, "万召を統べる者"],
+      [10, L("召喚者")],
+      [100, L("門の開拓者")],
+      [300, L("召喚の求道者")],
+      [500, L("星辰の召喚士")],
+      [1000, L("千召の覇者")],
+      [2000, L("万象の召喚士")],
+      [3000, L("召喚の権化")],
+      [5000, L("深淵の召喚王")],
+      [10000, L("万召を統べる者")],
     ],
   },
 ];
 
-const gachaTiered = ({ family, stat, what, unit, tiers, foil }) =>
+const gachaTiered = ({ family, stat, how, tiers, foil }) =>
   tiers.map(([n, name], i) => ({
     id: `gacha-${family}-${n}`,
     name,
-    how: `${what}（累計${n}${unit}）`,
+    how: how(n),
     family,
     tier: i + 1,
     ...(foil ? { foil: true } : {}),
@@ -116,13 +112,13 @@ const gachaTiered = ({ family, stat, what, unit, tiers, foil }) =>
 
 // 1回の10連でSSR複数枚(bestTenSsr=これまでの最高枚数で判定)
 const GACHA_MULTI_SSR = [
-  [2, "双星の奇跡"],
-  [3, "三星の煌めき"],
-  [4, "四星の伝説"],
+  [2, L("双星の奇跡")],
+  [3, L("三星の煌めき")],
+  [4, L("四星の伝説")],
 ].map(([n, name], i) => ({
   id: `gacha-multi-ssr-${n}`,
   name,
-  how: `1回の10連でSSRを${n}枚引く`,
+  how: L("1回の10連でSSRを{n}枚引く", { n }),
   family: "multi-ssr",
   tier: i + 1,
   unlocked: (p) => (p?.gacha?.bestTenSsr ?? 0) >= n,
@@ -130,13 +126,13 @@ const GACHA_MULTI_SSR = [
 
 // フォイルのコンプ度(そろえたフォイルの種類数)
 const GACHA_FOIL_COMPLETE = [
-  [5, "蒐集の煌めき"],
-  [10, "箔を統べる者"],
-  [15, "黄金聖域"],
+  [5, L("蒐集の煌めき")],
+  [10, L("箔を統べる者")],
+  [15, L("黄金聖域")],
 ].map(([n, name], i) => ({
   id: `gacha-foil-complete-${n}`,
   name,
-  how: `フォイルを${n}種そろえる`,
+  how: L("フォイルを{n}種そろえる", { n }),
   family: "foil-complete",
   tier: i + 1,
   foil: true,
@@ -145,13 +141,13 @@ const GACHA_FOIL_COMPLETE = [
 
 // 通常版カードのコンプ(そろえた通常版の種類数)
 const GACHA_NORMAL_COMPLETE = [
-  [5, "図鑑の開拓者"],
-  [10, "英雄の蒐集者"],
-  [15, "英雄譚の完成者"],
+  [5, L("図鑑の開拓者")],
+  [10, L("英雄の蒐集者")],
+  [15, L("英雄譚の完成者")],
 ].map(([n, name], i) => ({
   id: `gacha-normal-complete-${n}`,
   name,
-  how: `通常版カードを${n}種そろえる`,
+  how: L("通常版カードを{n}種そろえる", { n }),
   family: "normal-complete",
   tier: i + 1,
   unlocked: (p) => (p?.gacha?.normalsOwned ?? 0) >= n,
@@ -181,36 +177,36 @@ export const GACHA_TITLES = [
  * 恩恵は名乗りだけ。盤の有利不利には一切効かせない。
  */
 const MASTERY_NAMES = {
-  "genie-magician": "千夜の魔導師", // A ランプのマジシャン
-  "zombie-male": "不滅の墓守", // 2 墓守のレヴナント
-  "zombie-female": "黄昏の亡姫", // 3 黄昏のレヴナント
-  "pirate-male": "黒潮の覇者", // 4 黒潮の船長
-  "pirate-female": "紅帆の女帝", // 5 紅帆の船長
-  "elf-male": "翠風の狙撃手", // 6 翠樹の射手
-  "elf-female": "銀月の狙撃姫", // 7 月影の射手
-  "viking-male": "北海の覇王", // 8 北海の戦斧
-  "viking-female": "氷牙の戦姫", // 9 霜狼の戦斧
-  "dragon-knight": "天翔ける竜王", // 10 焔翼の竜騎士
-  "pegasus-knight": "蒼天の天馬騎士", // 10 白翼の天馬騎士
-  "angel-j": "黎明の告使", // J 告天使 ガブリエル
-  "demon-j": "奸智の魔公", // J 魔公 アスタロト
-  "angel-q": "慈光の癒使", // Q 癒天使 ラファエル
-  "demon-q": "夜を統べる魔后", // Q 夜后 リリス
-  "angel-k": "熾天の大天使", // K 熾天使 ミカエル
-  "demon-k": "奈落の堕天王", // K 堕天王 ルシファー
-  "alice-A-alice": "扉を拓く少女",
-  "alice-2-dodo": "帰還の先導者",
-  "alice-3-bill": "不屈の小さな使者",
-  "alice-4-hatter": "永遠の茶会の主",
-  "alice-5-march-hare": "奇想の茶会の客人",
-  "alice-6-gryphon": "海辺の舞踏家",
-  "alice-7-mock-turtle": "涙のカドリール",
-  "alice-8-white-rabbit": "時を駆ける案内人",
-  "alice-9-caterpillar": "迷いの森の賢者",
-  "alice-10-cheshire-cat": "幻影の微笑み",
-  "alice-J-knave": "紅心の近衛",
-  "alice-Q-queen": "紅心の女帝",
-  "alice-K-king": "紅心の君主",
+  "genie-magician": L("千夜の魔導師"), // A ランプのマジシャン
+  "zombie-male": L("不滅の墓守"), // 2 墓守のレヴナント
+  "zombie-female": L("黄昏の亡姫"), // 3 黄昏のレヴナント
+  "pirate-male": L("黒潮の覇者"), // 4 黒潮の船長
+  "pirate-female": L("紅帆の女帝"), // 5 紅帆の船長
+  "elf-male": L("翠風の狙撃手"), // 6 翠樹の射手
+  "elf-female": L("銀月の狙撃姫"), // 7 月影の射手
+  "viking-male": L("北海の覇王"), // 8 北海の戦斧
+  "viking-female": L("氷牙の戦姫"), // 9 霜狼の戦斧
+  "dragon-knight": L("天翔ける竜王"), // 10 焔翼の竜騎士
+  "pegasus-knight": L("蒼天の天馬騎士"), // 10 白翼の天馬騎士
+  "angel-j": L("黎明の告使"), // J 告天使 ガブリエル
+  "demon-j": L("奸智の魔公"), // J 魔公 アスタロト
+  "angel-q": L("慈光の癒使"), // Q 癒天使 ラファエル
+  "demon-q": L("夜を統べる魔后"), // Q 夜后 リリス
+  "angel-k": L("熾天の大天使"), // K 熾天使 ミカエル
+  "demon-k": L("奈落の堕天王"), // K 堕天王 ルシファー
+  "alice-A-alice": L("扉を拓く少女"),
+  "alice-2-dodo": L("帰還の先導者"),
+  "alice-3-bill": L("不屈の小さな使者"),
+  "alice-4-hatter": L("永遠の茶会の主"),
+  "alice-5-march-hare": L("奇想の茶会の客人"),
+  "alice-6-gryphon": L("海辺の舞踏家"),
+  "alice-7-mock-turtle": L("涙のカドリール"),
+  "alice-8-white-rabbit": L("時を駆ける案内人"),
+  "alice-9-caterpillar": L("迷いの森の賢者"),
+  "alice-10-cheshire-cat": L("幻影の微笑み"),
+  "alice-J-knave": L("紅心の近衛"),
+  "alice-Q-queen": L("紅心の女帝"),
+  "alice-K-king": L("紅心の君主"),
 };
 
 const masteryNeed = MASTERY_STEPS[MASTERY_TITLE_STEP - 1];
@@ -220,7 +216,10 @@ export const MASTERY_TITLES = [
   ...MASTERY_SKINS.map((skin) => ({
     id: `mastery-${skin}`,
     name: MASTERY_NAMES[skin],
-    how: `${MASTERY_SKIN_RANK[skin]}のスキンを使って${masteryNeed}点ためる`,
+    how: L("{rank}のスキンを使って{n}点ためる", {
+      rank: MASTERY_SKIN_RANK[skin],
+      n: masteryNeed,
+    }),
     mastery: skin,
     unlocked: (p) => (p?.mastery?.[skin] ?? 0) >= masteryNeed,
   })),
@@ -228,16 +227,24 @@ export const MASTERY_TITLES = [
   ...MASTERY_SERIES.flatMap((series) => [
     {
       id: series.id === "heroes" ? "mastery-all" : `mastery-${series.id}-all`,
-      name: series.id === "heroes" ? "十七英雄の主" : "不思議の国の主",
-      how: `${series.name}の全${series.skins.length}種類で${masteryNeed}点ずつためる`,
+      name: series.id === "heroes" ? L("十七英雄の主") : L("不思議の国の主"),
+      how: L("{series}の全{count}種類で{n}点ずつためる", {
+        series: Lx(series.name),
+        count: series.skins.length,
+        n: masteryNeed,
+      }),
       mastery: "all",
       masterySeries: series.id,
       unlocked: (p) => series.skins.every((skin) => (p?.mastery?.[skin] ?? 0) >= masteryNeed),
     },
     {
       id: series.id === "heroes" ? "mastery-master" : `mastery-${series.id}-master`,
-      name: series.id === "heroes" ? "盤上無双" : "ワンダーランド・マスター",
-      how: `${series.name}の全${series.skins.length}種類で${masteryTop}点ずつためる`,
+      name: series.id === "heroes" ? L("盤上無双") : L("ワンダーランド・マスター"),
+      how: L("{series}の全{count}種類で{n}点ずつためる", {
+        series: Lx(series.name),
+        count: series.skins.length,
+        n: masteryTop,
+      }),
       mastery: "all",
       masterySeries: series.id,
       unlocked: (p) => series.skins.every((skin) => (p?.mastery?.[skin] ?? 0) >= masteryTop),
@@ -246,36 +253,36 @@ export const MASTERY_TITLES = [
 ];
 
 export const TITLES = [
-  { id: "novice", name: "見習い", how: "最初から", free: true },
-  { id: "first", name: "初陣", how: "1局遊ぶ", unlocked: (p) => p.plays >= 1 },
+  { id: "novice", name: L("見習い"), how: L("最初から"), free: true },
+  { id: "first", name: L("初陣"), how: L("1局遊ぶ"), unlocked: (p) => p.plays >= 1 },
   {
     id: "ten",
-    name: "十戦の兵",
-    how: "10局遊ぶ",
+    name: L("十戦の兵"),
+    how: L("10局遊ぶ"),
     unlocked: (p) => p.plays >= 10,
   },
   {
     id: "fifty",
-    name: "五十戦の将",
-    how: "50局遊ぶ",
+    name: L("五十戦の将"),
+    how: L("50局遊ぶ"),
     unlocked: (p) => p.plays >= 50,
   },
   {
     id: "win10",
-    name: "十勝の勇",
-    how: "10勝する",
+    name: L("十勝の勇"),
+    how: L("10勝する"),
     unlocked: (p) => p.wins >= 10,
   },
   {
     id: "win30",
-    name: "三十勝の猛者",
-    how: "30勝する",
+    name: L("三十勝の猛者"),
+    how: L("30勝する"),
     unlocked: (p) => p.wins >= 30,
   },
   {
     id: "rated",
-    name: "腕試し",
-    how: "オンラインで1局遊ぶ",
+    name: L("腕試し"),
+    how: L("オンラインで1局遊ぶ"),
     unlocked: (p) => p.rated >= 1,
   },
   // 布陣の褒美。氷のエリアで隅の要塞(src/game/bonus.js の fortressCorner)を組んで
@@ -283,75 +290,77 @@ export const TITLES = [
   {
     id: "fortress",
     foil: true,
-    name: "堅牢な要塞",
-    how: "氷のエリアで獲得",
+    name: L("堅牢な要塞"),
+    how: L("氷のエリアで獲得"),
   },
   // 空のエリアで双翼の陣(src/game/bonus.js の twinWingsMatch)を組んで対局を始めると配られる
   {
     id: "twin-wings",
     foil: true,
-    name: "双翼の将",
-    how: "空のエリアで獲得",
+    name: L("双翼の将"),
+    how: L("空のエリアで獲得"),
   },
   // 土「継承の狩り」・森「消去法の詰め」(src/game/bonus.js の FORMATIONS)も同じ扱い
   {
     id: "heir-hunt",
     foil: true,
-    name: "軌跡の追跡者",
-    how: "土のエリアで獲得",
+    name: L("軌跡の追跡者"),
+    how: L("土のエリアで獲得"),
   },
   {
     id: "elimination",
     foil: true,
-    name: "静寂な狩人",
-    how: "森のエリアで獲得",
+    name: L("静寂な狩人"),
+    how: L("森のエリアで獲得"),
   },
   {
     id: "kamikaze",
     foil: true,
-    name: "荒波の航海士",
-    how: "海のエリアで獲得",
+    name: L("荒波の航海士"),
+    how: L("海のエリアで獲得"),
   },
   {
     id: "royal-road",
     foil: true,
-    name: "覇道",
-    how: "宮殿のエリアで獲得",
+    name: L("覇道"),
+    how: L("宮殿のエリアで獲得"),
   },
   // シークレットミッションの褒美
   {
     id: "court-heavy",
-    name: "国士無双",
-    how: "シークレット「手札が絵札に偏りすぎて配り直された」",
+    name: L("国士無双"),
+    how: L("シークレット「手札が絵札に偏りすぎて配り直された」"),
     secret: true,
   },
   // ミッションの褒美。条件では自動で開かず、受け取ったときに配られる
-  { id: "regular", name: "常連", how: "ミッション「3日あそぶ」" },
-  { id: "devoted", name: "皆勤の士", how: "ミッション「30日あそぶ」" },
+  { id: "regular", name: L("常連"), how: L("ミッション「3日あそぶ」") },
+  { id: "devoted", name: L("皆勤の士"), how: L("ミッション「30日あそぶ」") },
   {
     id: "rank-shi",
-    name: "士の位",
-    how: "レート 1600",
+    name: L("士の位"),
+    how: L("レート 1600"),
     unlocked: (p) => p.rating >= 1600,
   },
   {
     id: "rank-sho",
-    name: "将の位",
-    how: "レート 1800",
+    name: L("将の位"),
+    how: L("レート 1800"),
     unlocked: (p) => p.rating >= 1800,
   },
   {
     id: "rank-o",
-    name: "王の位",
-    how: "レート 2000",
+    name: L("王の位"),
+    how: L("レート 2000"),
     unlocked: (p) => p.rating >= 2000,
   },
   // Ownership completes a mission; only its explicit reward claim grants a title.
   ...FOIL_MISSION_DEFS.map((entry) => ({
     id: entry.titleId,
-    name: entry.titleName,
+    name: Lx(entry.titleName),
     foil: true,
-    how: `${entry.missionName}\n（ミッション報酬を受け取る）`,
+    how: L("{mission}\n（ミッション報酬を受け取る）", {
+      mission: Lx(entry.missionName),
+    }),
   })),
   // ガチャの結果で自動解放される称号(段階つき)。一覧の絞り込みは account.jsx。
   ...GACHA_TITLES,
@@ -421,11 +430,12 @@ export function titleEarnedAt(profile, id) {
 /** 獲得日の言い方。「2026/10/15 に獲得」「最初から」「獲得日の記録なし」 */
 export function titleEarnedLabel(profile, title) {
   if (!title) return "";
-  if (title.free) return "最初から";
+  if (title.free) return L("最初から");
   const at = titleEarnedAt(profile, title.id);
-  if (!at) return "獲得日の記録なし";
-  const d = new Date(at);
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} に獲得`;
+  if (!at) return L("獲得日の記録なし");
+  return L("{date} に獲得", {
+    date: fmtDate(at, { year: "numeric", month: "numeric", day: "numeric" }),
+  });
 }
 
 /**

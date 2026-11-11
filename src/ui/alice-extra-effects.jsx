@@ -1,4 +1,5 @@
 import React from 'react';
+import {L} from '../i18n/index.js';
 const clamp=n=>Math.max(0,Math.min(1,n));
 const ease=n=>{n=clamp(n);return n*n*(3-2*n);};
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -62,13 +63,13 @@ export function AliceExtraEffects({event:e,t,point,clone}) {
   {type==='deception'&&e.moves.map((m,i)=>clone(travel<1?m.piece:e.targets[i]?.piece||m.piece,point(lerp(m.from.row,m.to.row,travel),lerp(m.from.col,m.to.col,travel)),{opacity:.65+arrive*.35,transform:`translate(-50%,${-50-Math.sin(Math.PI*travel)*12}%)`},'deception-'+i))}
   {(e.reappeared||[]).map((a,i)=><React.Fragment key={'reappear'+i}>{t<.44&&clone(a.before,center(a.from),{opacity:1-ease(t/.4)},'ghost-'+i)}{clone(a.after,center(a.to),{opacity:ease((t-.3)/.4),filter:`brightness(${1+(1-arrive)*.8})`},'return-'+i)}</React.Fragment>)}
   {type==='recruit'&&e.targets.map((a,i)=>clone(a.piece,center(a),{opacity:arrive,transform:`translate(-50%,${-50+(1-arrive)*40}%) scale(${.6+arrive*.4})`},'recruit-'+i))}
-  {type==='phantom-hit'&&t>.4&&e.targets.map((a,i)=>targetBadge(a,'幻',i))}
-  {type==='barrier-release'&&t>.3&&e.targets.map((a,i)=>targetBadge(a,'解除',i))}
+  {type==='phantom-hit'&&t>.4&&e.targets.map((a,i)=>targetBadge(a,L('幻'),i))}
+  {type==='barrier-release'&&t>.3&&e.targets.map((a,i)=>targetBadge(a,L('解除'),i))}
   {type==='quadrille'&&t>.42&&e.targets.map((a,i)=>targetBadge(a,'♪ 3',i))}
-  {type==='mystery'&&t>.6&&e.targets.map((a,i)=>targetBadge(a,'？',i))}
+  {type==='mystery'&&t>.6&&e.targets.map((a,i)=>targetBadge(a,L('？'),i))}
   {type==='trap'&&t>.45&&e.targets.map((a,i)=>targetBadge(a,'❄ 3',i))}
   {type==='illusion'&&<div className="alice-field-fog" style={{opacity:fog}}>{Array.from({length:10},(_,j)=><i key={j} style={{left:`${(j*31+t*28)%130-15}%`,top:`${j*29%110-10}%`,transform:`scale(${1.2+t*.5})`}}/>)}</div>}
-  {type==='false-king'&&!e.targets.length&&<div className="alice-extra-token" style={{opacity:fade,transform:`translate(-50%,-50%) scale(${.8+arrive*.2})`}}><svg viewBox="-45 -45 90 90"><path d={crown} fill="#e2c681" stroke="#fff0bd" strokeWidth="2"/></svg><b>偽の王を任命</b><small>場所は明かされない</small></div>}
-  {type==='clock'&&<div className="alice-clock-label" style={{opacity:fade}}><b>{e.seconds==null?'TIME SHIFT':e.seconds?`−${e.seconds}秒`:'下限を維持'}</b><small>{e.seconds==null?'最大30秒短縮':'白ウサギの時間短縮'}</small></div>}
+  {type==='false-king'&&!e.targets.length&&<div className="alice-extra-token" style={{opacity:fade,transform:`translate(-50%,-50%) scale(${.8+arrive*.2})`}}><svg viewBox="-45 -45 90 90"><path d={crown} fill="#e2c681" stroke="#fff0bd" strokeWidth="2"/></svg><b>{L('偽の王を任命')}</b><small>{L('場所は明かされない')}</small></div>}
+  {type==='clock'&&<div className="alice-clock-label" style={{opacity:fade}}><b>{e.seconds==null?'TIME SHIFT':e.seconds?L('−{n}秒',{n:e.seconds}):L('下限を維持')}</b><small>{e.seconds==null?L('最大30秒短縮'):L('白ウサギの時間短縮')}</small></div>}
  </>;
 }

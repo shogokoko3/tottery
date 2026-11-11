@@ -30,6 +30,7 @@
  *  - Bot は端末の中で動く(src/game/cpu.js)。通信は要らない
  */
 import { ICONS } from "./icons.js";
+import { L, Lk } from "../i18n/index.js";
 import { normalizeRating, START_RATING } from "./rating.js";
 import { JOSEKI_AREAS, pickJosekiKing } from "./cpu-joseki.js";
 import { getLegalMoves, kingRankOf } from "./board.js";
@@ -77,9 +78,9 @@ export const BOT_UNTIL_RATING = BOT_RATING_MAX;
 
 /** 強さの段階。until 未満の持ち点ならその段階。blunder は「でたらめに指す割合」 */
 export const BOT_TIERS = Object.freeze([
-  Object.freeze({ tier: 1, name: "見習い", until: 1550, blunder: 0.45 }),
-  Object.freeze({ tier: 2, name: "修行中", until: 1650, blunder: 0.2 }),
-  Object.freeze({ tier: 3, name: "熟練", until: Infinity, blunder: 0 }),
+  Object.freeze({ tier: 1, name: L("見習い"), until: 1550, blunder: 0.45 }),
+  Object.freeze({ tier: 2, name: L("修行中"), until: 1650, blunder: 0.2 }),
+  Object.freeze({ tier: 3, name: L("熟練"), until: Infinity, blunder: 0 }),
 ]);
 
 /** その持ち点で当たる Bot の段階 */
@@ -89,20 +90,21 @@ export function botTierFor(rating) {
 }
 
 /** Bot の名前。人の名前と同じ長さの決まり(10字まで) */
+// 人の名前と同じ扱い(相手の名前は訳さない。id にも入るので値は日本語のまま Lk)
 export const BOT_NAMES = Object.freeze([
-  "ゆきの",
-  "たけ",
-  "まる",
-  "しおん",
-  "こはる",
-  "りく",
-  "あおい",
-  "はやて",
-  "みなと",
-  "ひなた",
-  "そら",
-  "つばさ",
-  "かえで",
+  Lk("ゆきの"),
+  Lk("たけ"),
+  Lk("まる"),
+  Lk("しおん"),
+  Lk("こはる"),
+  Lk("りく"),
+  Lk("あおい"),
+  Lk("はやて"),
+  Lk("みなと"),
+  Lk("ひなた"),
+  Lk("そら"),
+  Lk("つばさ"),
+  Lk("かえで"),
   "ren",
   "yuu",
   "kaito",

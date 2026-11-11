@@ -12,6 +12,7 @@ import { ensureAuth } from "./auth.js";
 import { seasonApiBase } from "./season.js";
 import { updateCollection } from "../skins/store.js";
 import { newEventId } from "./wallet.js";
+import { L, Lx } from "../i18n/index.js";
 
 // リワード広告のユニット ID(本物)。build.mjs の define で入る
 const AD_UNIT_ID =
@@ -59,7 +60,7 @@ async function ensureInit(m) {
  */
 export async function watchAdForTicket() {
   const m = await mod();
-  if (!m) throw new Error("広告は iOS アプリで見られます。");
+  if (!m) throw new Error(L("広告は iOS アプリで見られます。"));
   const { AdMob, RewardAdPluginEvents } = m;
   await ensureInit(m);
   let earned = false;
@@ -71,7 +72,7 @@ export async function watchAdForTicket() {
     await AdMob.showRewardVideoAd();
   } catch {
     await onReward.remove();
-    throw new Error("広告を読み込めませんでした。少し待ってからお試しください。");
+    throw new Error(L("広告を読み込めませんでした。少し待ってからお試しください。"));
   }
   await onReward.remove();
   if (!earned) return null; // 途中で閉じた
@@ -81,7 +82,7 @@ export async function watchAdForTicket() {
 /** 見終わった広告の報酬をサーバーに頼む(冪等)。通信できないと投げる */
 async function claimAdReward() {
   const auth = await ensureAuth();
-  if (!auth) throw new Error("通信を確認して、もう一度お試しください。");
+  if (!auth) throw new Error(L("通信を確認して、もう一度お試しください。"));
   const res = await fetch(`${seasonApiBase()}/api/wallet/ad-reward`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.idToken}` },
@@ -89,7 +90,7 @@ async function claimAdReward() {
     signal: AbortSignal.timeout(20000),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "報酬を受け取れませんでした。");
+  if (!res.ok) throw new Error(Lx(data.error) || L("報酬を受け取れませんでした。"));
   if (Number.isSafeInteger(data.tickets))
     await updateCollection((s) => ({ ...s, tickets: data.tickets }));
   return data;

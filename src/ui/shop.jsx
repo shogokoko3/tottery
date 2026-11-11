@@ -33,8 +33,10 @@ import {
   GEM_PER_TICKET,
   TICKET_BUNDLE,
 } from "../iap/catalog.js";
+import { L, Lx, fmtNumber } from "../i18n/index.js";
 
-const yen = (n) => Number(n || 0).toLocaleString("ja-JP");
+// ジェムの数の書式(名前は前のまま。値段は円ではなくジェム)
+const yen = (n) => fmtNumber(n);
 
 export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
   const collection = useCollection();
@@ -96,17 +98,22 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
     />
   );
   const arrow = (key) => chevron(open === key);
+  // 文の途中に太字が入るので、英語の語順で切って組む
+  const [paidPre, paidPost] = L(
+    "有償ジェム {b}。無償ジェムは使えません。セットの片方を持っていれば、残りの1枚ぶんの値段です。",
+  ).split("{b}");
+  const [leftPre, leftPost] = L("{b}。ガチャでフォイルを引くと、そこから72時間だけ並びます。").split("{b}");
   const toggleFoilSeries = (id) => {
     setMessage("");
     setFoilOpen((cur) => (cur === id ? null : id));
   };
   return (
     <div className="center-stage shop-screen">
-      <h2>ショップ</h2>
-      <div className="shop-balance" aria-label="いまの残高">
+      <h2>{L("ショップ")}</h2>
+      <div className="shop-balance" aria-label={L("いまの残高")}>
         <GemAmount amount={gems} size={26} />
         <span className="shop-balance-tickets">
-          <Ticket size={16} /> チケット {collection.tickets}枚
+          <Ticket size={16} /> {L("チケット {n}枚", { n: collection.tickets })}
         </span>
       </div>
       {message && !open && (
@@ -122,7 +129,7 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
             shopOk
               ? toggle("gems")
               : setMessage(
-                  "ジェムは iPhone・iPad のアプリでのみ買えます。ほかの買い物はこのままお使いいただけます。",
+                  L("ジェムは iPhone・iPad のアプリでのみ買えます。ほかの買い物はこのままお使いいただけます。"),
                 )
           }
         >
@@ -130,8 +137,8 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
             <GemIcon size={30} />
           </span>
           <span className="choice-label">
-            ジェムを買う
-            <small>150・600・1,500・3,000・5,000・10,000 の6種</small>
+            {L("ジェムを買う")}
+            <small>{L("150・600・1,500・3,000・5,000・10,000 の6種")}</small>
           </span>
           {arrow("gems")}
         </button>
@@ -157,11 +164,15 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
         >
           <Ticket size={30} />
           <span className="choice-label">
-            ガチャチケット
+            {L("ガチャチケット")}
             <small>
               {FREE_GACHA
-                ? "いまは無料で引けます"
-                : `1枚 ${yen(GEM_PER_TICKET)}ジェム / ${TICKET_BUNDLE.tickets}枚 ${yen(TICKET_BUNDLE.gems)}ジェム`}
+                ? L("いまは無料で引けます")
+                : L("1枚 {one}ジェム / {n}枚 {bundle}ジェム", {
+                    one: yen(GEM_PER_TICKET),
+                    n: TICKET_BUNDLE.tickets,
+                    bundle: yen(TICKET_BUNDLE.gems),
+                  })}
             </small>
           </span>
           {arrow("ticket")}
@@ -169,7 +180,7 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
         {open === "ticket" && (
           <div className="shop-panel">
             {FREE_GACHA ? (
-              <p className="hint">いまは無料で引けます。チケットは要りません。</p>
+              <p className="hint">{L("いまは無料で引けます。チケットは要りません。")}</p>
             ) : (
               <TicketBuy
                 gems={gems}
@@ -187,7 +198,7 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
               />
             )}
             <button className="btn btn-ghost btn-small" onClick={onGacha}>
-              ガチャ・スキンへ <ArrowRight size={14} />
+              {L("ガチャ・スキンへ")} <ArrowRight size={14} />
             </button>
           </div>
         )}
@@ -198,11 +209,11 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
         >
           <Sparkle size={30} />
           <span className="choice-label">
-            フォイルを買う
+            {L("フォイルを買う")}
             <small>
               {foilSeries.length
-                ? `持っていないフォイルを有償ジェムで・${foilWindowLabel(foilLeftMs)}`
-                : "シリーズを選ぶと商品が並びます。買えるのはガチャでフォイルを引いてから72時間"}
+                ? L("持っていないフォイルを有償ジェムで・{left}", { left: Lx(foilWindowLabel(foilLeftMs)) })
+                : L("シリーズを選ぶと商品が並びます。買えるのはガチャでフォイルを引いてから72時間")}
             </small>
           </span>
           {arrow("foil")}
@@ -210,8 +221,7 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
         {open === "foil" && (
           <div className="shop-panel">
             <p className="skins-note">
-              有償ジェム <b>{yen(gemsPaid)}</b>
-              。無償ジェムは使えません。セットの片方を持っていれば、残りの1枚ぶんの値段です。
+              {paidPre}<b>{yen(gemsPaid)}</b>{paidPost}
             </p>
             {foilSeriesAll.map((series) => {
               const w = foilWindow(collection, Date.now(), series.id);
@@ -225,11 +235,11 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
                   >
                     {w.open ? <Sparkle size={22} /> : <Lock size={22} />}
                     <span className="choice-label">
-                      {series.name}
+                      {Lx(series.name)}
                       <small>
                         {w.open
-                          ? `${foilWindowLabel(w.leftMs)}・持っていないフォイルを有償ジェムで`
-                          : "いまは買えません。商品を見るだけ"}
+                          ? L("{left}・持っていないフォイルを有償ジェムで", { left: Lx(foilWindowLabel(w.leftMs)) })
+                          : L("いまは買えません。商品を見るだけ")}
                       </small>
                     </span>
                     {chevron(on)}
@@ -238,12 +248,13 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
                     <div className="shop-foil-series-body">
                       {w.open ? (
                         <p className="skins-note">
-                          <b className="shop-foil-left">{foilWindowLabel(w.leftMs)}</b>
-                          。ガチャでフォイルを引くと、そこから72時間だけ並びます。
+                          {leftPre}<b className="shop-foil-left">{Lx(foilWindowLabel(w.leftMs))}</b>{leftPost}
                         </p>
                       ) : (
                         <p className="skins-note">
-                          いまは買えません。{series.name}のガチャでフォイルを引くと、そこから72時間だけ並びます。
+                          {L("いまは買えません。{name}のガチャでフォイルを引くと、そこから72時間だけ並びます。", {
+                            name: Lx(series.name),
+                          })}
                         </p>
                       )}
                       <FoilOfferPicker
@@ -262,7 +273,7 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
               );
             })}
             <button className="btn btn-ghost btn-small" onClick={onFoil}>
-              フォイルの一覧へ <ArrowRight size={14} />
+              {L("フォイルの一覧へ")} <ArrowRight size={14} />
             </button>
           </div>
         )}
@@ -273,11 +284,11 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
         >
           <Grid size={30} />
           <span className="choice-label">
-            バトルパス
+            {L("バトルパス")}
             <small>
               {passUnlocked
-                ? "解放済み。マスを埋める"
-                : `${yen(BATTLEPASS_GEMS)}ジェムで解放`}
+                ? L("解放済み。マスを埋める")
+                : L("{n}ジェムで解放", { n: yen(BATTLEPASS_GEMS) })}
             </small>
           </span>
           {arrow("pass")}
@@ -289,7 +300,7 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
                 <h4>{season.passName}</h4>
                 {unlockedSeasons.includes(season.id) ? (
                   <p className="hint">
-                    解放済みです。マスを埋めるとガチャチケットがもらえます。
+                    {L("解放済みです。マスを埋めるとガチャチケットがもらえます。")}
                   </p>
                 ) : (
                   <BattlePassBuy
@@ -300,19 +311,19 @@ export function ShopScreen({ onBack, onGacha, onFoil, onBattlePass }) {
                     message={message}
                     art={false}
                     passName={season.passName}
-                    rewardName={`A専用「${rewardSkin(season.id).name}」`}
+                    rewardName={L("A専用「{name}」", { name: Lx(rewardSkin(season.id).name) })}
                   />
                 )}
               </div>
             ))}
             <button className="btn btn-ghost btn-small" onClick={onBattlePass}>
-              バトルパスの盤へ <ArrowRight size={14} />
+              {L("バトルパスの盤へ")} <ArrowRight size={14} />
             </button>
           </div>
         )}
       </div>
       <button className="btn btn-ghost btn-home" onClick={onBack}>
-        <ArrowLeft size={18} /> ホームに戻る
+        <ArrowLeft size={18} /> {L("ホームに戻る")}
       </button>
     </div>
   );

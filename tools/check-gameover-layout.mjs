@@ -25,9 +25,9 @@ assert.match(screens, /function goMenu\(\) \{\s*\(dropNearby\(\), w\(!1\), u\(nu
 // 第1〜13話(lesson)の形。台本でもストーリーとして遊ぶ一局(はじめの一局。story も受ける)はストーリーの形
 // (2026-10-01 本人の指示)
 assert.match(game, /lesson = !!tutorial && !story,/, "チュートリアルの形は story の無い台本だけ");
-assert.match(game, /\{lesson \? \(\s*\/\/[\s\S]*?onExit && \(\s*<button className="btn btn-ghost go-home" onClick=\{onExit\}>\s*\{exitLabel\}/, "チュートリアルは左下にタイトルへ戻る");
+assert.match(game, /\{lesson \? \(\s*\/\/[\s\S]*?onExit && \(\s*<button className="btn btn-ghost go-home" onClick=\{onExit\}>\s*\{Lx\(exitLabel\)\}/, "チュートリアルは左下にタイトルへ戻る");
 assert.match(game, /\{lesson \? \(\s*\/\/[\s\S]*?onHome && \(\s*<button className="btn btn-ghost go-again" onClick=\{onHome\}>[\s\S]*?ホームへ/, "チュートリアルは右下にホームへ");
-assert.match(grid, /\{story \? \(\s*\/\/[^\n]*\n\s*onTutorialList && \(\s*<button className="btn btn-ghost go-match" onClick=\{onTutorialList\}>\s*ストーリーへ/, "ストーリー(はじめの一局も)の右上はストーリーへ");
+assert.match(grid, /\{story \? \(\s*\/\/[^\n]*\n\s*onTutorialList && \(\s*<button className="btn btn-ghost go-match" onClick=\{onTutorialList\}>\s*\{L\("ストーリーへ"\)\}/, "ストーリー(はじめの一局も)の右上はストーリーへ");
 assert.match(grid, /\) : tutorial \? \(\s*\/\/[^\n]*\n\s*null\s*\) : \(\s*<button\s+className="btn btn-ghost go-again"\s+onClick=\{\(\) => \(onReplay \? onReplay\(\) : dispatch\(\{ type: "NEW_GAME" \}\)\)\}/, "台本の一局に NEW_GAME の「もう一度遊ぶ」を出さない");
 for (const [cls, area] of [["go-review", "1 / 1"], ["go-match", "1 / 2"], ["go-home", "2 / 1"], ["go-again", "2 / 2"]])
   assert.match(css, new RegExp(`\\.gameover-grid \\.${cls} \\{ grid-area: ${area.replace(/\//g, "\\/")}; \\}`), `${cls} は ${area}`);

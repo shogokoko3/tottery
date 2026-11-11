@@ -4,6 +4,7 @@ import { PHASE_HOME_THEMES } from "./home-phase-themes.js";
 import { areaRewardsFor } from "./area-rewards.js";
 import { byId, foilId } from "./catalog.js";
 import { WONDERLAND_HOME_THEMES } from "./home-wonderland-themes.js";
+import { L } from "../i18n/index.js";
 
 export const DEFAULT_HOME_THEME = "default";
 
@@ -12,66 +13,66 @@ export const HOME_THEMES = Object.freeze(
   [
     {
       id: "earth",
-      label: "土",
-      name: "墓守のレヴナント",
+      label: L("土"),
+      name: L("墓守のレヴナント"),
       accent: "#92dfd7",
       panel: "#121f29",
-      title: "霧の墓庭",
-      condition: "2・3のいずれかのフォイルを獲得",
+      title: L("霧の墓庭"),
+      condition: L("2・3のいずれかのフォイルを獲得"),
     },
     {
       id: "sea",
-      label: "海",
-      name: "黒潮の船長",
+      label: L("海"),
+      name: L("黒潮の船長"),
       accent: "#e9c182",
       panel: "#202329",
-      title: "黒潮の航路",
-      condition: "4・5のいずれかのフォイルを獲得",
+      title: L("黒潮の航路"),
+      condition: L("4・5のいずれかのフォイルを獲得"),
     },
     {
       id: "forest",
-      label: "森",
-      name: "月影の射手",
+      label: L("森"),
+      name: L("月影の射手"),
       accent: "#b9d391",
       panel: "#12251e",
-      title: "翠緑の聖域",
-      condition: "6・7のいずれかのフォイルを獲得",
+      title: L("翠緑の聖域"),
+      condition: L("6・7のいずれかのフォイルを獲得"),
     },
     {
       id: "ice",
-      label: "氷",
-      name: "霜狼の戦斧",
+      label: L("氷"),
+      name: L("霜狼の戦斧"),
       accent: "#b3e4ef",
       panel: "#172936",
-      title: "氷海の誓い",
-      condition: "8・9のいずれかのフォイルを獲得",
+      title: L("氷海の誓い"),
+      condition: L("8・9のいずれかのフォイルを獲得"),
     },
     {
       id: "sky",
-      label: "空",
-      name: "焔翼の竜騎士",
+      label: L("空"),
+      name: L("焔翼の竜騎士"),
       accent: "#dacbad",
       panel: "#20263c",
-      title: "雲上の領域",
-      condition: "10のフォイルを獲得",
+      title: L("雲上の領域"),
+      condition: L("10のフォイルを獲得"),
     },
     {
       id: "heaven",
-      label: "天界",
-      name: "熾天使 ミカエル",
+      label: L("天界"),
+      name: L("熾天使 ミカエル"),
       accent: "#f2dba4",
       panel: "#282d3a",
-      title: "天上の玉座",
-      condition: "天使のJ・Q・Kのいずれかのフォイルを獲得",
+      title: L("天上の玉座"),
+      condition: L("天使のJ・Q・Kのいずれかのフォイルを獲得"),
     },
     {
       id: "hell",
-      label: "魔界",
-      name: "堕天王 ルシファー",
+      label: L("魔界"),
+      name: L("堕天王 ルシファー"),
       accent: "#edb18a",
       panel: "#29191e",
-      title: "黒炎の王座",
-      condition: "悪魔のJ・Q・Kのいずれかのフォイルを獲得",
+      title: L("黒炎の王座"),
+      condition: L("悪魔のJ・Q・Kのいずれかのフォイルを獲得"),
     },
   ]
     .map((theme) => Object.freeze({ ...theme, area: theme.id }))
@@ -131,9 +132,9 @@ export function setHomeTheme(collection, id) {
     !HOME_THEMES.some((theme) => theme.id === id) &&
     !storyHomeThemeById(id)
   )
-    throw new Error("そのホーム装飾はありません。");
+    throw new Error(L("そのホーム装飾はありません。"));
   if (!unlockedHomeThemes(collection).includes(id))
-    throw new Error("対応するフォイルを獲得すると選べます。");
+    throw new Error(L("対応するフォイルを獲得すると選べます。"));
   return { ...collection, homeTheme: id };
 }
 
@@ -199,9 +200,9 @@ export function setHomePortrait(collection, theme, baseId) {
       (reward) => reward.theme === theme,
     )
   )
-    throw new Error("この領域ではそのキャラクターを選べません。");
+    throw new Error(L("この領域ではそのキャラクターを選べません。"));
   if (!unlockedHomePortraits(collection, theme).includes(baseId))
-    throw new Error("このキャラクターのフォイルを獲得すると選べます。");
+    throw new Error(L("このキャラクターのフォイルを獲得すると選べます。"));
   return {
     ...collection,
     homePortraits: { ...homePortraitsOf(collection), [theme]: baseId },
@@ -226,7 +227,7 @@ export function phaseHomesOf(collection) {
 }
 
 export function setPhaseHome(collection, phase, theme, portrait = null) {
-  if (![1, 2, 3].includes(phase)) throw new Error("そのフェーズはありません。");
+  if (![1, 2, 3].includes(phase)) throw new Error(L("そのフェーズはありません。"));
   let next = setHomeTheme(phaseHomeOf(collection, phase), theme);
   if (portrait) next = setHomePortrait(next, theme, portrait);
   return { ...collection, phaseHomes: {

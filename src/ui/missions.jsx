@@ -26,14 +26,15 @@ import {
 } from "../skins/store.js";
 import { claimPeriodicMission } from "../game/periodic-missions.js";
 import { useMissionProfile } from "./mission-profile.js";
+import { L, isEnglish } from "../i18n/index.js";
 
 /** 褒美の呼び名。手紙の添付と同じ形なので、共通のものを使う */
 export const rewardLabel = giftLabel;
 const TABS = [
-  { id: "daily", label: "デイリー" },
-  { id: "weekly", label: "ウィークリー" },
-  { id: "normal", label: "ノーマル" },
-  { id: "event", label: "イベント" },
+  { id: "daily", label: L("デイリー") },
+  { id: "weekly", label: L("ウィークリー") },
+  { id: "normal", label: L("ノーマル") },
+  { id: "event", label: L("イベント") },
 ];
 // Existing lifetime missions belong to Normal.
 const categoryOf = (mission) => mission.category || "normal";
@@ -49,7 +50,7 @@ export function MissionsScreen({ onBack, embedded = false }) {
   useEffect(() => {
     let active = true;
     syncWallet().catch(() => {
-      if (active) setMessage("受取状況を確認できませんでした。通信を確認してからお試しください。");
+      if (active) setMessage(L("受取状況を確認できませんでした。通信を確認してからお試しください。"));
     });
     return () => { active = false; };
   }, []);
@@ -68,7 +69,7 @@ export function MissionsScreen({ onBack, embedded = false }) {
       const current = touchDay();
       const latest = statusOf(mission, current, getCollection());
       if (latest.claimed) return current;
-      if (!latest.done) throw new Error("まだミッションの条件を満たしていません。");
+      if (!latest.done) throw new Error(L("まだミッションの条件を満たしていません。"));
       if (["ticket", "gems"].includes(mission.reward.type)) {
         await claimMissionReward(mission.id);
       } else {
@@ -80,7 +81,7 @@ export function MissionsScreen({ onBack, embedded = false }) {
     const latest = statusOf(mission, current, getCollection());
     if (latest.claimed) return current;
     if (!latest.done)
-      throw new Error("まだミッションの条件を満たしていません。");
+      throw new Error(L("まだミッションの条件を満たしていません。"));
     if (mission.reward.type === "title")
       return grantMissionTitle(mission.id, mission.reward.id);
     if (["ticket", "gems"].includes(mission.reward.type))
@@ -97,9 +98,9 @@ export function MissionsScreen({ onBack, embedded = false }) {
     try {
       setProfile(await give(mission));
       playSound("mission");
-      setMessage(`${rewardLabel(mission.reward)}を受け取りました。`);
+      setMessage(L("{gift}を受け取りました。", { gift: rewardLabel(mission.reward) }));
     } catch (e) {
-      setMessage((e && e.message) || "受け取れませんでした。");
+      setMessage((e && e.message) || L("受け取れませんでした。"));
     } finally {
       claiming.current = false;
       setBusy(false);
@@ -122,12 +123,12 @@ export function MissionsScreen({ onBack, embedded = false }) {
         last = await give(m);
         got += 1;
       }
-      setMessage(`${got}件の報酬を受け取りました。`);
+      setMessage(L("{n}件の報酬を受け取りました。", { n: got }));
     } catch (e) {
       setMessage(
         got
-          ? `${got}件を受け取ったところで止まりました: ${(e && e.message) || ""}`
-          : (e && e.message) || "受け取れませんでした。",
+          ? L("{n}件を受け取ったところで止まりました: {why}", { n: got, why: (e && e.message) || "" })
+          : (e && e.message) || L("受け取れませんでした。"),
       );
     } finally {
       if (got > 0) playSound("claim_all");
@@ -140,22 +141,22 @@ export function MissionsScreen({ onBack, embedded = false }) {
   return (
     <div className="setup-wrap missions-screen">
       <header className="missions-heading">
-        {!embedded && <h2>ミッション</h2>}
+        {!embedded && <h2>{L("ミッション")}</h2>}
         <div className="level-badge">
           <GemAmount amount={collection.gems || 0} size={26} />
-          <small>条件を満たすと受け取れます</small>
+          <small>{L("条件を満たすと受け取れます")}</small>
         </div>
         {category === "daily" && (
-          <p className="missions-reset">毎日 朝5:00更新（日本時間）</p>
+          <p className="missions-reset">{L("毎日 朝5:00更新（日本時間）")}</p>
         )}
         {category === "weekly" && (
-          <p className="missions-reset">毎週月曜 朝5:00更新（日本時間）</p>
+          <p className="missions-reset">{L("毎週月曜 朝5:00更新（日本時間）")}</p>
         )}
       </header>
       <div
         className="missions-tabs"
         role="tablist"
-        aria-label="ミッションの種類"
+        aria-label={L("ミッションの種類")}
       >
         {TABS.map((tab, index) => {
           const count = rows.filter(
@@ -194,7 +195,7 @@ export function MissionsScreen({ onBack, embedded = false }) {
               {count > 0 && (
                 <span
                   className="missions-tab-count"
-                  aria-label={`受取可能${count}件`}
+                  aria-label={L("受取可能{n}件", { n: count })}
                 >
                   {count}
                 </span>
@@ -225,7 +226,7 @@ export function MissionsScreen({ onBack, embedded = false }) {
           </div>
         )}
         {visibleRows.length === 0 && (
-          <div className="missions-empty">ミッションはありません。</div>
+          <div className="missions-empty">{L("ミッションはありません。")}</div>
         )}
         <div className="mission-list">
           {visibleRows.map((m) => (
@@ -264,18 +265,18 @@ export function MissionsScreen({ onBack, embedded = false }) {
               <div className="mission-foot">
                 <small>
                   {m.now}
-                  {m.unit ?? KINDS[m.kind]?.unit} / {m.goal}
-                  {m.unit ?? KINDS[m.kind]?.unit} · {m.reward.type === "gems" ? <GemAmount amount={m.reward.amount} size={22} /> : rewardLabel(m.reward)}
+                  {isEnglish ? "" : (m.unit ?? KINDS[m.kind]?.unit)} / {m.goal}
+                  {isEnglish ? "" : (m.unit ?? KINDS[m.kind]?.unit)} · {m.reward.type === "gems" ? <GemAmount amount={m.reward.amount} size={22} /> : rewardLabel(m.reward)}
                 </small>
                 {m.claimed ? (
-                  <span className="mission-done">受け取り済み</span>
+                  <span className="mission-done">{L("受け取り済み")}</span>
                 ) : (
                   <button
                     className="btn btn-primary btn-small"
                     disabled={!m.done || busy}
                     onClick={() => claim(m)}
                   >
-                    <Check size={14} /> 受け取る
+                    <Check size={14} /> {L("受け取る")}
                   </button>
                 )}
               </div>
@@ -289,7 +290,7 @@ export function MissionsScreen({ onBack, embedded = false }) {
         </p>
         <div className="missions-actions">
           <button type="button" className="btn btn-ghost" onClick={onBack}>
-            <ArrowLeft size={16} /> ホームに戻る
+            <ArrowLeft size={16} /> {L("ホームに戻る")}
           </button>
           <button
             type="button"
@@ -298,7 +299,7 @@ export function MissionsScreen({ onBack, embedded = false }) {
             onClick={claimAll}
           >
             <Check size={16} />{" "}
-            {ready.length > 0 ? `一括受取（${ready.length}）` : "一括受取"}
+            {ready.length > 0 ? L("一括受取（{n}）", { n: ready.length }) : L("一括受取")}
           </button>
         </div>
       </footer>

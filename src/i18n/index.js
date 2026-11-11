@@ -23,6 +23,8 @@ function detect() {
   const env = globalThis.process?.env?.TOTTERY_LANG;
   if (env === "en" || env === "ja") return env;
   if (typeof document === "undefined") return "ja";
+  // Node の検査は document を作り物で置くことがある。navigator は Node の言語(en-US)なので見ない
+  if (globalThis.process?.versions?.node) return "ja";
   try {
     const q = new URLSearchParams(globalThis.location?.search || "").get("lang");
     if (q === "en" || q === "ja") {
@@ -80,8 +82,11 @@ function patternList() {
         return "([\\s\\S]*?)";
       })
       .join("");
-    patterns.push({ re: new RegExp(`^${src}$`), names, en: EN[key] });
+    const literal = key.replace(/\{\w+\}/g, "").length;
+    patterns.push({ re: new RegExp(`^${src}$`), names, en: EN[key], literal });
   }
+  // 決まった字の多い形から当てる(「{how}。」のような短い形が、長い文を先に取らないように)
+  patterns.sort((a, b) => b.literal - a.literal);
   return patterns;
 }
 

@@ -7,6 +7,7 @@ import {
   setupFromRoom,
 } from "../net/sync.js";
 import { sanitizeLoadout } from "../skins/catalog.js";
+import { Lk } from "../i18n/index.js";
 
 // クライアントの勝率・得点は受け取らない。参加者限定の部屋から手順を読み、
 // 公開ゲームと同じルールで再生する。手の送り主は Firebase の認証済み by。
@@ -31,17 +32,17 @@ function fingerprint(ids) {
 export function verifyMatch(room, request, uid) {
   const { host, guest } = room?.seats || {};
   if (!host || !guest || host === guest || ![host, guest].includes(uid))
-    throw new Error("この対局の参加者ではありません。");
+    throw new Error(Lk("この対局の参加者ではありません。"));
   if (
     room.createdAt !== request.createdAt ||
     Number(room.round || 0) !== request.round
   )
-    throw new Error("対局の記録が切り替わっています。");
+    throw new Error(Lk("対局の記録が切り替わっています。"));
   const acts = Object.keys(room.acts || {})
     .sort()
     .map((k) => room.acts[k]);
   if (!acts.length || acts.length > 4000)
-    throw new Error("対局の記録を確認できません。");
+    throw new Error(Lk("対局の記録を確認できません。"));
   let state = initialState(),
     played = false;
   const seen = new Set();
@@ -62,7 +63,7 @@ export function verifyMatch(room, request, uid) {
       // ゲストは部屋の phase で決め直すので、ここで受けると再生だけがずれる
       if (Number.isInteger(room.phase) && room.phase < 3)
         // 断り文は worker.js の known(「対局」で始まる)に合わせる。合わないと汎用の通信エラーに置き換わる
-        throw new Error("対局のフェーズが持ち点の対象ではありません。");
+        throw new Error(Lk("対局のフェーズが持ち点の対象ではありません。"));
       const expected = buildDeck()
         .map((c) => `${c.rank}:${c.suit}`)
         .sort();
@@ -78,7 +79,7 @@ export function verifyMatch(room, request, uid) {
         (act.handSize && act.handSize !== 13) ||
         JSON.stringify(expected) !== JSON.stringify(actual)
       )
-        throw new Error("通常の9×9オンライン対戦が対象です。");
+        throw new Error(Lk("通常の9×9オンライン対戦が対象です。"));
     }
     // 装備と盤面エリアは、開始の合図の言い値でなく**部屋の申告**から決め直す(2026-09-18)。
     // 端末側も同じ決め直しをしている(src/net/sync.js の setupFromRoom)ので、
@@ -107,9 +108,9 @@ export function verifyMatch(room, request, uid) {
     state.phase !== "gameover" ||
     ![0, 1, null].includes(state.winner)
   )
-    throw new Error("対局の終了を確認中です。");
+    throw new Error(Lk("対局の終了を確認中です。"));
   if (state.winner !== request.winner)
-    throw new Error("対局結果の確認が必要です。");
+    throw new Error(Lk("対局結果の確認が必要です。"));
   return {
     id: `${request.code}:${request.createdAt}:${request.round}`,
     // 同じ手順は二度記録しない(round を書き換えても効かない)
@@ -118,7 +119,7 @@ export function verifyMatch(room, request, uid) {
     guest,
     winner: state.winner,
     names: [room.hostName, room.guestName].map((n) =>
-      typeof n === "string" ? n.slice(0, 10) : "名無し",
+      typeof n === "string" ? n.slice(0, 10) : Lk("名無し"),
     ),
     icons: [room.hostIcon, room.guestIcon].map((i) =>
       typeof i === "string" ? i.slice(0, 40) : null,

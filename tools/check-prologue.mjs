@@ -71,6 +71,7 @@ const stub = (name) => {
 };
 globalThis.__stub = stub;
 
+globalThis.__i18n = await import("../src/i18n/index.js");
 const src = read("src/ui/prologue.jsx")
   .replace(/import \{[^}]*\} from "react";/, "const { useEffect, useRef, useState } = globalThis.__react;")
   // キーの宛先の判定は別の小さな部品。ここでは「自分宛て」で固定する
@@ -78,7 +79,9 @@ const src = read("src/ui/prologue.jsx")
   .replace(/import \{[^}]*\} from "\.\.\/assets\.js";/, 'const cardBackImg = "back";')
   .replace(/import \{[^}]*\} from "\.\/cards\.jsx";/, "const Piece = globalThis.__stub('Piece');")
   .replace(/import \{[^}]*\} from "\.\/skin-modal\.jsx";/, "const useReducedMotion = () => globalThis.__motion.reduce;")
-  .replace(/import \{[^}]*\} from "\.\.\/skins\/store\.js";/, "const useCollection = () => ({ motion: globalThis.__motion.motion });");
+  .replace(/import \{[^}]*\} from "\.\.\/skins\/store\.js";/, "const useCollection = () => ({ motion: globalThis.__motion.motion });")
+  // 英語版の取り込み(2026-11-11)。data: の中からは相対で解けないので、外から渡す
+  .replace(/import \{([^}]*)\} from "\.\.\/i18n\/index\.js";/, (m, names) => `const {${names}} = globalThis.__i18n;`)
 is("差し替えていない取り込みが残っていない", /^import /m.test(src), false);
 const js = transformSync(src, {
   loader: "jsx",

@@ -185,6 +185,7 @@ import { watchDailySession, canRefreshDailySession } from "../game/daily-session
 import { GemShop } from "./gem-shop.jsx";
 import { ShopScreen } from "./shop.jsx";
 import { TitleDataBar } from "./title-data.jsx";
+import { L, Lk, Lx, fmtNumber } from "../i18n/index.js";
 import { backupIfDue } from "../net/backup.js";
 import { shopAvailable } from "../net/iap.js";
 import { claimableCount } from "../game/missions.js";
@@ -289,30 +290,30 @@ export function GameShell({
           <button
             className="brand brand-link"
             onClick={goHome}
-            aria-label="タイトルへ戻る"
+            aria-label={L("タイトルへ戻る")}
           >
-            {title || "トッタリー"}
+            {Lx(title) || L("トッタリー")}
           </button>
         ) : (
-          <span className="brand">{title || "トッタリー"}</span>
+          <span className="brand">{Lx(title) || L("トッタリー")}</span>
         )}
         <div className="top-right">
           {topExtra}
           <button
             className="icon-btn"
             onClick={() => setShowRules(!0)}
-            aria-label="カード早見表"
+            aria-label={L("カード早見表")}
           >
             <Info size={18} />
           </button>
-          <button className="icon-btn" onClick={() => f(!0)} aria-label="設定">
+          <button className="icon-btn" onClick={() => f(!0)} aria-label={L("設定")}>
             <Settings size={18} />
           </button>
         </div>
       </header>
       {i && <SettingsModal onClose={() => f(!1)} />}
       {isTestPlay() && (
-        <div className="test-badge">テストプレイ中 · 時間制限なし</div>
+        <div className="test-badge">{L("テストプレイ中 · 時間制限なし")}</div>
       )}
       <main className={`stage ${band ? "stage-with-sheet" : ""}`}>
         <OpenSettings.Provider value={() => f(!0)}>
@@ -348,7 +349,7 @@ export function HomeScreen({ onStart }) {
           <img
             className="title-bg"
             src={titleBgImg}
-            alt="トッタリー — 相手の王を討て"
+            alt={L("トッタリー — 相手の王を討て")}
             width={660}
             height={1173}
             draggable="false"
@@ -356,7 +357,7 @@ export function HomeScreen({ onStart }) {
           <button
             type="button"
             className="title-start-button"
-            aria-label="ゲームスタート"
+            aria-label={L("ゲームスタート")}
             onClick={onStart}
           />
         </div>
@@ -380,7 +381,7 @@ function HomeSelf({ profile, onProfile = null }) {
     <button
       className="home-self"
       onClick={onProfile || openSettings || void 0}
-      aria-label={onProfile ? "自分のプロフィールを開く" : "自分の設定を開く"}
+      aria-label={onProfile ? L("自分のプロフィールを開く") : L("自分の設定を開く")}
     >
       <PlayerIcon
         icon={profile.icon}
@@ -389,7 +390,7 @@ function HomeSelf({ profile, onProfile = null }) {
         frame={season.frame}
       />
       <span className="home-self-id">
-        <b>{profile.name || "名無し"}</b>
+        <b>{profile.name || L("名無し")}</b>
       </span>
       <span className="home-self-right">
         <span className="home-lv">
@@ -447,23 +448,23 @@ export function HomeLearningMenu({ onPhaseGuide, onWelcomeComic }) {
         type="button"
         className="home-learning-trigger"
         ref={trigger}
-        aria-label={`フェーズ${phase}：ガイドと遊び方`}
+        aria-label={L("フェーズ{n}：ガイドと遊び方", { n: phase })}
         aria-expanded={open}
         aria-controls={open ? "home-learning-panel" : undefined}
         onClick={() => setOpen((value) => !value)}
       >
-        <span>フェーズ {phase}</span>
-        <small>ガイド・漫画</small>
+        <span>{L("フェーズ {n}", { n: phase })}</span>
+        <small>{L("ガイド・漫画")}</small>
       </button>
       {open && (
         <nav
           className="home-learning-panel"
           id="home-learning-panel"
-          aria-label="遊び方"
+          aria-label={L("遊び方")}
         >
           <div className="home-learning-current">
             <span>
-              現在のフェーズ <b>{phase}</b> / 3
+              {L("現在のフェーズ")} <b>{phase}</b> / 3
             </span>
             <span className="home-learning-steps" aria-hidden="true">
               {[1, 2, 3].map((step) => (
@@ -474,16 +475,16 @@ export function HomeLearningMenu({ onPhaseGuide, onWelcomeComic }) {
           <button type="button" onClick={() => visit(onPhaseGuide)}>
             <Grid size={22} />
             <span>
-              <b>フェーズガイド</b>
-              <small>各フェーズのルールと進み方</small>
+              <b>{L("フェーズガイド")}</b>
+              <small>{L("各フェーズのルールと進み方")}</small>
             </span>
             <ArrowRight size={16} />
           </button>
           <button type="button" onClick={() => visit(onWelcomeComic)}>
             <Book size={22} />
             <span>
-              <b>漫画で遊び方</b>
-              <small>王の決め方から勝利まで</small>
+              <b>{L("漫画で遊び方")}</b>
+              <small>{L("王の決め方から勝利まで")}</small>
             </span>
             <ArrowRight size={16} />
           </button>
@@ -553,15 +554,15 @@ export function MenuScreen({
     setGiftMsg("");
     try {
       const list = await claimFriendGifts();
-      const names = [...new Set(list.map((g) => g.from?.name || "名無し"))].join("・");
+      const names = [...new Set(list.map((g) => g.from?.name || L("名無し")))].join(L("・"));
       setGiftMsg(
         list.length
-          ? `${names} からのガチャチケットを ${list.length}枚 受け取りました。`
-          : "受け取れる贈り物はありませんでした。",
+          ? L("{names} からのガチャチケットを {n}枚 受け取りました。", { names, n: list.length })
+          : L("受け取れる贈り物はありませんでした。"),
       );
       friendAlertsAll.reload();
     } catch (e) {
-      setGiftMsg((e && e.message) || "受け取れませんでした。通信を確認して、もう一度お試しください。");
+      setGiftMsg(Lx(e && e.message) || L("受け取れませんでした。通信を確認して、もう一度お試しください。"));
     } finally {
       setGiftBusy(false);
     }
@@ -604,10 +605,10 @@ export function MenuScreen({
       <button
         className="home-news"
         onClick={onLetters}
-        aria-label={`お知らせ・フレンド${unread + friendAlerts > 0 ? ` 届いているもの${unread + friendAlerts}件` : ""}`}
+        aria-label={`${L("お知らせ・フレンド")}${unread + friendAlerts > 0 ? L(" 届いているもの{n}件", { n: unread + friendAlerts }) : ""}`}
       >
         <Mail size={15} />
-        <span>お知らせ・<br />フレンド</span>
+        <span>{L("お知らせ・")}<br />{L("フレンド")}</span>
         {unread + friendAlerts > 0 && (
           <span className="home-news-count">{unread + friendAlerts > 99 ? "99+" : unread + friendAlerts}</span>
         )}
@@ -620,7 +621,7 @@ export function MenuScreen({
           {unread > 0 && (
             <button className="home-alert home-alert-news" onClick={onLetters}>
               <Mail size={14} />
-              <span>運営からのお知らせが {unread}件 届いています</span>
+              <span>{L("運営からのお知らせが {n}件 届いています", { n: unread })}</span>
               <ArrowRight size={14} />
             </button>
           )}
@@ -628,13 +629,14 @@ export function MenuScreen({
             <button className="home-alert home-alert-friend" onClick={onFriends || onLetters}>
               <Users size={14} />
               <span>
-                {[
-                  friendAlertsAll.requests ? `フレンド申請 ${friendAlertsAll.requests}件` : null,
-                  friendAlertsAll.invites ? `対戦の招待 ${friendAlertsAll.invites}件` : null,
-                ]
-                  .filter(Boolean)
-                  .join("・")}
-                が届いています
+                {L("{items}が届いています", {
+                  items: [
+                    friendAlertsAll.requests ? L("フレンド申請 {n}件", { n: friendAlertsAll.requests }) : null,
+                    friendAlertsAll.invites ? L("対戦の招待 {n}件", { n: friendAlertsAll.invites }) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(L("・")),
+                })}
               </span>
               <ArrowRight size={14} />
             </button>
@@ -644,9 +646,9 @@ export function MenuScreen({
       {/* 残高。左にチケット、右にジェム(2026-09-22 本人の指示で入れ替え)。
           押せるのはジェムから「+」までで、押すとジェムの店が開く。「ジェムを買う」の文言は出さない。
           店は iOS のアプリだけなので、ほかでは理由を出す(ショップ画面と同じ文言) */}
-      <div className="home-resource-bar" aria-label="いまの残高">
+      <div className="home-resource-bar" aria-label={L("いまの残高")}>
         <span className="home-resource-tickets">
-          <Ticket size={16} /> {collection.tickets}枚
+          <Ticket size={16} /> {L("{n}枚", { n: collection.tickets })}
           {/* フレンドからのガチャチケット。押すとその場で受け取る(2026-10-16 本人の決め「1」) */}
           {giftCount > 0 && (
             <button
@@ -654,9 +656,9 @@ export function MenuScreen({
               className="home-resource-gift"
               disabled={giftBusy}
               onClick={claimGifts}
-              aria-label={`フレンドからの贈り物 ${giftCount}枚。受け取る`}
+              aria-label={L("フレンドからの贈り物 {n}枚。受け取る", { n: giftCount })}
             >
-              {giftBusy ? "受け取っています…" : `贈り物 +${giftCount} 受け取る`}
+              {giftBusy ? L("受け取っています…") : L("贈り物 +{n} 受け取る", { n: giftCount })}
             </button>
           )}
         </span>
@@ -667,10 +669,10 @@ export function MenuScreen({
             shopOk
               ? setShop(true)
               : setShopMsg(
-                  "ジェムは iPhone・iPad のアプリでのみ買えます。ほかの買い物はこのままお使いいただけます。",
+                  L("ジェムは iPhone・iPad のアプリでのみ買えます。ほかの買い物はこのままお使いいただけます。"),
                 )
           }
-          aria-label={`ジェム ${collection.gems || 0}。ジェムを買う`}
+          aria-label={L("ジェム {n}。ジェムを買う", { n: collection.gems || 0 })}
         >
           <GemAmount amount={collection.gems || 0} size={26} />
           {/* 「+」は文字ではなく線の絵にする。金の丸に文字の「+」だと、細い線で描いた
@@ -692,7 +694,7 @@ export function MenuScreen({
         </button>
       </div>
       {shopMsg && <p className="mission-message" role="status" aria-live="polite">{shopMsg}</p>}
-      {giftMsg && <p className="mission-message" role="status" aria-live="polite">{giftMsg}</p>}
+      {giftMsg && <p className="mission-message" role="status" aria-live="polite">{Lx(giftMsg)}</p>}
 
       <HomeRealmPortrait theme={theme} />
       <button className="home-hero" onClick={onPlay}>
@@ -701,8 +703,8 @@ export function MenuScreen({
           <Globe size={34} />
         </span>
         <span className="home-hero-label">
-          <b>対戦する</b>
-          <small>オンライン・フレンド・CPU</small>
+          <b>{L("対戦する")}</b>
+          <small>{L("オンライン・フレンド・CPU")}</small>
         </span>
         <ArrowRight size={20} className="home-hero-arrow" />
       </button>
@@ -717,7 +719,7 @@ export function MenuScreen({
           frameTheme={theme}
           tone="story"
           icon={<Book size={26} />}
-          label="ストーリー"
+          label={L("ストーリー")}
           note={storyTileNote(profile)}
           onClick={onStory}
         />
@@ -725,8 +727,8 @@ export function MenuScreen({
           frameTheme={theme}
           tone="cards"
           icon={<Cards size={26} />}
-          label="カード"
-          note={hasAnySkin ? "スキンの熟練度" : "スキンを獲得すると解放"}
+          label={L("カード")}
+          note={hasAnySkin ? L("スキンの熟練度") : L("スキンを獲得すると解放")}
           locked={!hasAnySkin}
           onClick={onCards}
         />
@@ -734,7 +736,7 @@ export function MenuScreen({
           frameTheme={theme}
           tone="tsume"
           icon={<Crown size={26} />}
-          label="詰めトッタリー"
+          label={L("詰めトッタリー")}
           note={
             <span
               className={`home-tsume-status is-${tsumeStatus}`}
@@ -745,12 +747,12 @@ export function MenuScreen({
               ) : (
                 <span className="home-tsume-dot" aria-hidden="true" />
               )}
-              本日{" "}
+              {L("本日")}{" "}
               {receipt?.cleared
-                ? "クリア済み"
+                ? L("クリア済み")
                 : receipt?.joined
-                  ? "挑戦済み"
-                  : "未挑戦"}
+                  ? L("挑戦済み")
+                  : L("未挑戦")}
             </span>
           }
           onClick={onTsume}
@@ -759,8 +761,8 @@ export function MenuScreen({
           frameTheme={theme}
           tone="shop"
           icon={<Shop size={26} />}
-          label="ショップ"
-          note="ジェム・チケット"
+          label={L("ショップ")}
+          note={L("ジェム・チケット")}
           onClick={onShop}
         />
         <HomeTile
@@ -770,17 +772,17 @@ export function MenuScreen({
           label={
             // 2つの名を1行に詰めると「バトル／パス」で折れる。「・」で2行に分ける
             <>
-              ミッション・
+              {L("ミッション・")}
               <br />
-              バトルパス
+              {L("バトルパス")}
             </>
           }
           note={
             ready > 0
-              ? `受け取れる褒美 ${ready}件`
+              ? L("受け取れる褒美 {n}件", { n: ready })
               : passUnlocked
-                ? "褒美を受け取る・マスを埋める"
-                : "褒美を受け取る"
+                ? L("褒美を受け取る・マスを埋める")
+                : L("褒美を受け取る")
           }
           badge={ready}
           onClick={onMissions}
@@ -789,8 +791,8 @@ export function MenuScreen({
           frameTheme={theme}
           tone="skins"
           icon={<Sparkle size={26} />}
-          label="ガチャ・スキン"
-          note="英雄を召喚する"
+          label={L("ガチャ・スキン")}
+          note={L("英雄を召喚する")}
           onClick={onSkins}
         />
       </div>
@@ -833,7 +835,7 @@ export function MatchingScreen({
   const locked = !gate.ok || !season.open;
   return (
     <div className="center-stage">
-      <h2>対戦相手を選ぶ</h2>
+      <h2>{L("対戦相手を選ぶ")}</h2>
       <div className="nav-stack">
         <button
           className={`btn btn-primary btn-choice ${locked ? "btn-choice-locked" : ""}`}
@@ -842,12 +844,12 @@ export function MatchingScreen({
         >
           <Globe size={30} />
           <span className="choice-label">
-            オンラインでマッチする
+            {L("オンラインでマッチする")}
             <small>
               {!gate.ok
                 ? onlineGateLabel(gate)
                 : season.open
-                  ? "世界中のプレイヤーと対戦"
+                  ? L("世界中のプレイヤーと対戦")
                   : ratedSeasonLabel(season)}
             </small>
           </span>
@@ -855,32 +857,32 @@ export function MatchingScreen({
         <button className="btn btn-friend btn-choice" onClick={onFriend}>
           <Users size={30} />
           <span className="choice-label">
-            フレンドとマッチする<small>友達とルーム対戦</small>
+            {L("フレンドとマッチする")}<small>{L("友達とルーム対戦")}</small>
           </span>
         </button>
         <button className="btn btn-teal btn-choice" onClick={onCpu}>
           <Crown size={30} />
           <span className="choice-label">
-            CPUと対戦する<small>ひとりで練習・腕試し</small>
+            {L("CPUと対戦する")}<small>{L("ひとりで練習・腕試し")}</small>
           </span>
         </button>
         {onNearby && nearbyAvailable() && (
           <button className="btn btn-teal btn-choice" onClick={onNearby}>
             <Nearby size={30} />
             <span className="choice-label">
-              近くの端末と対戦する
-              <small>Bluetooth で直接つなぐ・機内モードでも遊べる</small>
+              {L("近くの端末と対戦する")}
+              <small>{L("Bluetooth で直接つなぐ・機内モードでも遊べる")}</small>
             </span>
           </button>
         )}
       </div>
       {onRanking && (
-        <button className="home-quiet" onClick={onRanking} aria-label="ランキングを見る">
-          <Crown size={18} /> ランキングを見る
+        <button className="home-quiet" onClick={onRanking} aria-label={L("ランキングを見る")}>
+          <Crown size={18} /> {L("ランキングを見る")}
         </button>
       )}
       <button className="btn btn-ghost btn-home" onClick={onBack}>
-        <ArrowLeft size={18} /> ホームに戻る
+        <ArrowLeft size={18} /> {L("ホームに戻る")}
       </button>
     </div>
   );
@@ -987,7 +989,7 @@ export function RandomMatchScreen({
           if (isBlocked(g.data.seats && g.data.seats.guest)) {
             clearInterval(r);
             deleteLobbyPath(`/${d}`);
-            u("相手が見つかりませんでした。もう一度お探しください。");
+            u(L("相手が見つかりませんでした。もう一度お探しください。"));
             n("error");
             return;
           }
@@ -1002,7 +1004,7 @@ export function RandomMatchScreen({
             // 部屋も消す(相手の画面に「相手が退出」が出る。合言葉の部屋・近くの端末と同じ)
             deleteRoom(d);
             u(
-              "対戦相手のルール設定を確認できませんでした。もう一度お探しください。",
+              L("対戦相手のルール設定を確認できませんでした。もう一度お探しください。"),
             );
             n("error");
             return;
@@ -1072,7 +1074,7 @@ export function RandomMatchScreen({
         if (o.current) return;
         if (!auth) {
           (u(
-            "サインインできませんでした。通信状況を確認して、もう一度お試しください。",
+            L("サインインできませんでした。通信状況を確認して、もう一度お試しください。"),
           ),
             n("error"));
           return;
@@ -1239,17 +1241,17 @@ export function RandomMatchScreen({
     // 「探しています」のまま待つ。誤りの画面を数秒見せてから対局が始まるのを避ける
     l === "error" && planRef.current !== "fallback" ? (
       <div className="center-stage">
-        <h2>マッチングできませんでした</h2>
+        <h2>{L("マッチングできませんでした")}</h2>
         <p
           className="hint"
           style={{
             color: "#e2896f",
           }}
         >
-          {a}
+          {Lx(a)}
         </p>
         <button className="btn btn-ghost" onClick={onBack}>
-          対戦相手を選ぶに戻る
+          {L("対戦相手を選ぶに戻る")}
         </button>
       </div>
     ) : (
@@ -1259,17 +1261,17 @@ export function RandomMatchScreen({
           <div className={`match-streak ${streak >= 2 ? "is-hot" : ""}`} role="status">
             {streak >= 1 ? (
               <>
-                <b className="match-streak-count">{streak}連勝中</b>
+                <b className="match-streak-count">{L("{n}連勝中", { n: streak })}</b>
                 <small>
                   {winStreakBonus(streak + 1) > 0
-                    ? `次に勝つと連勝ボーナス +${winStreakBonus(streak + 1)}`
-                    : "勝ち続けると連勝ボーナスが付きます"}
+                    ? L("次に勝つと連勝ボーナス +{n}", { n: winStreakBonus(streak + 1) })
+                    : L("勝ち続けると連勝ボーナスが付きます")}
                 </small>
               </>
             ) : (
               <>
-                <b className="match-streak-count">連勝ボーナスに挑戦</b>
-                <small>勝ち続けるとレートにボーナスが付きます</small>
+                <b className="match-streak-count">{L("連勝ボーナスに挑戦")}</b>
+                <small>{L("勝ち続けるとレートにボーナスが付きます")}</small>
               </>
             )}
           </div>
@@ -1277,13 +1279,13 @@ export function RandomMatchScreen({
         <Dice size={32} className="dim-icon spin-icon" />
         <h2>
           {l === "searching"
-            ? "対戦相手を探しています…"
-            : "対戦相手を待っています…"}
+            ? L("対戦相手を探しています…")
+            : L("対戦相手を待っています…")}
         </h2>
         <p className="hint">
           {l === "searching"
-            ? "待機中のプレイヤーがいないか確認しています。"
-            : "あなたは待機中です。誰かが参加すると自動的に始まります。"}
+            ? L("待機中のプレイヤーがいないか確認しています。")
+            : L("あなたは待機中です。誰かが参加すると自動的に始まります。")}
         </p>
         <button
           className="btn btn-ghost"
@@ -1292,7 +1294,7 @@ export function RandomMatchScreen({
           }}
           onClick={onBack}
         >
-          やめる
+          {L("やめる")}
         </button>
       </div>
     )
@@ -1308,9 +1310,9 @@ function CustomRulesPanel({ custom, size, onChange }) {
   const set = (patch) => onChange({ ...custom, ...patch });
   const maxReveal = Math.max(0, army - 1);
   return (
-    <div className="custom-rules" role="group" aria-label="詳細設定">
+    <div className="custom-rules" role="group" aria-label={L("詳細設定")}>
       <div className="custom-row">
-        <div className="rule-section-label">使う札</div>
+        <div className="rule-section-label">{L("使う札")}</div>
         <div className="rank-toggles">
           {RANKS.map((rank) => {
             const on = custom.ranks.includes(rank);
@@ -1321,7 +1323,7 @@ function CustomRulesPanel({ custom, size, onChange }) {
                 className={`rank-toggle ${on ? "active" : ""}`}
                 aria-pressed={on}
                 disabled={on && !next}
-                title={on && !next ? "これ以上は減らせません(4種類以上・数字の札2種類以上)" : ""}
+                title={on && !next ? L("これ以上は減らせません(4種類以上・数字の札2種類以上)") : ""}
                 onClick={() => next && set({ ranks: next })}
               >
                 {rank}
@@ -1330,14 +1332,14 @@ function CustomRulesPanel({ custom, size, onChange }) {
           })}
         </div>
         <p className="hint">
-          <b>札 {custom.ranks.length * 4}枚</b> → 盤に置く駒 <b>{army}枚</b>・手札 <b>{hand}枚</b>
+          <b>{L("札 {n}枚", { n: custom.ranks.length * 4 })}</b>{L(" → 盤に置く駒 ")}<b>{L("{n}枚", { n: army })}</b>{L("・手札 ")}<b>{L("{n}枚", { n: hand })}</b>
           <br />
-          4種類以上、J・Q・K 以外を2種類以上。駒は3枚を下回りません。
+          {L("4種類以上、J・Q・K 以外を2種類以上。駒は3枚を下回りません。")}
         </p>
       </div>
       {size === 9 && (
         <div className="custom-row">
-          <div className="rule-section-label">盤面エリア</div>
+          <div className="rule-section-label">{L("盤面エリア")}</div>
           <div className="area-choices">
             {CUSTOM_AREA_SIDES.map((side) => (
               <button
@@ -1346,15 +1348,15 @@ function CustomRulesPanel({ custom, size, onChange }) {
                 aria-pressed={custom.areas === side}
                 onClick={() => set({ areas: side })}
               >
-                <b>{AREA_SIDE_LABEL[side]}</b>
+                <b>{Lx(AREA_SIDE_LABEL[side])}</b>
                 <small>
                   {side === "both"
-                    ? "王のフォイルがあれば、どちらも立つ"
+                    ? L("王のフォイルがあれば、どちらも立つ")
                     : side === "host"
-                      ? "自分(ルームを作る側・先手の席)だけ"
+                      ? L("自分(ルームを作る側・先手の席)だけ")
                       : side === "guest"
-                        ? "相手だけ。自分は立てない"
-                        : "どちらも立てない素の対局"}
+                        ? L("相手だけ。自分は立てない")
+                        : L("どちらも立てない素の対局")}
                 </small>
               </button>
             ))}
@@ -1362,11 +1364,11 @@ function CustomRulesPanel({ custom, size, onChange }) {
         </div>
       )}
       <div className="custom-row">
-        <div className="rule-section-label">対局開始時に公開する駒</div>
+        <div className="rule-section-label">{L("対局開始時に公開する駒")}</div>
         <label className="custom-field">
-          公開する枚数(王を除く)
+          {L("公開する枚数(王を除く)")}
           <select
-            aria-label="公開する枚数"
+            aria-label={L("公開する枚数")}
             value={Math.min(custom.reveal.count, maxReveal)}
             onChange={(e) => {
               const count = Number(e.target.value) || 0;
@@ -1375,7 +1377,7 @@ function CustomRulesPanel({ custom, size, onChange }) {
           >
             {Array.from({ length: maxReveal + 1 }, (_, n) => (
               <option key={n} value={n}>
-                {n === 0 ? "公開しない" : `${n}枚`}
+                {n === 0 ? L("公開しない") : L("{n}枚", { n })}
               </option>
             ))}
           </select>
@@ -1386,7 +1388,7 @@ function CustomRulesPanel({ custom, size, onChange }) {
             checked={custom.reveal.king}
             onChange={(e) => set({ reveal: { ...custom.reveal, king: e.target.checked } })}
           />
-          王も公開する
+          {L("王も公開する")}
         </label>
         {custom.reveal.count > 0 && (
           <div className="area-choices">
@@ -1395,24 +1397,24 @@ function CustomRulesPanel({ custom, size, onChange }) {
               aria-pressed={!custom.reveal.choose}
               onClick={() => set({ reveal: { ...custom.reveal, choose: false } })}
             >
-              <b>ランダム</b>
-              <small>王を除いた駒から自動で選ばれる</small>
+              <b>{L("ランダム")}</b>
+              <small>{L("王を除いた駒から自動で選ばれる")}</small>
             </button>
             <button
               className={`area-choice ${custom.reveal.choose ? "active" : ""}`}
               aria-pressed={custom.reveal.choose}
               onClick={() => set({ reveal: { ...custom.reveal, choose: true } })}
             >
-              <b>自分で選ぶ</b>
-              <small>布陣を確定するときに、公開する駒を自分で選ぶ</small>
+              <b>{L("自分で選ぶ")}</b>
+              <small>{L("布陣を確定するときに、公開する駒を自分で選ぶ")}</small>
             </button>
           </div>
         )}
       </div>
       <p className="hint">
-        始める側の設定が使われます(CPU戦は自分、ルームは作る側、近くの端末はタップされた側)。
+        {L("始める側の設定が使われます(CPU戦は自分、ルームは作る側、近くの端末はタップされた側)。")}
         <br />
-        レートは動きません。
+        {L("レートは動きません。")}
       </p>
     </div>
   );
@@ -1451,9 +1453,9 @@ export function RulesSelectScreen({
   const [customOpen, setCustomOpen] = useState(!!custom && !isDefaultCustom(custom));
   return (
     <div className="setup-wrap">
-      <h2>ルール設定</h2>
+      <h2>{L("ルール設定")}</h2>
       <div className="rule-section">
-        <div className="rule-section-label">ルール</div>
+        <div className="rule-section-label">{L("ルール")}</div>
         <div className="nav-stack">
           <button
             className={`btn btn-choice ${!custom || isDefaultCustom(custom) ? "btn-primary" : "btn-ghost"}`}
@@ -1465,7 +1467,7 @@ export function RulesSelectScreen({
           >
             <Check size={18} />
             <span className="choice-label">
-              クラシック<small>基本ルールで対戦します</small>
+              {L("クラシック")}<small>{L("基本ルールで対戦します")}</small>
             </span>
           </button>
           {onCustom &&
@@ -1481,17 +1483,17 @@ export function RulesSelectScreen({
               >
                 <Settings size={18} />
                 <span className="choice-label">
-                  詳細設定
-                  <small>{custom ? customSummary(normalizeCustom(custom, a), a) : "使う札・エリア・公開する駒を決める"}</small>
+                  {L("詳細設定")}
+                  <small>{custom ? Lx(customSummary(normalizeCustom(custom, a), a)) : L("使う札・エリア・公開する駒を決める")}</small>
                 </span>
               </button>
             ) : (
               <button className="btn btn-ghost btn-choice" disabled>
                 <Lock size={18} />
                 <span className="choice-label">
-                  詳細設定
+                  {L("詳細設定")}
                   <small>
-                    {customLockedByPhase ? "フェーズ3で開きます" : "フォイルを手に入れてエリアを解放すると使えます"}
+                    {customLockedByPhase ? L("フェーズ3で開きます") : L("フォイルを手に入れてエリアを解放すると使えます")}
                   </small>
                 </span>
               </button>
@@ -1506,7 +1508,7 @@ export function RulesSelectScreen({
         )}
       </div>
       <div className="rule-section">
-        <div className="rule-section-label">盤面のサイズ</div>
+        <div className="rule-section-label">{L("盤面のサイズ")}</div>
         <div className="size-choices">
           {[5, 9].map((i) => (
             <button
@@ -1532,26 +1534,26 @@ export function RulesSelectScreen({
                 {i}×{i}
               </span>
               <small>
-                {i === 5 ? "5枚で戦う短期戦" : areasOn && foilRevealed(getCollection()) ? "9枚で戦う本格戦。王のフォイルで盤面エリアが立つ" : "9枚で戦う本格戦"}
+                {i === 5 ? L("5枚で戦う短期戦") : areasOn && foilRevealed(getCollection()) ? L("9枚で戦う本格戦。王のフォイルで盤面エリアが立つ") : L("9枚で戦う本格戦")}
                 {/* レートが動くのは9×9だけ。選ぶ前に分かるようにしておく */}
                 {ranked && i === 9 && (
                   <>
                     <br />
-                    <b className="board-choice-ranked">ランキングに載ります</b>
+                    <b className="board-choice-ranked">{L("ランキングに載ります")}</b>
                   </>
                 )}
                 {i === 9 && locked9 && (
                   <>
                     <br />
                     <b className="board-choice-lock">
-                      {locked9ByPhase ? "フェーズ3で開きます" : `Lv${BOARD9_LEVEL} で開きます`}
+                      {locked9ByPhase ? L("フェーズ3で開きます") : L("Lv{n} で開きます", { n: BOARD9_LEVEL })}
                     </b>
                   </>
                 )}
                 {i === 5 && locked5ByPhase && (
                   <>
                     <br />
-                    <b className="board-choice-lock">フェーズ3で開きます</b>
+                    <b className="board-choice-lock">{L("フェーズ3で開きます")}</b>
                   </>
                 )}
               </small>
@@ -1564,9 +1566,9 @@ export function RulesSelectScreen({
       </div>
       {onCpuArea && a === 9 && (
         <div className="rule-section">
-          <div className="rule-section-label">CPUのエリア</div>
+          <div className="rule-section-label">{L("CPUのエリア")}</div>
           <p className="hint">
-            相手のエリアを決めて、そのエリアの定石と戦う練習ができます。おまかせでは相手が手札から王を選びます。
+            {L("相手のエリアを決めて、そのエリアの定石と戦う練習ができます。おまかせでは相手が手札から王を選びます。")}
           </p>
           <div className="area-choices">
             <button
@@ -1574,16 +1576,16 @@ export function RulesSelectScreen({
               aria-pressed={cpuArea === null}
               onClick={() => onCpuArea(null)}
             >
-              <b>おまかせ</b>
-              <small>相手が手札から王を選ぶ</small>
+              <b>{L("おまかせ")}</b>
+              <small>{L("相手が手札から王を選ぶ")}</small>
             </button>
             <button
               className={`area-choice ${cpuArea === "none" ? "active" : ""}`}
               aria-pressed={cpuArea === "none"}
               onClick={() => onCpuArea("none")}
             >
-              <b>エリアなし</b>
-              <small>相手だけ盤面エリアなし。自分のエリアは装備どおり</small>
+              <b>{L("エリアなし")}</b>
+              <small>{L("相手だけ盤面エリアなし。自分のエリアは装備どおり")}</small>
             </button>
             {JOSEKI_AREAS.map((type) => (
               <button
@@ -1593,12 +1595,12 @@ export function RulesSelectScreen({
                 onClick={() => onCpuArea(type)}
               >
                 <b>
-                  {JOSEKI_INFO[type].label}
+                  {Lx(JOSEKI_INFO[type].label)}
                   <span className="area-choice-style">
-                    {JOSEKI_INFO[type].style}
+                    {Lx(JOSEKI_INFO[type].style)}
                   </span>
                 </b>
-                <small>{JOSEKI_INFO[type].text}</small>
+                <small>{Lx(JOSEKI_INFO[type].text)}</small>
               </button>
             ))}
           </div>
@@ -1612,16 +1614,16 @@ export function RulesSelectScreen({
         poolForLevel(level) &&
         foilRevealed(getCollection()) && (
           <p className="hint">
-            CPUのエリアを選ぶ練習は、すべての札が開く Lv{ALL_CARDS_LEVEL} からです。
+            {L("CPUのエリアを選ぶ練習は、すべての札が開く Lv{n} からです。", { n: ALL_CARDS_LEVEL })}
           </p>
         )}
-      {note && <p className="hint">{note}</p>}
+      {note && <p className="hint">{Lx(note)}</p>}
       <div className="setup-actions">
         <button className="btn btn-ghost" onClick={onBack}>
-          <ArrowLeft size={18} /> {backLabel}
+          <ArrowLeft size={18} /> {Lx(backLabel)}
         </button>
         <button className="btn btn-primary" onClick={() => onStart(a)}>
-          <Play size={16} /> ゲームを始める
+          <Play size={16} /> {L("ゲームを始める")}
         </button>
       </div>
     </div>
@@ -1658,16 +1660,16 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
         // ネイティブが名乗り・探索を始められなかった(許可が下りていない等)。
         // 2026-09-28 まで拾っていなかったので、ずっと「まだ見つかりません」に見えていた
         setStatus("searching");
-        setError(e.message || "近くの端末との通信を始められませんでした");
+        setError(Lx(e.message) || L("近くの端末との通信を始められませんでした"));
       } else if (e.state === "disconnected" && !readyRef.current) {
         setStatus("searching");
-        setError("つながりませんでした。もう一度相手をタップしてください");
+        setError(L("つながりませんでした。もう一度相手をタップしてください"));
         // 探索をやり直す
         n.start(profile(), ready).catch((err) => setError(err.message));
       }
     });
     const profile = () => ({
-      name: myName() || "名無し",
+      name: myName() || Lk("名無し"),
       icon: myIcon(),
       title: myTitle(),
       skins: loadout,
@@ -1682,14 +1684,14 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
       if (phase < 3 && !Number.isInteger(network.guestPhase)) {
         // つながりを切って探索に戻る(相手の端末には「つながらなかった」が出る)。
         // 切らないと「対局へ進みます」のまま止まり、相手は来ない開始の合図を待ち続ける
-        setError("相手のアプリが古いため、このフェーズでは対戦できません");
+        setError(L("相手のアプリが古いため、このフェーズでは対戦できません"));
         setStatus("searching");
         // **止め終わってから**探索を始め直す。stop() は listener を外し終える前に
         // 戻らないので、同時に start() すると attach() が「もう付いている」と見て
         // 何も付けず、直後に全部外されて以後の知らせが来なくなる
         n.stop()
           .then(() => n.start(profile(), ready))
-          .catch((err) => setError(err && err.message ? err.message : "探索を始め直せませんでした"));
+          .catch((err) => setError(err && err.message ? Lx(err.message) : L("探索を始め直せませんでした")));
         return;
       }
       readyRef.current = !0;
@@ -1707,7 +1709,7 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
       });
     };
     n.start(profile(), ready).catch((err) =>
-      setError(err && err.message ? err.message : "近くの端末との接続を始められませんでした"),
+      setError(err && err.message ? Lx(err.message) : L("近くの端末との接続を始められませんでした")),
     );
     return () => {
       gone = !0;
@@ -1721,41 +1723,42 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
     <div className="setup-wrap friend-wrap">
       <div className="friend-head">
         <Nearby size={44} style={{ color: "var(--gold)" }} />
-        <h2 style={{ margin: "10px 0 8px" }}>近くの端末と対戦</h2>
+        <h2 style={{ margin: "10px 0 8px" }}>{L("近くの端末と対戦")}</h2>
         <p className="hint" style={{ margin: 0 }}>
-          相手の端末でもこの画面を開いてください。
+          {L("相手の端末でもこの画面を開いてください。")}
           <br />
-          見つかった相手をタップすると始まります。インターネットは要りません。
+          {L("見つかった相手をタップすると始まります。インターネットは要りません。")}
         </p>
       </div>
       <div className="conn-badge conn-checking">
         <span className="conn-dot" />
         {status === "searching"
-          ? `${myName() || "あなた"} として近くを探しています…`
+          ? L("{name} として近くを探しています…", { name: myName() || L("あなた") })
           : status === "connecting"
-            ? "つながりました。準備しています…"
-            : "対局へ進みます"}
+            ? L("つながりました。準備しています…")
+            : L("対局へ進みます")}
       </div>
-      <div className="nearby-list" role="list" aria-label="近くの端末">
+      <div className="nearby-list" role="list" aria-label={L("近くの端末")}>
         {peers.length === 0 ? (
           <div className="hint nearby-empty">
             <p style={{ margin: "0 0 8px" }}>
-              まだ見つかりません({waited}秒)。次の順に確かめてください。
+              {L("まだ見つかりません({n}秒)。次の順に確かめてください。", { n: waited })}
             </p>
             <ol className="nearby-steps">
               <li>
-                <b>相手の端末でも、この同じ画面を開く</b>
-                (ホーム → 対戦する → 近くの端末と対戦)
+                <b>{L("相手の端末でも、この同じ画面を開く")}</b>
+                {L("(ホーム → 対戦する → 近くの端末と対戦)")}
               </li>
               <li>
-                <b>両方の端末で Bluetooth と Wi‑Fi をオンにする</b>。
-                機内モード中でも、コントロールセンターから2つとも個別にオンにできます
+                <b>{L("両方の端末で Bluetooth と Wi‑Fi をオンにする")}</b>
+                {L("。 機内モード中でも、コントロールセンターから2つとも個別にオンにできます")}
               </li>
               <li>
-                初回は「<b>ローカルネットワーク上のデバイスの検索</b>」の許可を聞かれます。
-                断ってしまったときは、iPhone の設定 → トッタリー から許可してください
+                {L("初回は「{b}」の許可を聞かれます。 断ってしまったときは、iPhone の設定 → トッタリー から許可してください").split("{b}")[0]}
+                <b>{L("ローカルネットワーク上のデバイスの検索")}</b>
+                {L("初回は「{b}」の許可を聞かれます。 断ってしまったときは、iPhone の設定 → トッタリー から許可してください").split("{b}")[1]}
               </li>
-              <li>端末どうしを 10m 以内に近づける</li>
+              <li>{L("端末どうしを 10m 以内に近づける")}</li>
             </ol>
           </div>
         ) : (
@@ -1772,25 +1775,25 @@ export function NearbyScreen({ boardSize, onReady, onBack }) {
                   .invite(p.id)
                   .catch((err) => {
                     setStatus("searching");
-                    setError(err && err.message ? err.message : "招待できませんでした");
+                    setError(err && err.message ? Lx(err.message) : L("招待できませんでした"));
                   });
               }}
             >
-              <Users size={18} /> {safeName(p.name)} と対戦する
+              <Users size={18} /> {L("{name} と対戦する", { name: Lx(safeName(p.name)) })}
             </button>
           ))
         )}
       </div>
       {error && (
         <p className="hint" style={{ color: "#e08b7a" }}>
-          {error}
+          {Lx(error)}
         </p>
       )}
       <p className="code-note">
-        <Info size={14} /> 盤の大きさは、タップされた側(先手)の設定になります。レートは動きません。
+        <Info size={14} /> {L("盤の大きさは、タップされた側(先手)の設定になります。レートは動きません。")}
       </p>
       <button className="btn btn-ghost btn-wide" style={{ marginTop: 12 }} onClick={onBack}>
-        <ArrowLeft size={18} /> フレンド対戦に戻る
+        <ArrowLeft size={18} /> {L("フレンド対戦に戻る")}
       </button>
     </div>
   );
@@ -1812,7 +1815,7 @@ function RoomInviteFriends({ code, onClose }) {
         if (!gone) setList(s.friends || []);
       })
       .catch(() => {
-        if (!gone) setErr("フレンドを読み込めませんでした。通信を確認してください。");
+        if (!gone) setErr(L("フレンドを読み込めませんでした。通信を確認してください。"));
       });
     return () => {
       gone = true;
@@ -1821,20 +1824,22 @@ function RoomInviteFriends({ code, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel room-invite-panel" onClick={(e) => e.stopPropagation()}>
-        <h3>フレンドを招待</h3>
+        <h3>{L("フレンドを招待")}</h3>
         <p className="hint">
-          この部屋(合言葉 <b>{formatRoomCode(code)}</b>)に招待します。相手のフレンド画面に「対戦の招待」で届きます。
+          {L("この部屋(合言葉 {b})に招待します。相手のフレンド画面に「対戦の招待」で届きます。").split("{b}")[0]}
+          <b>{formatRoomCode(code)}</b>
+          {L("この部屋(合言葉 {b})に招待します。相手のフレンド画面に「対戦の招待」で届きます。").split("{b}")[1]}
         </p>
         {err && <p className="hint friends-error">{err}</p>}
-        {!list && !err && <p className="hint">読み込み中…</p>}
-        {list && list.length === 0 && <p className="hint">まだフレンドがいません。</p>}
+        {!list && !err && <p className="hint">{L("読み込み中…")}</p>}
+        {list && list.length === 0 && <p className="hint">{L("まだフレンドがいません。")}</p>}
         <div className="room-invite-list">
           {(list || []).map((f) => {
             const state = sent[f.uid];
             return (
               <div className="room-invite-row" key={f.uid}>
                 <PlayerIcon icon={f.icon} name={f.name} size="sm" frame={f.frame} />
-                <b className="room-invite-name">{f.name || "名無し"}</b>
+                <b className="room-invite-name">{f.name || L("名無し")}</b>
                 <button
                   className={`btn btn-small ${state === "sent" ? "btn-ghost" : "btn-primary"}`}
                   disabled={busy === f.uid || state === "sent"}
@@ -1850,14 +1855,14 @@ function RoomInviteFriends({ code, onClose }) {
                     }
                   }}
                 >
-                  {state === "sent" ? "送信済み" : state === "err" ? "再送" : "招待"}
+                  {state === "sent" ? L("送信済み") : state === "err" ? L("再送") : L("招待")}
                 </button>
               </div>
             );
           })}
         </div>
         <button className="btn btn-ghost btn-wide" onClick={onClose}>
-          閉じる
+          {L("閉じる")}
         </button>
       </div>
     </div>
@@ -1949,7 +1954,7 @@ export function RoomScreen({
               // 部屋も消して、相手の画面に「相手が退出した」が出るようにする
               clearInterval(x);
               deleteRoom(f);
-              s("相手のアプリが古いため、このフェーズでは対戦できません。相手に更新してもらってください");
+              s(L("相手のアプリが古いため、このフェーズでは対戦できません。相手に更新してもらってください"));
               return;
             }
             N.data &&
@@ -2003,7 +2008,7 @@ export function RoomScreen({
   async function T(given = null) {
     let P = cleanRoomCode(given || r);
     if (P.length < ROOM_CODE_LENGTH) {
-      s(`${ROOM_CODE_LENGTH}文字の合言葉を入力してください`);
+      s(L("{n}文字の合言葉を入力してください", { n: ROOM_CODE_LENGTH }));
       return;
     }
     (p(!0), s(""));
@@ -2012,7 +2017,7 @@ export function RoomScreen({
     let seat = await joinRoom(P);
     if (!seat.ok) {
       (p(!1),
-        s("そのコードのルームは見つからないか、既に対戦相手が参加しています"));
+        s(L("そのコードのルームは見つからないか、既に対戦相手が参加しています")));
       return;
     }
     let x = await readRoom(P);
@@ -2025,11 +2030,11 @@ export function RoomScreen({
     if (!x.data || (!x.data.createdAt && !x.data.hostName)) {
       (await leaveRoom(P),
         p(!1),
-        s("そのコードのルームは見つかりませんでした"));
+        s(L("そのコードのルームは見つかりませんでした")));
       return;
     }
     if (x.data.guestPresent) {
-      (await leaveRoom(P), p(!1), s("このルームは既に対戦相手が参加済みです"));
+      (await leaveRoom(P), p(!1), s(L("このルームは既に対戦相手が参加済みです")));
       return;
     }
     let N = await updateRoom(P, {
@@ -2074,21 +2079,21 @@ export function RoomScreen({
       await navigator.clipboard.writeText(text);
       setNotice(done);
     } catch {
-      setNotice("コピーできませんでした。合言葉を読み上げて伝えてください");
+      setNotice(L("コピーできませんでした。合言葉を読み上げて伝えてください"));
     }
   }
   /** リンクを共有(共有シートがあればそれ、無ければコピー) */
   async function shareLink() {
-    const text = `トッタリーでフレンド対戦しよう。合言葉 ${formatRoomCode(f)}\n${link()}`;
+    const text = L("トッタリーでフレンド対戦しよう。合言葉 {code}\n{link}", { code: formatRoomCode(f), link: link() });
     if (typeof navigator.share === "function") {
       try {
-        await navigator.share({ title: "トッタリー フレンド対戦", text, url: link() });
+        await navigator.share({ title: L("トッタリー フレンド対戦"), text, url: link() });
         return;
       } catch {
         /* 閉じた・使えない → コピーへ */
       }
     }
-    copyText(text, "リンクをコピーしました。LINE などに貼って送ってください");
+    copyText(text, L("リンクをコピーしました。LINE などに貼って送ってください"));
   }
   /** 貼り付けて参加: クリップボードのリンクや「ABC-DEF」から合言葉を読む */
   async function pasteJoin() {
@@ -2096,12 +2101,12 @@ export function RoomScreen({
     try {
       text = await navigator.clipboard.readText();
     } catch {
-      s("貼り付けが許可されませんでした。合言葉を入力してください");
+      s(L("貼り付けが許可されませんでした。合言葉を入力してください"));
       return;
     }
     const code = parseRoomCode(text);
     if (!code) {
-      s("貼り付けた内容に合言葉が見つかりませんでした");
+      s(L("貼り付けた内容に合言葉が見つかりませんでした"));
       return;
     }
     d(code);
@@ -2110,33 +2115,34 @@ export function RoomScreen({
   return u === "waitingHost" ? (
     <div className="center-stage">
       <Users size={28} className="dim-icon" />
-      <h2>ルームを作成しました</h2>
-      <div className="room-code" aria-label={`合言葉 ${f}`}>{formatRoomCode(f)}</div>
+      <h2>{L("ルームを作成しました")}</h2>
+      <div className="room-code" aria-label={L("合言葉 {code}", { code: f })}>{formatRoomCode(f)}</div>
       {inviteName ? (
         <p className="hint">
-          <b>{inviteName}</b> に招待を届けました。相手がフレンドの画面で「参加する」を押すと自動的に始まります。
-          合言葉やリンクを直接送っても入れます。
+          {L("{b} に招待を届けました。相手がフレンドの画面で「参加する」を押すと自動的に始まります。 合言葉やリンクを直接送っても入れます。").split("{b}")[0]}
+          <b>{inviteName}</b>
+          {L("{b} に招待を届けました。相手がフレンドの画面で「参加する」を押すと自動的に始まります。 合言葉やリンクを直接送っても入れます。").split("{b}")[1]}
         </p>
       ) : (
         <p className="hint">
-          この合言葉を相手に伝えるか、リンクを送ってください。相手が参加すると自動的に始まります。
+          {L("この合言葉を相手に伝えるか、リンクを送ってください。相手が参加すると自動的に始まります。")}
         </p>
       )}
       <div className="share-row">
         <button className="btn btn-primary" onClick={() => setShowInvite(true)}>
-          <Users size={16} /> フレンドを招待
+          <Users size={16} /> {L("フレンドを招待")}
         </button>
         <button className="btn btn-ghost" onClick={shareLink}>
-          <Mail size={16} /> リンクを共有
+          <Mail size={16} /> {L("リンクを共有")}
         </button>
-        <button className="btn btn-ghost" onClick={() => copyText(formatRoomCode(f), "合言葉をコピーしました")}>
-          合言葉をコピー
+        <button className="btn btn-ghost" onClick={() => copyText(formatRoomCode(f), L("合言葉をコピーしました"))}>
+          {L("合言葉をコピー")}
         </button>
       </div>
       {showInvite && <RoomInviteFriends code={f} onClose={() => setShowInvite(false)} />}
       {notice && (
         <p className="hint" role="status">
-          {notice}
+          {Lx(notice)}
         </p>
       )}
       <Dice size={22} className="dim-icon spin-icon" />
@@ -2147,7 +2153,7 @@ export function RoomScreen({
             color: "#e2896f",
           }}
         >
-          {m}
+          {Lx(m)}
         </p>
       )}
       <div
@@ -2157,7 +2163,7 @@ export function RoomScreen({
         }}
       >
         <button className="btn btn-ghost" onClick={R}>
-          ルームを取り消す
+          {L("ルームを取り消す")}
         </button>
         <button
           className="btn btn-ghost"
@@ -2165,7 +2171,7 @@ export function RoomScreen({
             (R(), onBackToMatching());
           }}
         >
-          対戦相手を選ぶに戻る
+          {L("対戦相手を選ぶに戻る")}
         </button>
       </div>
     </div>
@@ -2183,7 +2189,7 @@ export function RoomScreen({
             margin: "10px 0 8px",
           }}
         >
-          フレンド対戦
+          {L("フレンド対戦")}
         </h2>
         <p
           className="hint"
@@ -2191,19 +2197,21 @@ export function RoomScreen({
             margin: 0,
           }}
         >
-          ルームを作って相手にリンクか合言葉を送るか、
+          {L("ルームを作って相手にリンクか合言葉を送るか、")}
           <br />
-          届いたリンクや合言葉で参加します。
+          {L("届いたリンクや合言葉で参加します。")}
         </p>
       </div>
       <div className={`conn-badge conn-${w}`}>
         <span className="conn-dot" />
-        接続状態:
-        {w === "ok"
-          ? "オンライン"
-          : w === "checking"
-            ? "確認中…"
-            : "利用できません"}
+        {L("接続状態:{state}", {
+          state:
+            w === "ok"
+              ? L("オンライン")
+              : w === "checking"
+                ? L("確認中…")
+                : L("利用できません"),
+        })}
       </div>
       {w === "fail" && (
         <p
@@ -2212,7 +2220,7 @@ export function RoomScreen({
             color: "#e08b7a",
           }}
         >
-          {g}
+          {Lx(g)}
         </p>
       )}
       <button
@@ -2220,7 +2228,7 @@ export function RoomScreen({
         disabled={v || w !== "ok"}
         onClick={onBeforeRoom}
       >
-        <DoorOut size={22} /> ルームを作る
+        <DoorOut size={22} /> {L("ルームを作る")}
       </button>
       <div className="code-row">
         <div
@@ -2261,19 +2269,19 @@ export function RoomScreen({
           disabled={v || w !== "ok"}
           onClick={() => T()}
         >
-          <DoorIn size={18} /> {v ? "参加中…" : "参加する"}
+          <DoorIn size={18} /> {v ? L("参加中…") : L("参加する")}
         </button>
         <button
           className="btn btn-ghost code-join"
           disabled={v || w !== "ok"}
           onClick={pasteJoin}
         >
-          貼り付けて参加
+          {L("貼り付けて参加")}
         </button>
       </div>
       <p className="code-note">
         <Info size={14} />
-        <span>合言葉は{ROOM_CODE_LENGTH}文字(ABC-DEF)。リンクを開けば入力はいりません。</span>
+        <span>{L("合言葉は{n}文字(ABC-DEF)。リンクを開けば入力はいりません。", { n: ROOM_CODE_LENGTH })}</span>
       </p>
       {m && (
         <p
@@ -2282,12 +2290,12 @@ export function RoomScreen({
             color: "#e08b7a",
           }}
         >
-          {m}
+          {Lx(m)}
         </p>
       )}
       {onNearby && nearbyAvailable() && (
         <button className="btn btn-teal btn-wide" onClick={onNearby}>
-          <Nearby size={20} /> 近くの端末と対戦(通信不要)
+          <Nearby size={20} /> {L("近くの端末と対戦(通信不要)")}
         </button>
       )}
       <button
@@ -2295,7 +2303,7 @@ export function RoomScreen({
         style={{ marginTop: 12 }}
         onClick={onOfflineLocal}
       >
-        <Users size={20} /> オフラインで対戦(1台で2人)
+        <Users size={20} /> {L("オフラインで対戦(1台で2人)")}
       </button>
       <button
         className="btn btn-ghost btn-wide"
@@ -2304,7 +2312,7 @@ export function RoomScreen({
         }}
         onClick={onBackToMatching}
       >
-        <ArrowLeft size={18} /> 対戦相手を選ぶに戻る
+        <ArrowLeft size={18} /> {L("対戦相手を選ぶに戻る")}
       </button>
     </div>
   );
@@ -2672,7 +2680,7 @@ function TotteryScreens({ onDailyRelogin }) {
     if (!stage) return;
     // 相手の装備と選んだエリアは前の CPU 戦のものを引きずらない(Bot 戦と同じ)
     (u(null), setTut(null), setBot(null), setStoryIntro(null), setCpuSkins({ ...createCpuLoadout(Math.random, "heroes"), [stage.ranks[0]]: storyRival(axis).skin }), setCpuArea(null), setRound(0),
-      setStory({ axis, phase: phaseOf(loadProfile()), size: stageSize(phaseOf(loadProfile())), king: pickStoryKing(axis), title: `${stage.name}の王` }),
+      setStory({ axis, phase: phaseOf(loadProfile()), size: stageSize(phaseOf(loadProfile())), king: pickStoryKing(axis), title: L("{name}の王", { name: Lx(stage.name) }) }),
       m(!0), r("game"), t("game"));
     window.scrollTo(0, 0);
   }
@@ -2719,12 +2727,12 @@ function TotteryScreens({ onDailyRelogin }) {
     return (
       <GameShell>
         <div className="center-stage">
-          <h2>ご利用を停止しています</h2>
+          <h2>{L("ご利用を停止しています")}</h2>
           <p className="hint">
-            他の方への迷惑行為が確認されたため、このアカウントではトッタリーをご利用いただけません。
+            {L("他の方への迷惑行為が確認されたため、このアカウントではトッタリーをご利用いただけません。")}
           </p>
           <p className="hint">
-            心当たりがない場合や、内容についてのお問い合わせは、ストアの製品ページに記載の連絡先までご連絡ください。
+            {L("心当たりがない場合や、内容についてのお問い合わせは、ストアの製品ページに記載の連絡先までご連絡ください。")}
           </p>
         </div>
       </GameShell>
@@ -2774,7 +2782,7 @@ function TotteryScreens({ onDailyRelogin }) {
     return (
       <GameShell showRules={l} setShowRules={n}>
         <FirstSummonLobby
-          name={loadProfile().name || "旅人"}
+          name={loadProfile().name || L("旅人")}
           onStart={() => {
             setIntro(null);
             setFirstPullMode(!0);
@@ -2814,18 +2822,18 @@ function TotteryScreens({ onDailyRelogin }) {
           ? [
               // 名前を聞くのは、はじめの一局に勝ったあと(2026-10-01 本人の指示)。それまでの
               // 導入やストーリーの一局は色名でなく「あなた」
-              me || (story || firstGame ? "あなた" : null),
+              me || (story || firstGame ? L("あなた") : null),
               // 導入の相手には、ストーリーのステージ名を使わない。
               story
                 ? story.title
                 : firstGame
-                  ? "練習相手"
+                  ? L("練習相手")
                 : tut
                   ? null
                   : bot
                   ? bot.name
                   : localAreas && cpuArea && cpuArea.king && i === 9
-                    ? `CPU(${JOSEKI_INFO[cpuArea.type].label})`
+                    ? `CPU(${Lx(JOSEKI_INFO[cpuArea.type].label)})`
                     : "CPU",
             ]
           : [null, null],
@@ -2911,7 +2919,7 @@ function TotteryScreens({ onDailyRelogin }) {
             onRetryStory={story && !tut ? () => (showStory(), openStage(story.axis)) : null}
             onTutorialList={firstGame ? () => leaveFirstGame() : story ? showStory : showTutorials}
             onExit={firstGame ? () => leaveFirstGame() : tut ? s : story ? showStory : backToMatching}
-            exitLabel={firstGame ? "ストーリーへ" : tut && !story ? "タイトルに戻る" : story ? "ストーリーに戻る" : "対戦相手を選ぶに戻る"}
+            exitLabel={firstGame ? Lk("ストーリーへ") : tut && !story ? Lk("タイトルに戻る") : story ? Lk("ストーリーに戻る") : Lk("対戦相手を選ぶに戻る")}
             // チュートリアルの「ホームへ」はハブ(menu)へ。タイトルに戻る(onExit=s)とは
             // 別の行き先にする(2026-09-21 本人の指示)。それ以外の対局は従来どおり
             onHome={firstGame ? () => leaveFirstGame("menu") : goMenu}
@@ -2965,7 +2973,7 @@ function TotteryScreens({ onDailyRelogin }) {
                 t(skinsFrom);
               }}
               onBattlePass={openPass}
-              backLabel={firstPullMode ? "つぎへ" : skinsFrom === "shop" ? "ショップ" : "ホーム"}
+              backLabel={firstPullMode ? Lk("つぎへ") : skinsFrom === "shop" ? Lk("ショップ") : Lk("ホーム")}
               initialTab={skinsTab}
             />
           ),
@@ -3083,7 +3091,7 @@ function TotteryScreens({ onDailyRelogin }) {
             <ProfileScreen
               uid={profileUid}
               onBack={() => t(profileFrom)}
-              backLabel={profileFrom === "friends" ? "フレンドに戻る" : "ホームに戻る"}
+              backLabel={profileFrom === "friends" ? Lk("フレンドに戻る") : Lk("ホームに戻る")}
               onFriends={() => t("friends")}
               onInvite={inviteToRoom}
               onRemoved={() => t("friends")}
@@ -3211,14 +3219,14 @@ function TotteryScreens({ onDailyRelogin }) {
               onBack={() => t(rulesFrom)}
               backLabel={
                 rulesFrom === "room"
-                  ? "フレンド対戦に戻る"
-                  : "対戦相手を選ぶに戻る"
+                  ? Lk("フレンド対戦に戻る")
+                  : Lk("対戦相手を選ぶに戻る")
               }
               note={
                 o === "room"
-                  ? "この設定でルームを作ります。"
+                  ? L("この設定でルームを作ります。")
                   : o === "nearby"
-                    ? "近くの端末と対戦します。盤の大きさは、相手にタップされた側(先手)の設定になります。"
+                    ? L("近くの端末と対戦します。盤の大きさは、相手にタップされた側(先手)の設定になります。")
                     : null
               }
               // 相手のエリアを選べるのは CPU戦で、フォイルを持っている(エリアを知っている)人だけ

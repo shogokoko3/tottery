@@ -1,5 +1,6 @@
 import { useId } from "react";
 import artwork from "../../assets/ui/gem-ruby.png";
+import { L, fmtNumber } from "../i18n/index.js";
 
 // 承認済み原画の宝石だけを表示する。背景・見本の数字は切り抜き領域の外。
 export function GemIcon({ size = 24 }) {
@@ -34,8 +35,8 @@ export function GemAmount({ amount, size = 24 }) {
   return (
     <span className="gem-amount">
       <GemIcon size={size} />
-      <b>{Number(amount || 0).toLocaleString("ja-JP")}</b>
-      <span className="gem-unit">ジェム</span>
+      <b>{fmtNumber(amount)}</b>
+      <span className="gem-unit">{L("ジェム")}</span>
     </span>
   );
 }
