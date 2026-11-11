@@ -1,4 +1,5 @@
 // Local, disposable UI fixture. It never contacts Firebase or the public game API.
+import { MONTHLY } from "./monthly-season-schedule.mjs";
 import { build } from "esbuild";
 import http from "node:http";
 import fs from "node:fs";
@@ -6,7 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import { Ledger } from "../src/server/ledger.js";
 import { seasonAt } from "../src/game/season.js";
 const db = new DatabaseSync(":memory:"),
-  ledger = new Ledger((q, ...p) => db.prepare(q).all(...p)),
+  ledger = new Ledger((q, ...p) => db.prepare(q).all(...p), MONTHLY),
   now = Date.now(),
   current = seasonAt(now);
 for (let i = 0; i < 100; i++)

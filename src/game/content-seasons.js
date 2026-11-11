@@ -17,8 +17,8 @@ export const CONTENT_SEASONS = Object.freeze([
     entitlement: "battlepass",
     start: Date.parse("2026-09-01T05:00:00+09:00"),
   }),
-  // アリス。新シーズンで実装する予定(2026-11-09 本人)。開始日は未定なので、遠い先の日時にして閉じてある
-  // (ガチャ・バトルパス・ショップ・CPU の装備・熟練度の一覧に出ない)。開始日が決まったら、ここの start だけを書き換える
+  // アリス。レート戦のシーズン2の始まり(2027-01-01 09:00 日本時間)に開く(2026-11-11 本人の指示)。
+  // それまではガチャ・バトルパス・ショップ・CPU の装備・熟練度の一覧に出ない
   Object.freeze({
     id: "alice",
     series: "alice",
@@ -26,7 +26,7 @@ export const CONTENT_SEASONS = Object.freeze([
     passName: "アリスのバトルパス",
     passReward: "alice-A-alice",
     entitlement: "battlepass-alice",
-    start: Date.parse("2099-01-01T05:00:00+09:00"),
+    start: Date.parse("2027-01-01T09:00:00+09:00"),
   }),
 ]);
 export const DEFAULT_SEASON = "heroes";

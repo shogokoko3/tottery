@@ -1,3 +1,4 @@
+import { MONTHLY, MONTHLY_TEST_SCHEDULE } from "./monthly-season-schedule.mjs";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { Ledger } from "../src/server/ledger.js";
@@ -15,7 +16,7 @@ sql(
 sql(
   "INSERT INTO players VALUES ('2026-09','guest','青','heart',0.4,50,20,0,1,4)",
 );
-const ledger = new Ledger(sql),
+const ledger = new Ledger(sql, MONTHLY),
   now = Date.parse("2026-09-08T09:00:00Z");
 const before = ledger.list("2026-09");
 assert.equal(before.find((p) => p.uid === "host").rating, displayRating(0.6));
@@ -47,7 +48,7 @@ assert.equal(b.wins, 20);
 ledger.record(match, now + 1);
 assert.deepEqual(ledger.list("2026-09"), after);
 // Worker再起動で移行を繰り返しても、Eloの結果へ旧点数を上書きしない。
-const reopened = new Ledger(sql);
+const reopened = new Ledger(sql, MONTHLY);
 assert.deepEqual(reopened.list("2026-09"), after);
 reopened.record({ ...match, id: "elo-draw", winner: null }, now + 2);
 assert.equal(
@@ -119,7 +120,7 @@ console.log(
 // 対局数条件の廃止は今季の既存プレイヤーにも適用し、到達報酬を受け取れる。
 const ranksDb = new DatabaseSync(":memory:"),
   ranksSql = (q, ...args) => ranksDb.prepare(q).all(...args),
-  ranksLedger = new Ledger(ranksSql);
+  ranksLedger = new Ledger(ranksSql, MONTHLY);
 for (const [season, uid, rating, highest] of [
   ["2026-09", "short-general", 1650, 2],
   ["2026-09", "short-king", 1750, 3],
@@ -157,7 +158,7 @@ console.log(
 {
   const sdb = new DatabaseSync(":memory:"),
     ssql = (q, ...a) => sdb.prepare(q).all(...a),
-    sled = new Ledger(ssql);
+    sled = new Ledger(ssql, MONTHLY);
   const sNow = Date.parse("2026-09-10T09:00:00Z");
   const season = sled.current(sNow).id;
   const mk = (id, winner) => ({
@@ -199,7 +200,7 @@ console.log(
   // Bot 戦でも連勝は積む
   const bdb = new DatabaseSync(":memory:"),
     bsql = (q, ...a) => bdb.prepare(q).all(...a),
-    bled = new Ledger(bsql);
+    bled = new Ledger(bsql, MONTHLY);
   bled.recordBot("B", { id: "b1", winner: 0, name: "た", icon: "" }, sNow, 2000);
   bled.recordBot("B", { id: "b2", winner: 0, name: "た", icon: "" }, sNow + 1, 2000);
   const bs = bled.recordBot("B", { id: "b3", winner: 0, name: "た", icon: "" }, sNow + 2, 2000);

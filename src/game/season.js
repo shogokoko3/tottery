@@ -1,19 +1,62 @@
 import { displayRating, rankTitle, RANK_TIERS } from "./rating.js";
 
-// JST 05:00 は前日の UTC 20:00。月の境界は必ずサーバー時計で決める。
-export function seasonAt(now = Date.now()) {
-  const shifted = new Date(now + 4 * 3600000);
-  const y = shifted.getUTCFullYear(),
-    m = shifted.getUTCMonth();
-  return {
-    id: `${y}-${String(m + 1).padStart(2, "0")}`,
-    start: Date.UTC(y, m, 1) - 4 * 3600000,
-    end: Date.UTC(y, m + 1, 1) - 4 * 3600000,
-  };
+/**
+ * レート戦(9×9 のランダムマッチ)のシーズンの表(2026-11-11 本人の指示)。
+ * それまでは毎月1日 5:00 区切りの月間シーズンだった(id は "2026-09" の形。古い記録と称号はその形のまま読む)。
+ *   シーズン1 … 2026-11-16 09:00 〜 12-31 23:59(日本時間)
+ *   シーズン2 … 2027-01-01 09:00 〜 02-28 23:59
+ * end は「その時刻から外」(12/31 23:59 まで = 1/1 0:00 で閉じる)。
+ * どのシーズンにも入らない時間はレート戦を閉じる(ランダムマッチの入口を閉じ、台帳も記録しない)。
+ * 次のシーズンを足すときは、ここに1行足す。id は S と番号
+ */
+export const RATED_SEASONS = Object.freeze([
+  Object.freeze({
+    id: "S1",
+    start: Date.parse("2026-11-16T09:00:00+09:00"),
+    end: Date.parse("2027-01-01T00:00:00+09:00"),
+  }),
+  Object.freeze({
+    id: "S2",
+    start: Date.parse("2027-01-01T09:00:00+09:00"),
+    end: Date.parse("2027-03-01T00:00:00+09:00"),
+  }),
+]);
+const pick = ({ id, start, end }) => ({ id, start, end });
+/** いま開いているシーズン。シーズンの外なら null。時刻は必ずサーバー時計で決める */
+export function seasonAt(now = Date.now(), schedule = RATED_SEASONS) {
+  const s = schedule.find((x) => x.start <= now && now < x.end);
+  return s ? pick(s) : null;
 }
+/** これから始まるいちばん近いシーズン。無ければ null */
+export function nextSeason(now = Date.now(), schedule = RATED_SEASONS) {
+  const s = schedule.find((x) => x.start > now);
+  return s ? pick(s) : null;
+}
+/** 終わったいちばん新しいシーズン。無ければ null */
+export function lastSeason(now = Date.now(), schedule = RATED_SEASONS) {
+  const s = schedule.filter((x) => x.end <= now).at(-1);
+  return s ? pick(s) : null;
+}
+/** 画面に出すシーズン。開いていればそれ、外なら終わったばかりのもの、まだ1つも始まっていなければ最初のもの */
+export function shownSeason(now = Date.now(), schedule = RATED_SEASONS) {
+  return (
+    seasonAt(now, schedule) ||
+    lastSeason(now, schedule) ||
+    nextSeason(now, schedule) ||
+    pick(schedule[0])
+  );
+}
+const MONTHLY = /^20\d{2}-(0[1-9]|1[0-2])$/;
+const NUMBERED = /^S[1-9]\d{0,2}$/;
 export const validSeason = (id) =>
-  typeof id === "string" && /^20\d{2}-(0[1-9]|1[0-2])$/.test(id);
-export const seasonName = (id) => `${id.slice(0, 4)}年${Number(id.slice(5))}月`;
+  typeof id === "string" && (MONTHLY.test(id) || NUMBERED.test(id));
+/** 報酬の id(<シーズン>:<種類>)からシーズンを読む */
+export const seasonOfRewardId = (id) =>
+  typeof id === "string" && id.includes(":") ? id.slice(0, id.indexOf(":")) : "";
+export const seasonName = (id) =>
+  NUMBERED.test(id)
+    ? `シーズン${id.slice(1)}`
+    : `${id.slice(0, 4)}年${Number(id.slice(5))}月`;
 export const SEASON_TIERS = RANK_TIERS;
 export const tierOf = (p) =>
   SEASON_TIERS.findIndex(
@@ -26,7 +69,7 @@ export const SEASON_FRAME = "gold-laurel";
 export function seasonTitle(id) {
   if (typeof id !== "string") return null;
   const match =
-    /^season:(20\d{2}-(?:0[1-9]|1[0-2])):(king|first|three|ten)$/.exec(id);
+    /^season:(20\d{2}-(?:0[1-9]|1[0-2])|S[1-9]\d{0,2}):(king|first|three|ten)$/.exec(id);
   if (!match) return null;
   return {
     id,

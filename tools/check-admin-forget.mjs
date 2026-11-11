@@ -5,6 +5,7 @@
  *   3. 消す道具(tools/remove-test-players.mjs)は登録時刻で見分け、候補が多すぎれば止まる
  *   4. ランキングの行に称号の額縁を出す(2026-09-23 本人の指示)
  */
+import { MONTHLY, MONTHLY_TEST_SCHEDULE } from "./monthly-season-schedule.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
@@ -12,7 +13,7 @@ import { Ledger } from "../src/server/ledger.js";
 
 const db = new DatabaseSync(":memory:");
 const sql = (q, ...args) => db.prepare(q).all(...args);
-const ledger = new Ledger(sql);
+const ledger = new Ledger(sql, MONTHLY);
 const now = Date.parse("2026-09-08T09:00:00Z");
 const match = (id, host, guest) => ({
   id, host, guest, winner: 0, names: ["赤", "青"], icons: ["spade", "heart"],
@@ -63,15 +64,15 @@ assert.ok(/\.rank-title \{/.test(css) && /\.rank-name-text \{/.test(css), "行�
   const db2 = new DatabaseSync(":memory:");
   const sql2 = (q, ...args) => db2.prepare(q).all(...args);
   const [t1, t2] = TEST_PLAYERS_2026_09_08;
-  const l2 = new Ledger(sql2); // 表を作る(この時点で片付けは走るが、まだ誰もいない)
+  const l2 = new Ledger(sql2, MONTHLY); // 表を作る(この時点で片付けは走るが、まだ誰もいない)
   l2.record(match("t1", t1, t2), now);
   l2.record(match("t2", "real-9", t1), now + 1);
   sql2("DELETE FROM cleanups"); // まだ片付けていない状態にして、配信後の初回起動を真似る
-  const l3 = new Ledger(sql2);
+  const l3 = new Ledger(sql2, MONTHLY);
   assert.deepEqual(l3.list("2026-09").map((p) => p.uid), ["real-9"], "起動時にテストの uid だけ消える");
   assert.equal(sql2("SELECT COUNT(*) AS n FROM cleanups WHERE id='test-players-2026-09-08'")[0].n, 1, "済んだ印が残る");
   l3.record(match("t3", "real-9", "real-10"), now + 2);
-  new Ledger(sql2);
+  new Ledger(sql2, MONTHLY);
   assert.equal(l3.list("2026-09").length, 2, "二度目の起動では何も消えない");
 }
 
@@ -81,17 +82,17 @@ assert.ok(/\.rank-title \{/.test(css) && /\.rank-name-text \{/.test(css), "行�
   const target = RATING_RESTORE_2026_09_23[0];
   const db4 = new DatabaseSync(":memory:");
   const sql4 = (q, ...args) => db4.prepare(q).all(...args);
-  const l4 = new Ledger(sql4); // 行が無い → 何も起きない
+  const l4 = new Ledger(sql4, MONTHLY); // 行が無い → 何も起きない
   assert.equal(sql4("SELECT COUNT(*) AS n FROM elo_ratings")[0].n, 0, "行が無ければ置かない");
   sql4("DELETE FROM cleanups WHERE id='restore-rating-2026-09-23'");
   l4.recordBot(target.uid, { id: "b1", winner: 0, name: "と", icon: null }, Date.parse("2026-09-23T03:00:00Z"));
   const before = l4.list(target.season).find((p) => p.uid === target.uid).rating;
   assert.notEqual(before, target.rating);
-  const l5 = new Ledger(sql4);
+  const l5 = new Ledger(sql4, MONTHLY);
   assert.equal(l5.list(target.season).find((p) => p.uid === target.uid).rating, target.rating, "起動時に置き直す");
   l5.recordBot(target.uid, { id: "b2", winner: 1, name: "と", icon: null }, Date.parse("2026-09-23T04:00:00Z"));
   const after = l5.list(target.season).find((p) => p.uid === target.uid).rating;
-  new Ledger(sql4);
+  new Ledger(sql4, MONTHLY);
   assert.equal(l5.list(target.season).find((p) => p.uid === target.uid).rating, after, "二度目の起動では触らない");
   const game = readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
   assert.ok(/if \(Math\.abs\(diff\) <= 40\) return \{ \.\.\.prev, rating: r, delta: prev\.delta \+ diff \};/.test(game), "近ければ上下ぶんだけ直す");

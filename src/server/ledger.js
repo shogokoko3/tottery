@@ -1,5 +1,9 @@
 import {
   seasonAt,
+  shownSeason,
+  nextSeason,
+  seasonOfRewardId,
+  RATED_SEASONS,
   validSeason,
   seasonRewards,
   rewardReady,
@@ -19,8 +23,10 @@ export const LISTED_AFTER = 1;
 
 // Cloudflare SQLite と検証用 node:sqlite で同じ SQL を実行する。
 export class Ledger {
-  constructor(sql) {
+  /** schedule はレート戦のシーズンの表(season.js の RATED_SEASONS)。検査では差し替える */
+  constructor(sql, { schedule = RATED_SEASONS } = {}) {
     this.sql = sql;
+    this.schedule = schedule;
     sql(
       "CREATE TABLE IF NOT EXISTS seasons (id TEXT PRIMARY KEY, start INTEGER, end INTEGER)",
     );
@@ -94,8 +100,17 @@ export class Ledger {
     this.sql("INSERT OR IGNORE INTO cleanups VALUES (?,?)", id, Date.now());
     return true;
   }
+  /** いま開いているシーズン。シーズンの外(2026-11-11 本人の指示で「レート戦を閉じる」)は null */
   current(now) {
-    const season = seasonAt(now);
+    const season = seasonAt(now, this.schedule);
+    if (!season) return null;
+    return this.touch(season);
+  }
+  /** 画面に出すシーズン(外なら終わったばかりのもの・まだなら最初のもの) */
+  shown(now) {
+    return this.current(now) || this.touch(shownSeason(now, this.schedule));
+  }
+  touch(season) {
     this.sql(
       "INSERT OR IGNORE INTO seasons VALUES (?,?,?)",
       season.id,
@@ -149,7 +164,8 @@ export class Ledger {
     )[0];
     if (row) return { ...row, rating: row.rating ?? displayRating(row.wr), streak: row.streak || 0 };
     const prev = this.sql(
-      "SELECT p.wr, e.rating FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid WHERE p.uid=? AND p.season<>? ORDER BY p.season DESC LIMIT 1",
+      // 前のシーズンは始まりの時刻で決める(id は "2026-10" と "S1" が混ざり、文字の順では並ばない)
+      "SELECT p.wr, e.rating FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid LEFT JOIN seasons s ON s.id=p.season WHERE p.uid=? AND p.season<>? ORDER BY s.start DESC, p.season DESC LIMIT 1",
       uid,
       seasonId,
     )[0];
@@ -182,6 +198,8 @@ export class Ledger {
     )
       return;
     const season = this.current(now);
+    // シーズンの外は記録しない(レート戦を閉じている。2026-11-11 本人の指示)
+    if (!season) return;
     const before = [match.host, match.guest].map((uid) =>
       this.playerRow(uid, season.id),
     );
@@ -274,6 +292,7 @@ export class Ledger {
     if (this.sql("SELECT id FROM matches WHERE id=?", matchId)[0])
       return { recorded: false, reason: "duplicate" };
     const season = this.current(now);
+    if (!season) return { recorded: false, reason: "closed" };
     const p = this.playerRow(uid, season.id);
     // until が 0 なら上限なし(いまの既定)
     if (until > 0 && p.rating >= until)
@@ -357,7 +376,7 @@ export class Ledger {
     return { ok: true };
   }
   adminSummary(now) {
-    const season = this.current(now);
+    const season = this.shown(now);
     return {
       season,
       players: this.list(season.id),
@@ -368,10 +387,11 @@ export class Ledger {
     };
   }
   summary(uid, now) {
-    const season = this.current(now),
+    const open = this.current(now),
+      season = open || this.shown(now),
       rows = this.list(season.id);
     const history = this.sql(
-      "SELECT seasons.* FROM seasons JOIN players ON players.season=seasons.id WHERE players.uid=? AND seasons.end<=? ORDER BY seasons.id DESC",
+      "SELECT seasons.* FROM seasons JOIN players ON players.season=seasons.id WHERE players.uid=? AND seasons.end<=? ORDER BY seasons.start DESC",
       uid,
       now,
     ).map((s) => ({
@@ -382,6 +402,9 @@ export class Ledger {
       uid,
       now,
       season,
+      // シーズンの外か。外なら次に始まるシーズン(無ければ null)
+      open: !!open,
+      next: open ? null : nextSeason(now, this.schedule),
       player: rows.find((p) => p.uid === uid) || null,
       list: rows
         .filter((p) => p.place)
@@ -402,7 +425,7 @@ export class Ledger {
     };
   }
   claim(uid, id, now) {
-    const season = typeof id === "string" ? id.slice(0, 7) : "";
+    const season = seasonOfRewardId(id);
     const reward =
       validSeason(season) && seasonRewards(season).find((r) => r.id === id);
     const period = this.sql("SELECT * FROM seasons WHERE id=?", season)[0];

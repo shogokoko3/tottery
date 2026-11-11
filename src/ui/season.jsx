@@ -87,12 +87,15 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
       mounted.current = false;
     };
   }, []);
-  // 開いたまま月が替わった場合もサーバーの期間を読み直す。
+  // 開いたままシーズンが終わった・始まった場合もサーバーの期間を読み直す。
+  // シーズンの外は、次のシーズンの始まりで読み直す(無ければ読み直さない)
   useEffect(() => {
     if (!data) return;
+    const at = data.open === false ? data.next?.start : data.season.end;
+    if (!at) return;
     const timer = setTimeout(
       refresh,
-      Math.min(2147483647, Math.max(1000, data.season.end - data.now + 100)),
+      Math.min(2147483647, Math.max(1000, at - data.now + 100)),
     );
     return () => clearTimeout(timer);
   }, [data?.season.id, data?.now]);
@@ -209,12 +212,23 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
       {data && !historyOnly && !rankingOnly && (
         <>
           <div className="season-hero">
-            <span className="season-eyebrow">月 間 シ ー ズ ン</span>
+            <span className="season-eyebrow">シ ー ズ ン</span>
             <h3>{seasonName(data.season.id)}の戦い</h3>
             <p>
-              {dateLabel(data.season.start)} 〜 {dateLabel(data.season.end)}{" "}
+              {/* end は「その時刻から外」なので、最後の1分(23:59)を出す */}
+              {dateLabel(data.season.start)} 〜 {dateLabel(data.season.end - 60000)}{" "}
               <small>日本時間</small>
             </p>
+            {/* シーズンの外はレート戦を閉じている(2026-11-11 本人の指示) */}
+            {data.open === false && (
+              <p className="season-closed" role="status">
+                {data.season.start > data.now
+                  ? `${seasonName(data.season.id)}は ${dateLabel(data.season.start)} から始まります。`
+                  : data.next
+                    ? `${seasonName(data.season.id)}は終わりました。${seasonName(data.next.id)}は ${dateLabel(data.next.start)} から始まります。`
+                    : `${seasonName(data.season.id)}は終わりました。`}
+              </p>
+            )}
             <div className="season-score">
               <span className="season-emblem">
                 {SEASON_TIERS[tierOf(p)].name}
@@ -267,9 +281,9 @@ export function SeasonScreen({ historyOnly = false, rankingOnly = false }) {
             一度到達した報酬は、段階が下がっても受け取れます。裏面と枠は設定で着脱できます。
           </p>
           <RankGuide />
-          <h4>月末の記念称号</h4>
+          <h4>シーズン終了時の記念称号</h4>
           <p className="hint">
-            最終1位は「覇者」、3位以内は「三傑」、10位以内は「十傑」。翌月1日5時に確定します。同じレートは同順位です。
+            最終1位は「覇者」、3位以内は「三傑」、10位以内は「十傑」。シーズンの終了時に確定します。同じレートは同順位です。
           </p>
         </>
       )}

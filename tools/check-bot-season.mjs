@@ -7,6 +7,7 @@
  *   - 本人の点が 2000 以上なら数えない(人と組む段階。Bot で稼げない)
  *   - 同じ id は二度数えない
  */
+import { MONTHLY, MONTHLY_TEST_SCHEDULE } from "./monthly-season-schedule.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
@@ -17,7 +18,7 @@ import { seasonMatchKey } from "../src/net/season.js";
 
 const db = new DatabaseSync(":memory:");
 const sql = (q, ...args) => db.prepare(q).all(...args);
-const ledger = new Ledger(sql);
+const ledger = new Ledger(sql, MONTHLY);
 const now = Date.parse("2026-09-23T03:00:00Z");
 const me = "player-a";
 
@@ -76,7 +77,7 @@ assert.equal(seasonMatchKey({ code: "ABCD", createdAt: 1, round: 0, uid: "u" }),
 {
   const db3 = new DatabaseSync(":memory:");
   const sql3 = (q, ...args) => db3.prepare(q).all(...args);
-  const l3 = new Ledger(sql3);
+  const l3 = new Ledger(sql3, MONTHLY);
   const sep = Date.parse("2026-09-20T03:00:00Z"), oct = Date.parse("2026-10-05T03:00:00Z");
   for (let i = 0; i < 3; i++) l3.recordBot("u", { id: `s${i}`, winner: 0, name: "う", icon: null }, sep + i);
   const endSep = l3.list("2026-09").find((p) => p.uid === "u").rating;
@@ -126,26 +127,26 @@ assert.ok(/const eligible = \(!!network \|\| !!bot\) && state\.boardSize === 9 &
 {
   const db4 = new DatabaseSync(":memory:");
   const sql4 = (q, ...args) => db4.prepare(q).all(...args);
-  const l4 = new Ledger(sql4);
+  const l4 = new Ledger(sql4, MONTHLY);
   const t = Date.parse("2026-09-20T03:00:00Z");
   const u = "player-r";
   // 1500 の人が 1580 の Bot に勝つ → 同格(1500)より多く増える
   l4.recordBot(u, { id: "a1", winner: 0, name: "ぼ", icon: null, foeRating: 1580 }, t);
   const strong = l4.list("2026-09").find((r) => r.uid === u).rating;
   const db5 = new DatabaseSync(":memory:");
-  const l5 = new Ledger((q, ...args) => db5.prepare(q).all(...args));
+  const l5 = new Ledger((q, ...args) => db5.prepare(q).all(...args), MONTHLY);
   l5.recordBot(u, { id: "a1", winner: 0, name: "ぼ", icon: null, foeRating: 1420 }, t);
   const weak = l5.list("2026-09").find((r) => r.uid === u).rating;
   assert.ok(strong > weak, `強い Bot に勝つほうが増える(${strong} > ${weak})`);
   // 言い値が大きすぎても丸められる。3000 と名乗っても 1580(=1500+80)止まり
   const db6 = new DatabaseSync(":memory:");
-  const l6 = new Ledger((q, ...args) => db6.prepare(q).all(...args));
+  const l6 = new Ledger((q, ...args) => db6.prepare(q).all(...args), MONTHLY);
   l6.recordBot(u, { id: "a1", winner: 0, name: "ぼ", icon: null, foeRating: 3000 }, t);
   const lied = l6.list("2026-09").find((r) => r.uid === u).rating;
   assert.equal(lied, strong, "3000 と名乗っても 1580 と同じ扱い(丸められる)");
   // 送って来なければ同格
   const db7 = new DatabaseSync(":memory:");
-  const l7 = new Ledger((q, ...args) => db7.prepare(q).all(...args));
+  const l7 = new Ledger((q, ...args) => db7.prepare(q).all(...args), MONTHLY);
   l7.recordBot(u, { id: "a1", winner: 0, name: "ぼ", icon: null }, t);
   const even = l7.list("2026-09").find((r) => r.uid === u).rating;
   assert.ok(even < strong && even > weak, `無指定は同格(${even})`);

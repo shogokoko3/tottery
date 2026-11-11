@@ -211,6 +211,12 @@
 .season-hero p small {
   font-size: 9px;
 }
+/* シーズンの外(レート戦を閉じている)の知らせ */
+.season-hero p.season-closed {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text);
+}
 .season-score {
   display: flex;
   align-items: center;

@@ -7,6 +7,34 @@
  * CPU戦・フレンド対戦(合言葉・近くの端末)・詰めトッタリーは最初から遊べる。
  */
 import { STORY_AXES, normalizeStory, phaseOf } from "./phase.js";
+import { nextSeason, seasonAt, seasonName } from "./season.js";
+
+/**
+ * レート戦(ランダムマッチ)はシーズンの中だけ開く(2026-11-11 本人の指示「シーズンの外はレート戦を閉じる」)。
+ * { open, next } — next は次に始まるシーズン(無ければ null)。最後に決めるのはサーバーの時計(台帳は外の対局を記録しない)
+ */
+export function ratedSeasonGate(now = Date.now()) {
+  if (seasonAt(now)) return { open: true, next: null };
+  return { open: false, next: nextSeason(now) };
+}
+
+const startLabel = (n) =>
+  new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: false,
+  }).format(n);
+
+/** 閉じているときの一言 */
+export function ratedSeasonLabel(gate) {
+  if (gate.open) return null;
+  return gate.next
+    ? `${seasonName(gate.next.id)}は ${startLabel(gate.next.start)} から`
+    : "次のシーズンをお待ちください";
+}
 
 /** このフェーズのストーリーをクリアするとランダムマッチが開く */
 export const ONLINE_GATE_PHASE = 1;

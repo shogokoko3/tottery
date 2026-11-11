@@ -522,7 +522,7 @@ console.log("\n配線(game.jsx / screens.jsx)");
   is("対局のフェーズ(matchPhase)の求め方", /const matchPhase = useRef\(\s*tutorial \? \(tutorial\.phase \?\? PHASE_MAX\) : network \? onlinePhase\(network\.phase\) : story \? story\.phase : phaseOf\(loadProfile\(\)\),\s*\)\.current;/.test(game), true);
   is("台本のフェーズには必ず ?? PHASE_MAX を添える(2か所とも)", (game.match(/tutorial \? \(tutorial\.phase \?\? PHASE_MAX\)/g) || []).length === 2 && !/tutorial \? tutorial\.phase\b/.test(game), true);
   is("持ち点(ranked・読み出し・シーズン)はフェーズ3だけ", game.includes("a.boardSize === 9 && rankedPhase(matchPhase);") && game.includes("boardSize === 9 && !tutorial && rankedPhase(matchPhase),") && game.includes("|| !rankedPhase(matchPhase),"), true);
-  is("対戦画面: ランダムマッチが閉じていればストーリーへ(MatchingScreen に渡す)", screens.includes("onClick={gate.ok ? onOnline : onStory || onTutorial}") && /<MatchingScreen\s+onBack=\{\(\) => t\("menu"\)\}\s+onTutorial=\{showTutorials\}\s+onStory=\{showStory\}/.test(screens), true);
+  is("対戦画面: ランダムマッチが閉じていればストーリーへ(MatchingScreen に渡す)", screens.includes("onClick={!gate.ok ? onStory || onTutorial : season.open ? onOnline : undefined}") && /<MatchingScreen\s+onBack=\{\(\) => t\("menu"\)\}\s+onTutorial=\{showTutorials\}\s+onStory=\{showStory\}/.test(screens), true);
   is("「ランダムマッチが開きました」は開いたその1局だけ", game.includes("{story.fresh && story.allCleared && story.phase === 1 && ("), true);
   is("やめる確認の「清算」・待ち画面の連勝・99 のエリアの説明はフェーズで出し分ける", game.includes("a.boardSize === 9 && rankedPhase(matchPhase)}") && screens.includes("{streak != null && rankedPhase(myPhase) && (") && screens.includes("areasOn={localAreas}"), true);
   is("ゲストは部屋のフェーズで決め直す", game.includes("phase: onlinePhase(network.phase),"), true);

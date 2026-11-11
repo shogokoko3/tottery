@@ -1,3 +1,4 @@
+import { MONTHLY, MONTHLY_TEST_SCHEDULE } from "./monthly-season-schedule.mjs";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { Ledger } from "../src/server/ledger.js";
@@ -26,15 +27,15 @@ import {
 } from "../src/game/private-notes.js";
 const db = new DatabaseSync(":memory:");
 const sql = (q, ...args) => db.prepare(q).all(...args);
-const ledger = new Ledger(sql);
+const ledger = new Ledger(sql, MONTHLY);
 const start = Date.parse("2026-09-01T05:00:00+09:00"),
   end = Date.parse("2026-10-01T05:00:00+09:00");
-assert.equal(seasonAt(start - 1).id, "2026-08");
-assert.equal(seasonAt(start).id, "2026-09");
-assert.equal(seasonAt(end - 1).id, "2026-09");
-assert.equal(seasonAt(end).id, "2026-10");
-assert.equal(seasonAt(Date.parse("2027-01-01T04:59:59+09:00")).id, "2026-12");
-assert.equal(seasonAt(Date.parse("2028-03-01T04:59:59+09:00")).id, "2028-02");
+assert.equal(seasonAt(start - 1, MONTHLY_TEST_SCHEDULE).id, "2026-08");
+assert.equal(seasonAt(start, MONTHLY_TEST_SCHEDULE).id, "2026-09");
+assert.equal(seasonAt(end - 1, MONTHLY_TEST_SCHEDULE).id, "2026-09");
+assert.equal(seasonAt(end, MONTHLY_TEST_SCHEDULE).id, "2026-10");
+assert.equal(seasonAt(Date.parse("2027-01-01T04:59:59+09:00"), MONTHLY_TEST_SCHEDULE).id, "2026-12");
+assert.equal(seasonAt(Date.parse("2028-03-01T04:59:59+09:00"), MONTHLY_TEST_SCHEDULE).id, "2028-02");
 function recordedGame(
   round = 0,
   size = 9,
@@ -427,7 +428,7 @@ console.log(
 {
   const db2 = new DatabaseSync(":memory:");
   const sql2 = (q, ...args) => db2.prepare(q).all(...args);
-  const l2 = new Ledger(sql2);
+  const l2 = new Ledger(sql2, MONTHLY);
   const t = Date.parse("2026-09-10T12:00:00+09:00");
   const game = recordedGame();
   const match = verifyMatch(game.room, game.request, "host");

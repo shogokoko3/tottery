@@ -133,7 +133,7 @@ import { TitleFrame } from "./title-frame.jsx";
 import TITLE_STYLES from "./title-frame.css";
 import { PlayerIcon } from "./playericon.jsx";
 import { adoptUid, touchDay } from "../game/profile.js";
-import { nameWallReason, needsName, onlineGate, onlineGateLabel } from "../game/online-gate.js";
+import { nameWallReason, needsName, onlineGate, onlineGateLabel, ratedSeasonGate, ratedSeasonLabel } from "../game/online-gate.js";
 import {
   botPlan,
   makeBot,
@@ -828,20 +828,27 @@ export function MatchingScreen({
   onNearby = null,
 }) {
   const gate = onlineGate(loadProfile());
+  // シーズンの外はレート戦(ランダムマッチ)を閉じる(2026-11-11 本人の指示)。押しても何もしない
+  const season = ratedSeasonGate();
+  const locked = !gate.ok || !season.open;
   return (
     <div className="center-stage">
       <h2>対戦相手を選ぶ</h2>
       <div className="nav-stack">
         <button
-          className={`btn btn-primary btn-choice ${gate.ok ? "" : "btn-choice-locked"}`}
-          aria-disabled={!gate.ok}
-          onClick={gate.ok ? onOnline : onStory || onTutorial}
+          className={`btn btn-primary btn-choice ${locked ? "btn-choice-locked" : ""}`}
+          aria-disabled={locked}
+          onClick={!gate.ok ? onStory || onTutorial : season.open ? onOnline : undefined}
         >
           <Globe size={30} />
           <span className="choice-label">
             オンラインでマッチする
             <small>
-              {gate.ok ? "世界中のプレイヤーと対戦" : onlineGateLabel(gate)}
+              {!gate.ok
+                ? onlineGateLabel(gate)
+                : season.open
+                  ? "世界中のプレイヤーと対戦"
+                  : ratedSeasonLabel(season)}
             </small>
           </span>
         </button>
@@ -2587,6 +2594,8 @@ function TotteryScreens({ onDailyRelogin }) {
   }
   // 連戦。同じ盤の大きさのまま、次の相手を探しに行く(RandomMatchScreen は開くと同時に探し始める)
   function nextRandomMatch() {
+    // シーズンが終わっていたら、探しに行かず対戦の入口へ(閉じている理由はそこに出る。2026-11-11)
+    if (!ratedSeasonGate().open) return backToMatching();
     (dropNearby(), u(null), m(!1), setTut(null), setStory(null), setBot(null), setRound(0), t("online"));
   }
   function startTutorial(chosen) {

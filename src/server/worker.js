@@ -468,7 +468,7 @@ export class SeasonLedger {
         // ---- フレンドとプロフィール(src/server/friends.js) ----
         const fr = this.friends;
         // 持ち点は台帳から足す(端末の言い値は読まない)。今月の行が無ければ前月からの持ち越し
-        const ratingOf = (id) => l.playerRow(id, l.current(now).id).rating;
+        const ratingOf = (id) => l.playerRow(id, l.shown(now).id).rating;
         const withRating = (tag) => ({ ...tag, rating: ratingOf(tag.uid) });
         if (op === "friends-state") {
           const st = fr.state(uid, now);
@@ -505,7 +505,7 @@ export class SeasonLedger {
           // 他人のプロフィールはフレンドだけ。自分のはいつでも
           if (args.target !== uid && !fr.isFriend(uid, args.target)) throw new Error("フレンドのプロフィールだけ見られます。");
           const card = fr.profileOf(args.target);
-          const season = l.current(now).id;
+          const season = l.shown(now).id;
           const row = l.playerRow(args.target, season);
           const player = l.list(season).find((p) => p.uid === args.target) || null;
           return {

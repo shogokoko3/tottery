@@ -7,13 +7,14 @@
  * あわせて、サーバーの再生も端末と同じ決め直し(setupFromRoom)を通すことを見る。
  * ここがずれると、サーバーの再生だけが実際の対局と違う盤になる。
  */
+import { MONTHLY, MONTHLY_TEST_SCHEDULE } from "./monthly-season-schedule.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { Ledger } from "../src/server/ledger.js";
 
 const D = new DatabaseSync(":memory:");
-const l = new Ledger((q, ...a) => D.prepare(q).all(...a));
+const l = new Ledger((q, ...a) => D.prepare(q).all(...a), MONTHLY);
 const T = 1_800_000_000_000;
 const rows = () =>
   D.prepare("SELECT id, seat, uid, skinId FROM match_foils ORDER BY seat, skinId")
@@ -61,7 +62,7 @@ assert.ok(!/skin_first_seen|collection_skins/.test(vm), "所持の台帳はま�
 // 同じ手順の対局を二度記録しない(部屋の round を書き換えても効かない)
 {
   const D2 = new DatabaseSync(":memory:");
-  const l2 = new Ledger((q, ...a) => D2.prepare(q).all(...a));
+  const l2 = new Ledger((q, ...a) => D2.prepare(q).all(...a), MONTHLY);
   const m = (id, fp) => ({
     id, fingerprint: fp, host: "A", guest: "B", winner: 0,
     names: ["a", "b"], icons: [null, null], foils: [[], []],
