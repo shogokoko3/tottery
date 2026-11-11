@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { installUiSounds } from "./audio/ui-sounds.js";
 import { armAudioUnlock } from "./audio/index.js";
 import { checkAppVersion } from "./net/app-version.js";
+import { runTestflightReset } from "./net/tf-reset.js";
 import { TotteryApp } from "./ui/screens.jsx";
 import { installNativeInteractionGuard } from "./ui/native-interactions.js";
 
@@ -111,12 +112,49 @@ installNativeInteractionGuard(document);
 armAudioUnlock();
 installUiSounds();
 
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <Boundary>
-      <VersionGate>
-        <TotteryApp />
-      </VersionGate>
-    </Boundary>
-  </StrictMode>,
-);
+/** テスト期間の記録を消したことを、一度だけ知らせる */
+function ResetNotice({ children, shown }) {
+  const [open, setOpen] = useState(shown);
+  return (
+    <>
+      {children}
+      {open && (
+        <div className="update-gate" role="alertdialog" aria-label="記録を初期化しました">
+          <div className="update-gate-box">
+            <h2>記録を初期化しました</h2>
+            <p className="hint">
+              テスト版で遊んだ記録を消しました。はじめから遊べます。
+            </p>
+            <button className="btn btn-primary btn-wide" onClick={() => setOpen(false)}>
+              はじめる
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// テスト期間(TestFlight)の記録を一度だけ消す(src/net/tf-reset.js)。画面が保存を読む前に済ませる。
+// 待つのは 10 秒まで。過ぎたら消さずに開き、次の起動でやり直す
+const RESET_WAIT_MS = 10000;
+let resetWanted = true;
+Promise.race([
+  runTestflightReset({ stillWanted: () => resetWanted }),
+  new Promise((r) => setTimeout(() => r({ reset: false }), RESET_WAIT_MS)),
+])
+  .catch(() => ({ reset: false }))
+  .then((r) => {
+    resetWanted = false;
+    createRoot(document.getElementById("root")).render(
+      <StrictMode>
+        <Boundary>
+          <VersionGate>
+            <ResetNotice shown={!!r?.reset}>
+              <TotteryApp />
+            </ResetNotice>
+          </VersionGate>
+        </Boundary>
+      </StrictMode>,
+    );
+  });

@@ -12,6 +12,7 @@ import { verifyAppleTransaction } from "./applejws.js";
 import { minAppBuild, updateUrl } from "./app-version.js";
 import { seasonAt, seasonRewards } from "../game/season.js";
 import { Friends } from "./friends.js";
+import { TF_PLAYERS_2026_11_11 } from "./tf-players-2026-11-11.js";
 import { missionRewardOf, missionFromLegacyId } from "../game/mission-reward.js";
 import { legacyLoginIndex } from "../game/login-bonus.js";
 import { chapterFromLegacyId, isRewardChapter } from "../game/tutorial-reward.js";
@@ -415,6 +416,18 @@ export class SeasonLedger {
     this.ledger = new Ledger(sql);
     this.wallet = new Wallet(sql);
     this.friends = new Friends(sql);
+    // App Store 公開より前の口座(TestFlight の期間に遊んだ人)の記録を、一度だけ全部消す
+    // (2026-11-11 本人の指示。「自分の記録を消す」の forget と同じ3つ。一覧は tf-players-2026-11-11.js)
+    // 途中で落ちても半端に残らないよう、1つの取引でまとめて消す
+    ctx.storage.transactionSync(() =>
+      this.ledger.cleanupOnce("tf-players-2026-11-11", () => {
+        for (const uid of TF_PLAYERS_2026_11_11) {
+          this.wallet.forget(uid);
+          this.friends.forget(uid);
+          this.ledger.forget(uid);
+        }
+      }),
+    );
   }
   async fetch(request) {
     const { op, uid, ...args } = await request.json(),
