@@ -118,9 +118,17 @@ assert.equal(ratedSeasonLabel(ratedSeasonGate(J("2027-01-01T03:00:00"))), "シ�
 assert.equal(ratedSeasonGate(J("2026-12-01T12:00:00")).open, true);
 assert.equal(ratedSeasonLabel(ratedSeasonGate(J("2027-03-02T00:00:00"))), "次のシーズンをお待ちください");
 const screens = readFileSync(new URL("../src/ui/screens.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
-assert.ok(/const locked = !gate\.ok \|\| !season\.open;/.test(screens), "入口を閉じる");
-assert.ok(/season\.open \? onOnline : undefined/.test(screens), "閉じているときは押しても入らない");
-assert.ok(/if \(!ratedSeasonGate\(\)\.open\) return backToMatching\(\);/.test(screens), "連戦もシーズンの外は探さない");
+// シーズンの外も対戦はできる。レートが動かないだけ(2026-11-12 本人の指示「レート対戦ができないだけにしておいてください」)
+assert.ok(/const locked = !gate\.ok;/.test(screens), "入口はシーズンで閉じない");
+assert.ok(/onClick=\{!gate\.ok \? onStory \|\| onTutorial : onOnline\}/.test(screens), "シーズンの外も押せばマッチへ");
+assert.ok(!/if \(!ratedSeasonGate\(\)\.open\) return backToMatching\(\);/.test(screens), "連戦もシーズンの外で止めない");
+assert.ok(screens.includes('L("世界中のプレイヤーと対戦。レートは動きません（{when}）", { when: ratedSeasonLabel(season) })'), "入口にレートが動かないことを出す");
+assert.ok(/ranked=\{o === "online" && rankedPhase\(phaseOf\(loadProfile\(\)\)\) && ratedSeasonGate\(\)\.open\}/.test(screens), "盤選びの「ランキングに載ります」もシーズンの中だけ");
+const game = readFileSync(new URL("../src/ui/game.jsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+assert.ok(/const seasonOpen = useRef\(ratedSeasonGate\(\)\.open\)\.current;/.test(game), "対局の始めにシーズンを見る");
+assert.ok(/rankedPhase\(matchPhase\) && seasonOpen, \);/.test(game), "シーズンの外は対戦前のレートを読まない");
+assert.ok(/const ranked = [^;]*rankedPhase\(matchPhase\) && seasonOpen;/.test(game), "シーズンの外は持ち点を動かさない");
+assert.ok(/!rankedPhase\(matchPhase\) \|\| !seasonOpen, bot,/.test(game), "シーズンの外は台帳へ送らない");
 
 // ワンダーランド(アリス)のガチャは 1/1 9:00 に開く
 assert.equal(contentSeason("alice").name, "ワンダーランド・ゲート");

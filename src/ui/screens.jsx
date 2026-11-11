@@ -830,9 +830,10 @@ export function MatchingScreen({
   onNearby = null,
 }) {
   const gate = onlineGate(loadProfile());
-  // シーズンの外はレート戦(ランダムマッチ)を閉じる(2026-11-11 本人の指示)。押しても何もしない
+  // シーズンの外も、ランダムマッチで対戦はできる。レートが動かないだけ
+  // (2026-11-12 本人の指示「レート対戦ができないだけにしておいてください」。前は入口ごと閉じていた)
   const season = ratedSeasonGate();
-  const locked = !gate.ok || !season.open;
+  const locked = !gate.ok;
   return (
     <div className="center-stage">
       <h2>{L("対戦相手を選ぶ")}</h2>
@@ -840,7 +841,7 @@ export function MatchingScreen({
         <button
           className={`btn btn-primary btn-choice ${locked ? "btn-choice-locked" : ""}`}
           aria-disabled={locked}
-          onClick={!gate.ok ? onStory || onTutorial : season.open ? onOnline : undefined}
+          onClick={!gate.ok ? onStory || onTutorial : onOnline}
         >
           <Globe size={30} />
           <span className="choice-label">
@@ -850,7 +851,7 @@ export function MatchingScreen({
                 ? onlineGateLabel(gate)
                 : season.open
                   ? L("世界中のプレイヤーと対戦")
-                  : ratedSeasonLabel(season)}
+                  : L("世界中のプレイヤーと対戦。レートは動きません（{when}）", { when: ratedSeasonLabel(season) })}
             </small>
           </span>
         </button>
@@ -2602,8 +2603,6 @@ function TotteryScreens({ onDailyRelogin }) {
   }
   // 連戦。同じ盤の大きさのまま、次の相手を探しに行く(RandomMatchScreen は開くと同時に探し始める)
   function nextRandomMatch() {
-    // シーズンが終わっていたら、探しに行かず対戦の入口へ(閉じている理由はそこに出る。2026-11-11)
-    if (!ratedSeasonGate().open) return backToMatching();
     (dropNearby(), u(null), m(!1), setTut(null), setStory(null), setBot(null), setRound(0), t("online"));
   }
   function startTutorial(chosen) {
@@ -3186,7 +3185,7 @@ function TotteryScreens({ onDailyRelogin }) {
           rules: (
             <RulesSelectScreen
               // ランキングに載るのはランダムマッチの 9×9 だけ。フレンド対戦は載らない(2026-09-17)
-              ranked={o === "online" && rankedPhase(phaseOf(loadProfile()))}
+              ranked={o === "online" && rankedPhase(phaseOf(loadProfile())) && ratedSeasonGate().open}
               // 近くの端末との対戦はフレンド対戦と同じく、レベルで札を絞らない
               initialSize={
                 o === "online" && phaseOf(loadProfile()) >= 3

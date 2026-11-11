@@ -96,7 +96,7 @@ console.log("\n画面の説明");
     const game = readFileSync(join(here, "..", "src", "ui", "game.jsx"), "utf8");
     is(
       "持ち点の条件にフェーズ(フェーズ3だけ)が入っている",
-      /const ranked = [^;]*rankedPhase\(matchPhase\);/.test(game),
+      /const ranked = [^;]*rankedPhase\(matchPhase\) && seasonOpen;/.test(game),
       true,
     );
   }

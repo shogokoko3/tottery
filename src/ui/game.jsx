@@ -68,6 +68,7 @@ import { prologueSeen } from "../game/intro.js";
 // 句ごとに折り返す文(iPhone の WebKit は auto-phrase を知らない。2026-10-06 見直し)
 import { Phrases } from "./phrases.jsx";
 import { PHASE_MAX, STORY_TICKETS, phaseOf, rankedPhase, rulesForPhase, setupFlagsForPhase } from "../game/phase.js";
+import { ratedSeasonGate } from "../game/online-gate.js";
 import { autoArrangeAction } from "../game/auto-setup.js";
 import { REPEAT_LIMIT, quietLimit } from "../game/adjudication.js";
 import { onlinePhase } from "../net/match-settings.js";
@@ -1561,10 +1562,13 @@ export function GameCore({
   // レート・シーズンに数えるのはランダムマッチ(network.random)の 9×9 だけ。
   // フレンド対戦(合言葉・近くの端末)はランキングに載らない(本人の指示 2026-09-17)。
   // フェーズ1・2 の対局は数えない(持ち点はフェーズ3だけ。2026-09-30)
+  // シーズンの外(2026-11-16 9:00 より前・合間)は、ランダムマッチでもレートを動かさない。対戦はできる
+  // (2026-11-12 本人の指示「レート対戦ができないだけにしておいてください」)。対局のあいだ変えない
+  const seasonOpen = useRef(ratedSeasonGate().open).current;
   const matchRatings = useMatchRatings(
     network,
     round,
-    !!network && !!network.random && boardSize === 9 && !tutorial && rankedPhase(matchPhase),
+    !!network && !!network.random && boardSize === 9 && !tutorial && rankedPhase(matchPhase) && seasonOpen,
   );
   const pausedAt = useRef(null);
   let [a, u] = (0, useState)(initialState),
@@ -1715,7 +1719,7 @@ export function GameCore({
     a,
     network,
     round,
-    !!tutorial || (!network?.random && !bot) || !rankedPhase(matchPhase),
+    !!tutorial || (!network?.random && !bot) || !rankedPhase(matchPhase) || !seasonOpen,
     bot,
   );
   // サーバーのレートが届いたら、対局後の表示(仮の値)をそれに合わせる(2026-09-23 本人の指示)
@@ -2694,7 +2698,7 @@ export function GameCore({
     // 実力を表さなくなる。CPU戦とチュートリアルは相手の強さが決まらない。
     // フレンド対戦(合言葉・近くの端末)も数えない(本人の指示 2026-09-17。知り合い同士で点を回せてしまう)
     // Bot(ランダムマッチの練習相手)は 9×9 ならレートに数える。相手の点は Bot の人物の点
-    const ranked = (!!(network && network.random) || !!bot) && a.boardSize === 9 && rankedPhase(matchPhase);
+    const ranked = (!!(network && network.random) || !!bot) && a.boardSize === 9 && rankedPhase(matchPhase) && seasonOpen;
     const foeRating = !ranked
       ? null
       : bot

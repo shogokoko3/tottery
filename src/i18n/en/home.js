@@ -362,6 +362,7 @@ export const EN_HOME = {
   "対戦相手を選ぶ": "Choose opponent",
   "オンラインでマッチする": "Match online",
   "世界中のプレイヤーと対戦": "Play people around the world",
+  "世界中のプレイヤーと対戦。レートは動きません（{when}）": "Play people around the world. Rating doesn't change ({when})",
   "フレンドとマッチする": "Match with Friends",
   "友達とルーム対戦": "Room match with friends",
   "CPUと対戦する": "Play vs CPU",
