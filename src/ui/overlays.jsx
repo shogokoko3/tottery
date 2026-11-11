@@ -16,7 +16,7 @@ import {
 } from "../audio/index.js";
 import { sanitizeHistory } from "../game/board.js";
 import { logText } from "../game/reducer.js";
-import { L, Lx } from "../i18n/index.js";
+import { L, Lx, langSetting, setLangSetting } from "../i18n/index.js";
 import {
   PLAYER_META,
   SUIT_SYMBOL,
@@ -707,6 +707,55 @@ export function PlaySettings() {
   );
 }
 
+/**
+ * 言語(2026-11-11 本人の指示「設定画面に 日本語 / English の切り替えを足したい」)。
+ * 端末に合わせる・日本語・English。言語は起動のときに決まるので、選んだら開き直す
+ */
+function LanguageSetting() {
+  const [current] = useState(langSetting);
+  const [picked, setPicked] = useState(current);
+  const options = [
+    ["auto", L("端末に合わせる")],
+    ["ja", "日本語"], // i18n-ignore 言語の名前は、その言語で書く
+    ["en", "English"],
+  ];
+  return (
+    <>
+      <div className="settings-list">
+        <div className="settings-row">
+          <span>{L("言語")}</span>
+          <div className="settings-lang" role="radiogroup" aria-label={L("言語")}>
+            {options.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={picked === id}
+                className={`btn btn-small ${picked === id ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setPicked(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      {picked !== current ? (
+        <div className="settings-lang-apply">
+          <p className="settings-note">
+            {L("アプリを開き直して切り替えます。対局中は、終わってから切り替えてください。")}
+          </p>
+          <button className="btn btn-primary btn-small" onClick={() => setLangSetting(picked)}>
+            {L("開き直して切り替える")}
+          </button>
+        </div>
+      ) : (
+        <p className="settings-note">{L("ストーリーの本文と漫画は、どちらの言語でも日本語です。")}</p>
+      )}
+    </>
+  );
+}
+
 export function SettingsModal({ onClose }) {
   const [profile, setProfile] = useState(() => loadProfile());
   // "name" は名前を変える画面、"icon" はアイコンを選ぶ画面
@@ -832,6 +881,9 @@ export function SettingsModal({ onClose }) {
                 {L("名前・戦績・レートと、公開ランキングのあなたの行を消します。元には戻せません。")}
               </p>
             </>
+          )}
+          {tab === "about" && (
+            <LanguageSetting />
           )}
           {tab === "about" && (
             <div className="settings-list">

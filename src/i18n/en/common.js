@@ -20,4 +20,12 @@ export const EN_COMMON = {
   // 音の出どころ(src/audio/tracks.js。別の作業中のファイルなので、出すところで Lx を通す)
   "トッタリー オリジナルBGM": "Take Down original music",
   "トッタリー オリジナルSE": "Take Down original sound effects",
+  // 設定の「言語」
+  "言語": "Language",
+  "端末に合わせる": "Device",
+  "アプリを開き直して切り替えます。対局中は、終わってから切り替えてください。":
+    "The app will reopen to switch. If you're in a match, switch after it ends.",
+  "開き直して切り替える": "Reopen and switch",
+  "ストーリーの本文と漫画は、どちらの言語でも日本語です。":
+    "Story text and comics are in Japanese in either language.",
 };

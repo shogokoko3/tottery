@@ -10950,3 +10950,22 @@ svg {
 .story-phase3-kings li { display: grid; grid-template-columns: 22px 1fr; align-items: baseline; gap: 8px; color: var(--text); font-size: 13px; line-height: 1.7; }
 .story-phase3-kings li b { color: var(--gold); font-size: 15px; text-align: center; }
 .kp-area-chip { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 4px; background: rgba(120, 200, 220, 0.25); color: #bfe6ff; font-size: 11px; font-weight: 700; white-space: nowrap; }
+
+/* 設定の「言語」(2026-11-11)。3つの釦を右に寄せて並べる */
+.settings-lang {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.settings-lang .btn {
+  min-width: 0;
+  padding-inline: 10px;
+}
+.settings-lang-apply {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}

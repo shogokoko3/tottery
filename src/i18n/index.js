@@ -13,11 +13,15 @@
  *                                          {n} の入った辞書の文にも当てる
  *
  * 言語は起動のときに一度だけ決める: 端末の言語の1番目が日本語なら ja、それ以外は en。
+ * 設定の「言語」で日本語・English を選んでいれば、そちらを使う(2026-11-11 本人の指示。端末に保存)。
  * ブラウザでは ?lang=en / ?lang=ja で切り替えられる(確かめ用。その後もその窓では続く)。
  * Node(検査)と Worker(サーバー)には画面が無いので ja。検査で英語を見るときは
  * 環境変数 TOTTERY_LANG=en。
  */
 import { EN } from "./en/index.js";
+
+/** 設定で選んだ言語の置き場所。"ja"・"en"、無ければ端末に合わせる */
+const LANG_SETTING_KEY = "tottery:lang-setting";
 
 function detect() {
   const env = globalThis.process?.env?.TOTTERY_LANG;
@@ -33,6 +37,8 @@ function detect() {
     }
     const kept = globalThis.sessionStorage?.getItem("tottery:lang");
     if (kept === "en" || kept === "ja") return kept;
+    const chosen = globalThis.localStorage?.getItem(LANG_SETTING_KEY);
+    if (chosen === "en" || chosen === "ja") return chosen;
   } catch {
     /* 保存が使えない窓でも端末の言語で決める */
   }
@@ -44,6 +50,31 @@ function detect() {
 /** "ja" か "en" */
 export const LANG = detect();
 export const isEnglish = LANG === "en";
+/** 設定の「言語」の今の値: "auto"(端末に合わせる)・"ja"・"en" */
+export function langSetting() {
+  try {
+    const v = globalThis.localStorage?.getItem(LANG_SETTING_KEY);
+    return v === "ja" || v === "en" ? v : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
+/** 設定の「言語」を変える。言語は起動のときに決まるので、アプリを開き直して効かせる */
+export function setLangSetting(value) {
+  try {
+    if (value === "ja" || value === "en") globalThis.localStorage?.setItem(LANG_SETTING_KEY, value);
+    else globalThis.localStorage?.removeItem(LANG_SETTING_KEY);
+    // 確かめ用の ?lang= の控えは外す(設定のほうを効かせる)
+    globalThis.sessionStorage?.removeItem("tottery:lang");
+  } catch {
+    /* 保存できない窓では、端末の言語のまま */
+  }
+  const url = new URL(globalThis.location.href);
+  url.searchParams.delete("lang");
+  globalThis.location.replace(url.pathname + url.search + url.hash);
+}
+
 /** Intl に渡す言語 */
 export const LOCALE = isEnglish ? "en-US" : "ja-JP";
 
