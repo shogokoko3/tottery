@@ -12,7 +12,6 @@
  */
 
 import { hasIcon } from "./icons.js";
-import { applyStoryReviewGrant } from "./story-review-grant.js";
 import { normalizeCard } from "./profile-card.js";
 import { findTitle, hasTitle, newlyEarned } from "./titles.js";
 import { SECRETS } from "./secrets.js";
@@ -332,15 +331,28 @@ export function promotePhase() {
   return next;
 }
 
+/**
+ * 2026-10-02 のストーリー確認用に、運営の口座(4jAi…)だけをフェーズ3・全ステージクリアにしていた
+ * (story-review-grant.js)。記録を消しても口座に戻るたびに付け直されたので外した(2026-11-12 本人の指示
+ * 「最初からゲームを始めた際にクリアになっていない状態が正常」)。その印が残る記録は、一度だけ
+ * フェーズ1・未クリアに戻す。経験値・対局数・持ち物には触らない
+ */
+const STORY_REVIEW_GRANT = "story-review-phase3-20261002";
+export function undoStoryReviewGrant(saved) {
+  if (!saved || saved.storyReviewGrant !== STORY_REVIEW_GRANT) return saved;
+  const { storyReviewGrant: _granted, phaseWins: _wins, ...rest } = saved;
+  return { ...rest, phase: DEFAULT_PHASE, phaseEpoch: PHASE_EPOCH, story: { 1: [], 2: [], 3: [] } };
+}
+
 export function loadProfile() {
   const stored = read(KEY) || read(OLD_KEY);
   if (!stored) return { ...EMPTY };
-  const saved = applyStoryReviewGrant(stored);
+  const saved = undoStoryReviewGrant(stored);
   if (saved !== stored) {
     try {
       localStorage.setItem(KEY, JSON.stringify(saved));
     } catch {
-      // 保存できない環境でも、この読み取りでは確認用の進行を利用できる。
+      // 保存できなくても、この読み取りでは戻した進みを使う
     }
   }
   const savedDraws = Number(saved.draws);
@@ -423,9 +435,6 @@ export function loadProfile() {
     phaseEpoch: PHASE_EPOCH,
     phaseWins: normalizePhaseWins(saved.phaseWins),
     story: normalizeStory(saved.story),
-    ...(typeof saved.storyReviewGrant === "string"
-      ? { storyReviewGrant: saved.storyReviewGrant }
-      : {}),
     letters: Array.isArray(saved.letters)
       ? saved.letters.filter((x) => typeof x === "string")
       : [],
@@ -962,7 +971,7 @@ export function markBonusTaken(at) {
 export function adoptUid(uid) {
   const profile = loadProfile();
   if (!uid || profile.id === uid) return profile;
-  const next = applyStoryReviewGrant({ ...profile, id: uid });
+  const next = { ...profile, id: uid };
   saveProfile(next);
   return next;
 }
