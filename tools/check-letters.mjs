@@ -201,7 +201,7 @@ console.log("\n置き場を宛先ごとに分ける");
     camp &&
       camp.to === "all" &&
       camp.gifts[0].type === "ticket" &&
-      camp.gifts[0].amount === 50 &&
+      camp.gifts[0].amount === 100 &&
       isCampaignLetter(camp) &&
       isFor(camp, "uidA", camp.at + 1),
   );

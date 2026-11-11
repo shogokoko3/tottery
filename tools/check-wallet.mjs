@@ -141,22 +141,32 @@ console.log("\nストーリーの褒美(kind=story。earn の1日上限とは別
 console.log("記念配布(campaigns.js)");
 {
   const c = CAMPAIGNS[0];
-  is("台帳にリリース記念(50枚)がある", [c.id, c.tickets], ["release-2026-09", 50]);
+  is("台帳にスタート記念(100枚)がある", [c.id, c.tickets], ["release-2026-09", 100]);
   const t0 = c.from + 1000;
   await throws("知らない配布は断る", () => w.campaign("CAMP1", "nope", t0), /ありません/);
   await throws("期間前は断る", () => w.campaign("CAMP1", c.id, c.from - 1), /期間外/);
   const got = w.campaign("CAMP1", c.id, t0);
-  is("受け取ると台帳の枚数だけ増える(端末は枚数を送らない)", [got.applied, got.tickets, got.tickets_granted], [true, 50, 50]);
-  is("同じ uid は二度受け取れない", [w.campaign("CAMP1", c.id, t0 + 1).applied, w.summary("CAMP1").tickets], [false, 50]);
-  is("別の uid も受け取れる(出来事 id は uid ごと)", w.campaign("CAMP2", c.id, t0).tickets, 50);
+  is("受け取ると台帳の枚数だけ増える(端末は枚数を送らない)", [got.applied, got.tickets, got.tickets_granted], [true, 100, 100]);
+  is("同じ uid は二度受け取れない", [w.campaign("CAMP1", c.id, t0 + 1).applied, w.summary("CAMP1").tickets], [false, 100]);
+  is("別の uid も受け取れる(出来事 id は uid ごと)", w.campaign("CAMP2", c.id, t0).tickets, 100);
   is("記念配布は earn の1日上限に数えない", w.credit("CAMP1", "camp1-earn", 10, "earn", t0).applied, true);
   const row = sql("SELECT kind, ref FROM wallet_ledger WHERE id=?", `campaign:${c.id}:CAMP1`)[0];
   is("kind は campaign で記録される", [row.kind, row.ref], ["campaign", c.id]);
-  is("campaignOf は id で引ける", campaignOf(c.id).tickets, 50);
+  is("campaignOf は id で引ける", campaignOf(c.id).tickets, 100);
   const pre = campaignOf("prerelease-2026-09");
   is("リリース前限定は300枚・期限つき", [pre.tickets, pre.until > pre.from, pre.prerelease], [300, true, true]);
-  is("期限内は受け取れる(50枚とは別に)", w.campaign("CAMP1", pre.id, pre.from + 1000).tickets, 360);
+  is("期限内は受け取れる(スタート記念とは別に)", w.campaign("CAMP1", pre.id, pre.from + 1000).tickets, 410);
   await throws("期限を過ぎたら断る", () => w.campaign("CAMP3", pre.id, pre.until), /期間外/);
+  // 2026-11-11 本人の指示: スタート記念は期限なし。リリース記念 100 枚は 12/31 23:59 まで
+  is("スタート記念は期限なし", c.until, 0);
+  const rel = campaignOf("release-2026-11");
+  is("リリース記念は100枚・11/11 8:47〜12/31 23:59", [rel.tickets, rel.from, rel.until], [100, Date.parse("2026-11-11T08:47:00+09:00"), Date.parse("2027-01-01T00:00:00+09:00")]);
+  is("12/31 23:59 は受け取れる", w.campaign("CAMP4", rel.id, Date.parse("2026-12-31T23:59:59+09:00")).tickets_granted, 100);
+  await throws("1/1 0:00 からは断る", () => w.campaign("CAMP5", rel.id, Date.parse("2027-01-01T00:00:00+09:00")), /期間外/);
+  // 「データを消した際のみ、再度受け取れる」: 記録を消すと受け取りの控えも消え、もう一度受け取れる
+  is("消す前は二度受け取れない", w.campaign("CAMP4", rel.id, Date.parse("2026-12-31T23:59:59+09:00")).applied, false);
+  w.forget("CAMP4");
+  is("記録を消したあとは、もう一度受け取れる", w.campaign("CAMP4", rel.id, Date.parse("2026-12-31T23:59:59+09:00")).tickets_granted, 100);
 }
 
 console.log("\n無償ジェム(端末の申告)");
