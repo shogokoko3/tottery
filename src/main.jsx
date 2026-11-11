@@ -6,6 +6,7 @@ import { checkAppVersion } from "./net/app-version.js";
 import { runTestflightReset } from "./net/tf-reset.js";
 import { TotteryApp } from "./ui/screens.jsx";
 import { installNativeInteractionGuard } from "./ui/native-interactions.js";
+import { L } from "./i18n/index.js";
 
 /**
  * 描くところで落ちたときの受け皿。
@@ -31,17 +32,17 @@ class Boundary extends Component {
     return (
       <div className="tottery-root">
         <div className="center-stage">
-          <h2>うまく表示できませんでした</h2>
+          <h2>{L("うまく表示できませんでした")}</h2>
           <p className="hint">
-            申し訳ありません。開き直すと元に戻ります。
+            {L("申し訳ありません。開き直すと元に戻ります。")}
             <br />
-            対局中だった場合、その対局は続けられません。
+            {L("対局中だった場合、その対局は続けられません。")}
           </p>
           <button
             className="btn btn-primary"
             onClick={() => window.location.reload()}
           >
-            開き直す
+            {L("開き直す")}
           </button>
         </div>
       </div>
@@ -73,16 +74,16 @@ function VersionGate({ children }) {
         <div
           className="update-gate"
           role="alertdialog"
-          aria-label="アップデートが必要です"
+          aria-label={L("アップデートが必要です")}
         >
           <div className="update-gate-box">
-            <h2>アップデートしてください</h2>
+            <h2>{L("アップデートしてください")}</h2>
             <p className="hint">
-              新しいバージョンがあります。続けるには
-              {/testflight\.apple\.com/.test(block.storeUrl || "")
-                ? " TestFlight "
-                : " App Store "}
-              で更新してください。
+              {L("新しいバージョンがあります。続けるには {store} で更新してください。", {
+                store: /testflight\.apple\.com/.test(block.storeUrl || "")
+                  ? "TestFlight"
+                  : "App Store",
+              })}
             </p>
             <button
               className="btn btn-primary btn-wide"
@@ -94,8 +95,8 @@ function VersionGate({ children }) {
               }
             >
               {/testflight\.apple\.com/.test(block.storeUrl || "")
-                ? "TestFlight を開く"
-                : "App Store を開く"}
+                ? L("TestFlight を開く")
+                : L("App Store を開く")}
             </button>
           </div>
         </div>
@@ -119,14 +120,14 @@ function ResetNotice({ children, shown }) {
     <>
       {children}
       {open && (
-        <div className="update-gate" role="alertdialog" aria-label="記録を初期化しました">
+        <div className="update-gate" role="alertdialog" aria-label={L("記録を初期化しました")}>
           <div className="update-gate-box">
-            <h2>記録を初期化しました</h2>
+            <h2>{L("記録を初期化しました")}</h2>
             <p className="hint">
-              テスト版で遊んだ記録を消しました。はじめから遊べます。
+              {L("テスト版で遊んだ記録を消しました。はじめから遊べます。")}
             </p>
             <button className="btn btn-primary btn-wide" onClick={() => setOpen(false)}>
-              はじめる
+              {L("はじめる")}
             </button>
           </div>
         </div>
