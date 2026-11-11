@@ -299,6 +299,21 @@ console.log("\n10連の言葉と折り返し(2026-10-06 見直し)");
   );
 }
 
+// はじめての10連のあいだは、ふつうのガチャ画面(レジェンド・ゲート)を見せない(2026-11-12 本人の報告)。
+// 召喚の門が用意できるまで演出の幕は透けるので、その下を暗い幕で覆う
+{
+  const skins = read("src/ui/skins.jsx");
+  const css = read("src/skins/styles.css");
+  is(
+    "初回の10連は暗い幕でガチャ画面を隠す",
+    /const firstPullCover = firstPull && \(!firstPullDone\(collection\) \|\| !!collection\.pending\);/.test(skins) &&
+      /firstPullCover && <div className="skins-first-pull-cover"/.test(skins) &&
+      /\.skins-page\.is-first-pull > :not\(\.skins-first-pull-cover\) \{\s*visibility: hidden;/.test(css) &&
+      /\.skins-first-pull-cover \{\s*position: fixed;\s*inset: 0;\s*z-index: 5000;\s*background: #02070d;/.test(css),
+    true,
+  );
+}
+
 console.log(`\n${ok} ok / ${fail.length} NG`);
 if (fail.length) {
   console.error("NG: " + fail.join(", "));

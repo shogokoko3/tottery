@@ -2257,6 +2257,9 @@ export function SkinsScreen({
     if (next && onBack) onBack();
   };
   const closeShown = firstResults ? closeFirstResults : closeResults;
+  // 幕を出すのは、まだ引いていないあいだと結果を見ているあいだ。引いたのに結果が無い(ほかで閉じた)ときは
+  // ふつうの画面に戻し、「つぎへ」で抜けられるようにする
+  const firstPullCover = firstPull && (!firstPullDone(collection) || !!collection.pending);
   /** フォイルを有償ジェムで買う。通ればサーバーの残高を写し、所持に足す */
   const buyFoilOffer = async (offer) => {
     if (busy.current) return false;
@@ -2284,7 +2287,11 @@ export function SkinsScreen({
     }).filter(s => filter === "all" || (filter === "owned" ? collection.owned[s.id] || collection.owned[foilId(s.id)] || collection.owned[baseSkinId(s.id)] : s.rarity === filter))
     .sort(byRank);
   return (
-    <div className={`skins-page${tab === "gacha" ? " is-gacha" : ""}`}>
+    <div className={`skins-page${tab === "gacha" ? " is-gacha" : ""}${firstPullCover ? " is-first-pull" : ""}`}>
+      {/* はじめての10連のあいだは、ふつうのガチャ画面(レジェンド・ゲート)を見せない。召喚の門が
+          用意できるまで演出の幕は透けるので、その下を召喚と同じ暗い幕で覆う(2026-11-12 本人の報告
+          「ガチャを引くを押した後に、通常のレジェンドガチャがちらっと見える」)。結果を閉じて次へ移るまで出す */}
+      {firstPullCover && <div className="skins-first-pull-cover" aria-hidden="true" />}
       <div className="skins-heading">
         <div className="skins-heading-top">
           <span className="skins-eyebrow">{L("トッタリー / CARD SKINS")}</span>

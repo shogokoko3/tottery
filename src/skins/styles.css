@@ -3409,3 +3409,14 @@
 .alice-power-panel header{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .alice-power-panel>div,.alice-power-panel>label{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .alice-power-panel select{max-width:100%;min-height:40px}.alice-power-panel .btn{min-height:40px}
+
+/* はじめての10連: ふつうのガチャ画面を見せず、召喚と同じ暗い幕を敷く(skins.jsx の firstPullCover) */
+.skins-page.is-first-pull > :not(.skins-first-pull-cover) {
+  visibility: hidden;
+}
+.skins-first-pull-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  background: #02070d;
+}
