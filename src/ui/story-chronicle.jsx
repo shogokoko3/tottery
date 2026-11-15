@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { loadProfile } from "../game/profile.js";
 import {
   CHRONICLE,
@@ -276,14 +277,17 @@ export function StoryAfterword({ axis, phase }) {
       >
         {L("後日談を読む")}
       </button>
-      {open && (
+      {/* 結果の窓の中に描くと、窓の下の 2×2 の釦が漫画の上に残り、読み進められなかった(2026-11-15)。
+          窓の外(根)へ出して、画面いっぱいに重ねる */}
+      {open && createPortal(
         <StoryReader
           axis={axis}
           phase={phase}
           part="after"
           onClose={() => setOpen(false)}
           onDone={() => setOpen(false)}
-        />
+        />,
+        document.querySelector(".tottery-root") || document.body
       )}
     </div>
   );
