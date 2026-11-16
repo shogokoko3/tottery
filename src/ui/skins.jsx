@@ -1897,6 +1897,10 @@ export function SkinsScreen({
   // 広告リワード。iOS で広告が出せるとき、残り回数を出す
   const [adsOk, setAdsOk] = useState(false);
   const [adsLeft, setAdsLeft] = useState(null);
+  // 広告の返事(読み込み中・受け取った・失敗)。画面の一番下の文だと見えず「押しても反応が
+  // ない」に見えていた(2026-11-16 本人の報告)ので、広告の釦のすぐ下に出す
+  const [adBusy, setAdBusy] = useState(false);
+  const [adNote, setAdNote] = useState("");
   useEffect(() => {
     let alive = true;
     // 開いたら、控えていた購入を送り直し、端末の枚数を一度だけ引き継ぎ、残高を取り直す
@@ -1929,15 +1933,21 @@ export function SkinsScreen({
   const watchAd = async () => {
     if (buying) return;
     setBuying(true);
+    setAdBusy(true);
     setMessage("");
+    setAdNote("");
     try {
       const d = await watchAdForTicket();
-      if (d === null) return; // 途中で閉じた
+      if (d === null) {
+        setAdNote(L("最後まで見ると、チケットを受け取れます。"));
+        return; // 途中で閉じた
+      }
       if (Number.isSafeInteger(d.adsLeftToday)) setAdsLeft(d.adsLeftToday);
-      setMessage(L("ガチャチケットを1枚受け取りました。"));
+      setAdNote(L("ガチャチケットを1枚受け取りました。"));
     } catch (e) {
-      setMessage(Lx(e && e.message) || L("広告を再生できませんでした。"));
+      setAdNote(Lx(e && e.message) || L("広告を再生できませんでした。"));
     } finally {
+      setAdBusy(false);
       setBuying(false);
     }
   };
@@ -2443,7 +2453,11 @@ export function SkinsScreen({
                     <br />
                     {L("チケット1枚")}
                     <span>
-                      {adsLeft == null ? L("1日3回まで") : L("今日はあと{n}回", { n: adsLeft })}
+                      {adBusy
+                        ? L("広告を読み込んでいます…")
+                        : adsLeft == null
+                          ? L("1日3回まで")
+                          : L("今日はあと{n}回", { n: adsLeft })}
                     </span>
                   </button>
                 )}
@@ -2457,6 +2471,11 @@ export function SkinsScreen({
                   </button>
                 )}
               </div>
+            )}
+            {adNote && (
+              <p className="skins-message skins-ad-note" role="status">
+                {adNote}
+              </p>
             )}
             <div className="skins-odds">
               <span>

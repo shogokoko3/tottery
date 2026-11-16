@@ -283,6 +283,14 @@ const privacy = renderPrivacy(
 fs.writeFileSync("privacy.html", privacy);
 fs.writeFileSync("dist/privacy.html", privacy);
 
+// AdMob の app-ads.txt(2026-11-16)。App Store に載せた開発元サイトの直下に置くと、
+// AdMob が「この発行者のアプリ」と確かめられ、広告の配信が絞られなくなる。
+// pub- の番号は広告ユニット ID(ca-app-pub-8562097921065694/…)の発行者 ID
+fs.writeFileSync(
+  "dist/app-ads.txt",
+  "google.com, pub-8562097921065694, DIRECT, f08c47fec0942fa0\n",
+);
+
 /**
  * この組み立ての身元。iOS 版と Google Play 版が同じ中身から作られたかを、
  * あとから確かめるために書き出す(tools/check-release-parity.mjs が読む)。

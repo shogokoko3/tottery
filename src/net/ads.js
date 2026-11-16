@@ -63,18 +63,37 @@ export async function watchAdForTicket() {
   if (!m) throw new Error(L("広告は iOS アプリで見られます。"));
   const { AdMob, RewardAdPluginEvents } = m;
   await ensureInit(m);
-  let earned = false;
-  const onReward = await AdMob.addListener(RewardAdPluginEvents.Rewarded, () => {
-    earned = true;
-  });
   try {
     await AdMob.prepareRewardVideoAd({ adId: AD_UNIT_ID, isTesting: AD_TESTING });
-    await AdMob.showRewardVideoAd();
   } catch {
-    await onReward.remove();
     throw new Error(L("広告を読み込めませんでした。少し待ってからお試しください。"));
   }
-  await onReward.remove();
+  // showRewardVideoAd は「報酬を得た」ときにしか返らない(プラグインの作り)。
+  // 途中で閉じた・出せなかったときは永久に待ってしまい、画面の釦がすべて押せなく
+  // なっていた(2026-11-16)。報酬・閉じた・出せなかったの3つの出来事で決着させる
+  let earned = false;
+  let settle;
+  const done = new Promise((r) => (settle = r));
+  const handles = await Promise.all([
+    AdMob.addListener(RewardAdPluginEvents.Rewarded, () => {
+      earned = true;
+    }),
+    AdMob.addListener(RewardAdPluginEvents.Dismissed, () => settle("closed")),
+    AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => settle("failed")),
+  ]);
+  try {
+    AdMob.showRewardVideoAd().then(
+      () => {
+        earned = true;
+      },
+      () => settle("failed"),
+    );
+    const how = await done;
+    if (how === "failed" && !earned)
+      throw new Error(L("広告を再生できませんでした。少し待ってからお試しください。"));
+  } finally {
+    for (const h of handles) h.remove().catch(() => {});
+  }
   if (!earned) return null; // 途中で閉じた
   return claimAdReward();
 }
