@@ -43,6 +43,8 @@
      下の釦(一括受取・ホームに戻る)が画面の外へ落ちる(2026-09-18 本人の報告) */
   box-sizing: border-box;
   padding-top: var(--top-bar-h, 56px);
+  /* 測った高さが古くても、上端の余白(ノッチ)＋帯の中身ぶんは必ず空ける(2026-11-19) */
+  padding-top: max(var(--top-bar-h, 56px), calc(env(safe-area-inset-top, 0px) + 60px));
 }
 .tottery-root * {
   box-sizing: border-box;

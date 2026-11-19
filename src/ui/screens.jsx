@@ -271,12 +271,27 @@ export function GameShell({
     const set = () =>
       root.style.setProperty("--top-bar-h", `${Math.round(bar.getBoundingClientRect().height)}px`);
     set();
+    // 外枠(border-box)の高さで見張る。iPhone では上端の余白(env(safe-area-inset-top))が
+    // 起動のあとから入り、帯の padding だけが伸びる。既定の content-box の見張りでは
+    // これに気づかず、本文の上の空きが足りないまま帯の下に題や枠が隠れていた
+    // (2026-11-19 本人の報告「被っています」)
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(set) : null;
-    if (ro) ro.observe(bar);
+    if (ro) {
+      try {
+        ro.observe(bar, { box: "border-box" });
+      } catch {
+        ro.observe(bar);
+      }
+    }
     window.addEventListener("resize", set);
+    window.addEventListener("orientationchange", set);
+    // 念のため、起動直後に何度か測り直す(余白が入る時機は端末で違う)
+    const timers = [100, 400, 1200].map((ms) => setTimeout(set, ms));
     return () => {
       if (ro) ro.disconnect();
       window.removeEventListener("resize", set);
+      window.removeEventListener("orientationchange", set);
+      timers.forEach(clearTimeout);
     };
   }, []);
   return (
