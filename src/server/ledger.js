@@ -16,6 +16,7 @@ import { TEST_PLAYERS_2026_09_08 } from "./test-players-2026-09-08.js";
 import { RATING_RESTORE_2026_09_23 } from "./rating-restore-2026-09-23.js";
 import { clampBotRating } from "../game/bot-match.js";
 import { Lk } from "../i18n/index.js";
+import { houseRows } from "./house-players.js";
 
 /** 記録を消した人の目印の代わり。matches に残る */
 export const FORGOTTEN = "forgotten";
@@ -25,9 +26,12 @@ export const LISTED_AFTER = 1;
 // Cloudflare SQLite と検証用 node:sqlite で同じ SQL を実行する。
 export class Ledger {
   /** schedule はレート戦のシーズンの表(season.js の RATED_SEASONS)。検査では差し替える */
-  constructor(sql, { schedule = RATED_SEASONS } = {}) {
+  /** house: 運営のプレイヤー(house-players.js)を一覧に混ぜるか。本番の Worker だけ true(検査は既定の false) */
+  constructor(sql, { schedule = RATED_SEASONS, house = false, clock = Date.now } = {}) {
     this.sql = sql;
     this.schedule = schedule;
+    this.house = house;
+    this.clock = clock;
     sql(
       "CREATE TABLE IF NOT EXISTS seasons (id TEXT PRIMARY KEY, start INTEGER, end INTEGER)",
     );
@@ -133,10 +137,18 @@ export class Ledger {
     return season;
   }
   list(id) {
-    const rows = this.sql(
+    let rows = this.sql(
       "SELECT p.*, e.rating FROM players p LEFT JOIN elo_ratings e ON e.season=p.season AND e.uid=p.uid WHERE p.season=? ORDER BY e.rating DESC, p.uid ASC",
       id,
     );
+    // 運営のプレイヤーを混ぜる(2026-11-20 本人の指示)。実際の人の10位より下に置く(house-players.js)
+    if (this.house) {
+      const reals = rows.map((p) => ({ ...p, rating: p.rating ?? displayRating(p.wr) }));
+      const season = this.sql("SELECT * FROM seasons WHERE id=?", id)[0];
+      rows = [...reals, ...houseRows(season, this.clock(), reals)].sort(
+        (a, b) => b.rating - a.rating || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0),
+      );
+    }
     let previous = null,
       place = 0,
       index = 0;

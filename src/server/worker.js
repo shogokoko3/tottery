@@ -414,7 +414,7 @@ export class SeasonLedger {
     this.ctx = ctx;
     const sql = (query, ...params) =>
       ctx.storage.sql.exec(query, ...params).toArray();
-    this.ledger = new Ledger(sql);
+    this.ledger = new Ledger(sql, { house: true });
     this.wallet = new Wallet(sql);
     this.friends = new Friends(sql);
     // App Store 公開より前の口座(TestFlight の期間に遊んだ人)の記録を、一度だけ全部消す
